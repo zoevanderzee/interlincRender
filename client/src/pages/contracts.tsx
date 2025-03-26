@@ -1,0 +1,170 @@
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Link, useLocation } from "wouter";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import ContractsTable from "@/components/dashboard/ContractsTable";
+import { Plus, Search, FilterX } from "lucide-react";
+import { Contract, User } from "@shared/schema";
+
+const Contracts = () => {
+  const [_, navigate] = useLocation();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+
+  // Fetch contracts
+  const { data: contracts = [], isLoading: isLoadingContracts } = useQuery<Contract[]>({
+    queryKey: ['/api/contracts'],
+  });
+
+  // Fetch contractors
+  const { data: contractors = [], isLoading: isLoadingContractors } = useQuery<User[]>({
+    queryKey: ['/api/users', { role: 'contractor' }],
+  });
+
+  // Filter contracts by search term and status
+  const filteredContracts = contracts.filter((contract) => {
+    const matchesSearch = searchTerm === "" || 
+      contract.contractName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      contract.contractCode.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = statusFilter === "" || contract.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
+
+  // Clear filters
+  const clearFilters = () => {
+    setSearchTerm("");
+    setStatusFilter("");
+  };
+
+  // Handle view contract
+  const handleViewContract = (id: number) => {
+    navigate(`/contracts/${id}`);
+  };
+
+  // Handle edit contract
+  const handleEditContract = (id: number) => {
+    navigate(`/contracts/${id}/edit`);
+  };
+
+  return (
+    <>
+      {/* Page Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-semibold text-primary-900">Smart Contracts</h1>
+          <p className="text-primary-500 mt-1">Manage and track all your contract agreements</p>
+        </div>
+        <div className="mt-4 md:mt-0">
+          <Link href="/contracts/new">
+            <Button className="w-full md:w-auto">
+              <Plus size={16} className="mr-2" />
+              New Contract
+            </Button>
+          </Link>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white p-4 rounded-lg shadow-sm border border-primary-100 mb-6">
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary-400" size={18} />
+            <Input
+              placeholder="Search contracts..."
+              className="pl-9"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <div className="w-full md:w-48">
+            <Select
+              value={statusFilter}
+              onValueChange={setStatusFilter}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All Statuses</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="pending_approval">Pending Approval</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="terminated">Terminated</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button variant="outline" size="icon" onClick={clearFilters} className="md:self-start">
+            <FilterX size={18} />
+          </Button>
+        </div>
+      </div>
+
+      {/* Contracts Table */}
+      {isLoadingContracts || isLoadingContractors ? (
+        <div className="bg-white rounded-lg shadow-sm border border-primary-100 p-8">
+          <div className="animate-pulse flex flex-col space-y-4">
+            <div className="h-4 bg-primary-100 rounded w-3/4"></div>
+            <div className="h-4 bg-primary-100 rounded w-1/2"></div>
+            <div className="h-4 bg-primary-100 rounded w-5/6"></div>
+            <div className="h-4 bg-primary-100 rounded w-2/3"></div>
+          </div>
+        </div>
+      ) : (
+        <ContractsTable
+          contracts={filteredContracts}
+          contractors={contractors}
+          onViewContract={handleViewContract}
+          onEditContract={handleEditContract}
+        />
+      )}
+
+      {/* Empty State */}
+      {filteredContracts.length === 0 && !isLoadingContracts && (
+        <div className="bg-white rounded-lg shadow-sm border border-primary-100 p-8 text-center">
+          <div className="flex justify-center mb-4">
+            <div className="h-16 w-16 rounded-full bg-primary-50 flex items-center justify-center text-primary-500">
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+            </div>
+          </div>
+          <h3 className="text-lg font-medium text-primary-900 mb-2">No contracts found</h3>
+          <p className="text-primary-500 mb-6">
+            {searchTerm || statusFilter ? 
+              "No contracts match your search criteria. Try changing your filters." : 
+              "Get started by creating your first smart contract."}
+          </p>
+          {searchTerm || statusFilter ? (
+            <Button variant="outline" onClick={clearFilters}>
+              Clear Filters
+            </Button>
+          ) : (
+            <Link href="/contracts/new">
+              <Button>
+                <Plus size={16} className="mr-2" />
+                Create Contract
+              </Button>
+            </Link>
+          )}
+        </div>
+      )}
+    </>
+  );
+};
+
+export default Contracts;

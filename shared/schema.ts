@@ -1,0 +1,91 @@
+import { pgTable, text, serial, integer, boolean, timestamp, varchar, decimal } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod";
+
+// Users table
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  username: text("username").notNull().unique(),
+  password: text("password").notNull(),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  email: text("email").notNull().unique(),
+  role: text("role").notNull().default("contractor"), // "business" or "contractor"
+  profileImageUrl: text("profile_image_url"),
+  companyName: text("company_name"),
+  title: text("title"),
+});
+
+// Smart Contracts table
+export const contracts = pgTable("contracts", {
+  id: serial("id").primaryKey(),
+  contractName: text("contract_name").notNull(),
+  contractCode: text("contract_code").notNull().unique(),
+  businessId: integer("business_id").notNull(),
+  contractorId: integer("contractor_id").notNull(),
+  description: text("description"),
+  status: text("status").notNull().default("draft"), // draft, active, completed, terminated
+  value: decimal("value", { precision: 10, scale: 2 }).notNull(),
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Milestones table
+export const milestones = pgTable("milestones", {
+  id: serial("id").primaryKey(),
+  contractId: integer("contract_id").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  dueDate: timestamp("due_date").notNull(),
+  status: text("status").notNull().default("pending"), // pending, completed, overdue, approved
+  paymentAmount: decimal("payment_amount", { precision: 10, scale: 2 }).notNull(),
+  progress: integer("progress").notNull().default(0), // 0-100 percentage
+});
+
+// Payments table
+export const payments = pgTable("payments", {
+  id: serial("id").primaryKey(),
+  contractId: integer("contract_id").notNull(),
+  milestoneId: integer("milestone_id").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  status: text("status").notNull().default("scheduled"), // scheduled, processing, completed, failed
+  scheduledDate: timestamp("scheduled_date").notNull(),
+  completedDate: timestamp("completed_date"),
+  notes: text("notes"),
+});
+
+// Documents table
+export const documents = pgTable("documents", {
+  id: serial("id").primaryKey(),
+  contractId: integer("contract_id").notNull(),
+  fileName: text("file_name").notNull(),
+  fileType: text("file_type").notNull(),
+  filePath: text("file_path").notNull(),
+  uploadedBy: integer("uploaded_by").notNull(),
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+  description: text("description"),
+});
+
+// Insert schemas
+export const insertUserSchema = createInsertSchema(users).omit({ id: true });
+export const insertContractSchema = createInsertSchema(contracts).omit({ id: true, createdAt: true });
+export const insertMilestoneSchema = createInsertSchema(milestones).omit({ id: true });
+export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true, completedDate: true });
+export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, uploadedAt: true });
+
+// Types
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type User = typeof users.$inferSelect;
+
+export type InsertContract = z.infer<typeof insertContractSchema>;
+export type Contract = typeof contracts.$inferSelect;
+
+export type InsertMilestone = z.infer<typeof insertMilestoneSchema>;
+export type Milestone = typeof milestones.$inferSelect;
+
+export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+export type Payment = typeof payments.$inferSelect;
+
+export type InsertDocument = z.infer<typeof insertDocumentSchema>;
+export type Document = typeof documents.$inferSelect;

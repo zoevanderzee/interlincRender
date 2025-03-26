@@ -1,0 +1,369 @@
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { useState } from "react";
+import { CalendarIcon, ChevronDownIcon, Loader2 } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { format } from "date-fns";
+import { insertContractSchema } from "@shared/schema";
+import { User } from "@shared/schema";
+import { apiRequest } from "@/lib/queryClient";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+
+interface ContractFormProps {
+  contractors: User[];
+  onSuccess?: () => void;
+}
+
+const ContractForm = ({ contractors, onSuccess }: ContractFormProps) => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [submitting, setSubmitting] = useState(false);
+
+  // Extend the insert schema with additional validation
+  const formSchema = insertContractSchema.extend({
+    startDate: z.coerce.date().min(new Date("2020-01-01"), {
+      message: "Start date must be after January 1, 2020",
+    }),
+    endDate: z.coerce.date().min(new Date(), {
+      message: "End date must be in the future",
+    }),
+    value: z.string().min(1, "Value is required").regex(/^\d+(\.\d{1,2})?$/, {
+      message: "Value must be a valid amount (e.g. 1000 or 1000.50)",
+    }),
+  });
+
+  // Form hook
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      contractName: "",
+      contractCode: `SC-${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-`,
+      businessId: 1, // Default to the current user's business
+      contractorId: 0,
+      description: "",
+      status: "draft",
+      value: "",
+      startDate: new Date(),
+      endDate: new Date(new Date().setMonth(new Date().getMonth() + 3)), // Default 3 months from now
+    },
+  });
+
+  // Submit mutation
+  const createContractMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof formSchema>) => {
+      return apiRequest("POST", "/api/contracts", data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Contract created",
+        description: "The contract has been created successfully!",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/contracts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      if (onSuccess) onSuccess();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Could not create contract. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Submit handler
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    try {
+      setSubmitting(true);
+      await createContractMutation.mutateAsync(values);
+      form.reset();
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  // Generate contract code
+  const generateContractCode = () => {
+    const year = new Date().getFullYear();
+    const month = String(new Date().getMonth() + 1).padStart(2, "0");
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, "0");
+    return `SC-${year}-${month}-${random}`;
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <FormField
+            control={form.control}
+            name="contractName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Contract Name</FormLabel>
+                <FormControl>
+                  <Input placeholder="Website Redesign Project" {...field} />
+                </FormControl>
+                <FormDescription>
+                  A descriptive name for the contract
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="contractCode"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Contract Code</FormLabel>
+                <div className="flex items-center space-x-2">
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => form.setValue("contractCode", generateContractCode())}
+                  >
+                    Generate
+                  </Button>
+                </div>
+                <FormDescription>
+                  A unique identifier for this contract
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <FormField
+          control={form.control}
+          name="contractorId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Contractor</FormLabel>
+              <Select
+                onValueChange={(value) => field.onChange(parseInt(value))}
+                defaultValue={field.value.toString()}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a contractor" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {contractors.map((contractor) => (
+                    <SelectItem key={contractor.id} value={contractor.id.toString()}>
+                      {contractor.firstName} {contractor.lastName}{" "}
+                      {contractor.companyName && `(${contractor.companyName})`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormDescription>
+                The contractor who will work on this project
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Description</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Brief description of the contract scope and deliverables"
+                  className="resize-none min-h-[100px]"
+                  {...field}
+                />
+              </FormControl>
+              <FormDescription>
+                A clear description of the work to be performed
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <FormField
+            control={form.control}
+            name="value"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Contract Value</FormLabel>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-primary-500">
+                    $
+                  </span>
+                  <FormControl>
+                    <Input className="pl-7" placeholder="5000" {...field} />
+                  </FormControl>
+                </div>
+                <FormDescription>Total contract value in USD</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="startDate"
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel>Start Date</FormLabel>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant={"outline"}
+                        className={`w-full pl-3 text-left font-normal ${
+                          !field.value && "text-muted-foreground"
+                        }`}
+                      >
+                        {field.value ? (
+                          format(field.value, "PPP")
+                        ) : (
+                          <span>Pick a date</span>
+                        )}
+                        <ApiCalendar className="ml-auto h-4 w-4 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={field.value}
+                      onSelect={field.onChange}
+                      disabled={(date) => date < new Date("2020-01-01")}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="endDate"
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel>End Date</FormLabel>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant={"outline"}
+                        className={`w-full pl-3 text-left font-normal ${
+                          !field.value && "text-muted-foreground"
+                        }`}
+                      >
+                        {field.value ? (
+                          format(field.value, "PPP")
+                        ) : (
+                          <span>Pick a date</span>
+                        )}
+                        <ApiCalendar className="ml-auto h-4 w-4 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={field.value}
+                      onSelect={field.onChange}
+                      disabled={(date) => date < new Date()}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <FormField
+          control={form.control}
+          name="status"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Status</FormLabel>
+              <Select
+                onValueChange={field.onChange}
+                defaultValue={field.value}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a status" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="pending_approval">Pending Approval</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="terminated">Terminated</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormDescription>
+                The current status of this contract
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="flex justify-end space-x-4">
+          <Button type="button" variant="outline" onClick={() => form.reset()}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={submitting || createContractMutation.isPending}>
+            {(submitting || createContractMutation.isPending) && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            )}
+            Create Contract
+          </Button>
+        </div>
+      </form>
+    </Form>
+  );
+};
+
+export default ContractForm;

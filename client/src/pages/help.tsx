@@ -1,0 +1,612 @@
+import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import {
+  HelpCircle,
+  Book,
+  FileText,
+  Send,
+  MessageSquare,
+  LifeBuoy,
+  PlayCircle,
+  Loader2,
+  Phone,
+  Mail,
+  Search,
+} from "lucide-react";
+
+const supportFormSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Please enter a valid email address"),
+  subject: z.string().min(5, "Subject must be at least 5 characters"),
+  message: z.string().min(10, "Message must be at least 10 characters"),
+});
+
+const Help = () => {
+  const { toast } = useToast();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Support form
+  const supportForm = useForm<z.infer<typeof supportFormSchema>>({
+    resolver: zodResolver(supportFormSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      subject: "",
+      message: "",
+    },
+  });
+
+  // Handle support form submission
+  const onSubmitSupport = async (values: z.infer<typeof supportFormSchema>) => {
+    try {
+      setIsSubmitting(true);
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      
+      toast({
+        title: "Support request submitted",
+        description: "We'll get back to you as soon as possible.",
+      });
+      
+      supportForm.reset();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "There was an error submitting your request. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // FAQ data
+  const faqCategories = [
+    {
+      title: "Getting Started",
+      faqs: [
+        {
+          question: "How do I create my first smart contract?",
+          answer: "To create your first smart contract, navigate to the Contracts page and click on 'New Contract'. You'll be guided through a step-by-step process to set up your contract including defining payment terms, milestones, and contractor details."
+        },
+        {
+          question: "How do I add a contractor to my account?",
+          answer: "You can add contractors from the Contractors page by clicking the 'Add Contractor' button. Fill in their details, and they'll receive an invitation to join your workspace. Once they accept, you can assign them to contracts."
+        },
+        {
+          question: "What payment methods are supported?",
+          answer: "Creativ Linc supports major credit and debit cards, ACH transfers, and bank transfers for payment processing. All payment information is securely stored and compliant with PCI DSS standards."
+        },
+        {
+          question: "How are payments triggered?",
+          answer: "Payments are automatically triggered when a milestone is marked as complete and approved. The contractor submits their work, you approve it, and the payment is automatically processed based on the terms set in the smart contract."
+        }
+      ]
+    },
+    {
+      title: "Smart Contracts",
+      faqs: [
+        {
+          question: "What makes these 'smart' contracts?",
+          answer: "Our smart contracts automate the agreement process between you and your contractors. They contain predefined terms, milestone deliverables, and payment conditions that execute automatically when conditions are met, removing the need for manual invoicing and approvals."
+        },
+        {
+          question: "Can I customize contract templates?",
+          answer: "Yes, you can create custom contract templates that suit your specific business needs. Navigate to Contracts > Templates to create or modify templates with your own terms, milestone structures, and payment schedules."
+        },
+        {
+          question: "How do I modify an active contract?",
+          answer: "To modify an active contract, navigate to the specific contract page and click 'Edit'. Both parties will need to approve any changes before they take effect. A full history of changes is maintained for compliance purposes."
+        },
+        {
+          question: "What happens if a milestone isn't completed?",
+          answer: "If a milestone isn't completed by the due date, it will be marked as overdue. You can then request an update from the contractor, extend the deadline, or take other actions as defined in your contract terms."
+        }
+      ]
+    },
+    {
+      title: "Payments & Billing",
+      faqs: [
+        {
+          question: "How are payment fees calculated?",
+          answer: "Creativ Linc charges a small percentage fee on each payment processed. The exact fee depends on your subscription plan and payment volume. You can view the detailed fee structure in the Billing section of your Settings."
+        },
+        {
+          question: "Can I schedule recurring payments?",
+          answer: "Yes, you can set up recurring payments for ongoing contractor relationships. When creating a contract, select the 'Recurring Payment' option and define the frequency (weekly, monthly, etc.) and duration."
+        },
+        {
+          question: "How do I handle international payments?",
+          answer: "International payments are fully supported and processed in the contractor's preferred currency. Currency conversion is handled automatically with transparent exchange rates displayed at the time of contract creation."
+        },
+        {
+          question: "What happens if a payment fails?",
+          answer: "If a payment fails, you'll be notified immediately. The system will automatically retry the payment after 24 hours. If it fails again, you'll need to update your payment method or manually initiate the payment from the Payments dashboard."
+        }
+      ]
+    },
+    {
+      title: "Data & Security",
+      faqs: [
+        {
+          question: "How is my financial data secured?",
+          answer: "All financial data is encrypted using bank-level security standards. We use 256-bit encryption for all data storage and transfer. Additionally, we maintain PCI DSS compliance and regular security audits to ensure your data remains protected."
+        },
+        {
+          question: "Who can access my contract information?",
+          answer: "Only authorized team members from your organization and the specific contractor assigned to a contract can access that contract's information. You can set custom permission levels for each team member in your account settings."
+        },
+        {
+          question: "Can I export my data for compliance purposes?",
+          answer: "Yes, all contract data, payment records, and documents can be exported in various formats (PDF, CSV, Excel) for your records or compliance requirements. Use the Export feature in the Reports section to generate these exports."
+        },
+        {
+          question: "How long is my data retained?",
+          answer: "We retain your data for as long as you maintain an active account, plus a retention period as required by applicable financial regulations. You can request data deletion for certain information by contacting our support team."
+        }
+      ]
+    }
+  ];
+
+  // Filter FAQs based on search query
+  const filteredFAQs = searchQuery.length > 0
+    ? faqCategories.map(category => ({
+        title: category.title,
+        faqs: category.faqs.filter(faq =>
+          faq.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          faq.answer.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      })).filter(category => category.faqs.length > 0)
+    : faqCategories;
+
+  return (
+    <>
+      {/* Page Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl md:text-3xl font-semibold text-primary-900">Help & Support</h1>
+        <p className="text-primary-500 mt-1">Find answers to common questions or contact our support team</p>
+      </div>
+
+      {/* Search Bar */}
+      <div className="relative mb-8">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary-400" size={18} />
+        <Input
+          placeholder="Search for help topics..."
+          className="pl-10"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </div>
+
+      {/* Help Content Tabs */}
+      <Tabs defaultValue="faq" className="w-full">
+        <TabsList className="mb-6">
+          <TabsTrigger value="faq" className="flex items-center">
+            <HelpCircle size={16} className="mr-2" />
+            FAQ
+          </TabsTrigger>
+          <TabsTrigger value="documentation" className="flex items-center">
+            <Book size={16} className="mr-2" />
+            Documentation
+          </TabsTrigger>
+          <TabsTrigger value="tutorials" className="flex items-center">
+            <PlayCircle size={16} className="mr-2" />
+            Video Tutorials
+          </TabsTrigger>
+          <TabsTrigger value="contact" className="flex items-center">
+            <MessageSquare size={16} className="mr-2" />
+            Contact Support
+          </TabsTrigger>
+        </TabsList>
+
+        {/* FAQ Tab */}
+        <TabsContent value="faq">
+          {filteredFAQs.length > 0 ? (
+            <div className="space-y-8">
+              {filteredFAQs.map((category, index) => (
+                <div key={index}>
+                  <h2 className="text-xl font-semibold mb-4">{category.title}</h2>
+                  {category.faqs.length > 0 ? (
+                    <Accordion type="single" collapsible className="w-full space-y-2">
+                      {category.faqs.map((faq, faqIndex) => (
+                        <AccordionItem
+                          key={faqIndex}
+                          value={`${index}-${faqIndex}`}
+                          className="border rounded-lg overflow-hidden"
+                        >
+                          <AccordionTrigger className="px-6 py-4 hover:bg-primary-50 font-medium">
+                            {faq.question}
+                          </AccordionTrigger>
+                          <AccordionContent className="px-6 py-4 text-primary-700">
+                            {faq.answer}
+                          </AccordionContent>
+                        </AccordionItem>
+                      ))}
+                    </Accordion>
+                  ) : (
+                    <p className="text-primary-500 italic">No results found for this category.</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-10">
+              <HelpCircle className="mx-auto h-12 w-12 text-primary-300 mb-4" />
+              <h3 className="text-lg font-medium text-primary-900 mb-2">No results found</h3>
+              <p className="text-primary-500 mb-6">
+                We couldn't find any FAQ that matches your search query.
+              </p>
+              <Button onClick={() => setSearchQuery("")} variant="outline">
+                Clear Search
+              </Button>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Documentation Tab */}
+        <TabsContent value="documentation">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <Card className="border border-primary-100 hover:shadow-md transition-shadow">
+              <CardContent className="p-6">
+                <div className="h-12 w-12 rounded-full bg-accent-50 text-accent-500 flex items-center justify-center mb-4">
+                  <FileText size={24} />
+                </div>
+                <h3 className="text-lg font-medium mb-2">Getting Started Guide</h3>
+                <p className="text-primary-500 mb-4">
+                  Learn the basics of Creativ Linc and how to set up your first smart contract.
+                </p>
+                <Button variant="outline" className="w-full">
+                  View Guide
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="border border-primary-100 hover:shadow-md transition-shadow">
+              <CardContent className="p-6">
+                <div className="h-12 w-12 rounded-full bg-accent-50 text-accent-500 flex items-center justify-center mb-4">
+                  <FileText size={24} />
+                </div>
+                <h3 className="text-lg font-medium mb-2">Smart Contract Creation</h3>
+                <p className="text-primary-500 mb-4">
+                  Detailed documentation on creating and managing smart contracts.
+                </p>
+                <Button variant="outline" className="w-full">
+                  View Guide
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="border border-primary-100 hover:shadow-md transition-shadow">
+              <CardContent className="p-6">
+                <div className="h-12 w-12 rounded-full bg-accent-50 text-accent-500 flex items-center justify-center mb-4">
+                  <FileText size={24} />
+                </div>
+                <h3 className="text-lg font-medium mb-2">Payment Integration</h3>
+                <p className="text-primary-500 mb-4">
+                  Learn how to set up and manage automated payments and billing.
+                </p>
+                <Button variant="outline" className="w-full">
+                  View Guide
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="border border-primary-100 hover:shadow-md transition-shadow">
+              <CardContent className="p-6">
+                <div className="h-12 w-12 rounded-full bg-accent-50 text-accent-500 flex items-center justify-center mb-4">
+                  <FileText size={24} />
+                </div>
+                <h3 className="text-lg font-medium mb-2">Contractor Management</h3>
+                <p className="text-primary-500 mb-4">
+                  Guidelines for onboarding and managing contractors.
+                </p>
+                <Button variant="outline" className="w-full">
+                  View Guide
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="border border-primary-100 hover:shadow-md transition-shadow">
+              <CardContent className="p-6">
+                <div className="h-12 w-12 rounded-full bg-accent-50 text-accent-500 flex items-center justify-center mb-4">
+                  <FileText size={24} />
+                </div>
+                <h3 className="text-lg font-medium mb-2">Reporting & Analytics</h3>
+                <p className="text-primary-500 mb-4">
+                  Learn how to use financial reports and analytics features.
+                </p>
+                <Button variant="outline" className="w-full">
+                  View Guide
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="border border-primary-100 hover:shadow-md transition-shadow">
+              <CardContent className="p-6">
+                <div className="h-12 w-12 rounded-full bg-accent-50 text-accent-500 flex items-center justify-center mb-4">
+                  <FileText size={24} />
+                </div>
+                <h3 className="text-lg font-medium mb-2">API Documentation</h3>
+                <p className="text-primary-500 mb-4">
+                  Technical documentation for integrating with our API.
+                </p>
+                <Button variant="outline" className="w-full">
+                  View Guide
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* Tutorials Tab */}
+        <TabsContent value="tutorials">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card className="border border-primary-100 overflow-hidden">
+              <div className="aspect-video bg-primary-100 flex items-center justify-center">
+                <PlayCircle size={48} className="text-primary-400" />
+              </div>
+              <CardContent className="p-4">
+                <h3 className="font-medium mb-1">Getting Started with Creativ Linc</h3>
+                <p className="text-sm text-primary-500 mb-2">5:22 • Updated 2 weeks ago</p>
+                <p className="text-primary-700">
+                  A comprehensive overview of the platform and its core features.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border border-primary-100 overflow-hidden">
+              <div className="aspect-video bg-primary-100 flex items-center justify-center">
+                <PlayCircle size={48} className="text-primary-400" />
+              </div>
+              <CardContent className="p-4">
+                <h3 className="font-medium mb-1">Creating Your First Smart Contract</h3>
+                <p className="text-sm text-primary-500 mb-2">7:45 • Updated 1 month ago</p>
+                <p className="text-primary-700">
+                  Step-by-step guide to creating and configuring smart contracts.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border border-primary-100 overflow-hidden">
+              <div className="aspect-video bg-primary-100 flex items-center justify-center">
+                <PlayCircle size={48} className="text-primary-400" />
+              </div>
+              <CardContent className="p-4">
+                <h3 className="font-medium mb-1">Managing Contractors and Teams</h3>
+                <p className="text-sm text-primary-500 mb-2">6:18 • Updated 3 weeks ago</p>
+                <p className="text-primary-700">
+                  Learn how to onboard contractors and manage team permissions.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border border-primary-100 overflow-hidden">
+              <div className="aspect-video bg-primary-100 flex items-center justify-center">
+                <PlayCircle size={48} className="text-primary-400" />
+              </div>
+              <CardContent className="p-4">
+                <h3 className="font-medium mb-1">Setting Up Automated Payments</h3>
+                <p className="text-sm text-primary-500 mb-2">9:32 • Updated 1 month ago</p>
+                <p className="text-primary-700">
+                  Configure milestones and automatic payment triggers.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border border-primary-100 overflow-hidden">
+              <div className="aspect-video bg-primary-100 flex items-center justify-center">
+                <PlayCircle size={48} className="text-primary-400" />
+              </div>
+              <CardContent className="p-4">
+                <h3 className="font-medium mb-1">Using the Data Room for Document Management</h3>
+                <p className="text-sm text-primary-500 mb-2">4:55 • Updated 2 months ago</p>
+                <p className="text-primary-700">
+                  Securely store and manage contract-related documents and files.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border border-primary-100 overflow-hidden">
+              <div className="aspect-video bg-primary-100 flex items-center justify-center">
+                <PlayCircle size={48} className="text-primary-400" />
+              </div>
+              <CardContent className="p-4">
+                <h3 className="font-medium mb-1">Generating Financial Reports</h3>
+                <p className="text-sm text-primary-500 mb-2">8:10 • Updated 3 months ago</p>
+                <p className="text-primary-700">
+                  Creating custom reports for financial tracking and compliance.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* Contact Support Tab */}
+        <TabsContent value="contact">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2">
+              <Card className="border border-primary-100">
+                <CardContent className="p-6">
+                  <h2 className="text-xl font-semibold mb-6">Contact Support</h2>
+                  <Form {...supportForm}>
+                    <form onSubmit={supportForm.handleSubmit(onSubmitSupport)} className="space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormField
+                          control={supportForm.control}
+                          name="name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Your Name</FormLabel>
+                              <FormControl>
+                                <Input {...field} placeholder="John Doe" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={supportForm.control}
+                          name="email"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Email Address</FormLabel>
+                              <FormControl>
+                                <Input {...field} type="email" placeholder="john.doe@example.com" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <FormField
+                        control={supportForm.control}
+                        name="subject"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Subject</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="Help with smart contracts" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={supportForm.control}
+                        name="message"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Your Message</FormLabel>
+                            <FormControl>
+                              <Textarea
+                                {...field}
+                                placeholder="Please describe your issue in detail..."
+                                className="min-h-[150px] resize-none"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="flex justify-end">
+                        <Button type="submit" disabled={isSubmitting}>
+                          {isSubmitting ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Sending...
+                            </>
+                          ) : (
+                            <>
+                              <Send className="mr-2 h-4 w-4" />
+                              Send Message
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="space-y-6">
+              <Card className="border border-primary-100">
+                <CardContent className="p-6">
+                  <div className="h-12 w-12 rounded-full bg-primary-50 text-primary-500 flex items-center justify-center mb-4">
+                    <LifeBuoy size={24} />
+                  </div>
+                  <h3 className="font-medium text-lg mb-2">Priority Support</h3>
+                  <p className="text-primary-500 mb-4">
+                    Business and Enterprise plans include priority support with dedicated response times.
+                  </p>
+                  <div className="text-sm space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-primary-600">Business Plan:</span>
+                      <span className="font-medium">4 hour response time</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-primary-600">Enterprise Plan:</span>
+                      <span className="font-medium">1 hour response time</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border border-primary-100">
+                <CardContent className="p-6">
+                  <h3 className="font-medium text-lg mb-4">Contact Information</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-start">
+                      <Mail className="h-5 w-5 text-primary-500 mr-3 mt-0.5" />
+                      <div>
+                        <p className="font-medium">Email Support</p>
+                        <p className="text-primary-500">support@creativlinc.com</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start">
+                      <Phone className="h-5 w-5 text-primary-500 mr-3 mt-0.5" />
+                      <div>
+                        <p className="font-medium">Phone Support</p>
+                        <p className="text-primary-500">+1 (800) 555-1234</p>
+                        <p className="text-xs text-primary-400">
+                          Monday - Friday, 9am - 5pm EST
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border border-primary-100">
+                <CardContent className="p-6">
+                  <h3 className="font-medium text-lg mb-4">Live Chat</h3>
+                  <p className="text-primary-500 mb-4">
+                    Get instant assistance from our support team through live chat.
+                  </p>
+                  <Button className="w-full">
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    Start Live Chat
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
+    </>
+  );
+};
+
+export default Help;
