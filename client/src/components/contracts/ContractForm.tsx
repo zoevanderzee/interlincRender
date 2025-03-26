@@ -24,7 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Calendar } from "@/components/ui/calendar";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
@@ -260,12 +260,12 @@ const ContractForm = ({ contractors, onSuccess }: ContractFormProps) => {
                         ) : (
                           <span>Pick a date</span>
                         )}
-                        <ApiCalendar className="ml-auto h-4 w-4 opacity-50" />
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                       </Button>
                     </FormControl>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
+                    <CalendarComponent
                       mode="single"
                       selected={field.value}
                       onSelect={field.onChange}
@@ -299,12 +299,12 @@ const ContractForm = ({ contractors, onSuccess }: ContractFormProps) => {
                         ) : (
                           <span>Pick a date</span>
                         )}
-                        <ApiCalendar className="ml-auto h-4 w-4 opacity-50" />
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                       </Button>
                     </FormControl>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
+                    <CalendarComponent
                       mode="single"
                       selected={field.value}
                       onSelect={field.onChange}
