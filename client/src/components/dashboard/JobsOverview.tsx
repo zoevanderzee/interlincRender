@@ -16,12 +16,16 @@ import {
   Coins,
   ListTodo,
   ArrowRight,
-  AlertCircle
+  AlertCircle,
+  Search,
+  Filter
 } from "lucide-react";
 import { Contract, User, Milestone, Payment } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 interface JobsOverviewProps {
   contracts: Contract[];
@@ -44,10 +48,24 @@ const JobsOverview = ({
 }: JobsOverviewProps) => {
   // Group contracts by name (assuming contracts with the same name are part of the same job)
   const [expandedJobs, setExpandedJobs] = useState<string[]>([]);
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  
+  // Filter contracts based on search and status filter
+  const filteredContracts = contracts.filter(contract => {
+    const matchesSearch = searchTerm === '' || 
+      contract.contractName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      contract.contractCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (contract.description && contract.description.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    const matchesStatus = statusFilter === 'all' || contract.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
   
   // Group contracts that might be related to the same job
   // For the purpose of this demo, we're grouping by the first word in the contract name
-  const groupedContracts: GroupedContracts = contracts.reduce((groups: GroupedContracts, contract) => {
+  const groupedContracts: GroupedContracts = filteredContracts.reduce((groups: GroupedContracts, contract) => {
     // Extract job name (first word before a dash, hyphen or colon)
     const jobName = contract.contractName.split(/[-:]/)[0].trim();
     
@@ -63,484 +81,451 @@ const JobsOverview = ({
     return contractors.find(contractor => contractor.id === id);
   };
   
-  const getStatusBadgeClass = (status: string) => {
-    switch(status) {
+  const getContractMilestones = (contractId: number) => {
+    return milestones.filter(milestone => milestone.contractId === contractId);
+  };
+  
+  const getContractPayments = (contractId: number) => {
+    return payments.filter(payment => payment.contractId === contractId);
+  };
+  
+  const toggleJobExpansion = (jobName: string) => {
+    setExpandedJobs(prev => 
+      prev.includes(jobName) 
+        ? prev.filter(name => name !== jobName) 
+        : [...prev, jobName]
+    );
+  };
+  
+  const calculateProgress = (contractStatus: string) => {
+    switch(contractStatus) {
+      case 'draft':
+        return 10;
+      case 'pending_approval':
+        return 25;
       case 'active':
-        return 'bg-green-900 text-green-400';
-      case 'pending_approval':
-        return 'bg-amber-900 text-amber-400';
+        return 50;
       case 'completed':
-        return 'bg-blue-900 text-blue-400';
+        return 100;
       case 'terminated':
-        return 'bg-red-900 text-red-400';
+        return 100;
       default:
-        return 'bg-zinc-800 text-gray-400';
+        return 0;
     }
   };
   
-  const formatStatus = (status: string) => {
+  const getStatusBadge = (status: string) => {
     switch(status) {
+      case 'draft':
+        return <Badge variant="outline" className="bg-zinc-800 text-gray-300 border-zinc-700">Draft</Badge>;
       case 'pending_approval':
-        return 'Pending Approval';
+        return <Badge variant="outline" className="bg-amber-900 text-amber-300 border-amber-700">Pending Approval</Badge>;
+      case 'active':
+        return <Badge variant="outline" className="bg-green-900 text-green-300 border-green-700">Active</Badge>;
+      case 'completed':
+        return <Badge variant="outline" className="bg-blue-900 text-blue-300 border-blue-700">Completed</Badge>;
+      case 'terminated':
+        return <Badge variant="outline" className="bg-red-900 text-red-300 border-red-700">Terminated</Badge>;
       default:
-        return status.charAt(0).toUpperCase() + status.slice(1);
+        return <Badge variant="outline" className="bg-zinc-800 text-gray-300 border-zinc-700">{status}</Badge>;
     }
   };
-  
-  const toggleJobExpand = (jobName: string) => {
-    if (expandedJobs.includes(jobName)) {
-      setExpandedJobs(expandedJobs.filter(name => name !== jobName));
-    } else {
-      setExpandedJobs([...expandedJobs, jobName]);
-    }
-  };
-  
-  const formatDate = (date: Date | null) => {
-    if (!date) return 'Not set';
-    return new Date(date).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
-  };
-  
-  const calculateJobProgress = (contracts: Contract[]) => {
-    const activeContracts = contracts.filter(c => c.status === 'active' || c.status === 'completed');
-    const completedContracts = contracts.filter(c => c.status === 'completed');
-    
-    if (activeContracts.length === 0) return 0;
-    return Math.round((completedContracts.length / activeContracts.length) * 100);
-  };
-  
-  const calculateTotalValue = (contracts: Contract[]) => {
-    return contracts.reduce((sum, contract) => sum + Number(contract.value), 0);
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
   };
   
   return (
-    <Card className="bg-zinc-900 rounded-lg shadow-sm border border-zinc-800">
-      <div className="p-5 border-b border-zinc-800 flex justify-between items-center">
-        <h3 className="text-lg font-medium text-white">All Jobs</h3>
-        <Button
-          variant="outline"
-          size="sm"
-          className="text-xs text-white border-zinc-700 hover:bg-zinc-800 hover:text-white"
-        >
-          <PlusCircle className="mr-1" size={14} />
-          Create New Job
-        </Button>
+    <Card className="border-zinc-800 bg-zinc-900">
+      <div className="p-4 border-b border-zinc-800">
+        <div className="flex flex-col md:flex-row justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+            <Briefcase className="h-5 w-5 text-indigo-500" />
+            Jobs & Projects Overview
+          </h2>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-2 md:mt-0 text-white border-zinc-700 hover:bg-zinc-800"
+            onClick={() => {}}
+          >
+            <PlusCircle className="mr-1 h-4 w-4" />
+            Create New Job
+          </Button>
+        </div>
+        
+        <div className="flex flex-col md:flex-row gap-2">
+          {/* Search */}
+          <div className="relative flex-grow">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+            <Input
+              placeholder="Search jobs and contracts..."
+              className="pl-8 bg-zinc-800 border-zinc-700 text-white"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          
+          {/* Filter */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="default"
+                className="bg-zinc-800 border-zinc-700 text-white hover:bg-zinc-700"
+              >
+                <Filter className="mr-2 h-4 w-4" />
+                {statusFilter === 'all' ? 'All Statuses' : statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1).replace('_', ' ')}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-zinc-800 border-zinc-700 text-white">
+              <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-zinc-700" />
+              <DropdownMenuItem 
+                className={statusFilter === 'all' ? 'bg-zinc-700' : 'hover:bg-zinc-700'}
+                onClick={() => setStatusFilter('all')}
+              >
+                All Statuses
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                className={statusFilter === 'active' ? 'bg-zinc-700' : 'hover:bg-zinc-700'}
+                onClick={() => setStatusFilter('active')}
+              >
+                Active
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                className={statusFilter === 'pending_approval' ? 'bg-zinc-700' : 'hover:bg-zinc-700'}
+                onClick={() => setStatusFilter('pending_approval')}
+              >
+                Pending Approval
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                className={statusFilter === 'completed' ? 'bg-zinc-700' : 'hover:bg-zinc-700'}
+                onClick={() => setStatusFilter('completed')}
+              >
+                Completed
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                className={statusFilter === 'draft' ? 'bg-zinc-700' : 'hover:bg-zinc-700'}
+                onClick={() => setStatusFilter('draft')}
+              >
+                Draft
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                className={statusFilter === 'terminated' ? 'bg-zinc-700' : 'hover:bg-zinc-700'}
+                onClick={() => setStatusFilter('terminated')}
+              >
+                Terminated
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
       
       <div className="divide-y divide-zinc-800">
         {Object.keys(groupedContracts).length > 0 ? (
           Object.entries(groupedContracts).map(([jobName, jobContracts]) => {
             const isExpanded = expandedJobs.includes(jobName);
-            const jobProgress = calculateJobProgress(jobContracts);
-            const totalValue = calculateTotalValue(jobContracts);
-            const contractorsCount = new Set(jobContracts.map(c => c.contractorId)).size;
-            const earliestStartDate = jobContracts
-              .map(c => c.startDate)
-              .filter(Boolean)
-              .sort((a, b) => new Date(a as Date).getTime() - new Date(b as Date).getTime())[0];
-            
-            // For workflow visualization - determine job stage based on progress and contract statuses
-            const activeContracts = jobContracts.filter(c => c.status === 'active').length;
-            const completedContracts = jobContracts.filter(c => c.status === 'completed').length;
-            const pendingContracts = jobContracts.filter(c => c.status === 'pending_approval').length;
-            
-            let jobStage = 'planning';
-            if (completedContracts > 0) {
-              jobStage = 'completion';
-            } else if (activeContracts > 0) {
-              jobStage = 'in_progress';
-            } else if (pendingContracts > 0) {
-              jobStage = 'contract_approval';
-            }
+            const mainContract = jobContracts[0]; // Use the first contract as the main one for display
+            const contractor = getContractorById(mainContract.contractorId);
             
             return (
-              <div key={jobName} className="overflow-hidden">
+              <div key={jobName} className="group">
                 <div 
-                  className="p-4 hover:bg-zinc-800 cursor-pointer flex items-center justify-between"
-                  onClick={() => toggleJobExpand(jobName)}
+                  className="p-4 hover:bg-zinc-800 cursor-pointer flex items-center"
+                  onClick={() => toggleJobExpansion(jobName)}
                 >
-                  <div className="flex items-center">
-                    <div className="h-10 w-10 rounded-md bg-zinc-800 text-accent-500 flex items-center justify-center">
-                      <Briefcase size={20} />
-                    </div>
-                    <div className="ml-4">
-                      <h3 className="text-md font-medium text-white flex items-center">
-                        {jobName}
-                        <Badge className="ml-2 bg-zinc-800 text-gray-400 text-xs">
-                          {jobContracts.length} contract{jobContracts.length !== 1 ? 's' : ''}
-                        </Badge>
-                      </h3>
-                      <div className="flex items-center text-xs text-gray-400 mt-1">
-                        <span className="flex items-center mr-3">
-                          <Users size={12} className="mr-1" />
-                          {contractorsCount} contractor{contractorsCount !== 1 ? 's' : ''}
-                        </span>
-                        <span className="flex items-center mr-3">
-                          <DollarSign size={12} className="mr-1" />
-                          ${totalValue.toLocaleString('en-US')} budget
-                        </span>
-                        {earliestStartDate && (
-                          <span className="flex items-center">
-                            <Calendar size={12} className="mr-1" />
-                            Started {formatDate(earliestStartDate as Date)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                  <div className="mr-2">
+                    {isExpanded ? 
+                      <ChevronDown className="h-5 w-5 text-gray-500" /> : 
+                      <ChevronRight className="h-5 w-5 text-gray-500" />
+                    }
                   </div>
-                  <div className="flex items-center">
-                    <div className="mr-4">
-                      <div className="flex items-center text-xs text-gray-400 mb-1 justify-between">
-                        <span>Overall Progress</span>
-                        <span className="ml-2">{jobProgress}%</span>
+                  
+                  <div className="flex-1">
+                    <div className="flex items-center">
+                      <h3 className="text-md font-medium text-white">{jobName}</h3>
+                      <div className="ml-2">
+                        {getStatusBadge(mainContract.status)}
                       </div>
-                      <Progress value={jobProgress} className="h-1.5 w-32 bg-zinc-800" indicatorClassName="bg-accent-500" />
+                      <div className="ml-auto flex items-center text-sm text-gray-400">
+                        <span className="flex items-center mr-4">
+                          <FileText className="h-4 w-4 mr-1 text-gray-500" />
+                          {jobContracts.length} {jobContracts.length === 1 ? 'Contract' : 'Contracts'}
+                        </span>
+                        <span className="flex items-center">
+                          <DollarSign className="h-4 w-4 mr-1 text-gray-500" />
+                          {formatCurrency(jobContracts.reduce((sum, contract) => sum + Number(contract.value), 0))}
+                        </span>
+                      </div>
                     </div>
-                    <div>
-                      {isExpanded ? <ChevronDown size={16} className="text-gray-400" /> : <ChevronRight size={16} className="text-gray-400" />}
+                    
+                    <div className="mt-1 flex items-center text-sm">
+                      <div className="flex items-center text-gray-400 mr-4">
+                        <Users className="h-4 w-4 mr-1 text-gray-500" />
+                        {contractor?.firstName} {contractor?.lastName}
+                      </div>
+                      <div className="flex items-center text-gray-400">
+                        <Clock className="h-4 w-4 mr-1 text-gray-500" />
+                        Started {mainContract.startDate ? new Date(mainContract.startDate).toLocaleDateString() : 'Not specified'}
+                      </div>
+                    </div>
+                    
+                    <div className="mt-2">
+                      <Progress value={calculateProgress(mainContract.status)} className="h-1.5" />
                     </div>
                   </div>
                 </div>
                 
                 {isExpanded && (
-                  <div className="bg-zinc-900 px-4 pb-4">
-                    {/* Workflow Stage Visualization */}
-                    <div className="ml-14 mb-4">
-                      <div className="flex items-center justify-between text-xs text-gray-400 mb-2">
-                        <span>Job Stage:</span>
-                      </div>
-                      <div className="grid grid-cols-4 gap-2">
-                        <div className={`flex flex-col items-center ${jobStage === 'planning' ? 'text-accent-500' : 'text-gray-500'}`}>
-                          <div className={`h-8 w-8 rounded-full ${jobStage === 'planning' ? 'bg-accent-900 text-accent-500' : 'bg-zinc-800 text-gray-500'} flex items-center justify-center mb-1`}>
-                            <Briefcase size={16} />
-                          </div>
-                          <span className="text-[10px]">Planning</span>
-                        </div>
-                        <div className={`flex flex-col items-center ${jobStage === 'contract_approval' ? 'text-amber-500' : 'text-gray-500'}`}>
-                          <div className={`h-8 w-8 rounded-full ${jobStage === 'contract_approval' ? 'bg-amber-900 text-amber-500' : 'bg-zinc-800 text-gray-500'} flex items-center justify-center mb-1`}>
-                            <FileText size={16} />
-                          </div>
-                          <span className="text-[10px]">Contract</span>
-                        </div>
-                        <div className={`flex flex-col items-center ${jobStage === 'in_progress' ? 'text-blue-500' : 'text-gray-500'}`}>
-                          <div className={`h-8 w-8 rounded-full ${jobStage === 'in_progress' ? 'bg-blue-900 text-blue-500' : 'bg-zinc-800 text-gray-500'} flex items-center justify-center mb-1`}>
-                            <Clock size={16} />
-                          </div>
-                          <span className="text-[10px]">In Progress</span>
-                        </div>
-                        <div className={`flex flex-col items-center ${jobStage === 'completion' ? 'text-green-500' : 'text-gray-500'}`}>
-                          <div className={`h-8 w-8 rounded-full ${jobStage === 'completion' ? 'bg-green-900 text-green-500' : 'bg-zinc-800 text-gray-500'} flex items-center justify-center mb-1`}>
-                            <CheckCircle size={16} />
-                          </div>
-                          <span className="text-[10px]">Completion</span>
-                        </div>
-                      </div>
+                  <div className="px-4 py-3 bg-zinc-800/50">
+                    <Tabs defaultValue="contracts" className="w-full">
+                      <TabsList className="bg-zinc-900 border-b border-zinc-700 rounded-none w-full justify-start mb-4">
+                        <TabsTrigger value="contracts" className="text-sm data-[state=active]:bg-zinc-800">
+                          Contracts
+                        </TabsTrigger>
+                        <TabsTrigger value="milestones" className="text-sm data-[state=active]:bg-zinc-800">
+                          Milestones
+                        </TabsTrigger>
+                        <TabsTrigger value="payments" className="text-sm data-[state=active]:bg-zinc-800">
+                          Payments
+                        </TabsTrigger>
+                      </TabsList>
                       
-                      {/* Progress Line */}
-                      <div className="relative h-1 bg-zinc-800 my-2 mx-4">
-                        <div 
-                          className="absolute top-0 left-0 h-1 bg-accent-500" 
-                          style={{ 
-                            width: jobStage === 'planning' ? '10%' : 
-                                  jobStage === 'contract_approval' ? '35%' : 
-                                  jobStage === 'in_progress' ? '65%' : '100%' 
-                          }}
-                        ></div>
-                      </div>
-                    </div>
-                    
-                    <div className="ml-14">
-                      <Tabs defaultValue="contracts" className="w-full">
-                        <TabsList className="bg-zinc-800 mb-4">
-                          <TabsTrigger value="contracts" className="data-[state=active]:bg-zinc-700">Smart Contracts</TabsTrigger>
-                          <TabsTrigger value="milestones" className="data-[state=active]:bg-zinc-700">Milestones</TabsTrigger>
-                          <TabsTrigger value="payments" className="data-[state=active]:bg-zinc-700">Payments</TabsTrigger>
-                        </TabsList>
-                        
-                        <TabsContent value="contracts" className="mt-0">
-                          <div className="space-y-3">
-                            {jobContracts.map(contract => {
-                              const contractor = getContractorById(contract.contractorId);
-                              
-                              return (
-                                <div key={contract.id} className="p-3 rounded-md border border-zinc-800 hover:border-zinc-700">
-                                  <div className="flex justify-between items-start">
-                                    <div>
-                                      <h4 className="text-sm font-medium text-white">{contract.contractName}</h4>
-                                      <p className="text-xs text-gray-400 mt-1">
-                                        <span className="flex items-center">
-                                          <Users size={12} className="mr-1" />
-                                          {contractor?.firstName} {contractor?.lastName} • {contract.contractCode}
-                                        </span>
-                                      </p>
+                      <TabsContent value="contracts" className="space-y-4 mt-0">
+                        <div className="space-y-2">
+                          {jobContracts.map(contract => {
+                            const contractor = getContractorById(contract.contractorId);
+                            return (
+                              <div key={contract.id} className="p-3 bg-zinc-900 rounded-md border border-zinc-800">
+                                <div className="flex justify-between items-start">
+                                  <div className="flex items-center">
+                                    <div className="h-8 w-8 bg-zinc-800 rounded-md flex items-center justify-center text-indigo-500">
+                                      <FileText className="h-4 w-4" />
                                     </div>
-                                    <Badge className={`${getStatusBadgeClass(contract.status)}`}>
-                                      {formatStatus(contract.status)}
+                                    <div className="ml-3">
+                                      <h4 className="text-sm font-medium text-white">{contract.contractName}</h4>
+                                      <p className="text-xs text-gray-400">Code: {contract.contractCode}</p>
+                                    </div>
+                                  </div>
+                                  <div>
+                                    {getStatusBadge(contract.status)}
+                                  </div>
+                                </div>
+                                
+                                <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                                  <div className="flex items-center text-gray-400">
+                                    <Users className="h-4 w-4 mr-1 text-gray-500" />
+                                    {contractor?.firstName} {contractor?.lastName}
+                                  </div>
+                                  <div className="flex items-center text-gray-400">
+                                    <Calendar className="h-4 w-4 mr-1 text-gray-500" />
+                                    {new Date(contract.startDate).toLocaleDateString()} - {new Date(contract.endDate).toLocaleDateString()}
+                                  </div>
+                                  <div className="flex items-center text-gray-400">
+                                    <DollarSign className="h-4 w-4 mr-1 text-gray-500" />
+                                    {formatCurrency(Number(contract.value))}
+                                  </div>
+                                </div>
+                                
+                                <div className="mt-3 text-xs text-gray-400">
+                                  {contract.description || "No description provided"}
+                                </div>
+                                
+                                <div className="mt-3 flex justify-end">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-xs text-white border-zinc-700 hover:bg-zinc-800 hover:text-white"
+                                    onClick={() => onViewJob && onViewJob(contract.id)}
+                                  >
+                                    View Details
+                                  </Button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </TabsContent>
+                      
+                      <TabsContent value="milestones" className="space-y-4 mt-0">
+                        <div className="space-y-2">
+                          {jobContracts.flatMap(contract => 
+                            getContractMilestones(contract.id).map(milestone => (
+                              <div key={milestone.id} className="p-3 bg-zinc-900 rounded-md border border-zinc-800">
+                                <div className="flex justify-between items-start">
+                                  <div className="flex items-center">
+                                    <div className="h-8 w-8 bg-zinc-800 rounded-md flex items-center justify-center text-amber-500">
+                                      <ListTodo className="h-4 w-4" />
+                                    </div>
+                                    <div className="ml-3">
+                                      <h4 className="text-sm font-medium text-white">{milestone.name}</h4>
+                                      <p className="text-xs text-gray-400">Contract: {jobContracts.find(c => c.id === milestone.contractId)?.contractName}</p>
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <Badge variant="outline" className={`
+                                      ${milestone.status === 'completed' ? 'bg-green-900 text-green-300 border-green-700' : 
+                                        milestone.status === 'in_progress' ? 'bg-indigo-900 text-indigo-300 border-indigo-700' : 
+                                        'bg-amber-900 text-amber-300 border-amber-700'}
+                                    `}>
+                                      {milestone.status === 'in_progress' ? 'In Progress' : milestone.status.charAt(0).toUpperCase() + milestone.status.slice(1)}
                                     </Badge>
                                   </div>
-                                  
-                                  <div className="mt-2 flex flex-wrap items-center gap-y-1 text-xs text-gray-400">
-                                    <span className="flex items-center mr-3">
-                                      <DollarSign size={12} className="mr-1" />
-                                      ${parseFloat(contract.value.toString()).toLocaleString('en-US')}
-                                    </span>
-                                    {contract.startDate && (
-                                      <span className="flex items-center mr-3">
-                                        <Calendar size={12} className="mr-1" />
-                                        Start: {formatDate(contract.startDate)}
-                                      </span>
-                                    )}
-                                    {contract.endDate && (
-                                      <span className="flex items-center">
-                                        <Clock size={12} className="mr-1" />
-                                        Due: {formatDate(contract.endDate)}
-                                      </span>
-                                    )}
+                                </div>
+                                
+                                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                  <div className="flex items-center text-gray-400">
+                                    <Calendar className="h-4 w-4 mr-1 text-gray-500" />
+                                    Due: {new Date(milestone.dueDate).toLocaleDateString()}
                                   </div>
-                                  
-                                  <div className="mt-3 flex gap-2">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="text-xs text-white border-zinc-700 hover:bg-zinc-800 hover:text-white"
-                                      onClick={() => onViewJob && onViewJob(contract.id)}
-                                    >
-                                      View Contract
-                                    </Button>
-                                    
-                                    {contract.status === 'active' && (
-                                      <Button
-                                        size="sm"
-                                        className="text-xs bg-accent-500 hover:bg-accent-600 text-white"
-                                      >
-                                        <CheckCircle size={12} className="mr-1" />
-                                        Approve Work
-                                      </Button>
-                                    )}
+                                  <div className="flex items-center text-gray-400">
+                                    <DollarSign className="h-4 w-4 mr-1 text-gray-500" />
+                                    {formatCurrency(Number(milestone.paymentAmount))}
                                   </div>
                                 </div>
-                              );
-                            })}
-                            
-                            <div className="mt-2 flex justify-end">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-xs text-white border-zinc-700 hover:bg-zinc-800 hover:text-white"
-                              >
-                                <PlusCircle size={14} className="mr-1" />
-                                Add Contract
-                              </Button>
-                            </div>
-                          </div>
-                        </TabsContent>
-                        
-                        <TabsContent value="milestones" className="mt-0">
-                          <div className="space-y-3">
-                            {/* Filter milestones for this job's contracts */}
-                            {milestones
-                              .filter(milestone => jobContracts.some(contract => contract.id === milestone.contractId))
-                              .map(milestone => {
-                                const contract = jobContracts.find(c => c.id === milestone.contractId);
-                                const contractor = contract ? getContractorById(contract.contractorId) : null;
                                 
-                                return (
-                                  <div key={milestone.id} className="p-3 rounded-md border border-zinc-800 hover:border-zinc-700">
-                                    <div className="flex justify-between items-start">
-                                      <div>
-                                        <h4 className="text-sm font-medium text-white">{milestone.name}</h4>
-                                        <p className="text-xs text-gray-400 mt-1">
-                                          <span className="flex items-center">
-                                            <Users size={12} className="mr-1" />
-                                            {contractor?.firstName} {contractor?.lastName} • {contract?.contractName}
-                                          </span>
-                                        </p>
-                                      </div>
-                                      <Badge className={`${getStatusBadgeClass(milestone.status)}`}>
-                                        {formatStatus(milestone.status)}
-                                      </Badge>
-                                    </div>
-                                    
-                                    <div className="mt-2 flex flex-wrap items-center gap-y-1 text-xs text-gray-400">
-                                      <span className="flex items-center mr-3">
-                                        <DollarSign size={12} className="mr-1" />
-                                        ${parseFloat(milestone.paymentAmount.toString()).toLocaleString('en-US')}
-                                      </span>
-                                      {milestone.dueDate && (
-                                        <span className="flex items-center">
-                                          <Clock size={12} className="mr-1" />
-                                          Due: {formatDate(milestone.dueDate as Date)}
-                                        </span>
-                                      )}
-                                    </div>
-                                    
-                                    <div className="mt-2">
-                                      <div className="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden">
-                                        <div 
-                                          className="bg-accent-500 h-1.5" 
-                                          style={{ width: `${milestone.progress || 0}%` }}
-                                        ></div>
-                                      </div>
-                                      <div className="flex justify-between mt-1 text-xs text-gray-400">
-                                        <span>Progress</span>
-                                        <span>{milestone.progress || 0}%</span>
-                                      </div>
-                                    </div>
-                                    
-                                    <div className="mt-3 flex gap-2">
-                                      {milestone.status === 'pending_approval' && (
-                                        <Button
-                                          size="sm"
-                                          className="text-xs bg-accent-500 hover:bg-accent-600 text-white"
-                                        >
-                                          <CheckCircle size={12} className="mr-1" />
-                                          Approve
-                                        </Button>
-                                      )}
-                                      
-                                      {milestone.status === 'in_progress' && (
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          className="text-xs text-white border-zinc-700 hover:bg-zinc-800 hover:text-white"
-                                        >
-                                          <AlertCircle size={12} className="mr-1" />
-                                          Request Update
-                                        </Button>
-                                      )}
-                                      
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="text-xs text-white border-zinc-700 hover:bg-zinc-800 hover:text-white"
-                                      >
-                                        View Details
-                                      </Button>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            
-                            {milestones.filter(milestone => jobContracts.some(contract => contract.id === milestone.contractId)).length === 0 && (
-                              <div className="text-center py-4 text-gray-400 text-sm">
+                                <div className="mt-3 text-xs text-gray-400">
+                                  {milestone.description || "No description provided"}
+                                </div>
+                                
+                                <div className="mt-2">
+                                  <Progress value={
+                                    milestone.status === 'completed' ? 100 : 
+                                    milestone.status === 'in_progress' ? 60 : 
+                                    milestone.status === 'pending_approval' ? 80 : 0
+                                  } className="h-1.5" />
+                                </div>
+                                
+                                <div className="mt-3 flex justify-end space-x-2">
+                                  {milestone.status === 'pending_approval' && (
+                                    <Button
+                                      variant="default"
+                                      size="sm"
+                                      className="text-xs text-white bg-green-700 hover:bg-green-800"
+                                      onClick={() => {}}
+                                    >
+                                      <CheckCircle className="mr-1 h-3 w-3" />
+                                      Approve
+                                    </Button>
+                                  )}
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-xs text-white border-zinc-700 hover:bg-zinc-800 hover:text-white"
+                                    onClick={() => {}}
+                                  >
+                                    View Details
+                                  </Button>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                          
+                          {jobContracts.flatMap(contract => 
+                            getContractMilestones(contract.id)).length === 0 && (
+                              <div className="p-4 text-center text-gray-400">
                                 No milestones found for this job
                               </div>
-                            )}
-                            
-                            <div className="mt-2 flex justify-end">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-xs text-white border-zinc-700 hover:bg-zinc-800 hover:text-white"
-                              >
-                                <PlusCircle size={14} className="mr-1" />
-                                Add Milestone
-                              </Button>
-                            </div>
-                          </div>
-                        </TabsContent>
-                        
-                        <TabsContent value="payments" className="mt-0">
-                          <div className="space-y-3">
-                            {/* Filter payments for this job's contracts */}
-                            {payments
-                              .filter(payment => jobContracts.some(contract => contract.id === payment.contractId))
-                              .map(payment => {
-                                const contract = jobContracts.find(c => c.id === payment.contractId);
-                                const contractor = contract ? getContractorById(contract.contractorId) : null;
-                                
-                                return (
-                                  <div key={payment.id} className="p-3 rounded-md border border-zinc-800 hover:border-zinc-700">
-                                    <div className="flex justify-between items-start">
-                                      <div>
-                                        <h4 className="text-sm font-medium text-white">{payment.notes || `Payment #${payment.id}`}</h4>
-                                        <p className="text-xs text-gray-400 mt-1">
-                                          <span className="flex items-center">
-                                            <Users size={12} className="mr-1" />
-                                            {contractor?.firstName} {contractor?.lastName} • {contract?.contractName}
-                                          </span>
-                                        </p>
-                                      </div>
-                                      <Badge className={payment.status === 'pending' ? 'bg-amber-900 text-amber-400' : 'bg-green-900 text-green-400'}>
-                                        {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
-                                      </Badge>
+                            )
+                          }
+                        </div>
+                      </TabsContent>
+                      
+                      <TabsContent value="payments" className="space-y-4 mt-0">
+                        <div className="space-y-2">
+                          {jobContracts.flatMap(contract => 
+                            getContractPayments(contract.id).map(payment => (
+                              <div key={payment.id} className="p-3 bg-zinc-900 rounded-md border border-zinc-800">
+                                <div className="flex justify-between items-start">
+                                  <div className="flex items-center">
+                                    <div className="h-8 w-8 bg-zinc-800 rounded-md flex items-center justify-center text-emerald-500">
+                                      <Coins className="h-4 w-4" />
                                     </div>
-                                    
-                                    <div className="mt-2 flex flex-wrap items-center gap-y-1 text-xs text-gray-400">
-                                      <span className="flex items-center mr-3">
-                                        <DollarSign size={12} className="mr-1" />
-                                        ${parseFloat(payment.amount.toString()).toLocaleString('en-US')}
-                                      </span>
-                                      {payment.scheduledDate && (
-                                        <span className="flex items-center mr-3">
-                                          <Clock size={12} className="mr-1" />
-                                          Scheduled: {formatDate(payment.scheduledDate as Date)}
-                                        </span>
-                                      )}
-                                      {payment.completedDate && (
-                                        <span className="flex items-center">
-                                          <CheckCircle size={12} className="mr-1" />
-                                          Paid: {formatDate(payment.completedDate as Date)}
-                                        </span>
-                                      )}
-                                    </div>
-                                    
-                                    <div className="mt-3 flex gap-2">
-                                      {payment.status === 'pending' && (
-                                        <Button
-                                          size="sm"
-                                          className="text-xs bg-accent-500 hover:bg-accent-600 text-white"
-                                        >
-                                          <Coins size={12} className="mr-1" />
-                                          Process Payment
-                                        </Button>
-                                      )}
-                                      
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="text-xs text-white border-zinc-700 hover:bg-zinc-800 hover:text-white"
-                                      >
-                                        View Details
-                                      </Button>
+                                    <div className="ml-3">
+                                      <h4 className="text-sm font-medium text-white">Payment #{payment.id}</h4>
+                                      <p className="text-xs text-gray-400">Contract: {jobContracts.find(c => c.id === payment.contractId)?.contractName}</p>
                                     </div>
                                   </div>
-                                );
-                              })}
-                              
-                              {payments.filter(payment => jobContracts.some(contract => contract.id === payment.contractId)).length === 0 && (
-                                <div className="text-center py-4 text-gray-400 text-sm">
-                                  No payments found for this job
+                                  <div>
+                                    <Badge variant="outline" className={`
+                                      ${payment.status === 'completed' ? 'bg-green-900 text-green-300 border-green-700' : 
+                                        payment.status === 'pending' ? 'bg-amber-900 text-amber-300 border-amber-700' : 
+                                        'bg-red-900 text-red-300 border-red-700'}
+                                    `}>
+                                      {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
+                                    </Badge>
+                                  </div>
                                 </div>
-                              )}
-                              
-                              <div className="mt-2 flex justify-end">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="text-xs text-white border-zinc-700 hover:bg-zinc-800 hover:text-white"
-                                >
-                                  <PlusCircle size={14} className="mr-1" />
-                                  Schedule Payment
-                                </Button>
+                                
+                                <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                                  <div className="flex items-center text-gray-400">
+                                    <Calendar className="h-4 w-4 mr-1 text-gray-500" />
+                                    Due: {new Date(payment.scheduledDate).toLocaleDateString()}
+                                  </div>
+                                  <div className="flex items-center text-gray-400">
+                                    <DollarSign className="h-4 w-4 mr-1 text-gray-500" />
+                                    {formatCurrency(Number(payment.amount))}
+                                  </div>
+                                  <div className="flex items-center text-gray-400">
+                                    <Globe className="h-4 w-4 mr-1 text-gray-500" />
+                                    {getContractorForPayment(payment)?.bankAccount || "Smart Contract"}
+                                  </div>
+                                </div>
+                                
+                                <div className="mt-3 text-xs text-gray-400">
+                                  {payment.notes || "No notes provided"}
+                                </div>
+                                
+                                <div className="mt-3 flex justify-end space-x-2">
+                                  {payment.status === 'pending' && (
+                                    <Button
+                                      variant="default"
+                                      size="sm"
+                                      className="text-xs text-white bg-green-700 hover:bg-green-800"
+                                      onClick={() => {}}
+                                    >
+                                      <ArrowRight className="mr-1 h-3 w-3" />
+                                      Process
+                                    </Button>
+                                  )}
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-xs text-white border-zinc-700 hover:bg-zinc-800 hover:text-white"
+                                    onClick={() => {}}
+                                  >
+                                    View Details
+                                  </Button>
+                                </div>
                               </div>
-                          </div>
-                        </TabsContent>
-                      </Tabs>
-                      
-                      <div className="mt-4 flex justify-end">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-xs text-white border-zinc-700 hover:bg-zinc-800 hover:text-white"
-                          onClick={() => {}} // Navigate to detailed job view
-                        >
-                          View Job Details
-                        </Button>
+                            ))
+                          )}
+                          
+                          {jobContracts.flatMap(contract => 
+                            getContractPayments(contract.id)).length === 0 && (
+                              <div className="p-4 text-center text-gray-400">
+                                No payments found for this job
+                              </div>
+                            )
+                          }
+                        </div>
+                      </TabsContent>
+                    </Tabs>
+                    
+                    <div className="mt-4 pt-3 border-t border-zinc-700 flex justify-between items-center">
+                      <div className="text-xs text-gray-400">
+                        {jobContracts.length} {jobContracts.length === 1 ? 'contract' : 'contracts'} in this job
                       </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs text-white border-zinc-700 hover:bg-zinc-800 hover:text-white"
+                        onClick={() => {}} // Navigate to detailed job view
+                      >
+                        View Job Details
+                      </Button>
                     </div>
                   </div>
                 )}

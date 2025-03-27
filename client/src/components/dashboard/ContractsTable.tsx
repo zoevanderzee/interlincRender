@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { 
   Table, 
   TableBody, 
@@ -7,8 +7,25 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Eye, Edit, MoreVertical } from "lucide-react";
+import { 
+  Eye, 
+  Edit, 
+  MoreVertical, 
+  Search, 
+  Filter,
+  ChevronDown 
+} from "lucide-react";
 import { Contract, User } from "@shared/schema";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuLabel, 
+  DropdownMenuSeparator, 
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
 
 interface ContractsTableProps {
   contracts: Contract[];
@@ -23,6 +40,8 @@ const ContractsTable = ({
   onViewContract,
   onEditContract
 }: ContractsTableProps) => {
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const getContractorById = (id: number) => {
     return contractors.find(contractor => contractor.id === id);
   };
@@ -51,8 +70,89 @@ const ContractsTable = ({
     }
   };
   
+  // Filter contracts based on search term and status filter
+  const filteredContracts = contracts.filter(contract => {
+    const matchesSearch = searchTerm === '' || 
+      contract.contractName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      contract.contractCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (contract.description && contract.description.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    const matchesStatus = statusFilter === 'all' || contract.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
+
   return (
     <div className="bg-zinc-900 rounded-lg shadow-sm border border-zinc-800 overflow-hidden">
+      <div className="p-4 border-b border-zinc-800">
+        <div className="flex flex-col md:flex-row gap-2">
+          {/* Search */}
+          <div className="relative flex-grow">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+            <Input
+              placeholder="Search contracts..."
+              className="pl-8 bg-zinc-800 border-zinc-700 text-white"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          
+          {/* Filter */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="default"
+                className="bg-zinc-800 border-zinc-700 text-white hover:bg-zinc-700"
+              >
+                <Filter className="mr-2 h-4 w-4" />
+                {statusFilter === 'all' ? 'All Statuses' : formatStatus(statusFilter)}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-zinc-800 border-zinc-700 text-white">
+              <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-zinc-700" />
+              <DropdownMenuItem 
+                className={statusFilter === 'all' ? 'bg-zinc-700' : 'hover:bg-zinc-700'}
+                onClick={() => setStatusFilter('all')}
+              >
+                All Statuses
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                className={statusFilter === 'active' ? 'bg-zinc-700' : 'hover:bg-zinc-700'}
+                onClick={() => setStatusFilter('active')}
+              >
+                Active
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                className={statusFilter === 'pending_approval' ? 'bg-zinc-700' : 'hover:bg-zinc-700'}
+                onClick={() => setStatusFilter('pending_approval')}
+              >
+                Pending Approval
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                className={statusFilter === 'completed' ? 'bg-zinc-700' : 'hover:bg-zinc-700'}
+                onClick={() => setStatusFilter('completed')}
+              >
+                Completed
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                className={statusFilter === 'draft' ? 'bg-zinc-700' : 'hover:bg-zinc-700'}
+                onClick={() => setStatusFilter('draft')}
+              >
+                Draft
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                className={statusFilter === 'terminated' ? 'bg-zinc-700' : 'hover:bg-zinc-700'}
+                onClick={() => setStatusFilter('terminated')}
+              >
+                Terminated
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+      
       <div className="overflow-x-auto">
         <Table>
           <TableHeader className="bg-zinc-800">
@@ -66,7 +166,7 @@ const ContractsTable = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {contracts.map((contract) => {
+            {filteredContracts.map((contract) => {
               const contractor = getContractorById(contract.contractorId);
               
               return (
@@ -139,10 +239,10 @@ const ContractsTable = ({
               );
             })}
             
-            {contracts.length === 0 && (
+            {filteredContracts.length === 0 && (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-4 text-gray-400">
-                  No contracts found
+                  {contracts.length === 0 ? "No contracts found" : "No contracts match the current filters"}
                 </TableCell>
               </TableRow>
             )}
