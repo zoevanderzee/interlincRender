@@ -136,7 +136,7 @@ const Dashboard = () => {
           title="Active Contracts"
           value={data?.stats.activeContractsCount || 0}
           icon={<FileText size={20} />}
-          iconBgColor="bg-accent-50"
+          iconBgColor="bg-zinc-800"
           iconColor="text-accent-500"
           changeValue={8}
           changeText="from last month"
@@ -146,8 +146,8 @@ const Dashboard = () => {
           title="Pending Approvals"
           value={data?.stats.pendingApprovalsCount || 0}
           icon={<Clock size={20} />}
-          iconBgColor="bg-warning-50"
-          iconColor="text-warning"
+          iconBgColor="bg-zinc-800"
+          iconColor="text-amber-500"
           changeValue={12}
           changeText="from last month"
         />
@@ -156,8 +156,8 @@ const Dashboard = () => {
           title="Payments Processed"
           value={`$${data?.stats.paymentsProcessed?.toLocaleString('en-US') || '0'}`}
           icon={<DollarSign size={20} />}
-          iconBgColor="bg-success-50"
-          iconColor="text-success"
+          iconBgColor="bg-zinc-800"
+          iconColor="text-green-500"
           changeValue={22}
           changeText="from last month"
         />
@@ -166,8 +166,8 @@ const Dashboard = () => {
           title="Active Contractors"
           value={data?.stats.activeContractorsCount || 0}
           icon={<Users size={20} />}
-          iconBgColor="bg-primary-50"
-          iconColor="text-primary-500"
+          iconBgColor="bg-zinc-800"
+          iconColor="text-blue-500"
           changeValue={4}
           changeText="from last month"
         />
