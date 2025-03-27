@@ -7,13 +7,15 @@ import {
   DollarSign, 
   Users, 
   Plus, 
-  Download
+  Download,
+  Briefcase
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import StatsCard from "@/components/dashboard/StatsCard";
 import ContractsTable from "@/components/dashboard/ContractsTable";
 import MilestonesList from "@/components/dashboard/MilestonesList";
 import PaymentsList from "@/components/dashboard/PaymentsList";
+import JobsOverview from "@/components/dashboard/JobsOverview";
 import { Contract, User, Payment, Milestone } from "@shared/schema";
 
 interface DashboardData {
@@ -201,6 +203,25 @@ const Dashboard = () => {
           Export Reports
         </Button>
       </div>
+      
+      {/* Jobs Overview Section */}
+      <section className="mb-8">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold text-white">
+            <Briefcase className="inline-block mr-2" size={20} />
+            Jobs Overview
+          </h2>
+          <Button variant="link" className="text-accent-500 hover:text-accent-600 text-sm font-medium" onClick={() => navigate('/projects')}>
+            View All Jobs
+          </Button>
+        </div>
+        
+        <JobsOverview 
+          contracts={data?.contracts || []}
+          contractors={data?.contractors || []}
+          onViewJob={handleViewContract}
+        />
+      </section>
       
       {/* Smart Contracts Section */}
       <section className="mb-8">
