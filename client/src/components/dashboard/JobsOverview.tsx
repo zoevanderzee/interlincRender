@@ -89,6 +89,11 @@ const JobsOverview = ({
     return payments.filter(payment => payment.contractId === contractId);
   };
   
+  const getContractorForPayment = (payment: Payment) => {
+    const contract = contracts.find(c => c.id === payment.contractId);
+    return contract ? getContractorById(contract.contractorId) : undefined;
+  };
+  
   const toggleJobExpansion = (jobName: string) => {
     setExpandedJobs(prev => 
       prev.includes(jobName) 
@@ -321,7 +326,7 @@ const JobsOverview = ({
                                   </div>
                                   <div className="flex items-center text-gray-400">
                                     <Calendar className="h-4 w-4 mr-1 text-gray-500" />
-                                    {new Date(contract.startDate).toLocaleDateString()} - {new Date(contract.endDate).toLocaleDateString()}
+                                    {contract.startDate ? new Date(contract.startDate).toLocaleDateString() : 'Not set'} - {contract.endDate ? new Date(contract.endDate).toLocaleDateString() : 'Not set'}
                                   </div>
                                   <div className="flex items-center text-gray-400">
                                     <DollarSign className="h-4 w-4 mr-1 text-gray-500" />
@@ -470,7 +475,7 @@ const JobsOverview = ({
                                   </div>
                                   <div className="flex items-center text-gray-400">
                                     <Globe className="h-4 w-4 mr-1 text-gray-500" />
-                                    {getContractorForPayment(payment)?.bankAccount || "Smart Contract"}
+                                    Smart Contract
                                   </div>
                                 </div>
                                 
