@@ -12,15 +12,22 @@ import {
   CheckCircle,
   FileText,
   Globe,
-  PlusCircle
+  PlusCircle,
+  Coins,
+  ListTodo,
+  ArrowRight,
+  AlertCircle
 } from "lucide-react";
-import { Contract, User } from "@shared/schema";
+import { Contract, User, Milestone, Payment } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface JobsOverviewProps {
   contracts: Contract[];
   contractors: User[];
+  milestones: Milestone[];
+  payments: Payment[];
   onViewJob?: (id: number) => void;
 }
 
@@ -30,7 +37,9 @@ interface GroupedContracts {
 
 const JobsOverview = ({ 
   contracts, 
-  contractors, 
+  contractors,
+  milestones,
+  payments, 
   onViewJob 
 }: JobsOverviewProps) => {
   // Group contracts by name (assuming contracts with the same name are part of the same job)
@@ -244,81 +253,285 @@ const JobsOverview = ({
                     </div>
                     
                     <div className="ml-14">
-                      <h4 className="text-sm font-medium text-white mb-2">Smart Contracts</h4>
-                      <div className="space-y-3">
-                        {jobContracts.map(contract => {
-                          const contractor = getContractorById(contract.contractorId);
-                          
-                          return (
-                            <div key={contract.id} className="p-3 rounded-md border border-zinc-800 hover:border-zinc-700">
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <h4 className="text-sm font-medium text-white">{contract.contractName}</h4>
-                                  <p className="text-xs text-gray-400 mt-1">
-                                    <span className="flex items-center">
-                                      <Users size={12} className="mr-1" />
-                                      {contractor?.firstName} {contractor?.lastName} • {contract.contractCode}
+                      <Tabs defaultValue="contracts" className="w-full">
+                        <TabsList className="bg-zinc-800 mb-4">
+                          <TabsTrigger value="contracts" className="data-[state=active]:bg-zinc-700">Smart Contracts</TabsTrigger>
+                          <TabsTrigger value="milestones" className="data-[state=active]:bg-zinc-700">Milestones</TabsTrigger>
+                          <TabsTrigger value="payments" className="data-[state=active]:bg-zinc-700">Payments</TabsTrigger>
+                        </TabsList>
+                        
+                        <TabsContent value="contracts" className="mt-0">
+                          <div className="space-y-3">
+                            {jobContracts.map(contract => {
+                              const contractor = getContractorById(contract.contractorId);
+                              
+                              return (
+                                <div key={contract.id} className="p-3 rounded-md border border-zinc-800 hover:border-zinc-700">
+                                  <div className="flex justify-between items-start">
+                                    <div>
+                                      <h4 className="text-sm font-medium text-white">{contract.contractName}</h4>
+                                      <p className="text-xs text-gray-400 mt-1">
+                                        <span className="flex items-center">
+                                          <Users size={12} className="mr-1" />
+                                          {contractor?.firstName} {contractor?.lastName} • {contract.contractCode}
+                                        </span>
+                                      </p>
+                                    </div>
+                                    <Badge className={`${getStatusBadgeClass(contract.status)}`}>
+                                      {formatStatus(contract.status)}
+                                    </Badge>
+                                  </div>
+                                  
+                                  <div className="mt-2 flex flex-wrap items-center gap-y-1 text-xs text-gray-400">
+                                    <span className="flex items-center mr-3">
+                                      <DollarSign size={12} className="mr-1" />
+                                      ${parseFloat(contract.value.toString()).toLocaleString('en-US')}
                                     </span>
-                                  </p>
+                                    {contract.startDate && (
+                                      <span className="flex items-center mr-3">
+                                        <Calendar size={12} className="mr-1" />
+                                        Start: {formatDate(contract.startDate)}
+                                      </span>
+                                    )}
+                                    {contract.endDate && (
+                                      <span className="flex items-center">
+                                        <Clock size={12} className="mr-1" />
+                                        Due: {formatDate(contract.endDate)}
+                                      </span>
+                                    )}
+                                  </div>
+                                  
+                                  <div className="mt-3 flex gap-2">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="text-xs text-white border-zinc-700 hover:bg-zinc-800 hover:text-white"
+                                      onClick={() => onViewJob && onViewJob(contract.id)}
+                                    >
+                                      View Contract
+                                    </Button>
+                                    
+                                    {contract.status === 'active' && (
+                                      <Button
+                                        size="sm"
+                                        className="text-xs bg-accent-500 hover:bg-accent-600 text-white"
+                                      >
+                                        <CheckCircle size={12} className="mr-1" />
+                                        Approve Work
+                                      </Button>
+                                    )}
+                                  </div>
                                 </div>
-                                <Badge className={`${getStatusBadgeClass(contract.status)}`}>
-                                  {formatStatus(contract.status)}
-                                </Badge>
+                              );
+                            })}
+                            
+                            <div className="mt-2 flex justify-end">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-xs text-white border-zinc-700 hover:bg-zinc-800 hover:text-white"
+                              >
+                                <PlusCircle size={14} className="mr-1" />
+                                Add Contract
+                              </Button>
+                            </div>
+                          </div>
+                        </TabsContent>
+                        
+                        <TabsContent value="milestones" className="mt-0">
+                          <div className="space-y-3">
+                            {/* Filter milestones for this job's contracts */}
+                            {milestones
+                              .filter(milestone => jobContracts.some(contract => contract.id === milestone.contractId))
+                              .map(milestone => {
+                                const contract = jobContracts.find(c => c.id === milestone.contractId);
+                                const contractor = contract ? getContractorById(contract.contractorId) : null;
+                                
+                                return (
+                                  <div key={milestone.id} className="p-3 rounded-md border border-zinc-800 hover:border-zinc-700">
+                                    <div className="flex justify-between items-start">
+                                      <div>
+                                        <h4 className="text-sm font-medium text-white">{milestone.name}</h4>
+                                        <p className="text-xs text-gray-400 mt-1">
+                                          <span className="flex items-center">
+                                            <Users size={12} className="mr-1" />
+                                            {contractor?.firstName} {contractor?.lastName} • {contract?.contractName}
+                                          </span>
+                                        </p>
+                                      </div>
+                                      <Badge className={`${getStatusBadgeClass(milestone.status)}`}>
+                                        {formatStatus(milestone.status)}
+                                      </Badge>
+                                    </div>
+                                    
+                                    <div className="mt-2 flex flex-wrap items-center gap-y-1 text-xs text-gray-400">
+                                      <span className="flex items-center mr-3">
+                                        <DollarSign size={12} className="mr-1" />
+                                        ${parseFloat(milestone.paymentAmount.toString()).toLocaleString('en-US')}
+                                      </span>
+                                      {milestone.dueDate && (
+                                        <span className="flex items-center">
+                                          <Clock size={12} className="mr-1" />
+                                          Due: {formatDate(milestone.dueDate as Date)}
+                                        </span>
+                                      )}
+                                    </div>
+                                    
+                                    <div className="mt-2">
+                                      <div className="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden">
+                                        <div 
+                                          className="bg-accent-500 h-1.5" 
+                                          style={{ width: `${milestone.progress || 0}%` }}
+                                        ></div>
+                                      </div>
+                                      <div className="flex justify-between mt-1 text-xs text-gray-400">
+                                        <span>Progress</span>
+                                        <span>{milestone.progress || 0}%</span>
+                                      </div>
+                                    </div>
+                                    
+                                    <div className="mt-3 flex gap-2">
+                                      {milestone.status === 'pending_approval' && (
+                                        <Button
+                                          size="sm"
+                                          className="text-xs bg-accent-500 hover:bg-accent-600 text-white"
+                                        >
+                                          <CheckCircle size={12} className="mr-1" />
+                                          Approve
+                                        </Button>
+                                      )}
+                                      
+                                      {milestone.status === 'in_progress' && (
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="text-xs text-white border-zinc-700 hover:bg-zinc-800 hover:text-white"
+                                        >
+                                          <AlertCircle size={12} className="mr-1" />
+                                          Request Update
+                                        </Button>
+                                      )}
+                                      
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="text-xs text-white border-zinc-700 hover:bg-zinc-800 hover:text-white"
+                                      >
+                                        View Details
+                                      </Button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            
+                            {milestones.filter(milestone => jobContracts.some(contract => contract.id === milestone.contractId)).length === 0 && (
+                              <div className="text-center py-4 text-gray-400 text-sm">
+                                No milestones found for this job
                               </div>
+                            )}
+                            
+                            <div className="mt-2 flex justify-end">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-xs text-white border-zinc-700 hover:bg-zinc-800 hover:text-white"
+                              >
+                                <PlusCircle size={14} className="mr-1" />
+                                Add Milestone
+                              </Button>
+                            </div>
+                          </div>
+                        </TabsContent>
+                        
+                        <TabsContent value="payments" className="mt-0">
+                          <div className="space-y-3">
+                            {/* Filter payments for this job's contracts */}
+                            {payments
+                              .filter(payment => jobContracts.some(contract => contract.id === payment.contractId))
+                              .map(payment => {
+                                const contract = jobContracts.find(c => c.id === payment.contractId);
+                                const contractor = contract ? getContractorById(contract.contractorId) : null;
+                                
+                                return (
+                                  <div key={payment.id} className="p-3 rounded-md border border-zinc-800 hover:border-zinc-700">
+                                    <div className="flex justify-between items-start">
+                                      <div>
+                                        <h4 className="text-sm font-medium text-white">{payment.notes || `Payment #${payment.id}`}</h4>
+                                        <p className="text-xs text-gray-400 mt-1">
+                                          <span className="flex items-center">
+                                            <Users size={12} className="mr-1" />
+                                            {contractor?.firstName} {contractor?.lastName} • {contract?.contractName}
+                                          </span>
+                                        </p>
+                                      </div>
+                                      <Badge className={payment.status === 'pending' ? 'bg-amber-900 text-amber-400' : 'bg-green-900 text-green-400'}>
+                                        {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
+                                      </Badge>
+                                    </div>
+                                    
+                                    <div className="mt-2 flex flex-wrap items-center gap-y-1 text-xs text-gray-400">
+                                      <span className="flex items-center mr-3">
+                                        <DollarSign size={12} className="mr-1" />
+                                        ${parseFloat(payment.amount.toString()).toLocaleString('en-US')}
+                                      </span>
+                                      {payment.scheduledDate && (
+                                        <span className="flex items-center mr-3">
+                                          <Clock size={12} className="mr-1" />
+                                          Scheduled: {formatDate(payment.scheduledDate as Date)}
+                                        </span>
+                                      )}
+                                      {payment.completedDate && (
+                                        <span className="flex items-center">
+                                          <CheckCircle size={12} className="mr-1" />
+                                          Paid: {formatDate(payment.completedDate as Date)}
+                                        </span>
+                                      )}
+                                    </div>
+                                    
+                                    <div className="mt-3 flex gap-2">
+                                      {payment.status === 'pending' && (
+                                        <Button
+                                          size="sm"
+                                          className="text-xs bg-accent-500 hover:bg-accent-600 text-white"
+                                        >
+                                          <Coins size={12} className="mr-1" />
+                                          Process Payment
+                                        </Button>
+                                      )}
+                                      
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="text-xs text-white border-zinc-700 hover:bg-zinc-800 hover:text-white"
+                                      >
+                                        View Details
+                                      </Button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
                               
-                              <div className="mt-2 flex flex-wrap items-center gap-y-1 text-xs text-gray-400">
-                                <span className="flex items-center mr-3">
-                                  <DollarSign size={12} className="mr-1" />
-                                  ${parseFloat(contract.value.toString()).toLocaleString('en-US')}
-                                </span>
-                                {contract.startDate && (
-                                  <span className="flex items-center mr-3">
-                                    <Calendar size={12} className="mr-1" />
-                                    Start: {formatDate(contract.startDate)}
-                                  </span>
-                                )}
-                                {contract.endDate && (
-                                  <span className="flex items-center">
-                                    <Clock size={12} className="mr-1" />
-                                    Due: {formatDate(contract.endDate)}
-                                  </span>
-                                )}
-                              </div>
+                              {payments.filter(payment => jobContracts.some(contract => contract.id === payment.contractId)).length === 0 && (
+                                <div className="text-center py-4 text-gray-400 text-sm">
+                                  No payments found for this job
+                                </div>
+                              )}
                               
-                              <div className="mt-3 flex gap-2">
+                              <div className="mt-2 flex justify-end">
                                 <Button
                                   variant="outline"
                                   size="sm"
                                   className="text-xs text-white border-zinc-700 hover:bg-zinc-800 hover:text-white"
-                                  onClick={() => onViewJob && onViewJob(contract.id)}
                                 >
-                                  View Contract
+                                  <PlusCircle size={14} className="mr-1" />
+                                  Schedule Payment
                                 </Button>
-                                
-                                {contract.status === 'active' && (
-                                  <Button
-                                    size="sm"
-                                    className="text-xs bg-accent-500 hover:bg-accent-600 text-white"
-                                  >
-                                    <CheckCircle size={12} className="mr-1" />
-                                    Approve Work
-                                  </Button>
-                                )}
                               </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                          </div>
+                        </TabsContent>
+                      </Tabs>
                       
                       <div className="mt-4 flex justify-end">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-xs text-white border-zinc-700 hover:bg-zinc-800 hover:text-white mr-2"
-                        >
-                          <PlusCircle size={14} className="mr-1" />
-                          Add Contract
-                        </Button>
                         <Button
                           variant="outline"
                           size="sm"

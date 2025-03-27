@@ -8,7 +8,8 @@ import {
   Users, 
   Plus, 
   Download,
-  Briefcase
+  Briefcase,
+  Coins
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import StatsCard from "@/components/dashboard/StatsCard";
@@ -219,63 +220,57 @@ const Dashboard = () => {
         <JobsOverview 
           contracts={data?.contracts || []}
           contractors={data?.contractors || []}
+          milestones={data?.milestones || []}
+          payments={data?.payments || []}
           onViewJob={handleViewContract}
         />
       </section>
       
-      {/* Smart Contracts Section */}
-      <section className="mb-8">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-white">Recent Smart Contracts</h2>
-          <Button variant="link" className="text-accent-500 hover:text-accent-600 text-sm font-medium" onClick={() => navigate('/contracts')}>
-            View All
-          </Button>
-        </div>
-        
-        <ContractsTable 
-          contracts={data?.contracts || []}
-          contractors={data?.contractors || []}
-          onViewContract={handleViewContract}
-          onEditContract={handleEditContract}
-        />
-      </section>
-      
-      {/* Two Column Layout for Project Milestones and Upcoming Payments */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Project Milestones */}
-        <section>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-white">Upcoming Milestones</h2>
-            <Button variant="link" className="text-accent-500 hover:text-accent-600 text-sm font-medium" onClick={() => navigate('/projects')}>
-              View All
-            </Button>
+      {/* Additional Dashboard Sections */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
+        <section className="border border-zinc-800 bg-zinc-900 rounded-lg p-4 text-center">
+          <div className="h-12 w-12 bg-zinc-800 mx-auto rounded-full flex items-center justify-center mb-3">
+            <FileText size={20} className="text-accent-500" />
           </div>
-          
-          <MilestonesList 
-            milestones={data?.milestones || []}
-            contracts={data?.contracts || []}
-            contractors={data?.contractors || []}
-            onViewDetails={handleViewMilestone}
-            onApprove={handleApproveMilestone}
-            onRequestUpdate={handleRequestUpdate}
-          />
+          <h3 className="text-lg font-medium text-white mb-1">Contract Management</h3>
+          <p className="text-gray-400 text-sm mb-4">Create, review and manage all your smart contracts</p>
+          <Button 
+            variant="outline"
+            className="text-white border-zinc-700 hover:bg-zinc-800 hover:text-white text-xs"
+            onClick={() => navigate('/contracts')}
+          >
+            Browse Contracts
+          </Button>
         </section>
         
-        {/* Upcoming Payments */}
-        <section>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-white">Upcoming Payments</h2>
-            <Button variant="link" className="text-accent-500 hover:text-accent-600 text-sm font-medium" onClick={() => navigate('/payments')}>
-              View All
-            </Button>
+        <section className="border border-zinc-800 bg-zinc-900 rounded-lg p-4 text-center">
+          <div className="h-12 w-12 bg-zinc-800 mx-auto rounded-full flex items-center justify-center mb-3">
+            <Users size={20} className="text-blue-500" />
           </div>
-          
-          <PaymentsList 
-            payments={data?.payments || []}
-            contracts={data?.contracts || []}
-            contractors={data?.contractors || []}
-            totalUpcoming={totalUpcomingPayments}
-          />
+          <h3 className="text-lg font-medium text-white mb-1">Contractor Database</h3>
+          <p className="text-gray-400 text-sm mb-4">Manage your private network of trusted professionals</p>
+          <Button 
+            variant="outline"
+            className="text-white border-zinc-700 hover:bg-zinc-800 hover:text-white text-xs"
+            onClick={() => navigate('/contractors')}
+          >
+            View Contractors
+          </Button>
+        </section>
+        
+        <section className="border border-zinc-800 bg-zinc-900 rounded-lg p-4 text-center">
+          <div className="h-12 w-12 bg-zinc-800 mx-auto rounded-full flex items-center justify-center mb-3">
+            <Coins size={20} className="text-green-500" />
+          </div>
+          <h3 className="text-lg font-medium text-white mb-1">Financial Reporting</h3>
+          <p className="text-gray-400 text-sm mb-4">Access payment history and financial reporting</p>
+          <Button 
+            variant="outline"
+            className="text-white border-zinc-700 hover:bg-zinc-800 hover:text-white text-xs"
+            onClick={() => navigate('/payments')}
+          >
+            View Finances
+          </Button>
         </section>
       </div>
     </>
