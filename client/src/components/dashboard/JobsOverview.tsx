@@ -8,10 +8,15 @@ import {
   Users, 
   Calendar, 
   DollarSign,
-  Clock
+  Clock,
+  CheckCircle,
+  FileText,
+  Globe,
+  PlusCircle
 } from "lucide-react";
 import { Contract, User } from "@shared/schema";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 
 interface JobsOverviewProps {
   contracts: Contract[];
@@ -104,8 +109,16 @@ const JobsOverview = ({
   
   return (
     <Card className="bg-zinc-900 rounded-lg shadow-sm border border-zinc-800">
-      <div className="p-5 border-b border-zinc-800">
+      <div className="p-5 border-b border-zinc-800 flex justify-between items-center">
         <h3 className="text-lg font-medium text-white">All Jobs</h3>
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-xs text-white border-zinc-700 hover:bg-zinc-800 hover:text-white"
+        >
+          <PlusCircle className="mr-1" size={14} />
+          Create New Job
+        </Button>
       </div>
       
       <div className="divide-y divide-zinc-800">
@@ -120,6 +133,20 @@ const JobsOverview = ({
               .filter(Boolean)
               .sort((a, b) => new Date(a as Date).getTime() - new Date(b as Date).getTime())[0];
             
+            // For workflow visualization - determine job stage based on progress and contract statuses
+            const activeContracts = jobContracts.filter(c => c.status === 'active').length;
+            const completedContracts = jobContracts.filter(c => c.status === 'completed').length;
+            const pendingContracts = jobContracts.filter(c => c.status === 'pending_approval').length;
+            
+            let jobStage = 'planning';
+            if (completedContracts > 0) {
+              jobStage = 'completion';
+            } else if (activeContracts > 0) {
+              jobStage = 'in_progress';
+            } else if (pendingContracts > 0) {
+              jobStage = 'contract_approval';
+            }
+            
             return (
               <div key={jobName} className="overflow-hidden">
                 <div 
@@ -131,7 +158,12 @@ const JobsOverview = ({
                       <Briefcase size={20} />
                     </div>
                     <div className="ml-4">
-                      <h3 className="text-md font-medium text-white">{jobName}</h3>
+                      <h3 className="text-md font-medium text-white flex items-center">
+                        {jobName}
+                        <Badge className="ml-2 bg-zinc-800 text-gray-400 text-xs">
+                          {jobContracts.length} contract{jobContracts.length !== 1 ? 's' : ''}
+                        </Badge>
+                      </h3>
                       <div className="flex items-center text-xs text-gray-400 mt-1">
                         <span className="flex items-center mr-3">
                           <Users size={12} className="mr-1" />
@@ -139,7 +171,7 @@ const JobsOverview = ({
                         </span>
                         <span className="flex items-center mr-3">
                           <DollarSign size={12} className="mr-1" />
-                          ${totalValue.toLocaleString('en-US')}
+                          ${totalValue.toLocaleString('en-US')} budget
                         </span>
                         {earliestStartDate && (
                           <span className="flex items-center">
@@ -152,16 +184,11 @@ const JobsOverview = ({
                   </div>
                   <div className="flex items-center">
                     <div className="mr-4">
-                      <div className="flex items-center text-xs text-gray-400 mb-1">
-                        <span className="mr-2">Progress</span>
-                        <span>{jobProgress}%</span>
+                      <div className="flex items-center text-xs text-gray-400 mb-1 justify-between">
+                        <span>Overall Progress</span>
+                        <span className="ml-2">{jobProgress}%</span>
                       </div>
-                      <div className="w-32 bg-zinc-800 rounded-full h-1.5">
-                        <div 
-                          className="bg-accent-500 h-1.5 rounded-full" 
-                          style={{ width: `${jobProgress}%` }}
-                        ></div>
-                      </div>
+                      <Progress value={jobProgress} className="h-1.5 w-32 bg-zinc-800" indicatorClassName="bg-accent-500" />
                     </div>
                     <div>
                       {isExpanded ? <ChevronDown size={16} className="text-gray-400" /> : <ChevronRight size={16} className="text-gray-400" />}
@@ -171,7 +198,53 @@ const JobsOverview = ({
                 
                 {isExpanded && (
                   <div className="bg-zinc-900 px-4 pb-4">
+                    {/* Workflow Stage Visualization */}
+                    <div className="ml-14 mb-4">
+                      <div className="flex items-center justify-between text-xs text-gray-400 mb-2">
+                        <span>Job Stage:</span>
+                      </div>
+                      <div className="grid grid-cols-4 gap-2">
+                        <div className={`flex flex-col items-center ${jobStage === 'planning' ? 'text-accent-500' : 'text-gray-500'}`}>
+                          <div className={`h-8 w-8 rounded-full ${jobStage === 'planning' ? 'bg-accent-900 text-accent-500' : 'bg-zinc-800 text-gray-500'} flex items-center justify-center mb-1`}>
+                            <Briefcase size={16} />
+                          </div>
+                          <span className="text-[10px]">Planning</span>
+                        </div>
+                        <div className={`flex flex-col items-center ${jobStage === 'contract_approval' ? 'text-amber-500' : 'text-gray-500'}`}>
+                          <div className={`h-8 w-8 rounded-full ${jobStage === 'contract_approval' ? 'bg-amber-900 text-amber-500' : 'bg-zinc-800 text-gray-500'} flex items-center justify-center mb-1`}>
+                            <FileText size={16} />
+                          </div>
+                          <span className="text-[10px]">Contract</span>
+                        </div>
+                        <div className={`flex flex-col items-center ${jobStage === 'in_progress' ? 'text-blue-500' : 'text-gray-500'}`}>
+                          <div className={`h-8 w-8 rounded-full ${jobStage === 'in_progress' ? 'bg-blue-900 text-blue-500' : 'bg-zinc-800 text-gray-500'} flex items-center justify-center mb-1`}>
+                            <Clock size={16} />
+                          </div>
+                          <span className="text-[10px]">In Progress</span>
+                        </div>
+                        <div className={`flex flex-col items-center ${jobStage === 'completion' ? 'text-green-500' : 'text-gray-500'}`}>
+                          <div className={`h-8 w-8 rounded-full ${jobStage === 'completion' ? 'bg-green-900 text-green-500' : 'bg-zinc-800 text-gray-500'} flex items-center justify-center mb-1`}>
+                            <CheckCircle size={16} />
+                          </div>
+                          <span className="text-[10px]">Completion</span>
+                        </div>
+                      </div>
+                      
+                      {/* Progress Line */}
+                      <div className="relative h-1 bg-zinc-800 my-2 mx-4">
+                        <div 
+                          className="absolute top-0 left-0 h-1 bg-accent-500" 
+                          style={{ 
+                            width: jobStage === 'planning' ? '10%' : 
+                                  jobStage === 'contract_approval' ? '35%' : 
+                                  jobStage === 'in_progress' ? '65%' : '100%' 
+                          }}
+                        ></div>
+                      </div>
+                    </div>
+                    
                     <div className="ml-14">
+                      <h4 className="text-sm font-medium text-white mb-2">Smart Contracts</h4>
                       <div className="space-y-3">
                         {jobContracts.map(contract => {
                           const contractor = getContractorById(contract.contractorId);
@@ -182,7 +255,10 @@ const JobsOverview = ({
                                 <div>
                                   <h4 className="text-sm font-medium text-white">{contract.contractName}</h4>
                                   <p className="text-xs text-gray-400 mt-1">
-                                    {contractor?.firstName} {contractor?.lastName} • {contract.contractCode}
+                                    <span className="flex items-center">
+                                      <Users size={12} className="mr-1" />
+                                      {contractor?.firstName} {contractor?.lastName} • {contract.contractCode}
+                                    </span>
                                   </p>
                                 </div>
                                 <Badge className={`${getStatusBadgeClass(contract.status)}`}>
@@ -190,7 +266,7 @@ const JobsOverview = ({
                                 </Badge>
                               </div>
                               
-                              <div className="mt-2 flex items-center text-xs text-gray-400">
+                              <div className="mt-2 flex flex-wrap items-center gap-y-1 text-xs text-gray-400">
                                 <span className="flex items-center mr-3">
                                   <DollarSign size={12} className="mr-1" />
                                   ${parseFloat(contract.value.toString()).toLocaleString('en-US')}
@@ -198,30 +274,59 @@ const JobsOverview = ({
                                 {contract.startDate && (
                                   <span className="flex items-center mr-3">
                                     <Calendar size={12} className="mr-1" />
-                                    {formatDate(contract.startDate)}
+                                    Start: {formatDate(contract.startDate)}
                                   </span>
                                 )}
                                 {contract.endDate && (
                                   <span className="flex items-center">
                                     <Clock size={12} className="mr-1" />
-                                    Due {formatDate(contract.endDate)}
+                                    Due: {formatDate(contract.endDate)}
                                   </span>
                                 )}
                               </div>
                               
-                              <div className="mt-3">
+                              <div className="mt-3 flex gap-2">
                                 <Button
                                   variant="outline"
                                   size="sm"
                                   className="text-xs text-white border-zinc-700 hover:bg-zinc-800 hover:text-white"
                                   onClick={() => onViewJob && onViewJob(contract.id)}
                                 >
-                                  View Details
+                                  View Contract
                                 </Button>
+                                
+                                {contract.status === 'active' && (
+                                  <Button
+                                    size="sm"
+                                    className="text-xs bg-accent-500 hover:bg-accent-600 text-white"
+                                  >
+                                    <CheckCircle size={12} className="mr-1" />
+                                    Approve Work
+                                  </Button>
+                                )}
                               </div>
                             </div>
                           );
                         })}
+                      </div>
+                      
+                      <div className="mt-4 flex justify-end">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-xs text-white border-zinc-700 hover:bg-zinc-800 hover:text-white mr-2"
+                        >
+                          <PlusCircle size={14} className="mr-1" />
+                          Add Contract
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-xs text-white border-zinc-700 hover:bg-zinc-800 hover:text-white"
+                          onClick={() => {}} // Navigate to detailed job view
+                        >
+                          View Job Details
+                        </Button>
                       </div>
                     </div>
                   </div>
