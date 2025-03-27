@@ -59,31 +59,31 @@ const MilestonesList = ({
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
     if (diffDays < 0) {
-      return 'bg-destructive-100 text-destructive';
+      return 'bg-red-900 text-red-400';
     } else if (diffDays <= 2) {
-      return 'bg-warning-100 text-warning';
+      return 'bg-amber-900 text-amber-400';
     } else {
-      return 'bg-success-100 text-success';
+      return 'bg-green-900 text-green-400';
     }
   };
   
   const getProgressBarColor = (milestone: Milestone) => {
-    if (milestone.status === 'overdue') return 'bg-warning';
+    if (milestone.status === 'overdue') return 'bg-amber-500';
     return 'bg-accent-500';
   };
   
   return (
-    <Card className="bg-white rounded-lg shadow-sm border border-primary-100 divide-y divide-primary-100">
+    <Card className="bg-zinc-900 rounded-lg shadow-sm border border-zinc-800 divide-y divide-zinc-800">
       {milestones.map((milestone) => {
         const contract = getContractById(milestone.contractId);
         const contractor = getContractorForMilestone(milestone);
         
         return (
-          <div key={milestone.id} className="p-4 hover:bg-primary-50">
+          <div key={milestone.id} className="p-4 hover:bg-zinc-800">
             <div className="flex justify-between items-start">
               <div>
-                <h3 className="text-sm font-medium text-primary-900">{milestone.name}</h3>
-                <p className="text-xs text-primary-500 mt-1">
+                <h3 className="text-sm font-medium text-white">{milestone.name}</h3>
+                <p className="text-xs text-gray-400 mt-1">
                   {contract?.contractName} • {contractor?.firstName} {contractor?.lastName}
                 </p>
               </div>
@@ -92,11 +92,11 @@ const MilestonesList = ({
               </span>
             </div>
             <div className="mt-3">
-              <div className="flex justify-between text-xs text-primary-500 mb-1">
+              <div className="flex justify-between text-xs text-gray-400 mb-1">
                 <span>Progress</span>
                 <span>{milestone.progress}%</span>
               </div>
-              <div className="w-full bg-primary-100 rounded-full h-2">
+              <div className="w-full bg-zinc-800 rounded-full h-2">
                 <div 
                   className={`${getProgressBarColor(milestone)} h-2 rounded-full`} 
                   style={{ width: `${milestone.progress}%` }}
@@ -107,6 +107,7 @@ const MilestonesList = ({
               <Button 
                 variant="outline" 
                 size="sm"
+                className="text-white border-zinc-700 hover:bg-zinc-800 hover:text-white"
                 onClick={() => onViewDetails && onViewDetails(milestone.id)}
               >
                 View Details
@@ -115,6 +116,7 @@ const MilestonesList = ({
               {milestone.status === 'pending' && milestone.progress >= 80 && (
                 <Button 
                   size="sm"
+                  className="bg-accent-500 hover:bg-accent-600 text-white"
                   onClick={() => onApprove && onApprove(milestone.id)}
                 >
                   Approve
@@ -125,6 +127,7 @@ const MilestonesList = ({
                 <Button 
                   variant="secondary" 
                   size="sm"
+                  className="bg-zinc-800 text-white hover:bg-zinc-700"
                   onClick={() => onRequestUpdate && onRequestUpdate(milestone.id)}
                 >
                   Request Update
@@ -136,7 +139,7 @@ const MilestonesList = ({
       })}
       
       {milestones.length === 0 && (
-        <div className="p-4 text-center text-primary-500">
+        <div className="p-4 text-center text-gray-400">
           No upcoming milestones
         </div>
       )}

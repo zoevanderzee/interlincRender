@@ -30,15 +30,15 @@ const ContractsTable = ({
   const getStatusBadgeClass = (status: string) => {
     switch(status) {
       case 'active':
-        return 'bg-success-100 text-success';
+        return 'bg-green-900 text-green-400';
       case 'pending_approval':
-        return 'bg-warning-100 text-warning';
+        return 'bg-amber-900 text-amber-400';
       case 'completed':
-        return 'bg-primary-100 text-primary-700';
+        return 'bg-blue-900 text-blue-400';
       case 'terminated':
-        return 'bg-destructive-100 text-destructive';
+        return 'bg-red-900 text-red-400';
       default:
-        return 'bg-primary-100 text-primary-700';
+        return 'bg-zinc-800 text-gray-400';
     }
   };
   
@@ -52,17 +52,17 @@ const ContractsTable = ({
   };
   
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-primary-100 overflow-hidden">
+    <div className="bg-zinc-900 rounded-lg shadow-sm border border-zinc-800 overflow-hidden">
       <div className="overflow-x-auto">
         <Table>
-          <TableHeader className="bg-primary-50">
+          <TableHeader className="bg-zinc-800">
             <TableRow>
-              <TableHead className="px-6 py-3 text-left text-xs font-medium text-primary-500 uppercase tracking-wider">Contract Name</TableHead>
-              <TableHead className="px-6 py-3 text-left text-xs font-medium text-primary-500 uppercase tracking-wider">Contractor</TableHead>
-              <TableHead className="px-6 py-3 text-left text-xs font-medium text-primary-500 uppercase tracking-wider">Status</TableHead>
-              <TableHead className="px-6 py-3 text-left text-xs font-medium text-primary-500 uppercase tracking-wider">Next Milestone</TableHead>
-              <TableHead className="px-6 py-3 text-left text-xs font-medium text-primary-500 uppercase tracking-wider">Value</TableHead>
-              <TableHead className="px-6 py-3 text-left text-xs font-medium text-primary-500 uppercase tracking-wider">Actions</TableHead>
+              <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Contract Name</TableHead>
+              <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Contractor</TableHead>
+              <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</TableHead>
+              <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Next Milestone</TableHead>
+              <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Value</TableHead>
+              <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -70,10 +70,10 @@ const ContractsTable = ({
               const contractor = getContractorById(contract.contractorId);
               
               return (
-                <TableRow key={contract.id} className="hover:bg-primary-50">
+                <TableRow key={contract.id} className="hover:bg-zinc-800 border-b border-zinc-800">
                   <TableCell className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="flex-shrink-0 h-8 w-8 bg-accent-100 text-accent-700 rounded-md flex items-center justify-center">
+                      <div className="flex-shrink-0 h-8 w-8 bg-zinc-800 text-accent-500 rounded-md flex items-center justify-center">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                           <polyline points="14 2 14 8 20 8"></polyline>
@@ -83,22 +83,22 @@ const ContractsTable = ({
                         </svg>
                       </div>
                       <div className="ml-4">
-                        <div className="text-sm font-medium text-primary-900">{contract.contractName}</div>
-                        <div className="text-xs text-primary-500">{contract.contractCode}</div>
+                        <div className="text-sm font-medium text-white">{contract.contractName}</div>
+                        <div className="text-xs text-gray-400">{contract.contractCode}</div>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="h-8 w-8 rounded-full bg-primary-200 flex items-center justify-center overflow-hidden text-primary-700">
+                      <div className="h-8 w-8 rounded-full bg-zinc-800 flex items-center justify-center overflow-hidden text-gray-400">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                           <circle cx="12" cy="7" r="4"></circle>
                         </svg>
                       </div>
                       <div className="ml-3">
-                        <div className="text-sm font-medium text-primary-900">{contractor?.firstName} {contractor?.lastName}</div>
-                        <div className="text-xs text-primary-500">{contractor?.title}</div>
+                        <div className="text-sm font-medium text-white">{contractor?.firstName} {contractor?.lastName}</div>
+                        <div className="text-xs text-gray-400">{contractor?.title}</div>
                       </div>
                     </div>
                   </TableCell>
@@ -108,10 +108,10 @@ const ContractsTable = ({
                     </span>
                   </TableCell>
                   <TableCell className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-primary-900">Final Design Delivery</div>
-                    <div className="text-xs text-primary-500">Due in 4 days</div>
+                    <div className="text-sm text-white">Final Design Delivery</div>
+                    <div className="text-xs text-gray-400">Due in 4 days</div>
                   </TableCell>
-                  <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-primary-900">
+                  <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-white">
                     ${parseFloat(contract.value.toString()).toLocaleString('en-US')}
                   </TableCell>
                   <TableCell className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -124,13 +124,13 @@ const ContractsTable = ({
                         <Eye size={16} />
                       </button>
                       <button 
-                        className="text-primary-500 hover:text-primary-600" 
+                        className="text-white hover:text-gray-300" 
                         title="Edit Contract"
                         onClick={() => onEditContract && onEditContract(contract.id)}
                       >
                         <Edit size={16} />
                       </button>
-                      <button className="text-primary-500 hover:text-primary-600" title="More Options">
+                      <button className="text-white hover:text-gray-300" title="More Options">
                         <MoreVertical size={16} />
                       </button>
                     </div>
@@ -141,7 +141,7 @@ const ContractsTable = ({
             
             {contracts.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-4 text-primary-500">
+                <TableCell colSpan={6} className="text-center py-4 text-gray-400">
                   No contracts found
                 </TableCell>
               </TableRow>

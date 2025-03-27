@@ -19,7 +19,7 @@ const Layout = ({ children }: LayoutProps) => {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-primary-50 text-primary-900">
+    <div className="flex h-screen overflow-hidden bg-black text-white">
       {/* Sidebar */}
       <Sidebar 
         isOpen={sidebarOpen} 
@@ -31,7 +31,7 @@ const Layout = ({ children }: LayoutProps) => {
       {/* Mobile menu overlay */}
       {mobileMenuOpen && (
         <div 
-          className="fixed inset-0 bg-primary-900 bg-opacity-50 z-20 md:hidden"
+          className="fixed inset-0 bg-black bg-opacity-80 z-20 md:hidden"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}

@@ -14,13 +14,27 @@ import StatsCard from "@/components/dashboard/StatsCard";
 import ContractsTable from "@/components/dashboard/ContractsTable";
 import MilestonesList from "@/components/dashboard/MilestonesList";
 import PaymentsList from "@/components/dashboard/PaymentsList";
+import { Contract, User, Payment, Milestone } from "@shared/schema";
+
+interface DashboardData {
+  stats: {
+    activeContractsCount: number;
+    pendingApprovalsCount: number;
+    paymentsProcessed: number;
+    activeContractorsCount: number;
+  };
+  contracts: Contract[];
+  contractors: User[];
+  milestones: Milestone[];
+  payments: Payment[];
+}
 
 const Dashboard = () => {
   const { toast } = useToast();
   const [_, navigate] = useLocation();
 
   // Fetch dashboard data
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error } = useQuery<DashboardData>({
     queryKey: ['/api/dashboard'],
     refetchInterval: false
   });
@@ -84,21 +98,21 @@ const Dashboard = () => {
   if (isLoading) {
     return (
       <div className="animate-pulse">
-        <div className="h-8 w-1/4 bg-primary-100 rounded mb-2"></div>
-        <div className="h-4 w-2/3 bg-primary-100 rounded mb-8"></div>
+        <div className="h-8 w-1/4 bg-zinc-800 rounded mb-2"></div>
+        <div className="h-4 w-2/3 bg-zinc-800 rounded mb-8"></div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-white h-32 rounded-lg shadow-sm border border-primary-100"></div>
+            <div key={i} className="bg-zinc-900 h-32 rounded-lg shadow-sm border border-zinc-800"></div>
           ))}
         </div>
         
-        <div className="h-10 w-1/3 bg-primary-100 rounded mb-6"></div>
-        <div className="bg-white h-64 rounded-lg shadow-sm border border-primary-100 mb-8"></div>
+        <div className="h-10 w-1/3 bg-zinc-800 rounded mb-6"></div>
+        <div className="bg-zinc-900 h-64 rounded-lg shadow-sm border border-zinc-800 mb-8"></div>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white h-96 rounded-lg shadow-sm border border-primary-100"></div>
-          <div className="bg-white h-96 rounded-lg shadow-sm border border-primary-100"></div>
+          <div className="bg-zinc-900 h-96 rounded-lg shadow-sm border border-zinc-800"></div>
+          <div className="bg-zinc-900 h-96 rounded-lg shadow-sm border border-zinc-800"></div>
         </div>
       </div>
     );
@@ -112,8 +126,8 @@ const Dashboard = () => {
     <>
       {/* Page Header */}
       <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-semibold text-primary-900">Dashboard</h1>
-        <p className="text-primary-500 mt-1">Welcome back, Sarah. Here's what's happening with your contracts.</p>
+        <h1 className="text-2xl md:text-3xl font-semibold text-white">Dashboard</h1>
+        <p className="text-gray-400 mt-1">Welcome back, Sarah. Here's what's happening with your contracts.</p>
       </div>
       
       {/* Stats Overview */}
@@ -171,7 +185,7 @@ const Dashboard = () => {
         
         <Button 
           variant="outline"
-          className="text-primary-700"
+          className="text-white border-zinc-700 hover:bg-zinc-800 hover:text-white"
           onClick={handleAddContractor}
         >
           <Plus className="mr-2" size={16} />
@@ -180,7 +194,7 @@ const Dashboard = () => {
         
         <Button 
           variant="outline"
-          className="text-primary-700"
+          className="text-white border-zinc-700 hover:bg-zinc-800 hover:text-white"
           onClick={handleExportReports}
         >
           <Download className="mr-2" size={16} />
@@ -191,7 +205,7 @@ const Dashboard = () => {
       {/* Smart Contracts Section */}
       <section className="mb-8">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-primary-900">Recent Smart Contracts</h2>
+          <h2 className="text-xl font-semibold text-white">Recent Smart Contracts</h2>
           <Button variant="link" className="text-accent-500 hover:text-accent-600 text-sm font-medium" onClick={() => navigate('/contracts')}>
             View All
           </Button>
@@ -210,7 +224,7 @@ const Dashboard = () => {
         {/* Project Milestones */}
         <section>
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-primary-900">Upcoming Milestones</h2>
+            <h2 className="text-xl font-semibold text-white">Upcoming Milestones</h2>
             <Button variant="link" className="text-accent-500 hover:text-accent-600 text-sm font-medium" onClick={() => navigate('/projects')}>
               View All
             </Button>
@@ -229,7 +243,7 @@ const Dashboard = () => {
         {/* Upcoming Payments */}
         <section>
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-primary-900">Upcoming Payments</h2>
+            <h2 className="text-xl font-semibold text-white">Upcoming Payments</h2>
             <Button variant="link" className="text-accent-500 hover:text-accent-600 text-sm font-medium" onClick={() => navigate('/payments')}>
               View All
             </Button>
