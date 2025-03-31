@@ -16,7 +16,7 @@ import StatsCard from "@/components/dashboard/StatsCard";
 import ContractsTable from "@/components/dashboard/ContractsTable";
 import MilestonesList from "@/components/dashboard/MilestonesList";
 import PaymentsList from "@/components/dashboard/PaymentsList";
-import JobsOverview from "@/components/dashboard/JobsOverview";
+import ProjectsOverview from "@/components/dashboard/ProjectsOverview";
 import { Contract, User, Payment, Milestone } from "@shared/schema";
 
 interface DashboardData {
@@ -205,24 +205,24 @@ const Dashboard = () => {
         </Button>
       </div>
       
-      {/* Jobs Overview Section */}
+      {/* Projects Overview Section */}
       <section className="mb-8">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold text-white">
             <Briefcase className="inline-block mr-2" size={20} />
-            Jobs Overview
+            Projects Overview
           </h2>
           <Button variant="link" className="text-accent-500 hover:text-accent-600 text-sm font-medium" onClick={() => navigate('/projects')}>
-            View All Jobs
+            View All Projects
           </Button>
         </div>
         
-        <JobsOverview 
+        <ProjectsOverview 
           contracts={data?.contracts || []}
           contractors={data?.contractors || []}
           milestones={data?.milestones || []}
           payments={data?.payments || []}
-          onViewJob={handleViewContract}
+          onViewProject={handleViewContract}
         />
       </section>
       

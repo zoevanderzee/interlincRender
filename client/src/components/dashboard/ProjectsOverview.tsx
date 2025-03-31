@@ -27,27 +27,27 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
-interface JobsOverviewProps {
+interface ProjectsOverviewProps {
   contracts: Contract[];
   contractors: User[];
   milestones: Milestone[];
   payments: Payment[];
-  onViewJob?: (id: number) => void;
+  onViewProject?: (id: number) => void;
 }
 
 interface GroupedContracts {
   [key: string]: Contract[];
 }
 
-const JobsOverview = ({ 
+const ProjectsOverview = ({ 
   contracts, 
   contractors,
   milestones,
   payments, 
-  onViewJob 
-}: JobsOverviewProps) => {
-  // Group contracts by name (assuming contracts with the same name are part of the same job)
-  const [expandedJobs, setExpandedJobs] = useState<string[]>([]);
+  onViewProject 
+}: ProjectsOverviewProps) => {
+  // Group contracts by name (assuming contracts with the same name are part of the same project)
+  const [expandedProjects, setExpandedProjects] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   
@@ -63,17 +63,17 @@ const JobsOverview = ({
     return matchesSearch && matchesStatus;
   });
   
-  // Group contracts that might be related to the same job
+  // Group contracts that might be related to the same project
   // For the purpose of this demo, we're grouping by the first word in the contract name
   const groupedContracts: GroupedContracts = filteredContracts.reduce((groups: GroupedContracts, contract) => {
-    // Extract job name (first word before a dash, hyphen or colon)
-    const jobName = contract.contractName.split(/[-:]/)[0].trim();
+    // Extract project name (first word before a dash, hyphen or colon)
+    const projectName = contract.contractName.split(/[-:]/)[0].trim();
     
-    if (!groups[jobName]) {
-      groups[jobName] = [];
+    if (!groups[projectName]) {
+      groups[projectName] = [];
     }
     
-    groups[jobName].push(contract);
+    groups[projectName].push(contract);
     return groups;
   }, {});
   
@@ -94,11 +94,11 @@ const JobsOverview = ({
     return contract ? getContractorById(contract.contractorId) : undefined;
   };
   
-  const toggleJobExpansion = (jobName: string) => {
-    setExpandedJobs(prev => 
-      prev.includes(jobName) 
-        ? prev.filter(name => name !== jobName) 
-        : [...prev, jobName]
+  const toggleProjectExpansion = (projectName: string) => {
+    setExpandedProjects(prev => 
+      prev.includes(projectName) 
+        ? prev.filter(name => name !== projectName) 
+        : [...prev, projectName]
     );
   };
   
@@ -146,7 +146,7 @@ const JobsOverview = ({
         <div className="flex flex-col md:flex-row justify-between items-center mb-4">
           <h2 className="text-xl font-semibold text-white flex items-center gap-2">
             <Briefcase className="h-5 w-5 text-indigo-500" />
-            Jobs & Projects Overview
+            Projects Overview
           </h2>
           
           <Button
@@ -156,7 +156,7 @@ const JobsOverview = ({
             onClick={() => {}}
           >
             <PlusCircle className="mr-1 h-4 w-4" />
-            Create New Job
+            Create New Project
           </Button>
         </div>
         
@@ -165,7 +165,7 @@ const JobsOverview = ({
           <div className="relative flex-grow">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
             <Input
-              placeholder="Search jobs and contracts..."
+              placeholder="Search projects and contracts..."
               className="pl-8 bg-zinc-800 border-zinc-700 text-white"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -230,16 +230,16 @@ const JobsOverview = ({
       
       <div className="divide-y divide-zinc-800">
         {Object.keys(groupedContracts).length > 0 ? (
-          Object.entries(groupedContracts).map(([jobName, jobContracts]) => {
-            const isExpanded = expandedJobs.includes(jobName);
-            const mainContract = jobContracts[0]; // Use the first contract as the main one for display
+          Object.entries(groupedContracts).map(([projectName, projectContracts]) => {
+            const isExpanded = expandedProjects.includes(projectName);
+            const mainContract = projectContracts[0]; // Use the first contract as the main one for display
             const contractor = getContractorById(mainContract.contractorId);
             
             return (
-              <div key={jobName} className="group">
+              <div key={projectName} className="group">
                 <div 
                   className="p-4 hover:bg-zinc-800 cursor-pointer flex items-center"
-                  onClick={() => toggleJobExpansion(jobName)}
+                  onClick={() => toggleProjectExpansion(projectName)}
                 >
                   <div className="mr-2">
                     {isExpanded ? 
@@ -250,18 +250,18 @@ const JobsOverview = ({
                   
                   <div className="flex-1">
                     <div className="flex items-center">
-                      <h3 className="text-md font-medium text-white">{jobName}</h3>
+                      <h3 className="text-md font-medium text-white">{projectName}</h3>
                       <div className="ml-2">
                         {getStatusBadge(mainContract.status)}
                       </div>
                       <div className="ml-auto flex items-center text-sm text-gray-400">
                         <span className="flex items-center mr-4">
                           <FileText className="h-4 w-4 mr-1 text-gray-500" />
-                          {jobContracts.length} {jobContracts.length === 1 ? 'Contract' : 'Contracts'}
+                          {projectContracts.length} {projectContracts.length === 1 ? 'Contract' : 'Contracts'}
                         </span>
                         <span className="flex items-center">
                           <DollarSign className="h-4 w-4 mr-1 text-gray-500" />
-                          {formatCurrency(jobContracts.reduce((sum, contract) => sum + Number(contract.value), 0))}
+                          {formatCurrency(projectContracts.reduce((sum, contract) => sum + Number(contract.value), 0))}
                         </span>
                       </div>
                     </div>
@@ -300,7 +300,7 @@ const JobsOverview = ({
                       
                       <TabsContent value="contracts" className="space-y-4 mt-0">
                         <div className="space-y-2">
-                          {jobContracts.map(contract => {
+                          {projectContracts.map(contract => {
                             const contractor = getContractorById(contract.contractorId);
                             return (
                               <div key={contract.id} className="p-3 bg-zinc-900 rounded-md border border-zinc-800">
@@ -343,7 +343,7 @@ const JobsOverview = ({
                                     variant="outline"
                                     size="sm"
                                     className="text-xs text-white border-zinc-700 hover:bg-zinc-800 hover:text-white"
-                                    onClick={() => onViewJob && onViewJob(contract.id)}
+                                    onClick={() => onViewProject && onViewProject(contract.id)}
                                   >
                                     View Details
                                   </Button>
@@ -356,7 +356,7 @@ const JobsOverview = ({
                       
                       <TabsContent value="milestones" className="space-y-4 mt-0">
                         <div className="space-y-2">
-                          {jobContracts.flatMap(contract => 
+                          {projectContracts.flatMap(contract => 
                             getContractMilestones(contract.id).map(milestone => (
                               <div key={milestone.id} className="p-3 bg-zinc-900 rounded-md border border-zinc-800">
                                 <div className="flex justify-between items-start">
@@ -366,7 +366,7 @@ const JobsOverview = ({
                                     </div>
                                     <div className="ml-3">
                                       <h4 className="text-sm font-medium text-white">{milestone.name}</h4>
-                                      <p className="text-xs text-gray-400">Contract: {jobContracts.find(c => c.id === milestone.contractId)?.contractName}</p>
+                                      <p className="text-xs text-gray-400">Contract: {projectContracts.find(c => c.id === milestone.contractId)?.contractName}</p>
                                     </div>
                                   </div>
                                   <div>
@@ -428,10 +428,10 @@ const JobsOverview = ({
                             ))
                           )}
                           
-                          {jobContracts.flatMap(contract => 
+                          {projectContracts.flatMap(contract => 
                             getContractMilestones(contract.id)).length === 0 && (
                               <div className="p-4 text-center text-gray-400">
-                                No milestones found for this job
+                                No milestones found for this project
                               </div>
                             )
                           }
@@ -440,7 +440,7 @@ const JobsOverview = ({
                       
                       <TabsContent value="payments" className="space-y-4 mt-0">
                         <div className="space-y-2">
-                          {jobContracts.flatMap(contract => 
+                          {projectContracts.flatMap(contract => 
                             getContractPayments(contract.id).map(payment => (
                               <div key={payment.id} className="p-3 bg-zinc-900 rounded-md border border-zinc-800">
                                 <div className="flex justify-between items-start">
@@ -450,7 +450,7 @@ const JobsOverview = ({
                                     </div>
                                     <div className="ml-3">
                                       <h4 className="text-sm font-medium text-white">Payment #{payment.id}</h4>
-                                      <p className="text-xs text-gray-400">Contract: {jobContracts.find(c => c.id === payment.contractId)?.contractName}</p>
+                                      <p className="text-xs text-gray-400">Contract: {projectContracts.find(c => c.id === payment.contractId)?.contractName}</p>
                                     </div>
                                   </div>
                                   <div>
@@ -508,10 +508,10 @@ const JobsOverview = ({
                             ))
                           )}
                           
-                          {jobContracts.flatMap(contract => 
+                          {projectContracts.flatMap(contract => 
                             getContractPayments(contract.id)).length === 0 && (
                               <div className="p-4 text-center text-gray-400">
-                                No payments found for this job
+                                No payments found for this project
                               </div>
                             )
                           }
@@ -521,15 +521,15 @@ const JobsOverview = ({
                     
                     <div className="mt-4 pt-3 border-t border-zinc-700 flex justify-between items-center">
                       <div className="text-xs text-gray-400">
-                        {jobContracts.length} {jobContracts.length === 1 ? 'contract' : 'contracts'} in this job
+                        {projectContracts.length} {projectContracts.length === 1 ? 'contract' : 'contracts'} in this project
                       </div>
                       <Button
                         variant="outline"
                         size="sm"
                         className="text-xs text-white border-zinc-700 hover:bg-zinc-800 hover:text-white"
-                        onClick={() => {}} // Navigate to detailed job view
+                        onClick={() => {}} // Navigate to detailed project view
                       >
-                        View Job Details
+                        View Project Details
                       </Button>
                     </div>
                   </div>
@@ -539,7 +539,7 @@ const JobsOverview = ({
           })
         ) : (
           <div className="p-4 text-center text-gray-400">
-            No jobs found
+            No projects found
           </div>
         )}
       </div>
@@ -547,4 +547,4 @@ const JobsOverview = ({
   );
 };
 
-export default JobsOverview;
+export default ProjectsOverview;
