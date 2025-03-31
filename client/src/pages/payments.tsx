@@ -563,7 +563,7 @@ const Payments = () => {
                           <XCircle className="h-8 w-8 text-primary-400 mb-2" />
                           <p className="text-primary-500 font-medium">No failed payments</p>
                           <p className="text-sm text-primary-400 mt-1">
-                            Good job! You don't have any failed payments.
+                            Great! You don't have any failed payments.
                           </p>
                         </div>
                       </TableCell>

@@ -323,7 +323,7 @@ const Settings = () => {
                       name="title"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Job Title</FormLabel>
+                          <FormLabel>Position Title</FormLabel>
                           <FormControl>
                             <Input {...field} />
                           </FormControl>
