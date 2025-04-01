@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -46,15 +46,33 @@ const Contractors = () => {
     location.includes("?action=invite")
   );
 
-  // Fetch contractors
-  const { data: contractors = [], isLoading: isLoadingContractors } = useQuery<User[]>({
+  // Fetch all external workers (both contractors and freelancers)
+  const { data: externalWorkers = [], isLoading: isLoadingWorkers } = useQuery<User[]>({
     queryKey: ['/api/users', { role: 'contractor' }],
   });
+  
+  // Filter contractors and freelancers
+  const contractors = externalWorkers.filter(worker => 
+    worker.workerType === 'contractor' || !worker.workerType // Handle existing data without workerType
+  );
+  
+  const freelancers = externalWorkers.filter(worker => 
+    worker.workerType === 'freelancer'
+  );
 
   // Fetch pending invites
-  const { data: invites = [], isLoading: isLoadingInvites } = useQuery<Invite[]>({
+  const { data: allInvites = [], isLoading: isLoadingInvites } = useQuery<Invite[]>({
     queryKey: ['/api/invites', { pending: true }],
   });
+  
+  // Filter invites by worker type
+  const contractorInvites = allInvites.filter(invite => 
+    invite.workerType === 'contractor' || !invite.workerType // Handle existing data without workerType
+  );
+  
+  const freelancerInvites = allInvites.filter(invite => 
+    invite.workerType === 'freelancer'
+  );
 
   // Fetch contracts to show count per contractor
   const { data: contracts = [] } = useQuery({
@@ -75,6 +93,7 @@ const Contractors = () => {
   const formSchema = z.object({
     email: z.string().email("Invalid email address"),
     projectName: z.string().min(3, "Project name must be at least 3 characters"),
+    workerType: z.enum(["contractor", "freelancer"]),
     businessId: z.number().default(1), // Currently hardcoded to business ID 1
     contractDetails: z.string().optional(),
     message: z.string().optional(),
@@ -86,6 +105,7 @@ const Contractors = () => {
     defaultValues: {
       email: "",
       projectName: "",
+      workerType: "contractor",
       businessId: 1,
       contractDetails: "",
       message: "We'd like to invite you to join our project. Please sign up to view the details and connect with our team.",
@@ -113,6 +133,7 @@ const Contractors = () => {
       const invite: any = {
         email: data.email,
         projectName: data.projectName,
+        workerType: data.workerType,
         businessId: data.businessId,
         status: "pending",
         message: data.message,
@@ -136,6 +157,7 @@ const Contractors = () => {
       form.reset({
         email: "",
         projectName: "",
+        workerType: "contractor",
         businessId: 1,
         contractDetails: "",
         message: "We'd like to invite you to join our project. Please sign up to view the details and connect with our team.",
@@ -177,30 +199,36 @@ const Contractors = () => {
     setIsInviteDialogOpen(false);
     navigate("/contractors", { replace: true });
   };
+  
+  // Function to open the invite dialog with a specific worker type
+  const openInviteDialog = (workerType: 'contractor' | 'freelancer') => {
+    form.setValue("workerType", workerType);
+    setIsInviteDialogOpen(true);
+  };
 
-  const isLoading = isLoadingContractors || isLoadingInvites;
+  const isLoading = isLoadingWorkers || isLoadingInvites;
 
   return (
     <>
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <div>
-          <h1 className="text-2xl md:text-3xl font-semibold text-primary-900">Contractors</h1>
-          <p className="text-primary-500 mt-1">Manage your external workers and project collaborators</p>
+          <h1 className="text-2xl md:text-3xl font-semibold text-primary-900">External Workers</h1>
+          <p className="text-primary-500 mt-1">Manage your contractors, freelancers, and project collaborators</p>
         </div>
         <div className="mt-4 md:mt-0">
           <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button onClick={() => form.reset()}>
                 <Plus size={16} className="mr-2" />
-                Invite Contractor
+                Invite Worker
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[550px]">
               <DialogHeader>
-                <DialogTitle>Invite Contractor to Project</DialogTitle>
+                <DialogTitle>Invite Worker to Project</DialogTitle>
                 <DialogDescription>
-                  Send an invitation to a contractor to join your project. They'll receive an email with instructions to create an account.
+                  Send an invitation to a contractor or freelancer to join your project. They'll receive an email with instructions to create an account.
                 </DialogDescription>
               </DialogHeader>
               <Form {...form}>
@@ -212,7 +240,7 @@ const Contractors = () => {
                       <FormItem>
                         <FormLabel>Email Address</FormLabel>
                         <FormControl>
-                          <Input type="email" placeholder="contractor@example.com" {...field} />
+                          <Input type="email" placeholder="worker@example.com" {...field} />
                         </FormControl>
                         <FormDescription>
                           We'll send an invitation to this email address
@@ -230,6 +258,47 @@ const Contractors = () => {
                         <FormControl>
                           <Input placeholder="Website Redesign" {...field} />
                         </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="workerType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Worker Type</FormLabel>
+                        <div className="flex gap-4">
+                          <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl>
+                              <input
+                                type="radio"
+                                checked={field.value === 'contractor'}
+                                onChange={() => field.onChange('contractor')}
+                                className="w-4 h-4"
+                              />
+                            </FormControl>
+                            <FormLabel className="font-normal cursor-pointer">
+                              Contractor (Business)
+                            </FormLabel>
+                          </FormItem>
+                          <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl>
+                              <input
+                                type="radio"
+                                checked={field.value === 'freelancer'}
+                                onChange={() => field.onChange('freelancer')}
+                                className="w-4 h-4"
+                              />
+                            </FormControl>
+                            <FormLabel className="font-normal cursor-pointer">
+                              Freelancer
+                            </FormLabel>
+                          </FormItem>
+                        </div>
+                        <FormDescription>
+                          Select whether you're inviting a business contractor or an individual freelancer
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -259,7 +328,7 @@ const Contractors = () => {
                         <FormLabel>Personal Message</FormLabel>
                         <FormControl>
                           <Textarea 
-                            placeholder="Add a personal note to the contractor..."
+                            placeholder="Add a personal note to the worker..."
                             className="min-h-[80px]"
                             {...field}
                           />
@@ -289,10 +358,11 @@ const Contractors = () => {
         </div>
       </div>
 
-      {/* Tabs for Contractors and Invites */}
+      {/* Tabs for Workers Types and Invites */}
       <Tabs defaultValue="contractors" className="mb-6">
         <TabsList className="mb-4">
-          <TabsTrigger value="contractors">Active Contractors</TabsTrigger>
+          <TabsTrigger value="contractors">Contractors (Business)</TabsTrigger>
+          <TabsTrigger value="freelancers">Freelancers</TabsTrigger>
           <TabsTrigger value="invites">Pending Invites</TabsTrigger>
         </TabsList>
         
@@ -415,11 +485,128 @@ const Contractors = () => {
                       Clear Search
                     </Button>
                   ) : (
-                    <Button onClick={() => setIsInviteDialogOpen(true)}>
+                    <Button onClick={() => openInviteDialog('contractor')}>
                       <Send size={16} className="mr-2" />
-                      Invite Contractors
+                      Invite Contractor
                     </Button>
                   )}
+                </div>
+              )}
+            </div>
+          )}
+        </TabsContent>
+        
+        <TabsContent value="freelancers">
+          {/* Search */}
+          <div className="mb-6 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary-400" size={18} />
+            <Input
+              placeholder="Search freelancers..."
+              className="pl-9"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+
+          {/* Freelancers Grid */}
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="animate-pulse">
+                  <Card className="p-5 h-64"></Card>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {freelancers.map((freelancer) => (
+                <Card 
+                  key={freelancer.id} 
+                  className="p-5 border border-primary-100 hover:shadow-md transition-shadow"
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center">
+                      <div className="h-12 w-12 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 mr-3">
+                        {freelancer.profileImageUrl ? (
+                          <img 
+                            src={freelancer.profileImageUrl} 
+                            alt={`${freelancer.firstName} ${freelancer.lastName}`}
+                            className="h-full w-full rounded-full object-cover"
+                          />
+                        ) : (
+                          <UserIcon size={24} />
+                        )}
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-primary-900">
+                          {freelancer.firstName} {freelancer.lastName}
+                        </h3>
+                        <p className="text-sm text-primary-500">{freelancer.title}</p>
+                      </div>
+                    </div>
+                    <div className="px-2 py-1 bg-primary-100 rounded-md text-xs font-medium text-primary-700">
+                      {getContractCount(freelancer.id)} {getContractCount(freelancer.id) === 1 ? 'contract' : 'contracts'}
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center text-sm text-primary-600 mb-3">
+                    <Mail size={16} className="mr-2" />
+                    {freelancer.email}
+                  </div>
+                  
+                  {freelancer.title && (
+                    <div className="flex items-center text-sm text-primary-600 mb-4">
+                      <Briefcase size={16} className="mr-2" />
+                      {freelancer.title}
+                    </div>
+                  )}
+                  
+                  <div className="flex justify-between mt-auto pt-4 border-t border-primary-100">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => navigate(`/contractors/${freelancer.id}`)}
+                    >
+                      <UserCheck size={16} className="mr-1" />
+                      Profile
+                    </Button>
+                    
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => navigate(`/contracts?contractor=${freelancer.id}`)}
+                    >
+                      <FileText size={16} className="mr-1" />
+                      Contracts
+                    </Button>
+                    
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-accent-500 hover:text-accent-600 hover:bg-accent-50"
+                      onClick={() => navigate(`/contracts/new?contractor=${freelancer.id}`)}
+                    >
+                      Assign
+                      <ArrowRight size={16} className="ml-1" />
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+              
+              {/* Empty state */}
+              {freelancers.length === 0 && (
+                <div className="col-span-full bg-black text-white rounded-lg shadow-sm border border-zinc-800 p-8 text-center">
+                  <div className="mx-auto h-16 w-16 rounded-full bg-zinc-800 flex items-center justify-center text-white mb-4">
+                    <UserIcon size={32} />
+                  </div>
+                  <h3 className="text-lg font-medium text-white mb-2">No freelancers found</h3>
+                  <p className="text-zinc-400 mb-6">
+                    You don't have any active freelancers yet. Send invites to start collaborating.
+                  </p>
+                  <Button onClick={() => openInviteDialog('freelancer')}>
+                    <Send size={16} className="mr-2" />
+                    Invite Freelancer
+                  </Button>
                 </div>
               )}
             </div>
@@ -438,7 +625,7 @@ const Contractors = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4">
-              {invites.map((invite) => (
+              {allInvites.map((invite) => (
                 <Card
                   key={invite.id}
                   className="p-5 border border-primary-100 hover:shadow-md transition-shadow"
@@ -449,9 +636,18 @@ const Contractors = () => {
                         <h3 className="font-semibold text-primary-900 mr-3">
                           {invite.email}
                         </h3>
-                        <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded-md text-xs font-medium">
-                          Pending
-                        </span>
+                        <div className="flex gap-2">
+                          <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded-md text-xs font-medium">
+                            Pending
+                          </span>
+                          <span className={`px-2 py-1 rounded-md text-xs font-medium ${
+                            invite.workerType === 'freelancer' 
+                              ? 'bg-blue-100 text-blue-700' 
+                              : 'bg-green-100 text-green-700'
+                          }`}>
+                            {invite.workerType === 'freelancer' ? 'Freelancer' : 'Contractor'}
+                          </span>
+                        </div>
                       </div>
                       <p className="text-sm text-primary-600 mb-2">
                         <span className="font-medium">Project: </span>
@@ -511,16 +707,16 @@ const Contractors = () => {
               ))}
               
               {/* Empty state for invites */}
-              {invites.length === 0 && (
+              {allInvites.length === 0 && (
                 <div className="col-span-full bg-black text-white rounded-lg shadow-sm border border-zinc-800 p-8 text-center">
                   <div className="mx-auto h-16 w-16 rounded-full bg-zinc-800 flex items-center justify-center text-white mb-4">
                     <Mail size={32} />
                   </div>
                   <h3 className="text-lg font-medium text-white mb-2">No pending invites</h3>
                   <p className="text-zinc-400 mb-6">
-                    You haven't sent any invitations to contractors yet.
+                    You haven't sent any invitations to contractors or freelancers yet.
                   </p>
-                  <Button onClick={() => setIsInviteDialogOpen(true)}>
+                  <Button onClick={() => openInviteDialog('contractor')}>
                     <Send size={16} className="mr-2" />
                     Send New Invitation
                   </Button>

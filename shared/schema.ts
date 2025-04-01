@@ -10,7 +10,8 @@ export const users = pgTable("users", {
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
   email: text("email").notNull().unique(),
-  role: text("role").notNull().default("contractor"), // "business" or "contractor"
+  role: text("role").notNull().default("contractor"), // "business", "contractor", or "freelancer"
+  workerType: text("worker_type"), // "contractor" or "freelancer" for external workers
   profileImageUrl: text("profile_image_url"),
   companyName: text("company_name"),
   title: text("title"),
@@ -22,6 +23,7 @@ export const invites = pgTable("invites", {
   email: text("email").notNull(),
   projectName: text("project_name").notNull(),
   status: text("status").notNull().default("pending"), // pending, accepted, declined, expired
+  workerType: text("worker_type").notNull().default("contractor"), // contractor or freelancer
   businessId: integer("business_id").notNull(), // The business that sent the invite
   projectId: integer("project_id"), // Optional project ID if the project already exists
   contractDetails: text("contract_details"), // JSON string with contract details
