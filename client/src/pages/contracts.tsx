@@ -48,7 +48,7 @@ const Contracts = () => {
 
   // Handle view contract
   const handleViewContract = (id: number) => {
-    navigate(`/contracts/${id}`);
+    navigate(`/contract/${id}`);
   };
 
   // Handle edit contract

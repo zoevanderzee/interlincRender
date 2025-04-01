@@ -6,6 +6,7 @@ import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import Contracts from "@/pages/contracts";
 import NewContract from "@/pages/new-contract";
+import ContractDetail from "@/pages/contract-detail";
 import Projects from "@/pages/projects";
 import Contractors from "@/pages/contractors";
 import Payments from "@/pages/payments";
@@ -23,6 +24,7 @@ function Router() {
         <Route path="/" component={Dashboard} />
         <Route path="/contracts" component={Contracts} />
         <Route path="/contracts/new" component={NewContract} />
+        <Route path="/contract/:id" component={ContractDetail} />
         <Route path="/projects" component={Projects} />
         <Route path="/contractors" component={Contractors} />
         <Route path="/payments" component={Payments} />
