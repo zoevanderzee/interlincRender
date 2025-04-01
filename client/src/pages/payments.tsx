@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
@@ -13,6 +13,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -38,9 +45,11 @@ import {
   Download,
   ExternalLink,
   Plus,
-  Loader2
+  Loader2,
+  CreditCard
 } from "lucide-react";
 import PaymentsList from "@/components/dashboard/PaymentsList";
+import PaymentProcessor from "@/components/payments/PaymentProcessor";
 
 const Payments = () => {
   const { toast } = useToast();
@@ -49,9 +58,28 @@ const Payments = () => {
   const [statusFilter, setStatusFilter] = useState("");
   const [fromDateFilter, setFromDateFilter] = useState("");
   const [toDateFilter, setToDateFilter] = useState("");
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  
+  // Check if payment success query parameter is present
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const success = searchParams.get('success');
+    const paymentId = searchParams.get('payment_id');
+    
+    if (success === 'true' && paymentId) {
+      toast({
+        title: "Payment Successful",
+        description: "Your payment has been processed successfully"
+      });
+      
+      // Clear query parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [toast]);
   
   // Fetch payments
-  const { data: allPayments = [], isLoading: isLoadingPayments } = useQuery<Payment[]>({
+  const { data: allPayments = [], isLoading: isLoadingPayments, refetch: refetchPayments } = useQuery<Payment[]>({
     queryKey: ['/api/payments'],
   });
   
@@ -114,11 +142,28 @@ const Payments = () => {
     setToDateFilter("");
   };
   
-  // Handle payment approval/execution
+  // Handle payment approval/execution with Stripe
   const handleExecutePayment = (id: number) => {
+    const payment = allPayments.find(p => p.id === id);
+    if (payment) {
+      setSelectedPayment(payment);
+      setPaymentModalOpen(true);
+    } else {
+      toast({
+        title: "Payment Error",
+        description: "Could not find the selected payment",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  // Handle payment success
+  const handlePaymentSuccess = () => {
+    setPaymentModalOpen(false);
+    refetchPayments();
     toast({
-      title: "Payment executed",
-      description: "The payment has been successfully executed."
+      title: "Payment Processed",
+      description: "The payment has been successfully processed."
     });
   };
   
@@ -171,6 +216,26 @@ const Payments = () => {
   
   return (
     <>
+      {/* Payment Dialog */}
+      <Dialog open={paymentModalOpen} onOpenChange={setPaymentModalOpen}>
+        <DialogContent className="sm:max-w-[600px] bg-black text-white border border-gray-800">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">Process Payment</DialogTitle>
+            <DialogDescription>
+              Complete the payment using our secure payment processor
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedPayment && (
+            <PaymentProcessor 
+              payment={selectedPayment} 
+              onSuccess={handlePaymentSuccess}
+              onCancel={() => setPaymentModalOpen(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+    
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <div>

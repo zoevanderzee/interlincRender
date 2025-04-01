@@ -69,6 +69,9 @@ export const payments = pgTable("payments", {
   scheduledDate: timestamp("scheduled_date").notNull(),
   completedDate: timestamp("completed_date"),
   notes: text("notes"),
+  stripePaymentIntentId: text("stripe_payment_intent_id"), // Stripe Payment Intent ID
+  stripePaymentIntentStatus: text("stripe_payment_intent_status"), // Stripe Payment Intent Status
+  paymentProcessor: text("payment_processor").default("stripe"), // Payment processor used
 });
 
 // Documents table

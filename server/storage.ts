@@ -45,6 +45,7 @@ export interface IStorage {
   getUpcomingPayments(limit: number): Promise<Payment[]>;
   createPayment(payment: InsertPayment): Promise<Payment>;
   updatePayment(id: number, payment: Partial<InsertPayment>): Promise<Payment | undefined>;
+  updatePaymentStripeDetails(id: number, stripePaymentIntentId: string, stripePaymentIntentStatus: string): Promise<Payment | undefined>;
   
   // Documents
   getDocument(id: number): Promise<Document | undefined>;
@@ -262,7 +263,14 @@ export class MemStorage implements IStorage {
   
   async createPayment(insertPayment: InsertPayment): Promise<Payment> {
     const id = this.paymentId++;
-    const payment: Payment = { ...insertPayment, id, completedDate: null };
+    const payment: Payment = { 
+      ...insertPayment, 
+      id, 
+      completedDate: null,
+      stripePaymentIntentId: null,
+      stripePaymentIntentStatus: null,
+      paymentProcessor: 'stripe'
+    };
     this.payments.set(id, payment);
     return payment;
   }
@@ -272,6 +280,27 @@ export class MemStorage implements IStorage {
     if (!existingPayment) return undefined;
     
     const updatedPayment = { ...existingPayment, ...paymentData };
+    this.payments.set(id, updatedPayment);
+    return updatedPayment;
+  }
+  
+  async updatePaymentStripeDetails(id: number, stripePaymentIntentId: string, stripePaymentIntentStatus: string): Promise<Payment | undefined> {
+    const existingPayment = this.payments.get(id);
+    if (!existingPayment) return undefined;
+    
+    const updatedPayment = { 
+      ...existingPayment, 
+      stripePaymentIntentId, 
+      stripePaymentIntentStatus,
+      // Update payment status based on Stripe status
+      status: stripePaymentIntentStatus === 'succeeded' ? 'completed' : 
+              stripePaymentIntentStatus === 'processing' ? 'processing' : 
+              stripePaymentIntentStatus === 'requires_payment_method' ? 'failed' : 
+              existingPayment.status,
+      // If payment succeeded, set the completed date
+      completedDate: stripePaymentIntentStatus === 'succeeded' ? new Date() : existingPayment.completedDate
+    };
+    
     this.payments.set(id, updatedPayment);
     return updatedPayment;
   }

@@ -10,6 +10,7 @@ import {
   insertPaymentSchema,
   insertDocumentSchema
 } from "@shared/schema";
+import stripeService from "./services/stripe";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // API routes prefix
@@ -401,6 +402,115 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(dashboardData);
     } catch (error) {
       res.status(500).json({ message: "Error fetching dashboard data" });
+    }
+  });
+  
+  // Stripe integration routes
+  
+  // Create payment intent for a specific payment
+  app.post(`${apiRouter}/payments/:id/create-intent`, async (req: Request, res: Response) => {
+    try {
+      const paymentId = parseInt(req.params.id);
+      const payment = await storage.getPayment(paymentId);
+      
+      if (!payment) {
+        return res.status(404).json({ message: "Payment not found" });
+      }
+      
+      // Check if payment already has a Stripe payment intent
+      if (payment.stripePaymentIntentId) {
+        // If payment intent exists, retrieve it and return client secret
+        const existingIntent = await stripeService.retrievePaymentIntent(payment.stripePaymentIntentId);
+        return res.json({ 
+          clientSecret: existingIntent.client_secret,
+          paymentIntentId: payment.stripePaymentIntentId,
+          status: existingIntent.status
+        });
+      }
+      
+      // Create a new payment intent
+      const paymentIntent = await stripeService.processMilestonePayment(payment);
+      
+      // Update payment with Stripe payment intent details
+      await storage.updatePaymentStripeDetails(
+        paymentId, 
+        paymentIntent.id, 
+        'requires_payment_method'
+      );
+      
+      res.json({
+        clientSecret: paymentIntent.clientSecret,
+        paymentIntentId: paymentIntent.id
+      });
+    } catch (error) {
+      console.error('Error creating payment intent:', error);
+      res.status(500).json({ message: "Error creating payment intent" });
+    }
+  });
+  
+  // Webhook for Stripe events
+  app.post(`${apiRouter}/stripe-webhook`, async (req: Request, res: Response) => {
+    try {
+      const event = req.body;
+      
+      // Handle payment_intent.succeeded event
+      if (event.type === 'payment_intent.succeeded') {
+        const paymentIntent = event.data.object;
+        const paymentId = paymentIntent.metadata.paymentId;
+        
+        if (paymentId) {
+          await storage.updatePaymentStripeDetails(
+            parseInt(paymentId),
+            paymentIntent.id,
+            paymentIntent.status
+          );
+        }
+      }
+      
+      // Handle payment_intent.payment_failed event
+      if (event.type === 'payment_intent.payment_failed') {
+        const paymentIntent = event.data.object;
+        const paymentId = paymentIntent.metadata.paymentId;
+        
+        if (paymentId) {
+          await storage.updatePaymentStripeDetails(
+            parseInt(paymentId),
+            paymentIntent.id,
+            paymentIntent.status
+          );
+        }
+      }
+      
+      res.json({ received: true });
+    } catch (error) {
+      console.error('Error processing webhook:', error);
+      res.status(500).json({ message: "Error processing webhook" });
+    }
+  });
+  
+  // Update payment status from Stripe
+  app.post(`${apiRouter}/payments/:id/update-status`, async (req: Request, res: Response) => {
+    try {
+      const paymentId = parseInt(req.params.id);
+      const { stripePaymentIntentId } = req.body;
+      
+      if (!stripePaymentIntentId) {
+        return res.status(400).json({ message: "Stripe payment intent ID is required" });
+      }
+      
+      const paymentIntent = await stripeService.retrievePaymentIntent(stripePaymentIntentId);
+      
+      await storage.updatePaymentStripeDetails(
+        paymentId,
+        stripePaymentIntentId,
+        paymentIntent.status
+      );
+      
+      const updatedPayment = await storage.getPayment(paymentId);
+      res.json(updatedPayment);
+    } catch (error) {
+      console.error('Error updating payment status:', error);
+      res.status(500).json({ message: "Error updating payment status" });
     }
   });
   
