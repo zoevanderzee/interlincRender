@@ -1,4 +1,5 @@
 import { Link, useLocation } from "wouter";
+import logoImage from "../../assets/logo.png";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -20,9 +21,7 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
     return (
       <div className="hidden md:flex flex-col bg-black border-r border-zinc-800 w-16 overflow-y-auto transition-all duration-300 ease-in-out">
         <div className="flex justify-center py-4 border-b border-zinc-800">
-          <div className="h-8 w-8 rounded bg-accent-500 flex items-center justify-center">
-            <span className="text-white font-bold text-lg">CL</span>
-          </div>
+          <img src={logoImage} alt="Creativ Linc Logo" className="h-8" />
         </div>
         
         <nav className="py-4 flex flex-col h-full">
@@ -125,11 +124,9 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
       flex-col bg-black border-r border-zinc-800 w-64 overflow-y-auto transition-all duration-300 ease-in-out
     `}>
       <div className="flex items-center justify-between p-4 border-b border-zinc-800">
-        <div className="flex items-center space-x-2">
-          <div className="h-8 w-8 rounded bg-accent-500 flex items-center justify-center">
-            <span className="text-white font-bold text-lg">CL</span>
-          </div>
-          <h1 className="text-xl font-semibold text-white">Creativ Linc</h1>
+        <div className="flex items-center">
+          <img src={logoImage} alt="Creativ Linc Logo" className="h-8" />
+          <span className="text-white font-semibold ml-2 text-lg">Creativ Linc</span>
         </div>
         
         <button 
