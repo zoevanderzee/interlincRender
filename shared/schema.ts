@@ -15,6 +15,8 @@ export const users = pgTable("users", {
   profileImageUrl: text("profile_image_url"),
   companyName: text("company_name"),
   title: text("title"),
+  stripeCustomerId: text("stripe_customer_id"), // Stripe customer ID for payment processing
+  stripeSubscriptionId: text("stripe_subscription_id"), // Stripe subscription ID for companies
 });
 
 // Project Invites table

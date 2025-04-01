@@ -642,7 +642,7 @@ const Settings = () => {
                     </ul>
                   </div>
                   <div className="mt-4 flex space-x-2">
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={() => window.location.href = '/subscribe'}>
                       Change Plan
                     </Button>
                     <Button variant="outline" size="sm" className="text-destructive border-destructive hover:bg-destructive/10">

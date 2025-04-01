@@ -14,6 +14,7 @@ import Reports from "@/pages/reports";
 import DataRoom from "@/pages/data-room";
 import Compliance from "@/pages/compliance";
 import Settings from "@/pages/settings";
+import Subscribe from "@/pages/subscribe";
 import Help from "@/pages/help";
 import Layout from "@/components/layout/Layout";
 
@@ -32,6 +33,7 @@ function Router() {
         <Route path="/data-room" component={DataRoom} />
         <Route path="/compliance" component={Compliance} />
         <Route path="/settings" component={Settings} />
+        <Route path="/subscribe" component={Subscribe} />
         <Route path="/help" component={Help} />
         <Route component={NotFound} />
       </Switch>

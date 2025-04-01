@@ -10,7 +10,15 @@ import {
   insertPaymentSchema,
   insertDocumentSchema
 } from "@shared/schema";
+import Stripe from "stripe";
 import stripeService from "./services/stripe";
+
+if (!process.env.STRIPE_SECRET_KEY) {
+  throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
+}
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: "2023-10-16",
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // API routes prefix
@@ -511,6 +519,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error updating payment status:', error);
       res.status(500).json({ message: "Error updating payment status" });
+    }
+  });
+  
+  // Subscription endpoint for companies
+  app.post(`${apiRouter}/get-or-create-subscription`, async (req: Request, res: Response) => {
+    try {
+      // In a real application, this would check if the user is authenticated
+      // and retrieve their user ID from the session
+      // For this demo, we'll simulate user authentication
+      const userId = 1; // Default to first user for demo
+      
+      // Get user details
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Check if user already has a subscription
+      // In a real app, you'd have a stripeSubscriptionId field on the user
+      // For demo purposes, we're always creating a new subscription
+      
+      try {
+        // Create a customer in Stripe if they don't have one
+        const customer = await stripe.customers.create({
+          email: user.email,
+          name: `${user.firstName} ${user.lastName}`,
+          metadata: {
+            userId: user.id.toString()
+          }
+        });
+        
+        // Create a product for the subscription
+        const product = await stripe.products.create({
+          name: 'Premium Plan',
+          description: 'Monthly subscription to CD Smart Contract Platform'
+        });
+        
+        // Create a price for the product
+        const price = await stripe.prices.create({
+          product: product.id,
+          unit_amount: 9900, // $99.00
+          currency: 'usd',
+          recurring: {
+            interval: 'month'
+          }
+        });
+        
+        // Create the subscription
+        const subscription = await stripe.subscriptions.create({
+          customer: customer.id,
+          items: [
+            {
+              price: price.id
+            }
+          ],
+          payment_behavior: 'default_incomplete',
+          payment_settings: {
+            save_default_payment_method: 'on_subscription'
+          },
+          expand: ['latest_invoice.payment_intent']
+        });
+        
+        // Extract client secret from subscription
+        const latestInvoice = subscription.latest_invoice as Stripe.Invoice;
+        const paymentIntent = latestInvoice.payment_intent as Stripe.PaymentIntent;
+        
+        // Update user with Stripe information
+        await storage.updateUserStripeInfo(user.id, {
+          stripeCustomerId: customer.id,
+          stripeSubscriptionId: subscription.id
+        });
+        
+        // Return subscription details
+        res.json({
+          subscriptionId: subscription.id,
+          clientSecret: paymentIntent.client_secret,
+          customerId: customer.id
+        });
+      } catch (error: any) {
+        console.error('Error creating subscription:', error.message);
+        return res.status(400).json({ 
+          message: "Error creating subscription", 
+          error: error.message 
+        });
+      }
+    } catch (error: any) {
+      console.error('Error in subscription endpoint:', error);
+      res.status(500).json({ 
+        message: "Error processing subscription request",
+        error: error.message 
+      });
     }
   });
   
