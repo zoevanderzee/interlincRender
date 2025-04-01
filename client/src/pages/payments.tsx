@@ -239,18 +239,22 @@ const Payments = () => {
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <div>
-          <h1 className="text-2xl md:text-3xl font-semibold text-primary-900">Payments</h1>
-          <p className="text-primary-500 mt-1">Manage automated payments to contractors</p>
+          <h1 className="text-2xl md:text-3xl font-semibold text-white">Payments</h1>
+          <p className="text-gray-400 mt-1">Manage automated payments to contractors</p>
         </div>
         <div className="mt-4 md:mt-0 flex space-x-3">
           <Button 
             variant="outline"
+            className="border-gray-700 text-white hover:bg-gray-800"
             onClick={handleExportPayments}
           >
             <Download className="mr-2" size={16} />
             Export
           </Button>
-          <Button onClick={handleAddPayment}>
+          <Button 
+            onClick={handleAddPayment}
+            className="bg-indigo-600 hover:bg-indigo-700"
+          >
             <Plus className="mr-2" size={16} />
             Add Payment
           </Button>
@@ -259,67 +263,67 @@ const Payments = () => {
       
       {/* Payment Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <Card className="p-5 border border-primary-100">
+        <Card className="p-5 bg-black border border-gray-800 text-white">
           <div className="flex justify-between mb-3">
-            <div className="text-primary-500 text-sm">Scheduled</div>
-            <div className="h-8 w-8 rounded-full bg-accent-50 text-accent-500 flex items-center justify-center">
+            <div className="text-gray-400 text-sm">Scheduled</div>
+            <div className="h-8 w-8 rounded-full bg-indigo-900/30 text-indigo-400 flex items-center justify-center">
               <Calendar size={16} />
             </div>
           </div>
-          <div className="text-2xl font-semibold text-primary-900">
+          <div className="text-2xl font-semibold text-white">
             ${calculateTotal(scheduledPayments).toLocaleString('en-US')}
           </div>
-          <div className="text-sm text-primary-500 mt-1">{scheduledPayments.length} payments</div>
+          <div className="text-sm text-gray-400 mt-1">{scheduledPayments.length} payments</div>
         </Card>
         
-        <Card className="p-5 border border-primary-100">
+        <Card className="p-5 bg-black border border-gray-800 text-white">
           <div className="flex justify-between mb-3">
-            <div className="text-primary-500 text-sm">Processing</div>
-            <div className="h-8 w-8 rounded-full bg-warning-50 text-warning flex items-center justify-center">
+            <div className="text-gray-400 text-sm">Processing</div>
+            <div className="h-8 w-8 rounded-full bg-amber-900/30 text-amber-400 flex items-center justify-center">
               <Clock size={16} />
             </div>
           </div>
-          <div className="text-2xl font-semibold text-primary-900">
+          <div className="text-2xl font-semibold text-white">
             ${calculateTotal(processingPayments).toLocaleString('en-US')}
           </div>
-          <div className="text-sm text-primary-500 mt-1">{processingPayments.length} payments</div>
+          <div className="text-sm text-gray-400 mt-1">{processingPayments.length} payments</div>
         </Card>
         
-        <Card className="p-5 border border-primary-100">
+        <Card className="p-5 bg-black border border-gray-800 text-white">
           <div className="flex justify-between mb-3">
-            <div className="text-primary-500 text-sm">Completed</div>
-            <div className="h-8 w-8 rounded-full bg-success-50 text-success flex items-center justify-center">
+            <div className="text-gray-400 text-sm">Completed</div>
+            <div className="h-8 w-8 rounded-full bg-green-900/30 text-green-400 flex items-center justify-center">
               <CheckCircle size={16} />
             </div>
           </div>
-          <div className="text-2xl font-semibold text-primary-900">
+          <div className="text-2xl font-semibold text-white">
             ${calculateTotal(completedPayments).toLocaleString('en-US')}
           </div>
-          <div className="text-sm text-primary-500 mt-1">{completedPayments.length} payments</div>
+          <div className="text-sm text-gray-400 mt-1">{completedPayments.length} payments</div>
         </Card>
         
-        <Card className="p-5 border border-primary-100">
+        <Card className="p-5 bg-black border border-gray-800 text-white">
           <div className="flex justify-between mb-3">
-            <div className="text-primary-500 text-sm">Failed</div>
-            <div className="h-8 w-8 rounded-full bg-destructive-50 text-destructive flex items-center justify-center">
+            <div className="text-gray-400 text-sm">Failed</div>
+            <div className="h-8 w-8 rounded-full bg-red-900/30 text-red-400 flex items-center justify-center">
               <XCircle size={16} />
             </div>
           </div>
-          <div className="text-2xl font-semibold text-primary-900">
+          <div className="text-2xl font-semibold text-white">
             ${calculateTotal(failedPayments).toLocaleString('en-US')}
           </div>
-          <div className="text-sm text-primary-500 mt-1">{failedPayments.length} payments</div>
+          <div className="text-sm text-gray-400 mt-1">{failedPayments.length} payments</div>
         </Card>
       </div>
       
       {/* Filters */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-primary-100 mb-6">
+      <div className="bg-black p-4 rounded-lg border border-gray-800 mb-6">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary-400" size={18} />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
             <Input
               placeholder="Search payments..."
-              className="pl-9"
+              className="pl-9 bg-gray-900/50 border-gray-700 text-white placeholder:text-gray-500"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -331,6 +335,7 @@ const Payments = () => {
                 placeholder="From Date"
                 value={fromDateFilter}
                 onChange={(e) => setFromDateFilter(e.target.value)}
+                className="bg-gray-900/50 border-gray-700 text-white"
               />
             </div>
             <div>
@@ -339,10 +344,16 @@ const Payments = () => {
                 placeholder="To Date"
                 value={toDateFilter}
                 onChange={(e) => setToDateFilter(e.target.value)}
+                className="bg-gray-900/50 border-gray-700 text-white"
               />
             </div>
           </div>
-          <Button variant="outline" size="icon" onClick={clearFilters}>
+          <Button 
+            variant="outline" 
+            size="icon" 
+            onClick={clearFilters}
+            className="border-gray-700 text-white hover:bg-gray-800"
+          >
             <Filter size={18} />
           </Button>
         </div>
@@ -350,26 +361,26 @@ const Payments = () => {
       
       {/* Payments Tabs */}
       <Tabs defaultValue="upcoming" className="w-full">
-        <TabsList className="mb-6">
-          <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
-          <TabsTrigger value="processing">Processing</TabsTrigger>
-          <TabsTrigger value="completed">Completed</TabsTrigger>
-          <TabsTrigger value="failed">Failed</TabsTrigger>
-          <TabsTrigger value="all">All Payments</TabsTrigger>
+        <TabsList className="mb-6 bg-gray-900 border border-gray-800">
+          <TabsTrigger value="upcoming" className="data-[state=active]:bg-black data-[state=active]:text-white">Upcoming</TabsTrigger>
+          <TabsTrigger value="processing" className="data-[state=active]:bg-black data-[state=active]:text-white">Processing</TabsTrigger>
+          <TabsTrigger value="completed" className="data-[state=active]:bg-black data-[state=active]:text-white">Completed</TabsTrigger>
+          <TabsTrigger value="failed" className="data-[state=active]:bg-black data-[state=active]:text-white">Failed</TabsTrigger>
+          <TabsTrigger value="all" className="data-[state=active]:bg-black data-[state=active]:text-white">All Payments</TabsTrigger>
         </TabsList>
         
         <TabsContent value="upcoming">
-          <div className="bg-white rounded-lg shadow-sm border border-primary-100 overflow-hidden">
+          <div className="bg-black rounded-lg border border-gray-800 overflow-hidden">
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="border-collapse">
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Payment</TableHead>
-                    <TableHead>Contractor</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Scheduled Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                  <TableRow className="border-b border-gray-800">
+                    <TableHead className="text-gray-300">Payment</TableHead>
+                    <TableHead className="text-gray-300">Contractor</TableHead>
+                    <TableHead className="text-gray-300">Amount</TableHead>
+                    <TableHead className="text-gray-300">Scheduled Date</TableHead>
+                    <TableHead className="text-gray-300">Status</TableHead>
+                    <TableHead className="text-gray-300 text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -378,20 +389,20 @@ const Payments = () => {
                       const { contract, contractor } = getPaymentDetails(payment);
                       
                       return (
-                        <TableRow key={payment.id}>
-                          <TableCell>
+                        <TableRow key={payment.id} className="border-b border-gray-800">
+                          <TableCell className="text-white">
                             <div className="font-medium">{contract?.contractName || "Unknown Contract"}</div>
-                            <div className="text-sm text-primary-500">{payment.notes}</div>
+                            <div className="text-sm text-gray-400">{payment.notes}</div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="text-white">
                             {contractor ? `${contractor.firstName} ${contractor.lastName}` : "Unknown"}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="text-white">
                             <div className="font-medium">${parseFloat(payment.amount.toString()).toLocaleString('en-US')}</div>
                           </TableCell>
-                          <TableCell>{formatDate(payment.scheduledDate)}</TableCell>
+                          <TableCell className="text-white">{formatDate(payment.scheduledDate)}</TableCell>
                           <TableCell>
-                            <span className="px-2 py-1 text-xs rounded-full bg-accent-100 text-accent-700 font-medium">
+                            <span className="px-2 py-1 text-xs rounded-full bg-indigo-900/30 text-indigo-400 font-medium">
                               Scheduled
                             </span>
                           </TableCell>
@@ -399,6 +410,7 @@ const Payments = () => {
                             <Button 
                               variant="outline" 
                               size="sm"
+                              className="border-gray-700 text-white hover:bg-gray-800"
                               onClick={() => handleExecutePayment(payment.id)}
                             >
                               Process Now
@@ -409,11 +421,11 @@ const Payments = () => {
                     })
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8">
+                      <TableCell colSpan={6} className="text-center py-8 text-gray-400">
                         <div className="flex flex-col items-center">
-                          <Calendar className="h-8 w-8 text-primary-400 mb-2" />
-                          <p className="text-primary-500 font-medium">No upcoming payments</p>
-                          <p className="text-sm text-primary-400 mt-1">
+                          <Calendar className="h-8 w-8 text-gray-500 mb-2" />
+                          <p className="text-white font-medium">No upcoming payments</p>
+                          <p className="text-sm text-gray-500 mt-1">
                             {searchTerm || fromDateFilter || toDateFilter ? 
                               "Try changing your search or filters" : 
                               "All your scheduled payments will appear here"}
@@ -429,17 +441,17 @@ const Payments = () => {
         </TabsContent>
         
         <TabsContent value="processing">
-          <div className="bg-white rounded-lg shadow-sm border border-primary-100 overflow-hidden">
+          <div className="bg-black rounded-lg border border-gray-800 overflow-hidden">
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="border-collapse">
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Payment</TableHead>
-                    <TableHead>Contractor</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Scheduled Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                  <TableRow className="border-b border-gray-800">
+                    <TableHead className="text-gray-300">Payment</TableHead>
+                    <TableHead className="text-gray-300">Contractor</TableHead>
+                    <TableHead className="text-gray-300">Amount</TableHead>
+                    <TableHead className="text-gray-300">Scheduled Date</TableHead>
+                    <TableHead className="text-gray-300">Status</TableHead>
+                    <TableHead className="text-gray-300 text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
