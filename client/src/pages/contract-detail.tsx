@@ -191,8 +191,8 @@ export default function ContractDetailPage() {
         {/* Contract header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-white">{contract.contractName}</h1>
-            <div className="flex items-center text-zinc-400 mt-1">
+            <h1 className="text-3xl font-bold text-primary-900">{contract.contractName}</h1>
+            <div className="flex items-center text-primary-500 mt-1">
               <span className="inline-flex items-center mr-4">
                 <UserIcon className="h-4 w-4 mr-1" />
                 {isLoadingContractors ? 'Loading contractors...' : 
@@ -209,7 +209,7 @@ export default function ContractDetailPage() {
             </div>
           </div>
           <div className="mt-4 md:mt-0">
-            <Button variant="outline" className="mr-2 border-zinc-700 text-white hover:bg-zinc-800">
+            <Button variant="outline" className="mr-2">
               Export Contract
             </Button>
             <Button>Edit Contract</Button>
@@ -218,29 +218,29 @@ export default function ContractDetailPage() {
 
         {/* Status banner */}
         <div 
-          className={`p-4 rounded-lg mb-6 flex items-center border border-zinc-800 bg-black
-            ${contract.status === 'active' ? 'border-green-900' : 
-              contract.status === 'pending' ? 'border-amber-900' : 
-              'border-red-900'}`}
+          className={`p-4 rounded-lg mb-6 flex items-center
+            ${contract.status === 'active' ? 'bg-green-50 border border-green-200' : 
+              contract.status === 'pending' ? 'bg-yellow-50 border border-yellow-200' : 
+              'bg-red-50 border border-red-200'}`}
         >
           <div className="mr-3">
             {contract.status === 'active' ? (
               <CheckCircle className="h-6 w-6 text-green-500" />
             ) : contract.status === 'pending' ? (
-              <Clock className="h-6 w-6 text-amber-500" />
+              <Clock className="h-6 w-6 text-yellow-500" />
             ) : (
               <AlertTriangle className="h-6 w-6 text-red-500" />
             )}
           </div>
           <div>
-            <h3 className="font-medium text-white">
+            <h3 className="font-medium">
               {contract.status === 'active' 
                 ? 'Active Contract' 
                 : contract.status === 'pending' 
                 ? 'Pending Contract' 
                 : 'Contract Issue'}
             </h3>
-            <p className="text-sm text-zinc-400">
+            <p className="text-sm">
               {contract.status === 'active' 
                 ? 'This contract is currently active and in progress.' 
                 : contract.status === 'pending' 
