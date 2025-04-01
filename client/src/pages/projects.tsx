@@ -38,7 +38,7 @@ const Projects = () => {
   const [_, navigate] = useLocation();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   // Fetch milestones
   const { data: milestones = [], isLoading: isLoadingMilestones } = useQuery<Milestone[]>({
@@ -60,7 +60,7 @@ const Projects = () => {
     const matchesSearch = searchTerm === "" || 
       milestone.name.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesStatus = statusFilter === "" || milestone.status === statusFilter;
+    const matchesStatus = statusFilter === "all" || milestone.status === statusFilter;
     
     return matchesSearch && matchesStatus;
   });
@@ -68,7 +68,7 @@ const Projects = () => {
   // Clear filters
   const clearFilters = () => {
     setSearchTerm("");
-    setStatusFilter("");
+    setStatusFilter("all");
   };
 
   // Handle view milestone
@@ -187,7 +187,7 @@ const Projects = () => {
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Statuses</SelectItem>
+                <SelectItem value="all">All Statuses</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
                 <SelectItem value="overdue">Overdue</SelectItem>
@@ -223,11 +223,11 @@ const Projects = () => {
             </div>
             <h3 className="text-lg font-medium text-primary-900 mb-2">No milestones found</h3>
             <p className="text-primary-500 mb-6">
-              {searchTerm || statusFilter ? 
+              {searchTerm || statusFilter !== "all" ? 
                 "No milestones match your current filters." : 
                 "There are no milestones to display."}
             </p>
-            {searchTerm || statusFilter ? (
+            {searchTerm || statusFilter !== "all" ? (
               <Button variant="outline" onClick={clearFilters}>
                 Clear Filters
               </Button>
