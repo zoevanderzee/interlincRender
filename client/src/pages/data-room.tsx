@@ -188,7 +188,6 @@ const DataRoom = () => {
         <TabsList className="mb-6 bg-gray-900 border border-gray-800">
           <TabsTrigger value="all" className="data-[state=active]:bg-gray-800 data-[state=active]:text-white text-gray-400">All Documents</TabsTrigger>
           <TabsTrigger value="contracts" className="data-[state=active]:bg-gray-800 data-[state=active]:text-white text-gray-400">Smart Contracts</TabsTrigger>
-          <TabsTrigger value="invoices" className="data-[state=active]:bg-gray-800 data-[state=active]:text-white text-gray-400">Invoices & Receipts</TabsTrigger>
           <TabsTrigger value="compliance" className="data-[state=active]:bg-gray-800 data-[state=active]:text-white text-gray-400">Compliance Documents</TabsTrigger>
         </TabsList>
         
@@ -382,18 +381,7 @@ const DataRoom = () => {
           )}
         </TabsContent>
         
-        <TabsContent value="invoices">
-          <Card className="border border-gray-800 bg-gray-900 p-8 text-center">
-            <div className="mx-auto h-16 w-16 rounded-full bg-gray-800 flex items-center justify-center text-gray-400 mb-4">
-              <FileText size={24} />
-            </div>
-            <h3 className="text-lg font-medium text-white mb-2">Invoices & Receipts</h3>
-            <p className="text-gray-400 mb-6">
-              Payment-related documents are automatically generated when payments are processed.
-            </p>
-          </Card>
-        </TabsContent>
-        
+
         <TabsContent value="compliance">
           <Card className="border border-gray-800 bg-gray-900 p-8 text-center">
             <div className="mx-auto h-16 w-16 rounded-full bg-gray-800 flex items-center justify-center text-gray-400 mb-4">
