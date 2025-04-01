@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import logoImage from "../../assets/logo.png";
+import logoImage from "../../assets/CD_icon_light@2x.png";
 
 interface SidebarProps {
   isOpen: boolean;
