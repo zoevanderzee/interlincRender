@@ -99,14 +99,14 @@ const Projects = () => {
   if (isLoadingMilestones || isLoadingContracts || isLoadingContractors) {
     return (
       <div className="animate-pulse space-y-6">
-        <div className="h-12 bg-primary-100 rounded w-1/3"></div>
-        <div className="h-10 bg-primary-100 rounded"></div>
+        <div className="h-12 bg-zinc-800 rounded w-1/3"></div>
+        <div className="h-10 bg-zinc-800 rounded"></div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="h-32 bg-primary-100 rounded"></div>
-          <div className="h-32 bg-primary-100 rounded"></div>
-          <div className="h-32 bg-primary-100 rounded"></div>
+          <div className="h-32 bg-zinc-800 rounded"></div>
+          <div className="h-32 bg-zinc-800 rounded"></div>
+          <div className="h-32 bg-zinc-800 rounded"></div>
         </div>
-        <div className="h-64 bg-primary-100 rounded"></div>
+        <div className="h-64 bg-zinc-800 rounded"></div>
       </div>
     );
   }
@@ -116,8 +116,8 @@ const Projects = () => {
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <div>
-          <h1 className="text-2xl md:text-3xl font-semibold text-primary-900">Projects & Milestones</h1>
-          <p className="text-primary-500 mt-1">Track project milestones and deliverables</p>
+          <h1 className="text-2xl md:text-3xl font-semibold text-white">Projects & Milestones</h1>
+          <p className="text-zinc-400 mt-1">Track project milestones and deliverables</p>
         </div>
         <div className="mt-4 md:mt-0">
           <Button onClick={() => navigate("/contracts/new")}>
@@ -129,51 +129,51 @@ const Projects = () => {
 
       {/* Project Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Card className="p-5 border border-primary-100">
+        <Card className="p-5 border border-zinc-800 bg-black">
           <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-full bg-accent-50 flex items-center justify-center text-accent-500">
+            <div className="h-12 w-12 rounded-full bg-zinc-800 flex items-center justify-center text-accent-500">
               <Clock size={24} />
             </div>
             <div>
-              <p className="text-primary-500 text-sm">Upcoming Milestones</p>
-              <h3 className="text-2xl font-semibold text-primary-900">{milestones.filter(m => m.status === 'pending').length}</h3>
+              <p className="text-zinc-400 text-sm">Upcoming Milestones</p>
+              <h3 className="text-2xl font-semibold text-white">{milestones.filter(m => m.status === 'pending').length}</h3>
             </div>
           </div>
         </Card>
 
-        <Card className="p-5 border border-primary-100">
+        <Card className="p-5 border border-zinc-800 bg-black">
           <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-full bg-success-50 flex items-center justify-center text-success">
+            <div className="h-12 w-12 rounded-full bg-zinc-800 flex items-center justify-center text-green-400">
               <CheckCircle size={24} />
             </div>
             <div>
-              <p className="text-primary-500 text-sm">Completed Milestones</p>
-              <h3 className="text-2xl font-semibold text-primary-900">{milestones.filter(m => m.status === 'completed' || m.status === 'approved').length}</h3>
+              <p className="text-zinc-400 text-sm">Completed Milestones</p>
+              <h3 className="text-2xl font-semibold text-white">{milestones.filter(m => m.status === 'completed' || m.status === 'approved').length}</h3>
             </div>
           </div>
         </Card>
 
-        <Card className="p-5 border border-primary-100">
+        <Card className="p-5 border border-zinc-800 bg-black">
           <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-full bg-warning-50 flex items-center justify-center text-warning">
+            <div className="h-12 w-12 rounded-full bg-zinc-800 flex items-center justify-center text-amber-400">
               <AlertCircle size={24} />
             </div>
             <div>
-              <p className="text-primary-500 text-sm">Overdue Milestones</p>
-              <h3 className="text-2xl font-semibold text-primary-900">{milestones.filter(m => m.status === 'overdue').length}</h3>
+              <p className="text-zinc-400 text-sm">Overdue Milestones</p>
+              <h3 className="text-2xl font-semibold text-white">{milestones.filter(m => m.status === 'overdue').length}</h3>
             </div>
           </div>
         </Card>
       </div>
 
       {/* Filters */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-primary-100 mb-6">
+      <div className="bg-black p-4 rounded-lg shadow-sm border border-zinc-800 mb-6">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary-400" size={18} />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" size={18} />
             <Input
               placeholder="Search milestones..."
-              className="pl-9"
+              className="pl-9 bg-zinc-900 border-zinc-700 text-white"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -183,10 +183,10 @@ const Projects = () => {
               value={statusFilter}
               onValueChange={setStatusFilter}
             >
-              <SelectTrigger>
+              <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-zinc-900 border-zinc-700 text-white">
                 <SelectItem value="all">All Statuses</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
@@ -199,10 +199,15 @@ const Projects = () => {
       </div>
 
       {/* Milestones List */}
-      <div className="bg-white rounded-lg shadow-sm border border-primary-100 overflow-hidden mb-6">
-        <div className="p-4 border-b border-primary-100 flex justify-between items-center">
-          <h2 className="text-lg font-medium text-primary-900">Project Milestones</h2>
-          <Button variant="outline" size="sm" onClick={clearFilters}>
+      <div className="bg-black rounded-lg shadow-sm border border-zinc-800 overflow-hidden mb-6">
+        <div className="p-4 border-b border-zinc-800 flex justify-between items-center">
+          <h2 className="text-lg font-medium text-white">Project Milestones</h2>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={clearFilters}
+            className="border-zinc-700 text-white hover:text-white hover:bg-zinc-800"
+          >
             Clear Filters
           </Button>
         </div>
@@ -218,17 +223,21 @@ const Projects = () => {
           />
         ) : (
           <div className="p-8 text-center">
-            <div className="mx-auto h-12 w-12 rounded-full bg-primary-50 flex items-center justify-center text-primary-500 mb-4">
+            <div className="mx-auto h-12 w-12 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 mb-4">
               <Calendar size={24} />
             </div>
-            <h3 className="text-lg font-medium text-primary-900 mb-2">No milestones found</h3>
-            <p className="text-primary-500 mb-6">
+            <h3 className="text-lg font-medium text-white mb-2">No milestones found</h3>
+            <p className="text-zinc-400 mb-6">
               {searchTerm || statusFilter !== "all" ? 
                 "No milestones match your current filters." : 
                 "There are no milestones to display."}
             </p>
             {searchTerm || statusFilter !== "all" ? (
-              <Button variant="outline" onClick={clearFilters}>
+              <Button 
+                variant="outline" 
+                onClick={clearFilters}
+                className="border-zinc-700 text-white hover:bg-zinc-800"
+              >
                 Clear Filters
               </Button>
             ) : (
@@ -242,22 +251,22 @@ const Projects = () => {
       </div>
 
       {/* Active Projects */}
-      <div className="bg-white rounded-lg shadow-sm border border-primary-100 overflow-hidden">
-        <div className="p-4 border-b border-primary-100">
-          <h2 className="text-lg font-medium text-primary-900">Active Projects</h2>
+      <div className="bg-black rounded-lg shadow-sm border border-zinc-800 overflow-hidden">
+        <div className="p-4 border-b border-zinc-800">
+          <h2 className="text-lg font-medium text-white">Active Projects</h2>
         </div>
 
         {contracts.filter(c => c.status === 'active').length > 0 ? (
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader>
+              <TableHeader className="bg-zinc-800">
                 <TableRow>
-                  <TableHead>Project Name</TableHead>
-                  <TableHead>Contractor</TableHead>
-                  <TableHead>Progress</TableHead>
-                  <TableHead>Next Milestone</TableHead>
-                  <TableHead>End Date</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="text-zinc-400">Project Name</TableHead>
+                  <TableHead className="text-zinc-400">Contractor</TableHead>
+                  <TableHead className="text-zinc-400">Progress</TableHead>
+                  <TableHead className="text-zinc-400">Next Milestone</TableHead>
+                  <TableHead className="text-zinc-400">End Date</TableHead>
+                  <TableHead className="text-right text-zinc-400">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -266,37 +275,38 @@ const Projects = () => {
                   .map(contract => {
                     const contractor = contractors.find(c => c.id === contract.contractorId);
                     return (
-                      <TableRow key={contract.id}>
-                        <TableCell className="font-medium">
+                      <TableRow key={contract.id} className="hover:bg-zinc-800 border-b border-zinc-800">
+                        <TableCell className="font-medium text-white">
                           <div className="flex items-center">
-                            <div className="h-8 w-8 mr-3 bg-accent-100 text-accent-700 rounded-md flex items-center justify-center">
+                            <div className="h-8 w-8 mr-3 bg-zinc-800 text-accent-500 rounded-md flex items-center justify-center">
                               <FileText size={16} />
                             </div>
                             {contract.contractName}
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-white">
                           {contractor?.firstName} {contractor?.lastName}
                         </TableCell>
                         <TableCell>
-                          <div className="w-full bg-primary-100 rounded-full h-2 max-w-[100px]">
+                          <div className="w-full bg-zinc-800 rounded-full h-2 max-w-[100px]">
                             <div className="bg-accent-500 h-2 rounded-full" style={{ width: '50%' }}></div>
                           </div>
-                          <span className="text-xs text-primary-500 mt-1">50%</span>
+                          <span className="text-xs text-zinc-400 mt-1">50%</span>
                         </TableCell>
                         <TableCell>
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-warning-100 text-warning">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-900 text-amber-400">
                             Due in 3 days
                           </span>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-white">
                           {new Date(contract.endDate!).toLocaleDateString()}
                         </TableCell>
                         <TableCell className="text-right">
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => navigate(`/contracts/${contract.id}`)}
+                            className="text-white hover:bg-zinc-700"
+                            onClick={() => navigate(`/contract/${contract.id}`)}
                           >
                             View 
                             <ChevronRight size={16} />
@@ -310,11 +320,11 @@ const Projects = () => {
           </div>
         ) : (
           <div className="p-8 text-center">
-            <div className="mx-auto h-12 w-12 rounded-full bg-primary-50 flex items-center justify-center text-primary-500 mb-4">
+            <div className="mx-auto h-12 w-12 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 mb-4">
               <FileText size={24} />
             </div>
-            <h3 className="text-lg font-medium text-primary-900 mb-2">No active projects</h3>
-            <p className="text-primary-500 mb-6">
+            <h3 className="text-lg font-medium text-white mb-2">No active projects</h3>
+            <p className="text-zinc-400 mb-6">
               You don't have any active projects at the moment.
             </p>
             <Button onClick={() => navigate("/contracts/new")}>
