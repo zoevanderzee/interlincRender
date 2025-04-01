@@ -61,8 +61,8 @@ const Contracts = () => {
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <div>
-          <h1 className="text-2xl md:text-3xl font-semibold text-primary-900">Smart Contracts</h1>
-          <p className="text-primary-500 mt-1">Manage and track all your contract agreements</p>
+          <h1 className="text-2xl md:text-3xl font-semibold text-white">Smart Contracts</h1>
+          <p className="text-zinc-400 mt-1">Manage and track all your contract agreements</p>
         </div>
         <div className="mt-4 md:mt-0">
           <Link href="/contracts/new">
@@ -75,13 +75,13 @@ const Contracts = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-primary-100 mb-6">
+      <div className="bg-black p-4 rounded-lg shadow-sm border border-zinc-800 mb-6">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary-400" size={18} />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" size={18} />
             <Input
               placeholder="Search contracts..."
-              className="pl-9"
+              className="pl-9 bg-zinc-900 border-zinc-700 text-white"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -91,10 +91,10 @@ const Contracts = () => {
               value={statusFilter}
               onValueChange={setStatusFilter}
             >
-              <SelectTrigger>
+              <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-zinc-900 border-zinc-700 text-white">
                 <SelectItem value="all">All Statuses</SelectItem>
                 <SelectItem value="draft">Draft</SelectItem>
                 <SelectItem value="pending_approval">Pending Approval</SelectItem>
@@ -104,7 +104,7 @@ const Contracts = () => {
               </SelectContent>
             </Select>
           </div>
-          <Button variant="outline" size="icon" onClick={clearFilters} className="md:self-start">
+          <Button variant="outline" size="icon" onClick={clearFilters} className="md:self-start border-zinc-700 text-white hover:text-white hover:bg-zinc-800">
             <FilterX size={18} />
           </Button>
         </div>
@@ -112,12 +112,12 @@ const Contracts = () => {
 
       {/* Contracts Table */}
       {isLoadingContracts || isLoadingContractors ? (
-        <div className="bg-white rounded-lg shadow-sm border border-primary-100 p-8">
+        <div className="bg-black rounded-lg shadow-sm border border-zinc-800 p-8">
           <div className="animate-pulse flex flex-col space-y-4">
-            <div className="h-4 bg-primary-100 rounded w-3/4"></div>
-            <div className="h-4 bg-primary-100 rounded w-1/2"></div>
-            <div className="h-4 bg-primary-100 rounded w-5/6"></div>
-            <div className="h-4 bg-primary-100 rounded w-2/3"></div>
+            <div className="h-4 bg-zinc-800 rounded w-3/4"></div>
+            <div className="h-4 bg-zinc-800 rounded w-1/2"></div>
+            <div className="h-4 bg-zinc-800 rounded w-5/6"></div>
+            <div className="h-4 bg-zinc-800 rounded w-2/3"></div>
           </div>
         </div>
       ) : (
@@ -131,9 +131,9 @@ const Contracts = () => {
 
       {/* Empty State */}
       {filteredContracts.length === 0 && !isLoadingContracts && (
-        <div className="bg-white rounded-lg shadow-sm border border-primary-100 p-8 text-center">
+        <div className="bg-black text-white rounded-lg shadow-sm border border-zinc-800 p-8 text-center">
           <div className="flex justify-center mb-4">
-            <div className="h-16 w-16 rounded-full bg-primary-50 flex items-center justify-center text-primary-500">
+            <div className="h-16 w-16 rounded-full bg-zinc-800 flex items-center justify-center text-white">
               <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                 <polyline points="14 2 14 8 20 8"></polyline>
@@ -143,8 +143,8 @@ const Contracts = () => {
               </svg>
             </div>
           </div>
-          <h3 className="text-lg font-medium text-primary-900 mb-2">No contracts found</h3>
-          <p className="text-primary-500 mb-6">
+          <h3 className="text-lg font-medium text-white mb-2">No contracts found</h3>
+          <p className="text-zinc-400 mb-6">
             {searchTerm || statusFilter ? 
               "No contracts match your search criteria. Try changing your filters." : 
               "Get started by creating your first smart contract."}
