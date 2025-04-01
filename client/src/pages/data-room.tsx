@@ -192,21 +192,21 @@ const DataRoom = () => {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <div>
           <h1 className="text-2xl md:text-3xl font-semibold text-primary-900">Data Room</h1>
-          <p className="text-primary-500 mt-1">Secure storage for all your contract documents</p>
+          <p className="text-primary-500 mt-1">Secure storage for all your generated smart contracts and related documents</p>
         </div>
         <div className="mt-4 md:mt-0">
           <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
             <DialogTrigger asChild>
               <Button>
                 <Upload className="mr-2" size={16} />
-                Upload Document
+                Upload Smart Contract
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>Upload Document</DialogTitle>
+                <DialogTitle>Upload Smart Contract or Document</DialogTitle>
                 <DialogDescription>
-                  Upload a document to the secure data room. All files are encrypted and stored securely.
+                  Upload a smart contract or related document to the secure data room. All files are encrypted and stored securely for compliance and audit purposes.
                 </DialogDescription>
               </DialogHeader>
               
@@ -327,7 +327,7 @@ const DataRoom = () => {
       <Tabs defaultValue="all" className="w-full">
         <TabsList className="mb-6">
           <TabsTrigger value="all">All Documents</TabsTrigger>
-          <TabsTrigger value="contracts">Contract Documents</TabsTrigger>
+          <TabsTrigger value="contracts">Smart Contracts</TabsTrigger>
           <TabsTrigger value="invoices">Invoices & Receipts</TabsTrigger>
           <TabsTrigger value="compliance">Compliance Documents</TabsTrigger>
         </TabsList>
@@ -423,7 +423,7 @@ const DataRoom = () => {
               ) : (
                 <Button onClick={() => setIsUploadDialogOpen(true)}>
                   <Plus size={16} className="mr-2" />
-                  Upload Document
+                  Upload Smart Contract
                 </Button>
               )}
             </Card>
@@ -435,13 +435,13 @@ const DataRoom = () => {
             <div className="mx-auto h-16 w-16 rounded-full bg-primary-50 flex items-center justify-center text-primary-500 mb-4">
               <FileText size={24} />
             </div>
-            <h3 className="text-lg font-medium text-primary-900 mb-2">Contract Documents</h3>
+            <h3 className="text-lg font-medium text-primary-900 mb-2">Smart Contracts</h3>
             <p className="text-primary-500 mb-6">
-              All contract-related documents will appear here.
+              All generated smart contracts and their related documents will appear here.
             </p>
             <Button onClick={() => setIsUploadDialogOpen(true)}>
               <Plus size={16} className="mr-2" />
-              Upload Contract Document
+              Upload Smart Contract
             </Button>
           </Card>
         </TabsContent>
