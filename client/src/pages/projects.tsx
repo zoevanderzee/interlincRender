@@ -198,8 +198,8 @@ const Projects = () => {
         </div>
       </div>
 
-      {/* Projects With Milestones */}
-      <div className="bg-black rounded-lg shadow-sm border border-zinc-800 overflow-hidden mb-6">
+      {/* Projects List */}
+      <div className="bg-black rounded-lg shadow-sm border border-zinc-800 overflow-hidden">
         <div className="p-4 border-b border-zinc-800 flex justify-between items-center">
           <h2 className="text-lg font-medium text-white">Projects</h2>
           <Button 
@@ -212,25 +212,111 @@ const Projects = () => {
           </Button>
         </div>
 
-        {filteredMilestones.length > 0 ? (
-          <MilestonesList
-            milestones={filteredMilestones}
-            contracts={contracts}
-            contractors={contractors}
-            onViewDetails={handleViewMilestone}
-            onApprove={handleApproveMilestone}
-            onRequestUpdate={handleRequestUpdate}
-          />
+        {contracts.length > 0 ? (
+          <>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-zinc-800">
+                  <TableRow>
+                    <TableHead className="text-zinc-400">Project Name</TableHead>
+                    <TableHead className="text-zinc-400">Contractor</TableHead>
+                    <TableHead className="text-zinc-400">Progress</TableHead>
+                    <TableHead className="text-zinc-400">Next Milestone</TableHead>
+                    <TableHead className="text-zinc-400">End Date</TableHead>
+                    <TableHead className="text-right text-zinc-400">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {contracts
+                    .filter(c => statusFilter === 'all' || c.status === statusFilter)
+                    .filter(c => !searchTerm || c.contractName.toLowerCase().includes(searchTerm.toLowerCase()))
+                    .map(contract => {
+                      const contractor = contractors.find(c => c.id === contract.contractorId);
+                      const projectMilestones = milestones.filter(m => m.contractId === contract.id);
+                      const nextMilestone = projectMilestones.find(m => m.status === 'pending');
+                      const completedMilestones = projectMilestones.filter(m => m.status === 'completed' || m.status === 'approved').length;
+                      const progress = projectMilestones.length > 0 
+                        ? Math.round((completedMilestones / projectMilestones.length) * 100) 
+                        : 0;
+                      
+                      return (
+                        <TableRow key={contract.id} className="hover:bg-zinc-800 border-b border-zinc-800">
+                          <TableCell className="font-medium text-white">
+                            <div className="flex items-center">
+                              <div className="h-8 w-8 mr-3 bg-zinc-800 text-accent-500 rounded-md flex items-center justify-center">
+                                <FileText size={16} />
+                              </div>
+                              {contract.contractName}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-white">
+                            {contractor?.firstName} {contractor?.lastName}
+                          </TableCell>
+                          <TableCell>
+                            <div className="w-full bg-zinc-800 rounded-full h-2 max-w-[100px]">
+                              <div className="bg-accent-500 h-2 rounded-full" style={{ width: `${progress}%` }}></div>
+                            </div>
+                            <span className="text-xs text-zinc-400 mt-1">{progress}%</span>
+                          </TableCell>
+                          <TableCell>
+                            {nextMilestone ? (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-900 text-amber-400">
+                                Due in 3 days
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-zinc-800 text-zinc-400">
+                                No pending milestones
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-white">
+                            {contract.endDate ? new Date(contract.endDate).toLocaleDateString() : 'Not set'}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-white hover:bg-zinc-700"
+                              onClick={() => navigate(`/contract/${contract.id}`)}
+                            >
+                              View 
+                              <ChevronRight size={16} />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                </TableBody>
+              </Table>
+            </div>
+            
+            {/* Milestones section below projects table */}
+            {filteredMilestones.length > 0 && (
+              <div className="border-t border-zinc-800">
+                <div className="p-4 border-b border-zinc-800">
+                  <h3 className="text-md font-medium text-white">Project Milestones</h3>
+                </div>
+                <MilestonesList
+                  milestones={filteredMilestones}
+                  contracts={contracts}
+                  contractors={contractors}
+                  onViewDetails={handleViewMilestone}
+                  onApprove={handleApproveMilestone}
+                  onRequestUpdate={handleRequestUpdate}
+                />
+              </div>
+            )}
+          </>
         ) : (
           <div className="p-8 text-center">
             <div className="mx-auto h-12 w-12 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 mb-4">
-              <Calendar size={24} />
+              <FileText size={24} />
             </div>
             <h3 className="text-lg font-medium text-white mb-2">No projects found</h3>
             <p className="text-zinc-400 mb-6">
               {searchTerm || statusFilter !== "all" ? 
                 "No projects match your current filters." : 
-                "There are no projects to display."}
+                "You don't have any projects at the moment."}
             </p>
             {searchTerm || statusFilter !== "all" ? (
               <Button 
@@ -246,91 +332,6 @@ const Projects = () => {
                 Create New Project
               </Button>
             )}
-          </div>
-        )}
-      </div>
-
-      {/* Active Projects */}
-      <div className="bg-black rounded-lg shadow-sm border border-zinc-800 overflow-hidden">
-        <div className="p-4 border-b border-zinc-800">
-          <h2 className="text-lg font-medium text-white">Active Projects</h2>
-        </div>
-
-        {contracts.filter(c => c.status === 'active').length > 0 ? (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader className="bg-zinc-800">
-                <TableRow>
-                  <TableHead className="text-zinc-400">Project Name</TableHead>
-                  <TableHead className="text-zinc-400">Contractor</TableHead>
-                  <TableHead className="text-zinc-400">Progress</TableHead>
-                  <TableHead className="text-zinc-400">Next Milestone</TableHead>
-                  <TableHead className="text-zinc-400">End Date</TableHead>
-                  <TableHead className="text-right text-zinc-400">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {contracts
-                  .filter(c => c.status === 'active')
-                  .map(contract => {
-                    const contractor = contractors.find(c => c.id === contract.contractorId);
-                    return (
-                      <TableRow key={contract.id} className="hover:bg-zinc-800 border-b border-zinc-800">
-                        <TableCell className="font-medium text-white">
-                          <div className="flex items-center">
-                            <div className="h-8 w-8 mr-3 bg-zinc-800 text-accent-500 rounded-md flex items-center justify-center">
-                              <FileText size={16} />
-                            </div>
-                            {contract.contractName}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-white">
-                          {contractor?.firstName} {contractor?.lastName}
-                        </TableCell>
-                        <TableCell>
-                          <div className="w-full bg-zinc-800 rounded-full h-2 max-w-[100px]">
-                            <div className="bg-accent-500 h-2 rounded-full" style={{ width: '50%' }}></div>
-                          </div>
-                          <span className="text-xs text-zinc-400 mt-1">50%</span>
-                        </TableCell>
-                        <TableCell>
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-900 text-amber-400">
-                            Due in 3 days
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-white">
-                          {new Date(contract.endDate!).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-white hover:bg-zinc-700"
-                            onClick={() => navigate(`/contract/${contract.id}`)}
-                          >
-                            View 
-                            <ChevronRight size={16} />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-              </TableBody>
-            </Table>
-          </div>
-        ) : (
-          <div className="p-8 text-center">
-            <div className="mx-auto h-12 w-12 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 mb-4">
-              <FileText size={24} />
-            </div>
-            <h3 className="text-lg font-medium text-white mb-2">No active projects</h3>
-            <p className="text-zinc-400 mb-6">
-              You don't have any active projects at the moment.
-            </p>
-            <Button onClick={() => navigate("/contracts/new")}>
-              <Plus size={16} className="mr-2" />
-              Create New Project
-            </Button>
           </div>
         )}
       </div>
