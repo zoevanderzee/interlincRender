@@ -82,8 +82,8 @@ const ContractForm = ({ contractors, onSuccess }: ContractFormProps) => {
     },
     onSuccess: () => {
       toast({
-        title: "Contract created",
-        description: "The contract has been created successfully!",
+        title: "Project created",
+        description: "The project has been created successfully!",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/contracts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
@@ -92,7 +92,7 @@ const ContractForm = ({ contractors, onSuccess }: ContractFormProps) => {
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || "Could not create contract. Please try again.",
+        description: error.message || "Could not create project. Please try again.",
         variant: "destructive",
       });
     },
@@ -126,12 +126,12 @@ const ContractForm = ({ contractors, onSuccess }: ContractFormProps) => {
             name="contractName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Contract Name</FormLabel>
+                <FormLabel className="text-white">Project Name</FormLabel>
                 <FormControl>
-                  <Input placeholder="Website Redesign Project" {...field} />
+                  <Input placeholder="Website Redesign Project" {...field} className="bg-zinc-900 border-zinc-700 text-white" />
                 </FormControl>
-                <FormDescription>
-                  A descriptive name for the contract
+                <FormDescription className="text-zinc-400">
+                  A descriptive name for the project
                 </FormDescription>
                 <FormMessage />
               </FormItem>
@@ -143,22 +143,23 @@ const ContractForm = ({ contractors, onSuccess }: ContractFormProps) => {
             name="contractCode"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Contract Code</FormLabel>
+                <FormLabel className="text-white">Project Code</FormLabel>
                 <div className="flex items-center space-x-2">
                   <FormControl>
-                    <Input {...field} />
+                    <Input {...field} className="bg-zinc-900 border-zinc-700 text-white" />
                   </FormControl>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
+                    className="text-white border-zinc-700 hover:bg-zinc-800"
                     onClick={() => form.setValue("contractCode", generateContractCode())}
                   >
                     Generate
                   </Button>
                 </div>
-                <FormDescription>
-                  A unique identifier for this contract
+                <FormDescription className="text-zinc-400">
+                  A unique identifier for this project
                 </FormDescription>
                 <FormMessage />
               </FormItem>
@@ -171,17 +172,17 @@ const ContractForm = ({ contractors, onSuccess }: ContractFormProps) => {
           name="contractorId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Contractor</FormLabel>
+              <FormLabel className="text-white">Sub Contractor/Freelancer</FormLabel>
               <Select
                 onValueChange={(value) => field.onChange(parseInt(value))}
                 defaultValue={field.value.toString()}
               >
                 <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a contractor" />
+                  <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
+                    <SelectValue placeholder="Select a sub contractor or freelancer" />
                   </SelectTrigger>
                 </FormControl>
-                <SelectContent>
+                <SelectContent className="bg-zinc-900 border-zinc-700 text-white">
                   {contractors.map((contractor) => (
                     <SelectItem key={contractor.id} value={contractor.id.toString()}>
                       {contractor.firstName} {contractor.lastName}{" "}
@@ -190,8 +191,8 @@ const ContractForm = ({ contractors, onSuccess }: ContractFormProps) => {
                   ))}
                 </SelectContent>
               </Select>
-              <FormDescription>
-                The contractor who will work on this project
+              <FormDescription className="text-zinc-400">
+                The sub contractor or freelancer who will work on this project
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -203,15 +204,15 @@ const ContractForm = ({ contractors, onSuccess }: ContractFormProps) => {
           name="description"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Description</FormLabel>
+              <FormLabel className="text-white">Description</FormLabel>
               <FormControl>
                 <Textarea
-                  placeholder="Brief description of the contract scope and deliverables"
-                  className="resize-none min-h-[100px]"
+                  placeholder="Brief description of the project scope and deliverables"
+                  className="resize-none min-h-[100px] bg-zinc-900 border-zinc-700 text-white"
                   {...field}
                 />
               </FormControl>
-              <FormDescription>
+              <FormDescription className="text-zinc-400">
                 A clear description of the work to be performed
               </FormDescription>
               <FormMessage />
@@ -225,16 +226,16 @@ const ContractForm = ({ contractors, onSuccess }: ContractFormProps) => {
             name="value"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Contract Value</FormLabel>
+                <FormLabel className="text-white">Project Value</FormLabel>
                 <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-primary-500">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-white">
                     $
                   </span>
                   <FormControl>
-                    <Input className="pl-7" placeholder="5000" {...field} />
+                    <Input className="pl-7 bg-zinc-900 border-zinc-700 text-white" placeholder="5000" {...field} />
                   </FormControl>
                 </div>
-                <FormDescription>Total contract value in USD</FormDescription>
+                <FormDescription className="text-zinc-400">Total project value in USD</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -245,13 +246,13 @@ const ContractForm = ({ contractors, onSuccess }: ContractFormProps) => {
             name="startDate"
             render={({ field }) => (
               <FormItem className="flex flex-col">
-                <FormLabel>Start Date</FormLabel>
+                <FormLabel className="text-white">Start Date</FormLabel>
                 <Popover>
                   <PopoverTrigger asChild>
                     <FormControl>
                       <Button
                         variant={"outline"}
-                        className={`w-full pl-3 text-left font-normal ${
+                        className={`w-full pl-3 text-left font-normal bg-zinc-900 border-zinc-700 text-white hover:bg-zinc-800 ${
                           !field.value && "text-muted-foreground"
                         }`}
                       >
@@ -284,13 +285,13 @@ const ContractForm = ({ contractors, onSuccess }: ContractFormProps) => {
             name="endDate"
             render={({ field }) => (
               <FormItem className="flex flex-col">
-                <FormLabel>End Date</FormLabel>
+                <FormLabel className="text-white">End Date</FormLabel>
                 <Popover>
                   <PopoverTrigger asChild>
                     <FormControl>
                       <Button
                         variant={"outline"}
-                        className={`w-full pl-3 text-left font-normal ${
+                        className={`w-full pl-3 text-left font-normal bg-zinc-900 border-zinc-700 text-white hover:bg-zinc-800 ${
                           !field.value && "text-muted-foreground"
                         }`}
                       >
@@ -324,17 +325,17 @@ const ContractForm = ({ contractors, onSuccess }: ContractFormProps) => {
           name="status"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Status</FormLabel>
+              <FormLabel className="text-white">Status</FormLabel>
               <Select
                 onValueChange={field.onChange}
                 defaultValue={field.value}
               >
                 <FormControl>
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
                     <SelectValue placeholder="Select a status" />
                   </SelectTrigger>
                 </FormControl>
-                <SelectContent>
+                <SelectContent className="bg-zinc-900 border-zinc-700 text-white">
                   <SelectItem value="draft">Draft</SelectItem>
                   <SelectItem value="pending_approval">Pending Approval</SelectItem>
                   <SelectItem value="active">Active</SelectItem>
@@ -342,8 +343,8 @@ const ContractForm = ({ contractors, onSuccess }: ContractFormProps) => {
                   <SelectItem value="terminated">Terminated</SelectItem>
                 </SelectContent>
               </Select>
-              <FormDescription>
-                The current status of this contract
+              <FormDescription className="text-zinc-400">
+                The current status of this project
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -351,14 +352,22 @@ const ContractForm = ({ contractors, onSuccess }: ContractFormProps) => {
         />
 
         <div className="flex justify-end space-x-4">
-          <Button type="button" variant="outline" onClick={() => form.reset()}>
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={() => form.reset()} 
+            className="border-zinc-700 text-white hover:bg-zinc-800"
+          >
             Cancel
           </Button>
-          <Button type="submit" disabled={submitting || createContractMutation.isPending}>
+          <Button 
+            type="submit" 
+            disabled={submitting || createContractMutation.isPending}
+          >
             {(submitting || createContractMutation.isPending) && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
-            Create Contract
+            Create Project
           </Button>
         </div>
       </form>

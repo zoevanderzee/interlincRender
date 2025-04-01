@@ -13,10 +13,10 @@ const NewContract = () => {
     queryKey: ['/api/users', { role: 'contractor' }],
   });
 
-  // Handle successful contract creation
+  // Handle successful project creation
   const handleSuccess = () => {
-    // Navigate back to contracts list after successful creation
-    navigate('/contracts');
+    // Navigate back to projects list after successful creation
+    navigate('/projects');
   };
 
   return (
@@ -26,29 +26,29 @@ const NewContract = () => {
         <Button 
           variant="ghost" 
           size="sm" 
-          className="mr-4"
-          onClick={() => navigate('/contracts')}
+          className="mr-4 text-white hover:bg-zinc-800"
+          onClick={() => navigate('/projects')}
         >
           <ArrowLeft size={16} />
         </Button>
         <div>
-          <h1 className="text-2xl md:text-3xl font-semibold text-primary-900">Create New Project</h1>
-          <p className="text-primary-500 mt-1">
+          <h1 className="text-2xl md:text-3xl font-semibold text-white">Create New Project</h1>
+          <p className="text-zinc-400 mt-1">
             Set up a new smart contract with predefined milestones and payments
           </p>
         </div>
       </div>
 
       {/* Content */}
-      <div className="bg-white p-6 rounded-lg shadow-sm border border-primary-100">
+      <div className="bg-black p-6 rounded-lg shadow-sm border border-zinc-800">
         {isLoading ? (
           <div className="animate-pulse space-y-4">
-            <div className="h-4 bg-primary-100 rounded w-1/4"></div>
-            <div className="h-10 bg-primary-100 rounded"></div>
-            <div className="h-4 bg-primary-100 rounded w-1/2"></div>
-            <div className="h-10 bg-primary-100 rounded"></div>
-            <div className="h-20 bg-primary-100 rounded"></div>
-            <div className="h-10 bg-primary-100 rounded"></div>
+            <div className="h-4 bg-zinc-800 rounded w-1/4"></div>
+            <div className="h-10 bg-zinc-800 rounded"></div>
+            <div className="h-4 bg-zinc-800 rounded w-1/2"></div>
+            <div className="h-10 bg-zinc-800 rounded"></div>
+            <div className="h-20 bg-zinc-800 rounded"></div>
+            <div className="h-10 bg-zinc-800 rounded"></div>
           </div>
         ) : (
           <ContractForm 
