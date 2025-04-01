@@ -219,9 +219,7 @@ const Projects = () => {
                 <TableHeader className="bg-zinc-800">
                   <TableRow>
                     <TableHead className="text-zinc-400">Project Name</TableHead>
-                    <TableHead className="text-zinc-400">Contractor</TableHead>
                     <TableHead className="text-zinc-400">Progress</TableHead>
-                    <TableHead className="text-zinc-400">Next Milestone</TableHead>
                     <TableHead className="text-zinc-400">End Date</TableHead>
                     <TableHead className="text-right text-zinc-400">Actions</TableHead>
                   </TableRow>
@@ -231,13 +229,17 @@ const Projects = () => {
                     .filter(c => statusFilter === 'all' || c.status === statusFilter)
                     .filter(c => !searchTerm || c.contractName.toLowerCase().includes(searchTerm.toLowerCase()))
                     .map(contract => {
-                      const contractor = contractors.find(c => c.id === contract.contractorId);
                       const projectMilestones = milestones.filter(m => m.contractId === contract.id);
-                      const nextMilestone = projectMilestones.find(m => m.status === 'pending');
                       const completedMilestones = projectMilestones.filter(m => m.status === 'completed' || m.status === 'approved').length;
                       const progress = projectMilestones.length > 0 
                         ? Math.round((completedMilestones / projectMilestones.length) * 100) 
                         : 0;
+                      
+                      // Count the number of contractors assigned to this project
+                      const projectContractors = Array.from(new Set(milestones
+                        .filter(m => m.contractId === contract.id)
+                        .map(m => m.contractorId)
+                      ));
                       
                       return (
                         <TableRow key={contract.id} className="hover:bg-zinc-800 border-b border-zinc-800">
@@ -246,28 +248,19 @@ const Projects = () => {
                               <div className="h-8 w-8 mr-3 bg-zinc-800 text-accent-500 rounded-md flex items-center justify-center">
                                 <FileText size={16} />
                               </div>
-                              {contract.contractName}
+                              <div>
+                                {contract.contractName}
+                                <div className="text-xs text-zinc-400 mt-1">
+                                  {projectContractors.length} {projectContractors.length === 1 ? 'contractor' : 'contractors'} assigned
+                                </div>
+                              </div>
                             </div>
-                          </TableCell>
-                          <TableCell className="text-white">
-                            {contractor?.firstName} {contractor?.lastName}
                           </TableCell>
                           <TableCell>
                             <div className="w-full bg-zinc-800 rounded-full h-2 max-w-[100px]">
                               <div className="bg-accent-500 h-2 rounded-full" style={{ width: `${progress}%` }}></div>
                             </div>
                             <span className="text-xs text-zinc-400 mt-1">{progress}%</span>
-                          </TableCell>
-                          <TableCell>
-                            {nextMilestone ? (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-900 text-amber-400">
-                                Due in 3 days
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-zinc-800 text-zinc-400">
-                                No pending milestones
-                              </span>
-                            )}
                           </TableCell>
                           <TableCell className="text-white">
                             {contract.endDate ? new Date(contract.endDate).toLocaleDateString() : 'Not set'}

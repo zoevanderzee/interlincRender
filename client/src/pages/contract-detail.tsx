@@ -18,6 +18,35 @@ export default function ContractDetailPage() {
   const contractId = params?.id ? parseInt(params.id) : 0;
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('overview');
+  
+  // Helper function to get associated contractors
+  const getAssociatedContractors = () => {
+    if (!contract || !contractors) return [];
+    return contractors.filter((c: User) => c.role === 'contractor' && c.id === contract.contractorId);
+  };
+  
+  // Helper function to count associated contractors
+  const getContractorCount = () => {
+    return getAssociatedContractors().length;
+  };
+  
+  // Helper function to group milestones by contractor
+  const getMilestonesByContractor = () => {
+    if (!milestones || !contract) return [];
+    
+    const contractMilestones = milestones.filter((m: Milestone) => m.contractId === contract.id);
+    
+    // For now, all milestones belong to the same contractor
+    // In a real multi-contractor scenario, milestones would be linked to specific contractors
+    if (getAssociatedContractors().length > 0) {
+      return [{
+        contractor: getAssociatedContractors()[0],
+        milestones: contractMilestones
+      }];
+    }
+    
+    return [];
+  };
 
   // Fetch contract details
   const { data: contract, isLoading: isLoadingContract } = useQuery({
@@ -33,11 +62,10 @@ export default function ContractDetailPage() {
     enabled: contractId > 0,
   });
 
-  // Fetch contractor details
-  const { data: contractor, isLoading: isLoadingContractor } = useQuery({
-    queryKey: ['/api/users', contract?.contractorId],
+  // Fetch all contractors
+  const { data: contractors = [], isLoading: isLoadingContractors } = useQuery({
+    queryKey: ['/api/users'],
     queryFn: getQueryFn({ on401: 'throw' }),
-    enabled: !!contract?.contractorId,
   });
 
   // Fetch documents for this contract
@@ -167,7 +195,8 @@ export default function ContractDetailPage() {
             <div className="flex items-center text-primary-500 mt-1">
               <span className="inline-flex items-center mr-4">
                 <UserIcon className="h-4 w-4 mr-1" />
-                {contractor ? `${contractor.firstName} ${contractor.lastName}` : 'Loading contractor...'}
+                {isLoadingContractors ? 'Loading contractors...' : 
+                  `${getContractorCount()} contractors assigned`}
               </span>
               <span className="inline-flex items-center mr-4">
                 <Calendar className="h-4 w-4 mr-1" />
@@ -336,76 +365,124 @@ export default function ContractDetailPage() {
               <div>
                 <Card>
                   <CardHeader>
-                    <CardTitle>Contractor</CardTitle>
+                    <CardTitle>Contractors</CardTitle>
                     <CardDescription>
-                      Information about the assigned contractor
+                      Information about assigned contractors
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {isLoadingContractor ? (
+                    {isLoadingContractors ? (
                       <div className="animate-pulse space-y-2">
                         <div className="h-12 w-12 rounded-full bg-primary-100"></div>
                         <div className="h-4 w-full rounded bg-primary-100"></div>
                         <div className="h-4 w-2/3 rounded bg-primary-100"></div>
                       </div>
-                    ) : contractor ? (
-                      <div>
-                        <div className="flex items-center mb-4">
-                          <div className="h-12 w-12 rounded-full bg-primary-100 flex items-center justify-center text-primary-500">
-                            <UserIcon className="h-6 w-6" />
+                    ) : getAssociatedContractors().length > 0 ? (
+                      <div className="space-y-6">
+                        {getAssociatedContractors().map((contractor: User) => (
+                          <div key={contractor.id}>
+                            <div className="flex items-center mb-4">
+                              <div className="h-12 w-12 rounded-full bg-primary-100 flex items-center justify-center text-primary-500">
+                                <UserIcon className="h-6 w-6" />
+                              </div>
+                              <div className="ml-3">
+                                <h3 className="font-medium">{contractor.firstName} {contractor.lastName}</h3>
+                                <p className="text-sm text-muted-foreground">{contractor.title || 'No title'}</p>
+                              </div>
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <p className="text-sm"><span className="font-medium">Email:</span> {contractor.email}</p>
+                              <p className="text-sm"><span className="font-medium">Company:</span> {contractor.companyName || 'Individual'}</p>
+                              <p className="text-sm"><span className="font-medium">Worker Type:</span> {contractor.workerType || 'Unknown'}</p>
+                            </div>
+                            
+                            {getAssociatedContractors().length > 1 && <Separator className="my-4" />}
                           </div>
-                          <div className="ml-3">
-                            <h3 className="font-medium">{contractor.firstName} {contractor.lastName}</h3>
-                            <p className="text-sm text-muted-foreground">{contractor.title || 'No title'}</p>
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <p className="text-sm"><span className="font-medium">Email:</span> {contractor.email}</p>
-                          <p className="text-sm"><span className="font-medium">Company:</span> {contractor.companyName || 'Individual'}</p>
-                          <p className="text-sm"><span className="font-medium">Worker Type:</span> {contractor.workerType || 'Unknown'}</p>
-                        </div>
+                        ))}
                       </div>
                     ) : (
                       <p>No contractor information available.</p>
                     )}
                   </CardContent>
+                  <CardFooter>
+                    <Button variant="outline" size="sm">
+                      Add Contractor
+                    </Button>
+                  </CardFooter>
                 </Card>
               </div>
             </div>
           </TabsContent>
           
           <TabsContent value="milestones">
-            <Card>
-              <CardHeader>
-                <CardTitle>Milestones Timeline</CardTitle>
-                <CardDescription>
-                  Track progress through contract milestones
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {isLoadingMilestones ? (
-                  <div className="animate-pulse space-y-8">
-                    <div className="h-4 w-full rounded bg-primary-100"></div>
-                    <div className="space-y-4">
-                      {[1, 2, 3].map((i) => (
-                        <div key={i} className="h-24 rounded bg-primary-100"></div>
-                      ))}
-                    </div>
+            {isLoadingMilestones ? (
+              <div className="animate-pulse space-y-8">
+                <div className="h-4 w-full rounded bg-primary-100"></div>
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-24 rounded bg-primary-100"></div>
+                  ))}
+                </div>
+              </div>
+            ) : getMilestonesByContractor().length > 0 ? (
+              <div className="space-y-10">
+                {getMilestonesByContractor().map((item, index) => (
+                  <Card key={item.contractor.id}>
+                    <CardHeader>
+                      <div className="flex items-center">
+                        <div className="mr-4 h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-500">
+                          <UserIcon className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <CardTitle>
+                            {item.contractor.firstName} {item.contractor.lastName}
+                          </CardTitle>
+                          <CardDescription>
+                            {item.contractor.title || item.contractor.workerType || 'Contractor'}
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {item.milestones.length > 0 ? (
+                        <ContractTimeline 
+                          contract={contract} 
+                          milestones={item.milestones}
+                          contractor={item.contractor}
+                          onMilestoneComplete={handleMilestoneComplete}
+                          onMilestoneApprove={handleMilestoneApprove}
+                        />
+                      ) : (
+                        <p>No milestones have been defined for this contractor.</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+                
+                <div className="flex justify-center mt-6">
+                  <Button variant="outline">
+                    Add New Milestone
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>No Milestones Found</CardTitle>
+                  <CardDescription>
+                    No milestones have been defined for this contract yet.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex justify-center">
+                    <Button>
+                      Add First Milestone
+                    </Button>
                   </div>
-                ) : milestones.length > 0 ? (
-                  <ContractTimeline 
-                    contract={contract} 
-                    milestones={milestones}
-                    contractor={contractor}
-                    onMilestoneComplete={handleMilestoneComplete}
-                    onMilestoneApprove={handleMilestoneApprove}
-                  />
-                ) : (
-                  <p>No milestones have been defined for this contract.</p>
-                )}
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
           
           <TabsContent value="documents">
