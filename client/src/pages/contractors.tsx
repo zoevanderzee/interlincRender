@@ -74,8 +74,8 @@ const Contractors = () => {
     invite.workerType === 'freelancer'
   );
 
-  // Fetch contracts to show count per contractor
-  const { data: contracts = [] } = useQuery({
+  // Fetch contracts to show count per contractor and for project dropdown
+  const { data: contracts = [], isLoading: isLoadingContracts } = useQuery({
     queryKey: ['/api/contracts'],
   });
 
@@ -92,8 +92,10 @@ const Contractors = () => {
   // Form schema for new invite
   const formSchema = z.object({
     email: z.string().email("Invalid email address"),
+    projectId: z.number().optional(),
     projectName: z.string().min(3, "Project name must be at least 3 characters"),
     workerType: z.enum(["contractor", "freelancer"]),
+    paymentAmount: z.string().min(1, "Payment amount is required"),
     businessId: z.number().default(1), // Currently hardcoded to business ID 1
     contractDetails: z.string().optional(),
     message: z.string().optional(),
@@ -104,8 +106,10 @@ const Contractors = () => {
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: "",
+      projectId: undefined,
       projectName: "",
       workerType: "contractor",
+      paymentAmount: "",
       businessId: 1,
       contractDetails: "",
       message: "We'd like to invite you to join our project. Please sign up to view the details and connect with our team.",
@@ -133,11 +137,13 @@ const Contractors = () => {
       const invite: any = {
         email: data.email,
         projectName: data.projectName,
+        projectId: data.projectId,
         workerType: data.workerType,
         businessId: data.businessId,
         status: "pending",
         message: data.message,
-        contractDetails: contractDetailsString
+        contractDetails: contractDetailsString,
+        paymentAmount: data.paymentAmount
       };
       
       // Set expiration date to 7 days from now
@@ -156,8 +162,10 @@ const Contractors = () => {
       setIsInviteDialogOpen(false);
       form.reset({
         email: "",
+        projectId: undefined,
         projectName: "",
         workerType: "contractor",
+        paymentAmount: "",
         businessId: 1,
         contractDetails: "",
         message: "We'd like to invite you to join our project. Please sign up to view the details and connect with our team.",
@@ -206,7 +214,22 @@ const Contractors = () => {
     setIsInviteDialogOpen(true);
   };
 
-  const isLoading = isLoadingWorkers || isLoadingInvites;
+  // Handle project selection
+  const handleProjectSelect = (contractId: number) => {
+    const selectedContract = contracts.find((c: any) => c.id === contractId);
+    if (selectedContract) {
+      form.setValue("projectId", selectedContract.id);
+      form.setValue("projectName", selectedContract.contractName);
+      form.setValue("contractDetails", selectedContract.description || "");
+      
+      // Format the contract value as payment amount (if available)
+      if (selectedContract.value) {
+        form.setValue("paymentAmount", String(selectedContract.value));
+      }
+    }
+  };
+
+  const isLoading = isLoadingWorkers || isLoadingInvites || isLoadingContracts;
 
   return (
     <>
@@ -251,6 +274,44 @@ const Contractors = () => {
                   />
                   <FormField
                     control={form.control}
+                    name="projectId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Select Project</FormLabel>
+                        <FormControl>
+                          <select
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            value={field.value || ""}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              if (value) {
+                                handleProjectSelect(parseInt(value));
+                              } else {
+                                form.setValue("projectId", undefined);
+                                form.setValue("projectName", "");
+                                form.setValue("contractDetails", "");
+                                form.setValue("paymentAmount", "");
+                              }
+                            }}
+                          >
+                            <option value="">Select a project...</option>
+                            {contracts.map((contract: any) => (
+                              <option key={contract.id} value={contract.id}>
+                                {contract.contractName}
+                              </option>
+                            ))}
+                          </select>
+                        </FormControl>
+                        <FormDescription>
+                          Select an existing project to auto-fill details or enter manually
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
                     name="projectName"
                     render={({ field }) => (
                       <FormItem>
@@ -258,6 +319,31 @@ const Contractors = () => {
                         <FormControl>
                           <Input placeholder="Website Redesign" {...field} />
                         </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="paymentAmount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Payment Amount</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary-400">$</span>
+                            <Input
+                              type="text"
+                              placeholder="0.00"
+                              className="pl-8"
+                              {...field}
+                            />
+                          </div>
+                        </FormControl>
+                        <FormDescription>
+                          Enter the total payment amount for this worker
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -653,6 +739,12 @@ const Contractors = () => {
                         <span className="font-medium">Project: </span>
                         {invite.projectName}
                       </p>
+                      {invite.paymentAmount && (
+                        <p className="text-sm text-primary-600 mb-2">
+                          <span className="font-medium">Payment: </span>
+                          ${invite.paymentAmount}
+                        </p>
+                      )}
                       <div className="flex items-center text-xs text-primary-500">
                         <Clock size={14} className="mr-1" />
                         Sent on {formatDate(invite.createdAt)} • Expires {formatDate(invite.expiresAt)}
