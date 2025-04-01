@@ -279,7 +279,7 @@ const Contractors = () => {
                               />
                             </FormControl>
                             <FormLabel className="font-normal cursor-pointer">
-                              Contractor (Business)
+                              Sub Contractor
                             </FormLabel>
                           </FormItem>
                           <FormItem className="flex items-center space-x-2 space-y-0">
@@ -297,7 +297,7 @@ const Contractors = () => {
                           </FormItem>
                         </div>
                         <FormDescription>
-                          Select whether you're inviting a business contractor or an individual freelancer
+                          Select whether you're inviting a sub contractor or an individual freelancer
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -361,7 +361,7 @@ const Contractors = () => {
       {/* Tabs for Workers Types and Invites */}
       <Tabs defaultValue="contractors" className="mb-6">
         <TabsList className="mb-4">
-          <TabsTrigger value="contractors">Contractors (Business)</TabsTrigger>
+          <TabsTrigger value="contractors">Sub Contractors</TabsTrigger>
           <TabsTrigger value="freelancers">Freelancers</TabsTrigger>
           <TabsTrigger value="invites">Pending Invites</TabsTrigger>
         </TabsList>
@@ -487,7 +487,7 @@ const Contractors = () => {
                   ) : (
                     <Button onClick={() => openInviteDialog('contractor')}>
                       <Send size={16} className="mr-2" />
-                      Invite Contractor
+                      Invite Sub Contractor
                     </Button>
                   )}
                 </div>
@@ -645,7 +645,7 @@ const Contractors = () => {
                               ? 'bg-blue-100 text-blue-700' 
                               : 'bg-green-100 text-green-700'
                           }`}>
-                            {invite.workerType === 'freelancer' ? 'Freelancer' : 'Contractor'}
+                            {invite.workerType === 'freelancer' ? 'Freelancer' : 'Sub Contractor'}
                           </span>
                         </div>
                       </div>
