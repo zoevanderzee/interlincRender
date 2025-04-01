@@ -460,20 +460,20 @@ const Payments = () => {
                       const { contract, contractor } = getPaymentDetails(payment);
                       
                       return (
-                        <TableRow key={payment.id}>
-                          <TableCell>
+                        <TableRow key={payment.id} className="border-b border-gray-800">
+                          <TableCell className="text-white">
                             <div className="font-medium">{contract?.contractName || "Unknown Contract"}</div>
-                            <div className="text-sm text-primary-500">{payment.notes}</div>
+                            <div className="text-sm text-gray-400">{payment.notes}</div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="text-white">
                             {contractor ? `${contractor.firstName} ${contractor.lastName}` : "Unknown"}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="text-white">
                             <div className="font-medium">${parseFloat(payment.amount.toString()).toLocaleString('en-US')}</div>
                           </TableCell>
-                          <TableCell>{formatDate(payment.scheduledDate)}</TableCell>
+                          <TableCell className="text-white">{formatDate(payment.scheduledDate)}</TableCell>
                           <TableCell>
-                            <span className="px-2 py-1 text-xs rounded-full bg-warning-100 text-warning font-medium">
+                            <span className="px-2 py-1 text-xs rounded-full bg-amber-900/30 text-amber-400 font-medium">
                               Processing
                             </span>
                           </TableCell>
@@ -481,6 +481,7 @@ const Payments = () => {
                             <Button 
                               variant="outline" 
                               size="sm"
+                              className="border-gray-700 text-white hover:bg-gray-800"
                               onClick={() => toast({
                                 title: "Payment details",
                                 description: "Viewing payment processing details."
@@ -494,11 +495,11 @@ const Payments = () => {
                     })
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8">
+                      <TableCell colSpan={6} className="text-center py-8 text-gray-400">
                         <div className="flex flex-col items-center">
-                          <Clock className="h-8 w-8 text-primary-400 mb-2" />
-                          <p className="text-primary-500 font-medium">No payments being processed</p>
-                          <p className="text-sm text-primary-400 mt-1">
+                          <Clock className="h-8 w-8 text-gray-500 mb-2" />
+                          <p className="text-white font-medium">No payments being processed</p>
+                          <p className="text-sm text-gray-500 mt-1">
                             Payments in progress will appear here
                           </p>
                         </div>
@@ -512,17 +513,17 @@ const Payments = () => {
         </TabsContent>
         
         <TabsContent value="completed">
-          <div className="bg-white rounded-lg shadow-sm border border-primary-100 overflow-hidden">
+          <div className="bg-black rounded-lg border border-gray-800 overflow-hidden">
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="border-collapse">
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Payment</TableHead>
-                    <TableHead>Contractor</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Completion Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Receipt</TableHead>
+                  <TableRow className="border-b border-gray-800">
+                    <TableHead className="text-gray-300">Payment</TableHead>
+                    <TableHead className="text-gray-300">Contractor</TableHead>
+                    <TableHead className="text-gray-300">Amount</TableHead>
+                    <TableHead className="text-gray-300">Completion Date</TableHead>
+                    <TableHead className="text-gray-300">Status</TableHead>
+                    <TableHead className="text-gray-300 text-right">Receipt</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -531,20 +532,20 @@ const Payments = () => {
                       const { contract, contractor } = getPaymentDetails(payment);
                       
                       return (
-                        <TableRow key={payment.id}>
-                          <TableCell>
+                        <TableRow key={payment.id} className="border-b border-gray-800">
+                          <TableCell className="text-white">
                             <div className="font-medium">{contract?.contractName || "Unknown Contract"}</div>
-                            <div className="text-sm text-primary-500">{payment.notes}</div>
+                            <div className="text-sm text-gray-400">{payment.notes}</div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="text-white">
                             {contractor ? `${contractor.firstName} ${contractor.lastName}` : "Unknown"}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="text-white">
                             <div className="font-medium">${parseFloat(payment.amount.toString()).toLocaleString('en-US')}</div>
                           </TableCell>
-                          <TableCell>{payment.completedDate ? formatDate(payment.completedDate) : "N/A"}</TableCell>
+                          <TableCell className="text-white">{payment.completedDate ? formatDate(payment.completedDate) : "N/A"}</TableCell>
                           <TableCell>
-                            <span className="px-2 py-1 text-xs rounded-full bg-success-100 text-success font-medium">
+                            <span className="px-2 py-1 text-xs rounded-full bg-green-900/30 text-green-400 font-medium">
                               Completed
                             </span>
                           </TableCell>
@@ -552,7 +553,7 @@ const Payments = () => {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="text-accent-500"
+                              className="text-gray-300 hover:text-white hover:bg-gray-800"
                               onClick={() => toast({
                                 title: "Receipt downloaded",
                                 description: "The payment receipt has been downloaded."
@@ -567,11 +568,11 @@ const Payments = () => {
                     })
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8">
+                      <TableCell colSpan={6} className="text-center py-8 text-gray-400">
                         <div className="flex flex-col items-center">
-                          <CheckCircle className="h-8 w-8 text-primary-400 mb-2" />
-                          <p className="text-primary-500 font-medium">No completed payments</p>
-                          <p className="text-sm text-primary-400 mt-1">
+                          <CheckCircle className="h-8 w-8 text-gray-500 mb-2" />
+                          <p className="text-white font-medium">No completed payments</p>
+                          <p className="text-sm text-gray-500 mt-1">
                             Completed payments will be listed here
                           </p>
                         </div>
@@ -585,17 +586,17 @@ const Payments = () => {
         </TabsContent>
         
         <TabsContent value="failed">
-          <div className="bg-white rounded-lg shadow-sm border border-primary-100 overflow-hidden">
+          <div className="bg-black rounded-lg border border-gray-800 overflow-hidden">
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="border-collapse">
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Payment</TableHead>
-                    <TableHead>Contractor</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Scheduled Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                  <TableRow className="border-b border-gray-800">
+                    <TableHead className="text-gray-300">Payment</TableHead>
+                    <TableHead className="text-gray-300">Contractor</TableHead>
+                    <TableHead className="text-gray-300">Amount</TableHead>
+                    <TableHead className="text-gray-300">Scheduled Date</TableHead>
+                    <TableHead className="text-gray-300">Status</TableHead>
+                    <TableHead className="text-gray-300 text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -604,20 +605,20 @@ const Payments = () => {
                       const { contract, contractor } = getPaymentDetails(payment);
                       
                       return (
-                        <TableRow key={payment.id}>
-                          <TableCell>
+                        <TableRow key={payment.id} className="border-b border-gray-800">
+                          <TableCell className="text-white">
                             <div className="font-medium">{contract?.contractName || "Unknown Contract"}</div>
-                            <div className="text-sm text-primary-500">{payment.notes}</div>
+                            <div className="text-sm text-gray-400">{payment.notes}</div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="text-white">
                             {contractor ? `${contractor.firstName} ${contractor.lastName}` : "Unknown"}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="text-white">
                             <div className="font-medium">${parseFloat(payment.amount.toString()).toLocaleString('en-US')}</div>
                           </TableCell>
-                          <TableCell>{formatDate(payment.scheduledDate)}</TableCell>
+                          <TableCell className="text-white">{formatDate(payment.scheduledDate)}</TableCell>
                           <TableCell>
-                            <span className="px-2 py-1 text-xs rounded-full bg-destructive-100 text-destructive font-medium">
+                            <span className="px-2 py-1 text-xs rounded-full bg-red-900/30 text-red-400 font-medium">
                               Failed
                             </span>
                           </TableCell>
@@ -625,6 +626,7 @@ const Payments = () => {
                             <Button 
                               variant="outline" 
                               size="sm"
+                              className="border-gray-700 text-white hover:bg-gray-800"
                               onClick={() => handleExecutePayment(payment.id)}
                             >
                               Retry Payment
@@ -635,11 +637,11 @@ const Payments = () => {
                     })
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8">
+                      <TableCell colSpan={6} className="text-center py-8 text-gray-400">
                         <div className="flex flex-col items-center">
-                          <XCircle className="h-8 w-8 text-primary-400 mb-2" />
-                          <p className="text-primary-500 font-medium">No failed payments</p>
-                          <p className="text-sm text-primary-400 mt-1">
+                          <XCircle className="h-8 w-8 text-gray-500 mb-2" />
+                          <p className="text-white font-medium">No failed payments</p>
+                          <p className="text-sm text-gray-500 mt-1">
                             Great! You don't have any failed payments.
                           </p>
                         </div>
@@ -653,17 +655,17 @@ const Payments = () => {
         </TabsContent>
         
         <TabsContent value="all">
-          <div className="bg-white rounded-lg shadow-sm border border-primary-100 overflow-hidden">
+          <div className="bg-black rounded-lg border border-gray-800 overflow-hidden">
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="border-collapse">
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Payment</TableHead>
-                    <TableHead>Contractor</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                  <TableRow className="border-b border-gray-800">
+                    <TableHead className="text-gray-300">Payment</TableHead>
+                    <TableHead className="text-gray-300">Contractor</TableHead>
+                    <TableHead className="text-gray-300">Amount</TableHead>
+                    <TableHead className="text-gray-300">Date</TableHead>
+                    <TableHead className="text-gray-300">Status</TableHead>
+                    <TableHead className="text-gray-300 text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -674,42 +676,56 @@ const Payments = () => {
                       const getStatusBadge = (status: string) => {
                         switch(status) {
                           case 'scheduled':
-                            return <span className="px-2 py-1 text-xs rounded-full bg-accent-100 text-accent-700 font-medium">Scheduled</span>;
+                            return <span className="px-2 py-1 text-xs rounded-full bg-indigo-900/30 text-indigo-400 font-medium">Scheduled</span>;
                           case 'processing':
-                            return <span className="px-2 py-1 text-xs rounded-full bg-warning-100 text-warning font-medium">Processing</span>;
+                            return <span className="px-2 py-1 text-xs rounded-full bg-amber-900/30 text-amber-400 font-medium">Processing</span>;
                           case 'completed':
-                            return <span className="px-2 py-1 text-xs rounded-full bg-success-100 text-success font-medium">Completed</span>;
+                            return <span className="px-2 py-1 text-xs rounded-full bg-green-900/30 text-green-400 font-medium">Completed</span>;
                           case 'failed':
-                            return <span className="px-2 py-1 text-xs rounded-full bg-destructive-100 text-destructive font-medium">Failed</span>;
+                            return <span className="px-2 py-1 text-xs rounded-full bg-red-900/30 text-red-400 font-medium">Failed</span>;
                           default:
-                            return <span className="px-2 py-1 text-xs rounded-full bg-primary-100 text-primary-700 font-medium">Unknown</span>;
+                            return <span className="px-2 py-1 text-xs rounded-full bg-gray-800 text-gray-400 font-medium">Unknown</span>;
                         }
                       };
                       
                       return (
-                        <TableRow key={payment.id}>
-                          <TableCell>
+                        <TableRow key={payment.id} className="border-b border-gray-800">
+                          <TableCell className="text-white">
                             <div className="font-medium">{contract?.contractName || "Unknown Contract"}</div>
-                            <div className="text-sm text-primary-500">{payment.notes}</div>
+                            <div className="text-sm text-gray-400">{payment.notes}</div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="text-white">
                             {contractor ? `${contractor.firstName} ${contractor.lastName}` : "Unknown"}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="text-white">
                             <div className="font-medium">${parseFloat(payment.amount.toString()).toLocaleString('en-US')}</div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="text-white">
                             {payment.status === 'completed' && payment.completedDate
                               ? formatDate(payment.completedDate)
                               : formatDate(payment.scheduledDate)}
                           </TableCell>
                           <TableCell>
-                            {getStatusBadge(payment.status)}
+                            {(() => {
+                              switch(payment.status) {
+                                case 'scheduled':
+                                  return <span className="px-2 py-1 text-xs rounded-full bg-indigo-900/30 text-indigo-400 font-medium">Scheduled</span>;
+                                case 'processing':
+                                  return <span className="px-2 py-1 text-xs rounded-full bg-amber-900/30 text-amber-400 font-medium">Processing</span>;
+                                case 'completed':
+                                  return <span className="px-2 py-1 text-xs rounded-full bg-green-900/30 text-green-400 font-medium">Completed</span>;
+                                case 'failed':
+                                  return <span className="px-2 py-1 text-xs rounded-full bg-red-900/30 text-red-400 font-medium">Failed</span>;
+                                default:
+                                  return <span className="px-2 py-1 text-xs rounded-full bg-gray-800 text-gray-400 font-medium">Unknown</span>;
+                              }
+                            })()}
                           </TableCell>
                           <TableCell className="text-right">
                             <Button
                               variant="ghost"
                               size="sm"
+                              className="text-gray-300 hover:text-white hover:bg-gray-800"
                               onClick={() => toast({
                                 title: "Payment details",
                                 description: "Viewing payment details."
@@ -724,11 +740,11 @@ const Payments = () => {
                     })
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8">
+                      <TableCell colSpan={6} className="text-center py-8 text-gray-400">
                         <div className="flex flex-col items-center">
-                          <DollarSign className="h-8 w-8 text-primary-400 mb-2" />
-                          <p className="text-primary-500 font-medium">No payments found</p>
-                          <p className="text-sm text-primary-400 mt-1">
+                          <DollarSign className="h-8 w-8 text-gray-500 mb-2" />
+                          <p className="text-white font-medium">No payments found</p>
+                          <p className="text-sm text-gray-500 mt-1">
                             {searchTerm || fromDateFilter || toDateFilter ? 
                               "Try changing your search or filters" : 
                               "Add a payment to get started"}
