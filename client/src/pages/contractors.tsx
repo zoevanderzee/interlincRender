@@ -221,12 +221,12 @@ const Contractors = () => {
             <DialogTrigger asChild>
               <Button onClick={() => form.reset()}>
                 <Plus size={16} className="mr-2" />
-                Invite Worker
+                Invite
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[550px]">
               <DialogHeader>
-                <DialogTitle>Invite Worker to Project</DialogTitle>
+                <DialogTitle>Invite to Project</DialogTitle>
                 <DialogDescription>
                   Send an invitation to a contractor or freelancer to join your project. They'll receive an email with instructions to create an account.
                 </DialogDescription>
