@@ -127,16 +127,28 @@ const Projects = () => {
         </div>
       </div>
 
-      {/* Project Stats */}
+      {/* Payment Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <Card className="p-5 border border-zinc-800 bg-black">
           <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-full bg-zinc-800 flex items-center justify-center text-accent-500">
+            <div className="h-12 w-12 rounded-full bg-zinc-800 flex items-center justify-center text-amber-400">
               <Clock size={24} />
             </div>
             <div>
-              <p className="text-zinc-400 text-sm">Upcoming Milestones</p>
-              <h3 className="text-2xl font-semibold text-white">{milestones.filter(m => m.status === 'pending').length}</h3>
+              <p className="text-zinc-400 text-sm">Pending Payments</p>
+              <h3 className="text-2xl font-semibold text-white">$12,500</h3>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-5 border border-zinc-800 bg-black">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-full bg-zinc-800 flex items-center justify-center text-blue-400">
+              <Calendar size={24} />
+            </div>
+            <div>
+              <p className="text-zinc-400 text-sm">Scheduled Payments</p>
+              <h3 className="text-2xl font-semibold text-white">$24,750</h3>
             </div>
           </div>
         </Card>
@@ -147,20 +159,8 @@ const Projects = () => {
               <CheckCircle size={24} />
             </div>
             <div>
-              <p className="text-zinc-400 text-sm">Completed Milestones</p>
-              <h3 className="text-2xl font-semibold text-white">{milestones.filter(m => m.status === 'completed' || m.status === 'approved').length}</h3>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-5 border border-zinc-800 bg-black">
-          <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-full bg-zinc-800 flex items-center justify-center text-amber-400">
-              <AlertCircle size={24} />
-            </div>
-            <div>
-              <p className="text-zinc-400 text-sm">Overdue Milestones</p>
-              <h3 className="text-2xl font-semibold text-white">{milestones.filter(m => m.status === 'overdue').length}</h3>
+              <p className="text-zinc-400 text-sm">Paid Amount</p>
+              <h3 className="text-2xl font-semibold text-white">$86,320</h3>
             </div>
           </div>
         </Card>
@@ -172,7 +172,7 @@ const Projects = () => {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" size={18} />
             <Input
-              placeholder="Search milestones..."
+              placeholder="Search projects..."
               className="pl-9 bg-zinc-900 border-zinc-700 text-white"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -198,10 +198,10 @@ const Projects = () => {
         </div>
       </div>
 
-      {/* Milestones List */}
+      {/* Projects With Milestones */}
       <div className="bg-black rounded-lg shadow-sm border border-zinc-800 overflow-hidden mb-6">
         <div className="p-4 border-b border-zinc-800 flex justify-between items-center">
-          <h2 className="text-lg font-medium text-white">Project Milestones</h2>
+          <h2 className="text-lg font-medium text-white">Projects</h2>
           <Button 
             variant="outline" 
             size="sm" 
@@ -226,11 +226,11 @@ const Projects = () => {
             <div className="mx-auto h-12 w-12 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 mb-4">
               <Calendar size={24} />
             </div>
-            <h3 className="text-lg font-medium text-white mb-2">No milestones found</h3>
+            <h3 className="text-lg font-medium text-white mb-2">No projects found</h3>
             <p className="text-zinc-400 mb-6">
               {searchTerm || statusFilter !== "all" ? 
-                "No milestones match your current filters." : 
-                "There are no milestones to display."}
+                "No projects match your current filters." : 
+                "There are no projects to display."}
             </p>
             {searchTerm || statusFilter !== "all" ? (
               <Button 
