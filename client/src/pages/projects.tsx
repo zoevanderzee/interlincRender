@@ -116,7 +116,7 @@ const Projects = () => {
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <div>
-          <h1 className="text-2xl md:text-3xl font-semibold text-white">Projects & Milestones</h1>
+          <h1 className="text-2xl md:text-3xl font-semibold text-white">Projects</h1>
           <p className="text-zinc-400 mt-1">Track project milestones and deliverables</p>
         </div>
         <div className="mt-4 md:mt-0">
@@ -287,7 +287,7 @@ const Projects = () => {
             {filteredMilestones.length > 0 && (
               <div className="border-t border-zinc-800">
                 <div className="p-4 border-b border-zinc-800">
-                  <h3 className="text-md font-medium text-white">Project Milestones</h3>
+                  <h3 className="text-md font-medium text-white">Milestones</h3>
                 </div>
                 <MilestonesList
                   milestones={filteredMilestones}
