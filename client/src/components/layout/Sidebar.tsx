@@ -245,16 +245,6 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
                 </a>
               </Link>
             </li>
-            <li>
-              <Link href="/compliance">
-                <a className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/compliance") ? "bg-zinc-800 text-white" : "text-white hover:bg-zinc-800"}`}>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-3" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                  </svg>
-                  Compliance
-                </a>
-              </Link>
-            </li>
           </ul>
         </div>
         
