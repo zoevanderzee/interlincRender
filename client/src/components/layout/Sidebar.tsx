@@ -55,7 +55,7 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
                 </a>
               </Link>
               <div className="invisible group-hover:visible opacity-0 group-hover:opacity-100 absolute left-full ml-2 px-2 py-1 bg-primary-800 text-white text-xs rounded transition-opacity whitespace-nowrap">
-                Smart Contracts
+                Contracts
               </div>
             </li>
             <li className="relative group">
@@ -170,7 +170,7 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
                     <line x1="16" y1="17" x2="8" y2="17"></line>
                     <polyline points="10 9 9 9 8 9"></polyline>
                   </svg>
-                  Smart Contracts
+                  Contracts
                 </a>
               </Link>
             </li>
