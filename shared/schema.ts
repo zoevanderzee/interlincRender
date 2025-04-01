@@ -16,6 +16,20 @@ export const users = pgTable("users", {
   title: text("title"),
 });
 
+// Project Invites table
+export const invites = pgTable("invites", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull(),
+  projectName: text("project_name").notNull(),
+  status: text("status").notNull().default("pending"), // pending, accepted, declined, expired
+  businessId: integer("business_id").notNull(), // The business that sent the invite
+  projectId: integer("project_id"), // Optional project ID if the project already exists
+  contractDetails: text("contract_details"), // JSON string with contract details
+  message: text("message"), // Custom message to the contractor
+  createdAt: timestamp("created_at").defaultNow(),
+  expiresAt: timestamp("expires_at"), // When the invite expires
+});
+
 // Smart Contracts table
 export const contracts = pgTable("contracts", {
   id: serial("id").primaryKey(),
@@ -69,6 +83,7 @@ export const documents = pgTable("documents", {
 
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
+export const insertInviteSchema = createInsertSchema(invites).omit({ id: true, createdAt: true });
 export const insertContractSchema = createInsertSchema(contracts).omit({ id: true, createdAt: true });
 export const insertMilestoneSchema = createInsertSchema(milestones).omit({ id: true });
 export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true, completedDate: true });
@@ -77,6 +92,9 @@ export const insertDocumentSchema = createInsertSchema(documents).omit({ id: tru
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+
+export type InsertInvite = z.infer<typeof insertInviteSchema>;
+export type Invite = typeof invites.$inferSelect;
 
 export type InsertContract = z.infer<typeof insertContractSchema>;
 export type Contract = typeof contracts.$inferSelect;

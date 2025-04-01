@@ -1,6 +1,7 @@
 import { 
-  users, contracts, milestones, payments, documents,
+  users, invites, contracts, milestones, payments, documents,
   type User, type InsertUser, 
+  type Invite, type InsertInvite,
   type Contract, type InsertContract,
   type Milestone, type InsertMilestone,
   type Payment, type InsertPayment,
@@ -15,6 +16,14 @@ export interface IStorage {
   getUsersByRole(role: string): Promise<User[]>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, user: Partial<InsertUser>): Promise<User | undefined>;
+  
+  // Invites
+  getInvite(id: number): Promise<Invite | undefined>;
+  getInviteByEmail(email: string): Promise<Invite | undefined>;
+  getInvitesByBusinessId(businessId: number): Promise<Invite[]>;
+  getPendingInvites(): Promise<Invite[]>;
+  createInvite(invite: InsertInvite): Promise<Invite>;
+  updateInvite(id: number, invite: Partial<InsertInvite>): Promise<Invite | undefined>;
   
   // Contracts
   getContract(id: number): Promise<Contract | undefined>;
@@ -46,12 +55,14 @@ export interface IStorage {
 // In-memory storage implementation
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
+  private invites: Map<number, Invite>;
   private contracts: Map<number, Contract>;
   private milestones: Map<number, Milestone>;
   private payments: Map<number, Payment>;
   private documents: Map<number, Document>;
   
   private userId: number;
+  private inviteId: number;
   private contractId: number;
   private milestoneId: number;
   private paymentId: number;
@@ -59,12 +70,14 @@ export class MemStorage implements IStorage {
   
   constructor() {
     this.users = new Map();
+    this.invites = new Map();
     this.contracts = new Map();
     this.milestones = new Map();
     this.payments = new Map();
     this.documents = new Map();
     
     this.userId = 1;
+    this.inviteId = 1;
     this.contractId = 1;
     this.milestoneId = 1;
     this.paymentId = 1;
@@ -105,6 +118,59 @@ export class MemStorage implements IStorage {
     const updatedUser = { ...existingUser, ...userData };
     this.users.set(id, updatedUser);
     return updatedUser;
+  }
+  
+  // Invite CRUD methods
+  async getInvite(id: number): Promise<Invite | undefined> {
+    return this.invites.get(id);
+  }
+  
+  async getInviteByEmail(email: string): Promise<Invite | undefined> {
+    return Array.from(this.invites.values()).find(
+      (invite) => invite.email.toLowerCase() === email.toLowerCase()
+    );
+  }
+  
+  async getInvitesByBusinessId(businessId: number): Promise<Invite[]> {
+    return Array.from(this.invites.values()).filter(
+      (invite) => invite.businessId === businessId
+    );
+  }
+  
+  async getPendingInvites(): Promise<Invite[]> {
+    return Array.from(this.invites.values()).filter(
+      (invite) => invite.status === 'pending'
+    );
+  }
+  
+  async createInvite(insertInvite: InsertInvite): Promise<Invite> {
+    const id = this.inviteId++;
+    const createdAt = new Date();
+    // Default expiration to 7 days from now if not provided
+    const expiresAt = insertInvite.expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    
+    const invite: Invite = { 
+      ...insertInvite, 
+      id, 
+      createdAt, 
+      expiresAt,
+      status: insertInvite.status || 'pending',
+      projectId: insertInvite.projectId || null,
+      contractDetails: insertInvite.contractDetails || null,
+      message: insertInvite.message || null
+    };
+    
+    this.invites.set(id, invite);
+    return invite;
+  }
+  
+  async updateInvite(id: number, inviteData: Partial<InsertInvite>): Promise<Invite | undefined> {
+    const existingInvite = this.invites.get(id);
+    if (!existingInvite) return undefined;
+    
+    const updatedInvite = { ...existingInvite, ...inviteData };
+    this.invites.set(id, updatedInvite);
+    return updatedInvite;
   }
   
   // Contract CRUD methods
@@ -397,6 +463,38 @@ export class MemStorage implements IStorage {
       status: "scheduled",
       scheduledDate: sep01,
       notes: "Monthly retainer for SEO Optimization"
+    });
+    
+    // Create sample invites
+    const nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    
+    this.createInvite({
+      email: "designer@example.com",
+      projectName: "UI/UX Design Project",
+      businessId: 1,
+      status: "pending",
+      message: "We'd like to invite you to work on our new UI/UX design project. Please join our platform to discuss details.",
+      expiresAt: nextWeek,
+      contractDetails: JSON.stringify({
+        value: "3500",
+        description: "UI/UX design for mobile application",
+        duration: "4 weeks"
+      })
+    });
+    
+    this.createInvite({
+      email: "developer@example.com",
+      projectName: "Backend API Development",
+      businessId: 1,
+      status: "pending",
+      message: "We need a skilled developer to help us with our backend API project.",
+      expiresAt: nextWeek,
+      contractDetails: JSON.stringify({
+        value: "5000",
+        description: "Development of RESTful APIs for our platform",
+        duration: "6 weeks"
+      })
     });
   }
 }

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import {
   Dialog,
@@ -22,12 +23,18 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { User, insertUserSchema } from "@shared/schema";
-import { Search, Plus, Mail, Phone, FileText, UserCheck, ArrowRight, User as UserIcon, Building, Briefcase, Loader2 } from "lucide-react";
+import { User, Invite, insertInviteSchema } from "@shared/schema";
+import { Search, Plus, Mail, Send, FileText, UserCheck, ArrowRight, User as UserIcon, Building, Briefcase, Loader2, Clock, CheckCircle2, XCircle } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useMutation } from "@tanstack/react-query";
 
@@ -35,13 +42,18 @@ const Contractors = () => {
   const [location, navigate] = useLocation();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
-  const [isNewContractorDialogOpen, setIsNewContractorDialogOpen] = useState(
-    location.includes("?action=new")
+  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(
+    location.includes("?action=invite")
   );
 
   // Fetch contractors
-  const { data: contractors = [], isLoading } = useQuery<User[]>({
+  const { data: contractors = [], isLoading: isLoadingContractors } = useQuery<User[]>({
     queryKey: ['/api/users', { role: 'contractor' }],
+  });
+
+  // Fetch pending invites
+  const { data: invites = [], isLoading: isLoadingInvites } = useQuery<Invite[]>({
+    queryKey: ['/api/invites', { pending: true }],
   });
 
   // Fetch contracts to show count per contractor
@@ -59,67 +71,75 @@ const Contractors = () => {
     );
   });
 
-  // Form schema for new contractor
-  const formSchema = insertUserSchema
-    .pick({
-      firstName: true,
-      lastName: true,
-      email: true,
-      companyName: true,
-      title: true,
-    })
-    .extend({
-      password: z.string().min(8, "Password must be at least 8 characters"),
-      confirmPassword: z.string(),
-    })
-    .refine((data) => data.password === data.confirmPassword, {
-      message: "Passwords don't match",
-      path: ["confirmPassword"],
-    });
+  // Form schema for new invite
+  const formSchema = z.object({
+    email: z.string().email("Invalid email address"),
+    projectName: z.string().min(3, "Project name must be at least 3 characters"),
+    businessId: z.number().default(1), // Currently hardcoded to business ID 1
+    contractDetails: z.string().optional(),
+    message: z.string().optional(),
+  });
 
-  // Form for new contractor
+  // Form for new invite
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      firstName: "",
-      lastName: "",
       email: "",
-      password: "",
-      confirmPassword: "",
-      companyName: "",
-      title: "",
+      projectName: "",
+      businessId: 1,
+      contractDetails: "",
+      message: "We'd like to invite you to join our project. Please sign up to view the details and connect with our team.",
     },
   });
 
-  // Create contractor mutation
-  const createContractorMutation = useMutation({
+  // Create invite mutation
+  const createInviteMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
-      // Generate a username from email
-      const username = data.email.split("@")[0].toLowerCase();
+      // Create a more detailed contract object if provided
+      let contractDetailsString = data.contractDetails;
+      if (data.contractDetails) {
+        try {
+          // Try to parse as JSON if it's a valid JSON string
+          JSON.parse(data.contractDetails);
+        } catch (e) {
+          // If not valid JSON, create a simple JSON object
+          contractDetailsString = JSON.stringify({
+            description: data.contractDetails
+          });
+        }
+      }
       
-      // Create the contractor with role set to contractor
-      const contractor = {
-        username,
-        password: data.password,
-        firstName: data.firstName,
-        lastName: data.lastName,
+      // Create the invite
+      const invite: any = {
         email: data.email,
-        role: "contractor" as const,
-        companyName: data.companyName,
-        title: data.title,
-        profileImageUrl: "",
+        projectName: data.projectName,
+        businessId: data.businessId,
+        status: "pending",
+        message: data.message,
+        contractDetails: contractDetailsString
       };
       
-      return apiRequest("POST", "/api/users", contractor);
+      // Set expiration date to 7 days from now
+      const expirationDate = new Date();
+      expirationDate.setDate(expirationDate.getDate() + 7);
+      invite.expiresAt = expirationDate;
+      
+      return apiRequest("POST", "/api/invites", invite);
     },
     onSuccess: () => {
       toast({
-        title: "Contractor created",
-        description: "The contractor has been added successfully.",
+        title: "Invitation sent",
+        description: "The contractor has been invited to join the project.",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/users'] });
-      setIsNewContractorDialogOpen(false);
-      form.reset();
+      queryClient.invalidateQueries({ queryKey: ['/api/invites'] });
+      setIsInviteDialogOpen(false);
+      form.reset({
+        email: "",
+        projectName: "",
+        businessId: 1,
+        contractDetails: "",
+        message: "We'd like to invite you to join our project. Please sign up to view the details and connect with our team.",
+      });
       
       // Remove the query param
       navigate("/contractors");
@@ -127,7 +147,7 @@ const Contractors = () => {
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || "Could not create contractor. Please try again.",
+        description: error.message || "Could not send invitation. Please try again.",
         variant: "destructive",
       });
     },
@@ -135,7 +155,7 @@ const Contractors = () => {
 
   // Submit handler
   const onSubmit = (data: z.infer<typeof formSchema>) => {
-    createContractorMutation.mutate(data);
+    createInviteMutation.mutate(data);
   };
 
   // Get contract count for a contractor
@@ -143,11 +163,22 @@ const Contractors = () => {
     return contracts.filter(c => c.contractorId === contractorId).length;
   };
 
+  // Format date for display
+  const formatDate = (date: Date | string) => {
+    return new Date(date).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric"
+    });
+  };
+
   // Handle dialog close
   const handleDialogClose = () => {
-    setIsNewContractorDialogOpen(false);
+    setIsInviteDialogOpen(false);
     navigate("/contractors", { replace: true });
   };
+
+  const isLoading = isLoadingContractors || isLoadingInvites;
 
   return (
     <>
@@ -155,105 +186,49 @@ const Contractors = () => {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <div>
           <h1 className="text-2xl md:text-3xl font-semibold text-primary-900">Contractors</h1>
-          <p className="text-primary-500 mt-1">Manage your external workers and vendors</p>
+          <p className="text-primary-500 mt-1">Manage your external workers and project collaborators</p>
         </div>
         <div className="mt-4 md:mt-0">
-          <Dialog open={isNewContractorDialogOpen} onOpenChange={setIsNewContractorDialogOpen}>
+          <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
             <DialogTrigger asChild>
               <Button>
                 <Plus size={16} className="mr-2" />
-                Add Contractor
+                Invite Contractor
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[550px]">
               <DialogHeader>
-                <DialogTitle>Add New Contractor</DialogTitle>
+                <DialogTitle>Invite Contractor to Project</DialogTitle>
                 <DialogDescription>
-                  Add a new contractor to work on your projects. They'll be able to view contracts and submit deliverables.
+                  Send an invitation to a contractor to join your project. They'll receive an email with instructions to create an account.
                 </DialogDescription>
               </DialogHeader>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="firstName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>First Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="John" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="lastName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Last Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Doe" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
                   <FormField
                     control={form.control}
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Email</FormLabel>
+                        <FormLabel>Email Address</FormLabel>
                         <FormControl>
-                          <Input type="email" placeholder="john.doe@example.com" {...field} />
+                          <Input type="email" placeholder="contractor@example.com" {...field} />
                         </FormControl>
                         <FormDescription>
-                          They'll use this email to log in to the platform
+                          We'll send an invitation to this email address
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Password</FormLabel>
-                          <FormControl>
-                            <Input type="password" placeholder="••••••••" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="confirmPassword"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Confirm Password</FormLabel>
-                          <FormControl>
-                            <Input type="password" placeholder="••••••••" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
                   <FormField
                     control={form.control}
-                    name="companyName"
+                    name="projectName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Company Name (Optional)</FormLabel>
+                        <FormLabel>Project Name</FormLabel>
                         <FormControl>
-                          <Input placeholder="Acme Inc." {...field} />
+                          <Input placeholder="Website Redesign" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -261,12 +236,33 @@ const Contractors = () => {
                   />
                   <FormField
                     control={form.control}
-                    name="title"
+                    name="contractDetails"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Professional Title</FormLabel>
+                        <FormLabel>Contract Details (Optional)</FormLabel>
                         <FormControl>
-                          <Input placeholder="Web Developer" {...field} />
+                          <Textarea 
+                            placeholder="Describe the project scope, timeline, and compensation details..."
+                            className="min-h-[100px]"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="message"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Personal Message</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Add a personal note to the contractor..."
+                            className="min-h-[80px]"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -278,12 +274,12 @@ const Contractors = () => {
                     </Button>
                     <Button 
                       type="submit" 
-                      disabled={createContractorMutation.isPending}
+                      disabled={createInviteMutation.isPending}
                     >
-                      {createContractorMutation.isPending && (
+                      {createInviteMutation.isPending && (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       )}
-                      Add Contractor
+                      Send Invitation
                     </Button>
                   </DialogFooter>
                 </form>
@@ -293,133 +289,247 @@ const Contractors = () => {
         </div>
       </div>
 
-      {/* Search */}
-      <div className="mb-6 relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary-400" size={18} />
-        <Input
-          placeholder="Search contractors..."
-          className="pl-9"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-      </div>
+      {/* Tabs for Contractors and Invites */}
+      <Tabs defaultValue="contractors" className="mb-6">
+        <TabsList className="mb-4">
+          <TabsTrigger value="contractors">Active Contractors</TabsTrigger>
+          <TabsTrigger value="invites">Pending Invites</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="contractors">
+          {/* Search */}
+          <div className="mb-6 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary-400" size={18} />
+            <Input
+              placeholder="Search contractors..."
+              className="pl-9"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
 
-      {/* Contractors Grid */}
-      {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="animate-pulse">
-              <Card className="p-5 h-64"></Card>
+          {/* Contractors Grid */}
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="animate-pulse">
+                  <Card className="p-5 h-64"></Card>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredContractors.map((contractor) => (
-            <Card 
-              key={contractor.id} 
-              className="p-5 border border-primary-100 hover:shadow-md transition-shadow"
-            >
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex items-center">
-                  <div className="h-12 w-12 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 mr-3">
-                    {contractor.profileImageUrl ? (
-                      <img 
-                        src={contractor.profileImageUrl} 
-                        alt={`${contractor.firstName} ${contractor.lastName}`}
-                        className="h-full w-full rounded-full object-cover"
-                      />
-                    ) : (
-                      <UserIcon size={24} />
-                    )}
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredContractors.map((contractor) => (
+                <Card 
+                  key={contractor.id} 
+                  className="p-5 border border-primary-100 hover:shadow-md transition-shadow"
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center">
+                      <div className="h-12 w-12 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 mr-3">
+                        {contractor.profileImageUrl ? (
+                          <img 
+                            src={contractor.profileImageUrl} 
+                            alt={`${contractor.firstName} ${contractor.lastName}`}
+                            className="h-full w-full rounded-full object-cover"
+                          />
+                        ) : (
+                          <UserIcon size={24} />
+                        )}
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-primary-900">
+                          {contractor.firstName} {contractor.lastName}
+                        </h3>
+                        <p className="text-sm text-primary-500">{contractor.title}</p>
+                      </div>
+                    </div>
+                    <div className="px-2 py-1 bg-primary-100 rounded-md text-xs font-medium text-primary-700">
+                      {getContractCount(contractor.id)} {getContractCount(contractor.id) === 1 ? 'contract' : 'contracts'}
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-primary-900">
-                      {contractor.firstName} {contractor.lastName}
-                    </h3>
-                    <p className="text-sm text-primary-500">{contractor.title}</p>
+                  
+                  {contractor.companyName && (
+                    <div className="flex items-center text-sm text-primary-600 mb-3">
+                      <Building size={16} className="mr-2" />
+                      {contractor.companyName}
+                    </div>
+                  )}
+                  
+                  <div className="flex items-center text-sm text-primary-600 mb-3">
+                    <Mail size={16} className="mr-2" />
+                    {contractor.email}
                   </div>
+                  
+                  <div className="flex items-center text-sm text-primary-600 mb-4">
+                    <Briefcase size={16} className="mr-2" />
+                    {contractor.title}
+                  </div>
+                  
+                  <div className="flex justify-between mt-auto pt-4 border-t border-primary-100">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => navigate(`/contractors/${contractor.id}`)}
+                    >
+                      <UserCheck size={16} className="mr-1" />
+                      Profile
+                    </Button>
+                    
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => navigate(`/contracts?contractor=${contractor.id}`)}
+                    >
+                      <FileText size={16} className="mr-1" />
+                      Contracts
+                    </Button>
+                    
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-accent-500 hover:text-accent-600 hover:bg-accent-50"
+                      onClick={() => navigate(`/contracts/new?contractor=${contractor.id}`)}
+                    >
+                      Assign
+                      <ArrowRight size={16} className="ml-1" />
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+              
+              {/* Empty state */}
+              {filteredContractors.length === 0 && (
+                <div className="col-span-full bg-black text-white rounded-lg shadow-sm border border-zinc-800 p-8 text-center">
+                  <div className="mx-auto h-16 w-16 rounded-full bg-zinc-800 flex items-center justify-center text-white mb-4">
+                    <UserIcon size={32} />
+                  </div>
+                  <h3 className="text-lg font-medium text-white mb-2">No contractors found</h3>
+                  <p className="text-zinc-400 mb-6">
+                    {searchTerm ? 
+                      "No contractors match your search criteria." : 
+                      "You don't have any active contractors yet. Send invites to start collaborating."}
+                  </p>
+                  {searchTerm ? (
+                    <Button variant="outline" onClick={() => setSearchTerm("")}>
+                      Clear Search
+                    </Button>
+                  ) : (
+                    <Button onClick={() => setIsInviteDialogOpen(true)}>
+                      <Send size={16} className="mr-2" />
+                      Invite Contractors
+                    </Button>
+                  )}
                 </div>
-                <div className="px-2 py-1 bg-primary-100 rounded-md text-xs font-medium text-primary-700">
-                  {getContractCount(contractor.id)} {getContractCount(contractor.id) === 1 ? 'contract' : 'contracts'}
-                </div>
-              </div>
-              
-              {contractor.companyName && (
-                <div className="flex items-center text-sm text-primary-600 mb-3">
-                  <Building size={16} className="mr-2" />
-                  {contractor.companyName}
-                </div>
-              )}
-              
-              <div className="flex items-center text-sm text-primary-600 mb-3">
-                <Mail size={16} className="mr-2" />
-                {contractor.email}
-              </div>
-              
-              <div className="flex items-center text-sm text-primary-600 mb-4">
-                <Briefcase size={16} className="mr-2" />
-                {contractor.title}
-              </div>
-              
-              <div className="flex justify-between mt-auto pt-4 border-t border-primary-100">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => navigate(`/contractors/${contractor.id}`)}
-                >
-                  <UserCheck size={16} className="mr-1" />
-                  Profile
-                </Button>
-                
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => navigate(`/contracts?contractor=${contractor.id}`)}
-                >
-                  <FileText size={16} className="mr-1" />
-                  Contracts
-                </Button>
-                
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-accent-500 hover:text-accent-600 hover:bg-accent-50"
-                  onClick={() => navigate(`/contracts/new?contractor=${contractor.id}`)}
-                >
-                  Assign
-                  <ArrowRight size={16} className="ml-1" />
-                </Button>
-              </div>
-            </Card>
-          ))}
-          
-          {/* Empty state */}
-          {filteredContractors.length === 0 && (
-            <div className="col-span-full bg-white rounded-lg shadow-sm border border-primary-100 p-8 text-center">
-              <div className="mx-auto h-16 w-16 rounded-full bg-primary-50 flex items-center justify-center text-primary-500 mb-4">
-                <UserIcon size={32} />
-              </div>
-              <h3 className="text-lg font-medium text-primary-900 mb-2">No contractors found</h3>
-              <p className="text-primary-500 mb-6">
-                {searchTerm ? 
-                  "No contractors match your search criteria." : 
-                  "Get started by adding your first contractor."}
-              </p>
-              {searchTerm ? (
-                <Button variant="outline" onClick={() => setSearchTerm("")}>
-                  Clear Search
-                </Button>
-              ) : (
-                <Button onClick={() => setIsNewContractorDialogOpen(true)}>
-                  <Plus size={16} className="mr-2" />
-                  Add Contractor
-                </Button>
               )}
             </div>
           )}
-        </div>
-      )}
+        </TabsContent>
+        
+        <TabsContent value="invites">
+          {/* Invites List */}
+          {isLoading ? (
+            <div className="grid grid-cols-1 gap-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="animate-pulse">
+                  <Card className="p-5 h-28"></Card>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              {invites.map((invite) => (
+                <Card
+                  key={invite.id}
+                  className="p-5 border border-primary-100 hover:shadow-md transition-shadow"
+                >
+                  <div className="flex justify-between">
+                    <div>
+                      <div className="flex items-center mb-2">
+                        <h3 className="font-semibold text-primary-900 mr-3">
+                          {invite.email}
+                        </h3>
+                        <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded-md text-xs font-medium">
+                          Pending
+                        </span>
+                      </div>
+                      <p className="text-sm text-primary-600 mb-2">
+                        <span className="font-medium">Project: </span>
+                        {invite.projectName}
+                      </p>
+                      <div className="flex items-center text-xs text-primary-500">
+                        <Clock size={14} className="mr-1" />
+                        Sent on {formatDate(invite.createdAt)} • Expires {formatDate(invite.expiresAt)}
+                      </div>
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-primary-600"
+                        onClick={() => {
+                          // Re-send invitation logic
+                          toast({
+                            title: "Invitation resent",
+                            description: "The invitation has been sent again to " + invite.email,
+                          });
+                        }}
+                      >
+                        <Send size={14} className="mr-1" />
+                        Resend
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                        onClick={() => {
+                          // Cancel invitation logic
+                          // This would typically call an API to update the invite status
+                          apiRequest("PATCH", `/api/invites/${invite.id}`, { status: "cancelled" })
+                            .then(() => {
+                              queryClient.invalidateQueries({ queryKey: ['/api/invites'] });
+                              toast({
+                                title: "Invitation cancelled",
+                                description: "The invitation has been cancelled.",
+                              });
+                            })
+                            .catch((error) => {
+                              toast({
+                                title: "Error",
+                                description: "Failed to cancel invitation. Please try again.",
+                                variant: "destructive",
+                              });
+                            });
+                        }}
+                      >
+                        <XCircle size={14} className="mr-1" />
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+              
+              {/* Empty state for invites */}
+              {invites.length === 0 && (
+                <div className="col-span-full bg-black text-white rounded-lg shadow-sm border border-zinc-800 p-8 text-center">
+                  <div className="mx-auto h-16 w-16 rounded-full bg-zinc-800 flex items-center justify-center text-white mb-4">
+                    <Mail size={32} />
+                  </div>
+                  <h3 className="text-lg font-medium text-white mb-2">No pending invites</h3>
+                  <p className="text-zinc-400 mb-6">
+                    You haven't sent any invitations to contractors yet.
+                  </p>
+                  <Button onClick={() => setIsInviteDialogOpen(true)}>
+                    <Send size={16} className="mr-2" />
+                    Send New Invitation
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </>
   );
 };

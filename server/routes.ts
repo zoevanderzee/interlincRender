@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { z } from "zod";
 import {
   insertUserSchema,
+  insertInviteSchema,
   insertContractSchema,
   insertMilestoneSchema,
   insertPaymentSchema,
@@ -50,6 +51,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid user data", errors: error.errors });
       }
       res.status(500).json({ message: "Error creating user" });
+    }
+  });
+  
+  // Invite routes
+  app.get(`${apiRouter}/invites`, async (req: Request, res: Response) => {
+    try {
+      const businessId = req.query.businessId ? parseInt(req.query.businessId as string) : null;
+      const email = req.query.email as string;
+      const pending = req.query.pending === 'true';
+      
+      let invites;
+      if (businessId) {
+        invites = await storage.getInvitesByBusinessId(businessId);
+      } else if (email) {
+        const invite = await storage.getInviteByEmail(email);
+        invites = invite ? [invite] : [];
+      } else if (pending) {
+        invites = await storage.getPendingInvites();
+      } else {
+        // Default case, return empty array
+        invites = [];
+      }
+      
+      res.json(invites);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching invites" });
+    }
+  });
+  
+  app.get(`${apiRouter}/invites/:id`, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const invite = await storage.getInvite(id);
+      
+      if (!invite) {
+        return res.status(404).json({ message: "Invite not found" });
+      }
+      
+      res.json(invite);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching invite" });
+    }
+  });
+  
+  app.post(`${apiRouter}/invites`, async (req: Request, res: Response) => {
+    try {
+      const inviteInput = insertInviteSchema.parse(req.body);
+      const newInvite = await storage.createInvite(inviteInput);
+      res.status(201).json(newInvite);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid invite data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Error creating invite" });
+    }
+  });
+  
+  app.patch(`${apiRouter}/invites/:id`, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updateData = req.body;
+      
+      const updatedInvite = await storage.updateInvite(id, updateData);
+      
+      if (!updatedInvite) {
+        return res.status(404).json({ message: "Invite not found" });
+      }
+      
+      res.json(updatedInvite);
+    } catch (error) {
+      res.status(500).json({ message: "Error updating invite" });
     }
   });
   
@@ -307,6 +379,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const pendingApprovals = (await storage.getContractsByBusinessId(1)).filter(c => c.status === "pending_approval");
       const upcomingPayments = await storage.getUpcomingPayments(5);
       const upcomingMilestones = await storage.getUpcomingMilestones(5);
+      const pendingInvites = await storage.getPendingInvites();
       
       // Calculate total payments
       const totalPaymentsValue = upcomingPayments.reduce((sum, payment) => sum + Number(payment.amount), 0);
@@ -316,11 +389,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           activeContractsCount: activeContracts.length,
           pendingApprovalsCount: pendingApprovals.length,
           paymentsProcessed: totalPaymentsValue,
-          activeContractorsCount: contractors.length
+          activeContractorsCount: contractors.length,
+          pendingInvitesCount: pendingInvites.length
         },
         contracts: [...activeContracts, ...pendingApprovals].slice(0, 3),
         milestones: upcomingMilestones,
-        payments: upcomingPayments
+        payments: upcomingPayments,
+        invites: pendingInvites.slice(0, 3)
       };
       
       res.json(dashboardData);
