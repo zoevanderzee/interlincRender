@@ -17,7 +17,7 @@ import { Contract, User } from "@shared/schema";
 const Contracts = () => {
   const [_, navigate] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   // Fetch contracts
   const { data: contracts = [], isLoading: isLoadingContracts } = useQuery<Contract[]>({
@@ -35,7 +35,7 @@ const Contracts = () => {
       contract.contractName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       contract.contractCode.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesStatus = statusFilter === "" || contract.status === statusFilter;
+    const matchesStatus = statusFilter === "all" || contract.status === statusFilter;
     
     return matchesSearch && matchesStatus;
   });
@@ -43,7 +43,7 @@ const Contracts = () => {
   // Clear filters
   const clearFilters = () => {
     setSearchTerm("");
-    setStatusFilter("");
+    setStatusFilter("all");
   };
 
   // Handle view contract
@@ -95,7 +95,7 @@ const Contracts = () => {
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Statuses</SelectItem>
+                <SelectItem value="all">All Statuses</SelectItem>
                 <SelectItem value="draft">Draft</SelectItem>
                 <SelectItem value="pending_approval">Pending Approval</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
