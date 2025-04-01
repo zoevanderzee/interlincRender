@@ -5,6 +5,7 @@ import {
   User,
   ChevronDown
 } from "lucide-react";
+import logoImage from "../../assets/CD_icon_light@2x.png";
 
 interface HeaderProps {
   toggleSidebar: () => void;
@@ -20,11 +21,9 @@ const Header = ({ toggleSidebar }: HeaderProps) => {
   return (
     <header className="bg-black border-b border-zinc-800 sticky top-0 z-10">
       <div className="flex items-center justify-between px-4 py-3">
-        <div className="flex items-center space-x-2 md:hidden">
-          <div className="h-8 w-8 rounded bg-accent-500 flex items-center justify-center">
-            <span className="text-white font-bold text-lg">CL</span>
-          </div>
-          <h1 className="text-xl font-semibold text-white">Creativ Linc</h1>
+        <div className="flex items-center space-x-2">
+          <img src={logoImage} alt="Creativ Linc Logo" className="h-8" />
+          <h1 className="text-xl font-semibold text-white md:hidden">Creativ Linc</h1>
         </div>
         
         <div className="flex-1 max-w-xl px-4 md:px-0 mx-auto hidden md:block">
