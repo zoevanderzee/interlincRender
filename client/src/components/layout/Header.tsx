@@ -27,7 +27,7 @@ const Header = ({ toggleSidebar }: HeaderProps) => {
             </span>
             <input 
               type="text" 
-              placeholder="Search contracts, projects, or contractors..." 
+              placeholder="Search projects, sub contractors, or freelancers..." 
               className="w-full pl-10 pr-4 py-2 bg-zinc-900 border border-zinc-800 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent placeholder-gray-500"
             />
           </div>

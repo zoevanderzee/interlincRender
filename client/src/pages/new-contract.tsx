@@ -32,7 +32,7 @@ const NewContract = () => {
           <ArrowLeft size={16} />
         </Button>
         <div>
-          <h1 className="text-2xl md:text-3xl font-semibold text-primary-900">Create New Contract</h1>
+          <h1 className="text-2xl md:text-3xl font-semibold text-primary-900">Create New Project</h1>
           <p className="text-primary-500 mt-1">
             Set up a new smart contract with predefined milestones and payments
           </p>

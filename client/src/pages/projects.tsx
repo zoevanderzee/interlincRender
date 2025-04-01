@@ -122,7 +122,7 @@ const Projects = () => {
         <div className="mt-4 md:mt-0">
           <Button onClick={() => navigate("/contracts/new")}>
             <Plus size={16} className="mr-2" />
-            New Project
+            Create New Project
           </Button>
         </div>
       </div>
