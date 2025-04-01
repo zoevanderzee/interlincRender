@@ -126,7 +126,6 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
       <div className="flex items-center justify-between p-4 border-b border-zinc-800">
         <div className="flex items-center">
           <img src={logoImage} alt="Creativ Linc Logo" className="h-8" />
-          <span className="text-white font-semibold ml-2 text-lg">Creativ Linc</span>
         </div>
         
         <button 
