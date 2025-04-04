@@ -468,7 +468,7 @@ export default function ContractDetailPage() {
                     <CardContent>
                       {item.milestones.length > 0 && contract ? (
                         <ContractTimeline 
-                          contract={contract as Contract} 
+                          contract={contract as Contract | null} 
                           milestones={item.milestones}
                           contractor={item.contractor}
                           onMilestoneComplete={handleMilestoneComplete}

@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
 interface ContractTimelineProps {
-  contract: Contract;
+  contract: Contract | null;
   milestones: Milestone[];
   contractor?: User;
   onMilestoneComplete?: (id: number) => void;
