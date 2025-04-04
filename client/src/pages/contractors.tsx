@@ -83,9 +83,10 @@ const Contractors = () => {
   const filteredContractors = contractors.filter((contractor) => {
     return (
       searchTerm === "" ||
-      `${contractor.firstName} ${contractor.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (contractor.companyName && contractor.companyName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      contractor.title.toLowerCase().includes(searchTerm.toLowerCase())
+      contractor.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (contractor.industry && contractor.industry.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      contractor.email.toLowerCase().includes(searchTerm.toLowerCase())
     );
   });
 
@@ -482,20 +483,20 @@ const Contractors = () => {
                 >
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center">
-                      <div className="h-12 w-12 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 mr-3">
-                        {contractor.profileImageUrl ? (
+                      <div className="h-16 w-16 rounded-md bg-primary-100 flex items-center justify-center text-primary-600 mr-3 overflow-hidden">
+                        {contractor.companyLogo ? (
                           <img 
-                            src={contractor.profileImageUrl} 
-                            alt={`${contractor.firstName} ${contractor.lastName}`}
-                            className="h-full w-full rounded-full object-cover"
+                            src={contractor.companyLogo} 
+                            alt={contractor.companyName || "Company logo"}
+                            className="h-full w-full object-cover"
                           />
                         ) : (
-                          <UserIcon size={24} />
+                          <Building size={32} />
                         )}
                       </div>
                       <div>
                         <h3 className="font-semibold text-primary-900">
-                          {contractor.firstName} {contractor.lastName}
+                          {contractor.companyName || "Company Name"}
                         </h3>
                         <p className="text-sm text-primary-500">{contractor.title}</p>
                       </div>
@@ -505,10 +506,10 @@ const Contractors = () => {
                     </div>
                   </div>
                   
-                  {contractor.companyName && (
+                  {contractor.industry && (
                     <div className="flex items-center text-sm text-primary-600 mb-3">
                       <Building size={16} className="mr-2" />
-                      {contractor.companyName}
+                      {contractor.industry}
                     </div>
                   )}
                   

@@ -4,43 +4,77 @@ import { users } from "../shared/schema";
 async function main() {
   console.log("Seeding sample contractors and freelancers...");
 
-  // Add sample contractors
+  // Add sample contractors (as companies)
   const sampleContractors = [
     {
-      username: "alexsmith",
+      username: "smith_digital",
       password: "$2a$10$JqxMWkbdK7UpRBXJVEP7xOI89XTj0CG4lZDkoxcQJuL2QGh0pJg96", // hashed password
-      firstName: "Alex",
-      lastName: "Smith",
-      email: "alex.smith@example.com",
+      email: "contact@smithdigital.com",
       role: "contractor",
       workerType: "contractor",
-      profileImageUrl: "https://randomuser.me/api/portraits/men/1.jpg",
       companyName: "Smith Digital Solutions",
-      title: "Full Stack Developer",
+      companyLogo: "https://ui-avatars.com/api/?name=Smith+Digital&background=0D8ABC&color=fff&size=128&bold=true",
+      title: "Software Development Agency",
+      industry: "Technology",
+      foundedYear: 2015,
+      employeeCount: 24,
+      website: "https://smithdigital.example.com",
     },
     {
-      username: "sarahj",
+      username: "johnson_web",
       password: "$2a$10$JqxMWkbdK7UpRBXJVEP7xOI89XTj0CG4lZDkoxcQJuL2QGh0pJg96", // hashed password
-      firstName: "Sarah",
-      lastName: "Johnson",
-      email: "sarah.johnson@example.com",
+      email: "info@johnsonweb.com",
       role: "contractor",
       workerType: "contractor",
-      profileImageUrl: "https://randomuser.me/api/portraits/women/1.jpg",
       companyName: "Johnson Web Agency",
-      title: "UI/UX Designer",
+      companyLogo: "https://ui-avatars.com/api/?name=Johnson+Web&background=E74C3C&color=fff&size=128&bold=true",
+      title: "Web Design & Development Agency",
+      industry: "Creative",
+      foundedYear: 2018,
+      employeeCount: 12,
+      website: "https://johnsonweb.example.com",
     },
     {
-      username: "michaelp",
+      username: "parker_software",
       password: "$2a$10$JqxMWkbdK7UpRBXJVEP7xOI89XTj0CG4lZDkoxcQJuL2QGh0pJg96", // hashed password
-      firstName: "Michael",
-      lastName: "Parker",
-      email: "michael.parker@example.com",
+      email: "hello@parkersoftware.com",
       role: "contractor",
       workerType: "contractor",
-      profileImageUrl: "https://randomuser.me/api/portraits/men/2.jpg",
       companyName: "Parker Software Solutions",
-      title: "Mobile App Developer",
+      companyLogo: "https://ui-avatars.com/api/?name=Parker+Software&background=27AE60&color=fff&size=128&bold=true",
+      title: "Mobile App Development Company",
+      industry: "Technology",
+      foundedYear: 2017,
+      employeeCount: 18,
+      website: "https://parkersoftware.example.com",
+    },
+    {
+      username: "techcrafters",
+      password: "$2a$10$JqxMWkbdK7UpRBXJVEP7xOI89XTj0CG4lZDkoxcQJuL2QGh0pJg96", // hashed password
+      email: "info@techcrafters.com",
+      role: "contractor",
+      workerType: "contractor",
+      companyName: "TechCrafters Inc.",
+      companyLogo: "https://ui-avatars.com/api/?name=Tech+Crafters&background=8E44AD&color=fff&size=128&bold=true",
+      title: "Custom Software Solutions",
+      industry: "Technology",
+      foundedYear: 2014,
+      employeeCount: 35,
+      website: "https://techcrafters.example.com",
+    },
+    {
+      username: "vision_designs",
+      password: "$2a$10$JqxMWkbdK7UpRBXJVEP7xOI89XTj0CG4lZDkoxcQJuL2QGh0pJg96", // hashed password
+      email: "contact@visiondesigns.com",
+      role: "contractor",
+      workerType: "contractor",
+      companyName: "Vision Designs LLC",
+      companyLogo: "https://ui-avatars.com/api/?name=Vision+Designs&background=F39C12&color=fff&size=128&bold=true",
+      title: "Digital Design Studio",
+      industry: "Creative",
+      foundedYear: 2019,
+      employeeCount: 8,
+      website: "https://visiondesigns.example.com",
     }
   ];
 
@@ -107,9 +141,9 @@ async function main() {
   for (const contractor of sampleContractors) {
     try {
       await db.insert(users).values(contractor);
-      console.log(`Added contractor: ${contractor.firstName} ${contractor.lastName}`);
+      console.log(`Added contractor company: ${contractor.companyName}`);
     } catch (error) {
-      console.error(`Error adding contractor ${contractor.firstName} ${contractor.lastName}:`, error);
+      console.error(`Error adding contractor company ${contractor.companyName}:`, error);
     }
   }
 

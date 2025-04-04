@@ -7,14 +7,19 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
-  firstName: text("first_name").notNull(),
-  lastName: text("last_name").notNull(),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
   email: text("email").notNull().unique(),
   role: text("role").notNull().default("contractor"), // "business", "contractor", or "freelancer"
   workerType: text("worker_type"), // "contractor" or "freelancer" for external workers
   profileImageUrl: text("profile_image_url"),
-  companyName: text("company_name"),
+  companyName: text("company_name"), // Company name for subcontractors
+  companyLogo: text("company_logo"), // Company logo URL
   title: text("title"),
+  industry: text("industry"), // Industry sector the company operates in
+  foundedYear: integer("founded_year"), // Year the company was founded
+  employeeCount: integer("employee_count"), // Number of employees
+  website: text("website"), // Company website URL
   stripeCustomerId: text("stripe_customer_id"), // Stripe customer ID for payment processing
   stripeSubscriptionId: text("stripe_subscription_id"), // Stripe subscription ID for companies
 });

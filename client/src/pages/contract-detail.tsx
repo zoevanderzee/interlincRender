@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getQueryFn, apiRequest, queryClient } from '@/lib/queryClient';
 import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
-import { Download, FileText, User as UserIcon, Calendar, DollarSign, Clock, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Download, FileText, User as UserIcon, Calendar, DollarSign, Clock, AlertTriangle, CheckCircle, Building } from 'lucide-react';
 
 export default function ContractDetailPage() {
   const [, params] = useRoute('/contract/:id');
@@ -21,8 +21,8 @@ export default function ContractDetailPage() {
   
   // Helper function to get associated contractors
   const getAssociatedContractors = () => {
-    if (!contract || !contractors) return [];
-    return contractors.filter((c: User) => c.role === 'contractor' && c.id === contract.contractorId);
+    if (!contract || !contractors || !Array.isArray(contractors)) return [];
+    return contractors.filter((c: User) => c.role === 'contractor' && c.id === (contract as Contract).contractorId);
   };
   
   // Helper function to count associated contractors
@@ -32,9 +32,9 @@ export default function ContractDetailPage() {
   
   // Helper function to group milestones by contractor
   const getMilestonesByContractor = () => {
-    if (!milestones || !contract) return [];
+    if (!milestones || !contract || !Array.isArray(milestones)) return [];
     
-    const contractMilestones = milestones.filter((m: Milestone) => m.contractId === contract.id);
+    const contractMilestones = milestones.filter((m: Milestone) => m.contractId === (contract as Contract).id);
     
     // For now, all milestones belong to the same contractor
     // In a real multi-contractor scenario, milestones would be linked to specific contractors
@@ -382,19 +382,32 @@ export default function ContractDetailPage() {
                         {getAssociatedContractors().map((contractor: User) => (
                           <div key={contractor.id}>
                             <div className="flex items-center mb-4">
-                              <div className="h-12 w-12 rounded-full bg-primary-100 flex items-center justify-center text-primary-500">
-                                <UserIcon className="h-6 w-6" />
+                              <div className="h-16 w-16 rounded-md bg-primary-100 flex items-center justify-center text-primary-500 overflow-hidden">
+                                {contractor.companyLogo ? (
+                                  <img 
+                                    src={contractor.companyLogo} 
+                                    alt={contractor.companyName || "Company logo"} 
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <Building className="h-8 w-8" />
+                                )}
                               </div>
                               <div className="ml-3">
-                                <h3 className="font-medium">{contractor.firstName} {contractor.lastName}</h3>
+                                <h3 className="font-medium">{contractor.companyName || "Company"}</h3>
                                 <p className="text-sm text-muted-foreground">{contractor.title || 'No title'}</p>
                               </div>
                             </div>
                             
                             <div className="space-y-2">
                               <p className="text-sm"><span className="font-medium">Email:</span> {contractor.email}</p>
-                              <p className="text-sm"><span className="font-medium">Company:</span> {contractor.companyName || 'Individual'}</p>
-                              <p className="text-sm"><span className="font-medium">Worker Type:</span> {contractor.workerType || 'Unknown'}</p>
+                              {contractor.industry && (
+                                <p className="text-sm"><span className="font-medium">Industry:</span> {contractor.industry}</p>
+                              )}
+                              {contractor.website && (
+                                <p className="text-sm"><span className="font-medium">Website:</span> {contractor.website}</p>
+                              )}
+                              <p className="text-sm"><span className="font-medium">Worker Type:</span> {contractor.workerType || 'Sub Contractor'}</p>
                             </div>
                             
                             {getAssociatedContractors().length > 1 && <Separator className="my-4" />}
@@ -431,23 +444,31 @@ export default function ContractDetailPage() {
                   <Card key={item.contractor.id}>
                     <CardHeader>
                       <div className="flex items-center">
-                        <div className="mr-4 h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-500">
-                          <UserIcon className="h-5 w-5" />
+                        <div className="mr-4 h-12 w-12 rounded-md bg-primary-100 flex items-center justify-center text-primary-500 overflow-hidden">
+                          {item.contractor.companyLogo ? (
+                            <img 
+                              src={item.contractor.companyLogo} 
+                              alt={item.contractor.companyName || "Company logo"} 
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <Building className="h-6 w-6" />
+                          )}
                         </div>
                         <div>
                           <CardTitle>
-                            {item.contractor.firstName} {item.contractor.lastName}
+                            {item.contractor.companyName || "Company"}
                           </CardTitle>
                           <CardDescription>
-                            {item.contractor.title || item.contractor.workerType || 'Contractor'}
+                            {item.contractor.title || item.contractor.industry || 'Sub Contractor'}
                           </CardDescription>
                         </div>
                       </div>
                     </CardHeader>
                     <CardContent>
-                      {item.milestones.length > 0 ? (
+                      {item.milestones.length > 0 && contract ? (
                         <ContractTimeline 
-                          contract={contract} 
+                          contract={contract as Contract} 
                           milestones={item.milestones}
                           contractor={item.contractor}
                           onMilestoneComplete={handleMilestoneComplete}

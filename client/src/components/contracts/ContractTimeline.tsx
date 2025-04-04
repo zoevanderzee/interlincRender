@@ -27,7 +27,7 @@ const ContractTimeline = ({
 
   // Sort milestones by due date
   const sortedMilestones = [...milestones]
-    .filter(m => m.contractId === contract.id)
+    .filter(m => m.contractId === (contract?.id || 0))
     .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
 
   // Calculate contract progress
