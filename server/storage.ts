@@ -555,4 +555,240 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+import { db } from "./db";
+import { eq, desc, and, gte, lte } from "drizzle-orm";
+
+// Database storage implementation
+export class DatabaseStorage implements IStorage {
+  // User CRUD methods
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+  
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
+  }
+  
+  async getUsersByRole(role: string): Promise<User[]> {
+    return await db.select().from(users).where(eq(users.role, role));
+  }
+  
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db.insert(users).values(insertUser).returning();
+    return user;
+  }
+  
+  async updateUser(id: number, userData: Partial<InsertUser>): Promise<User | undefined> {
+    const [updatedUser] = await db
+      .update(users)
+      .set(userData)
+      .where(eq(users.id, id))
+      .returning();
+    return updatedUser;
+  }
+  
+  async updateStripeCustomerId(id: number, stripeCustomerId: string): Promise<User | undefined> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({ stripeCustomerId })
+      .where(eq(users.id, id))
+      .returning();
+    return updatedUser;
+  }
+  
+  async updateUserStripeInfo(id: number, stripeInfo: { stripeCustomerId: string, stripeSubscriptionId: string }): Promise<User | undefined> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({
+        stripeCustomerId: stripeInfo.stripeCustomerId,
+        stripeSubscriptionId: stripeInfo.stripeSubscriptionId
+      })
+      .where(eq(users.id, id))
+      .returning();
+    return updatedUser;
+  }
+  
+  // Invite CRUD methods
+  async getInvite(id: number): Promise<Invite | undefined> {
+    const [invite] = await db.select().from(invites).where(eq(invites.id, id));
+    return invite;
+  }
+  
+  async getInviteByEmail(email: string): Promise<Invite | undefined> {
+    const [invite] = await db.select().from(invites).where(eq(invites.email, email));
+    return invite;
+  }
+  
+  async getInvitesByBusinessId(businessId: number): Promise<Invite[]> {
+    return await db.select().from(invites).where(eq(invites.businessId, businessId));
+  }
+  
+  async getPendingInvites(): Promise<Invite[]> {
+    return await db.select().from(invites).where(eq(invites.status, 'pending'));
+  }
+  
+  async createInvite(insertInvite: InsertInvite): Promise<Invite> {
+    const [invite] = await db.insert(invites).values(insertInvite).returning();
+    return invite;
+  }
+  
+  async updateInvite(id: number, inviteData: Partial<InsertInvite>): Promise<Invite | undefined> {
+    const [updatedInvite] = await db
+      .update(invites)
+      .set(inviteData)
+      .where(eq(invites.id, id))
+      .returning();
+    return updatedInvite;
+  }
+  
+  // Contract CRUD methods
+  async getContract(id: number): Promise<Contract | undefined> {
+    const [contract] = await db.select().from(contracts).where(eq(contracts.id, id));
+    return contract;
+  }
+  
+  async getContractsByBusinessId(businessId: number): Promise<Contract[]> {
+    return await db.select().from(contracts).where(eq(contracts.businessId, businessId));
+  }
+  
+  async getContractsByContractorId(contractorId: number): Promise<Contract[]> {
+    return await db.select().from(contracts).where(eq(contracts.contractorId, contractorId));
+  }
+  
+  async createContract(insertContract: InsertContract): Promise<Contract> {
+    const [contract] = await db.insert(contracts).values(insertContract).returning();
+    return contract;
+  }
+  
+  async updateContract(id: number, contractData: Partial<InsertContract>): Promise<Contract | undefined> {
+    const [updatedContract] = await db
+      .update(contracts)
+      .set(contractData)
+      .where(eq(contracts.id, id))
+      .returning();
+    return updatedContract;
+  }
+  
+  // Milestone CRUD methods
+  async getMilestone(id: number): Promise<Milestone | undefined> {
+    const [milestone] = await db.select().from(milestones).where(eq(milestones.id, id));
+    return milestone;
+  }
+  
+  async getMilestonesByContractId(contractId: number): Promise<Milestone[]> {
+    return await db.select().from(milestones).where(eq(milestones.contractId, contractId));
+  }
+  
+  async getUpcomingMilestones(limit: number): Promise<Milestone[]> {
+    return await db
+      .select()
+      .from(milestones)
+      .where(and(
+        eq(milestones.status, 'pending'),
+        gte(milestones.dueDate, new Date())
+      ))
+      .orderBy(milestones.dueDate)
+      .limit(limit);
+  }
+  
+  async createMilestone(insertMilestone: InsertMilestone): Promise<Milestone> {
+    const [milestone] = await db.insert(milestones).values(insertMilestone).returning();
+    return milestone;
+  }
+  
+  async updateMilestone(id: number, milestoneData: Partial<InsertMilestone>): Promise<Milestone | undefined> {
+    const [updatedMilestone] = await db
+      .update(milestones)
+      .set(milestoneData)
+      .where(eq(milestones.id, id))
+      .returning();
+    return updatedMilestone;
+  }
+  
+  // Payment CRUD methods
+  async getPayment(id: number): Promise<Payment | undefined> {
+    const [payment] = await db.select().from(payments).where(eq(payments.id, id));
+    return payment;
+  }
+  
+  async getPaymentsByContractId(contractId: number): Promise<Payment[]> {
+    return await db.select().from(payments).where(eq(payments.contractId, contractId));
+  }
+  
+  async getUpcomingPayments(limit: number): Promise<Payment[]> {
+    const now = new Date();
+    return await db
+      .select()
+      .from(payments)
+      .where(and(
+        eq(payments.status, 'scheduled'),
+        gte(payments.scheduledDate, now)
+      ))
+      .orderBy(payments.scheduledDate)
+      .limit(limit);
+  }
+  
+  async createPayment(insertPayment: InsertPayment): Promise<Payment> {
+    const [payment] = await db.insert(payments).values({
+      ...insertPayment,
+      completedDate: null,
+      stripePaymentIntentId: null,
+      stripePaymentIntentStatus: null,
+      paymentProcessor: 'stripe'
+    }).returning();
+    return payment;
+  }
+  
+  async updatePayment(id: number, paymentData: Partial<InsertPayment>): Promise<Payment | undefined> {
+    const [updatedPayment] = await db
+      .update(payments)
+      .set(paymentData)
+      .where(eq(payments.id, id))
+      .returning();
+    return updatedPayment;
+  }
+  
+  async updatePaymentStripeDetails(id: number, stripePaymentIntentId: string, stripePaymentIntentStatus: string): Promise<Payment | undefined> {
+    // Update payment status based on Stripe status
+    const status = stripePaymentIntentStatus === 'succeeded' ? 'completed' : 
+                  stripePaymentIntentStatus === 'processing' ? 'processing' : 
+                  stripePaymentIntentStatus === 'requires_payment_method' ? 'failed' : 
+                  'scheduled';
+    
+    // If payment succeeded, set the completed date
+    const completedDate = stripePaymentIntentStatus === 'succeeded' ? new Date() : null;
+    
+    const [updatedPayment] = await db
+      .update(payments)
+      .set({
+        stripePaymentIntentId,
+        stripePaymentIntentStatus,
+        status,
+        completedDate
+      })
+      .where(eq(payments.id, id))
+      .returning();
+    
+    return updatedPayment;
+  }
+  
+  // Document CRUD methods
+  async getDocument(id: number): Promise<Document | undefined> {
+    const [document] = await db.select().from(documents).where(eq(documents.id, id));
+    return document;
+  }
+  
+  async getDocumentsByContractId(contractId: number): Promise<Document[]> {
+    return await db.select().from(documents).where(eq(documents.contractId, contractId));
+  }
+  
+  async createDocument(insertDocument: InsertDocument): Promise<Document> {
+    const [document] = await db.insert(documents).values(insertDocument).returning();
+    return document;
+  }
+}
+
+// Use DatabaseStorage instead of MemStorage
+export const storage = new DatabaseStorage();

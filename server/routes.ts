@@ -28,9 +28,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get(`${apiRouter}/users`, async (req: Request, res: Response) => {
     try {
       const role = req.query.role as string;
-      const users = await storage.getUsersByRole(role || "");
+      let users;
+      
+      if (role) {
+        // If role is specified, filter by role
+        users = await storage.getUsersByRole(role);
+      } else {
+        // If no role is specified, get all users by querying all roles
+        const contractors = await storage.getUsersByRole("contractor");
+        const businessUsers = await storage.getUsersByRole("business");
+        users = [...contractors, ...businessUsers];
+      }
+      
       res.json(users);
     } catch (error) {
+      console.error("Error fetching users:", error);
       res.status(500).json({ message: "Error fetching users" });
     }
   });
@@ -140,18 +152,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const businessId = req.query.businessId ? parseInt(req.query.businessId as string) : null;
       const contractorId = req.query.contractorId ? parseInt(req.query.contractorId as string) : null;
       
-      let contracts;
+      let contracts = [];
       if (businessId) {
         contracts = await storage.getContractsByBusinessId(businessId);
       } else if (contractorId) {
         contracts = await storage.getContractsByContractorId(contractorId);
       } else {
-        // For this demo, return all contracts if no filter
-        contracts = Array.from((await Promise.all(Array.from({ length: 10 }, (_, i) => storage.getContract(i + 1)))).filter(Boolean));
+        // Get all contracts from all businesses and contractors
+        const businessUsers = await storage.getUsersByRole("business");
+        const contractorUsers = await storage.getUsersByRole("contractor");
+        
+        // Collect all contracts for each business and contractor
+        const businessContracts = await Promise.all(
+          businessUsers.map(async (business) => {
+            return await storage.getContractsByBusinessId(business.id);
+          })
+        );
+        
+        const contractorContracts = await Promise.all(
+          contractorUsers.map(async (contractor) => {
+            return await storage.getContractsByContractorId(contractor.id);
+          })
+        );
+        
+        // Flatten the arrays and remove duplicates
+        const allContracts = [...businessContracts.flat(), ...contractorContracts.flat()];
+        const uniqueContractIds = new Set();
+        contracts = allContracts.filter(contract => {
+          if (!uniqueContractIds.has(contract.id)) {
+            uniqueContractIds.add(contract.id);
+            return true;
+          }
+          return false;
+        });
       }
       
       res.json(contracts);
     } catch (error) {
+      console.error("Error fetching contracts:", error);
       res.status(500).json({ message: "Error fetching contracts" });
     }
   });
