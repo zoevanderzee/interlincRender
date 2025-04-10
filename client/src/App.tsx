@@ -19,6 +19,7 @@ import Settings from "@/pages/settings";
 import Subscribe from "@/pages/subscribe";
 import Help from "@/pages/help";
 import ContractorConnect from "@/pages/contractor-connect";
+import TestLogin from "@/pages/test-login";
 import Layout from "@/components/layout/Layout";
 import AuthPage from "@/pages/auth";
 
@@ -28,6 +29,10 @@ function Router() {
       {/* Public Routes */}
       <Route path="/auth">
         <AuthPage />
+      </Route>
+      
+      <Route path="/test-login">
+        <TestLogin />
       </Route>
 
       {/* Protected Routes - require authentication */}
