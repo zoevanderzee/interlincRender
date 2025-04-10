@@ -25,6 +25,7 @@ export interface IStorage {
   updateUser(id: number, user: Partial<InsertUser>): Promise<User | undefined>;
   updateStripeCustomerId(id: number, stripeCustomerId: string): Promise<User | undefined>;
   updateUserStripeInfo(id: number, stripeInfo: { stripeCustomerId: string, stripeSubscriptionId: string }): Promise<User | undefined>;
+  updateUserConnectAccount(id: number, connectAccountId: string, payoutEnabled?: boolean): Promise<User | undefined>;
   
   // Invites
   getInvite(id: number): Promise<Invite | undefined>;
@@ -55,6 +56,7 @@ export interface IStorage {
   createPayment(payment: InsertPayment): Promise<Payment>;
   updatePayment(id: number, payment: Partial<InsertPayment>): Promise<Payment | undefined>;
   updatePaymentStripeDetails(id: number, stripePaymentIntentId: string, stripePaymentIntentStatus: string): Promise<Payment | undefined>;
+  updatePaymentTransferDetails(id: number, stripeTransferId: string, stripeTransferStatus: string, applicationFee: number): Promise<Payment | undefined>;
   
   // Documents
   getDocument(id: number): Promise<Document | undefined>;
@@ -633,6 +635,21 @@ export class DatabaseStorage implements IStorage {
     return updatedUser;
   }
   
+  /**
+   * Update a user's Stripe Connect account ID
+   */
+  async updateUserConnectAccount(id: number, connectAccountId: string, payoutEnabled: boolean = false): Promise<User | undefined> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({
+        stripeConnectAccountId: connectAccountId,
+        payoutEnabled
+      })
+      .where(eq(users.id, id))
+      .returning();
+    return updatedUser;
+  }
+  
   // Invite CRUD methods
   async getInvite(id: number): Promise<Invite | undefined> {
     const [invite] = await db.select().from(invites).where(eq(invites.id, id));
@@ -790,6 +807,23 @@ export class DatabaseStorage implements IStorage {
         stripePaymentIntentStatus,
         status,
         completedDate
+      })
+      .where(eq(payments.id, id))
+      .returning();
+    
+    return updatedPayment;
+  }
+  
+  /**
+   * Update payment with Stripe transfer details for contractor payout
+   */
+  async updatePaymentTransferDetails(id: number, stripeTransferId: string, stripeTransferStatus: string, applicationFee: number): Promise<Payment | undefined> {
+    const [updatedPayment] = await db
+      .update(payments)
+      .set({
+        stripeTransferId,
+        stripeTransferStatus,
+        applicationFee: applicationFee.toString()
       })
       .where(eq(payments.id, id))
       .returning();

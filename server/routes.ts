@@ -537,11 +537,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const paymentId = paymentIntent.metadata.paymentId;
         
         if (paymentId) {
+          // Update payment status
           await storage.updatePaymentStripeDetails(
             parseInt(paymentId),
             paymentIntent.id,
             paymentIntent.status
           );
+          
+          // Check if this was a Connect payment
+          if (paymentIntent.transfer_data && paymentIntent.metadata.connectAccountId) {
+            console.log('Processing Connect payment success', paymentId, paymentIntent.id);
+            
+            // For Connect payments, we might need to track the transfer separately
+            if (paymentIntent.transfer) {
+              await storage.updatePaymentTransferDetails(
+                parseInt(paymentId),
+                paymentIntent.transfer,
+                'pending', // Transfer is created but not yet complete
+                parseFloat(paymentIntent.application_fee_amount) / 100 // Convert from cents
+              );
+            }
+          }
         }
       }
       
@@ -555,6 +571,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
             parseInt(paymentId),
             paymentIntent.id,
             paymentIntent.status
+          );
+        }
+      }
+      
+      // Handle transfer.created event
+      if (event.type === 'transfer.created') {
+        const transfer = event.data.object;
+        
+        // Look up payment by metadata in the transfer
+        if (transfer.metadata && transfer.metadata.paymentId) {
+          const paymentId = transfer.metadata.paymentId;
+          
+          await storage.updatePaymentTransferDetails(
+            parseInt(paymentId),
+            transfer.id,
+            'created',
+            0 // Application fee is already recorded from the payment intent
+          );
+        }
+      }
+      
+      // Handle transfer.paid event
+      if (event.type === 'transfer.paid') {
+        const transfer = event.data.object;
+        
+        // Look up payment by metadata in the transfer
+        if (transfer.metadata && transfer.metadata.paymentId) {
+          const paymentId = transfer.metadata.paymentId;
+          
+          await storage.updatePaymentTransferDetails(
+            parseInt(paymentId),
+            transfer.id,
+            'paid',
+            0 // Application fee is already recorded
+          );
+        }
+      }
+      
+      // Handle transfer.failed event
+      if (event.type === 'transfer.failed') {
+        const transfer = event.data.object;
+        
+        // Look up payment by metadata in the transfer
+        if (transfer.metadata && transfer.metadata.paymentId) {
+          const paymentId = transfer.metadata.paymentId;
+          
+          await storage.updatePaymentTransferDetails(
+            parseInt(paymentId),
+            transfer.id,
+            'failed',
+            0 // Application fee is already recorded
+          );
+        }
+      }
+      
+      // Handle account.updated event
+      if (event.type === 'account.updated') {
+        const account = event.data.object;
+        
+        // If user_id is in metadata, update the user's account status
+        if (account.metadata && account.metadata.userId) {
+          const userId = account.metadata.userId;
+          
+          // Update the user's Connect account status
+          await storage.updateUserConnectAccount(
+            parseInt(userId),
+            account.id,
+            account.charges_enabled
           );
         }
       }
@@ -589,6 +673,171 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error updating payment status:', error);
       res.status(500).json({ message: "Error updating payment status" });
+    }
+  });
+  
+  // Stripe Connect endpoints for contractors
+  
+  // Create a Stripe Connect account for a contractor
+  app.post(`${apiRouter}/contractors/:id/connect-account`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const contractorId = parseInt(req.params.id);
+      const contractor = await storage.getUser(contractorId);
+      
+      if (!contractor) {
+        return res.status(404).json({ message: "Contractor not found" });
+      }
+      
+      // Check if the contractor already has a Connect account
+      if (contractor.stripeConnectAccountId) {
+        const accountStatus = await stripeService.checkConnectAccountStatus(contractor.stripeConnectAccountId);
+        
+        if (accountStatus) {
+          return res.status(400).json({ 
+            message: "Contractor already has a Connect account that is fully set up",
+            accountId: contractor.stripeConnectAccountId
+          });
+        }
+        
+        // If account exists but not fully set up, generate new onboarding link
+        try {
+          const account = await stripeService.getConnectAccount(contractor.stripeConnectAccountId);
+          
+          const accountLink = await stripe.accountLinks.create({
+            account: account.id,
+            refresh_url: `${process.env.FRONTEND_URL || 'http://localhost:5000'}/contractors/onboarding/refresh`,
+            return_url: `${process.env.FRONTEND_URL || 'http://localhost:5000'}/contractors/onboarding/complete`,
+            type: 'account_onboarding',
+          });
+          
+          return res.json({ 
+            accountId: account.id, 
+            accountLink: accountLink.url,
+            status: account.charges_enabled ? 'active' : 'pending'
+          });
+        } catch (error) {
+          // If we get an error retrieving the account, create a new one
+          console.log('Error retrieving Connect account, creating a new one:', error);
+        }
+      }
+      
+      // Create a new Connect account
+      const connectAccount = await stripeService.createConnectAccount(contractor);
+      
+      // Update the contractor with the Connect account ID
+      await storage.updateUserConnectAccount(contractorId, connectAccount.id);
+      
+      res.status(201).json({
+        accountId: connectAccount.id,
+        accountLink: connectAccount.accountLink,
+        status: 'pending'
+      });
+    } catch (error) {
+      console.error('Error creating Connect account:', error);
+      res.status(500).json({ message: "Error creating Connect account" });
+    }
+  });
+  
+  // Get contractor Connect account status
+  app.get(`${apiRouter}/contractors/:id/connect-status`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const contractorId = parseInt(req.params.id);
+      const contractor = await storage.getUser(contractorId);
+      
+      if (!contractor) {
+        return res.status(404).json({ message: "Contractor not found" });
+      }
+      
+      if (!contractor.stripeConnectAccountId) {
+        return res.json({ status: 'not_created' });
+      }
+      
+      const accountStatus = await stripeService.checkConnectAccountStatus(contractor.stripeConnectAccountId);
+      
+      await storage.updateUserConnectAccount(
+        contractorId, 
+        contractor.stripeConnectAccountId, 
+        accountStatus
+      );
+      
+      res.json({
+        status: accountStatus ? 'active' : 'pending',
+        accountId: contractor.stripeConnectAccountId,
+        payoutEnabled: accountStatus
+      });
+    } catch (error) {
+      console.error('Error checking Connect account status:', error);
+      res.status(500).json({ message: "Error checking Connect account status" });
+    }
+  });
+  
+  // Create a payment direct to contractor via Connect
+  app.post(`${apiRouter}/payments/:id/pay-contractor`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const paymentId = parseInt(req.params.id);
+      const payment = await storage.getPayment(paymentId);
+      
+      if (!payment) {
+        return res.status(404).json({ message: "Payment not found" });
+      }
+      
+      // Get contract to find contractor
+      const contract = await storage.getContract(payment.contractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contract not found" });
+      }
+      
+      // Get contractor to check Connect account
+      const contractor = await storage.getUser(contract.contractorId);
+      if (!contractor) {
+        return res.status(404).json({ message: "Contractor not found" });
+      }
+      
+      // Check if contractor has a Connect account
+      if (!contractor.stripeConnectAccountId) {
+        return res.status(400).json({ message: "Contractor doesn't have a Connect account set up" });
+      }
+      
+      // Check if Connect account is properly set up
+      const accountStatus = await stripeService.checkConnectAccountStatus(contractor.stripeConnectAccountId);
+      if (!accountStatus) {
+        return res.status(400).json({ message: "Contractor's Connect account is not fully set up" });
+      }
+      
+      // Calculate platform fee (5% by default)
+      const amount = parseFloat(payment.amount);
+      const platformFee = amount * 0.05;
+      
+      // Create direct payment to contractor
+      const paymentIntent = await stripeService.processDirectPayment(
+        payment,
+        contractor.stripeConnectAccountId,
+        platformFee
+      );
+      
+      // Update payment with Stripe payment intent details
+      await storage.updatePaymentStripeDetails(
+        paymentId, 
+        paymentIntent.id, 
+        'requires_payment_method'
+      );
+      
+      // Update payment with transfer details
+      await storage.updatePaymentTransferDetails(
+        paymentId,
+        '', // Transfer ID will be updated after payment completes
+        'pending',
+        platformFee
+      );
+      
+      res.json({
+        clientSecret: paymentIntent.clientSecret,
+        paymentIntentId: paymentIntent.id,
+        directToContractor: true
+      });
+    } catch (error) {
+      console.error('Error creating direct payment:', error);
+      res.status(500).json({ message: "Error creating direct payment" });
     }
   });
   

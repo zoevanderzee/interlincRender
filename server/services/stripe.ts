@@ -31,7 +31,7 @@ export interface ConnectAccountResponse {
  */
 export async function createPaymentIntent(params: CreatePaymentIntentParams): Promise<PaymentIntentResponse> {
   try {
-    const paymentIntent = await stripe.paymentIntents.create({
+    const paymentIntentParams: Stripe.PaymentIntentCreateParams = {
       amount: params.amount,
       currency: params.currency,
       description: params.description,
@@ -39,7 +39,22 @@ export async function createPaymentIntent(params: CreatePaymentIntentParams): Pr
       automatic_payment_methods: {
         enabled: true,
       },
-    });
+    };
+
+    // If this is a Connect payment, add the transfer data
+    if (params.transferData && params.transferData.destination) {
+      paymentIntentParams.transfer_data = {
+        destination: params.transferData.destination,
+        amount: params.transferData.amount,
+      };
+
+      // Add application fee if provided
+      if (params.applicationFeeAmount) {
+        paymentIntentParams.application_fee_amount = params.applicationFeeAmount;
+      }
+    }
+
+    const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
 
     return {
       clientSecret: paymentIntent.client_secret as string,
@@ -91,9 +106,131 @@ export async function updatePaymentStatus(paymentIntentId: string): Promise<stri
   return paymentIntent.status;
 }
 
+/**
+ * Creates a Stripe Connect account for a contractor
+ */
+export async function createConnectAccount(contractor: User): Promise<ConnectAccountResponse> {
+  try {
+    // Create a connected account for the contractor
+    const account = await stripe.accounts.create({
+      type: 'express',
+      country: 'US', // Default to US
+      email: contractor.email,
+      business_type: 'company',
+      company: {
+        name: contractor.companyName || `${contractor.firstName} ${contractor.lastName}`,
+      },
+      capabilities: {
+        transfers: { requested: true },
+        card_payments: { requested: true },
+      },
+      metadata: {
+        userId: contractor.id.toString(),
+      },
+    });
+
+    // Create an account link for onboarding
+    const accountLink = await stripe.accountLinks.create({
+      account: account.id,
+      refresh_url: `${process.env.FRONTEND_URL || 'http://localhost:5000'}/contractors/onboarding/refresh`,
+      return_url: `${process.env.FRONTEND_URL || 'http://localhost:5000'}/contractors/onboarding/complete`,
+      type: 'account_onboarding',
+    });
+
+    return {
+      id: account.id,
+      accountLink: accountLink.url,
+    };
+  } catch (error) {
+    console.error('Error creating Connect account:', error);
+    throw error;
+  }
+}
+
+/**
+ * Process a direct payment to a contractor through Stripe Connect
+ */
+export async function processDirectPayment(payment: Payment, contractorConnectId: string, platformFee: number = 0): Promise<PaymentIntentResponse> {
+  // Convert amounts to cents (Stripe uses smallest currency unit)
+  const amount = Math.round(parseFloat(payment.amount) * 100);
+  const feeAmount = platformFee > 0 ? Math.round(platformFee * 100) : Math.round(amount * 0.05); // Default 5% fee
+  
+  return createPaymentIntent({
+    amount,
+    currency: 'usd', // Default to USD
+    description: `Payment for milestone ID: ${payment.milestoneId}`,
+    metadata: {
+      paymentId: payment.id.toString(),
+      contractId: payment.contractId.toString(),
+      milestoneId: payment.milestoneId ? payment.milestoneId.toString() : '',
+      connectAccountId: contractorConnectId
+    },
+    transferData: {
+      destination: contractorConnectId,
+      amount: amount - feeAmount, // Transfer amount minus platform fee
+    },
+    applicationFeeAmount: feeAmount,
+  });
+}
+
+/**
+ * Creates a transfer to a connected account
+ */
+export async function createTransfer(payment: Payment, contractorConnectId: string): Promise<string> {
+  try {
+    const amount = Math.round(parseFloat(payment.amount) * 100);
+    const transfer = await stripe.transfers.create({
+      amount,
+      currency: 'usd',
+      destination: contractorConnectId,
+      description: `Payment for contract #${payment.contractId}, milestone #${payment.milestoneId}`,
+      metadata: {
+        paymentId: payment.id.toString(),
+        contractId: payment.contractId.toString(),
+        milestoneId: payment.milestoneId ? payment.milestoneId.toString() : '',
+      },
+    });
+    
+    return transfer.id;
+  } catch (error) {
+    console.error('Error creating transfer:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get Stripe Connect account details
+ */
+export async function getConnectAccount(accountId: string) {
+  try {
+    return await stripe.accounts.retrieve(accountId);
+  } catch (error) {
+    console.error('Error retrieving Connect account:', error);
+    throw error;
+  }
+}
+
+/**
+ * Check if a Connect account is properly set up
+ */
+export async function checkConnectAccountStatus(accountId: string): Promise<boolean> {
+  try {
+    const account = await getConnectAccount(accountId);
+    return account.charges_enabled && account.details_submitted;
+  } catch (error) {
+    console.error('Error checking Connect account status:', error);
+    return false;
+  }
+}
+
 export default {
   createPaymentIntent,
   retrievePaymentIntent,
   processMilestonePayment,
   updatePaymentStatus,
+  createConnectAccount,
+  processDirectPayment,
+  createTransfer,
+  getConnectAccount,
+  checkConnectAccountStatus,
 };
