@@ -423,7 +423,7 @@ export default function AuthPage() {
       <div className="w-full md:w-1/2 bg-zinc-900 p-12 flex items-center">
         <div className="max-w-lg mx-auto">
           <h1 className="text-4xl font-bold text-white mb-6">
-            Smart Contract Management Platform
+            Connect, Create, Collaborate
           </h1>
           <h2 className="text-2xl font-semibold text-white mb-4">
             Revolutionizing outsourced work payments
