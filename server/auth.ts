@@ -6,9 +6,6 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
-import connectPg from "connect-pg-simple";
-import { pool } from "./db";
-import createMemoryStore from "memorystore";
 
 declare global {
   namespace Express {
@@ -17,10 +14,6 @@ declare global {
 }
 
 const scryptAsync = promisify(scrypt);
-
-// Create a PostgreSQL session store
-const PostgresSessionStore = connectPg(session);
-const MemoryStore = createMemoryStore(session);
 
 // Function to hash passwords
 async function hashPassword(password: string) {
@@ -54,16 +47,8 @@ export function setupAuth(app: Express) {
       maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
       httpOnly: true,
     },
-    // Use Postgres for session storage in production, memory store for development
-    store: process.env.NODE_ENV === "production"
-      ? new PostgresSessionStore({ 
-          pool, 
-          tableName: 'sessions',
-          createTableIfMissing: true
-        })
-      : new MemoryStore({
-          checkPeriod: 86400000, // prune expired entries every 24h
-        }),
+    // Use the storage implementation's session store
+    store: storage.sessionStore
   };
 
   // Configure Express to trust proxy headers when in production
