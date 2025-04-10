@@ -1,49 +1,58 @@
-import React from "react";
-import { Card } from "@/components/ui/card";
-import { ArrowUp, ArrowDown } from "lucide-react";
+import React, { ReactNode } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { ArrowDown, ArrowUp } from "lucide-react";
 
 interface StatsCardProps {
   title: string;
-  value: string | number;
-  icon: React.ReactNode;
+  value: number | string;
+  icon: ReactNode;
   iconBgColor: string;
   iconColor: string;
   changeValue?: number;
   changeText?: string;
 }
 
-const StatsCard = ({
-  title,
-  value,
-  icon,
-  iconBgColor,
+const StatsCard = ({ 
+  title, 
+  value, 
+  icon, 
+  iconBgColor, 
   iconColor,
-  changeValue,
-  changeText
+  changeValue = 0,
+  changeText = "" 
 }: StatsCardProps) => {
-  const isPositiveChange = changeValue && changeValue > 0;
+  const isPositive = changeValue >= 0;
   
   return (
-    <Card className="p-6 border border-zinc-800 bg-zinc-900">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-gray-400 text-sm font-medium">{title}</p>
-          <h3 className="text-2xl font-semibold text-white mt-1">{value}</h3>
+    <Card className="border-zinc-800 bg-zinc-900 overflow-hidden">
+      <CardContent className="p-6">
+        <div className="flex justify-between items-start">
+          <div>
+            <p className="text-sm font-medium text-zinc-400 mb-1">{title}</p>
+            <h4 className="text-2xl font-bold text-white">{value}</h4>
+            
+            {(changeValue !== 0 || changeText) && (
+              <div className="flex items-center mt-2">
+                <span className={`inline-flex items-center text-xs font-medium ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
+                  {isPositive ? <ArrowUp className="h-3 w-3 mr-1" /> : <ArrowDown className="h-3 w-3 mr-1" />}
+                  {Math.abs(changeValue)}%
+                </span>
+                {changeText && (
+                  <span className="text-xs text-zinc-500 ml-1">
+                    {changeText}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+          
+          <div className={`${iconBgColor} h-10 w-10 rounded-full flex items-center justify-center`}>
+            <span className={iconColor}>
+              {icon}
+            </span>
+          </div>
         </div>
-        <div className={`h-12 w-12 rounded-full ${iconBgColor} flex items-center justify-center ${iconColor}`}>
-          {icon}
-        </div>
-      </div>
-      
-      {(changeValue !== undefined && changeText) && (
-        <div className="mt-4 flex items-center text-xs">
-          <span className={`flex items-center ${isPositiveChange ? 'text-green-400' : 'text-red-400'}`}>
-            {isPositiveChange ? <ArrowUp size={12} className="mr-1" /> : <ArrowDown size={12} className="mr-1" />}
-            {Math.abs(changeValue)}%
-          </span>
-          <span className="text-gray-500 ml-2">{changeText}</span>
-        </div>
-      )}
+      </CardContent>
     </Card>
   );
 };
