@@ -1,5 +1,5 @@
 import Stripe from 'stripe';
-import { Payment } from '@shared/schema';
+import { Payment, User } from '@shared/schema';
 
 // Initialize Stripe with the secret key from environment variables
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
@@ -9,11 +9,21 @@ export interface CreatePaymentIntentParams {
   currency: string;
   description: string;
   metadata?: Record<string, string>;
+  transferData?: {
+    destination: string;
+    amount?: number;
+  };
+  applicationFeeAmount?: number;
 }
 
 export interface PaymentIntentResponse {
   clientSecret: string;
   id: string;
+}
+
+export interface ConnectAccountResponse {
+  id: string;
+  accountLink: string;
 }
 
 /**

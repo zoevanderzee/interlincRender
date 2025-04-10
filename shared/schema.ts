@@ -22,6 +22,8 @@ export const users = pgTable("users", {
   website: text("website"), // Company website URL
   stripeCustomerId: text("stripe_customer_id"), // Stripe customer ID for payment processing
   stripeSubscriptionId: text("stripe_subscription_id"), // Stripe subscription ID for companies
+  stripeConnectAccountId: text("stripe_connect_account_id"), // Stripe Connect account ID for contractors
+  payoutEnabled: boolean("payout_enabled").default(false) // Whether the contractor is ready to receive payments
 });
 
 // Project Invites table
@@ -79,7 +81,10 @@ export const payments = pgTable("payments", {
   notes: text("notes"),
   stripePaymentIntentId: text("stripe_payment_intent_id"), // Stripe Payment Intent ID
   stripePaymentIntentStatus: text("stripe_payment_intent_status"), // Stripe Payment Intent Status
+  stripeTransferId: text("stripe_transfer_id"), // Stripe Transfer ID for Connect payouts
+  stripeTransferStatus: text("stripe_transfer_status"), // Status of the Stripe Transfer
   paymentProcessor: text("payment_processor").default("stripe"), // Payment processor used
+  applicationFee: decimal("application_fee", { precision: 10, scale: 2 }).default("0"), // Platform fee
 });
 
 // Documents table
