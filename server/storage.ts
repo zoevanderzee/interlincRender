@@ -14,6 +14,9 @@ import connectPg from "connect-pg-simple";
 
 // Storage interface for CRUD operations
 export interface IStorage {
+  // Session management
+  sessionStore: session.Store;
+  
   // Users
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
@@ -75,6 +78,9 @@ export class MemStorage implements IStorage {
   private paymentId: number;
   private documentId: number;
   
+  // Session store
+  public sessionStore: session.Store;
+  
   constructor() {
     this.users = new Map();
     this.invites = new Map();
@@ -89,6 +95,12 @@ export class MemStorage implements IStorage {
     this.milestoneId = 1;
     this.paymentId = 1;
     this.documentId = 1;
+    
+    // Create memory store for sessions
+    const MemoryStore = require('memorystore')(session);
+    this.sessionStore = new MemoryStore({
+      checkPeriod: 86400000 // prune expired entries every 24h
+    });
     
     // Add some seed data for development
     this.seedData();
@@ -559,11 +571,18 @@ export class MemStorage implements IStorage {
   }
 }
 
-import { db } from "./db";
-import { eq, desc, and, gte, lte } from "drizzle-orm";
-
 // Database storage implementation
 export class DatabaseStorage implements IStorage {
+  // Session store for PostgreSQL
+  public sessionStore: session.Store;
+
+  constructor() {
+    const PostgresSessionStore = connectPg(session);
+    this.sessionStore = new PostgresSessionStore({
+      pool, 
+      createTableIfMissing: true
+    });
+  }
   // User CRUD methods
   async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
