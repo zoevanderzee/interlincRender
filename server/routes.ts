@@ -386,11 +386,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let documents = [];
       if (contractId) {
+        // If contractId is provided, return documents for that contract
         documents = await storage.getDocumentsByContractId(contractId);
+      } else {
+        // If no contractId provided, return all documents from all contracts
+        // Get all contracts first
+        const contracts = await storage.getContractsByBusinessId(9); // Assuming businessId 9 for Creativ Linc
+        
+        // Fetch documents for each contract
+        for (const contract of contracts) {
+          const contractDocuments = await storage.getDocumentsByContractId(contract.id);
+          documents = [...documents, ...contractDocuments];
+        }
       }
       
       res.json(documents);
     } catch (error) {
+      console.error("Error fetching documents:", error);
       res.status(500).json({ message: "Error fetching documents" });
     }
   });
