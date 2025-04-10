@@ -29,7 +29,7 @@ export default function ContractorConnect() {
     queryKey: ['/api/contractors/connect-status', contractorId],
     queryFn: () => apiRequest('GET', `/api/contractors/${contractorId}/connect-status`).then(res => res.json()),
     enabled: !!contractorId,
-    refetchInterval: (data) => {
+    refetchInterval: (data: any) => {
       // If status is pending, refresh every 10 seconds
       return data?.status === 'pending' ? 10000 : false;
     },

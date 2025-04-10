@@ -18,6 +18,7 @@ import Compliance from "@/pages/compliance";
 import Settings from "@/pages/settings";
 import Subscribe from "@/pages/subscribe";
 import Help from "@/pages/help";
+import ContractorConnect from "@/pages/contractor-connect";
 import Layout from "@/components/layout/Layout";
 import AuthPage from "@/pages/auth";
 
@@ -63,6 +64,12 @@ function Router() {
       <ProtectedRoute path="/contractors">
         <Layout>
           <Contractors />
+        </Layout>
+      </ProtectedRoute>
+      
+      <ProtectedRoute path="/contractors/:id/connect">
+        <Layout>
+          <ContractorConnect />
         </Layout>
       </ProtectedRoute>
       
