@@ -429,9 +429,9 @@ export default function AuthPage() {
             Connect, Create, Collaborate
           </h2>
           <p className="text-zinc-400 mb-6">
-            Creativ Linc eliminates invoicing for businesses working with freelancers and contractors by 
-            automating payments based on pre-agreed milestones and deliverables, providing financial 
-            transparency and real-time budget control.
+            People, Payment and Project Management- Simplified through smart contracts.  
+            A seamless, automated payment solution that ensures clarity, security, and 
+            financial control at every stage to optimise growth for businesses.
           </p>
           <div className="space-y-4">
             <div className="flex items-start">
