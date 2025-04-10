@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { initializeEmailService } from "./services/email";
+import path from "path";
 
 const app = express();
 app.use(express.json());
@@ -41,6 +42,11 @@ app.use((req, res, next) => {
   // Initialize email service for sending notifications
   initializeEmailService();
   
+  // Serve test login HTML
+  app.get('/test-login-html', (req, res) => {
+    res.sendFile(path.resolve(__dirname, '..', 'client', 'test-login.html'));
+  });
+  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -73,7 +79,4 @@ app.use((req, res, next) => {
   });
 })();
 
-// Serve test login HTML
-app.get('/test-login-html', (req, res) => {
-  res.sendFile(path.resolve(__dirname, '..', 'client', 'test-login.html'));
-});
+
