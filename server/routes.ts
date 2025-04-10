@@ -629,10 +629,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Handle account.updated event
       if (event.type === 'account.updated') {
         const account = event.data.object;
+        console.log('Processing account.updated event:', account.id);
         
         // If user_id is in metadata, update the user's account status
         if (account.metadata && account.metadata.userId) {
           const userId = account.metadata.userId;
+          console.log('Updating Connect account status for user:', userId);
           
           // Update the user's Connect account status
           await storage.updateUserConnectAccount(
@@ -640,6 +642,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
             account.id,
             account.charges_enabled
           );
+          
+          console.log('Connect account status updated, charges_enabled:', account.charges_enabled);
+        } else {
+          console.log('No userId in metadata, trying to find user by Connect account ID');
+          
+          // If no userId in metadata, try to find the user by Connect account ID
+          try {
+            const users = await storage.getUsersByConnectAccountId(account.id);
+            if (users && users.length > 0) {
+              const user = users[0];
+              console.log('Found user by Connect account ID:', user.id);
+              
+              await storage.updateUserConnectAccount(
+                user.id,
+                account.id,
+                account.charges_enabled
+              );
+              
+              console.log('Connect account status updated for found user, charges_enabled:', account.charges_enabled);
+            }
+          } catch (err) {
+            console.error('Error finding user by Connect account ID:', err);
+          }
         }
       }
       
