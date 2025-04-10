@@ -7,6 +7,10 @@ import {
   type Payment, type InsertPayment,
   type Document, type InsertDocument
 } from "@shared/schema";
+import { eq, and, desc, lte, gte, sql } from "drizzle-orm";
+import { db, pool } from "./db";
+import session from "express-session";
+import connectPg from "connect-pg-simple";
 
 // Storage interface for CRUD operations
 export interface IStorage {
