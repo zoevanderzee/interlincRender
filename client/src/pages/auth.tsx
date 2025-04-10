@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { Redirect } from "wouter";
+import { useState, useEffect } from "react";
+import { Redirect, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
+import { useQuery } from "@tanstack/react-query";
 import { 
   Card, 
   CardContent, 
@@ -25,7 +26,45 @@ import Logo from "@assets/CD_icon_light@2x.png";
 
 export default function AuthPage() {
   const { user, isLoading, loginMutation, registerMutation } = useAuth();
+  const [location] = useLocation();
   const [activeTab, setActiveTab] = useState("login");
+  const [inviteId, setInviteId] = useState<number | null>(null);
+  const [inviteEmail, setInviteEmail] = useState<string | null>(null);
+  const [isInviteLoading, setIsInviteLoading] = useState(false);
+
+  // Get invite ID and email from URL if present
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const inviteParam = searchParams.get('invite');
+    const emailParam = searchParams.get('email');
+    
+    if (inviteParam && emailParam) {
+      setInviteId(parseInt(inviteParam));
+      setInviteEmail(emailParam);
+      setActiveTab("register"); // Automatically switch to register tab for invites
+    }
+  }, [location]);
+
+  // Fetch invite details if we have an ID
+  const { data: inviteData, isLoading: isInviteDataLoading } = useQuery({
+    queryKey: ['/api/invites', inviteId],
+    queryFn: async () => {
+      if (!inviteId) return null;
+      setIsInviteLoading(true);
+      try {
+        const response = await fetch(`/api/invites/${inviteId}`);
+        if (!response.ok) throw new Error('Failed to fetch invite');
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        console.error('Error fetching invite:', error);
+        return null;
+      } finally {
+        setIsInviteLoading(false);
+      }
+    },
+    enabled: !!inviteId
+  });
 
   // Login form state
   const [loginForm, setLoginForm] = useState({
@@ -38,13 +77,38 @@ export default function AuthPage() {
     username: "",
     password: "",
     confirmPassword: "",
-    email: "",
+    email: inviteEmail || "",
     firstName: "",
     lastName: "",
-    role: "business", // Default role
+    role: "contractor", // Default role for invited users
     company: "",
     position: "",
+    inviteId: inviteId || undefined,
   });
+  
+  // Update register form when invite data is loaded
+  useEffect(() => {
+    if (inviteEmail) {
+      setRegisterForm(prev => ({
+        ...prev,
+        email: inviteEmail,
+        role: "contractor", // Most invites are for contractors
+        inviteId: inviteId || undefined
+      }));
+    }
+  }, [inviteEmail, inviteId]);
+  
+  // Further update form when full invite data is loaded
+  useEffect(() => {
+    if (inviteData) {
+      setRegisterForm(prev => ({
+        ...prev,
+        email: inviteData.email || prev.email,
+        role: "contractor",
+        inviteId: inviteData.id
+      }));
+    }
+  }, [inviteData]);
 
   // Form Error States
   const [loginErrors, setLoginErrors] = useState<Record<string, string>>({});
@@ -160,6 +224,26 @@ export default function AuthPage() {
     if (validateRegisterForm()) {
       // Omit confirmPassword as it's not needed for the API
       const { confirmPassword, ...registerData } = registerForm;
+      
+      // If we have an invite ID, make sure it's included in the registration data
+      if (inviteId && !registerData.inviteId) {
+        registerData.inviteId = inviteId;
+      }
+      
+      // If this is an invite registration, make sure the email matches the invited email
+      if (inviteEmail && registerData.email !== inviteEmail) {
+        setRegisterErrors({
+          ...registerErrors,
+          email: `You must use the invited email: ${inviteEmail}`
+        });
+        return;
+      }
+      
+      // If this is an invite, set the role to contractor
+      if (inviteId || inviteEmail) {
+        registerData.role = 'contractor';
+      }
+      
       registerMutation.mutate(registerData);
     }
   };
@@ -251,7 +335,34 @@ export default function AuthPage() {
                 <CardHeader>
                   <CardTitle>Create an Account</CardTitle>
                   <CardDescription className="text-zinc-400">
-                    Sign up to get started with Creativ Linc
+                    {inviteData ? (
+                      <>
+                        You've been invited to join a project on Creativ Linc
+                        <div className="mt-2 p-3 bg-zinc-800 rounded-md border border-zinc-700">
+                          <h4 className="text-white font-medium mb-1">Project: {inviteData.projectName}</h4>
+                          {inviteData.message && (
+                            <p className="text-zinc-400 text-sm italic mb-1">{inviteData.message}</p>
+                          )}
+                          <p className="text-zinc-400 text-sm">Complete registration to accept this invitation.</p>
+                        </div>
+                      </>
+                    ) : inviteId ? (
+                      <>
+                        {isInviteLoading ? (
+                          <div className="flex items-center justify-center py-3">
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            Loading invitation details...
+                          </div>
+                        ) : (
+                          <>
+                            You've been invited to join a project on Creativ Linc
+                            <p className="mt-1">Complete registration to accept this invitation.</p>
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      "Sign up to get started with Creativ Linc"
+                    )}
                   </CardDescription>
                 </CardHeader>
                 <form onSubmit={handleRegister}>
