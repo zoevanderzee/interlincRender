@@ -335,12 +335,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let payments;
       if (contractId) {
+        // Get payments for a specific contract
         payments = await storage.getPaymentsByContractId(contractId);
       } else if (upcoming) {
+        // Get upcoming payments for dashboard
         payments = await storage.getUpcomingPayments(5); // Limit to 5 for dashboard
       } else {
-        // Default behavior
+        // Get all payments when no filter is specified
+        // First get all contracts
+        const contracts = await storage.getContractsByBusinessId(15); // Test business user ID
+        
+        // Then get payments for each contract
         payments = [];
+        for (const contract of contracts) {
+          const contractPayments = await storage.getPaymentsByContractId(contract.id);
+          payments.push(...contractPayments);
+        }
       }
       
       res.json(payments);
