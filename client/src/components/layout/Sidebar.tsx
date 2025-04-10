@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import logoImage from "../../assets/CD_icon_light@2x.png";
+import logoImage from "../../assets/CD_icon_light@2x.png"; // Will keep using the same image file
 
 interface SidebarProps {
   isOpen: boolean;
@@ -21,7 +21,7 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
     return (
       <div className="hidden md:flex flex-col bg-black border-r border-zinc-800 w-16 overflow-y-auto transition-all duration-300 ease-in-out">
         <div className="flex justify-center py-4 border-b border-zinc-800">
-          <img src={logoImage} alt="CD Logo" className="h-8" />
+          <img src={logoImage} alt="Creativ Linc Logo" className="h-8" />
         </div>
         
         <nav className="py-4 flex flex-col h-full">
@@ -110,7 +110,7 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
     `}>
       <div className="flex items-center justify-between p-4 border-b border-zinc-800">
         <div className="flex items-center">
-          <img src={logoImage} alt="CD Logo" className="h-8" />
+          <img src={logoImage} alt="Creativ Linc Logo" className="h-8" />
         </div>
         
         <button 
