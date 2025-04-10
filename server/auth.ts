@@ -39,13 +39,15 @@ export function setupAuth(app: Express) {
   }
 
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET,
+    secret: process.env.SESSION_SECRET || 'creativlinc-secret-key',
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: process.env.NODE_ENV === "production", // Only use secure cookies in production
+      secure: false, // Set to false for development, even if in "production" mode on Replit
       maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
       httpOnly: true,
+      sameSite: 'lax', // Helps with CSRF protection while allowing normal navigation
+      path: '/',
     },
     // Use the storage implementation's session store
     store: storage.sessionStore
