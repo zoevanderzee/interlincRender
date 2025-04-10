@@ -173,6 +173,19 @@ export class MemStorage implements IStorage {
     return updatedUser;
   }
   
+  async updateUserConnectAccount(id: number, connectAccountId: string, payoutEnabled: boolean = false): Promise<User | undefined> {
+    const existingUser = this.users.get(id);
+    if (!existingUser) return undefined;
+    
+    const updatedUser = { 
+      ...existingUser, 
+      stripeConnectAccountId: connectAccountId,
+      payoutEnabled
+    };
+    this.users.set(id, updatedUser);
+    return updatedUser;
+  }
+  
   // Invite CRUD methods
   async getInvite(id: number): Promise<Invite | undefined> {
     return this.invites.get(id);
@@ -351,6 +364,21 @@ export class MemStorage implements IStorage {
               existingPayment.status,
       // If payment succeeded, set the completed date
       completedDate: stripePaymentIntentStatus === 'succeeded' ? new Date() : existingPayment.completedDate
+    };
+    
+    this.payments.set(id, updatedPayment);
+    return updatedPayment;
+  }
+  
+  async updatePaymentTransferDetails(id: number, stripeTransferId: string, stripeTransferStatus: string, applicationFee: number): Promise<Payment | undefined> {
+    const existingPayment = this.payments.get(id);
+    if (!existingPayment) return undefined;
+    
+    const updatedPayment = { 
+      ...existingPayment, 
+      stripeTransferId,
+      stripeTransferStatus,
+      applicationFee: applicationFee.toString()
     };
     
     this.payments.set(id, updatedPayment);
@@ -605,6 +633,10 @@ export class DatabaseStorage implements IStorage {
   
   async getUsersByRole(role: string): Promise<User[]> {
     return await db.select().from(users).where(eq(users.role, role));
+  }
+  
+  async getUsersByConnectAccountId(connectAccountId: string): Promise<User[]> {
+    return await db.select().from(users).where(eq(users.stripeConnectAccountId, connectAccountId));
   }
   
   async createUser(insertUser: InsertUser): Promise<User> {
