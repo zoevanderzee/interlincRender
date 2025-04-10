@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { apiRequest } from '@/lib/queryClient';
 import { Payment } from '@shared/schema';
 import { useToast } from '@/hooks/use-toast';
+import { CheckCircle } from 'lucide-react';
 
 // Load Stripe outside of component to avoid recreating instance on renders
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
@@ -22,11 +23,21 @@ interface PaymentFormProps {
     amount: string;
     description: string;
   };
+  isConnectPayment?: boolean;
+  applicationFeePercentage?: number;
   onSuccess?: () => void;
   onCancel?: () => void;
 }
 
-const PaymentForm = ({ clientSecret, paymentId, paymentDetails, onSuccess, onCancel }: PaymentFormProps) => {
+const PaymentForm = ({ 
+  clientSecret, 
+  paymentId, 
+  paymentDetails, 
+  isConnectPayment = false,
+  applicationFeePercentage = 3.5, 
+  onSuccess, 
+  onCancel 
+}: PaymentFormProps) => {
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -78,13 +89,31 @@ const PaymentForm = ({ clientSecret, paymentId, paymentDetails, onSuccess, onCan
     }
   };
 
+  // Calculate application fee if this is a Connect payment
+  const amount = parseFloat(paymentDetails.amount);
+  const applicationFee = isConnectPayment ? (amount * applicationFeePercentage / 100) : 0;
+  const contractorAmount = isConnectPayment ? amount - applicationFee : 0;
+
   return (
     <form onSubmit={handleSubmit}>
       <div className="space-y-4">
         <div className="flex justify-between items-center text-sm font-medium mb-4">
           <div>Amount</div>
-          <div className="text-lg font-bold">${parseFloat(paymentDetails.amount).toFixed(2)}</div>
+          <div className="text-lg font-bold">${amount.toFixed(2)}</div>
         </div>
+        
+        {isConnectPayment && (
+          <div className="p-3 rounded bg-zinc-900/50 border border-zinc-800 text-sm space-y-2 mb-4">
+            <div className="flex justify-between text-gray-400">
+              <span>Contractor receives</span>
+              <span className="font-medium text-white">${contractorAmount.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-gray-400">
+              <span>Platform fee ({applicationFeePercentage}%)</span>
+              <span className="font-medium text-white">${applicationFee.toFixed(2)}</span>
+            </div>
+          </div>
+        )}
         
         <PaymentElement />
         
@@ -125,13 +154,57 @@ export const PaymentProcessor = ({ payment, onSuccess, onCancel }: PaymentProces
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isConnectPayment, setIsConnectPayment] = useState(false);
+  const [contractorName, setContractorName] = useState<string | null>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchContractDetails = async () => {
+      try {
+        // Fetch contract to get contractor info
+        const contractResponse = await apiRequest('GET', `/api/contracts/${payment.contractId}`);
+        const contractData = await contractResponse.json();
+        
+        if (contractResponse.ok && contractData.contractorId) {
+          // Fetch contractor details
+          const contractorResponse = await apiRequest('GET', `/api/users/${contractData.contractorId}`);
+          const contractorData = await contractorResponse.json();
+          
+          if (contractorResponse.ok) {
+            setContractorName(
+              contractorData.companyName || 
+              `${contractorData.firstName} ${contractorData.lastName}`
+            );
+            
+            // Check if contractor has Connect account
+            const connectStatusResponse = await apiRequest('GET', `/api/contractors/${contractorData.id}/connect-status`);
+            const connectStatusData = await connectStatusResponse.json();
+            
+            // Enable Connect payment if account is active
+            if (connectStatusResponse.ok && connectStatusData.status === 'active') {
+              setIsConnectPayment(true);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching contract details:', err);
+      }
+    };
+    
+    fetchContractDetails();
+  }, [payment.contractId]);
 
   useEffect(() => {
     const fetchPaymentIntent = async () => {
       try {
         setLoading(true);
-        const response = await apiRequest('POST', `/api/payments/${payment.id}/create-intent`);
+        
+        // If contractor has Connect account, use the direct payment endpoint
+        const endpoint = isConnectPayment
+          ? `/api/payments/${payment.id}/pay-contractor`
+          : `/api/payments/${payment.id}/create-intent`;
+        
+        const response = await apiRequest('POST', endpoint);
         const data = await response.json();
         
         if (response.ok && data.clientSecret) {
@@ -156,8 +229,11 @@ export const PaymentProcessor = ({ payment, onSuccess, onCancel }: PaymentProces
       }
     };
 
-    fetchPaymentIntent();
-  }, [payment.id, toast]);
+    // Only fetch payment intent when we know if it's a Connect payment or not
+    if (payment.id) {
+      fetchPaymentIntent();
+    }
+  }, [payment.id, toast, isConnectPayment]);
 
   if (loading) {
     return (
@@ -207,10 +283,22 @@ export const PaymentProcessor = ({ payment, onSuccess, onCancel }: PaymentProces
   return (
     <Card className="w-full max-w-md mx-auto bg-black text-white border border-gray-800">
       <CardHeader>
-        <CardTitle className="text-xl font-bold">Payment</CardTitle>
+        <CardTitle className="text-xl font-bold">
+          {isConnectPayment ? 'Direct Payment to Contractor' : 'Payment'}
+        </CardTitle>
         <CardDescription>
-          Complete your payment for the milestone
+          {isConnectPayment 
+            ? `Payment will be sent directly to ${contractorName || 'the contractor'}`
+            : 'Complete your payment for the milestone'}
         </CardDescription>
+        {isConnectPayment && (
+          <div className="mt-2 p-2 bg-indigo-900/30 border border-indigo-800 rounded text-xs">
+            <p className="flex items-center text-indigo-300">
+              <CheckCircle className="h-4 w-4 mr-1.5 text-indigo-400" />
+              This contractor is set up for direct payments via Stripe Connect
+            </p>
+          </div>
+        )}
       </CardHeader>
       <CardContent>
         <Elements 
@@ -234,6 +322,8 @@ export const PaymentProcessor = ({ payment, onSuccess, onCancel }: PaymentProces
             clientSecret={clientSecret} 
             paymentId={payment.id}
             paymentDetails={paymentDetails}
+            isConnectPayment={isConnectPayment}
+            applicationFeePercentage={3.5}
             onSuccess={onSuccess}
             onCancel={onCancel}
           />
