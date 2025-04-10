@@ -21,7 +21,7 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
-import CDLogo from "@assets/CD_icon_light@2x.png";
+import Logo from "@assets/CD_icon_light@2x.png";
 
 export default function AuthPage() {
   const { user, isLoading, loginMutation, registerMutation } = useAuth();
@@ -175,7 +175,7 @@ export default function AuthPage() {
       <div className="w-full md:w-1/2 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           <div className="flex justify-center mb-8">
-            <img src={CDLogo} alt="CD Logo" className="h-16" />
+            <img src={Logo} alt="Creativ Linc Logo" className="h-16" />
           </div>
           
           <Tabs defaultValue="login" value={activeTab} onValueChange={setActiveTab}>
@@ -188,7 +188,7 @@ export default function AuthPage() {
             <TabsContent value="login">
               <Card className="border-zinc-700 bg-zinc-900 text-white">
                 <CardHeader>
-                  <CardTitle>Login to CD</CardTitle>
+                  <CardTitle>Login to Creativ Linc</CardTitle>
                   <CardDescription className="text-zinc-400">
                     Enter your credentials to access your account
                   </CardDescription>
@@ -251,7 +251,7 @@ export default function AuthPage() {
                 <CardHeader>
                   <CardTitle>Create an Account</CardTitle>
                   <CardDescription className="text-zinc-400">
-                    Sign up to get started with CD
+                    Sign up to get started with Creativ Linc
                   </CardDescription>
                 </CardHeader>
                 <form onSubmit={handleRegister}>
@@ -429,7 +429,7 @@ export default function AuthPage() {
             Revolutionizing outsourced work payments
           </h2>
           <p className="text-zinc-400 mb-6">
-            CD eliminates invoicing for businesses working with freelancers and contractors by 
+            Creativ Linc eliminates invoicing for businesses working with freelancers and contractors by 
             automating payments based on pre-agreed milestones and deliverables, providing financial 
             transparency and real-time budget control.
           </p>
