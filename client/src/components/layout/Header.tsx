@@ -3,19 +3,34 @@ import {
   Search, 
   Bell, 
   User,
-  ChevronDown
+  ChevronDown,
+  Settings,
+  LogOut
 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { Link } from "wouter";
 
 interface HeaderProps {
   toggleSidebar: () => void;
 }
 
 const Header = ({ toggleSidebar }: HeaderProps) => {
+  const { user, logoutMutation } = useAuth();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   const toggleUserMenu = () => {
     setUserMenuOpen(!userMenuOpen);
   };
+
+  const handleLogout = () => {
+    setUserMenuOpen(false);
+    logoutMutation.mutate();
+  };
+
+  // Get the first name and last name from user if available
+  const displayName = user ? 
+    `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username : 
+    'Guest';
 
   return (
     <header className="bg-black border-b border-zinc-800 sticky top-0 z-10">
@@ -53,22 +68,27 @@ const Header = ({ toggleSidebar }: HeaderProps) => {
               <div className="h-8 w-8 rounded-full bg-zinc-800 flex items-center justify-center text-white overflow-hidden">
                 <User size={16} />
               </div>
-              <span className="hidden md:inline text-sm font-medium text-white">Sarah Thompson</span>
+              <span className="hidden md:inline text-sm font-medium text-white">{displayName}</span>
               <ChevronDown className="hidden md:inline text-xs text-white" size={14} />
             </button>
             
             {userMenuOpen && (
               <div className="absolute right-0 mt-2 w-48 bg-zinc-900 rounded-md shadow-lg py-1 z-10 border border-zinc-800">
-                <a href="#" className="block px-4 py-2 text-sm text-white hover:bg-zinc-800">
-                  Your Profile
-                </a>
-                <a href="#" className="block px-4 py-2 text-sm text-white hover:bg-zinc-800">
-                  Company Settings
-                </a>
+                <Link href="/settings">
+                  <div className="flex items-center px-4 py-2 text-sm text-white hover:bg-zinc-800 cursor-pointer">
+                    <Settings size={16} className="mr-2" />
+                    Account Settings
+                  </div>
+                </Link>
                 <div className="border-t border-zinc-800 my-1"></div>
-                <a href="#" className="block px-4 py-2 text-sm text-white hover:bg-zinc-800">
-                  Sign out
-                </a>
+                <button 
+                  onClick={handleLogout}
+                  className="flex items-center w-full text-left px-4 py-2 text-sm text-white hover:bg-zinc-800"
+                  disabled={logoutMutation.isPending}
+                >
+                  <LogOut size={16} className="mr-2" />
+                  {logoutMutation.isPending ? 'Signing out...' : 'Sign out'}
+                </button>
               </div>
             )}
           </div>

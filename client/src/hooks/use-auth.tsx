@@ -48,14 +48,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryFn: async () => {
       try {
         const res = await apiRequest("GET", "/api/user");
-        if (res.status === 401) {
+        if (!res.ok) {
           return null;
         }
-        return res.json();
+        return await res.json();
       } catch (error) {
         return null;
       }
     },
+    initialData: null // Ensure we always have a User | null type
   });
 
   // Login mutation
