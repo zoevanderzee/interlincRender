@@ -83,8 +83,9 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
   };
   
   // Format date
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+  const formatDate = (dateString: string | Date | null) => {
+    if (!dateString) return "Not set";
+    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
     return new Intl.DateTimeFormat('en-US', { 
       year: 'numeric', 
       month: 'short', 
@@ -105,7 +106,7 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
   // Filter projects based on search term and status
   const filteredProjects = contracts.filter(contract => {
     const matchesSearch = searchTerm === "" || 
-      contract.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      contract.contractName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       getContractorName(contract.contractorId).toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = filterStatus === null || contract.status === filterStatus;
@@ -202,7 +203,7 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
                         <Briefcase className="h-5 w-5" />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-white">{contract.title}</h3>
+                        <h3 className="font-semibold text-white">{contract.contractName}</h3>
                         <p className="text-xs text-zinc-400">
                           <span className="mr-3">ID: {contract.id}</span>
                           <span>Contractor: {getContractorName(contract.contractorId)}</span>
@@ -331,7 +332,7 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
                                         }
                                       </div>
                                       <div className="ml-3">
-                                        <h4 className="text-sm font-medium">{milestone.title}</h4>
+                                        <h4 className="text-sm font-medium">{milestone.name}</h4>
                                         <p className="text-xs text-zinc-400">
                                           Due: {formatDate(milestone.dueDate)}
                                         </p>
@@ -373,8 +374,8 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
                                       <div className="ml-3">
                                         <h4 className="text-sm font-medium">Payment #{payment.id}</h4>
                                         <p className="text-xs text-zinc-400">
-                                          {payment.description || `Milestone: ${
-                                            milestones.find(m => m.id === payment.milestoneId)?.title || 'Unknown'
+                                          {payment.notes || `Milestone: ${
+                                            milestones.find(m => m.id === payment.milestoneId)?.name || 'Unknown'
                                           }`}
                                         </p>
                                       </div>

@@ -31,8 +31,9 @@ const MilestonesList: React.FC<MilestonesListProps> = ({
   });
 
   // Format date
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+  const formatDate = (dateString: string | Date | null) => {
+    if (!dateString) return "Not set";
+    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
     return new Intl.DateTimeFormat('en-US', { 
       year: 'numeric', 
       month: 'short', 
@@ -43,13 +44,13 @@ const MilestonesList: React.FC<MilestonesListProps> = ({
   // Get contract title
   const getContractTitle = (contractId: number) => {
     const contract = contracts.find(c => c.id === contractId);
-    return contract ? contract.title : 'Unknown Contract';
+    return contract ? contract.contractName : 'Unknown Contract';
   };
 
   // Check if milestone is overdue
-  const isOverdue = (dueDate: string) => {
+  const isOverdue = (dueDate: string | Date) => {
     const today = new Date();
-    const due = new Date(dueDate);
+    const due = typeof dueDate === 'string' ? new Date(dueDate) : dueDate;
     return due < today;
   };
 
@@ -77,7 +78,7 @@ const MilestonesList: React.FC<MilestonesListProps> = ({
               >
                 <div className="flex justify-between items-start mb-3">
                   <div>
-                    <h3 className="font-medium text-white">{milestone.title}</h3>
+                    <h3 className="font-medium text-white">{milestone.name}</h3>
                     <p className="text-xs text-zinc-400">{getContractTitle(milestone.contractId)}</p>
                   </div>
                   <Badge 
@@ -104,7 +105,7 @@ const MilestonesList: React.FC<MilestonesListProps> = ({
                   </div>
                   <div className="flex items-center text-sm text-zinc-400">
                     <FileText className="h-4 w-4 mr-1" />
-                    <span>Deliverables: {milestone.deliverables?.length || 0}</span>
+                    <span>Progress: {milestone.progress}%</span>
                   </div>
                 </div>
                 
