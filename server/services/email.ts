@@ -90,7 +90,7 @@ export async function sendInvitationEmail(invite: Invite, appUrl: string = 'http
             <a href="${signupUrl}" style="background-color: #000; color: #fff; padding: 12px 25px; text-decoration: none; border-radius: 4px; display: inline-block;">Accept Invitation</a>
           </div>
           
-          <p style="color: #666; font-size: 14px;">This invitation will expire on ${new Date(invite.expiresAt).toLocaleDateString()}.</p>
+          <p style="color: #666; font-size: 14px;">This invitation will expire on ${invite.expiresAt ? new Date(invite.expiresAt).toLocaleDateString() : 'N/A'}.</p>
           
           <p>If you have any questions, please contact the project administrator.</p>
           
@@ -155,8 +155,8 @@ export async function sendContractCreatedEmail(contractData: any, recipientEmail
             <li><strong>Contract Name:</strong> ${contractData.contractName}</li>
             <li><strong>Contract Code:</strong> ${contractData.contractCode}</li>
             <li><strong>Value:</strong> $${contractData.value}</li>
-            <li><strong>Start Date:</strong> ${new Date(contractData.startDate).toLocaleDateString()}</li>
-            <li><strong>End Date:</strong> ${new Date(contractData.endDate).toLocaleDateString()}</li>
+            <li><strong>Start Date:</strong> ${contractData.startDate ? new Date(contractData.startDate).toLocaleDateString() : 'To be determined'}</li>
+            <li><strong>End Date:</strong> ${contractData.endDate ? new Date(contractData.endDate).toLocaleDateString() : 'To be determined'}</li>
           </ul>
           
           <div style="margin: 30px 0; text-align: center;">
@@ -225,7 +225,7 @@ export async function sendPaymentNotificationEmail(paymentData: any, recipientEm
           <div style="background-color: #f9f9f9; padding: 15px; border-radius: 4px; margin: 20px 0;">
             <p style="margin: 5px 0;"><strong>Amount:</strong> $${paymentData.amount}</p>
             <p style="margin: 5px 0;"><strong>Status:</strong> ${paymentData.status.charAt(0).toUpperCase() + paymentData.status.slice(1)}</p>
-            <p style="margin: 5px 0;"><strong>Date:</strong> ${new Date(paymentData.completedDate || paymentData.scheduledDate).toLocaleDateString()}</p>
+            <p style="margin: 5px 0;"><strong>Date:</strong> ${(paymentData.completedDate || paymentData.scheduledDate) ? new Date(paymentData.completedDate || paymentData.scheduledDate).toLocaleDateString() : 'Scheduled'}</p>
             ${paymentData.notes ? `<p style="margin: 5px 0;"><strong>Notes:</strong> ${paymentData.notes}</p>` : ''}
           </div>
           

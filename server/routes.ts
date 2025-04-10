@@ -126,11 +126,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const inviteInput = insertInviteSchema.parse(req.body);
       const newInvite = await storage.createInvite(inviteInput);
+      
+      // Send invitation email
+      try {
+        const { sendInvitationEmail } = await import('./services/email');
+        // Get application URL from request
+        const appUrl = `${req.protocol}://${req.get('host')}`;
+        await sendInvitationEmail(newInvite, appUrl);
+        console.log(`Invitation email sent to ${newInvite.email}`);
+      } catch (emailError) {
+        console.error('Failed to send invitation email:', emailError);
+        // Continue with the response even if email fails
+      }
+      
       res.status(201).json(newInvite);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid invite data", errors: error.errors });
       }
+      console.error('Error creating invite:', error);
       res.status(500).json({ message: "Error creating invite" });
     }
   });

@@ -111,21 +111,107 @@ export function setupAuth(app: Express) {
         return res.status(400).json({ error: "Username already exists" });
       }
 
+      // Check if there's an invite associated with this registration
+      let inviteId = req.body.inviteId ? parseInt(req.body.inviteId) : null;
+      let invite = null;
+      
+      if (inviteId) {
+        invite = await storage.getInvite(inviteId);
+        if (!invite) {
+          return res.status(400).json({ error: "Invalid invitation" });
+        }
+        
+        // Make sure the email matches the invitation
+        if (invite.email.toLowerCase() !== req.body.email.toLowerCase()) {
+          return res.status(400).json({ error: "Email does not match the invitation" });
+        }
+        
+        // Check if the invite has expired
+        if (invite.expiresAt && new Date() > new Date(invite.expiresAt)) {
+          return res.status(400).json({ error: "Invitation has expired" });
+        }
+        
+        // Check if the invite is already accepted
+        if (invite.status !== 'pending') {
+          return res.status(400).json({ error: "Invitation has already been used" });
+        }
+      }
+
       // Create the user
       const hashedPassword = await hashPassword(req.body.password);
-      const user = await storage.createUser({
+      
+      // Add worker type from invite if available
+      const userData = {
         ...req.body,
         password: hashedPassword,
-      });
+        role: req.body.role || 'contractor', // Default to contractor role for invited users
+        workerType: invite?.workerType || req.body.workerType || 'contractor'
+      };
+      
+      const user = await storage.createUser(userData);
+
+      // If this registration came from an invite, update the invite status
+      if (invite) {
+        await storage.updateInvite(invite.id, { 
+          status: 'accepted'
+        });
+        
+        // If the invite is associated with a contract, create one automatically
+        if (invite.projectId && invite.contractDetails) {
+          try {
+            // Create a contract based on the invite details
+            await storage.createContract({
+              businessId: invite.businessId,
+              contractorId: user.id,
+              contractName: invite.projectName,
+              contractCode: `${invite.projectName.substring(0, 3).toUpperCase()}-${Date.now().toString().substring(9)}`,
+              value: invite.paymentAmount || '0',
+              status: 'pending_approval',
+              description: invite.contractDetails,
+              startDate: new Date(),
+              endDate: new Date(new Date().setMonth(new Date().getMonth() + 3)), // Default 3 months duration
+              createdAt: new Date()
+            });
+          } catch (contractError) {
+            console.error('Error creating contract from invite:', contractError);
+            // Continue with user creation even if contract creation fails
+          }
+        }
+        
+        // Send a welcome email to the newly registered user
+        try {
+          const { sendContractCreatedEmail } = await import('./services/email');
+          const appUrl = `${req.protocol}://${req.get('host')}`;
+          
+          await sendContractCreatedEmail({
+            contractName: invite.projectName,
+            contractCode: `${invite.projectName.substring(0, 3).toUpperCase()}-${Date.now().toString().substring(9)}`,
+            value: invite.paymentAmount || '0',
+            startDate: new Date(),
+            endDate: new Date(new Date().setMonth(new Date().getMonth() + 3))
+          }, user.email, appUrl);
+        } catch (emailError) {
+          console.error('Failed to send welcome email:', emailError);
+          // Continue with login even if email fails
+        }
+      }
 
       // Log the user in automatically after registration
       req.login(user, (err) => {
         if (err) return next(err);
         // Return user info without the password
         const { password, ...userInfo } = user;
-        res.status(201).json(userInfo);
+        res.status(201).json({
+          ...userInfo,
+          fromInvite: invite ? true : false,
+          inviteDetails: invite ? {
+            projectName: invite.projectName,
+            businessId: invite.businessId
+          } : null
+        });
       });
     } catch (error: any) {
+      console.error('Registration error:', error);
       res.status(500).json({ error: error.message });
     }
   });
