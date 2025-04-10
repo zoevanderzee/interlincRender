@@ -52,6 +52,16 @@ export function setupAuth(app: Express) {
     // Use the storage implementation's session store
     store: storage.sessionStore
   };
+  
+  // Clear any stale sessions on startup
+  try {
+    if (storage.sessionStore.clear) {
+      storage.sessionStore.clear();
+      console.log('Cleared session store on startup');
+    }
+  } catch (e) {
+    console.error('Failed to clear session store:', e);
+  }
 
   // Configure Express to trust proxy headers when in production
   // This is needed for secure cookies to work behind a proxy
@@ -182,8 +192,7 @@ export function setupAuth(app: Express) {
               status: 'pending_approval',
               description: invite.contractDetails,
               startDate: new Date(),
-              endDate: new Date(new Date().setMonth(new Date().getMonth() + 3)), // Default 3 months duration
-              createdAt: new Date()
+              endDate: new Date(new Date().setMonth(new Date().getMonth() + 3)) // Default 3 months duration
             });
           } catch (contractError) {
             console.error('Error creating contract from invite:', contractError);
