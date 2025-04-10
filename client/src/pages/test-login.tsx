@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/queryClient';
+import { queryClient } from '@/lib/queryClient';
 import { Loader2 } from 'lucide-react';
 
 export default function TestLoginPage() {
@@ -15,6 +15,7 @@ export default function TestLoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
+  // Direct DOM-based login (bypassing React Query for testing)
   const handleLoginButton = async (user: string, pass: string) => {
     setUsername(user);
     setPassword(pass);
@@ -24,9 +25,18 @@ export default function TestLoginPage() {
   const handleLogin = async (user: string, pass: string) => {
     try {
       setLoading(true);
-      const response = await apiRequest('POST', '/api/login', {
-        username: user,
-        password: pass
+      
+      // Use fetch directly instead of apiRequest
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: user,
+          password: pass
+        }),
+        credentials: 'include', // Important for cookies to be set
       });
 
       if (!response.ok) {
@@ -35,13 +45,20 @@ export default function TestLoginPage() {
       }
 
       const userData = await response.json();
+      
+      // Manually update query cache
+      queryClient.setQueryData(['/api/user'], userData);
+      
       toast({
         title: 'Login Successful',
         description: `Logged in as ${userData.username} (${userData.role})`,
       });
       
-      // Redirect to payments page
-      navigate('/payments');
+      // Reload the page to ensure all auth state is updated
+      setTimeout(() => {
+        window.location.href = '/payments';
+      }, 500);
+      
     } catch (error: any) {
       toast({
         title: 'Login Failed',
@@ -52,6 +69,11 @@ export default function TestLoginPage() {
       setLoading(false);
     }
   };
+  
+  // Message for debugging
+  useEffect(() => {
+    console.log('Test Login Page Mounted');
+  }, []);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-black p-4">
