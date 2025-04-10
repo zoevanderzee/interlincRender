@@ -2,6 +2,8 @@ import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
+import { AuthProvider } from "@/hooks/use-auth";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import Contracts from "@/pages/contracts";
@@ -17,35 +19,107 @@ import Settings from "@/pages/settings";
 import Subscribe from "@/pages/subscribe";
 import Help from "@/pages/help";
 import Layout from "@/components/layout/Layout";
+import AuthPage from "@/pages/auth";
 
 function Router() {
   return (
-    <Layout>
-      <Switch>
-        <Route path="/" component={Dashboard} />
-        <Route path="/contracts" component={Contracts} />
-        <Route path="/contracts/new" component={NewContract} />
-        <Route path="/contract/:id" component={ContractDetail} />
-        <Route path="/projects" component={Projects} />
-        <Route path="/contractors" component={Contractors} />
-        <Route path="/payments" component={Payments} />
-        <Route path="/reports" component={Reports} />
-        <Route path="/data-room" component={DataRoom} />
-        <Route path="/compliance" component={Compliance} />
-        <Route path="/settings" component={Settings} />
-        <Route path="/subscribe" component={Subscribe} />
-        <Route path="/help" component={Help} />
-        <Route component={NotFound} />
-      </Switch>
-    </Layout>
+    <Switch>
+      {/* Public Routes */}
+      <Route path="/auth">
+        <AuthPage />
+      </Route>
+
+      {/* Protected Routes - require authentication */}
+      <ProtectedRoute path="/">
+        <Layout>
+          <Dashboard />
+        </Layout>
+      </ProtectedRoute>
+      
+      <ProtectedRoute path="/contracts">
+        <Layout>
+          <Contracts />
+        </Layout>
+      </ProtectedRoute>
+      
+      <ProtectedRoute path="/contracts/new">
+        <Layout>
+          <NewContract />
+        </Layout>
+      </ProtectedRoute>
+      
+      <ProtectedRoute path="/contract/:id">
+        <Layout>
+          <ContractDetail />
+        </Layout>
+      </ProtectedRoute>
+      
+      <ProtectedRoute path="/projects">
+        <Layout>
+          <Projects />
+        </Layout>
+      </ProtectedRoute>
+      
+      <ProtectedRoute path="/contractors">
+        <Layout>
+          <Contractors />
+        </Layout>
+      </ProtectedRoute>
+      
+      <ProtectedRoute path="/payments">
+        <Layout>
+          <Payments />
+        </Layout>
+      </ProtectedRoute>
+      
+      <ProtectedRoute path="/reports">
+        <Layout>
+          <Reports />
+        </Layout>
+      </ProtectedRoute>
+      
+      <ProtectedRoute path="/data-room">
+        <Layout>
+          <DataRoom />
+        </Layout>
+      </ProtectedRoute>
+      
+      <ProtectedRoute path="/compliance">
+        <Layout>
+          <Compliance />
+        </Layout>
+      </ProtectedRoute>
+      
+      <ProtectedRoute path="/settings">
+        <Layout>
+          <Settings />
+        </Layout>
+      </ProtectedRoute>
+      
+      <ProtectedRoute path="/subscribe">
+        <Layout>
+          <Subscribe />
+        </Layout>
+      </ProtectedRoute>
+      
+      <ProtectedRoute path="/help">
+        <Layout>
+          <Help />
+        </Layout>
+      </ProtectedRoute>
+      
+      <Route component={NotFound} />
+    </Switch>
   );
 }
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Router />
-      <Toaster />
+      <AuthProvider>
+        <Router />
+        <Toaster />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

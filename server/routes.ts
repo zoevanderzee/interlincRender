@@ -1,4 +1,4 @@
-import type { Express, Request, Response } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
@@ -12,6 +12,7 @@ import {
 } from "@shared/schema";
 import Stripe from "stripe";
 import stripeService from "./services/stripe";
+import { setupAuth } from "./auth";
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
@@ -21,11 +22,18 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Set up authentication
+  const { requireAuth } = setupAuth(app);
+  
   // API routes prefix
   const apiRouter = "/api";
   
+  // Public routes are defined above (login, register) in the auth.ts file
+  
+  // Protected routes - require authentication
+  
   // User routes
-  app.get(`${apiRouter}/users`, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/users`, requireAuth, async (req: Request, res: Response) => {
     try {
       const role = req.query.role as string;
       let users;
@@ -47,7 +55,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get(`${apiRouter}/users/:id`, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/users/:id`, requireAuth, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       const user = await storage.getUser(id);
@@ -418,7 +426,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Dashboard summary endpoint
-  app.get(`${apiRouter}/dashboard`, async (_req: Request, res: Response) => {
+  app.get(`${apiRouter}/dashboard`, requireAuth, async (_req: Request, res: Response) => {
     try {
       // Get counts and stats for dashboard
       const contractors = await storage.getUsersByRole("contractor");
@@ -454,7 +462,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Stripe integration routes
   
   // Create payment intent for a specific payment
-  app.post(`${apiRouter}/payments/:id/create-intent`, async (req: Request, res: Response) => {
+  app.post(`${apiRouter}/payments/:id/create-intent`, requireAuth, async (req: Request, res: Response) => {
     try {
       const paymentId = parseInt(req.params.id);
       const payment = await storage.getPayment(paymentId);
