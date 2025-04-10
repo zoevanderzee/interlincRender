@@ -93,10 +93,23 @@ export function setupAuth(app: Express) {
   // Configure how users are retrieved from the session
   passport.deserializeUser(async (id: number, done) => {
     try {
+      // If id is undefined or null, return undefined
+      if (id === undefined || id === null) {
+        return done(null, undefined);
+      }
+      
       const user = await storage.getUser(id);
-      done(null, user || undefined);
+      
+      // If no user found, return undefined instead of null
+      if (!user) {
+        console.log(`No user found with ID: ${id}`);
+        return done(null, undefined);
+      }
+      
+      return done(null, user);
     } catch (error) {
-      done(error);
+      console.error('Error deserializing user:', error);
+      return done(error);
     }
   });
 
