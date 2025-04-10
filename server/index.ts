@@ -72,3 +72,8 @@ app.use((req, res, next) => {
     log(`serving on port ${port}`);
   });
 })();
+
+// Serve test login HTML
+app.get('/test-login-html', (req, res) => {
+  res.sendFile(path.resolve(__dirname, '..', 'client', 'test-login.html'));
+});

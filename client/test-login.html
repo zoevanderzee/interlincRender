@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Creativ Linc - Test Login</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: #000;
+      color: white;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .login-container {
+      background-color: #111;
+      border: 1px solid #333;
+      border-radius: 8px;
+      width: 100%;
+      max-width: 400px;
+      padding: 2rem;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .header h1 {
+      font-size: 1.8rem;
+      margin-bottom: 0.5rem;
+    }
+    .header p {
+      color: #aaa;
+      margin: 0;
+    }
+    button {
+      width: 100%;
+      padding: 0.75rem;
+      border: none;
+      border-radius: 4px;
+      background-color: #6366f1;
+      color: white;
+      font-weight: 500;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      margin-bottom: 1rem;
+    }
+    button:hover {
+      background-color: #4f46e5;
+    }
+    button:disabled {
+      background-color: #4b5563;
+      cursor: not-allowed;
+    }
+    #status {
+      margin-top: 1.5rem;
+      padding: 1rem;
+      background-color: #222;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="header">
+      <h1>Connect Payment Test</h1>
+      <p>Click a button to test login and payment functionality</p>
+    </div>
+
+    <button id="loginBusinessBtn">Login as Business User</button>
+    <button id="loginContractorBtn">Login as Contractor</button>
+    <button id="getPaymentsBtn">Get Payments</button>
+    <button id="directPaymentBtn">Test Direct Payment</button>
+    
+    <div id="status">Status will appear here...</div>
+  </div>
+
+  <script>
+    const statusElement = document.getElementById('status');
+    const loginBusinessBtn = document.getElementById('loginBusinessBtn');
+    const loginContractorBtn = document.getElementById('loginContractorBtn');
+    const getPaymentsBtn = document.getElementById('getPaymentsBtn');
+    const directPaymentBtn = document.getElementById('directPaymentBtn');
+    
+    // Helper function to update status
+    function updateStatus(message) {
+      statusElement.textContent += '\n' + message;
+      statusElement.scrollTop = statusElement.scrollHeight;
+    }
+    
+    // Login as Business User
+    loginBusinessBtn.addEventListener('click', async () => {
+      updateStatus('Logging in as business user...');
+      
+      try {
+        const response = await fetch('/api/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            username: 'test_business',
+            password: 'password123'
+          }),
+          credentials: 'include'
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          updateStatus('Login successful! User ID: ' + data.id);
+        } else {
+          updateStatus('Login failed: ' + (data.error || 'Unknown error'));
+        }
+      } catch (error) {
+        updateStatus('Error: ' + error.message);
+      }
+    });
+    
+    // Login as Contractor
+    loginContractorBtn.addEventListener('click', async () => {
+      updateStatus('Logging in as contractor...');
+      
+      try {
+        const response = await fetch('/api/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            username: 'test_contractor',
+            password: 'password123'
+          }),
+          credentials: 'include'
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          updateStatus('Login successful! User ID: ' + data.id);
+        } else {
+          updateStatus('Login failed: ' + (data.error || 'Unknown error'));
+        }
+      } catch (error) {
+        updateStatus('Error: ' + error.message);
+      }
+    });
+    
+    // Get Payments
+    getPaymentsBtn.addEventListener('click', async () => {
+      updateStatus('Fetching payments...');
+      
+      try {
+        const response = await fetch('/api/payments', {
+          credentials: 'include'
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          updateStatus('Found ' + data.length + ' payments');
+          
+          if (data.length > 0) {
+            const payment = data[0];
+            updateStatus('First payment: ID=' + payment.id + 
+                         ', Amount=' + payment.amount + 
+                         ', Status=' + payment.status);
+            
+            // Store payment ID for direct payment test
+            window.paymentId = payment.id;
+          }
+        } else {
+          updateStatus('Failed to fetch payments: ' + (data.error || 'Unknown error'));
+        }
+      } catch (error) {
+        updateStatus('Error: ' + error.message);
+      }
+    });
+    
+    // Test Direct Payment
+    directPaymentBtn.addEventListener('click', async () => {
+      if (!window.paymentId) {
+        updateStatus('No payment ID found. Please get payments first.');
+        return;
+      }
+      
+      updateStatus('Testing direct payment for payment ID: ' + window.paymentId);
+      
+      try {
+        const response = await fetch(`/api/payments/${window.paymentId}/pay-contractor`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include'
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          updateStatus('Direct payment initiated successfully');
+          updateStatus('Payment details: ' + JSON.stringify(data, null, 2));
+          
+          // If we get a client secret, we could redirect to the payment page
+          if (data.clientSecret) {
+            // In a real app we would redirect to the payment processor
+            updateStatus('Got client secret for payment processing: ' + data.clientSecret.substring(0, 10) + '...');
+          }
+        } else {
+          updateStatus('Failed to initiate payment: ' + (data.error || 'Unknown error'));
+        }
+      } catch (error) {
+        updateStatus('Error: ' + error.message);
+      }
+    });
+  </script>
+</body>
+</html>

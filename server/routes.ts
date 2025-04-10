@@ -20,12 +20,19 @@ if (!process.env.STRIPE_SECRET_KEY) {
 }
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
+import path from "path";
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication
   const { requireAuth } = setupAuth(app);
   
   // API routes prefix
   const apiRouter = "/api";
+  
+  // Serve our static HTML login page
+  app.get('/direct-login', (req, res) => {
+    res.sendFile(path.resolve(__dirname, '..', 'client', 'public', 'login.html'));
+  });
   
   // Public routes are defined above (login, register) in the auth.ts file
   
