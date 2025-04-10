@@ -34,7 +34,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { User, Invite, insertInviteSchema } from "@shared/schema";
-import { Search, Plus, Mail, Send, FileText, UserCheck, ArrowRight, User as UserIcon, Building, Briefcase, Loader2, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { Search, Plus, Mail, Send, FileText, UserCheck, ArrowRight, User as UserIcon, Building, Briefcase, Loader2, Clock, CheckCircle2, XCircle, CreditCard, ExternalLink } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useMutation } from "@tanstack/react-query";
 
@@ -523,7 +523,7 @@ const Contractors = () => {
                     {contractor.title}
                   </div>
                   
-                  <div className="flex justify-between mt-auto pt-4 border-t border-primary-100">
+                  <div className="flex flex-wrap justify-between mt-auto pt-4 border-t border-primary-100 gap-2">
                     <Button 
                       variant="outline" 
                       size="sm"
@@ -540,6 +540,16 @@ const Contractors = () => {
                     >
                       <FileText size={16} className="mr-1" />
                       Contracts
+                    </Button>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-600 hover:to-purple-700 border-0"
+                      onClick={() => navigate(`/contractors/${contractor.id}/connect`)}
+                    >
+                      <CreditCard size={16} className="mr-1" />
+                      Connect
                     </Button>
                     
                     <Button
@@ -648,7 +658,7 @@ const Contractors = () => {
                     </div>
                   )}
                   
-                  <div className="flex justify-between mt-auto pt-4 border-t border-primary-100">
+                  <div className="flex flex-wrap justify-between mt-auto pt-4 border-t border-primary-100 gap-2">
                     <Button 
                       variant="outline" 
                       size="sm"
@@ -665,6 +675,16 @@ const Contractors = () => {
                     >
                       <FileText size={16} className="mr-1" />
                       Contracts
+                    </Button>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-600 hover:to-purple-700 border-0"
+                      onClick={() => navigate(`/contractors/${freelancer.id}/connect`)}
+                    >
+                      <CreditCard size={16} className="mr-1" />
+                      Connect
                     </Button>
                     
                     <Button
