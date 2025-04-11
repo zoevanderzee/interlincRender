@@ -303,10 +303,16 @@ export function setupAuth(app: Express) {
       // Save token to user record
       await storage.setPasswordResetToken(email, token, expires);
       
-      // Send password reset email
-      const { sendPasswordResetEmail } = await import('./services/email');
-      const appUrl = `${req.protocol}://${req.get('host')}`;
-      await sendPasswordResetEmail(email, token, appUrl);
+      try {
+        // Send password reset email
+        const { sendPasswordResetEmail } = await import('./services/email');
+        const appUrl = `${req.protocol}://${req.get('host')}`;
+        await sendPasswordResetEmail(email, token, appUrl);
+        console.log(`Password reset email sent for ${email}`);
+      } catch (emailError) {
+        console.error('Error sending password reset email:', emailError);
+        // Continue the process even if email fails - user can request again
+      }
       
       res.status(200).json({ 
         message: "If an account with that email exists, a password reset link has been sent." 

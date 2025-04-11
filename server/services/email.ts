@@ -253,26 +253,50 @@ export async function sendPasswordResetEmail(email: string, token: string, appUr
       `
     };
     
-    // Use SendGrid if available, otherwise use Nodemailer
+    // Try SendGrid first, fall back to Nodemailer if there's an error
     let info;
-    if (process.env.SENDGRID_API_KEY) {
-      info = await sgMail.send({
-        to: email,
-        from: process.env.SMTP_FROM || 'noreply@creativlinc.com',
-        subject: 'Password Reset Request',
-        html: mailOptions.html
-      });
-      console.log('Password reset email sent via SendGrid');
-    } else {
+    try {
+      if (process.env.SENDGRID_API_KEY) {
+        info = await sgMail.send({
+          to: email,
+          from: process.env.SMTP_FROM || 'noreply@creativlinc.com',
+          subject: 'Password Reset Request',
+          html: mailOptions.html
+        });
+        console.log('Password reset email sent via SendGrid');
+      } else {
+        throw new Error('SendGrid API key not available');
+      }
+    } catch (error: any) {
+      console.log('SendGrid error, falling back to Nodemailer:', error.message || 'Unknown error');
+      
+      // Ensure we have a transporter initialized
+      if (!transporter) {
+        await nodemailer.createTestAccount().then(testAccount => {
+          transporter = nodemailer.createTransport({
+            host: 'smtp.ethereal.email',
+            port: 587,
+            secure: false,
+            auth: {
+              user: testAccount.user,
+              pass: testAccount.pass
+            }
+          });
+          console.log('Created test email account for password reset:', {
+            user: testAccount.user,
+            pass: testAccount.pass,
+            preview: 'https://ethereal.email'
+          });
+        });
+      }
+      
       info = await transporter.sendMail(mailOptions);
       
-      // Log the result
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('Password reset email sent: %s', info.messageId);
-        // Preview URL only available when sending through Ethereal
-        if (info.messageId && info.messageId.includes('ethereal')) {
-          console.log('Preview URL: %s', nodemailer.getTestMessageUrl(info));
-        }
+      // Log the result for development
+      console.log('Password reset email sent via Nodemailer: %s', info.messageId);
+      // Preview URL only available when sending through Ethereal
+      if (info.messageId && info.messageId.includes('ethereal')) {
+        console.log('Preview URL: %s', nodemailer.getTestMessageUrl(info));
       }
     }
     
