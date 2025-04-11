@@ -14,6 +14,10 @@ export function initializeEmailService() {
   if (process.env.SENDGRID_API_KEY) {
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     console.log('SendGrid email service initialized');
+    
+    // Display verified sender email for debugging
+    const verifiedSender = process.env.SENDGRID_VERIFIED_SENDER || 'support@creativlinc.replit.app';
+    console.log(`Using verified sender email: ${verifiedSender}`);
   }
   // For production, use real SMTP settings
   else if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
@@ -257,13 +261,17 @@ export async function sendPasswordResetEmail(email: string, token: string, appUr
     let info;
     try {
       if (process.env.SENDGRID_API_KEY) {
+        // Use a verified sender email from your SendGrid account
+        // This email address must be verified in your SendGrid account
+        const verifiedSender = process.env.SENDGRID_VERIFIED_SENDER || 'support@creativlinc.replit.app';
+        
         info = await sgMail.send({
           to: email,
-          from: process.env.SMTP_FROM || 'noreply@creativlinc.com',
+          from: verifiedSender,
           subject: 'Password Reset Request',
           html: mailOptions.html
         });
-        console.log('Password reset email sent via SendGrid');
+        console.log(`Password reset email sent via SendGrid from ${verifiedSender} to ${email}`);
       } else {
         throw new Error('SendGrid API key not available');
       }
