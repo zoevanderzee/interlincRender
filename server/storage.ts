@@ -123,6 +123,34 @@ export class MemStorage implements IStorage {
     );
   }
   
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.email.toLowerCase() === email.toLowerCase()
+    );
+  }
+  
+  async getUserByResetToken(token: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.resetPasswordToken === token && 
+                user.resetPasswordExpires && 
+                new Date(user.resetPasswordExpires) > new Date()
+    );
+  }
+  
+  async setPasswordResetToken(email: string, token: string, expires: Date): Promise<User | undefined> {
+    const user = await this.getUserByEmail(email);
+    if (!user) return undefined;
+    
+    const updatedUser = { 
+      ...user, 
+      resetPasswordToken: token,
+      resetPasswordExpires: expires
+    };
+    
+    this.users.set(user.id, updatedUser);
+    return updatedUser;
+  }
+  
   async getUsersByRole(role: string): Promise<User[]> {
     return Array.from(this.users.values()).filter(
       (user) => user.role === role
@@ -632,6 +660,44 @@ export class DatabaseStorage implements IStorage {
   async getUserByUsername(username: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.username, username));
     return user;
+  }
+  
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+  
+  async getUserByResetToken(token: string): Promise<User | undefined> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(
+        and(
+          eq(users.resetPasswordToken, token),
+          gte(users.resetPasswordExpires, new Date())
+        )
+      );
+    return user;
+  }
+  
+  async setPasswordResetToken(email: string, token: string, expires: Date): Promise<User | undefined> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email));
+    
+    if (!user) return undefined;
+    
+    const [updatedUser] = await db
+      .update(users)
+      .set({
+        resetPasswordToken: token,
+        resetPasswordExpires: expires
+      })
+      .where(eq(users.id, user.id))
+      .returning();
+    
+    return updatedUser;
   }
   
   async getUsersByRole(role: string): Promise<User[]> {

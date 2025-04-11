@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import { Invite } from '@shared/schema';
+import sgMail from '@sendgrid/mail';
 
 // Create a transporter for sending emails
 let transporter: nodemailer.Transporter;
@@ -9,8 +10,13 @@ let transporter: nodemailer.Transporter;
  * In production, you would use real SMTP credentials
  */
 export function initializeEmailService() {
+  // Initialize SendGrid if API key is available
+  if (process.env.SENDGRID_API_KEY) {
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+    console.log('SendGrid email service initialized');
+  }
   // For production, use real SMTP settings
-  if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+  else if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
     transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: Number(process.env.SMTP_PORT) || 587,
@@ -190,6 +196,89 @@ export async function sendContractCreatedEmail(contractData: any, recipientEmail
     return info;
   } catch (error) {
     console.error('Error sending contract email:', error);
+    throw error;
+  }
+}
+
+/**
+ * Send a password reset email with a reset link
+ */
+export async function sendPasswordResetEmail(email: string, token: string, appUrl: string = 'https://creativlinc.replit.app') {
+  // Initialize email service if needed
+  if (!transporter && !process.env.SENDGRID_API_KEY) {
+    console.warn('Email service not initialized. Initializing now...');
+    initializeEmailService();
+    return;
+  }
+  
+  try {
+    // Generate password reset URL
+    const resetUrl = `${appUrl}/reset-password?token=${token}`;
+    
+    // Create the email content
+    const mailOptions = {
+      from: process.env.SMTP_FROM || '"Creativ Linc" <noreply@creativlinc.com>',
+      to: email,
+      subject: `Password Reset Request`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; background-color: #000; color: #fff;">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <img src="${appUrl}/logo.png" alt="Creativ Linc Logo" style="max-width: 150px;" />
+          </div>
+          
+          <h2 style="color: #fff; margin-bottom: 20px;">Password Reset</h2>
+          
+          <p>Hello,</p>
+          
+          <p>We received a request to reset your password. If you didn't make this request, you can safely ignore this email.</p>
+          
+          <p>To reset your password, click the button below:</p>
+          
+          <div style="margin: 30px 0; text-align: center;">
+            <a href="${resetUrl}" style="background-color: #333; color: #fff; padding: 12px 25px; text-decoration: none; border-radius: 4px; display: inline-block; border: 1px solid #444;">Reset Password</a>
+          </div>
+          
+          <p style="color: #aaa; font-size: 14px;">This link will expire in 1 hour for security reasons.</p>
+          
+          <p>If the button doesn't work, copy and paste this URL into your browser:</p>
+          <p style="word-break: break-all; background-color: #111; padding: 10px; border-radius: 4px; font-size: 12px;">${resetUrl}</p>
+          
+          <hr style="margin: 30px 0; border: none; border-top: 1px solid #333;" />
+          
+          <p style="color: #aaa; font-size: 12px; text-align: center;">
+            Creativ Linc - Smart Contract Management for Your Business<br />
+            This is an automated email, please do not reply.
+          </p>
+        </div>
+      `
+    };
+    
+    // Use SendGrid if available, otherwise use Nodemailer
+    let info;
+    if (process.env.SENDGRID_API_KEY) {
+      info = await sgMail.send({
+        to: email,
+        from: process.env.SMTP_FROM || 'noreply@creativlinc.com',
+        subject: 'Password Reset Request',
+        html: mailOptions.html
+      });
+      console.log('Password reset email sent via SendGrid');
+    } else {
+      info = await transporter.sendMail(mailOptions);
+      
+      // Log the result
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('Password reset email sent: %s', info.messageId);
+        // Preview URL only available when sending through Ethereal
+        if (info.messageId && info.messageId.includes('ethereal')) {
+          console.log('Preview URL: %s', nodemailer.getTestMessageUrl(info));
+        }
+      }
+    }
+    
+    return info;
+  } catch (error) {
+    console.error('Error sending password reset email:', error);
     throw error;
   }
 }
