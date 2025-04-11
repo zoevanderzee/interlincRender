@@ -34,6 +34,33 @@ export default function AuthPage() {
   const [inviteId, setInviteId] = useState<number | null>(null);
   const [inviteEmail, setInviteEmail] = useState<string | null>(null);
   const [isInviteLoading, setIsInviteLoading] = useState(false);
+  const { toast } = useToast();
+  
+  // Forgot password form state
+  const [forgotPasswordForm, setForgotPasswordForm] = useState({
+    email: "",
+  });
+  const [forgotPasswordError, setForgotPasswordError] = useState("");
+  const [forgotPasswordSuccess, setForgotPasswordSuccess] = useState(false);
+  
+  // Forgot password mutation
+  const forgotPasswordMutation = useMutation({
+    mutationFn: async (email: string) => {
+      const res = await apiRequest("POST", "/api/forgot-password", { email });
+      return await res.json();
+    },
+    onSuccess: () => {
+      setForgotPasswordSuccess(true);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send password reset link",
+        variant: "destructive",
+      });
+      setForgotPasswordError(error.message || "Failed to send password reset link");
+    },
+  });
 
   // Get invite ID and email from URL if present
   useEffect(() => {
@@ -248,6 +275,36 @@ export default function AuthPage() {
       }
       
       registerMutation.mutate(registerData);
+    }
+  };
+  
+  // Handle forgot password form input change
+  const handleForgotPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForgotPasswordForm({
+      ...forgotPasswordForm,
+      [e.target.name]: e.target.value,
+    });
+    setForgotPasswordError("");
+  };
+  
+  // Validate forgot password form
+  const validateForgotPasswordForm = () => {
+    if (!forgotPasswordForm.email.trim()) {
+      setForgotPasswordError("Email is required");
+      return false;
+    } else if (!/\S+@\S+\.\S+/.test(forgotPasswordForm.email)) {
+      setForgotPasswordError("Email is invalid");
+      return false;
+    }
+    return true;
+  };
+  
+  // Handle forgot password form submission
+  const handleForgotPassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (validateForgotPasswordForm()) {
+      forgotPasswordMutation.mutate(forgotPasswordForm.email);
     }
   };
 
@@ -536,6 +593,84 @@ export default function AuthPage() {
                     </Button>
                   </CardFooter>
                 </form>
+              </Card>
+            </TabsContent>
+            
+            {/* Forgot Password Form */}
+            <TabsContent value="forgot-password">
+              <Card className="border-zinc-700 bg-zinc-900 text-white">
+                <CardHeader>
+                  <div className="flex items-center mb-2">
+                    <button 
+                      type="button" 
+                      onClick={() => setActiveTab("login")}
+                      className="p-1 mr-2 rounded-full hover:bg-zinc-800"
+                    >
+                      <ArrowLeft className="h-4 w-4 text-zinc-400" />
+                    </button>
+                    <CardTitle>Forgot Password</CardTitle>
+                  </div>
+                  <CardDescription className="text-zinc-400">
+                    Enter your email address and we'll send you a link to reset your password
+                  </CardDescription>
+                </CardHeader>
+                {forgotPasswordSuccess ? (
+                  <CardContent className="space-y-4">
+                    <div className="flex flex-col items-center justify-center p-6 text-center space-y-4">
+                      <CheckCircle2 className="h-16 w-16 text-green-500 mb-2" />
+                      <h3 className="text-xl font-medium text-white">Check Your Email</h3>
+                      <p className="text-zinc-400">
+                        We've sent a password reset link to your email address. Please check your inbox and follow the instructions.
+                      </p>
+                      <Button 
+                        type="button" 
+                        onClick={() => setActiveTab("login")}
+                        className="mt-4 bg-white text-black hover:bg-zinc-200"
+                      >
+                        Back to Login
+                      </Button>
+                    </div>
+                  </CardContent>
+                ) : (
+                  <form onSubmit={handleForgotPassword}>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="email" className="text-white">Email</Label>
+                        <Input
+                          id="email"
+                          name="email"
+                          type="email"
+                          placeholder="Enter your email address"
+                          value={forgotPasswordForm.email}
+                          onChange={handleForgotPasswordChange}
+                          className="bg-zinc-800 border-zinc-700 text-white"
+                        />
+                        {forgotPasswordError && (
+                          <div className="flex items-center mt-2 text-sm text-red-500">
+                            <AlertCircle className="h-4 w-4 mr-1" />
+                            {forgotPasswordError}
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                    <CardFooter>
+                      <Button 
+                        type="submit" 
+                        className="w-full bg-white text-black hover:bg-zinc-200"
+                        disabled={forgotPasswordMutation.isPending}
+                      >
+                        {forgotPasswordMutation.isPending ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Sending reset link...
+                          </>
+                        ) : (
+                          "Send Reset Link"
+                        )}
+                      </Button>
+                    </CardFooter>
+                  </form>
+                )}
               </Card>
             </TabsContent>
           </Tabs>

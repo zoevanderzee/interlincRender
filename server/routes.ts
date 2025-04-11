@@ -11,6 +11,7 @@ import {
   insertPaymentSchema,
   insertDocumentSchema
 } from "@shared/schema";
+import { sendPasswordResetEmail } from "./services/email";
 import Stripe from "stripe";
 import stripeService from "./services/stripe";
 import { setupAuth } from "./auth";
