@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+import { AlertTriangle } from "lucide-react";
 import { 
   FileText, 
   Clock, 
@@ -47,7 +48,7 @@ const Dashboard = () => {
     return (
       <div className="text-center py-12">
         <div className="h-24 w-24 mx-auto mb-6 flex items-center justify-center rounded-full bg-zinc-800">
-          <div className="text-red-500">⚠️</div>
+          <AlertTriangle size={40} className="text-red-500" />
         </div>
         <h2 className="text-xl font-semibold text-white mb-2">Error Loading Dashboard</h2>
         <p className="text-gray-400 mb-6">Could not load dashboard data. Please try again later.</p>

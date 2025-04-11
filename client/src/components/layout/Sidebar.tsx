@@ -27,23 +27,23 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
         <nav className="py-4 flex flex-col h-full">
           <ul className="space-y-4">
             <li className="relative group">
-              <Link href="/">
-                <a className={`flex justify-center px-2 py-3 rounded-md ${isActive("/") ? "text-accent-600 bg-accent-50" : "text-primary-600 hover:bg-primary-50"}`}>
+              <div className={`flex justify-center px-2 py-3 rounded-md ${isActive("/") ? "text-accent-600 bg-accent-50" : "text-primary-600 hover:bg-primary-50"}`}>
+                <Link href="/">
                   <svg xmlns="http://www.w3.org/2000/svg" className="text-lg w-5 h-5" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="3" y="3" width="7" height="9"></rect>
                     <rect x="14" y="3" width="7" height="5"></rect>
                     <rect x="14" y="12" width="7" height="9"></rect>
                     <rect x="3" y="16" width="7" height="5"></rect>
                   </svg>
-                </a>
-              </Link>
+                </Link>
+              </div>
               <div className="invisible group-hover:visible opacity-0 group-hover:opacity-100 absolute left-full ml-2 px-2 py-1 bg-primary-800 text-white text-xs rounded transition-opacity whitespace-nowrap">
                 Dashboard
               </div>
             </li>
             <li className="relative group">
-              <Link href="/projects">
-                <a className={`flex justify-center px-2 py-3 rounded-md ${isActive("/projects") ? "text-accent-600 bg-accent-50" : "text-primary-600 hover:bg-primary-50"}`}>
+              <div className={`flex justify-center px-2 py-3 rounded-md ${isActive("/projects") ? "text-accent-600 bg-accent-50" : "text-primary-600 hover:bg-primary-50"}`}>
+                <Link href="/projects">
                   <svg xmlns="http://www.w3.org/2000/svg" className="text-lg w-5 h-5" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="8" y1="6" x2="21" y2="6"></line>
                     <line x1="8" y1="12" x2="21" y2="12"></line>
@@ -52,35 +52,35 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
                     <line x1="3" y1="12" x2="3.01" y2="12"></line>
                     <line x1="3" y1="18" x2="3.01" y2="18"></line>
                   </svg>
-                </a>
-              </Link>
+                </Link>
+              </div>
               <div className="invisible group-hover:visible opacity-0 group-hover:opacity-100 absolute left-full ml-2 px-2 py-1 bg-primary-800 text-white text-xs rounded transition-opacity whitespace-nowrap">
                 Projects
               </div>
             </li>
 
             <li className="relative group">
-              <Link href="/contractors">
-                <a className={`flex justify-center px-2 py-3 rounded-md ${isActive("/contractors") ? "text-accent-600 bg-accent-50" : "text-primary-600 hover:bg-primary-50"}`}>
+              <div className={`flex justify-center px-2 py-3 rounded-md ${isActive("/contractors") ? "text-accent-600 bg-accent-50" : "text-primary-600 hover:bg-primary-50"}`}>
+                <Link href="/contractors">
                   <svg xmlns="http://www.w3.org/2000/svg" className="text-lg w-5 h-5" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                     <circle cx="12" cy="7" r="4"></circle>
                   </svg>
-                </a>
-              </Link>
+                </Link>
+              </div>
               <div className="invisible group-hover:visible opacity-0 group-hover:opacity-100 absolute left-full ml-2 px-2 py-1 bg-primary-800 text-white text-xs rounded transition-opacity whitespace-nowrap">
                 Contractors
               </div>
             </li>
             <li className="relative group">
-              <Link href="/payments">
-                <a className={`flex justify-center px-2 py-3 rounded-md ${isActive("/payments") ? "text-accent-600 bg-accent-50" : "text-primary-600 hover:bg-primary-50"}`}>
+              <div className={`flex justify-center px-2 py-3 rounded-md ${isActive("/payments") ? "text-accent-600 bg-accent-50" : "text-primary-600 hover:bg-primary-50"}`}>
+                <Link href="/payments">
                   <svg xmlns="http://www.w3.org/2000/svg" className="text-lg w-5 h-5" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="12" y1="1" x2="12" y2="23"></line>
                     <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
                   </svg>
-                </a>
-              </Link>
+                </Link>
+              </div>
               <div className="invisible group-hover:visible opacity-0 group-hover:opacity-100 absolute left-full ml-2 px-2 py-1 bg-primary-800 text-white text-xs rounded transition-opacity whitespace-nowrap">
                 Payments
               </div>
@@ -129,43 +129,46 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
           <h2 className="text-xs font-semibold text-white uppercase tracking-wider">Core</h2>
           <ul className="mt-2 space-y-1">
             <li>
-              <Link href="/">
-                <a className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/") ? "bg-zinc-800 text-white" : "text-white hover:bg-zinc-800"}`}>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-3" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="3" width="7" height="9"></rect>
-                    <rect x="14" y="3" width="7" height="5"></rect>
-                    <rect x="14" y="12" width="7" height="9"></rect>
-                    <rect x="3" y="16" width="7" height="5"></rect>
-                  </svg>
-                  Dashboard
-                </a>
+              <Link 
+                href="/" 
+                className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/") ? "bg-zinc-800 text-white" : "text-white hover:bg-zinc-800"}`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-3" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="7" height="9"></rect>
+                  <rect x="14" y="3" width="7" height="5"></rect>
+                  <rect x="14" y="12" width="7" height="9"></rect>
+                  <rect x="3" y="16" width="7" height="5"></rect>
+                </svg>
+                Dashboard
               </Link>
             </li>
             <li>
-              <Link href="/projects">
-                <a className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/projects") ? "bg-zinc-800 text-white" : "text-white hover:bg-zinc-800"}`}>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-3" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="8" y1="6" x2="21" y2="6"></line>
-                    <line x1="8" y1="12" x2="21" y2="12"></line>
-                    <line x1="8" y1="18" x2="21" y2="18"></line>
-                    <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                    <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                    <line x1="3" y1="18" x2="3.01" y2="18"></line>
-                  </svg>
-                  Projects
-                </a>
+              <Link 
+                href="/projects" 
+                className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/projects") ? "bg-zinc-800 text-white" : "text-white hover:bg-zinc-800"}`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-3" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="8" y1="6" x2="21" y2="6"></line>
+                  <line x1="8" y1="12" x2="21" y2="12"></line>
+                  <line x1="8" y1="18" x2="21" y2="18"></line>
+                  <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                  <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                  <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                </svg>
+                Projects
               </Link>
             </li>
 
             <li>
-              <Link href="/contractors">
-                <a className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/contractors") ? "bg-zinc-800 text-white" : "text-white hover:bg-zinc-800"}`}>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-3" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="12" cy="7" r="4"></circle>
-                  </svg>
-                  Contractors
-                </a>
+              <Link 
+                href="/contractors" 
+                className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/contractors") ? "bg-zinc-800 text-white" : "text-white hover:bg-zinc-800"}`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-3" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                Contractors
               </Link>
             </li>
           </ul>
