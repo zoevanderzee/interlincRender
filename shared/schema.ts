@@ -23,7 +23,9 @@ export const users = pgTable("users", {
   stripeCustomerId: text("stripe_customer_id"), // Stripe customer ID for payment processing
   stripeSubscriptionId: text("stripe_subscription_id"), // Stripe subscription ID for companies
   stripeConnectAccountId: text("stripe_connect_account_id"), // Stripe Connect account ID for contractors
-  payoutEnabled: boolean("payout_enabled").default(false) // Whether the contractor is ready to receive payments
+  payoutEnabled: boolean("payout_enabled").default(false), // Whether the contractor is ready to receive payments
+  resetPasswordToken: text("reset_password_token"), // Token for password reset
+  resetPasswordExpires: timestamp("reset_password_expires") // Expiration time for password reset token
 });
 
 // Project Invites table

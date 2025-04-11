@@ -20,6 +20,7 @@ export interface IStorage {
   // Users
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   getUsersByRole(role: string): Promise<User[]>;
   getUsersByConnectAccountId(connectAccountId: string): Promise<User[]>;
   createUser(user: InsertUser): Promise<User>;
@@ -27,6 +28,8 @@ export interface IStorage {
   updateStripeCustomerId(id: number, stripeCustomerId: string): Promise<User | undefined>;
   updateUserStripeInfo(id: number, stripeInfo: { stripeCustomerId: string, stripeSubscriptionId: string }): Promise<User | undefined>;
   updateUserConnectAccount(id: number, connectAccountId: string, payoutEnabled?: boolean): Promise<User | undefined>;
+  getUserByResetToken(token: string): Promise<User | undefined>;
+  setPasswordResetToken(email: string, token: string, expires: Date): Promise<User | undefined>;
   
   // Invites
   getInvite(id: number): Promise<Invite | undefined>;
