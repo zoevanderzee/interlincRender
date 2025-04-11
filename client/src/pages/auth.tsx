@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Redirect, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { 
   Card, 
   CardContent, 
@@ -21,7 +22,9 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Loader2, ArrowLeft, AlertCircle, CheckCircle2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import Logo from "@assets/CD_icon_light@2x.png";
 
 export default function AuthPage() {
@@ -307,6 +310,15 @@ export default function AuthPage() {
                       {loginErrors.password && (
                         <p className="text-sm text-red-500">{loginErrors.password}</p>
                       )}
+                      <div className="mt-2 text-right">
+                        <button 
+                          type="button" 
+                          onClick={() => setActiveTab("forgot-password")}
+                          className="text-sm text-zinc-400 hover:text-white"
+                        >
+                          Forgot password?
+                        </button>
+                      </div>
                     </div>
                   </CardContent>
                   <CardFooter>
