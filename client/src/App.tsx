@@ -22,6 +22,7 @@ import ContractorConnect from "@/pages/contractor-connect";
 import TestLogin from "@/pages/test-login";
 import Layout from "@/components/layout/Layout";
 import AuthPage from "@/pages/auth";
+import ResetPasswordPage from "@/pages/reset-password";
 
 function Router() {
   return (
@@ -29,6 +30,10 @@ function Router() {
       {/* Public Routes */}
       <Route path="/auth">
         <AuthPage />
+      </Route>
+      
+      <Route path="/reset-password">
+        <ResetPasswordPage />
       </Route>
       
       <Route path="/test-login">
