@@ -19,7 +19,8 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
     res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
   }
   
-  // Content Security Policy to restrict what resources can be loaded
+  // Temporarily disable CSP for debugging purposes
+  /*
   const cspDirectives = [
     "default-src 'self'",
     "img-src 'self' data: https: blob:",
@@ -34,6 +35,7 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
   ];
   
   res.setHeader('Content-Security-Policy', cspDirectives.join('; '));
+  */
   
   // Referrer Policy - controls how much referrer information is sent
   res.setHeader('Referrer-Policy', 'same-origin');
