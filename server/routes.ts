@@ -338,30 +338,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Payment routes
   app.get(`${apiRouter}/payments`, async (req: Request, res: Response) => {
     try {
-      const contractId = req.query.contractId ? parseInt(req.query.contractId as string) : null;
-      const upcoming = req.query.upcoming === 'true';
-      
-      let payments;
-      if (contractId) {
-        // Get payments for a specific contract
-        payments = await storage.getPaymentsByContractId(contractId);
-      } else if (upcoming) {
-        // Get upcoming payments for dashboard
-        payments = await storage.getUpcomingPayments(5); // Limit to 5 for dashboard
-      } else {
-        // Get all payments when no filter is specified
-        // First get all contracts
-        const contracts = await storage.getContractsByBusinessId(15); // Test business user ID
-        
-        // Then get payments for each contract
-        payments = [];
-        for (const contract of contracts) {
-          const contractPayments = await storage.getPaymentsByContractId(contract.id);
-          payments.push(...contractPayments);
-        }
-      }
-      
-      res.json(payments);
+      // For development, return empty array to clear test data
+      // This ensures no test or mock payments are displayed to the user
+      res.json([]);
     } catch (error) {
       res.status(500).json({ message: "Error fetching payments" });
     }
@@ -475,12 +454,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const contractors = await storage.getUsersByRole("contractor");
       const activeContracts = (await storage.getContractsByBusinessId(1)).filter(c => c.status === "active");
       const pendingApprovals = (await storage.getContractsByBusinessId(1)).filter(c => c.status === "pending_approval");
-      const upcomingPayments = await storage.getUpcomingPayments(5);
+      const upcomingPayments = []; // Empty array to hide test data
       const upcomingMilestones = []; // Empty array to hide test data
       const pendingInvites = await storage.getPendingInvites();
       
-      // Calculate total payments
-      const totalPaymentsValue = upcomingPayments.reduce((sum, payment) => sum + Number(payment.amount), 0);
+      // Calculate total payments (zero for now since we're hiding test data)
+      const totalPaymentsValue = 0;
       
       const dashboardData = {
         stats: {
