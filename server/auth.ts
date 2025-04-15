@@ -42,8 +42,10 @@ export function setupAuth(app: Express) {
     secret: process.env.SESSION_SECRET || 'creativlinc-secret-key',
     resave: false,
     saveUninitialized: false,
+    name: 'creativlinc.sid', // Custom name instead of the default connect.sid
+    rolling: true, // Reset expiration time on each request
     cookie: {
-      secure: false, // Set to false for development, even if in "production" mode on Replit
+      secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
       maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
       httpOnly: true,
       sameSite: 'lax', // Helps with CSRF protection while allowing normal navigation

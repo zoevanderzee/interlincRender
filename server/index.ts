@@ -3,6 +3,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { initializeEmailService } from "./services/email";
 import { initializeLogger, requestLogger, errorLogger, logError } from "./services/logger";
+import { addCsrfToken, csrfProtection } from "./middleware/csrf";
 import path from "path";
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
@@ -46,8 +47,16 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Initialize email service for sending notifications
+  // Initialize services
   initializeEmailService();
+  await initializeLogger();
+  
+  // Add the request logger middleware
+  app.use(requestLogger);
+  
+  // Add CSRF protection
+  app.use(addCsrfToken);
+  app.use('/api', csrfProtection);
   
   // Serve test login HTML
   app.get('/test-login-html', (req, res) => {
@@ -56,12 +65,28 @@ app.use((req, res, next) => {
   
   const server = await registerRoutes(app);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  // Use our error logger middleware
+  app.use(errorLogger);
+  
+  // Error handler
+  app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
+    // Log error with our logger
+    logError(err, req).catch(logErr => console.error('Error logging error:', logErr));
+    
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
+    
+    // Return appropriate error to client
+    const isProduction = process.env.NODE_ENV === 'production';
+    const responseData = {
+      message,
+      error: isProduction ? {} : {
+        stack: err.stack,
+        details: err.details || {}
+      }
+    };
 
-    res.status(status).json({ message });
-    throw err;
+    res.status(status).json(responseData);
   });
 
   // importantly only setup vite in development and after
