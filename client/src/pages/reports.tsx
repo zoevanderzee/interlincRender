@@ -276,34 +276,17 @@ const Reports = () => {
               <h3 className="text-lg font-medium text-primary-900 mb-4">Contract Status Distribution</h3>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={[
-                        { name: 'Active', value: 1 },
-                        { name: 'Pending', value: 1 },
-                        { name: 'Completed', value: 1 }
-                      ]}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={true}
-                      label={({ name }) => `${name}`}
-                      outerRadius={120}
-                      fill="none"
-                      stroke="#10b981"
-                      strokeWidth={2}
-                      dataKey="value"
-                    >
-                      {[
-                        { name: 'Active', value: 1 },
-                        { name: 'Pending', value: 1 },
-                        { name: 'Completed', value: 1 }
-                      ].map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill="none" stroke={COLORS[index % COLORS.length]} strokeWidth={2} />
-                      ))}
-                    </Pie>
+                  <BarChart
+                    data={reportData.statusDistribution}
+                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                    layout="vertical"
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" />
+                    <YAxis dataKey="name" type="category" width={150} />
                     <Tooltip formatter={(value) => [`${value} contracts`, 'Count']} />
-                    <Legend />
-                  </PieChart>
+                    <Bar dataKey="value" fill="#10b981" />
+                  </BarChart>
                 </ResponsiveContainer>
               </div>
             </Card>
@@ -411,27 +394,17 @@ const Reports = () => {
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={[
-                          { name: 'Fixed Price', value: 1 },
-                          { name: 'Time & Materials', value: 1 },
-                          { name: 'Retainer', value: 1 }
-                        ]}
+                        data={reportData.contractDistribution}
                         cx="50%"
                         cy="50%"
-                        labelLine={true}
-                        label={({ name }) => `${name}`}
+                        labelLine={false}
+                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                         outerRadius={80}
-                        fill="none"
-                        stroke="#8884d8"
-                        strokeWidth={2}
+                        fill="#8884d8"
                         dataKey="value"
                       >
-                        {[
-                          { name: 'Fixed Price', value: 1 },
-                          { name: 'Time & Materials', value: 1 },
-                          { name: 'Retainer', value: 1 }
-                        ].map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill="none" stroke={COLORS[index % COLORS.length]} strokeWidth={2} />
+                        {reportData.contractDistribution.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
                       <Tooltip formatter={(value) => [`${value} contracts`, 'Count']} />
@@ -445,34 +418,16 @@ const Reports = () => {
                 <h3 className="text-lg font-medium text-primary-900 mb-4">Contract Status</h3>
                 <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={[
-                          { name: 'Active', value: 1 },
-                          { name: 'Pending', value: 1 },
-                          { name: 'Completed', value: 1 }
-                        ]}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={true}
-                        label={({ name }) => `${name}`}
-                        outerRadius={80}
-                        fill="none"
-                        stroke="#f59e0b"
-                        strokeWidth={2}
-                        dataKey="value"
-                      >
-                        {[
-                          { name: 'Active', value: 1 },
-                          { name: 'Pending', value: 1 },
-                          { name: 'Completed', value: 1 }
-                        ].map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill="none" stroke={COLORS[index % COLORS.length]} strokeWidth={2} />
-                        ))}
-                      </Pie>
+                    <BarChart
+                      data={reportData.statusDistribution}
+                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
                       <Tooltip formatter={(value) => [`${value} contracts`, 'Count']} />
-                      <Legend />
-                    </PieChart>
+                      <Bar dataKey="value" fill="#f59e0b" />
+                    </BarChart>
                   </ResponsiveContainer>
                 </div>
               </Card>
