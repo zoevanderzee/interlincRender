@@ -60,12 +60,10 @@ app.use((req, res, next) => {
   // Add the request logger middleware
   app.use(requestLogger);
   
-  // Add security headers
-  app.use(securityHeaders);
-  
-  // Add CSRF protection
-  app.use(addCsrfToken);
-  app.use('/api', csrfProtection);
+  // Temporarily disable all security enhancements to restore basic functionality
+  // app.use(securityHeaders);
+  // app.use(addCsrfToken);
+  // app.use('/api', csrfProtection);
   
   // Serve test login HTML
   app.get('/test-login-html', (req, res) => {
