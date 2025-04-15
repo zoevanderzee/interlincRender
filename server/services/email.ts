@@ -17,7 +17,7 @@ export function initializeEmailService() {
     
     // Display verified sender email for debugging
     const verifiedSender = process.env.SENDGRID_VERIFIED_SENDER || 'support@creativlinc.replit.app';
-    console.log(`Using verified sender email: ${verifiedSender}`);
+    console.log(`Using verified sender email: ${verifiedSender.includes('@') ? verifiedSender : '[HIDDEN]'}`);
   }
   // For production, use real SMTP settings
   else if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
