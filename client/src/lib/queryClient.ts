@@ -39,6 +39,17 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+// Store the latest CSRF token
+let csrfToken: string | null = null;
+
+// Update CSRF token from response headers
+function updateCsrfToken(res: Response) {
+  const newToken = res.headers.get('X-CSRF-Token');
+  if (newToken) {
+    csrfToken = newToken;
+  }
+}
+
 export async function apiRequest(
   method: string,
   url: string,
@@ -47,6 +58,12 @@ export async function apiRequest(
 ): Promise<Response> {
   try {
     const defaultHeaders: Record<string, string> = data ? { "Content-Type": "application/json" } : {};
+    
+    // Add CSRF token to headers for non-GET requests if available
+    if (csrfToken && !['GET', 'HEAD', 'OPTIONS'].includes(method.toUpperCase())) {
+      defaultHeaders['X-CSRF-Token'] = csrfToken;
+    }
+    
     const headers: Record<string, string> = { ...defaultHeaders, ...(customHeaders || {}) };
     
     const res = await fetch(url, {
@@ -55,6 +72,9 @@ export async function apiRequest(
       body: data ? JSON.stringify(data) : undefined,
       credentials: "include",
     });
+
+    // Update CSRF token from response
+    updateCsrfToken(res);
 
     await throwIfResNotOk(res);
     return res;
@@ -84,6 +104,9 @@ export const getQueryFn: <T>(options: {
       const res = await fetch(endpoint, {
         credentials: "include",
       });
+
+      // Update CSRF token from response
+      updateCsrfToken(res);
 
       if (unauthorizedBehavior === "returnNull" && res.status === 401) {
         return null;

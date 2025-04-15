@@ -4,6 +4,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import { initializeEmailService } from "./services/email";
 import { initializeLogger, requestLogger, errorLogger, logError } from "./services/logger";
 import { addCsrfToken, csrfProtection } from "./middleware/csrf";
+import { securityHeaders } from "./middleware/security-headers";
 import path from "path";
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
@@ -53,6 +54,9 @@ app.use((req, res, next) => {
   
   // Add the request logger middleware
   app.use(requestLogger);
+  
+  // Add security headers
+  app.use(securityHeaders);
   
   // Add CSRF protection
   app.use(addCsrfToken);
