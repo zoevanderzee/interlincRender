@@ -152,8 +152,6 @@ const Dashboard = () => {
           icon={<FileText size={20} />}
           iconBgColor="bg-zinc-800"
           iconColor="text-accent-500"
-          changeValue={8}
-          changeText="from last month"
         />
         
         <StatsCard 
@@ -162,8 +160,6 @@ const Dashboard = () => {
           icon={<Clock size={20} />}
           iconBgColor="bg-zinc-800"
           iconColor="text-amber-500"
-          changeValue={12}
-          changeText="from last month"
         />
         
         <StatsCard 
@@ -172,8 +168,6 @@ const Dashboard = () => {
           icon={<DollarSign size={20} />}
           iconBgColor="bg-zinc-800"
           iconColor="text-green-500"
-          changeValue={22}
-          changeText="from last month"
         />
         
         <StatsCard 
@@ -182,8 +176,6 @@ const Dashboard = () => {
           icon={<Users size={20} />}
           iconBgColor="bg-zinc-800"
           iconColor="text-blue-500"
-          changeValue={4}
-          changeText="from last month"
         />
       </div>
       
