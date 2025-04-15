@@ -450,29 +450,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Dashboard summary endpoint - temporarily removed auth for development
   app.get(`${apiRouter}/dashboard`, async (_req: Request, res: Response) => {
     try {
-      // Get counts and stats for dashboard
-      const contractors = await storage.getUsersByRole("contractor");
-      const activeContracts = (await storage.getContractsByBusinessId(1)).filter(c => c.status === "active");
-      const pendingApprovals = (await storage.getContractsByBusinessId(1)).filter(c => c.status === "pending_approval");
-      const upcomingPayments = []; // Empty array to hide test data
-      const upcomingMilestones = []; // Empty array to hide test data
-      const pendingInvites = await storage.getPendingInvites();
+      // For development, show empty/zero data to avoid test data in production views
+      const activeContracts = [];
+      const pendingApprovals = [];
+      const upcomingPayments = [];
+      const upcomingMilestones = [];
+      const pendingInvites = [];
       
-      // Calculate total payments (zero for now since we're hiding test data)
+      // Zero values for all counts during development
       const totalPaymentsValue = 0;
       
       const dashboardData = {
         stats: {
-          activeContractsCount: activeContracts.length,
-          pendingApprovalsCount: pendingApprovals.length,
+          activeContractsCount: 0,
+          pendingApprovalsCount: 0,
           paymentsProcessed: totalPaymentsValue,
-          activeContractorsCount: contractors.length,
-          pendingInvitesCount: pendingInvites.length
+          activeContractorsCount: 0,
+          pendingInvitesCount: 0
         },
-        contracts: [...activeContracts, ...pendingApprovals].slice(0, 3),
+        contracts: [],
         milestones: upcomingMilestones,
         payments: upcomingPayments,
-        invites: pendingInvites.slice(0, 3)
+        invites: []
       };
       
       res.json(dashboardData);
@@ -678,18 +677,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const timeRange = req.query.timeRange as string || 'year';
       
-      // Get the relevant data for reports
-      const contracts = await storage.getContractsByBusinessId(1);
-      // Empty arrays for development to hide test data
-      const payments: any[] = [];
-      const milestones: any[] = [];
-      const contractors = await storage.getUsersByRole("contractor");
-      
+      // For development, return zero values to ensure no test data appears in the UI
       // Calculate stats based on time range
       const reportsData = {
         summary: {
-          totalContracts: contracts.length,
-          totalContractors: contractors.length,
+          totalContracts: 0,
+          totalContractors: 0,
           totalPayments: 0,
           totalMilestones: 0,
           avgContractValue: 0,
@@ -697,9 +690,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         paymentsByMonth: [],
         contractsByStatus: [
-          { status: 'active', count: contracts.filter(c => c.status === 'active').length },
-          { status: 'completed', count: contracts.filter(c => c.status === 'completed').length },
-          { status: 'pending', count: contracts.filter(c => c.status === 'pending_approval').length }
+          { status: 'active', count: 0 },
+          { status: 'completed', count: 0 },
+          { status: 'pending', count: 0 }
         ],
         topContractors: []
       };
