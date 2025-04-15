@@ -468,8 +468,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Dashboard summary endpoint
-  app.get(`${apiRouter}/dashboard`, requireAuth, async (_req: Request, res: Response) => {
+  // Dashboard summary endpoint - temporarily removed auth for development
+  app.get(`${apiRouter}/dashboard`, async (_req: Request, res: Response) => {
     try {
       // Get counts and stats for dashboard
       const contractors = await storage.getUsersByRole("contractor");
