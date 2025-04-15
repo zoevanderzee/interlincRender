@@ -1,6 +1,6 @@
-import { Component, ErrorInfo, ReactNode } from "react";
-import { Button } from "@/components/ui/button";
-import { AlertTriangle } from "lucide-react";
+import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { AlertCircle, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface Props {
   children: ReactNode;
@@ -9,85 +9,85 @@ interface Props {
 
 interface State {
   hasError: boolean;
-  error?: Error;
-  errorInfo?: ErrorInfo;
+  error: Error | null;
+  errorInfo: ErrorInfo | null;
 }
 
+/**
+ * ErrorBoundary component to catch JavaScript errors anywhere in the child component tree,
+ * log those errors, and display a fallback UI instead of crashing the whole app.
+ */
 class ErrorBoundary extends Component<Props, State> {
-  constructor(props: Props) {
-    super(props);
-    this.state = {
-      hasError: false,
-    };
-  }
+  public state: State = {
+    hasError: false,
+    error: null,
+    errorInfo: null
+  };
 
   static getDerivedStateFromError(error: Error): State {
-    // Update state so the next render will show the fallback UI
-    return { hasError: true, error };
+    // Update state so the next render shows the fallback UI
+    return { hasError: true, error, errorInfo: null };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    // Log the error to an error reporting service
-    console.error("Uncaught error:", error, errorInfo);
-    this.setState({
-      error,
-      errorInfo,
-    });
+    // Log the error to the console
+    console.error('Error caught by ErrorBoundary:', error, errorInfo);
     
-    // You could also log to a monitoring service like Sentry here
+    // Update state to include the error info
+    this.setState({ errorInfo });
+    
+    // You could also log the error to an error reporting service here
+    // logErrorToService(error, errorInfo);
   }
 
-  handleReload = (): void => {
-    window.location.reload();
-  };
-
-  handleGoHome = (): void => {
-    window.location.href = "/";
+  handleReset = (): void => {
+    this.setState({ hasError: false, error: null, errorInfo: null });
   };
 
   render(): ReactNode {
     if (this.state.hasError) {
-      // Custom fallback UI
+      // If a custom fallback is provided, use it
       if (this.props.fallback) {
         return this.props.fallback;
       }
-
+      
+      // Default fallback UI
       return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-black p-6 text-white">
-          <div className="max-w-md w-full bg-zinc-900 rounded-lg shadow-lg p-8 border border-zinc-800">
-            <div className="flex items-center justify-center mb-6">
-              <div className="w-16 h-16 bg-red-900/20 rounded-full flex items-center justify-center">
-                <AlertTriangle className="h-8 w-8 text-red-500" />
-              </div>
+        <div className="flex flex-col items-center justify-center min-h-[50vh] p-8 text-center">
+          <div className="w-20 h-20 mb-6 text-destructive">
+            <AlertCircle className="w-full h-full" />
+          </div>
+          <h1 className="text-2xl font-bold mb-4">Something went wrong</h1>
+          <p className="text-lg mb-8 max-w-md text-muted-foreground">
+            We've encountered an unexpected error. You can try refreshing the page or return to the dashboard.
+          </p>
+          
+          {/* Show error details in development */}
+          {process.env.NODE_ENV !== 'production' && this.state.error && (
+            <div className="mb-8 p-4 bg-destructive/10 rounded-lg max-w-2xl overflow-auto text-left">
+              <p className="font-mono text-sm mb-2">{this.state.error.toString()}</p>
+              {this.state.errorInfo && (
+                <pre className="font-mono text-xs whitespace-pre-wrap">
+                  {this.state.errorInfo.componentStack}
+                </pre>
+              )}
             </div>
-            
-            <h1 className="text-2xl font-bold text-center mb-2">Something Went Wrong</h1>
-            
-            <p className="text-zinc-400 text-center mb-6">
-              We've encountered an unexpected error. Our team has been notified.
-            </p>
-            
-            <div className="mb-6 p-4 bg-zinc-800 rounded overflow-auto max-h-32 text-xs">
-              <p className="font-mono text-red-400">
-                {this.state.error?.toString() || "Unknown error"}
-              </p>
-            </div>
-            
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button 
-                variant="outline" 
-                className="w-full sm:w-1/2 border-zinc-700 hover:bg-zinc-800"
-                onClick={this.handleGoHome}
-              >
-                Go to Dashboard
-              </Button>
-              <Button 
-                className="w-full sm:w-1/2 bg-white text-black hover:bg-zinc-200"
-                onClick={this.handleReload}
-              >
-                Try Again
-              </Button>
-            </div>
+          )}
+          
+          <div className="flex flex-col sm:flex-row gap-4">
+            <Button 
+              variant="outline" 
+              onClick={this.handleReset}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Try Again
+            </Button>
+            <Button 
+              onClick={() => window.location.href = '/'}
+            >
+              Return to Dashboard
+            </Button>
           </div>
         </div>
       );

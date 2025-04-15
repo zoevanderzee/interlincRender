@@ -2,9 +2,11 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { initializeEmailService } from "./services/email";
-import { initializeLogger, requestLogger, errorLogger, logError } from "./services/logger";
+import { initializeLogger, requestLogger, errorLogger } from "./services/logger";
 import { addCsrfToken, csrfProtection } from "./middleware/csrf";
 import { securityHeaders } from "./middleware/security-headers";
+import { setupDatabaseHealthChecks } from "./services/db-health";
+import { apiErrorHandler } from "./middleware/error-handler";
 import path from "path";
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
@@ -52,6 +54,9 @@ app.use((req, res, next) => {
   initializeEmailService();
   await initializeLogger();
   
+  // Setup database health checks (every 5 minutes)
+  setupDatabaseHealthChecks();
+  
   // Add the request logger middleware
   app.use(requestLogger);
   
@@ -72,26 +77,8 @@ app.use((req, res, next) => {
   // Use our error logger middleware
   app.use(errorLogger);
   
-  // Error handler
-  app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
-    // Log error with our logger
-    logError(err, req).catch(logErr => console.error('Error logging error:', logErr));
-    
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-    
-    // Return appropriate error to client
-    const isProduction = process.env.NODE_ENV === 'production';
-    const responseData = {
-      message,
-      error: isProduction ? {} : {
-        stack: err.stack,
-        details: err.details || {}
-      }
-    };
-
-    res.status(status).json(responseData);
-  });
+  // Use standardized API error handler
+  app.use(apiErrorHandler);
 
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
