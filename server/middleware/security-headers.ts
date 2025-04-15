@@ -23,10 +23,11 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
   const cspDirectives = [
     "default-src 'self'",
     "img-src 'self' data: https: blob:",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // Allow inline scripts and eval for development
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com", // Allow Stripe.js
     "style-src 'self' 'unsafe-inline'",
     "font-src 'self' data:",
-    "connect-src 'self' ws: wss:", // Allow WebSocket connections for dev server
+    "connect-src 'self' ws: wss: https://api.stripe.com", // Allow Stripe API connections
+    "frame-src 'self' https://js.stripe.com https://hooks.stripe.com", // Allow Stripe frames
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'"
