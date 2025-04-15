@@ -52,14 +52,14 @@ const EMPTY_DATA = {
     { name: 'Jun', amount: 0 }
   ],
   contractDistribution: [
-    { name: 'Fixed Price', value: 0 },
-    { name: 'Time & Materials', value: 0 },
-    { name: 'Retainer', value: 0 }
+    { name: 'Fixed Price', value: 1 },
+    { name: 'Time & Materials', value: 1 },
+    { name: 'Retainer', value: 1 }
   ],
   statusDistribution: [
-    { name: 'Active', value: 0 },
-    { name: 'Pending', value: 0 },
-    { name: 'Completed', value: 0 }
+    { name: 'Active', value: 1 },
+    { name: 'Pending', value: 1 },
+    { name: 'Completed', value: 1 }
   ],
   contractGrowth: [
     { name: 'Jan', contracts: 0 },
