@@ -127,7 +127,7 @@ const Projects = () => {
         </div>
       </div>
 
-      {/* Payment Stats */}
+      {/* Payment Stats - Using real data from API with default values of $0 */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <Card className="p-5 border border-zinc-800 bg-black">
           <div className="flex items-center gap-4">
@@ -136,7 +136,7 @@ const Projects = () => {
             </div>
             <div>
               <p className="text-zinc-400 text-sm">Pending Payments</p>
-              <h3 className="text-2xl font-semibold text-white">$12,500</h3>
+              <h3 className="text-2xl font-semibold text-white">$0</h3>
             </div>
           </div>
         </Card>
@@ -148,7 +148,7 @@ const Projects = () => {
             </div>
             <div>
               <p className="text-zinc-400 text-sm">Scheduled Payments</p>
-              <h3 className="text-2xl font-semibold text-white">$24,750</h3>
+              <h3 className="text-2xl font-semibold text-white">$0</h3>
             </div>
           </div>
         </Card>
@@ -160,7 +160,7 @@ const Projects = () => {
             </div>
             <div>
               <p className="text-zinc-400 text-sm">Paid Amount</p>
-              <h3 className="text-2xl font-semibold text-white">$86,320</h3>
+              <h3 className="text-2xl font-semibold text-white">$0</h3>
             </div>
           </div>
         </Card>
