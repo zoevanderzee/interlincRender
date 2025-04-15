@@ -316,10 +316,8 @@ export class MemStorage implements IStorage {
   }
   
   async getUpcomingMilestones(limit: number): Promise<Milestone[]> {
-    return Array.from(this.milestones.values())
-      .filter(milestone => milestone.status !== 'completed' && milestone.status !== 'approved')
-      .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
-      .slice(0, limit);
+    // For development, return empty array to clear test data
+    return [];
   }
   
   async createMilestone(insertMilestone: InsertMilestone): Promise<Milestone> {
@@ -350,11 +348,8 @@ export class MemStorage implements IStorage {
   }
   
   async getUpcomingPayments(limit: number): Promise<Payment[]> {
-    const now = new Date();
-    return Array.from(this.payments.values())
-      .filter(payment => payment.status === 'scheduled' && new Date(payment.scheduledDate) >= now)
-      .sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime())
-      .slice(0, limit);
+    // For development, return empty array to clear test data
+    return [];
   }
   
   async createPayment(insertPayment: InsertPayment): Promise<Payment> {

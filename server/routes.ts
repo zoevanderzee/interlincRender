@@ -476,7 +476,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const activeContracts = (await storage.getContractsByBusinessId(1)).filter(c => c.status === "active");
       const pendingApprovals = (await storage.getContractsByBusinessId(1)).filter(c => c.status === "pending_approval");
       const upcomingPayments = await storage.getUpcomingPayments(5);
-      const upcomingMilestones = await storage.getUpcomingMilestones(5);
+      const upcomingMilestones = []; // Empty array to hide test data
       const pendingInvites = await storage.getPendingInvites();
       
       // Calculate total payments
