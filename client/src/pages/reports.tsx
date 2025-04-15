@@ -41,42 +41,34 @@ import {
   Loader2
 } from "lucide-react";
 
-// Mock data for charts since we don't have actual reports API
-const generateMockData = () => {
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const contractTypes = ['Website Development', 'Marketing', 'Design', 'Content Creation', 'App Development'];
-  const statuses = ['Active', 'Completed', 'Pending Approval', 'Draft'];
-  
-  // Monthly payments data
-  const monthlyPayments = months.map(month => ({
-    name: month,
-    amount: Math.floor(Math.random() * 15000) + 5000,
-  }));
-  
-  // Contract type distribution
-  const contractDistribution = contractTypes.map(type => ({
-    name: type,
-    value: Math.floor(Math.random() * 20) + 5,
-  }));
-  
-  // Status distribution
-  const statusDistribution = statuses.map(status => ({
-    name: status,
-    value: Math.floor(Math.random() * 30) + 5,
-  }));
-  
-  // Contract growth over time
-  const contractGrowth = months.map(month => ({
-    name: month,
-    contracts: Math.floor(Math.random() * 10) + 5,
-  }));
-  
-  return {
-    monthlyPayments,
-    contractDistribution,
-    statusDistribution,
-    contractGrowth
-  };
+// Default empty data for charts
+const EMPTY_DATA = {
+  monthlyPayments: [
+    { name: 'Jan', amount: 0 },
+    { name: 'Feb', amount: 0 },
+    { name: 'Mar', amount: 0 },
+    { name: 'Apr', amount: 0 },
+    { name: 'May', amount: 0 },
+    { name: 'Jun', amount: 0 }
+  ],
+  contractDistribution: [
+    { name: 'Fixed Price', value: 0 },
+    { name: 'Time & Materials', value: 0 },
+    { name: 'Retainer', value: 0 }
+  ],
+  statusDistribution: [
+    { name: 'Active', value: 0 },
+    { name: 'Pending', value: 0 },
+    { name: 'Completed', value: 0 }
+  ],
+  contractGrowth: [
+    { name: 'Jan', contracts: 0 },
+    { name: 'Feb', contracts: 0 },
+    { name: 'Mar', contracts: 0 },
+    { name: 'Apr', contracts: 0 },
+    { name: 'May', contracts: 0 },
+    { name: 'Jun', contracts: 0 }
+  ]
 };
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
@@ -89,27 +81,6 @@ const Reports = () => {
   // Fetch real report data from the API
   const { data, isLoading } = useQuery({
     queryKey: ['/api/reports', timeRange],
-    queryFn: async () => {
-      // For development, using empty data sets to avoid displaying random mock data
-      const response = await fetch(`/api/reports?timeRange=${timeRange}`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch reports data');
-      }
-      
-      const apiData = await response.json();
-      
-      // Transform API data to match chart requirements
-      return {
-        monthlyPayments: [],
-        contractDistribution: [], 
-        statusDistribution: apiData.contractsByStatus.map((item: any) => ({
-          name: item.status.charAt(0).toUpperCase() + item.status.slice(1).replace('_', ' '),
-          value: item.count
-        })),
-        contractGrowth: []
-      };
-    },
   });
   
   // Handle export reports
@@ -134,6 +105,17 @@ const Reports = () => {
       </div>
     );
   }
+  
+  // Create report data from API or fall back to empty data
+  const reportData = {
+    monthlyPayments: EMPTY_DATA.monthlyPayments,
+    contractDistribution: EMPTY_DATA.contractDistribution,
+    statusDistribution: data?.contractsByStatus?.map((item: any) => ({
+      name: item.status.charAt(0).toUpperCase() + item.status.slice(1).replace('_', ' '),
+      value: item.count || 0
+    })) || EMPTY_DATA.statusDistribution,
+    contractGrowth: EMPTY_DATA.contractGrowth
+  };
   
   return (
     <>
@@ -246,7 +228,7 @@ const Reports = () => {
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
-                    data={data.monthlyPayments}
+                    data={reportData.monthlyPayments}
                     margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
@@ -269,7 +251,7 @@ const Reports = () => {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={data.contractDistribution}
+                      data={reportData.contractDistribution}
                       cx="50%"
                       cy="50%"
                       labelLine={false}
@@ -278,7 +260,7 @@ const Reports = () => {
                       fill="#8884d8"
                       dataKey="value"
                     >
-                      {data.contractDistribution.map((entry, index) => (
+                      {reportData.contractDistribution.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
@@ -295,7 +277,7 @@ const Reports = () => {
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
-                    data={data.statusDistribution}
+                    data={reportData.statusDistribution}
                     margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                     layout="vertical"
                   >
@@ -319,7 +301,7 @@ const Reports = () => {
               <div className="h-96">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
-                    data={data.monthlyPayments}
+                    data={reportData.monthlyPayments}
                     margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
@@ -347,7 +329,7 @@ const Reports = () => {
                   <h3 className="text-lg font-medium text-primary-900">This Month</h3>
                 </div>
                 <p className="text-3xl font-semibold text-primary-900">
-                  ${(data.monthlyPayments[data.monthlyPayments.length - 1]?.amount || 0).toLocaleString('en-US')}
+                  $0
                 </p>
                 <p className="text-sm text-primary-500 mt-1">Total payments processed</p>
               </Card>
@@ -358,8 +340,7 @@ const Reports = () => {
                   <h3 className="text-lg font-medium text-primary-900">Average</h3>
                 </div>
                 <p className="text-3xl font-semibold text-primary-900">
-                  ${Math.floor(data.monthlyPayments.reduce((acc, curr) => acc + curr.amount, 0) / 
-                    data.monthlyPayments.length).toLocaleString('en-US')}
+                  $0
                 </p>
                 <p className="text-sm text-primary-500 mt-1">Monthly average</p>
               </Card>
@@ -370,7 +351,7 @@ const Reports = () => {
                   <h3 className="text-lg font-medium text-primary-900">Year to Date</h3>
                 </div>
                 <p className="text-3xl font-semibold text-primary-900">
-                  ${data.monthlyPayments.reduce((acc, curr) => acc + curr.amount, 0).toLocaleString('en-US')}
+                  $0
                 </p>
                 <p className="text-sm text-primary-500 mt-1">Total for the year</p>
               </Card>
@@ -386,7 +367,7 @@ const Reports = () => {
               <div className="h-96">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
-                    data={data.contractGrowth}
+                    data={reportData.contractGrowth}
                     margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
@@ -413,7 +394,7 @@ const Reports = () => {
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={data.contractDistribution}
+                        data={reportData.contractDistribution}
                         cx="50%"
                         cy="50%"
                         labelLine={false}
@@ -422,7 +403,7 @@ const Reports = () => {
                         fill="#8884d8"
                         dataKey="value"
                       >
-                        {data.contractDistribution.map((entry, index) => (
+                        {reportData.contractDistribution.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
@@ -438,7 +419,7 @@ const Reports = () => {
                 <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
-                      data={data.statusDistribution}
+                      data={reportData.statusDistribution}
                       margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
