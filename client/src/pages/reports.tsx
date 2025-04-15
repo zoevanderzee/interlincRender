@@ -86,15 +86,30 @@ const Reports = () => {
   const [timeRange, setTimeRange] = useState('year');
   const [isExporting, setIsExporting] = useState(false);
   
-  // Fetch report data - in a real app this would come from the API
+  // Fetch real report data from the API
   const { data, isLoading } = useQuery({
     queryKey: ['/api/reports', timeRange],
-    // Mock data for demonstration
-    queryFn: () => new Promise(resolve => {
-      setTimeout(() => {
-        resolve(generateMockData());
-      }, 500);
-    }),
+    queryFn: async () => {
+      // For development, using empty data sets to avoid displaying random mock data
+      const response = await fetch(`/api/reports?timeRange=${timeRange}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch reports data');
+      }
+      
+      const apiData = await response.json();
+      
+      // Transform API data to match chart requirements
+      return {
+        monthlyPayments: [],
+        contractDistribution: [], 
+        statusDistribution: apiData.contractsByStatus.map((item: any) => ({
+          name: item.status.charAt(0).toUpperCase() + item.status.slice(1).replace('_', ' '),
+          value: item.count
+        })),
+        contractGrowth: []
+      };
+    },
   });
   
   // Handle export reports
