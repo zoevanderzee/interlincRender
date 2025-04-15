@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { initializeEmailService } from "./services/email";
+import { initializeLogger, requestLogger, errorLogger, logError } from "./services/logger";
 import path from "path";
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
