@@ -23,6 +23,7 @@ import ContractorConnect from "@/pages/contractor-connect";
 import TestLogin from "@/pages/test-login";
 import PaymentTest from "@/pages/payment-test";
 import StripeDebug from "@/pages/stripe-debug";
+import StripeTest from "@/pages/stripe-test";
 import Layout from "@/components/layout/Layout";
 import AuthPage from "@/pages/auth";
 import ResetPasswordPage from "@/pages/reset-password";
@@ -49,6 +50,10 @@ function Router() {
       
       <Route path="/stripe-debug">
         <StripeDebug />
+      </Route>
+      
+      <Route path="/stripe-test">
+        <StripeTest />
       </Route>
 
       {/* Protected Routes - require authentication */}
