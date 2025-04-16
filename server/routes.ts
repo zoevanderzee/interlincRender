@@ -1098,7 +1098,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const amountInCents = Math.round(parseFloat(amount));
       console.log('Creating checkout session for amount (cents):', amountInCents);
       
-      // Create a checkout session
+      // Create a checkout session with proper formatting and domain
+      const baseUrl = process.env.FRONTEND_URL || `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` || 'http://localhost:5000';
+      console.log('Base URL for checkout redirects:', baseUrl);
+      
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
         line_items: [
@@ -1114,8 +1117,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
         ],
         mode: 'payment',
-        success_url: `${process.env.FRONTEND_URL || 'http://localhost:5000'}/stripe-test-v2?success=true&session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:5000'}/stripe-test-v2?canceled=true`,
+        success_url: `${baseUrl}/stripe-test-v2?success=true`,
+        cancel_url: `${baseUrl}/stripe-test-v2?canceled=true`,
       });
 
       res.json({
