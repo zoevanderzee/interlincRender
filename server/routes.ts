@@ -1053,6 +1053,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Plaid routes
   plaidRoutes(app, apiRouter, requireAuth);
+  
+  // Create a Stripe payment intent
+  app.post(`${apiRouter}/create-payment-intent`, async (req: Request, res: Response) => {
+    try {
+      const { amount } = req.body;
+      
+      if (!amount || isNaN(parseFloat(amount))) {
+        return res.status(400).json({ error: 'Invalid amount' });
+      }
+      
+      // Create a PaymentIntent with the order amount and currency
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(parseFloat(amount)),
+        currency: 'usd',
+        automatic_payment_methods: {
+          enabled: true,
+        },
+      });
+
+      res.json({
+        clientSecret: paymentIntent.client_secret,
+      });
+    } catch (error: any) {
+      console.error('Error creating payment intent:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

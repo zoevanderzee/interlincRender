@@ -21,6 +21,7 @@ import Subscribe from "@/pages/subscribe";
 import Help from "@/pages/help";
 import ContractorConnect from "@/pages/contractor-connect";
 import TestLogin from "@/pages/test-login";
+import PaymentTest from "@/pages/payment-test";
 import Layout from "@/components/layout/Layout";
 import AuthPage from "@/pages/auth";
 import ResetPasswordPage from "@/pages/reset-password";
@@ -39,6 +40,10 @@ function Router() {
       
       <Route path="/test-login">
         <TestLogin />
+      </Route>
+      
+      <Route path="/payment-test">
+        <PaymentTest />
       </Route>
 
       {/* Protected Routes - require authentication */}
