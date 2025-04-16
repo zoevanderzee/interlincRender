@@ -15,6 +15,7 @@ import { sendPasswordResetEmail } from "./services/email";
 import Stripe from "stripe";
 import stripeService from "./services/stripe";
 import { setupAuth } from "./auth";
+import plaidRoutes from "./plaid-routes";
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
@@ -1050,6 +1051,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Register Plaid routes
+  plaidRoutes(app, apiRouter, requireAuth);
+
   const httpServer = createServer(app);
   return httpServer;
 }
