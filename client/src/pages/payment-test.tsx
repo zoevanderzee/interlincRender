@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { PaymentProcessor } from '@/components/payments/PaymentProcessor';
+import PaymentProcessor from '@/components/payments/PaymentProcessor';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

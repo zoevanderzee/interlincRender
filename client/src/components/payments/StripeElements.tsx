@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useStripe, useElements, PaymentElement, Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import { useMutation } from '@tanstack/react-query';
@@ -119,9 +119,9 @@ export function StripeElements({ amount, onPaymentComplete, isProcessing = false
   });
 
   // Initialize payment intent when component mounts
-  useState(() => {
+  useEffect(() => {
     createPaymentIntentMutation.mutate();
-  });
+  }, []);
 
   if (!clientSecret || createPaymentIntentMutation.isPending) {
     return (

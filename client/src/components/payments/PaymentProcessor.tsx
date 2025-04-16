@@ -21,7 +21,7 @@ interface PaymentProcessorProps {
   onCancel?: () => void;
 }
 
-export function PaymentProcessor({
+function PaymentProcessor({
   paymentId,
   amount,
   description,
@@ -244,3 +244,6 @@ export function PaymentProcessor({
     </Card>
   );
 }
+
+export default PaymentProcessor;
+export { PaymentProcessor };
