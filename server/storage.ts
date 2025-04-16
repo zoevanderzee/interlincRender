@@ -85,6 +85,7 @@ export class MemStorage implements IStorage {
   private milestones: Map<number, Milestone>;
   private payments: Map<number, Payment>;
   private documents: Map<number, Document>;
+  private bankAccounts: Map<number, BankAccount>;
   
   private userId: number;
   private inviteId: number;
@@ -92,6 +93,7 @@ export class MemStorage implements IStorage {
   private milestoneId: number;
   private paymentId: number;
   private documentId: number;
+  private bankAccountId: number;
   
   // Session store
   public sessionStore: session.Store;
@@ -103,6 +105,7 @@ export class MemStorage implements IStorage {
     this.milestones = new Map();
     this.payments = new Map();
     this.documents = new Map();
+    this.bankAccounts = new Map();
     
     this.userId = 1;
     this.inviteId = 1;
@@ -110,6 +113,7 @@ export class MemStorage implements IStorage {
     this.milestoneId = 1;
     this.paymentId = 1;
     this.documentId = 1;
+    this.bankAccountId = 1;
     
     // Create memory store for sessions
     const MemoryStore = require('memorystore')(session);
@@ -437,6 +441,92 @@ export class MemStorage implements IStorage {
     const document: Document = { ...insertDocument, id, uploadedAt };
     this.documents.set(id, document);
     return document;
+  }
+  
+  // Bank Account methods
+  async getUserBankAccounts(userId: number): Promise<BankAccount[]> {
+    return Array.from(this.bankAccounts.values()).filter(
+      (account) => account.userId === userId
+    );
+  }
+  
+  async getUserBankAccount(userId: number, accountId: string): Promise<BankAccount | undefined> {
+    return Array.from(this.bankAccounts.values()).find(
+      (account) => account.userId === userId && account.accountId === accountId
+    );
+  }
+  
+  async saveUserBankAccount(userId: number, bankAccountData: InsertBankAccount): Promise<BankAccount> {
+    const id = this.bankAccountId++;
+    const createdAt = new Date();
+    const isDefault = (await this.getUserBankAccounts(userId)).length === 0; // First account is default
+    
+    const bankAccount: BankAccount = {
+      ...bankAccountData,
+      id,
+      userId,
+      createdAt,
+      isVerified: false,
+      isDefault,
+      metadata: bankAccountData.metadata || null
+    };
+    
+    this.bankAccounts.set(id, bankAccount);
+    return bankAccount;
+  }
+  
+  async setDefaultBankAccount(userId: number, accountId: string): Promise<BankAccount | undefined> {
+    // Get all bank accounts for this user
+    const userAccounts = await this.getUserBankAccounts(userId);
+    
+    // Find the requested account
+    const accountToSet = userAccounts.find(account => account.accountId === accountId);
+    if (!accountToSet) return undefined;
+    
+    // Set this account as default and all others as non-default
+    for (const account of userAccounts) {
+      const isDefault = account.accountId === accountId;
+      const updatedAccount = { ...account, isDefault };
+      this.bankAccounts.set(account.id, updatedAccount);
+    }
+    
+    // Return the newly set default account
+    return { ...accountToSet, isDefault: true };
+  }
+  
+  async removeBankAccount(userId: number, accountId: string): Promise<boolean> {
+    const accountIdsToRemove: number[] = [];
+    
+    // Find all accounts matching the criteria
+    for (const [id, account] of this.bankAccounts.entries()) {
+      if (account.userId === userId && account.accountId === accountId) {
+        accountIdsToRemove.push(id);
+      }
+    }
+    
+    // Remove the accounts
+    for (const id of accountIdsToRemove) {
+      this.bankAccounts.delete(id);
+    }
+    
+    return accountIdsToRemove.length > 0;
+  }
+  
+  async updatePaymentStatus(paymentId: number, status: string, paymentDetails?: Record<string, any>): Promise<Payment | undefined> {
+    const existingPayment = this.payments.get(paymentId);
+    if (!existingPayment) return undefined;
+    
+    const updatedPayment: Payment = { 
+      ...existingPayment, 
+      status,
+      // If payment completed, set the completed date
+      completedDate: status === 'completed' ? new Date() : existingPayment.completedDate,
+      // Update any additional payment details provided
+      ...(paymentDetails || {})
+    };
+    
+    this.payments.set(paymentId, updatedPayment);
+    return updatedPayment;
   }
   
   // Seed data method for development
@@ -956,6 +1046,93 @@ export class DatabaseStorage implements IStorage {
   async createDocument(insertDocument: InsertDocument): Promise<Document> {
     const [document] = await db.insert(documents).values(insertDocument).returning();
     return document;
+  }
+  
+  // Bank Account methods
+  async getUserBankAccounts(userId: number): Promise<BankAccount[]> {
+    return await db.select().from(bankAccounts).where(eq(bankAccounts.userId, userId));
+  }
+  
+  async getUserBankAccount(userId: number, accountId: string): Promise<BankAccount | undefined> {
+    const [account] = await db
+      .select()
+      .from(bankAccounts)
+      .where(
+        and(
+          eq(bankAccounts.userId, userId),
+          eq(bankAccounts.accountId, accountId)
+        )
+      );
+    return account;
+  }
+  
+  async saveUserBankAccount(userId: number, bankAccountData: InsertBankAccount): Promise<BankAccount> {
+    // Check if this is the first bank account for this user
+    const existingAccounts = await this.getUserBankAccounts(userId);
+    const isDefault = existingAccounts.length === 0;
+    
+    // Prepare the bank account data
+    const accountData = {
+      ...bankAccountData,
+      userId,
+      isDefault,
+      isVerified: false
+    };
+    
+    // Insert the bank account
+    const [bankAccount] = await db.insert(bankAccounts).values(accountData).returning();
+    return bankAccount;
+  }
+  
+  async setDefaultBankAccount(userId: number, accountId: string): Promise<BankAccount | undefined> {
+    // First, set all bank accounts for this user to not default
+    await db
+      .update(bankAccounts)
+      .set({ isDefault: false })
+      .where(eq(bankAccounts.userId, userId));
+    
+    // Then set the specified account as default
+    const [updatedAccount] = await db
+      .update(bankAccounts)
+      .set({ isDefault: true })
+      .where(
+        and(
+          eq(bankAccounts.userId, userId),
+          eq(bankAccounts.accountId, accountId)
+        )
+      )
+      .returning();
+    
+    return updatedAccount;
+  }
+  
+  async removeBankAccount(userId: number, accountId: string): Promise<boolean> {
+    const result = await db
+      .delete(bankAccounts)
+      .where(
+        and(
+          eq(bankAccounts.userId, userId),
+          eq(bankAccounts.accountId, accountId)
+        )
+      );
+    
+    return result.rowCount > 0;
+  }
+  
+  async updatePaymentStatus(paymentId: number, status: string, paymentDetails?: Record<string, any>): Promise<Payment | undefined> {
+    const updateData: any = {
+      status,
+      ...(status === 'completed' ? { completedDate: new Date() } : {}),
+      ...(paymentDetails || {})
+    };
+    
+    const [updatedPayment] = await db
+      .update(payments)
+      .set(updateData)
+      .where(eq(payments.id, paymentId))
+      .returning();
+    
+    return updatedPayment;
   }
 }
 
