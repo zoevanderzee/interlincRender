@@ -24,6 +24,7 @@ import TestLogin from "@/pages/test-login";
 import PaymentTest from "@/pages/payment-test";
 import StripeDebug from "@/pages/stripe-debug";
 import StripeTest from "@/pages/stripe-test";
+import StripeTestV2 from "@/pages/stripe-test-v2";
 import Layout from "@/components/layout/Layout";
 import AuthPage from "@/pages/auth";
 import ResetPasswordPage from "@/pages/reset-password";
@@ -54,6 +55,10 @@ function Router() {
       
       <Route path="/stripe-test">
         <StripeTest />
+      </Route>
+      
+      <Route path="/stripe-test-v2">
+        <StripeTestV2 />
       </Route>
 
       {/* Protected Routes - require authentication */}

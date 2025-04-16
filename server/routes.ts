@@ -1084,6 +1084,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: error.message });
     }
   });
+  
+  // Create a Stripe checkout session (for redirect flow)
+  app.post(`${apiRouter}/create-checkout-session`, async (req: Request, res: Response) => {
+    try {
+      const { amount, description } = req.body;
+      
+      if (!amount || isNaN(parseFloat(amount))) {
+        return res.status(400).json({ error: 'Invalid amount' });
+      }
+      
+      // Convert amount to whole number of cents (Stripe requires integer)
+      const amountInCents = Math.round(parseFloat(amount));
+      console.log('Creating checkout session for amount (cents):', amountInCents);
+      
+      // Create a checkout session
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price_data: {
+              currency: 'usd',
+              product_data: {
+                name: description || 'Payment',
+              },
+              unit_amount: amountInCents,
+            },
+            quantity: 1,
+          },
+        ],
+        mode: 'payment',
+        success_url: `${process.env.FRONTEND_URL || 'http://localhost:5000'}/stripe-test-v2?success=true&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:5000'}/stripe-test-v2?canceled=true`,
+      });
+
+      res.json({
+        id: session.id,
+        url: session.url,
+      });
+    } catch (error: any) {
+      console.error('Error creating checkout session:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;
