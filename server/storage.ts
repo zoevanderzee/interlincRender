@@ -1,11 +1,12 @@
 import { 
-  users, invites, contracts, milestones, payments, documents,
+  users, invites, contracts, milestones, payments, documents, bankAccounts,
   type User, type InsertUser, 
   type Invite, type InsertInvite,
   type Contract, type InsertContract,
   type Milestone, type InsertMilestone,
   type Payment, type InsertPayment,
-  type Document, type InsertDocument
+  type Document, type InsertDocument,
+  type BankAccount, type InsertBankAccount
 } from "@shared/schema";
 import { eq, and, desc, lte, gte, sql } from "drizzle-orm";
 import { db, pool } from "./db";
@@ -66,6 +67,14 @@ export interface IStorage {
   getDocument(id: number): Promise<Document | undefined>;
   getDocumentsByContractId(contractId: number): Promise<Document[]>;
   createDocument(document: InsertDocument): Promise<Document>;
+  
+  // Bank Accounts
+  getUserBankAccounts(userId: number): Promise<BankAccount[]>;
+  getUserBankAccount(userId: number, accountId: string): Promise<BankAccount | undefined>;
+  saveUserBankAccount(userId: number, bankAccount: InsertBankAccount): Promise<BankAccount>;
+  setDefaultBankAccount(userId: number, accountId: string): Promise<BankAccount | undefined>;
+  removeBankAccount(userId: number, accountId: string): Promise<boolean>;
+  updatePaymentStatus(paymentId: number, status: string, paymentDetails?: Record<string, any>): Promise<Payment | undefined>;
 }
 
 // In-memory storage implementation

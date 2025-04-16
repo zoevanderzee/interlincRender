@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, varchar, decimal } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, varchar, decimal, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -101,6 +101,25 @@ export const documents = pgTable("documents", {
   description: text("description"),
 });
 
+// Bank Accounts table for ACH Payments
+export const bankAccounts = pgTable("bank_accounts", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  accountId: text("account_id").notNull(), // Plaid account ID
+  accountName: text("account_name").notNull(), // User-friendly name for the account
+  accountType: text("account_type").notNull(), // checking, savings, etc.
+  accountSubtype: text("account_subtype"), // personal, business, etc.
+  accountMask: text("account_mask"), // Last 4 digits of account number
+  institutionName: text("institution_name"), // Bank name
+  plaidAccessToken: text("plaid_access_token").notNull(), // Plaid access token for this account
+  plaidItemId: text("plaid_item_id").notNull(), // Plaid item ID
+  stripeBankAccountId: text("stripe_bank_account_id"), // Stripe bank account ID
+  isVerified: boolean("is_verified").default(false), // Whether the account is verified
+  isDefault: boolean("is_default").default(false), // Whether this is the default account
+  createdAt: timestamp("created_at").defaultNow(),
+  metadata: jsonb("metadata"), // Additional metadata
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
 export const insertInviteSchema = createInsertSchema(invites).omit({ id: true, createdAt: true });
@@ -108,6 +127,7 @@ export const insertContractSchema = createInsertSchema(contracts).omit({ id: tru
 export const insertMilestoneSchema = createInsertSchema(milestones).omit({ id: true });
 export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true, completedDate: true });
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, uploadedAt: true });
+export const insertBankAccountSchema = createInsertSchema(bankAccounts).omit({ id: true, createdAt: true, isVerified: true });
 
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -127,3 +147,6 @@ export type Payment = typeof payments.$inferSelect;
 
 export type InsertDocument = z.infer<typeof insertDocumentSchema>;
 export type Document = typeof documents.$inferSelect;
+
+export type InsertBankAccount = z.infer<typeof insertBankAccountSchema>;
+export type BankAccount = typeof bankAccounts.$inferSelect;
