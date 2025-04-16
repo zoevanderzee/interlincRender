@@ -186,17 +186,11 @@ function PaymentProcessor({
           </TabsList>
           
           <TabsContent value="card" className="mt-4">
-            {StripeElements ? (
-              <StripeElements
-                amount={parseFloat(amount) * 100} // Convert to cents
-                onPaymentComplete={handleStripePaymentComplete}
-                isProcessing={paymentStatus === 'processing' || cardPaymentMutation.isPending}
-              />
-            ) : (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin" />
-              </div>
-            )}
+            <StripeElements
+              amount={parseFloat(amount) * 100} // Convert to cents
+              onPaymentComplete={handleStripePaymentComplete}
+              isProcessing={paymentStatus === 'processing' || cardPaymentMutation.isPending}
+            />
           </TabsContent>
           
           <TabsContent value="ach" className="mt-4">
