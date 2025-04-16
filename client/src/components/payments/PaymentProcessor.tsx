@@ -12,6 +12,9 @@ import { BankAccountSelector } from './BankAccountSelector';
 // Import Stripe elements component
 import { StripeElements } from './StripeElements';
 
+// Check if we have a valid Stripe publishable key
+const publicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY || '';
+
 interface PaymentProcessorProps {
   paymentId: number;
   amount: string;
@@ -186,11 +189,25 @@ function PaymentProcessor({
           </TabsList>
           
           <TabsContent value="card" className="mt-4">
-            <StripeElements
-              amount={parseFloat(amount) * 100} // Convert to cents
-              onPaymentComplete={handleStripePaymentComplete}
-              isProcessing={paymentStatus === 'processing' || cardPaymentMutation.isPending}
-            />
+            {/* Check if we have a valid public key */}
+            {publicKey.startsWith('pk_') ? (
+              <StripeElements
+                amount={parseFloat(amount) * 100} // Convert to cents
+                onPaymentComplete={handleStripePaymentComplete}
+                isProcessing={paymentStatus === 'processing' || cardPaymentMutation.isPending}
+              />
+            ) : (
+              <div className="p-6 border rounded-md bg-destructive/10 text-center">
+                <h3 className="font-bold mb-2">Stripe Integration Error</h3>
+                <p className="text-sm mb-4">
+                  The Stripe publishable key is invalid or missing. 
+                  Please provide a valid publishable key (starts with 'pk_').
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  For security reasons, credit card payments are disabled until a proper publishable key is provided.
+                </p>
+              </div>
+            )}
           </TabsContent>
           
           <TabsContent value="ach" className="mt-4">

@@ -7,8 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-// Initialize Stripe with the public key
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
+// Validate and initialize Stripe with the public key
+// Only initialize if the key starts with 'pk_' (publishable key)
+const publicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY || '';
+const isValidPublicKey = publicKey.startsWith('pk_');
+const stripePromise = isValidPublicKey ? loadStripe(publicKey) : null;
 
 interface StripeCheckoutFormProps {
   clientSecret: string;
@@ -93,6 +96,22 @@ export function StripeElements({ amount, onPaymentComplete, isProcessing = false
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const { toast } = useToast();
 
+  // If we don't have a valid public key, show error message instead
+  if (!isValidPublicKey) {
+    return (
+      <div className="p-6 border rounded-md bg-destructive/10 text-center">
+        <h3 className="font-bold mb-2">Stripe Integration Error</h3>
+        <p className="text-sm mb-4">
+          The Stripe publishable key is invalid or missing. 
+          Please provide a valid publishable key (starts with 'pk_').
+        </p>
+        <p className="text-xs text-muted-foreground">
+          For security reasons, credit card payments are disabled until a proper publishable key is provided.
+        </p>
+      </div>
+    );
+  }
+
   // Mutation to create a payment intent
   const createPaymentIntentMutation = useMutation({
     mutationFn: async () => {
@@ -120,7 +139,9 @@ export function StripeElements({ amount, onPaymentComplete, isProcessing = false
 
   // Initialize payment intent when component mounts
   useEffect(() => {
-    createPaymentIntentMutation.mutate();
+    if (isValidPublicKey) {
+      createPaymentIntentMutation.mutate();
+    }
   }, []);
 
   if (!clientSecret || createPaymentIntentMutation.isPending) {
