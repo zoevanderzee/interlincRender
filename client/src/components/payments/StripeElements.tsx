@@ -10,6 +10,9 @@ import { useToast } from '@/hooks/use-toast';
 // Validate and initialize Stripe with the public key
 // Only initialize if the key starts with 'pk_' (publishable key)
 const publicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY || '';
+console.log('Stripe public key in component:', publicKey);
+console.log('Starts with pk_test_:', publicKey.startsWith('pk_test_'));
+console.log('Starts with pk_live_:', publicKey.startsWith('pk_live_'));
 const isValidPublicKey = publicKey.startsWith('pk_');
 const stripePromise = isValidPublicKey ? loadStripe(publicKey) : null;
 

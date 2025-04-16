@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,6 +12,15 @@ export default function PaymentTestPage() {
   const [recipientName, setRecipientName] = useState('');
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
   const { toast } = useToast();
+  
+  // Debug Stripe environment variables
+  useEffect(() => {
+    const stripePublicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
+    console.log('Payment Test - Stripe key:', stripePublicKey);
+    console.log('Key exists:', Boolean(stripePublicKey));
+    console.log('Starts with pk_:', stripePublicKey?.startsWith('pk_'));
+    console.log('Key length:', stripePublicKey?.length);
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
