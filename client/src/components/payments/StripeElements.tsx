@@ -26,7 +26,21 @@ function StripeCheckoutForm({ clientSecret, onPaymentComplete, isProcessing }: S
   const stripe = useStripe();
   const elements = useElements();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isElementsReady, setIsElementsReady] = useState(false);
   const { toast } = useToast();
+  
+  // Check if elements are ready
+  useEffect(() => {
+    const checkElements = async () => {
+      if (elements) {
+        // Wait for elements to be fully loaded
+        await new Promise(resolve => setTimeout(resolve, 500));
+        setIsElementsReady(true);
+      }
+    };
+    
+    checkElements();
+  }, [elements]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,6 +55,10 @@ function StripeCheckoutForm({ clientSecret, onPaymentComplete, isProcessing }: S
     }
 
     setIsSubmitting(true);
+
+    // Make sure elements are properly mounted before calling confirmPayment
+    // Wait a bit to ensure elements are fully mounted
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     // Confirm the payment
     const { error, paymentIntent } = await stripe.confirmPayment({
@@ -74,12 +92,17 @@ function StripeCheckoutForm({ clientSecret, onPaymentComplete, isProcessing }: S
       <Button 
         type="submit" 
         className="w-full" 
-        disabled={!stripe || isSubmitting || isProcessing}
+        disabled={!stripe || !isElementsReady || isSubmitting || isProcessing}
       >
         {isSubmitting || isProcessing ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             Processing...
+          </>
+        ) : !isElementsReady ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Loading payment form...
           </>
         ) : (
           'Pay with Card'
@@ -156,11 +179,14 @@ export function StripeElements({ amount, onPaymentComplete, isProcessing = false
     );
   }
 
+  // Configure Stripe Elements options
   const options = {
     clientSecret,
     appearance: {
       theme: 'night' as const,
     },
+    // Use simpler options that are compatible with all versions of Stripe Elements
+    loader: 'always' as const,
   };
 
   return (

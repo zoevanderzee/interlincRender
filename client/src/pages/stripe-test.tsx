@@ -149,6 +149,7 @@ export default function StripeTestPage() {
             <StripeElements 
               amount={parseFloat(amount) * 100} // Convert to cents
               onPaymentComplete={handlePaymentComplete}
+              isProcessing={paymentStatus === 'processing'}
             />
             <div className="mt-4">
               <Button 

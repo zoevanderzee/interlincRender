@@ -1064,8 +1064,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Create a PaymentIntent with the order amount and currency
+      // Convert amount to whole number of cents (Stripe requires integer)
+      const amountInCents = Math.round(parseFloat(amount));
+      console.log('Creating payment intent for amount (cents):', amountInCents);
+      
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: Math.round(parseFloat(amount)),
+        amount: amountInCents,
         currency: 'usd',
         automatic_payment_methods: {
           enabled: true,
