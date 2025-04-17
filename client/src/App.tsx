@@ -26,6 +26,7 @@ import StripeDebug from "@/pages/stripe-debug";
 import StripeTest from "@/pages/stripe-test";
 import StripeTestV2 from "@/pages/stripe-test-v2";
 import StripeTestSimple from "@/pages/stripe-test-simple";
+import StripeCheckout from "@/pages/stripe-checkout";
 import PaymentSimulator from "@/pages/payment-simulator";
 import Layout from "@/components/layout/Layout";
 import AuthPage from "@/pages/auth";
@@ -65,6 +66,10 @@ function Router() {
       
       <Route path="/stripe-test-simple">
         <StripeTestSimple />
+      </Route>
+      
+      <Route path="/stripe-checkout">
+        <StripeCheckout />
       </Route>
       
       <Route path="/payment-simulator">

@@ -1095,11 +1095,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Convert amount to whole number of cents (Stripe requires integer)
-      const amountInCents = Math.round(parseFloat(amount));
+      const amountInCents = Math.round(parseFloat(amount) * 100); // Convert dollars to cents
       console.log('Creating checkout session for amount (cents):', amountInCents);
       
       // Create a checkout session with proper formatting and domain
-      const baseUrl = process.env.FRONTEND_URL || `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` || 'http://localhost:5000';
+      let baseUrl = '';
+      
+      // When deployed, use the Replit domain
+      if (process.env.REPLIT_DOMAINS) {
+        baseUrl = `https://${process.env.REPLIT_DOMAINS}`;
+      } 
+      // For local development
+      else {
+        baseUrl = process.env.FRONTEND_URL || 'http://localhost:5000';
+      }
+      
       console.log('Base URL for checkout redirects:', baseUrl);
       
       const session = await stripe.checkout.sessions.create({
@@ -1117,8 +1127,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
         ],
         mode: 'payment',
-        success_url: `${baseUrl}/stripe-test-v2?success=true`,
-        cancel_url: `${baseUrl}/stripe-test-v2?canceled=true`,
+        success_url: `${baseUrl}/stripe-checkout?success=true`,
+        cancel_url: `${baseUrl}/stripe-checkout?canceled=true`,
       });
 
       res.json({
