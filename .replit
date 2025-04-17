@@ -1,21 +1,14 @@
+
 run = "bash ./run.sh"
 hidden = [".build", ".config"]
 
 [nix]
 channel = "stable-23_05"
+packages = ["nodejs_20"]
 
 [deployment]
 build = ["sh", "-c", "./build.sh"]
 run = ["sh", "-c", "./start.sh"]
 
-[workflows]
-runButton = "Run Dev Server"
-
-[[workflows.workflow]]
-name = "Run Dev Server"
-author = 40887157
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run dev"
+[env]
+NODE_ENV = "production"
