@@ -53,28 +53,28 @@ app.use((req, res, next) => {
   // Initialize services
   initializeEmailService();
   await initializeLogger();
-  
+
   // Setup database health checks (every 5 minutes)
   setupDatabaseHealthChecks();
-  
+
   // Add the request logger middleware
   app.use(requestLogger);
-  
+
   // Temporarily disable all security enhancements to restore basic functionality
   // app.use(securityHeaders);
   // app.use(addCsrfToken);
   // app.use('/api', csrfProtection);
-  
+
   // Serve test login HTML
   app.get('/test-login-html', (req, res) => {
     res.sendFile(path.resolve(__dirname, '..', 'client', 'test-login.html'));
   });
-  
+
   const server = await registerRoutes(app);
 
   // Use our error logger middleware
   app.use(errorLogger);
-  
+
   // Use standardized API error handler
   app.use(apiErrorHandler);
 
@@ -99,5 +99,3 @@ app.use((req, res, next) => {
     log(`serving on port ${port}`);
   });
 })();
-
-
