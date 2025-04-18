@@ -3,7 +3,5 @@
 echo "🚀 Starting production server..."
 
 # Set production environment
-export NODE_ENV=production 
-
-# Start the production server
+export NODE_ENV=production
 node dist/index.js
