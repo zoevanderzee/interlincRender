@@ -2,8 +2,9 @@
 #!/bin/bash
 echo "🏗️ Building for production..."
 
-# Source nix environment
-. /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+# Source nix profile and activate Node.js
+. ~/.nix-profile/etc/profile.d/nix.sh
+export PATH="/nix/var/nix/profiles/default/bin:$PATH"
 
 # Install dependencies
 echo "📦 Installing dependencies..."
