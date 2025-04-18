@@ -2,5 +2,5 @@
 #!/bin/bash
 echo "🚀 Starting production server..."
 
-# Start the application
-NODE_ENV=production node dist/index.js
+# Ensure we're in a nix-shell with Node.js
+exec nix-shell -p nodejs_20 --run "NODE_ENV=production node dist/index.js"

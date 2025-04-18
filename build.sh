@@ -2,12 +2,5 @@
 #!/bin/bash
 echo "🏗️ Building for production..."
 
-# Install dependencies
-echo "📦 Installing dependencies..."
-npm install
-
-# Build the application
-echo "🛠️ Building application..."
-npm run build
-
-echo "✅ Build completed!"
+# Ensure we're in a nix-shell with Node.js
+exec nix-shell -p nodejs_20 --run "npm install && npm run build"
