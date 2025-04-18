@@ -23,8 +23,8 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npm install"
+args = ". /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npm run dev"
+args = "nix-shell -p nodejs_20 --run \"npm install && npm run dev\""
