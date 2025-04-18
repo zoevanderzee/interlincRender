@@ -1,13 +1,17 @@
-
 #!/bin/bash
-echo "🚀 Starting production server..."
+echo "🚀 Starting application in production mode..."
 
-# Ensure npm and Node.js are available from nix-shell
-if ! command -v node &> /dev/null; then
-  echo "🔨 Setting up Node.js environment..."
-  # Start a new nix-shell with Node.js and execute start command
-  exec nix-shell -p nodejs_20 --run "NODE_ENV=production node dist/index.js"
+# Set production environment
+export NODE_ENV=production
+
+# Check for database existence and connection
+echo "🔍 Checking database connection..."
+if [[ ! -z "$DATABASE_URL" ]]; then
+  echo "✅ Database URL found"
 else
-  # Node.js is available, start server directly
-  NODE_ENV=production node dist/index.js
+  echo "⚠️ Warning: DATABASE_URL not found, this may cause issues"
 fi
+
+# Start the application using the script in package.json
+echo "🌐 Starting server..."
+npm start
