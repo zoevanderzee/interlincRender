@@ -2,13 +2,13 @@
 #!/bin/bash
 echo "🏗️ Building for production..."
 
-# Source nix profile and ensure Node.js is available
-. ~/.nix-profile/etc/profile.d/nix.sh
-export PATH="/nix/var/nix/profiles/default/bin:$PATH"
-hash -r
+# Source nix environment properly
+. /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh 2>/dev/null || true
+. ~/.nix-profile/etc/profile.d/nix.sh 2>/dev/null || true
+hash -r 2>/dev/null || true
 
-# Ensure we're in the project root
-cd "$(dirname "$0")"
+# Ensure npm is available
+export PATH="/nix/var/nix/profiles/default/bin:$PATH"
 
 # Install dependencies
 echo "📦 Installing dependencies..."
