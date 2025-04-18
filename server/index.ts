@@ -70,7 +70,11 @@ app.use((req, res, next) => {
     res.sendFile(path.resolve(__dirname, '..', 'client', 'test-login.html'));
   });
 
-  const server = await registerRoutes(app);
+  const port = process.env.PORT || 5000;
+const server = app.listen(port, '0.0.0.0', () => {
+  console.log(`Server running on port ${port}`);
+});
+await registerRoutes(app);
 
   // Use our error logger middleware
   app.use(errorLogger);
