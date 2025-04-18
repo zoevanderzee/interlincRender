@@ -110,7 +110,7 @@ export default function AuthPage() {
     email: inviteEmail || "",
     firstName: "",
     lastName: "",
-    role: inviteId ? "contractor" : "business", // Default to business for new users, contractor for invites
+    role: "contractor", // Default role for invited users
     company: "",
     position: "",
     inviteId: inviteId || undefined,
@@ -122,7 +122,7 @@ export default function AuthPage() {
       setRegisterForm(prev => ({
         ...prev,
         email: inviteEmail,
-        role: "contractor", // Invites are for contractors
+        role: "contractor", // Most invites are for contractors
         inviteId: inviteId || undefined
       }));
     }
@@ -134,7 +134,7 @@ export default function AuthPage() {
       setRegisterForm(prev => ({
         ...prev,
         email: inviteData.email || prev.email,
-        role: "contractor", // Invites are for contractors
+        role: "contractor",
         inviteId: inviteData.id
       }));
     }

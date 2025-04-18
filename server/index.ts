@@ -53,29 +53,28 @@ app.use((req, res, next) => {
   // Initialize services
   initializeEmailService();
   await initializeLogger();
-
+  
   // Setup database health checks (every 5 minutes)
   setupDatabaseHealthChecks();
-
+  
   // Add the request logger middleware
   app.use(requestLogger);
-
+  
   // Temporarily disable all security enhancements to restore basic functionality
   // app.use(securityHeaders);
   // app.use(addCsrfToken);
   // app.use('/api', csrfProtection);
-
+  
   // Serve test login HTML
   app.get('/test-login-html', (req, res) => {
     res.sendFile(path.resolve(__dirname, '..', 'client', 'test-login.html'));
   });
-
-  const port = process.env.PORT || 5000;
+  
   const server = await registerRoutes(app);
 
   // Use our error logger middleware
   app.use(errorLogger);
-
+  
   // Use standardized API error handler
   app.use(apiErrorHandler);
 
@@ -88,6 +87,10 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
+  // ALWAYS serve the app on port 5000
+  // this serves both the API and the client.
+  // It is the only port that is not firewalled.
+  const port = 5000;
   server.listen({
     port,
     host: "0.0.0.0",
@@ -96,3 +99,5 @@ app.use((req, res, next) => {
     log(`serving on port ${port}`);
   });
 })();
+
+
