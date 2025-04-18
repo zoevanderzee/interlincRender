@@ -2,15 +2,17 @@
 #!/bin/bash
 echo "🏗️ Building for production..."
 
+# Ensure Node.js is available
+if ! command -v node &> /dev/null; then
+  echo "Using nix-shell to get Node.js..."
+  export PATH="$PATH:$(nix-shell -p nodejs_20 --run 'echo $PATH')"
+fi
+
 # Install dependencies
 npm install
 
-# Build client
+# Build the client
 echo "📱 Building client..."
 npm run build
-
-# Build server with ESM support
-echo "🛠️ Building server..."
-npx esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/index.js
 
 echo "✅ Build completed successfully!"
