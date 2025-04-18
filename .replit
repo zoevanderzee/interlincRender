@@ -1,43 +1,42 @@
-
-run = "bash ./run.sh"
-hidden = [".build", ".config"]
+modules = ["nodejs-20", "web", "postgresql-16"]
+run = "npm run dev"
+hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
 [nix]
-channel = "stable-23_05"
-packages = ["nodejs_20"]
+channel = "stable-24_05"
 
 [deployment]
-build = ["sh", "-c", "./build.sh"]
-run = ["sh", "-c", "./start.sh"]
-deploymentTarget = "cloudrun"
-
-[env]
-NODE_ENV = "production"
+deploymentTarget = "autoscale"
+build = ["npm", "run", "build"]
+run = ["npm", "run", "start"]
 
 [workflows]
-runButton = "Dev"
+runButton = "Project"
 
 [[workflows.workflow]]
-name = "Dev"
-author = 40887157
-mode = "sequential"
+name = "Project"
+mode = "parallel"
+author = "agent"
 
 [[workflows.workflow.tasks]]
-task = "shell.exec"
-args = ". ~/.nix-profile/etc/profile.d/nix.sh"
+task = "workflow.run"
+args = "Start application"
+
+[[workflows.workflow]]
+name = "Start application"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
 
 [[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "export PATH=\"/nix/var/nix/profiles/default/bin:$PATH\""
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "hash -r"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm install"
+task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npm run dev"
+waitForPort = 5000
+
+[[ports]]
+localPort = 5000
+externalPort = 80
