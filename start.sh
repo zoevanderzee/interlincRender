@@ -2,17 +2,16 @@
 #!/bin/bash
 echo "🚀 Starting production server..."
 
-# Ensure we're in the project root
-cd "$(dirname "$0")"
-
-# Source nix environment
-if [ -f ~/.bashrc ]; then
-  . ~/.bashrc
-fi
-
-# Ensure npm is available
+# Source nix profile and ensure Node.js is available
+. ~/.nix-profile/etc/profile.d/nix.sh
 export PATH="/nix/var/nix/profiles/default/bin:$PATH"
 hash -r
 
+# Ensure we're in the project root
+cd "$(dirname "$0")"
+
+# Set production environment
+export NODE_ENV=production
+
 # Start the server
-NODE_ENV=production node dist/index.js
+exec node dist/index.js

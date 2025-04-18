@@ -31,6 +31,10 @@ args = "export PATH=\"/nix/var/nix/profiles/default/bin:$PATH\""
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
+args = "hash -r"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
 args = "npm install"
 
 [[workflows.workflow.tasks]]
