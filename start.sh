@@ -2,7 +2,7 @@
 #!/bin/bash
 echo "🚀 Starting production server..."
 
-# Source nix environment to ensure Node.js is available
+# Source nix environment
 . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 
 # Start the server

@@ -2,15 +2,15 @@
 #!/bin/bash
 echo "🏗️ Building for production..."
 
-# Source nix environment to ensure Node.js is available
+# Source nix environment
 . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 
 # Install dependencies
 echo "📦 Installing dependencies..."
 npm install
 
-# Build client
-echo "🛠️ Building client..."
+# Build the application
+echo "🛠️ Building application..."
 npm run build
 
 echo "✅ Build completed!"
