@@ -5,5 +5,8 @@ echo "🚀 Starting production server..."
 # Ensure we're using Node.js from nix
 export PATH="/nix/store/$(ls -t /nix/store | grep nodejs | head -n1)/bin:$PATH"
 
+# Set production environment
+export NODE_ENV=production 
+
 # Start the production server
-NODE_ENV=production node dist/index.js
+node dist/index.js

@@ -13,4 +13,8 @@ npm install
 echo "📱 Building client..."
 npm run build
 
+# Build the server
+echo "🛠️ Building server..."
+npx esbuild server/index.ts --platform=node --packages=external --bundle --outdir=dist
+
 echo "✅ Build completed successfully!"
