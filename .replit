@@ -9,6 +9,7 @@ packages = ["nodejs_20"]
 [deployment]
 build = ["sh", "-c", "./build.sh"]
 run = ["sh", "-c", "./start.sh"]
+deploymentTarget = "cloudrun"
 
 [env]
 NODE_ENV = "production"
