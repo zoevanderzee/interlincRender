@@ -2,15 +2,21 @@
 #!/bin/bash
 echo "🏗️ Building for production..."
 
-# Source nix profile and activate Node.js
-. ~/.nix-profile/etc/profile.d/nix.sh
-export PATH="/nix/var/nix/profiles/default/bin:$PATH"
+# Ensure we're in the project root
+cd "$(dirname "$0")"
 
-# Install dependencies
+# Source nix environment
+if [ -f ~/.bashrc ]; then
+  . ~/.bashrc
+fi
+
+# Ensure npm is available
+export PATH="/nix/var/nix/profiles/default/bin:$PATH"
+hash -r
+
 echo "📦 Installing dependencies..."
 npm install
 
-# Build the application
 echo "🛠️ Building application..."
 npm run build
 
