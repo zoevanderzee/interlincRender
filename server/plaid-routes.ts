@@ -51,7 +51,7 @@ export default function plaidRoutes(app: Express, apiPath: string, authMiddlewar
       }
       
       // Save the bank account information to the database for the user
-      await storage.saveUserBankAccount(userId, {
+      const savedBankAccount = await storage.saveUserBankAccount(userId, {
         userId, // Include userId in the bank account data
         plaidAccessToken: accessToken,
         plaidItemId: itemId,
@@ -63,8 +63,18 @@ export default function plaidRoutes(app: Express, apiPath: string, authMiddlewar
         institutionName: authData.item.institution_id || null,
       });
       
-      // Note: We'll need to implement createBankAccountToken in the stripe service
-      // This is just a placeholder for now and will be implemented in a later step
+      // Send notification that a bank account has been linked
+      try {
+        const notificationService = await import('./services/notifications');
+        await notificationService.default.sendBankAccountVerificationNotification(
+          userId, 
+          savedBankAccount.accountName
+        );
+        console.log(`Bank account linking notification sent to user ${userId}`);
+      } catch (notifyError) {
+        // Don't fail the request if notification fails
+        console.error('Error sending bank account linking notification:', notifyError);
+      }
 
       res.json({
         success: true,
@@ -210,6 +220,19 @@ export default function plaidRoutes(app: Express, apiPath: string, authMiddlewar
           
           // Update our local reference
           bankAccount.stripeBankAccountId = stripeBankAccountId;
+          
+          // Send notification about successful bank account verification
+          try {
+            const notificationService = await import('./services/notifications');
+            await notificationService.default.sendBankAccountVerificationNotification(
+              business.id, 
+              bankAccount.accountName
+            );
+            console.log(`Bank account verification notification sent to user ${business.id}`);
+          } catch (notifyError) {
+            // Don't fail the request if notification fails
+            console.error('Error sending bank account verification notification:', notifyError);
+          }
         } catch (tokenError: any) {
           console.error('Error creating bank account token:', tokenError);
           return res.status(400).json({ 
@@ -246,12 +269,38 @@ export default function plaidRoutes(app: Express, apiPath: string, authMiddlewar
       const platformFee = amount * 0.05; // 5% platform fee
       
       // Update the payment status
-      await storage.updatePaymentStatus(paymentId, 'processing', {
+      const updatedPayment = await storage.updatePaymentStatus(paymentId, 'processing', {
         paymentProcessor: 'stripe_ach',
         stripePaymentIntentId: paymentResult.id,
         stripePaymentIntentStatus: 'processing',
         applicationFee: platformFee.toString(),
       });
+      
+      // Send payment initiated notifications to both business and contractor
+      try {
+        const notificationService = await import('./services/notifications');
+        
+        // Notify business
+        await notificationService.default.sendPaymentNotification(
+          updatedPayment, 
+          'initiated', 
+          business.id,
+          'Your payment has been initiated and is now being processed. This may take 3-5 business days to complete.'
+        );
+        
+        // Notify contractor
+        await notificationService.default.sendPaymentNotification(
+          updatedPayment, 
+          'initiated', 
+          contractor.id,
+          'A payment has been initiated to your account. This may take 3-5 business days to appear in your account.'
+        );
+        
+        console.log(`Payment initiation notifications sent for payment ${paymentId}`);
+      } catch (notifyError) {
+        // Don't fail the request if notification fails
+        console.error('Error sending payment initiation notifications:', notifyError);
+      }
       
       res.json({
         success: true,
