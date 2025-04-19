@@ -671,7 +671,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const paymentId = charge.metadata.paymentId;
           
           // Update payment status to completed
-          await storage.updatePaymentStatus(
+          const payment = await storage.updatePaymentStatus(
             parseInt(paymentId),
             'completed',
             {
@@ -681,6 +681,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
           );
           
           console.log(`ACH Payment ${paymentId} marked as completed`);
+          
+          // Send notifications to relevant parties
+          if (payment) {
+            try {
+              // Get the contract to determine business and contractor IDs
+              const contract = await storage.getContract(payment.contractId);
+              if (contract) {
+                // Notify business user
+                await notificationService.sendPaymentNotification(
+                  payment, 
+                  'completed', 
+                  contract.businessId,
+                  'The funds have been successfully transferred.'
+                );
+                
+                // Notify contractor user
+                await notificationService.sendPaymentNotification(
+                  payment, 
+                  'completed', 
+                  contract.contractorId,
+                  'The payment has been processed and funds will be available in your account soon.'
+                );
+                
+                console.log(`Sent completion notifications for payment ${paymentId}`);
+              }
+            } catch (notifyError) {
+              console.error(`Error sending payment notifications: ${notifyError}`);
+            }
+          }
           
           // Handle transfer to contractor if this was a Connect payment
           if (charge.transfer && charge.transfer_data && charge.transfer_data.destination) {
@@ -708,7 +737,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const paymentId = charge.metadata.paymentId;
           
           // Update payment status to pending
-          await storage.updatePaymentStatus(
+          const payment = await storage.updatePaymentStatus(
             parseInt(paymentId),
             'pending',
             {
@@ -718,6 +747,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
           );
           
           console.log(`ACH Payment ${paymentId} marked as pending`);
+          
+          // Send notifications to relevant parties
+          if (payment) {
+            try {
+              // Get the contract to determine business and contractor IDs
+              const contract = await storage.getContract(payment.contractId);
+              if (contract) {
+                // Notify business user
+                await notificationService.sendPaymentNotification(
+                  payment, 
+                  'pending', 
+                  contract.businessId,
+                  'Your payment is being processed and funds will be transferred shortly.'
+                );
+                
+                // Notify contractor user
+                await notificationService.sendPaymentNotification(
+                  payment, 
+                  'pending', 
+                  contract.contractorId,
+                  'A payment is being processed and will be available in your account soon.'
+                );
+                
+                console.log(`Sent pending notifications for payment ${paymentId}`);
+              }
+            } catch (notifyError) {
+              console.error(`Error sending payment notifications: ${notifyError}`);
+            }
+          }
         }
       }
       
@@ -730,7 +788,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const paymentId = charge.metadata.paymentId;
           
           // Update payment status to failed
-          await storage.updatePaymentStatus(
+          const payment = await storage.updatePaymentStatus(
             parseInt(paymentId),
             'failed',
             {
@@ -741,6 +799,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
           );
           
           console.log(`ACH Payment ${paymentId} marked as failed: ${charge.failure_message}`);
+          
+          // Send notifications to relevant parties
+          if (payment) {
+            try {
+              // Get the contract to determine business and contractor IDs
+              const contract = await storage.getContract(payment.contractId);
+              if (contract) {
+                const failureReason = charge.failure_message || 'The payment could not be processed';
+                
+                // Notify business user
+                await notificationService.sendPaymentNotification(
+                  payment, 
+                  'failed', 
+                  contract.businessId,
+                  `The payment failed: ${failureReason}. Please check your payment method and try again.`
+                );
+                
+                // Notify contractor user
+                await notificationService.sendPaymentNotification(
+                  payment, 
+                  'failed', 
+                  contract.contractorId,
+                  'A scheduled payment has failed. The business has been notified to address the issue.'
+                );
+                
+                console.log(`Sent failure notifications for payment ${paymentId}`);
+              }
+            } catch (notifyError) {
+              console.error(`Error sending payment failure notifications: ${notifyError}`);
+            }
+          }
         }
       }
       

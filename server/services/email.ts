@@ -2,6 +2,13 @@ import nodemailer from 'nodemailer';
 import { Invite } from '@shared/schema';
 import sgMail from '@sendgrid/mail';
 
+export interface EmailOptions {
+  to: string;
+  subject: string;
+  text: string;
+  html?: string;
+}
+
 // Create a transporter for sending emails
 let transporter: nodemailer.Transporter;
 
@@ -200,6 +207,61 @@ export async function sendContractCreatedEmail(contractData: any, recipientEmail
     return info;
   } catch (error) {
     console.error('Error sending contract email:', error);
+    throw error;
+  }
+}
+
+/**
+ * Generic function to send an email
+ */
+export async function sendEmail(options: EmailOptions): Promise<any> {
+  // Initialize email service if needed
+  if (!transporter && !process.env.SENDGRID_API_KEY) {
+    console.warn('Email service not initialized. Initializing now...');
+    initializeEmailService();
+    return;
+  }
+  
+  try {
+    // Try SendGrid first, fall back to Nodemailer if there's an error
+    if (process.env.SENDGRID_API_KEY) {
+      // Use a verified sender email from your SendGrid account
+      const verifiedSender = process.env.SENDGRID_VERIFIED_SENDER || 'support@creativlinc.replit.app';
+      
+      await sgMail.send({
+        to: options.to,
+        from: verifiedSender,
+        subject: options.subject,
+        text: options.text,
+        html: options.html || options.text
+      });
+      
+      return { success: true };
+    } else {
+      // Fall back to Nodemailer
+      const mailOptions = {
+        from: process.env.SMTP_FROM || '"Creativ Linc" <noreply@creativlinc.com>',
+        to: options.to,
+        subject: options.subject,
+        text: options.text,
+        html: options.html || options.text
+      };
+      
+      const info = await transporter.sendMail(mailOptions);
+      
+      // Log the result
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('Email sent: %s', info.messageId);
+        // Preview URL only available when sending through Ethereal
+        if (info.messageId && info.messageId.includes('ethereal')) {
+          console.log('Preview URL: %s', nodemailer.getTestMessageUrl(info));
+        }
+      }
+      
+      return info;
+    }
+  } catch (error) {
+    console.error('Error sending email:', error);
     throw error;
   }
 }

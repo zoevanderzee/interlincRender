@@ -1,5 +1,5 @@
 import { storage } from "../storage";
-import { sendEmail } from "./email";
+import { sendEmail, EmailOptions } from "./email";
 import { Payment, User } from "@shared/schema";
 
 /**
