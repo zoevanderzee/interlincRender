@@ -558,6 +558,20 @@ export class MemStorage implements IStorage {
     return accountIdsToRemove.length > 0;
   }
   
+  async updateBankAccountStripeId(bankAccountId: number, stripeBankAccountId: string): Promise<BankAccount | undefined> {
+    const existingAccount = this.bankAccounts.get(bankAccountId);
+    if (!existingAccount) return undefined;
+    
+    const updatedAccount: BankAccount = {
+      ...existingAccount,
+      stripeBankAccountId,
+      isVerified: true // Mark as verified since it's now connected to Stripe
+    };
+    
+    this.bankAccounts.set(bankAccountId, updatedAccount);
+    return updatedAccount;
+  }
+  
   async updatePaymentStatus(paymentId: number, status: string, paymentDetails?: Record<string, any>): Promise<Payment | undefined> {
     const existingPayment = this.payments.get(paymentId);
     if (!existingPayment) return undefined;

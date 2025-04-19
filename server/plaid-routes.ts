@@ -177,24 +177,89 @@ export default function plaidRoutes(app: Express, apiPath: string, authMiddlewar
         return res.status(404).json({ error: 'Contractor not found' });
       }
       
-      // This is just a placeholder for now as the ACH transfer functionality
-      // will be implemented in a later step
-      const transferResult = {
-        transferId: `test-transfer-${Date.now()}`,
-        status: 'pending'
-      };
+      // Get the business user (payer)
+      const business = await storage.getUser(userId);
+      if (!business) {
+        return res.status(404).json({ error: 'Business not found' });
+      }
+      
+      // Ensure the business has a Stripe customer ID
+      if (!business.stripeCustomerId) {
+        return res.status(400).json({ error: 'Business does not have a Stripe customer ID' });
+      }
+      
+      let paymentResult;
+      
+      // Check if the bank account is already linked to Stripe
+      if (!bankAccount.stripeBankAccountId) {
+        try {
+          // Create a processor token
+          const processorToken = await plaidService.createBankAccountToken(
+            bankAccount.plaidAccessToken,
+            bankAccount.accountId
+          );
+          
+          // Create a bank account payment method in Stripe
+          const stripeBankAccountId = await stripeService.createBankAccountPaymentMethod(
+            business.stripeCustomerId,
+            processorToken
+          );
+          
+          // Save the Stripe bank account ID to our database
+          await storage.updateBankAccountStripeId(bankAccount.id, stripeBankAccountId);
+          
+          // Update our local reference
+          bankAccount.stripeBankAccountId = stripeBankAccountId;
+        } catch (tokenError: any) {
+          console.error('Error creating bank account token:', tokenError);
+          return res.status(400).json({ 
+            error: 'Failed to link bank account to payment processor',
+            details: tokenError.message
+          });
+        }
+      }
+      
+      // Determine if we should use Stripe Connect for direct payment to contractor
+      let contractorConnectId = undefined;
+      if (contractor.stripeConnectAccountId && contractor.payoutEnabled) {
+        contractorConnectId = contractor.stripeConnectAccountId;
+      }
+      
+      try {
+        // Process ACH payment through Stripe
+        paymentResult = await stripeService.processACHPayment(
+          payment,
+          business.stripeCustomerId,
+          bankAccount.stripeBankAccountId as string,
+          contractorConnectId
+        );
+      } catch (paymentError: any) {
+        console.error('Error processing ACH payment:', paymentError);
+        return res.status(400).json({ 
+          error: 'Failed to process ACH payment',
+          details: paymentError.message
+        });
+      }
+      
+      // Calculate platform fee (5% by default)
+      const amount = parseFloat(payment.amount);
+      const platformFee = amount * 0.05; // 5% platform fee
       
       // Update the payment status
       await storage.updatePaymentStatus(paymentId, 'processing', {
-        stripePaymentMethod: 'ach_debit',
-        stripePaymentIntentId: transferResult.transferId,
+        paymentProcessor: 'stripe_ach',
+        stripePaymentIntentId: paymentResult.id,
+        stripePaymentIntentStatus: 'processing',
+        applicationFee: platformFee.toString(),
       });
       
       res.json({
         success: true,
         paymentId,
         status: 'processing',
-        transferId: transferResult.transferId,
+        paymentIntentId: paymentResult.id,
+        clientSecret: paymentResult.clientSecret,
+        directToContractor: !!contractorConnectId
       });
     } catch (error: any) {
       console.error('Error initiating ACH payment:', error);

@@ -223,6 +223,84 @@ export async function checkConnectAccountStatus(accountId: string): Promise<bool
   }
 }
 
+/**
+ * Create a bank account payment method from a Plaid processor token
+ * This links a user's bank account to Stripe for ACH payments
+ */
+export async function createBankAccountPaymentMethod(
+  customerId: string,
+  processorToken: string
+): Promise<string> {
+  try {
+    // Create a bank account token from the processor token
+    const bankAccount = await stripe.customers.createSource(
+      customerId,
+      {
+        source: processorToken
+      }
+    );
+    
+    return bankAccount.id;
+  } catch (error) {
+    console.error('Error creating bank account payment method:', error);
+    throw error;
+  }
+}
+
+/**
+ * Process an ACH payment from a bank account to a contractor
+ */
+export async function processACHPayment(
+  payment: Payment,
+  customerId: string,
+  bankAccountId: string,
+  contractorConnectId?: string
+): Promise<PaymentIntentResponse> {
+  // Convert payment amount to cents
+  const amount = Math.round(parseFloat(payment.amount) * 100);
+  const description = `ACH Payment for contract #${payment.contractId}, milestone #${payment.milestoneId}`;
+  
+  try {
+    // Create the charge options
+    const chargeOptions: Stripe.ChargeCreateParams = {
+      amount: amount,
+      currency: 'usd',
+      customer: customerId,
+      source: bankAccountId,
+      description: description,
+      metadata: {
+        paymentId: payment.id.toString(),
+        contractId: payment.contractId.toString(),
+        milestoneId: payment.milestoneId ? payment.milestoneId.toString() : '',
+      }
+    };
+    
+    // If we have a Connect account for the contractor, add transfer data
+    if (contractorConnectId) {
+      const platformFee = Math.round(amount * 0.05); // 5% platform fee
+      
+      chargeOptions.transfer_data = {
+        destination: contractorConnectId,
+        amount: amount - platformFee
+      };
+      
+      chargeOptions.application_fee_amount = platformFee;
+    }
+    
+    // Create the charge - for ACH, this returns 'pending' initially
+    const charge = await stripe.charges.create(chargeOptions);
+    
+    // For our API, we return a client secret and ID format similar to payment intents
+    return {
+      clientSecret: `${charge.id}_secret`, // ACH doesn't use client secret, but we maintain API consistency
+      id: charge.id
+    };
+  } catch (error) {
+    console.error('Error processing ACH payment:', error);
+    throw error;
+  }
+}
+
 export default {
   createPaymentIntent,
   retrievePaymentIntent,
@@ -233,4 +311,6 @@ export default {
   createTransfer,
   getConnectAccount,
   checkConnectAccountStatus,
+  createBankAccountPaymentMethod,
+  processACHPayment
 };
