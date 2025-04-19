@@ -52,12 +52,13 @@ const Contractors = () => {
   });
   
   // Filter contractors and freelancers
+  // Double-check that users have 'contractor' role to ensure business accounts don't show up here
   const contractors = externalWorkers.filter(worker => 
-    worker.workerType === 'contractor' || !worker.workerType // Handle existing data without workerType
+    worker.role === 'contractor' && (worker.workerType === 'contractor' || !worker.workerType)
   );
   
   const freelancers = externalWorkers.filter(worker => 
-    worker.workerType === 'freelancer'
+    worker.role === 'contractor' && worker.workerType === 'freelancer'
   );
 
   // Fetch pending invites

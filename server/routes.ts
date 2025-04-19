@@ -46,10 +46,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const role = req.query.role as string;
       const currentUser = req.user;
-      let users = [];
+      let users: any[] = [];
       
       // If the current user is a business user
-      if (currentUser.role === "business") {
+      if (currentUser && currentUser.role === "business") {
         if (role === "contractor" || role === "freelancer") {
           // Only return contractors/freelancers that have a contract with this business
           // or have been invited by this business
@@ -58,10 +58,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Combine both sets of contractors and remove duplicates
           const contractorIds = new Set();
-          const uniqueContractors = [];
+          const uniqueContractors: any[] = [];
           
           [...contractorsWithContracts, ...contractorsByInvites].forEach(contractor => {
-            if (!contractorIds.has(contractor.id)) {
+            // Double-check that the user actually has the contractor role
+            if (!contractorIds.has(contractor.id) && contractor.role === 'contractor') {
               contractorIds.add(contractor.id);
               uniqueContractors.push(contractor);
             }
@@ -70,7 +71,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           users = uniqueContractors;
         } else if (!role || role === "business") {
           // For business users, only return themselves
-          users = [currentUser];
+          if (currentUser) {
+            users = [currentUser];
+          }
         }
       } 
       // If the current user is a contractor/freelancer
