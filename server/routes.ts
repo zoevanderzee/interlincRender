@@ -14,6 +14,7 @@ import {
 import { sendPasswordResetEmail } from "./services/email";
 import Stripe from "stripe";
 import stripeService from "./services/stripe";
+import notificationService from "./services/notifications";
 import { setupAuth } from "./auth";
 import plaidRoutes from "./plaid-routes";
 
@@ -658,6 +659,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
             'failed',
             0 // Application fee is already recorded
           );
+        }
+      }
+      
+      // Handle charge.succeeded event (for ACH payments)
+      if (event.type === 'charge.succeeded') {
+        const charge = event.data.object;
+        
+        // Look up payment by metadata in the charge
+        if (charge.metadata && charge.metadata.paymentId) {
+          const paymentId = charge.metadata.paymentId;
+          
+          // Update payment status to completed
+          await storage.updatePaymentStatus(
+            parseInt(paymentId),
+            'completed',
+            {
+              stripePaymentIntentId: charge.id,
+              stripePaymentIntentStatus: charge.status
+            }
+          );
+          
+          console.log(`ACH Payment ${paymentId} marked as completed`);
+          
+          // Handle transfer to contractor if this was a Connect payment
+          if (charge.transfer && charge.transfer_data && charge.transfer_data.destination) {
+            const transferAmount = charge.transfer_data.amount || (charge.amount - (charge.application_fee_amount || 0));
+            const applicationFee = charge.application_fee_amount || 0;
+            
+            await storage.updatePaymentTransferDetails(
+              parseInt(paymentId),
+              charge.transfer,
+              'pending', // Transfer is created but not yet paid
+              applicationFee
+            );
+            
+            console.log(`ACH Payment ${paymentId} transfer ${charge.transfer} recorded`);
+          }
+        }
+      }
+      
+      // Handle charge.pending event (for ACH payments)
+      if (event.type === 'charge.pending') {
+        const charge = event.data.object;
+        
+        // Look up payment by metadata in the charge
+        if (charge.metadata && charge.metadata.paymentId) {
+          const paymentId = charge.metadata.paymentId;
+          
+          // Update payment status to pending
+          await storage.updatePaymentStatus(
+            parseInt(paymentId),
+            'pending',
+            {
+              stripePaymentIntentId: charge.id,
+              stripePaymentIntentStatus: charge.status
+            }
+          );
+          
+          console.log(`ACH Payment ${paymentId} marked as pending`);
+        }
+      }
+      
+      // Handle charge.failed event (for ACH payments)
+      if (event.type === 'charge.failed') {
+        const charge = event.data.object;
+        
+        // Look up payment by metadata in the charge
+        if (charge.metadata && charge.metadata.paymentId) {
+          const paymentId = charge.metadata.paymentId;
+          
+          // Update payment status to failed
+          await storage.updatePaymentStatus(
+            parseInt(paymentId),
+            'failed',
+            {
+              stripePaymentIntentId: charge.id,
+              stripePaymentIntentStatus: charge.status,
+              failureReason: charge.failure_message || 'Payment failed'
+            }
+          );
+          
+          console.log(`ACH Payment ${paymentId} marked as failed: ${charge.failure_message}`);
         }
       }
       
