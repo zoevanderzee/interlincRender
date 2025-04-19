@@ -169,8 +169,10 @@ export function setupAuth(app: Express) {
       const userData = {
         ...req.body,
         password: hashedPassword,
-        role: req.body.role || 'contractor', // Default to contractor role for invited users
-        workerType: invite?.workerType || req.body.workerType || 'contractor'
+        // Default to 'contractor' role for invited users, 'business' for direct registrations
+        role: req.body.role || (invite ? 'contractor' : 'business'),
+        // Only set workerType for contractors/freelancers
+        workerType: invite?.workerType || req.body.workerType || (invite ? 'contractor' : null)
       };
       
       const user = await storage.createUser(userData);
