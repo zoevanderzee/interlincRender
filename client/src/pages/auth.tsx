@@ -111,6 +111,7 @@ export default function AuthPage() {
     firstName: "",
     lastName: "",
     role: "contractor", // Default role for invited users
+    workerType: "", // Will be set from invite data
     company: "",
     position: "",
     inviteId: inviteId || undefined,
@@ -135,6 +136,8 @@ export default function AuthPage() {
         ...prev,
         email: inviteData.email || prev.email,
         role: "contractor",
+        // Set the workerType from the invite data (contractor or freelancer)
+        workerType: inviteData.workerType || "contractor",
         inviteId: inviteData.id
       }));
     }
@@ -272,6 +275,14 @@ export default function AuthPage() {
       // If this is an invite, set the role to contractor
       if (inviteId || inviteEmail) {
         registerData.role = 'contractor';
+        
+        // Make sure workerType is set properly from invite data
+        if (inviteData && inviteData.workerType) {
+          registerData.workerType = inviteData.workerType;
+        } else if (!registerData.workerType) {
+          // Default to contractor if not specified
+          registerData.workerType = 'contractor';
+        }
       }
       
       registerMutation.mutate(registerData);
