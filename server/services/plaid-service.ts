@@ -77,25 +77,69 @@ class PlaidService {
   }
 
   /**
+   * Create a bank account token for Stripe from Plaid credentials
+   * @param accessToken - The Plaid access token
+   * @param accountId - The Plaid account ID
+   */
+  async createBankAccountToken(accessToken: string, accountId: string): Promise<string> {
+    try {
+      // Get bank account details from Plaid
+      const accountInfo = await this.getBankAccountInfo(accessToken);
+      const account = accountInfo.accounts.find((acc: any) => acc.account_id === accountId);
+      
+      if (!account) {
+        throw new Error(`Account with ID ${accountId} not found`);
+      }
+      
+      // Get bank account numbers from Plaid
+      const numbersResponse = await plaidClient.processorTokenCreate({
+        access_token: accessToken,
+        account_id: accountId,
+        processor: 'stripe',
+      });
+      
+      return numbersResponse.data.processor_token;
+    } catch (error) {
+      console.error('Error creating bank account token:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Initiate an ACH transfer
    * @param accessToken - The Plaid access token
    * @param accountId - The Plaid account ID
    * @param amount - The amount to transfer
    * @param description - Description of the transfer
+   * @param recipientConnectId - The contractor's Stripe Connect account ID
    */
   async initiateACHTransfer(
     accessToken: string,
     accountId: string,
     amount: number,
-    description: string
+    description: string,
+    recipientConnectId?: string
   ): Promise<any> {
     try {
-      // This would integrate with your Stripe ACH transfer logic
-      // For now, just return success to simulate the flow
+      // Step 1: Create a processor token for Stripe
+      const processorToken = await this.createBankAccountToken(accessToken, accountId);
+      
+      // Step 2: Create a payment method using the processor token
+      // This would be implemented in the Stripe service
+      // For demonstration, we're returning a simulated response
+      // In a production environment, this would create a real ACH payment method
+      // and initiate a transfer to the recipient
+      
+      if (recipientConnectId) {
+        // If we have a Connect account ID, we'd create a real transfer here
+        console.log(`Would create ACH transfer to Connect account ${recipientConnectId}`);
+      }
+      
       return {
         success: true,
         transferId: `ach_${Date.now()}`,
         status: 'pending',
+        processorToken: processorToken
       };
     } catch (error) {
       console.error('Error initiating ACH transfer:', error);
