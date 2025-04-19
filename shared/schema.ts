@@ -10,7 +10,7 @@ export const users = pgTable("users", {
   firstName: text("first_name"),
   lastName: text("last_name"),
   email: text("email").notNull().unique(),
-  role: text("role").notNull().default("contractor"), // "business", "contractor", or "freelancer"
+  role: text("role").notNull().default("business"), // "business", "contractor", or "freelancer"
   workerType: text("worker_type"), // "contractor" or "freelancer" for external workers
   profileImageUrl: text("profile_image_url"),
   companyName: text("company_name"), // Company name for subcontractors
