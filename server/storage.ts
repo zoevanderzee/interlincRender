@@ -24,6 +24,9 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   getUsersByRole(role: string): Promise<User[]>;
   getUsersByConnectAccountId(connectAccountId: string): Promise<User[]>;
+  getContractorsByBusinessId(businessId: number): Promise<User[]>; // Get contractors with contracts with this business
+  getContractorsByBusinessInvites(businessId: number): Promise<User[]>; // Get contractors invited by this business
+  getBusinessesByContractorId(contractorId: number): Promise<User[]>; // Get businesses with contracts with this contractor
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, user: Partial<InsertUser>): Promise<User | undefined>;
   updateStripeCustomerId(id: number, stripeCustomerId: string): Promise<User | undefined>;
@@ -173,6 +176,49 @@ export class MemStorage implements IStorage {
   async getUsersByConnectAccountId(connectAccountId: string): Promise<User[]> {
     return Array.from(this.users.values()).filter(
       (user) => user.stripeConnectAccountId === connectAccountId
+    );
+  }
+  
+  async getContractorsByBusinessId(businessId: number): Promise<User[]> {
+    // First get all contracts for this business
+    const contractorIds = new Set(
+      Array.from(this.contracts.values())
+        .filter(contract => contract.businessId === businessId)
+        .map(contract => contract.contractorId)
+    );
+    
+    // Then get all contractors
+    return Array.from(this.users.values()).filter(
+      user => contractorIds.has(user.id) && (user.role === 'contractor' || user.role === 'freelancer')
+    );
+  }
+  
+  async getContractorsByBusinessInvites(businessId: number): Promise<User[]> {
+    // Get all emails from pending invites sent by this business
+    const invitedEmails = new Set(
+      Array.from(this.invites.values())
+        .filter(invite => invite.businessId === businessId && invite.status === 'pending')
+        .map(invite => invite.email.toLowerCase())
+    );
+    
+    // Get all contractors with those emails
+    return Array.from(this.users.values()).filter(
+      user => user.email && invitedEmails.has(user.email.toLowerCase()) && 
+        (user.role === 'contractor' || user.role === 'freelancer')
+    );
+  }
+  
+  async getBusinessesByContractorId(contractorId: number): Promise<User[]> {
+    // First get all contracts for this contractor
+    const businessIds = new Set(
+      Array.from(this.contracts.values())
+        .filter(contract => contract.contractorId === contractorId)
+        .map(contract => contract.businessId)
+    );
+    
+    // Then get all businesses
+    return Array.from(this.users.values()).filter(
+      user => businessIds.has(user.id) && user.role === 'business'
     );
   }
   
@@ -800,6 +846,94 @@ export class DatabaseStorage implements IStorage {
   
   async getUsersByConnectAccountId(connectAccountId: string): Promise<User[]> {
     return await db.select().from(users).where(eq(users.stripeConnectAccountId, connectAccountId));
+  }
+  
+  async getContractorsByBusinessId(businessId: number): Promise<User[]> {
+    // Find all contractors who have contracts with this business
+    const contractorsWithContracts = await db
+      .select()
+      .from(users)
+      .innerJoin(contracts, eq(users.id, contracts.contractorId))
+      .where(
+        and(
+          eq(contracts.businessId, businessId),
+          or(
+            eq(users.role, 'contractor'),
+            eq(users.role, 'freelancer')
+          )
+        )
+      );
+    
+    // Extract unique contractors
+    const contractorIds = new Set();
+    const uniqueContractors: User[] = [];
+    
+    contractorsWithContracts.forEach(row => {
+      if (!contractorIds.has(row.users.id)) {
+        contractorIds.add(row.users.id);
+        uniqueContractors.push(row.users);
+      }
+    });
+    
+    return uniqueContractors;
+  }
+  
+  async getContractorsByBusinessInvites(businessId: number): Promise<User[]> {
+    // Find all contractors who have pending invites from this business
+    const contractorsWithInvites = await db
+      .select()
+      .from(users)
+      .innerJoin(invites, eq(users.email, invites.email))
+      .where(
+        and(
+          eq(invites.businessId, businessId),
+          eq(invites.status, 'pending'),
+          or(
+            eq(users.role, 'contractor'),
+            eq(users.role, 'freelancer')
+          )
+        )
+      );
+    
+    // Extract unique contractors
+    const contractorIds = new Set();
+    const uniqueContractors: User[] = [];
+    
+    contractorsWithInvites.forEach(row => {
+      if (!contractorIds.has(row.users.id)) {
+        contractorIds.add(row.users.id);
+        uniqueContractors.push(row.users);
+      }
+    });
+    
+    return uniqueContractors;
+  }
+  
+  async getBusinessesByContractorId(contractorId: number): Promise<User[]> {
+    // Find all businesses who have contracts with this contractor
+    const businessesWithContracts = await db
+      .select()
+      .from(users)
+      .innerJoin(contracts, eq(users.id, contracts.businessId))
+      .where(
+        and(
+          eq(contracts.contractorId, contractorId),
+          eq(users.role, 'business')
+        )
+      );
+    
+    // Extract unique businesses
+    const businessIds = new Set();
+    const uniqueBusinesses: User[] = [];
+    
+    businessesWithContracts.forEach(row => {
+      if (!businessIds.has(row.users.id)) {
+        businessIds.add(row.users.id);
+        uniqueBusinesses.push(row.users);
+      }
+    });
+    
+    return uniqueBusinesses;
   }
   
   async createUser(insertUser: InsertUser): Promise<User> {

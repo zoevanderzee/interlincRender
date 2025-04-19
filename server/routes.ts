@@ -44,16 +44,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get(`${apiRouter}/users`, requireAuth, async (req: Request, res: Response) => {
     try {
       const role = req.query.role as string;
-      let users;
+      const currentUser = req.user;
+      let users = [];
       
-      if (role) {
-        // If role is specified, filter by role
-        users = await storage.getUsersByRole(role);
-      } else {
-        // If no role is specified, get all users by querying all roles
-        const contractors = await storage.getUsersByRole("contractor");
-        const businessUsers = await storage.getUsersByRole("business");
-        users = [...contractors, ...businessUsers];
+      // If the current user is a business user
+      if (currentUser.role === "business") {
+        if (role === "contractor" || role === "freelancer") {
+          // Only return contractors/freelancers that have a contract with this business
+          // or have been invited by this business
+          const contractorsWithContracts = await storage.getContractorsByBusinessId(currentUser.id);
+          const contractorsByInvites = await storage.getContractorsByBusinessInvites(currentUser.id);
+          
+          // Combine both sets of contractors and remove duplicates
+          const contractorIds = new Set();
+          const uniqueContractors = [];
+          
+          [...contractorsWithContracts, ...contractorsByInvites].forEach(contractor => {
+            if (!contractorIds.has(contractor.id)) {
+              contractorIds.add(contractor.id);
+              uniqueContractors.push(contractor);
+            }
+          });
+          
+          users = uniqueContractors;
+        } else if (!role || role === "business") {
+          // For business users, only return themselves
+          users = [currentUser];
+        }
+      } 
+      // If the current user is a contractor/freelancer
+      else if (currentUser.role === "contractor" || currentUser.role === "freelancer") {
+        if (role === "business") {
+          // Only return businesses that have a contract with this contractor
+          users = await storage.getBusinessesByContractorId(currentUser.id);
+        } else if (!role || role === "contractor" || role === "freelancer") {
+          // Contractors can only see themselves
+          users = [currentUser];
+        }
+      }
+      // Admin users (if implemented) can see everyone
+      else if (currentUser.role === "admin") {
+        if (role) {
+          users = await storage.getUsersByRole(role);
+        } else {
+          const contractors = await storage.getUsersByRole("contractor");
+          const businessUsers = await storage.getUsersByRole("business");
+          users = [...contractors, ...businessUsers];
+        }
       }
       
       res.json(users);
