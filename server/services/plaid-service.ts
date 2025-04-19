@@ -95,7 +95,7 @@ class PlaidService {
       const numbersResponse = await plaidClient.processorTokenCreate({
         access_token: accessToken,
         account_id: accountId,
-        processor: 'stripe',
+        processor: 'stripe' as any, // Type cast to handle the enum restriction
       });
       
       return numbersResponse.data.processor_token;

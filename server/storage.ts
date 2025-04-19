@@ -8,7 +8,7 @@ import {
   type Document, type InsertDocument,
   type BankAccount, type InsertBankAccount
 } from "@shared/schema";
-import { eq, and, desc, lte, gte, sql } from "drizzle-orm";
+import { eq, and, desc, lte, gte, sql, or } from "drizzle-orm";
 import { db, pool } from "./db";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
@@ -1264,7 +1264,20 @@ export class DatabaseStorage implements IStorage {
         )
       );
     
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
+  }
+  
+  async updateBankAccountStripeId(bankAccountId: number, stripeBankAccountId: string): Promise<BankAccount | undefined> {
+    const [updatedAccount] = await db
+      .update(bankAccounts)
+      .set({ 
+        stripeBankAccountId,
+        isVerified: true 
+      })
+      .where(eq(bankAccounts.id, bankAccountId))
+      .returning();
+      
+    return updatedAccount;
   }
   
   async updatePaymentStatus(paymentId: number, status: string, paymentDetails?: Record<string, any>): Promise<Payment | undefined> {
