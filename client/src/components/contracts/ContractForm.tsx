@@ -66,7 +66,7 @@ const ContractForm = ({ contractors, onSuccess }: ContractFormProps) => {
       contractName: "",
       contractCode: `SC-${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-`,
       businessId: 1, // Default to the current user's business
-      contractorId: 0,
+      contractorId: undefined, // No contractor selected initially - they will be added after project creation
       description: "",
       status: "draft",
       value: "",
@@ -167,37 +167,8 @@ const ContractForm = ({ contractors, onSuccess }: ContractFormProps) => {
           />
         </div>
 
-        <FormField
-          control={form.control}
-          name="contractorId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-white">Sub Contractor/Freelancer</FormLabel>
-              <Select
-                onValueChange={(value) => field.onChange(parseInt(value))}
-                defaultValue={field.value.toString()}
-              >
-                <FormControl>
-                  <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
-                    <SelectValue placeholder="Select a sub contractor or freelancer" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent className="bg-zinc-900 border-zinc-700 text-white">
-                  {contractors.map((contractor) => (
-                    <SelectItem key={contractor.id} value={contractor.id.toString()}>
-                      {contractor.firstName} {contractor.lastName}{" "}
-                      {contractor.companyName && `(${contractor.companyName})`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormDescription className="text-zinc-400">
-                The sub contractor or freelancer who will work on this project
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {/* Contractor selection removed from initial project creation.
+        Sub contractors and freelancers can be added after project creation */}
 
         <FormField
           control={form.control}
