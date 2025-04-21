@@ -181,8 +181,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Send invitation email
       try {
         const { sendInvitationEmail } = await import('./services/email');
-        // Get application URL from request
-        const appUrl = `${req.protocol}://${req.get('host')}`;
+        // Get application URL, handling both Replit and local environments
+        let appUrl = `${req.protocol}://${req.get('host')}`;
+        
+        // Check if running in Replit
+        if (process.env.REPL_ID && process.env.REPL_SLUG) {
+          // Use the Replit-specific domain
+          appUrl = `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
+        }
+        
+        console.log(`Generated invite URL using appUrl: ${appUrl}`);
         await sendInvitationEmail(newInvite, appUrl);
         console.log(`Invitation email sent to ${newInvite.email}`);
       } catch (emailError) {

@@ -66,6 +66,7 @@ export function initializeEmailService() {
  * Send an invitation email to a contractor or freelancer
  */
 export async function sendInvitationEmail(invite: Invite, appUrl: string = 'https://creativlinc.replit.app') {
+  console.log(`Sending invitation email with app URL: ${appUrl}`);
   if (!transporter) {
     console.warn('Email service not initialized. Initializing now...');
     initializeEmailService();
