@@ -332,39 +332,60 @@ export default function ContractDetailPage() {
           </div>
         </div>
 
-        {/* Status banner */}
-        <div 
-          className={`p-4 rounded-lg mb-6 flex items-center
-            ${contract.status === 'active' ? 'bg-green-50 border border-green-200' : 
-              contract.status === 'pending' ? 'bg-yellow-50 border border-yellow-200' : 
-              'bg-red-50 border border-red-200'}`}
-        >
-          <div className="mr-3">
-            {contract.status === 'active' ? (
-              <CheckCircle className="h-6 w-6 text-green-500" />
-            ) : contract.status === 'pending' ? (
-              <Clock className="h-6 w-6 text-yellow-500" />
-            ) : (
-              <AlertTriangle className="h-6 w-6 text-red-500" />
-            )}
+        {/* Status banner - No red warning about no contractors */}
+        {getContractorCount() === 0 && (
+          <div className="p-4 rounded-lg mb-6 flex items-center bg-blue-50 border border-blue-200">
+            <div className="mr-3">
+              <Clock className="h-6 w-6 text-blue-500" />
+            </div>
+            <div>
+              <h3 className="font-medium">Contract Setup In Progress</h3>
+              <p className="text-sm">
+                This contract is being set up. You can add contractors using the "Add Contractor" button below.
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="font-medium">
-              {contract.status === 'active' 
-                ? 'Active Contract' 
-                : contract.status === 'pending' 
-                ? 'Pending Contract' 
-                : 'Contract Issue'}
-            </h3>
-            <p className="text-sm">
-              {contract.status === 'active' 
-                ? 'This contract is currently active and in progress.' 
-                : contract.status === 'pending' 
-                ? 'This contract is waiting for approval or activation.' 
-                : 'This contract has been cancelled or has issues that need attention.'}
-            </p>
+        )}
+        
+        {/* Status banner - only show for contracts with contractors or other statuses */}
+        {getContractorCount() > 0 && (
+          <div 
+            className={`p-4 rounded-lg mb-6 flex items-center
+              ${contract.status === 'active' ? 'bg-green-50 border border-green-200' : 
+                contract.status === 'pending' ? 'bg-yellow-50 border border-yellow-200' : 
+                'bg-red-50 border border-red-200'}`}
+          >
+            <div className="mr-3">
+              {contract.status === 'active' ? (
+                <CheckCircle className="h-6 w-6 text-green-500" />
+              ) : contract.status === 'pending' ? (
+                <Clock className="h-6 w-6 text-yellow-500" />
+              ) : (
+                <AlertTriangle className="h-6 w-6 text-red-500" />
+              )}
+            </div>
+            <div>
+              <h3 className="font-medium">
+                {contract.status === 'active' 
+                  ? 'Active Contract' 
+                  : contract.status === 'pending' 
+                  ? 'Pending Contract' 
+                  : contract.status === 'draft' 
+                  ? 'Draft Contract'
+                  : 'Contract Issue'}
+              </h3>
+              <p className="text-sm">
+                {contract.status === 'active' 
+                  ? 'This contract is currently active and in progress.' 
+                  : contract.status === 'pending' 
+                  ? 'This contract is waiting for approval or activation.' 
+                  : contract.status === 'draft'
+                  ? 'This contract is in draft mode and can be edited.'
+                  : 'This contract has been cancelled or has issues that need attention.'}
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Stats cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
