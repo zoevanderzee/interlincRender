@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useRoute } from 'wouter';
+import { useRoute, Link } from 'wouter';
 import { Contract, Milestone, User } from '@shared/schema';
 import Layout from '@/components/layout/Layout';
 import ContractTimeline from '@/components/contracts/ContractTimeline';
@@ -12,7 +12,20 @@ import { useToast } from '@/hooks/use-toast';
 import { getQueryFn, apiRequest, queryClient } from '@/lib/queryClient';
 import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
-import { Download, FileText, User as UserIcon, Calendar, DollarSign, Clock, AlertTriangle, CheckCircle, Building } from 'lucide-react';
+import { 
+  Download, 
+  FileText, 
+  User as UserIcon, 
+  Calendar, 
+  DollarSign, 
+  Clock, 
+  AlertTriangle, 
+  CheckCircle, 
+  Building,
+  Home,
+  ArrowLeft,
+  Layers
+} from 'lucide-react';
 
 export default function ContractDetailPage() {
   const [, params] = useRoute('/contract/:id');
@@ -49,38 +62,57 @@ export default function ContractDetailPage() {
     return [];
   };
 
+  // Custom query function to handle 404 errors properly
+  const contractQueryFn = async ({ queryKey }: { queryKey: (string | number)[] }) => {
+    const endpoint = `/api/contracts/${contractId}`;
+    const res = await fetch(endpoint, {
+      credentials: "include",
+    });
+    
+    if (res.status === 404) {
+      throw new Error("Contract not found");
+    }
+    
+    if (!res.ok) {
+      throw new Error(`API error: ${res.status}`);
+    }
+    
+    return res.json();
+  };
+
   // Fetch contract details
   const { data: contract, isLoading: isLoadingContract, error: contractError } = useQuery<Contract>({
     queryKey: ['/api/contracts', contractId],
-    queryFn: getQueryFn({ on401: 'throw' }),
+    queryFn: contractQueryFn,
     enabled: contractId > 0,
   });
 
   // Fetch milestones for this contract
-  const { data: milestones = [], isLoading: isLoadingMilestones } = useQuery({
+  const { data: milestones = [], isLoading: isLoadingMilestones } = useQuery<Milestone[]>({
     queryKey: ['/api/milestones', { contractId }],
     queryFn: getQueryFn({ on401: 'throw' }),
-    enabled: contractId > 0,
+    enabled: contractId > 0 && !contractError,
   });
 
   // Fetch all contractors
-  const { data: contractors = [], isLoading: isLoadingContractors } = useQuery({
+  const { data: contractors = [], isLoading: isLoadingContractors } = useQuery<User[]>({
     queryKey: ['/api/users'],
     queryFn: getQueryFn({ on401: 'throw' }),
+    enabled: !contractError,
   });
 
   // Fetch documents for this contract
-  const { data: documents = [], isLoading: isLoadingDocuments } = useQuery({
+  const { data: documents = [], isLoading: isLoadingDocuments } = useQuery<any[]>({
     queryKey: ['/api/documents', { contractId }],
     queryFn: getQueryFn({ on401: 'throw' }),
-    enabled: contractId > 0,
+    enabled: contractId > 0 && !contractError,
   });
 
   // Fetch payments for this contract
-  const { data: payments = [], isLoading: isLoadingPayments } = useQuery({
+  const { data: payments = [], isLoading: isLoadingPayments } = useQuery<any[]>({
     queryKey: ['/api/payments', { contractId }],
     queryFn: getQueryFn({ on401: 'throw' }),
-    enabled: contractId > 0,
+    enabled: contractId > 0 && !contractError,
   });
 
   // Handle milestone completion
@@ -143,6 +175,74 @@ export default function ContractDetailPage() {
       });
     }
   };
+
+  // Show error state if there's a contract error
+  if (contractError) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center bg-black">
+        <Card className="w-full max-w-md mx-4 border-zinc-800 bg-zinc-900">
+          <CardHeader className="pb-2">
+            <div className="flex items-center space-x-2">
+              <AlertTriangle className="h-7 w-7 text-yellow-500" />
+              <CardTitle className="text-2xl font-bold text-white">Contract Not Found</CardTitle>
+            </div>
+          </CardHeader>
+          
+          <CardContent className="pt-4">
+            <div className="space-y-4">
+              <div className="text-4xl font-bold text-center bg-gradient-to-r from-red-500 to-yellow-500 text-transparent bg-clip-text">
+                404
+              </div>
+              
+              <p className="text-gray-400 text-center">
+                The contract you are looking for doesn't exist or has been removed.
+              </p>
+              
+              <div className="mt-2 p-4 bg-zinc-800 rounded-md border border-zinc-700">
+                <h3 className="text-sm font-medium text-white mb-2">Possible reasons:</h3>
+                <ul className="text-sm text-gray-400 space-y-1 list-disc pl-5">
+                  <li>The contract ID might be incorrect</li>
+                  <li>The contract may have been removed</li>
+                  <li>You might not have permission to view this contract</li>
+                  <li>There might be a temporary system error</li>
+                </ul>
+              </div>
+            </div>
+          </CardContent>
+          
+          <CardFooter className="flex flex-col space-y-2 pt-0">
+            <Link href="/">
+              <Button className="w-full bg-zinc-800 hover:bg-zinc-700 text-white">
+                <Home className="mr-2 h-4 w-4" />
+                Return to Dashboard
+              </Button>
+            </Link>
+            
+            <div className="flex space-x-2 w-full">
+              <Button 
+                variant="outline" 
+                className="flex-1 border-zinc-700 text-gray-300 hover:bg-zinc-800 hover:text-white"
+                onClick={() => window.history.back()}
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Go Back
+              </Button>
+              
+              <Link href="/contracts">
+                <Button 
+                  variant="outline" 
+                  className="flex-1 border-zinc-700 text-gray-300 hover:bg-zinc-800 hover:text-white"
+                >
+                  <Layers className="mr-2 h-4 w-4" />
+                  View Contracts
+                </Button>
+              </Link>
+            </div>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
 
   // Loading state
   if (isLoadingContract || !contract) {
