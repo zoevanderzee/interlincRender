@@ -50,7 +50,7 @@ export default function ContractDetailPage() {
   };
 
   // Fetch contract details
-  const { data: contract, isLoading: isLoadingContract } = useQuery({
+  const { data: contract, isLoading: isLoadingContract, error: contractError } = useQuery<Contract>({
     queryKey: ['/api/contracts', contractId],
     queryFn: getQueryFn({ on401: 'throw' }),
     enabled: contractId > 0,
