@@ -237,33 +237,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else if (contractorId) {
         contracts = await storage.getContractsByContractorId(contractorId);
       } else {
-        // Get all contracts from all businesses and contractors
-        const businessUsers = await storage.getUsersByRole("business");
-        const contractorUsers = await storage.getUsersByRole("contractor");
-        
-        // Collect all contracts for each business and contractor
-        const businessContracts = await Promise.all(
-          businessUsers.map(async (business) => {
-            return await storage.getContractsByBusinessId(business.id);
-          })
-        );
-        
-        const contractorContracts = await Promise.all(
-          contractorUsers.map(async (contractor) => {
-            return await storage.getContractsByContractorId(contractor.id);
-          })
-        );
-        
-        // Flatten the arrays and remove duplicates
-        const allContracts = [...businessContracts.flat(), ...contractorContracts.flat()];
-        const uniqueContractIds = new Set();
-        contracts = allContracts.filter(contract => {
-          if (!uniqueContractIds.has(contract.id)) {
-            uniqueContractIds.add(contract.id);
-            return true;
-          }
-          return false;
-        });
+        // Simplified approach: fetch all contracts directly from the database
+        // This is more efficient and doesn't require user authentication
+        contracts = await storage.getAllContracts();
       }
       
       res.json(contracts);

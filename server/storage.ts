@@ -1047,6 +1047,10 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(contracts).where(eq(contracts.contractorId, contractorId));
   }
   
+  async getAllContracts(): Promise<Contract[]> {
+    return await db.select().from(contracts);
+  }
+  
   async createContract(insertContract: InsertContract): Promise<Contract> {
     const [contract] = await db.insert(contracts).values(insertContract).returning();
     return contract;
