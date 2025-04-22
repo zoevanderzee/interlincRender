@@ -79,7 +79,7 @@ const Dashboard = () => {
 
   // View contract details
   const handleViewContract = (id: number) => {
-    navigate(`/contracts/${id}`);
+    navigate(`/contract/${id}`);
   };
 
   // Edit contract
