@@ -371,7 +371,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const contractId = req.query.contractId ? parseInt(req.query.contractId as string) : null;
       const payments = await storage.getAllPayments(contractId);
-      res.json(payments);
+      
+      // Add virtual pending payments based on contract values
+      const allContracts = contractId 
+        ? [await storage.getContract(contractId)].filter(Boolean) 
+        : await storage.getAllContracts();
+      
+      // For each contract, create a virtual pending payment if there are no payments
+      // or if the total payment amount doesn't match the contract value
+      const pendingContractPayments = allContracts.map(contract => {
+        // Skip if not a valid contract
+        if (!contract) return null;
+        
+        // Convert contract value to number
+        const contractValueNum = parseFloat(contract.value.toString());
+        
+        // Calculate total existing payments for this contract
+        const existingPaymentsTotal = payments
+          .filter(payment => payment.contractId === contract.id)
+          .reduce((total, payment) => total + parseFloat(payment.amount.toString()), 0);
+        
+        // If there are no payments or the total doesn't match the contract value,
+        // create a virtual pending payment
+        if (existingPaymentsTotal < contractValueNum) {
+          const remainingAmount = contractValueNum - existingPaymentsTotal;
+          return {
+            id: -contract.id, // Use a negative ID to indicate this is a virtual payment
+            contractId: contract.id,
+            milestoneId: 0, // No milestone associated yet
+            amount: remainingAmount.toFixed(2),
+            status: 'pending',
+            scheduledDate: contract.startDate || new Date(),
+            completedDate: null,
+            notes: `Pending contract payment for ${contract.contractName}`,
+            contractName: contract.contractName, // Add contract name for display purposes
+            isVirtual: true // Mark as virtual so we know it's not a real payment record
+          };
+        }
+        return null;
+      }).filter(Boolean);
+      
+      // Combine actual payments with virtual payments
+      const allPayments = [...payments, ...pendingContractPayments];
+      
+      res.json(allPayments);
     } catch (error) {
       console.error("Error fetching payments:", error);
       res.status(500).json({ message: "Error fetching payments" });
@@ -505,6 +548,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get the upcoming milestones (5 most recent)
       const upcomingMilestones = await storage.getUpcomingMilestones(5);
       
+      // For each contract, ensure there are payments that reflect the contract value
+      // If not, create a virtual pending payment for the dashboard
+      const pendingContractPayments = userContracts.map(contract => {
+        // Convert contract value to number
+        const contractValueNum = parseFloat(contract.value.toString());
+        
+        // Check if there are any existing payments for this contract
+        const existingPaymentsTotal = upcomingPayments
+          .filter(payment => payment.contractId === contract.id)
+          .reduce((total, payment) => total + parseFloat(payment.amount.toString()), 0);
+        
+        // If there are no payments or the total doesn't match the contract value,
+        // create a virtual pending payment
+        if (existingPaymentsTotal < contractValueNum) {
+          const remainingAmount = contractValueNum - existingPaymentsTotal;
+          return {
+            id: -contract.id, // Use a negative ID to indicate this is a virtual payment
+            contractId: contract.id,
+            milestoneId: 0, // No milestone associated yet
+            amount: remainingAmount.toFixed(2),
+            status: 'pending',
+            scheduledDate: contract.startDate || new Date(),
+            completedDate: null,
+            notes: `Pending contract payment for ${contract.contractName}`,
+            contractName: contract.contractName, // Add contract name for display purposes
+            isVirtual: true // Mark as virtual so we know it's not a real payment record
+          };
+        }
+        return null;
+      }).filter(Boolean);
+      
+      // Add the virtual payments to the upcoming payments
+      const allUpcomingPayments = [...upcomingPayments, ...pendingContractPayments];
+      
       // Get pending invites
       const pendingInvites = userRole === 'business' 
         ? await storage.getInvitesByBusinessId(userId || 0) 
@@ -515,6 +592,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const completedPayments = allPayments.filter(payment => payment.status === 'completed');
       const totalPaymentsValue = completedPayments.reduce((sum, payment) => {
         return sum + (parseFloat(payment.amount) || 0);
+      }, 0);
+      
+      // Calculate total pending payments (from contracts)
+      const totalPendingValue = userContracts.reduce((sum, contract) => {
+        return sum + parseFloat(contract.value.toString() || '0');
       }, 0);
       
       // Get count of active contractors (for business users)
@@ -530,13 +612,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           activeContractsCount: activeContracts.length,
           pendingApprovalsCount: pendingApprovals.length,
           paymentsProcessed: totalPaymentsValue,
+          totalPendingValue: totalPendingValue, // Add total pending value from contracts
           activeContractorsCount: allContractors.length,
           pendingInvitesCount: pendingInvites.length
         },
         contracts: userContracts,
         contractors: allContractors,  // Add contractors data
         milestones: upcomingMilestones,
-        payments: upcomingPayments,
+        payments: allUpcomingPayments, // Include virtual payments
         invites: pendingInvites
       };
       

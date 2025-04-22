@@ -19,7 +19,7 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
-import { Milestone, Contract, User } from "@shared/schema";
+import { Milestone, Contract, User, Payment } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Search, 
@@ -34,25 +34,49 @@ import {
 } from "lucide-react";
 import MilestonesList from "@/components/dashboard/MilestonesList";
 
+interface DashboardData {
+  stats: {
+    activeContractsCount: number;
+    pendingApprovalsCount: number;
+    paymentsProcessed: number;
+    totalPendingValue: number;
+    activeContractorsCount: number;
+    pendingInvitesCount: number;
+  };
+  contracts: Contract[];
+  contractors: User[];
+  milestones: Milestone[];
+  payments: Payment[];
+  invites: any[];
+}
+
 const Projects = () => {
   const [_, navigate] = useLocation();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  // Fetch milestones
-  const { data: milestones = [], isLoading: isLoadingMilestones } = useQuery<Milestone[]>({
-    queryKey: ['/api/milestones'],
+  // Fetch dashboard data which includes financial information
+  const { data: dashboardData, isLoading: isLoadingDashboard } = useQuery<DashboardData>({
+    queryKey: ['/api/dashboard'],
   });
 
-  // Fetch contracts
-  const { data: contracts = [], isLoading: isLoadingContracts } = useQuery<Contract[]>({
-    queryKey: ['/api/contracts'],
-  });
+  // Extract the data from the dashboard API response
+  const milestones = dashboardData?.milestones || [];
+  const contracts = dashboardData?.contracts || [];
+  const contractors = dashboardData?.contractors || [];
+  
+  // Get financial stats
+  const totalPendingValue = dashboardData?.stats?.totalPendingValue || 0;
+  const paymentsProcessed = dashboardData?.stats?.paymentsProcessed || 0;
 
-  // Fetch contractors
-  const { data: contractors = [], isLoading: isLoadingContractors } = useQuery<User[]>({
-    queryKey: ['/api/users', { role: 'contractor' }],
+  const isLoadingMilestones = isLoadingDashboard;
+  const isLoadingContracts = isLoadingDashboard;
+  const isLoadingContractors = isLoadingDashboard;
+  
+  // Fetch payments
+  const { data: payments = [], isLoading: isLoadingPayments } = useQuery<Payment[]>({
+    queryKey: ['/api/payments'],
   });
 
   // Filter milestones by search term and status
@@ -127,7 +151,7 @@ const Projects = () => {
         </div>
       </div>
 
-      {/* Payment Stats - Using real data from API with default values of $0 */}
+      {/* Payment Stats - Using real data from API */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <Card className="p-5 border border-zinc-800 bg-black">
           <div className="flex items-center gap-4">
@@ -136,7 +160,9 @@ const Projects = () => {
             </div>
             <div>
               <p className="text-zinc-400 text-sm">Pending Payments</p>
-              <h3 className="text-2xl font-semibold text-white">$0</h3>
+              <h3 className="text-2xl font-semibold text-white">
+                ${totalPendingValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </h3>
             </div>
           </div>
         </Card>
@@ -148,7 +174,9 @@ const Projects = () => {
             </div>
             <div>
               <p className="text-zinc-400 text-sm">Scheduled Payments</p>
-              <h3 className="text-2xl font-semibold text-white">$0</h3>
+              <h3 className="text-2xl font-semibold text-white">
+                ${totalPendingValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </h3>
             </div>
           </div>
         </Card>
@@ -160,7 +188,9 @@ const Projects = () => {
             </div>
             <div>
               <p className="text-zinc-400 text-sm">Paid Amount</p>
-              <h3 className="text-2xl font-semibold text-white">$0</h3>
+              <h3 className="text-2xl font-semibold text-white">
+                ${paymentsProcessed.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </h3>
             </div>
           </div>
         </Card>
