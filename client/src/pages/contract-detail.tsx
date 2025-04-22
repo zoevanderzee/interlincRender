@@ -334,13 +334,13 @@ export default function ContractDetailPage() {
 
         {/* Status banner - No red warning about no contractors */}
         {getContractorCount() === 0 && (
-          <div className="p-4 rounded-lg mb-6 flex items-center bg-blue-50 border border-blue-200">
+          <div className="p-4 rounded-lg mb-6 flex items-center bg-zinc-800 border border-zinc-700">
             <div className="mr-3">
-              <Clock className="h-6 w-6 text-blue-500" />
+              <Clock className="h-6 w-6 text-zinc-400" />
             </div>
             <div>
-              <h3 className="font-medium">Contract Setup In Progress</h3>
-              <p className="text-sm">
+              <h3 className="font-medium text-white">Contract Setup In Progress</h3>
+              <p className="text-sm text-zinc-400">
                 This contract is being set up. You can add contractors using the "Add Contractor" button below.
               </p>
             </div>
@@ -349,12 +349,7 @@ export default function ContractDetailPage() {
         
         {/* Status banner - only show for contracts with contractors or other statuses */}
         {getContractorCount() > 0 && (
-          <div 
-            className={`p-4 rounded-lg mb-6 flex items-center
-              ${contract.status === 'active' ? 'bg-green-50 border border-green-200' : 
-                contract.status === 'pending' ? 'bg-yellow-50 border border-yellow-200' : 
-                'bg-red-50 border border-red-200'}`}
-          >
+          <div className="p-4 rounded-lg mb-6 flex items-center bg-zinc-800 border border-zinc-700">
             <div className="mr-3">
               {contract.status === 'active' ? (
                 <CheckCircle className="h-6 w-6 text-green-500" />
@@ -365,7 +360,7 @@ export default function ContractDetailPage() {
               )}
             </div>
             <div>
-              <h3 className="font-medium">
+              <h3 className="font-medium text-white">
                 {contract.status === 'active' 
                   ? 'Active Contract' 
                   : contract.status === 'pending' 
@@ -374,7 +369,7 @@ export default function ContractDetailPage() {
                   ? 'Draft Contract'
                   : 'Contract Issue'}
               </h3>
-              <p className="text-sm">
+              <p className="text-sm text-zinc-400">
                 {contract.status === 'active' 
                   ? 'This contract is currently active and in progress.' 
                   : contract.status === 'pending' 
