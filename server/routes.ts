@@ -480,30 +480,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Dashboard summary endpoint - temporarily removed auth for development
-  app.get(`${apiRouter}/dashboard`, async (_req: Request, res: Response) => {
+  app.get(`${apiRouter}/dashboard`, async (req: Request, res: Response) => {
     try {
-      // For development, show empty/zero data to avoid test data in production views
-      const activeContracts = [];
-      const pendingApprovals = [];
-      const upcomingPayments = [];
-      const upcomingMilestones = [];
-      const pendingInvites = [];
+      // Get the current user
+      const userId = req.user?.id;
+      const userRole = req.user?.role || 'business'; // Default to business if not specified
       
-      // Zero values for all counts during development
-      const totalPaymentsValue = 0;
+      // Get real data from the database
+      const allContracts = await storage.getAllContracts();
+      
+      // Filter contracts based on user role
+      const userContracts = userRole === 'business' 
+        ? allContracts.filter(contract => contract.businessId === userId)
+        : allContracts.filter(contract => contract.contractorId === userId);
+      
+      // Active contracts are those with status 'active'
+      const activeContracts = userContracts.filter(contract => contract.status === 'active');
+      
+      // Pending approvals are contracts with status 'pending_approval'
+      const pendingApprovals = userContracts.filter(contract => contract.status === 'pending_approval');
+      
+      // Get the upcoming payments (5 most recent)
+      const upcomingPayments = await storage.getUpcomingPayments(5);
+      
+      // Get the upcoming milestones (5 most recent)
+      const upcomingMilestones = await storage.getUpcomingMilestones(5);
+      
+      // Get pending invites
+      const pendingInvites = userRole === 'business' 
+        ? await storage.getInvitesByBusinessId(userId || 0) 
+        : [];
+      
+      // Calculate total payments processed
+      const allPayments = await storage.getAllPayments(null);
+      const completedPayments = allPayments.filter(payment => payment.status === 'completed');
+      const totalPaymentsValue = completedPayments.reduce((sum, payment) => {
+        return sum + (parseFloat(payment.amount) || 0);
+      }, 0);
+      
+      // Get count of active contractors (for business users)
+      const activeContractorsCount = userRole === 'business' 
+        ? (await storage.getContractorsByBusinessId(userId || 0)).length 
+        : 0;
       
       const dashboardData = {
         stats: {
-          activeContractsCount: 0,
-          pendingApprovalsCount: 0,
+          activeContractsCount: activeContracts.length,
+          pendingApprovalsCount: pendingApprovals.length,
           paymentsProcessed: totalPaymentsValue,
-          activeContractorsCount: 0,
-          pendingInvitesCount: 0
+          activeContractorsCount,
+          pendingInvitesCount: pendingInvites.length
         },
-        contracts: [],
+        contracts: userContracts,
         milestones: upcomingMilestones,
         payments: upcomingPayments,
-        invites: []
+        invites: pendingInvites
       };
       
       res.json(dashboardData);
