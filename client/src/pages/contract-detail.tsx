@@ -4,6 +4,7 @@ import { useRoute } from 'wouter';
 import { Contract, Milestone, User } from '@shared/schema';
 import Layout from '@/components/layout/Layout';
 import ContractTimeline from '@/components/contracts/ContractTimeline';
+import AddContractorModal from '@/components/contracts/AddContractorModal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -419,9 +420,15 @@ export default function ContractDetailPage() {
                     )}
                   </CardContent>
                   <CardFooter>
-                    <Button variant="outline" size="sm">
-                      Add Contractor
-                    </Button>
+                    <AddContractorModal 
+                      contractId={contractId} 
+                      contractors={contractors}
+                      onSuccess={() => {
+                        // Refresh all the queries when a contractor is added
+                        queryClient.invalidateQueries({ queryKey: ['/api/contracts'] });
+                        queryClient.invalidateQueries({ queryKey: ['/api/contracts', contractId] });
+                      }}
+                    />
                   </CardFooter>
                 </Card>
               </div>
