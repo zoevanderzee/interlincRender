@@ -35,6 +35,7 @@ import { insertContractSchema } from "@shared/schema";
 import { User } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
 
 interface ContractFormProps {
   contractors: User[];
@@ -45,6 +46,7 @@ const ContractForm = ({ contractors, onSuccess }: ContractFormProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [submitting, setSubmitting] = useState(false);
+  const { user } = useAuth();
 
   // Extend the insert schema with additional validation
   const formSchema = insertContractSchema.extend({
@@ -74,7 +76,7 @@ const ContractForm = ({ contractors, onSuccess }: ContractFormProps) => {
     defaultValues: {
       contractName: "",
       contractCode: `SC-${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-`,
-      businessId: 1, // Default to the current user's business
+      businessId: user?.id || 0, // Use the current user's ID
       contractorId: undefined, // No contractor selected initially - they will be added after project creation
       description: "", // Always default to empty string, not null
       status: "draft",
@@ -111,7 +113,12 @@ const ContractForm = ({ contractors, onSuccess }: ContractFormProps) => {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       setSubmitting(true);
-      await createContractMutation.mutateAsync(values);
+      // Ensure the businessId is always the current user's id
+      const formData = {
+        ...values,
+        businessId: user?.id || 0
+      };
+      await createContractMutation.mutateAsync(formData);
       form.reset();
     } finally {
       setSubmitting(false);
