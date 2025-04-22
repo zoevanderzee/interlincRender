@@ -412,9 +412,20 @@ export class MemStorage implements IStorage {
     );
   }
   
+  async getAllPayments(contractId: number | null): Promise<Payment[]> {
+    if (contractId) {
+      return this.getPaymentsByContractId(contractId);
+    }
+    return Array.from(this.payments.values());
+  }
+  
   async getUpcomingPayments(limit: number): Promise<Payment[]> {
-    // For development, return empty array to clear test data
-    return [];
+    // Get all payments that are scheduled but not completed
+    const pendingPayments = Array.from(this.payments.values())
+      .filter(payment => payment.status === 'pending' || payment.status === 'processing')
+      .sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime());
+      
+    return pendingPayments.slice(0, limit);
   }
   
   async createPayment(insertPayment: InsertPayment): Promise<Payment> {
@@ -1115,6 +1126,13 @@ export class DatabaseStorage implements IStorage {
   
   async getPaymentsByContractId(contractId: number): Promise<Payment[]> {
     return await db.select().from(payments).where(eq(payments.contractId, contractId));
+  }
+  
+  async getAllPayments(contractId: number | null): Promise<Payment[]> {
+    if (contractId) {
+      return this.getPaymentsByContractId(contractId);
+    }
+    return await db.select().from(payments);
   }
   
   async getUpcomingPayments(limit: number): Promise<Payment[]> {
