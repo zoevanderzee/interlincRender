@@ -47,6 +47,7 @@ export interface IStorage {
   getContract(id: number): Promise<Contract | undefined>;
   getContractsByBusinessId(businessId: number): Promise<Contract[]>;
   getContractsByContractorId(contractorId: number): Promise<Contract[]>;
+  getAllContracts(): Promise<Contract[]>;
   createContract(contract: InsertContract): Promise<Contract>;
   updateContract(id: number, contract: Partial<InsertContract>): Promise<Contract | undefined>;
   
@@ -344,6 +345,10 @@ export class MemStorage implements IStorage {
     return Array.from(this.contracts.values()).filter(
       (contract) => contract.contractorId === contractorId
     );
+  }
+  
+  async getAllContracts(): Promise<Contract[]> {
+    return Array.from(this.contracts.values());
   }
   
   async createContract(insertContract: InsertContract): Promise<Contract> {
