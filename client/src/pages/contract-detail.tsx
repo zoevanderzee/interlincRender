@@ -167,7 +167,18 @@ export default function ContractDetailPage() {
   }
 
   // Calculate contract stats
-  const totalValue = parseFloat(contract.value);
+  // Check if contract.value exists and is valid before parsing
+  const contractValue = contract.value || "0";
+  const totalValue = isNaN(parseFloat(contractValue)) ? 0 : parseFloat(contractValue);
+  
+  // Get virtual payments (contract value payments) from the payments array
+  const virtualPayments = payments.filter((p: any) => p.isVirtual === true);
+  
+  // If we have virtual payments but no contract value, use the virtual payment amount
+  const totalContractValue = totalValue === 0 && virtualPayments.length > 0 
+    ? parseFloat(virtualPayments[0].amount || "0") 
+    : totalValue;
+  
   const totalMilestones = milestones.length;
   const completedMilestones = milestones.filter(
     (m: Milestone) => m.status === 'completed' || m.status === 'approved'
@@ -178,9 +189,13 @@ export default function ContractDetailPage() {
   
   const totalPaid = payments
     .filter((p: any) => p.status === 'completed')
-    .reduce((sum: number, payment: any) => sum + parseFloat(payment.amount), 0);
+    .reduce((sum: number, payment: any) => {
+      // Parse amount safely
+      const amount = isNaN(parseFloat(payment.amount)) ? 0 : parseFloat(payment.amount);
+      return sum + amount;
+    }, 0);
   
-  const remainingAmount = totalValue - totalPaid;
+  const remainingAmount = totalContractValue - totalPaid;
 
   // Format dates
   const startDate = contract.startDate ? format(new Date(contract.startDate), 'MMMM d, yyyy') : 'Not specified';
@@ -262,7 +277,7 @@ export default function ContractDetailPage() {
             <CardContent>
               <div className="text-2xl font-bold flex items-center">
                 <DollarSign className="h-5 w-5 mr-1 text-primary-500" />
-                ${totalValue.toFixed(2)}
+                ${totalContractValue.toFixed(2)}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 Contract: {contract.contractCode}
@@ -354,7 +369,7 @@ export default function ContractDetailPage() {
                         </div>
                         <div>
                           <h4 className="text-sm font-medium text-muted-foreground mb-1">Contract Value</h4>
-                          <p><span className="font-medium">Total:</span> ${totalValue.toFixed(2)}</p>
+                          <p><span className="font-medium">Total:</span> ${totalContractValue.toFixed(2)}</p>
                           <p><span className="font-medium">Remaining:</span> ${remainingAmount.toFixed(2)}</p>
                         </div>
                       </div>
