@@ -61,6 +61,7 @@ export interface IStorage {
   // Payments
   getPayment(id: number): Promise<Payment | undefined>;
   getPaymentsByContractId(contractId: number): Promise<Payment[]>;
+  getAllPayments(contractId: number | null): Promise<Payment[]>;
   getUpcomingPayments(limit: number): Promise<Payment[]>;
   createPayment(payment: InsertPayment): Promise<Payment>;
   updatePayment(id: number, payment: Partial<InsertPayment>): Promise<Payment | undefined>;

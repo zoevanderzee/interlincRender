@@ -369,10 +369,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Payment routes
   app.get(`${apiRouter}/payments`, async (req: Request, res: Response) => {
     try {
-      // For development, return empty array to clear test data
-      // This ensures no test or mock payments are displayed to the user
-      res.json([]);
+      const contractId = req.query.contractId ? parseInt(req.query.contractId as string) : null;
+      const payments = await storage.getAllPayments(contractId);
+      res.json(payments);
     } catch (error) {
+      console.error("Error fetching payments:", error);
       res.status(500).json({ message: "Error fetching payments" });
     }
   });
