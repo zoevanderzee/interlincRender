@@ -230,15 +230,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const businessId = req.query.businessId ? parseInt(req.query.businessId as string) : null;
       const contractorId = req.query.contractorId ? parseInt(req.query.contractorId as string) : null;
+      const userId = req.user?.id;
+      const userRole = req.user?.role || 'business';
       
       let contracts = [];
       if (businessId) {
         contracts = await storage.getContractsByBusinessId(businessId);
       } else if (contractorId) {
         contracts = await storage.getContractsByContractorId(contractorId);
+      } else if (userId && userRole === 'business') {
+        // If logged in as a business user and no specific filter is provided,
+        // return contracts associated with the current user
+        contracts = await storage.getContractsByBusinessId(userId);
+      } else if (userId && userRole === 'contractor') {
+        // If logged in as a contractor and no specific filter is provided,
+        // return contracts associated with the current contractor
+        contracts = await storage.getContractsByContractorId(userId);
       } else {
-        // Simplified approach: fetch all contracts directly from the database
-        // This is more efficient and doesn't require user authentication
+        // If not logged in or no specific filter is provided, return all contracts (for demo purposes)
+        // In a production environment, this would be restricted
         contracts = await storage.getAllContracts();
       }
       
@@ -470,21 +480,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get(`${apiRouter}/documents`, async (req: Request, res: Response) => {
     try {
       const contractId = req.query.contractId ? parseInt(req.query.contractId as string) : null;
+      const userId = req.user?.id;
+      const userRole = req.user?.role || 'business';
       
       let documents = [];
       if (contractId) {
         // If contractId is provided, return documents for that contract
         documents = await storage.getDocumentsByContractId(contractId);
-      } else {
-        // If no contractId provided, return all documents from all contracts
-        // Get all contracts first
-        const contracts = await storage.getContractsByBusinessId(9); // Assuming businessId 9 for Creativ Linc
+      } else if (userId && userRole === 'business') {
+        // If user is logged in and is a business, get contracts for that user
+        const contracts = await storage.getContractsByBusinessId(userId);
         
         // Fetch documents for each contract
         for (const contract of contracts) {
           const contractDocuments = await storage.getDocumentsByContractId(contract.id);
           documents = [...documents, ...contractDocuments];
         }
+      } else if (userId && userRole === 'contractor') {
+        // If user is logged in and is a contractor, get contracts for that contractor
+        const contracts = await storage.getContractsByContractorId(userId);
+        
+        // Fetch documents for each contract
+        for (const contract of contracts) {
+          const contractDocuments = await storage.getDocumentsByContractId(contract.id);
+          documents = [...documents, ...contractDocuments];
+        }
+      } else {
+        // For development only - if not logged in, return an empty array
+        // In production, this would return a 401 Unauthorized
+        documents = [];
       }
       
       res.json(documents);
@@ -529,12 +553,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user?.id;
       const userRole = req.user?.role || 'business'; // Default to business if not specified
       
-      // For development/testing, let's get all contracts regardless of user
-      const allContracts = await storage.getAllContracts();
+      let userContracts = [];
       
-      // Use all contracts as we're in development mode
-      // In production, we would filter by user ID
-      const userContracts = allContracts;
+      // Filter contracts by user ID if available
+      if (userId && userRole === 'business') {
+        userContracts = await storage.getContractsByBusinessId(userId);
+      } else if (userId && userRole === 'contractor') {
+        userContracts = await storage.getContractsByContractorId(userId);
+      } else {
+        // For development/testing only when not logged in
+        userContracts = await storage.getAllContracts();
+      }
       
       // Active contracts are those with status 'active'
       const activeContracts = userContracts.filter(contract => contract.status === 'active');
