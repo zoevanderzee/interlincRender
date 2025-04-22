@@ -57,6 +57,8 @@ const ContractForm = ({ contractors, onSuccess }: ContractFormProps) => {
     value: z.string().min(1, "Value is required").regex(/^\d+(\.\d{1,2})?$/, {
       message: "Value must be a valid amount (e.g. 1000 or 1000.50)",
     }),
+    // Explicitly make contractorId optional
+    contractorId: z.number().optional().nullable(),
   });
 
   // Form hook
@@ -67,7 +69,7 @@ const ContractForm = ({ contractors, onSuccess }: ContractFormProps) => {
       contractCode: `SC-${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-`,
       businessId: 1, // Default to the current user's business
       contractorId: undefined, // No contractor selected initially - they will be added after project creation
-      description: "",
+      description: "", // Always default to empty string, not null
       status: "draft",
       value: "",
       startDate: new Date(),
@@ -180,7 +182,11 @@ const ContractForm = ({ contractors, onSuccess }: ContractFormProps) => {
                 <Textarea
                   placeholder="Brief description of the project scope and deliverables"
                   className="resize-none min-h-[100px] bg-zinc-900 border-zinc-700 text-white"
-                  {...field}
+                  value={field.value || ''}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                  ref={field.ref}
                 />
               </FormControl>
               <FormDescription className="text-zinc-400">

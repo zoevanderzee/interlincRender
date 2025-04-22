@@ -185,9 +185,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let appUrl = `${req.protocol}://${req.get('host')}`;
         
         // Check if running in Replit
-        if (process.env.REPL_ID && process.env.REPL_SLUG) {
-          // Use the Replit-specific domain
-          appUrl = `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
+        if (process.env.REPLIT_DEV_DOMAIN) {
+          // Use the Replit-specific domain from environment
+          appUrl = `https://${process.env.REPLIT_DEV_DOMAIN}`;
         }
         
         console.log(`Generated invite URL using appUrl: ${appUrl}`);

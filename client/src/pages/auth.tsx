@@ -69,6 +69,7 @@ export default function AuthPage() {
     const emailParam = searchParams.get('email');
     
     if (inviteParam && emailParam) {
+      console.log(`Processing invitation: ID=${inviteParam}, Email=${emailParam}`);
       setInviteId(parseInt(inviteParam));
       setInviteEmail(emailParam);
       setActiveTab("register"); // Automatically switch to register tab for invites

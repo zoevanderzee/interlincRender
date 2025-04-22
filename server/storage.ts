@@ -183,7 +183,7 @@ export class MemStorage implements IStorage {
     // First get all contracts for this business
     const contractorIds = new Set(
       Array.from(this.contracts.values())
-        .filter(contract => contract.businessId === businessId)
+        .filter(contract => contract.businessId === businessId && contract.contractorId !== null)
         .map(contract => contract.contractorId)
     );
     

@@ -123,7 +123,13 @@ export const bankAccounts = pgTable("bank_accounts", {
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
 export const insertInviteSchema = createInsertSchema(invites).omit({ id: true, createdAt: true });
-export const insertContractSchema = createInsertSchema(contracts).omit({ id: true, createdAt: true });
+
+// Make contractorId optional in the insert schema
+const baseContractSchema = createInsertSchema(contracts).omit({ id: true, createdAt: true });
+export const insertContractSchema = baseContractSchema.extend({
+  contractorId: baseContractSchema.shape.contractorId.optional(),
+});
+
 export const insertMilestoneSchema = createInsertSchema(milestones).omit({ id: true });
 export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true, completedDate: true });
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, uploadedAt: true });
