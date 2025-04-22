@@ -93,13 +93,26 @@ const Payments = () => {
     queryKey: ['/api/users', { role: 'contractor' }],
   });
   
-  // Get payments by status
+  // Identify virtual payments (those from contract values without milestones)
+  const virtualPayments = allPayments.filter(payment => 'isVirtual' in payment && payment.isVirtual === true);
+  
+  // Get regular payments by status
   const getPaymentsByStatus = (status: string) => {
-    return allPayments.filter(payment => payment.status === status);
+    // Return both regular payments with the specified status and virtual payments for "pending" status
+    if (status === "pending") {
+      return [
+        ...allPayments.filter(payment => payment.status === status && (!('isVirtual' in payment) || !payment.isVirtual)),
+        ...virtualPayments
+      ];
+    }
+    return allPayments.filter(payment => payment.status === status && (!('isVirtual' in payment) || !payment.isVirtual));
   };
   
   // Scheduled payments
   const scheduledPayments = getPaymentsByStatus("scheduled");
+  
+  // Pending payments (including virtual payments from contracts)
+  const pendingPayments = getPaymentsByStatus("pending");
   
   // Processing payments
   const processingPayments = getPaymentsByStatus("processing");
@@ -262,7 +275,21 @@ const Payments = () => {
       </div>
       
       {/* Payment Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        {/* Pending Payments Card (Including virtual payments from contracts) */}
+        <Card className="p-5 bg-black border border-gray-800 text-white">
+          <div className="flex justify-between mb-3">
+            <div className="text-gray-400 text-sm">Pending</div>
+            <div className="h-8 w-8 rounded-full bg-blue-900/30 text-blue-400 flex items-center justify-center">
+              <DollarSign size={16} />
+            </div>
+          </div>
+          <div className="text-2xl font-semibold text-white">
+            ${calculateTotal(pendingPayments).toLocaleString('en-US')}
+          </div>
+          <div className="text-sm text-gray-400 mt-1">{pendingPayments.length} payments</div>
+        </Card>
+      
         <Card className="p-5 bg-black border border-gray-800 text-white">
           <div className="flex justify-between mb-3">
             <div className="text-gray-400 text-sm">Scheduled</div>
@@ -360,14 +387,93 @@ const Payments = () => {
       </div>
       
       {/* Payments Tabs */}
-      <Tabs defaultValue="upcoming" className="w-full">
+      <Tabs defaultValue="pending" className="w-full">
         <TabsList className="mb-6 bg-gray-900 border border-gray-800">
+          <TabsTrigger value="pending" className="data-[state=active]:bg-black data-[state=active]:text-white">Pending</TabsTrigger>
           <TabsTrigger value="upcoming" className="data-[state=active]:bg-black data-[state=active]:text-white">Upcoming</TabsTrigger>
           <TabsTrigger value="processing" className="data-[state=active]:bg-black data-[state=active]:text-white">Processing</TabsTrigger>
           <TabsTrigger value="completed" className="data-[state=active]:bg-black data-[state=active]:text-white">Completed</TabsTrigger>
           <TabsTrigger value="failed" className="data-[state=active]:bg-black data-[state=active]:text-white">Failed</TabsTrigger>
           <TabsTrigger value="all" className="data-[state=active]:bg-black data-[state=active]:text-white">All Payments</TabsTrigger>
         </TabsList>
+        
+        <TabsContent value="pending">
+          <div className="bg-black rounded-lg border border-gray-800 overflow-hidden">
+            <div className="overflow-x-auto">
+              <Table className="border-collapse">
+                <TableHeader>
+                  <TableRow className="border-b border-gray-800">
+                    <TableHead className="text-gray-300">Contract</TableHead>
+                    <TableHead className="text-gray-300">Contractor</TableHead>
+                    <TableHead className="text-gray-300">Amount</TableHead>
+                    <TableHead className="text-gray-300">Due Date</TableHead>
+                    <TableHead className="text-gray-300">Status</TableHead>
+                    <TableHead className="text-gray-300 text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filterPayments(pendingPayments).length > 0 ? (
+                    filterPayments(pendingPayments).map((payment) => {
+                      const { contract, contractor } = getPaymentDetails(payment);
+                      const isVirtual = 'isVirtual' in payment && payment.isVirtual === true;
+                      
+                      return (
+                        <TableRow key={payment.id} className="border-b border-gray-800">
+                          <TableCell className="text-white">
+                            <div className="font-medium">{contract?.contractName || "Unknown Contract"}</div>
+                            <div className="text-sm text-gray-400">
+                              {isVirtual ? 'Contract Payment' : payment.notes || 'Milestone Payment'}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-white">
+                            {contractor ? `${contractor.firstName} ${contractor.lastName}` : "Unknown"}
+                          </TableCell>
+                          <TableCell className="text-white">
+                            <div className="font-medium">${parseFloat(payment.amount.toString()).toLocaleString('en-US')}</div>
+                          </TableCell>
+                          <TableCell className="text-white">{formatDate(payment.scheduledDate)}</TableCell>
+                          <TableCell>
+                            <span className="px-2 py-1 text-xs rounded-full bg-blue-900/30 text-blue-400 font-medium">
+                              Pending
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              className="border-gray-700 text-white hover:bg-gray-800"
+                              onClick={() => {
+                                if (isVirtual) {
+                                  navigate(`/contract/${payment.contractId}`);
+                                } else {
+                                  handleExecutePayment(payment.id);
+                                }
+                              }}
+                            >
+                              {isVirtual ? 'View Contract' : 'Process Payment'}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-gray-400">
+                        <div className="flex flex-col items-center">
+                          <DollarSign className="h-8 w-8 text-gray-500 mb-2" />
+                          <p className="text-white font-medium">No pending payments</p>
+                          <p className="text-sm text-gray-500 mt-1">
+                            All your pending contract payments will appear here
+                          </p>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </TabsContent>
         
         <TabsContent value="upcoming">
           <div className="bg-black rounded-lg border border-gray-800 overflow-hidden">
