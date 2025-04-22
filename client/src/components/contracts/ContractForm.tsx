@@ -48,12 +48,19 @@ const ContractForm = ({ contractors, onSuccess }: ContractFormProps) => {
 
   // Extend the insert schema with additional validation
   const formSchema = insertContractSchema.extend({
-    startDate: z.coerce.date().min(new Date("2020-01-01"), {
-      message: "Start date must be after January 1, 2020",
-    }),
-    endDate: z.coerce.date().min(new Date(), {
-      message: "End date must be in the future",
-    }),
+    // Allow both date objects and date strings (we'll transform strings to dates in the schema)
+    startDate: z.union([
+      z.date().min(new Date("2020-01-01"), {
+        message: "Start date must be after January 1, 2020",
+      }),
+      z.string().transform(val => new Date(val))
+    ]),
+    endDate: z.union([
+      z.date().min(new Date(), {
+        message: "End date must be in the future",
+      }),
+      z.string().transform(val => new Date(val))
+    ]),
     value: z.string().min(1, "Value is required").regex(/^\d+(\.\d{1,2})?$/, {
       message: "Value must be a valid amount (e.g. 1000 or 1000.50)",
     }),
