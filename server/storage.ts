@@ -1338,6 +1338,104 @@ export class DatabaseStorage implements IStorage {
     
     return updatedPayment;
   }
+
+  // WorkRequest methods implementation
+  async getWorkRequest(id: number): Promise<WorkRequest | undefined> {
+    const [workRequest] = await db
+      .select()
+      .from(workRequests)
+      .where(eq(workRequests.id, id));
+
+    return workRequest;
+  }
+
+  async getWorkRequestByToken(tokenHash: string): Promise<WorkRequest | undefined> {
+    const [workRequest] = await db
+      .select()
+      .from(workRequests)
+      .where(eq(workRequests.tokenHash, tokenHash));
+
+    return workRequest;
+  }
+
+  async getWorkRequestsByBusinessId(businessId: number): Promise<WorkRequest[]> {
+    return db
+      .select()
+      .from(workRequests)
+      .where(eq(workRequests.businessId, businessId))
+      .orderBy(desc(workRequests.createdAt));
+  }
+
+  async getWorkRequestsByEmail(email: string): Promise<WorkRequest[]> {
+    return db
+      .select()
+      .from(workRequests)
+      .where(eq(workRequests.recipientEmail, email.toLowerCase()))
+      .orderBy(desc(workRequests.createdAt));
+  }
+
+  async getPendingWorkRequests(): Promise<WorkRequest[]> {
+    return db
+      .select()
+      .from(workRequests)
+      .where(eq(workRequests.status, 'pending'))
+      .orderBy(desc(workRequests.createdAt));
+  }
+
+  async createWorkRequest(insertWorkRequest: InsertWorkRequest, tokenHash: string): Promise<WorkRequest> {
+    // Calculate expiration date if not provided (14 days from now by default)
+    const expiresAt = insertWorkRequest.expiresAt || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+    
+    const [workRequest] = await db
+      .insert(workRequests)
+      .values({
+        ...insertWorkRequest,
+        tokenHash,
+        expiresAt,
+        recipientEmail: insertWorkRequest.recipientEmail.toLowerCase(),
+        status: insertWorkRequest.status || 'pending',
+        contractId: null
+      })
+      .returning();
+
+    return workRequest;
+  }
+
+  async updateWorkRequest(id: number, workRequestData: Partial<InsertWorkRequest>): Promise<WorkRequest | undefined> {
+    // If email is being updated, make sure it's lowercase
+    if (workRequestData.recipientEmail) {
+      workRequestData.recipientEmail = workRequestData.recipientEmail.toLowerCase();
+    }
+    
+    const [updatedWorkRequest] = await db
+      .update(workRequests)
+      .set(workRequestData)
+      .where(eq(workRequests.id, id))
+      .returning();
+
+    return updatedWorkRequest;
+  }
+
+  async linkWorkRequestToContract(id: number, contractId: number): Promise<WorkRequest | undefined> {
+    // First check if both the work request and the contract exist
+    const workRequest = await this.getWorkRequest(id);
+    if (!workRequest) return undefined;
+    
+    const contract = await this.getContract(contractId);
+    if (!contract) return undefined;
+    
+    // Update the work request with the contract ID and change status to accepted
+    const [updatedWorkRequest] = await db
+      .update(workRequests)
+      .set({
+        contractId,
+        status: 'accepted'
+      })
+      .where(eq(workRequests.id, id))
+      .returning();
+
+    return updatedWorkRequest;
+  }
 }
 
 // Use DatabaseStorage instead of MemStorage
