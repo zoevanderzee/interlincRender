@@ -1,12 +1,13 @@
 import { 
-  users, invites, contracts, milestones, payments, documents, bankAccounts,
+  users, invites, contracts, milestones, payments, documents, bankAccounts, workRequests,
   type User, type InsertUser, 
   type Invite, type InsertInvite,
   type Contract, type InsertContract,
   type Milestone, type InsertMilestone,
   type Payment, type InsertPayment,
   type Document, type InsertDocument,
-  type BankAccount, type InsertBankAccount
+  type BankAccount, type InsertBankAccount,
+  type WorkRequest, type InsertWorkRequest
 } from "@shared/schema";
 import { eq, and, desc, lte, gte, sql, or } from "drizzle-orm";
 import { db, pool } from "./db";
@@ -80,6 +81,16 @@ export interface IStorage {
   setDefaultBankAccount(userId: number, accountId: string): Promise<BankAccount | undefined>;
   removeBankAccount(userId: number, accountId: string): Promise<boolean>;
   updatePaymentStatus(paymentId: number, status: string, paymentDetails?: Record<string, any>): Promise<Payment | undefined>;
+  
+  // Work Requests
+  getWorkRequest(id: number): Promise<WorkRequest | undefined>;
+  getWorkRequestByToken(tokenHash: string): Promise<WorkRequest | undefined>;
+  getWorkRequestsByBusinessId(businessId: number): Promise<WorkRequest[]>;
+  getWorkRequestsByEmail(email: string): Promise<WorkRequest[]>;
+  getPendingWorkRequests(): Promise<WorkRequest[]>;
+  createWorkRequest(workRequest: InsertWorkRequest, tokenHash: string): Promise<WorkRequest>;
+  updateWorkRequest(id: number, workRequest: Partial<InsertWorkRequest>): Promise<WorkRequest | undefined>;
+  linkWorkRequestToContract(id: number, contractId: number): Promise<WorkRequest | undefined>;
 }
 
 // In-memory storage implementation
@@ -91,6 +102,7 @@ export class MemStorage implements IStorage {
   private payments: Map<number, Payment>;
   private documents: Map<number, Document>;
   private bankAccounts: Map<number, BankAccount>;
+  private workRequests: Map<number, WorkRequest>;
   
   private userId: number;
   private inviteId: number;
@@ -99,6 +111,7 @@ export class MemStorage implements IStorage {
   private paymentId: number;
   private documentId: number;
   private bankAccountId: number;
+  private workRequestId: number;
   
   // Session store
   public sessionStore: session.Store;
@@ -111,6 +124,7 @@ export class MemStorage implements IStorage {
     this.payments = new Map();
     this.documents = new Map();
     this.bankAccounts = new Map();
+    this.workRequests = new Map();
     
     this.userId = 1;
     this.inviteId = 1;
@@ -119,6 +133,7 @@ export class MemStorage implements IStorage {
     this.paymentId = 1;
     this.documentId = 1;
     this.bankAccountId = 1;
+    this.workRequestId = 1;
     
     // Create memory store for sessions
     const MemoryStore = require('memorystore')(session);
