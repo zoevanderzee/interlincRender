@@ -120,6 +120,25 @@ export const bankAccounts = pgTable("bank_accounts", {
   metadata: jsonb("metadata"), // Additional metadata
 });
 
+// Work Requests table
+export const workRequests = pgTable("work_requests", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  businessId: integer("business_id").notNull(), // Business that sent the request
+  recipientEmail: text("recipient_email").notNull(), // Email of the recipient
+  status: text("status").notNull().default("pending"), // pending, accepted, declined, expired
+  budgetMin: decimal("budget_min", { precision: 10, scale: 2 }), // Minimum budget amount
+  budgetMax: decimal("budget_max", { precision: 10, scale: 2 }), // Maximum budget amount
+  dueDate: timestamp("due_date"), // When the work is due
+  skills: text("skills"), // Required skills for the work (comma-separated)
+  attachmentUrls: jsonb("attachment_urls"), // URLs to any attachments
+  tokenHash: text("token_hash"), // Hash for secure access to the work request
+  createdAt: timestamp("created_at").defaultNow(),
+  expiresAt: timestamp("expires_at"), // When the request expires
+  contractId: integer("contract_id"), // If a contract was created from this request
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
 export const insertInviteSchema = createInsertSchema(invites).omit({ id: true, createdAt: true });
@@ -138,6 +157,20 @@ export const insertMilestoneSchema = createInsertSchema(milestones).omit({ id: t
 export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true, completedDate: true });
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, uploadedAt: true });
 export const insertBankAccountSchema = createInsertSchema(bankAccounts).omit({ id: true, createdAt: true, isVerified: true });
+
+// Work Request schema with proper date handling
+const baseWorkRequestSchema = createInsertSchema(workRequests).omit({ 
+  id: true, 
+  createdAt: true, 
+  tokenHash: true, 
+  contractId: true 
+});
+export const insertWorkRequestSchema = baseWorkRequestSchema.extend({
+  // Handle date strings from frontend forms
+  dueDate: z.string().optional().transform(val => val ? new Date(val) : undefined),
+  expiresAt: z.string().optional().transform(val => val ? new Date(val) : undefined),
+  attachmentUrls: z.array(z.string()).optional().transform(val => val ? val : []),
+});
 
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -160,3 +193,6 @@ export type Document = typeof documents.$inferSelect;
 
 export type InsertBankAccount = z.infer<typeof insertBankAccountSchema>;
 export type BankAccount = typeof bankAccounts.$inferSelect;
+
+export type InsertWorkRequest = z.infer<typeof insertWorkRequestSchema>;
+export type WorkRequest = typeof workRequests.$inferSelect;
