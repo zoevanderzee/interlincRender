@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
-import { randomBytes } from "crypto";
+import { randomBytes, createHash } from "crypto";
 import {
   insertUserSchema,
   insertInviteSchema,
@@ -1487,6 +1487,311 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('Error creating checkout session:', error);
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Work Request routes
+  app.get(`${apiRouter}/work-requests`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const businessId = req.query.businessId ? parseInt(req.query.businessId as string) : null;
+      const email = req.query.email as string;
+      const pending = req.query.pending === 'true';
+      const token = req.query.token as string;
+      const currentUser = req.user;
+      
+      let workRequests = [];
+      
+      // If token is provided, get the specific work request by token
+      if (token) {
+        // Hash the provided token for lookup
+        const tokenHash = createHash('sha256').update(token).digest('hex');
+        const workRequest = await storage.getWorkRequestByToken(tokenHash);
+        workRequests = workRequest ? [workRequest] : [];
+      }
+      // If businessId is provided, get work requests for that business
+      else if (businessId) {
+        // Make sure the user has permissions (is the business owner or an admin)
+        if (currentUser && (currentUser.id === businessId || currentUser.role === 'admin')) {
+          workRequests = await storage.getWorkRequestsByBusinessId(businessId);
+        } else {
+          return res.status(403).json({ message: "Unauthorized to access these work requests" });
+        }
+      }
+      // If email is provided, get work requests for that email
+      else if (email) {
+        // Allow users to see their own work requests by email
+        if (currentUser && (currentUser.email === email || currentUser.role === 'admin')) {
+          workRequests = await storage.getWorkRequestsByEmail(email);
+        } else {
+          return res.status(403).json({ message: "Unauthorized to access these work requests" });
+        }
+      }
+      // If pending flag is provided, get all pending work requests (admin only)
+      else if (pending && currentUser && currentUser.role === 'admin') {
+        workRequests = await storage.getPendingWorkRequests();
+      }
+      // Default to getting work requests based on the user's role
+      else if (currentUser) {
+        if (currentUser.role === 'business') {
+          workRequests = await storage.getWorkRequestsByBusinessId(currentUser.id);
+        } else if (currentUser.role === 'contractor' || currentUser.role === 'freelancer') {
+          workRequests = await storage.getWorkRequestsByEmail(currentUser.email);
+        }
+      }
+      
+      res.json(workRequests);
+    } catch (error) {
+      console.error("Error fetching work requests:", error);
+      res.status(500).json({ message: "Error fetching work requests" });
+    }
+  });
+  
+  app.get(`${apiRouter}/work-requests/:id`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const workRequest = await storage.getWorkRequest(id);
+      
+      if (!workRequest) {
+        return res.status(404).json({ message: "Work request not found" });
+      }
+      
+      // Check permissions - only the business that created it, the email recipient, or admin can view
+      const currentUser = req.user;
+      if (currentUser && (
+        currentUser.id === workRequest.businessId || 
+        currentUser.email === workRequest.recipientEmail ||
+        currentUser.role === 'admin'
+      )) {
+        res.json(workRequest);
+      } else {
+        res.status(403).json({ message: "Unauthorized to access this work request" });
+      }
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching work request" });
+    }
+  });
+  
+  app.post(`${apiRouter}/work-requests`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      // Only business users can create work requests
+      const currentUser = req.user;
+      if (!currentUser || currentUser.role !== 'business') {
+        return res.status(403).json({ message: "Only business users can create work requests" });
+      }
+      
+      // Parse and validate the input
+      const workRequestInput = insertWorkRequestSchema.parse(req.body);
+      
+      // Make sure the businessId matches the current user
+      if (workRequestInput.businessId !== currentUser.id) {
+        return res.status(403).json({ message: "Cannot create work requests for other businesses" });
+      }
+      
+      // Generate a secure token for this work request
+      const { token, tokenHash } = generateWorkRequestToken();
+      
+      // Create the work request with the token hash
+      const newWorkRequest = await storage.createWorkRequest(workRequestInput, tokenHash);
+      
+      // Send the email invitation
+      try {
+        const { sendWorkRequestEmail } = await import('./services/email');
+        
+        // Get application URL, handling both Replit and local environments
+        let appUrl = `${req.protocol}://${req.get('host')}`;
+        
+        // Check if running in Replit
+        if (process.env.REPLIT_DEV_DOMAIN) {
+          appUrl = `https://${process.env.REPLIT_DEV_DOMAIN}`;
+        }
+        
+        // Use the business name from the current user
+        const businessName = currentUser.companyName || currentUser.firstName + ' ' + currentUser.lastName || currentUser.username;
+        
+        console.log(`Sending work request email to ${newWorkRequest.recipientEmail}`);
+        await sendWorkRequestEmail(newWorkRequest, token, businessName, appUrl);
+        console.log(`Work request email sent to ${newWorkRequest.recipientEmail}`);
+      } catch (emailError) {
+        console.error('Failed to send work request email:', emailError);
+        // Continue with the response even if email fails
+      }
+      
+      // Return the created work request (excluding the token for security)
+      res.status(201).json(newWorkRequest);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid work request data", errors: error.errors });
+      }
+      console.error('Error creating work request:', error);
+      res.status(500).json({ message: "Error creating work request" });
+    }
+  });
+  
+  app.patch(`${apiRouter}/work-requests/:id`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updateData = req.body;
+      const currentUser = req.user;
+      
+      // Get the existing work request
+      const existingWorkRequest = await storage.getWorkRequest(id);
+      if (!existingWorkRequest) {
+        return res.status(404).json({ message: "Work request not found" });
+      }
+      
+      // Permission check - only the business that created it or an admin can update it
+      if (!(currentUser && (currentUser.id === existingWorkRequest.businessId || currentUser.role === 'admin'))) {
+        return res.status(403).json({ message: "Unauthorized to update this work request" });
+      }
+      
+      // Update the work request
+      const updatedWorkRequest = await storage.updateWorkRequest(id, updateData);
+      
+      if (!updatedWorkRequest) {
+        return res.status(404).json({ message: "Work request not found" });
+      }
+      
+      res.json(updatedWorkRequest);
+    } catch (error) {
+      res.status(500).json({ message: "Error updating work request" });
+    }
+  });
+  
+  // Endpoint for accepting a work request and linking it to a contract
+  app.post(`${apiRouter}/work-requests/:id/accept`, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { token, contractId } = req.body;
+      
+      if (!token) {
+        return res.status(400).json({ message: "Token is required to verify work request" });
+      }
+      
+      // Get the work request
+      const workRequest = await storage.getWorkRequest(id);
+      if (!workRequest) {
+        return res.status(404).json({ message: "Work request not found" });
+      }
+      
+      // Verify the token
+      const isValidToken = await import('./services/email').then(
+        ({ verifyWorkRequestToken }) => verifyWorkRequestToken(token, workRequest.tokenHash)
+      );
+      
+      if (!isValidToken) {
+        return res.status(401).json({ message: "Invalid token" });
+      }
+      
+      // Check if the work request is still pending and not expired
+      if (workRequest.status !== 'pending') {
+        return res.status(400).json({ message: `Work request is already ${workRequest.status}` });
+      }
+      
+      if (workRequest.expiresAt && new Date(workRequest.expiresAt) < new Date()) {
+        return res.status(400).json({ message: "Work request has expired" });
+      }
+      
+      // If a contractId is provided, link to that contract
+      if (contractId) {
+        const contract = await storage.getContract(contractId);
+        if (!contract) {
+          return res.status(404).json({ message: "Contract not found" });
+        }
+        
+        // Link work request to contract and change status to 'accepted'
+        const updatedWorkRequest = await storage.linkWorkRequestToContract(id, contractId);
+        return res.json(updatedWorkRequest);
+      } else {
+        // If no contractId is provided, just update the status to 'accepted'
+        const updatedWorkRequest = await storage.updateWorkRequest(id, { status: 'accepted' });
+        return res.json(updatedWorkRequest);
+      }
+    } catch (error) {
+      console.error('Error accepting work request:', error);
+      res.status(500).json({ message: "Error accepting work request" });
+    }
+  });
+  
+  // Endpoint for declining a work request
+  app.post(`${apiRouter}/work-requests/:id/decline`, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { token, reason } = req.body;
+      
+      if (!token) {
+        return res.status(400).json({ message: "Token is required to verify work request" });
+      }
+      
+      // Get the work request
+      const workRequest = await storage.getWorkRequest(id);
+      if (!workRequest) {
+        return res.status(404).json({ message: "Work request not found" });
+      }
+      
+      // Verify the token
+      const isValidToken = await import('./services/email').then(
+        ({ verifyWorkRequestToken }) => verifyWorkRequestToken(token, workRequest.tokenHash)
+      );
+      
+      if (!isValidToken) {
+        return res.status(401).json({ message: "Invalid token" });
+      }
+      
+      // Check if the work request is still pending and not expired
+      if (workRequest.status !== 'pending') {
+        return res.status(400).json({ message: `Work request is already ${workRequest.status}` });
+      }
+      
+      // Update the work request status to 'declined'
+      const updatedWorkRequest = await storage.updateWorkRequest(id, { 
+        status: 'declined',
+        // Store the reason in an appropriate field that exists in the schema
+        message: reason // Optional reason for declining
+      });
+      
+      res.json(updatedWorkRequest);
+    } catch (error) {
+      console.error('Error declining work request:', error);
+      res.status(500).json({ message: "Error declining work request" });
+    }
+  });
+  
+  // Endpoint to verify a work request token without accepting/declining
+  app.post(`${apiRouter}/work-requests/verify-token`, async (req: Request, res: Response) => {
+    try {
+      const { token } = req.body;
+      
+      if (!token) {
+        return res.status(400).json({ message: "Token is required" });
+      }
+      
+      // Hash the token for lookup
+      const tokenHash = createHash('sha256').update(token).digest('hex');
+      
+      // Find the work request by token hash
+      const workRequest = await storage.getWorkRequestByToken(tokenHash);
+      
+      if (!workRequest) {
+        return res.status(404).json({ message: "Invalid or expired token" });
+      }
+      
+      // Check if the work request is expired
+      if (workRequest.expiresAt && new Date(workRequest.expiresAt) < new Date()) {
+        return res.status(400).json({ message: "Work request has expired" });
+      }
+      
+      // Return basic information about the work request
+      res.json({
+        valid: true,
+        workRequestId: workRequest.id,
+        status: workRequest.status,
+        projectName: workRequest.projectName, // Using projectName instead of title
+        businessId: workRequest.businessId,
+        expired: workRequest.expiresAt && new Date(workRequest.expiresAt) < new Date()
+      });
+    } catch (error) {
+      console.error('Error verifying token:', error);
+      res.status(500).json({ message: "Error verifying token" });
     }
   });
 
