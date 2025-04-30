@@ -1521,6 +1521,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       else if (email) {
         // Allow users to see their own work requests by email
         if (currentUser && (currentUser.email === email || currentUser.role === 'admin')) {
+          // Pass the email to the storage layer to find work requests by recipient email
           workRequests = await storage.getWorkRequestsByEmail(email);
         } else {
           return res.status(403).json({ message: "Unauthorized to access these work requests" });
@@ -1745,8 +1746,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update the work request status to 'declined'
       const updatedWorkRequest = await storage.updateWorkRequest(id, { 
         status: 'declined',
-        // Store the reason in an appropriate field that exists in the schema
-        message: reason // Optional reason for declining
+        // Store the reason in the description field since that exists in the schema
+        description: reason || 'Request declined' // Optional reason for declining
       });
       
       res.json(updatedWorkRequest);
@@ -1785,7 +1786,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         valid: true,
         workRequestId: workRequest.id,
         status: workRequest.status,
-        projectName: workRequest.projectName, // Using projectName instead of title
+        title: workRequest.title, // Use title field from work request
         businessId: workRequest.businessId,
         expired: workRequest.expiresAt && new Date(workRequest.expiresAt) < new Date()
       });
