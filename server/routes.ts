@@ -9,9 +9,10 @@ import {
   insertContractSchema,
   insertMilestoneSchema,
   insertPaymentSchema,
-  insertDocumentSchema
+  insertDocumentSchema,
+  insertWorkRequestSchema
 } from "@shared/schema";
-import { sendPasswordResetEmail } from "./services/email";
+import { sendPasswordResetEmail, generateWorkRequestToken } from "./services/email";
 import Stripe from "stripe";
 import stripeService from "./services/stripe";
 import notificationService from "./services/notifications";

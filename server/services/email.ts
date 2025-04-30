@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer';
-import { Invite } from '@shared/schema';
+import { Invite, WorkRequest } from '@shared/schema';
 import sgMail from '@sendgrid/mail';
+import crypto from 'crypto';
 
 export interface EmailOptions {
   to: string;
@@ -444,6 +445,166 @@ export async function sendPaymentNotificationEmail(paymentData: any, recipientEm
     return info;
   } catch (error) {
     console.error('Error sending payment email:', error);
+    throw error;
+  }
+}
+
+/**
+ * Creates a secure token for work requests and returns both the token and its hash
+ */
+export function generateWorkRequestToken(): { token: string, tokenHash: string } {
+  // Generate a random token
+  const token = crypto.randomBytes(32).toString('hex');
+  
+  // Create a hash of the token to store in the database
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+  
+  return { token, tokenHash };
+}
+
+/**
+ * Verifies if a work request token is valid by comparing its hash
+ */
+export function verifyWorkRequestToken(token: string, storedTokenHash: string): boolean {
+  // Hash the provided token
+  const hashToCheck = crypto.createHash('sha256').update(token).digest('hex');
+  
+  // Compare with the stored hash
+  return hashToCheck === storedTokenHash;
+}
+
+/**
+ * Send a work request email to a potential contractor or freelancer
+ */
+export async function sendWorkRequestEmail(workRequest: WorkRequest, token: string, businessName: string, appUrl: string = 'https://creativlinc.replit.app'): Promise<any> {
+  // Initialize email service if needed
+  if (!transporter && !process.env.SENDGRID_API_KEY) {
+    console.warn('Email service not initialized. Initializing now...');
+    initializeEmailService();
+    return;
+  }
+  
+  try {
+    // Generate the work request link with the token
+    const workRequestUrl = `${appUrl}/contractor-connect?token=${token}`;
+    
+    // Format budget display
+    let budgetDisplay = 'To be discussed';
+    if (workRequest.budgetMin && workRequest.budgetMax) {
+      budgetDisplay = `$${workRequest.budgetMin} - $${workRequest.budgetMax}`;
+    } else if (workRequest.budgetMin) {
+      budgetDisplay = `Starting at $${workRequest.budgetMin}`;
+    } else if (workRequest.budgetMax) {
+      budgetDisplay = `Up to $${workRequest.budgetMax}`;
+    }
+    
+    // Format skills display
+    const skillsDisplay = workRequest.skills ? 
+      `<p><strong>Required Skills:</strong> ${workRequest.skills}</p>` : '';
+    
+    // Format attachments display
+    let attachmentsDisplay = '';
+    if (workRequest.attachmentUrls && workRequest.attachmentUrls.length > 0) {
+      attachmentsDisplay = `
+        <p><strong>Attachments:</strong></p>
+        <ul>
+          ${(workRequest.attachmentUrls as string[]).map(url => `<li><a href="${url}" target="_blank">${url.split('/').pop()}</a></li>`).join('')}
+        </ul>
+      `;
+    }
+    
+    // Create the email content
+    const mailOptions = {
+      from: process.env.SMTP_FROM || '"Creativ Linc" <noreply@creativlinc.com>',
+      to: workRequest.recipientEmail,
+      subject: `Work Opportunity: ${workRequest.title}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; background-color: #000; color: #fff;">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <img src="${appUrl}/logo.png" alt="Creativ Linc Logo" style="max-width: 150px;" />
+          </div>
+          
+          <h2 style="color: #fff; margin-bottom: 20px;">Work Opportunity</h2>
+          
+          <p>Hello,</p>
+          
+          <p><strong>${businessName}</strong> has a work opportunity that matches your skills and would like to invite you to their project on Creativ Linc.</p>
+          
+          <div style="background-color: #111; padding: 20px; border-radius: 4px; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #fff;">${workRequest.title}</h3>
+            <p>${workRequest.description}</p>
+            
+            <p><strong>Budget:</strong> ${budgetDisplay}</p>
+            ${workRequest.dueDate ? `<p><strong>Due Date:</strong> ${new Date(workRequest.dueDate).toLocaleDateString()}</p>` : ''}
+            ${skillsDisplay}
+            ${attachmentsDisplay}
+          </div>
+          
+          <div style="margin: 30px 0; text-align: center;">
+            <a href="${workRequestUrl}" style="background-color: #333; color: #fff; padding: 12px 25px; text-decoration: none; border-radius: 4px; display: inline-block; border: 1px solid #444;">View Work Request</a>
+          </div>
+          
+          <p style="color: #aaa; font-size: 14px;">This request will expire on ${workRequest.expiresAt ? new Date(workRequest.expiresAt).toLocaleDateString() : 'N/A'}.</p>
+          
+          <p>By accepting this work request, you will be able to coordinate with the client, review contract details, and receive payments directly through our platform.</p>
+          
+          <hr style="margin: 30px 0; border: none; border-top: 1px solid #333;" />
+          
+          <p style="color: #aaa; font-size: 12px; text-align: center;">
+            Creativ Linc - Smart Contract Management for Your Business<br />
+            This is an automated email, please do not reply.
+          </p>
+        </div>
+      `
+    };
+    
+    // Try SendGrid first, fall back to Nodemailer if there's an error
+    let info;
+    try {
+      if (process.env.SENDGRID_API_KEY) {
+        const verifiedSender = process.env.SENDGRID_VERIFIED_SENDER || 'support@creativlinc.replit.app';
+        
+        info = await sgMail.send({
+          to: workRequest.recipientEmail,
+          from: verifiedSender,
+          subject: `Work Opportunity: ${workRequest.title}`,
+          html: mailOptions.html
+        });
+        
+        console.log(`Work request email sent via SendGrid to ${workRequest.recipientEmail}`);
+      } else {
+        throw new Error('SendGrid API key not available');
+      }
+    } catch (error: any) {
+      console.log('SendGrid error, falling back to Nodemailer:', error.message || 'Unknown error');
+      
+      // Ensure we have a transporter initialized
+      if (!transporter) {
+        await nodemailer.createTestAccount().then(testAccount => {
+          transporter = nodemailer.createTransport({
+            host: 'smtp.ethereal.email',
+            port: 587,
+            secure: false,
+            auth: {
+              user: testAccount.user,
+              pass: testAccount.pass
+            }
+          });
+        });
+      }
+      
+      info = await transporter.sendMail(mailOptions);
+      
+      // Log the result for development
+      console.log('Work request email sent via Nodemailer: %s', info.messageId);
+      if (info.messageId && info.messageId.includes('ethereal')) {
+        console.log('Preview URL: %s', nodemailer.getTestMessageUrl(info));
+      }
+    }
+    
+    return info;
+  } catch (error) {
+    console.error('Error sending work request email:', error);
     throw error;
   }
 }
