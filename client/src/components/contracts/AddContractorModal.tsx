@@ -34,8 +34,10 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Filter just contractor type users
-  const availableContractors = contractors.filter(c => c.role === 'contractor');
+  // Filter contractor/freelancer type users who have been onboarded into the system
+  const availableContractors = contractors.filter(c => 
+    (c.role === 'contractor' || c.workerType === 'contractor' || c.workerType === 'freelancer')
+  );
 
   // Mutation to update contract with contractor
   const updateContractMutation = useMutation({
@@ -92,28 +94,28 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
-          Add Contractor
+          Add Worker
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Add Contractor to Contract</DialogTitle>
+          <DialogTitle>Add Worker to Project</DialogTitle>
           <DialogDescription>
-            Assign a contractor to this contract. They will be notified once assigned.
+            Assign a freelancer or sub contractor to this project from your onboarded workers.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
               <label htmlFor="contractor" className="text-sm font-medium">
-                Select Contractor
+                Select Worker
               </label>
               <Select
                 value={selectedContractorId}
                 onValueChange={setSelectedContractorId}
               >
                 <SelectTrigger id="contractor">
-                  <SelectValue placeholder="Select a contractor" />
+                  <SelectValue placeholder="Select a freelancer or contractor" />
                 </SelectTrigger>
                 <SelectContent>
                   {availableContractors.length > 0 ? (
@@ -124,7 +126,7 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
                     ))
                   ) : (
                     <SelectItem value="none" disabled>
-                      No contractors available
+                      No workers available. Please invite freelancers or contractors first.
                     </SelectItem>
                   )}
                 </SelectContent>
@@ -150,7 +152,7 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
                   Adding...
                 </>
               ) : (
-                'Add Contractor'
+                'Add to Project'
               )}
             </Button>
           </DialogFooter>
