@@ -44,6 +44,13 @@ export interface IStorage {
   createInvite(invite: InsertInvite): Promise<Invite>;
   updateInvite(id: number, invite: Partial<InsertInvite>): Promise<Invite | undefined>;
   
+  // Business Onboarding Links
+  createBusinessOnboardingLink(businessId: number, workerType: string): Promise<BusinessOnboardingLink>;
+  getBusinessOnboardingLink(businessId: number): Promise<BusinessOnboardingLink | undefined>;
+  updateBusinessOnboardingLink(businessId: number, data: Partial<InsertBusinessOnboardingLink>): Promise<BusinessOnboardingLink>;
+  verifyOnboardingToken(token: string): Promise<{businessId: number, workerType: string} | undefined>;
+  recordOnboardingUsage(businessId: number, workerId: number, token: string): Promise<BusinessOnboardingUsage>;
+  
   // Contracts
   getContract(id: number): Promise<Contract | undefined>;
   getContractsByBusinessId(businessId: number): Promise<Contract[]>;
@@ -104,6 +111,8 @@ export class MemStorage implements IStorage {
   private documents: Map<number, Document>;
   private bankAccounts: Map<number, BankAccount>;
   private workRequests: Map<number, WorkRequest>;
+  private businessOnboardingLinks: Map<number, BusinessOnboardingLink>;
+  private businessOnboardingUsage: Map<number, BusinessOnboardingUsage>;
   
   private userId: number;
   private inviteId: number;
@@ -126,6 +135,8 @@ export class MemStorage implements IStorage {
     this.documents = new Map();
     this.bankAccounts = new Map();
     this.workRequests = new Map();
+    this.businessOnboardingLinks = new Map();
+    this.businessOnboardingUsage = new Map();
     
     this.userId = 1;
     this.inviteId = 1;

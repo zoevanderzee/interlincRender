@@ -208,3 +208,34 @@ export type BankAccount = typeof bankAccounts.$inferSelect;
 
 export type InsertWorkRequest = z.infer<typeof insertWorkRequestSchema>;
 export type WorkRequest = typeof workRequests.$inferSelect;
+
+// Business Onboarding Links table - for contractor/freelancer registration
+export const businessOnboardingLinks = pgTable("business_onboarding_links", {
+  id: serial("id").primaryKey(),
+  businessId: integer("business_id").notNull().references(() => users.id),
+  token: text("token").notNull().unique(), // Unique token for this business's onboarding link
+  workerType: text("worker_type").notNull().default("contractor"), // Default type of worker to invite
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  active: boolean("active").notNull().default(true)
+});
+
+// Track which users registered via business onboarding links
+export const businessOnboardingUsage = pgTable("business_onboarding_usage", {
+  id: serial("id").primaryKey(),
+  businessId: integer("business_id").notNull().references(() => users.id),
+  workerId: integer("worker_id").notNull().references(() => users.id),
+  token: text("token").notNull(), // The token that was used
+  registeredAt: timestamp("registered_at").notNull().defaultNow()
+});
+
+// Create insert schemas
+export const insertBusinessOnboardingLinkSchema = createInsertSchema(businessOnboardingLinks);
+export const insertBusinessOnboardingUsageSchema = createInsertSchema(businessOnboardingUsage);
+
+// Create types
+export type InsertBusinessOnboardingLink = z.infer<typeof insertBusinessOnboardingLinkSchema>;
+export type BusinessOnboardingLink = typeof businessOnboardingLinks.$inferSelect;
+
+export type InsertBusinessOnboardingUsage = z.infer<typeof insertBusinessOnboardingUsageSchema>;
+export type BusinessOnboardingUsage = typeof businessOnboardingUsage.$inferSelect;
