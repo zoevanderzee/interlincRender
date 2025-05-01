@@ -1594,31 +1594,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create the work request with the token hash
       const newWorkRequest = await storage.createWorkRequest(workRequestInput, tokenHash);
       
-      // Send the email invitation
-      try {
-        const { sendWorkRequestEmail } = await import('./services/email');
-        
-        // Get application URL, handling both Replit and local environments
-        let appUrl = `${req.protocol}://${req.get('host')}`;
-        
-        // Check if running in Replit
-        if (process.env.REPLIT_DEV_DOMAIN) {
-          appUrl = `https://${process.env.REPLIT_DEV_DOMAIN}`;
-        }
-        
-        // Use the business name from the current user
-        const businessName = currentUser.companyName || currentUser.firstName + ' ' + currentUser.lastName || currentUser.username;
-        
-        console.log(`Sending work request email to ${newWorkRequest.recipientEmail}`);
-        await sendWorkRequestEmail(newWorkRequest, token, businessName, appUrl);
-        console.log(`Work request email sent to ${newWorkRequest.recipientEmail}`);
-      } catch (emailError) {
-        console.error('Failed to send work request email:', emailError);
-        // Continue with the response even if email fails
+      // Get application URL, handling both Replit and local environments
+      let appUrl = `${req.protocol}://${req.get('host')}`;
+      
+      // Check if running in Replit
+      if (process.env.REPLIT_DEV_DOMAIN) {
+        appUrl = `https://${process.env.REPLIT_DEV_DOMAIN}`;
       }
       
-      // Return the created work request (excluding the token for security)
-      res.status(201).json(newWorkRequest);
+      // Use the business name from the current user
+      const businessName = currentUser.companyName || currentUser.firstName + ' ' + currentUser.lastName || currentUser.username;
+      
+      // Generate the shareable link
+      const shareableLink = `${appUrl}/work-requests/respond?token=${token}`;
+      
+      // Send the email invitation if recipientEmail is provided
+      if (newWorkRequest.recipientEmail) {
+        try {
+          const { sendWorkRequestEmail } = await import('./services/email');
+          
+          console.log(`Sending work request email to ${newWorkRequest.recipientEmail}`);
+          await sendWorkRequestEmail(newWorkRequest, token, businessName, appUrl);
+          console.log(`Work request email sent to ${newWorkRequest.recipientEmail}`);
+        } catch (emailError) {
+          console.error('Failed to send work request email:', emailError);
+          // Continue with the response even if email fails
+        }
+      }
+      
+      // Return the created work request along with the shareable link
+      res.status(201).json({
+        workRequest: newWorkRequest,
+        shareableLink
+      });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid work request data", errors: error.errors });
@@ -1754,6 +1762,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error declining work request:', error);
       res.status(500).json({ message: "Error declining work request" });
+    }
+  });
+  
+  // Endpoint to generate a shareable link for an existing work request
+  app.post(`${apiRouter}/work-requests/:id/generate-link`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const currentUser = req.user;
+      
+      // Get the work request
+      const workRequest = await storage.getWorkRequest(id);
+      if (!workRequest) {
+        return res.status(404).json({ message: "Work request not found" });
+      }
+      
+      // Permission check - only the business that created it or an admin can generate a link
+      if (!(currentUser && (currentUser.id === workRequest.businessId || currentUser.role === 'admin'))) {
+        return res.status(403).json({ message: "Unauthorized to generate a link for this work request" });
+      }
+      
+      // Generate a new token if needed (if token was not originally stored)
+      let token;
+      
+      if (!workRequest.tokenHash) {
+        // Generate a new token
+        const tokenData = generateWorkRequestToken();
+        token = tokenData.token;
+        
+        // Update the work request with the new token hash
+        await storage.updateWorkRequest(id, { tokenHash: tokenData.tokenHash });
+      } else {
+        // We can't retrieve the original token since we only store the hash
+        // So we'll generate a new token and update the hash
+        const tokenData = generateWorkRequestToken();
+        token = tokenData.token;
+        
+        // Update the work request with the new token hash
+        await storage.updateWorkRequest(id, { tokenHash: tokenData.tokenHash });
+      }
+      
+      // Get application URL, handling both Replit and local environments
+      let appUrl = `${req.protocol}://${req.get('host')}`;
+      
+      // Check if running in Replit
+      if (process.env.REPLIT_DEV_DOMAIN) {
+        appUrl = `https://${process.env.REPLIT_DEV_DOMAIN}`;
+      }
+      
+      // Generate the shareable link
+      const shareableLink = `${appUrl}/work-requests/respond?token=${token}`;
+      
+      res.json({ shareableLink });
+    } catch (error) {
+      console.error('Error generating shareable link:', error);
+      res.status(500).json({ message: "Error generating shareable link" });
     }
   });
   

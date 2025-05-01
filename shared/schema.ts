@@ -126,7 +126,7 @@ export const workRequests = pgTable("work_requests", {
   title: text("title").notNull(),
   description: text("description").notNull(),
   businessId: integer("business_id").notNull(), // Business that sent the request
-  recipientEmail: text("recipient_email").notNull(), // Email of the recipient
+  recipientEmail: text("recipient_email"), // Email of the recipient - optional for shareable links
   status: text("status").notNull().default("pending"), // pending, accepted, declined, expired
   budgetMin: decimal("budget_min", { precision: 10, scale: 2 }), // Minimum budget amount
   budgetMax: decimal("budget_max", { precision: 10, scale: 2 }), // Maximum budget amount
@@ -136,7 +136,7 @@ export const workRequests = pgTable("work_requests", {
   tokenHash: text("token_hash"), // Hash for secure access to the work request
   createdAt: timestamp("created_at").defaultNow(),
   expiresAt: timestamp("expires_at"), // When the request expires
-  contractId: integer("contract_id"), // If a contract was created from this request
+  contractId: integer("contract_id") // If a contract was created from this request
 });
 
 // Insert schemas
@@ -170,6 +170,12 @@ export const insertWorkRequestSchema = baseWorkRequestSchema.extend({
   dueDate: z.string().optional().transform(val => val ? new Date(val) : undefined),
   expiresAt: z.string().optional().transform(val => val ? new Date(val) : undefined),
   attachmentUrls: z.array(z.string()).optional().transform(val => val ? val : []),
+});
+
+// Work Request update schema (includes tokenHash for updates)
+export const updateWorkRequestSchema = insertWorkRequestSchema.extend({
+  tokenHash: z.string().optional(),
+  contractId: z.number().optional(),
 });
 
 // Types

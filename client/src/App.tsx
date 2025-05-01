@@ -31,6 +31,7 @@ import PaymentSimulator from "@/pages/payment-simulator";
 import Layout from "@/components/layout/Layout";
 import AuthPage from "@/pages/auth";
 import ResetPasswordPage from "@/pages/reset-password";
+import WorkRequestRespond from "@/pages/work-request-respond";
 
 function Router() {
   return (
@@ -74,6 +75,10 @@ function Router() {
       
       <Route path="/payment-simulator">
         <PaymentSimulator />
+      </Route>
+      
+      <Route path="/work-requests/respond">
+        <WorkRequestRespond />
       </Route>
 
       {/* Protected Routes - require authentication */}
