@@ -1800,8 +1800,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const tokenData = generateWorkRequestToken();
         token = tokenData.token;
         
-        // Update the work request with the new token hash
-        await storage.updateWorkRequest(id, { tokenHash: tokenData.tokenHash });
+        // Use the updateWorkRequestSchema to ensure tokenHash is accepted
+        const updateData = updateWorkRequestSchema.parse({ tokenHash: tokenData.tokenHash });
+        await storage.updateWorkRequest(id, updateData);
       }
       
       // Get application URL, handling both Replit and local environments
