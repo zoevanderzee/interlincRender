@@ -341,7 +341,7 @@ export default function ContractDetailPage() {
             <div>
               <h3 className="font-medium text-white">Contract Setup In Progress</h3>
               <p className="text-sm text-zinc-400">
-                This contract is being set up. You can add contractors using the "Add Contractor" button below.
+                This contract is being set up. You can add freelancers or contractors using the "Add Worker" button below.
               </p>
             </div>
           </div>
@@ -465,7 +465,7 @@ export default function ContractDetailPage() {
                   <CardHeader>
                     <CardTitle>Contract Details</CardTitle>
                     <CardDescription>
-                      Summary of the contract between your business and the contractor
+                      Summary of the contract between your business and project workers
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -497,9 +497,9 @@ export default function ContractDetailPage() {
               <div>
                 <Card>
                   <CardHeader>
-                    <CardTitle>Contractors</CardTitle>
+                    <CardTitle>Project Workers</CardTitle>
                     <CardDescription>
-                      Information about assigned contractors
+                      Information about assigned freelancers and contractors
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -547,7 +547,7 @@ export default function ContractDetailPage() {
                         ))}
                       </div>
                     ) : (
-                      <p>No contractor information available.</p>
+                      <p>No workers assigned to this project yet.</p>
                     )}
                   </CardContent>
                   <CardFooter>
@@ -613,7 +613,7 @@ export default function ContractDetailPage() {
                           onMilestoneApprove={handleMilestoneApprove}
                         />
                       ) : (
-                        <p>No milestones have been defined for this contractor.</p>
+                        <p>No milestones have been defined for this worker.</p>
                       )}
                     </CardContent>
                   </Card>
