@@ -805,6 +805,7 @@ export class MemStorage implements IStorage {
       projectName: "UI/UX Design Project",
       businessId: 1,
       status: "pending",
+      workerType: "freelancer",
       message: "We'd like to invite you to work on our new UI/UX design project. Please join our platform to discuss details.",
       expiresAt: nextWeek,
       contractDetails: JSON.stringify({
@@ -819,6 +820,7 @@ export class MemStorage implements IStorage {
       projectName: "Backend API Development",
       businessId: 1,
       status: "pending",
+      workerType: "contractor",
       message: "We need a skilled developer to help us with our backend API project.",
       expiresAt: nextWeek,
       contractDetails: JSON.stringify({
@@ -1057,8 +1059,27 @@ export class DatabaseStorage implements IStorage {
   }
   
   async createInvite(insertInvite: InsertInvite): Promise<Invite> {
-    const [invite] = await db.insert(invites).values(insertInvite).returning();
-    return invite;
+    // Set default values similar to MemStorage implementation
+    const dataToInsert: InsertInvite = {
+      ...insertInvite,
+      // Ensure workerType is set
+      workerType: insertInvite.workerType || 'contractor',
+      // Set default status if not provided
+      status: insertInvite.status || 'pending',
+      // Set default expiration to 7 days from now if not provided
+      expiresAt: insertInvite.expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    };
+    
+    console.log('[Invite Creation] Final data to insert:', JSON.stringify(dataToInsert));
+    
+    // Use try/catch to get better error information
+    try {
+      const [invite] = await db.insert(invites).values(dataToInsert).returning();
+      return invite;
+    } catch (error) {
+      console.error('[Invite Creation] Database error:', error);
+      throw error;
+    }
   }
   
   async updateInvite(id: number, inviteData: Partial<InsertInvite>): Promise<Invite | undefined> {
