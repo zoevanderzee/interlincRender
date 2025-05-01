@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
-import { randomBytes, createHash } from "crypto";
+import * as nodeCrypto from "crypto";
 import {
   insertUserSchema,
   insertInviteSchema,
@@ -271,8 +271,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Generate a token for this invite
-      const crypto = require('crypto');
-      const token = crypto.randomBytes(32).toString('hex');
+      const token = nodeCrypto.randomBytes(32).toString('hex');
       
       // Create a work request with this token
       const workRequest = {
@@ -284,7 +283,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         budgetMin: invite.paymentAmount ? parseFloat(invite.paymentAmount) : null,
         budgetMax: invite.paymentAmount ? parseFloat(invite.paymentAmount) : null,
         expiresAt: invite.expiresAt,
-        skills: ""
+        skills: "",
+        attachmentUrls: [] // Add empty attachmentUrls array
       };
       
       // Create the work request with the token hash
