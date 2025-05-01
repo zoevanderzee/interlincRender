@@ -158,6 +158,9 @@ export default function AuthPage() {
     company: "",
     position: "",
     inviteId: inviteId || undefined,
+    // New fields for business invites
+    businessToken: businessToken || null,
+    businessId: businessId || null,
   });
   
   // Update register form when invite data is loaded
@@ -199,6 +202,86 @@ export default function AuthPage() {
       }));
     }
   }, [businessInviteData, businessToken, businessId]);
+  
+  // Helper function to render the appropriate registration description
+  const renderRegistrationDescription = () => {
+    if (inviteData) {
+      // Project-specific invitation with data loaded
+      return (
+        <>
+          You've been invited to join a project on Creativ Linc
+          <div className="mt-2 p-3 bg-zinc-800 rounded-md border border-zinc-700">
+            <h4 className="text-white font-medium mb-1">Project: {inviteData.projectName}</h4>
+            {inviteData.message && (
+              <p className="text-zinc-400 text-sm italic mb-1">{inviteData.message}</p>
+            )}
+            <p className="text-zinc-400 text-sm">Complete registration to accept this invitation.</p>
+          </div>
+        </>
+      );
+    } 
+    
+    if (inviteId) {
+      // Project invitation with ID only, waiting for data
+      return (
+        <>
+          {isInviteLoading ? (
+            <div className="flex items-center justify-center py-3">
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              Loading invitation details...
+            </div>
+          ) : (
+            <>
+              You've been invited to join a project on Creativ Linc
+              <p className="mt-1">Complete registration to accept this invitation.</p>
+            </>
+          )}
+        </>
+      );
+    }
+    
+    if (businessInviteData && businessInviteData.valid) {
+      // Business invite with data loaded
+      return (
+        <>
+          You've been invited to join a business on Creativ Linc
+          <div className="mt-2 p-3 bg-zinc-800 rounded-md border border-zinc-700">
+            <h4 className="text-white font-medium mb-1">
+              Business: {businessInviteData.businessName || "A company"}
+            </h4>
+            <p className="text-zinc-400 text-sm mb-1">
+              You are being invited as a <strong>{businessInviteData.workerType || "contractor"}</strong>
+            </p>
+            <p className="text-zinc-400 text-sm">
+              Complete registration to join this business's team.
+            </p>
+          </div>
+        </>
+      );
+    }
+    
+    if (businessToken && businessId) {
+      // Business invite with token only, waiting for data
+      return (
+        <>
+          {isBusinessInviteLoading ? (
+            <div className="flex items-center justify-center py-3">
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              Verifying business invitation...
+            </div>
+          ) : (
+            <>
+              You've been invited to join a business on Creativ Linc
+              <p className="mt-1">Complete registration to accept this invitation.</p>
+            </>
+          )}
+        </>
+      );
+    }
+    
+    // Regular registration
+    return "Sign up to get started with Creativ Linc";
+  };
 
   // Form Error States
   const [loginErrors, setLoginErrors] = useState<Record<string, string>>({});
@@ -315,22 +398,37 @@ export default function AuthPage() {
       // Omit confirmPassword as it's not needed for the API
       const { confirmPassword, ...registerData } = registerForm;
       
-      // If we have an invite ID, make sure it's included in the registration data
-      if (inviteId && !registerData.inviteId) {
-        registerData.inviteId = inviteId;
+      // Handle business invite link registration
+      if (businessToken && businessId) {
+        // Include business token information
+        registerData.businessToken = businessToken;
+        registerData.businessId = businessId;
+        registerData.role = 'contractor'; // Always contractor for business invites
+        
+        // Set worker type from business invite data
+        if (businessInviteData && businessInviteData.workerType) {
+          registerData.workerType = businessInviteData.workerType;
+        } else if (!registerData.workerType) {
+          // Default to contractor if not specified
+          registerData.workerType = 'contractor';
+        }
       }
-      
-      // If this is an invite registration, make sure the email matches the invited email
-      if (inviteEmail && registerData.email !== inviteEmail) {
-        setRegisterErrors({
-          ...registerErrors,
-          email: `You must use the invited email: ${inviteEmail}`
-        });
-        return;
-      }
-      
-      // If this is an invite, set the role to contractor
-      if (inviteId || inviteEmail) {
+      // Handle project-specific invite registration
+      else if (inviteId || inviteEmail) {
+        // If we have an invite ID, make sure it's included in the registration data
+        if (inviteId && !registerData.inviteId) {
+          registerData.inviteId = inviteId;
+        }
+        
+        // If this is an invite registration, make sure the email matches the invited email
+        if (inviteEmail && registerData.email !== inviteEmail) {
+          setRegisterErrors({
+            ...registerErrors,
+            email: `You must use the invited email: ${inviteEmail}`
+          });
+          return;
+        }
+        
         registerData.role = 'contractor';
         
         // Make sure workerType is set properly from invite data
@@ -340,6 +438,15 @@ export default function AuthPage() {
           // Default to contractor if not specified
           registerData.workerType = 'contractor';
         }
+      }
+      
+      // If this is a business user direct registration, make sure company name is provided
+      if (registerData.role === 'business' && !registerData.company) {
+        setRegisterErrors({
+          ...registerErrors,
+          company: "Company name is required for business accounts"
+        });
+        return;
       }
       
       registerMutation.mutate(registerData);
@@ -472,34 +579,7 @@ export default function AuthPage() {
                 <CardHeader>
                   <CardTitle>Create an Account</CardTitle>
                   <CardDescription className="text-zinc-400">
-                    {inviteData ? (
-                      <>
-                        You've been invited to join a project on Creativ Linc
-                        <div className="mt-2 p-3 bg-zinc-800 rounded-md border border-zinc-700">
-                          <h4 className="text-white font-medium mb-1">Project: {inviteData.projectName}</h4>
-                          {inviteData.message && (
-                            <p className="text-zinc-400 text-sm italic mb-1">{inviteData.message}</p>
-                          )}
-                          <p className="text-zinc-400 text-sm">Complete registration to accept this invitation.</p>
-                        </div>
-                      </>
-                    ) : inviteId ? (
-                      <>
-                        {isInviteLoading ? (
-                          <div className="flex items-center justify-center py-3">
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            Loading invitation details...
-                          </div>
-                        ) : (
-                          <>
-                            You've been invited to join a project on Creativ Linc
-                            <p className="mt-1">Complete registration to accept this invitation.</p>
-                          </>
-                        )}
-                      </>
-                    ) : (
-                      "Sign up to get started with Creativ Linc"
-                    )}
+                    {renderRegistrationDescription()}
                   </CardDescription>
                 </CardHeader>
                 <form onSubmit={handleRegister}>
