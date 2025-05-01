@@ -68,10 +68,16 @@ export function initializeEmailService() {
  */
 export async function sendInvitationEmail(invite: Invite, appUrl: string = 'https://creativlinc.replit.app') {
   console.log(`Sending invitation email with app URL: ${appUrl}`);
-  if (!transporter) {
+  
+  // Initialize email service if needed
+  if (!transporter && !process.env.SENDGRID_API_KEY) {
     console.warn('Email service not initialized. Initializing now...');
     initializeEmailService();
-    return;
+    
+    // Wait a moment for the transporter to be fully initialized
+    if (!transporter) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
   }
 
   const workerType = invite.workerType || 'contractor';
@@ -80,62 +86,133 @@ export async function sendInvitationEmail(invite: Invite, appUrl: string = 'http
     // Generate a sign-up URL with the invite ID
     const signupUrl = `${appUrl}/auth?invite=${invite.id}&email=${encodeURIComponent(invite.email)}`;
     
-    // Create the email content
+    // Create the HTML email content
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee;">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <img src="${appUrl}/logo.png" alt="Creativ Linc Logo" style="max-width: 150px;" />
+        </div>
+        
+        <h2 style="color: #000; margin-bottom: 20px;">You've Been Invited to a Project</h2>
+        
+        <p>Hello,</p>
+        
+        <p>You've been invited to join <strong>${invite.projectName}</strong> as a ${workerType === 'freelancer' ? 'freelancer' : 'sub contractor'}.</p>
+        
+        ${invite.message ? `<p><strong>Message:</strong> "${invite.message}"</p>` : ''}
+        
+        <p>Project details:</p>
+        <ul>
+          <li><strong>Project:</strong> ${invite.projectName}</li>
+          <li><strong>Payment Amount:</strong> $${invite.paymentAmount || 'To be discussed'}</li>
+        </ul>
+        
+        <div style="margin: 30px 0; text-align: center;">
+          <a href="${signupUrl}" style="background-color: #000; color: #fff; padding: 12px 25px; text-decoration: none; border-radius: 4px; display: inline-block;">Accept Invitation</a>
+        </div>
+        
+        <p style="color: #666; font-size: 14px;">This invitation will expire on ${invite.expiresAt ? new Date(invite.expiresAt).toLocaleDateString() : 'N/A'}.</p>
+        
+        <p>If you have any questions, please contact the project administrator.</p>
+        
+        <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;" />
+        
+        <p style="color: #999; font-size: 12px; text-align: center;">
+          Creativ Linc - Smart Contract Management for Your Business<br />
+          This is an automated email, please do not reply.
+        </p>
+      </div>
+    `;
+    
+    // Plain text fallback content
+    const textContent = `
+      Hello,
+      
+      You've been invited to join ${invite.projectName} as a ${workerType === 'freelancer' ? 'freelancer' : 'sub contractor'}.
+      
+      ${invite.message ? `Message: "${invite.message}"` : ''}
+      
+      Project details:
+      - Project: ${invite.projectName}
+      - Payment Amount: $${invite.paymentAmount || 'To be discussed'}
+      
+      To accept the invitation, please visit: ${signupUrl}
+      
+      This invitation will expire on ${invite.expiresAt ? new Date(invite.expiresAt).toLocaleDateString() : 'N/A'}.
+      
+      If you have any questions, please contact the project administrator.
+      
+      Creativ Linc - Smart Contract Management for Your Business
+      This is an automated email, please do not reply.
+    `;
+    
+    let info;
+    
+    // Try to use SendGrid first
+    if (process.env.SENDGRID_API_KEY) {
+      try {
+        // Use a verified sender email from SendGrid account
+        const verifiedSender = process.env.SENDGRID_VERIFIED_SENDER || 'support@creativlinc.replit.app';
+        
+        console.log(`Using SendGrid to send invitation email from ${verifiedSender} to ${invite.email}`);
+        
+        await sgMail.send({
+          to: invite.email,
+          from: verifiedSender,
+          subject: `Invitation to join a project as a ${workerType === 'freelancer' ? 'freelancer' : 'sub contractor'}`,
+          text: textContent,
+          html: htmlContent
+        });
+        
+        console.log(`Invitation email sent via SendGrid to ${invite.email}`);
+        return { success: true, provider: 'sendgrid' };
+      } catch (sendGridError) {
+        console.error('SendGrid error, falling back to Nodemailer:', sendGridError);
+      }
+    }
+    
+    // Fall back to Nodemailer if SendGrid fails or isn't configured
+    if (!transporter) {
+      // Create a test account if needed
+      await nodemailer.createTestAccount().then(testAccount => {
+        transporter = nodemailer.createTransport({
+          host: 'smtp.ethereal.email',
+          port: 587,
+          secure: false,
+          auth: {
+            user: testAccount.user,
+            pass: testAccount.pass
+          }
+        });
+        
+        console.log('Created test email account for invitation:', {
+          user: testAccount.user,
+          pass: testAccount.pass,
+          preview: 'https://ethereal.email'
+        });
+      });
+    }
+    
+    // Create the email options
     const mailOptions = {
       from: process.env.SMTP_FROM || '"Creativ Linc" <noreply@creativlinc.com>',
       to: invite.email,
       subject: `Invitation to join a project as a ${workerType === 'freelancer' ? 'freelancer' : 'sub contractor'}`,
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee;">
-          <div style="text-align: center; margin-bottom: 20px;">
-            <img src="${appUrl}/logo.png" alt="Creativ Linc Logo" style="max-width: 150px;" />
-          </div>
-          
-          <h2 style="color: #000; margin-bottom: 20px;">You've Been Invited to a Project</h2>
-          
-          <p>Hello,</p>
-          
-          <p>You've been invited to join <strong>${invite.projectName}</strong> as a ${workerType === 'freelancer' ? 'freelancer' : 'sub contractor'}.</p>
-          
-          ${invite.message ? `<p><strong>Message:</strong> "${invite.message}"</p>` : ''}
-          
-          <p>Project details:</p>
-          <ul>
-            <li><strong>Project:</strong> ${invite.projectName}</li>
-            <li><strong>Payment Amount:</strong> $${invite.paymentAmount || 'To be discussed'}</li>
-          </ul>
-          
-          <div style="margin: 30px 0; text-align: center;">
-            <a href="${signupUrl}" style="background-color: #000; color: #fff; padding: 12px 25px; text-decoration: none; border-radius: 4px; display: inline-block;">Accept Invitation</a>
-          </div>
-          
-          <p style="color: #666; font-size: 14px;">This invitation will expire on ${invite.expiresAt ? new Date(invite.expiresAt).toLocaleDateString() : 'N/A'}.</p>
-          
-          <p>If you have any questions, please contact the project administrator.</p>
-          
-          <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;" />
-          
-          <p style="color: #999; font-size: 12px; text-align: center;">
-            Creativ Linc - Smart Contract Management for Your Business<br />
-            This is an automated email, please do not reply.
-          </p>
-        </div>
-      `
+      text: textContent,
+      html: htmlContent
     };
     
-    // Send the email
-    const info = await transporter.sendMail(mailOptions);
+    // Send with Nodemailer
+    info = await transporter.sendMail(mailOptions);
     
     // Log the result
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('Invitation email sent: %s', info.messageId);
-      // Preview URL only available when sending through Ethereal
-      if (info.messageId && info.messageId.includes('ethereal')) {
-        console.log('Preview URL: %s', nodemailer.getTestMessageUrl(info));
-      }
+    console.log('Invitation email sent via Nodemailer: %s', info.messageId);
+    // Preview URL only available when sending through Ethereal
+    if (info.messageId && info.messageId.includes('ethereal')) {
+      console.log('Preview URL: %s', nodemailer.getTestMessageUrl(info));
     }
     
-    return info;
+    return { success: true, provider: 'nodemailer', info };
   } catch (error) {
     console.error('Error sending invitation email:', error);
     throw error;
@@ -221,7 +298,9 @@ export async function sendEmail(options: EmailOptions): Promise<any> {
   if (!transporter && !process.env.SENDGRID_API_KEY) {
     console.warn('Email service not initialized. Initializing now...');
     initializeEmailService();
-    return;
+    
+    // Wait a moment for initialization
+    await new Promise(resolve => setTimeout(resolve, 1000));
   }
   
   try {

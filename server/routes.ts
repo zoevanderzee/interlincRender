@@ -201,7 +201,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Send invitation email
       try {
-        const { sendInvitationEmail } = await import('./services/email');
+        const { sendInvitationEmail, initializeEmailService } = await import('./services/email');
+        
+        // Make sure email service is initialized
+        initializeEmailService();
+        
         // Get application URL, handling both Replit and local environments
         let appUrl = `${req.protocol}://${req.get('host')}`;
         
@@ -212,11 +216,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         console.log(`Generated invite URL using appUrl: ${appUrl}`);
-        await sendInvitationEmail(newInvite, appUrl);
-        console.log(`Invitation email sent to ${newInvite.email}`);
+        
+        // Send the invitation email with more detailed logging
+        console.log(`Attempting to send invitation email to ${newInvite.email} for project '${newInvite.projectName}'`);
+        const emailResult = await sendInvitationEmail(newInvite, appUrl);
+        
+        console.log(`Invitation email sent successfully to ${newInvite.email}:`, 
+          emailResult.provider === 'sendgrid' 
+            ? 'via SendGrid' 
+            : `via Nodemailer, message ID: ${emailResult.info?.messageId || 'unknown'}`);
       } catch (emailError) {
         console.error('Failed to send invitation email:', emailError);
+        console.error('Error details:', emailError instanceof Error ? emailError.message : 'Unknown error');
         // Continue with the response even if email fails
+        // In production, you might want to queue these for retry
       }
       
       res.status(201).json(newInvite);
