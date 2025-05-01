@@ -276,19 +276,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create a work request with this token
       const workRequest = {
-        inviteId: invite.id,
+        title: `Invitation to project: ${invite.projectName}`,
+        description: invite.contractDetails || `You have been invited to work on ${invite.projectName}`,
         businessId: invite.businessId,
-        projectId: invite.projectId,
-        token: token,
         recipientEmail: invite.email,
         status: "pending",
-        message: invite.message,
-        contractDetails: invite.contractDetails,
+        budgetMin: invite.paymentAmount ? parseFloat(invite.paymentAmount) : null,
+        budgetMax: invite.paymentAmount ? parseFloat(invite.paymentAmount) : null,
         expiresAt: invite.expiresAt,
-        paymentAmount: invite.paymentAmount
+        skills: ""
       };
       
-      const newWorkRequest = await storage.createWorkRequest(workRequest);
+      // Create the work request with the token hash
+      const newWorkRequest = await storage.createWorkRequest(workRequest, token);
       
       console.log(`[Invite Link] Generated link for invite ID ${invite.id} with token ${token}`);
       
