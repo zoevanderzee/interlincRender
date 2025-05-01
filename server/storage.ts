@@ -1,5 +1,6 @@
 import { 
   users, invites, contracts, milestones, payments, documents, bankAccounts, workRequests,
+  businessOnboardingLinks, businessOnboardingUsage,
   type User, type InsertUser, 
   type Invite, type InsertInvite,
   type Contract, type InsertContract,
@@ -7,7 +8,9 @@ import {
   type Payment, type InsertPayment,
   type Document, type InsertDocument,
   type BankAccount, type InsertBankAccount,
-  type WorkRequest, type InsertWorkRequest
+  type WorkRequest, type InsertWorkRequest,
+  type BusinessOnboardingLink, type InsertBusinessOnboardingLink,
+  type BusinessOnboardingUsage, type InsertBusinessOnboardingUsage
 } from "@shared/schema";
 import { eq, and, desc, lte, gte, sql, or } from "drizzle-orm";
 import { db, pool } from "./db";
@@ -1476,6 +1479,111 @@ export class DatabaseStorage implements IStorage {
       .returning();
 
     return updatedWorkRequest;
+  }
+  
+  // Business Onboarding Links methods
+  async createBusinessOnboardingLink(businessId: number, workerType: string): Promise<BusinessOnboardingLink> {
+    // Generate a random token
+    const crypto = require('crypto');
+    const token = crypto.randomBytes(16).toString('hex');
+
+    // Check if a link already exists for this business
+    const existingLink = await this.getBusinessOnboardingLink(businessId);
+    
+    if (existingLink) {
+      // Update the existing link with a new token
+      const [updatedLink] = await db
+        .update(businessOnboardingLinks)
+        .set({
+          token,
+          workerType,
+          updatedAt: new Date(),
+          active: true
+        })
+        .where(eq(businessOnboardingLinks.businessId, businessId))
+        .returning();
+      
+      return updatedLink;
+    } else {
+      // Create a new link
+      const [newLink] = await db
+        .insert(businessOnboardingLinks)
+        .values({
+          businessId,
+          token,
+          workerType,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          active: true
+        })
+        .returning();
+      
+      return newLink;
+    }
+  }
+  
+  async getBusinessOnboardingLink(businessId: number): Promise<BusinessOnboardingLink | undefined> {
+    const [link] = await db
+      .select()
+      .from(businessOnboardingLinks)
+      .where(and(
+        eq(businessOnboardingLinks.businessId, businessId),
+        eq(businessOnboardingLinks.active, true)
+      ));
+    
+    return link;
+  }
+  
+  async updateBusinessOnboardingLink(businessId: number, data: Partial<InsertBusinessOnboardingLink>): Promise<BusinessOnboardingLink> {
+    const existingLink = await this.getBusinessOnboardingLink(businessId);
+    
+    if (existingLink) {
+      // Update existing link
+      const [updatedLink] = await db
+        .update(businessOnboardingLinks)
+        .set({
+          ...data,
+          updatedAt: new Date()
+        })
+        .where(eq(businessOnboardingLinks.businessId, businessId))
+        .returning();
+      
+      return updatedLink;
+    } else {
+      // Create a new link if one doesn't exist
+      return this.createBusinessOnboardingLink(businessId, data.workerType || "contractor");
+    }
+  }
+  
+  async verifyOnboardingToken(token: string): Promise<{businessId: number, workerType: string} | undefined> {
+    const [link] = await db
+      .select()
+      .from(businessOnboardingLinks)
+      .where(and(
+        eq(businessOnboardingLinks.token, token),
+        eq(businessOnboardingLinks.active, true)
+      ));
+    
+    if (!link) return undefined;
+    
+    return {
+      businessId: link.businessId,
+      workerType: link.workerType
+    };
+  }
+  
+  async recordOnboardingUsage(businessId: number, workerId: number, token: string): Promise<BusinessOnboardingUsage> {
+    const [usage] = await db
+      .insert(businessOnboardingUsage)
+      .values({
+        businessId,
+        workerId,
+        token,
+        registeredAt: new Date()
+      })
+      .returning();
+    
+    return usage;
   }
 }
 
