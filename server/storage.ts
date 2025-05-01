@@ -46,6 +46,7 @@ export interface IStorage {
   getPendingInvites(): Promise<Invite[]>;
   createInvite(invite: InsertInvite): Promise<Invite>;
   updateInvite(id: number, invite: Partial<InsertInvite>): Promise<Invite | undefined>;
+  updateInviteToken(id: number, token: string): Promise<Invite | undefined>;
   
   // Business Onboarding Links
   createBusinessOnboardingLink(businessId: number, workerType: string): Promise<BusinessOnboardingLink>;
@@ -357,6 +358,18 @@ export class MemStorage implements IStorage {
     if (!existingInvite) return undefined;
     
     const updatedInvite = { ...existingInvite, ...inviteData };
+    this.invites.set(id, updatedInvite);
+    return updatedInvite;
+  }
+  
+  async updateInviteToken(id: number, token: string): Promise<Invite | undefined> {
+    const existingInvite = this.invites.get(id);
+    if (!existingInvite) return undefined;
+    
+    const updatedInvite = { 
+      ...existingInvite, 
+      token: token 
+    };
     this.invites.set(id, updatedInvite);
     return updatedInvite;
   }

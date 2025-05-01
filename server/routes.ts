@@ -273,28 +273,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate a token for this invite
       const token = nodeCrypto.randomBytes(32).toString('hex');
       
-      // Create a work request with this token
-      const workRequest = {
-        title: `Invitation to project: ${invite.projectName}`,
-        description: invite.contractDetails || `You have been invited to work on ${invite.projectName}`,
-        businessId: invite.businessId,
-        recipientEmail: invite.email,
-        status: "pending",
-        budgetMin: invite.paymentAmount || null,
-        budgetMax: invite.paymentAmount || null,
-        expiresAt: invite.expiresAt,
-        skills: "",
-        attachmentUrls: [] // Add empty attachmentUrls array
-      };
+      // Get the app URL
+      const appUrl = `${req.protocol}://${req.get('host')}`;
       
-      // Create the work request with the token hash
-      const newWorkRequest = await storage.createWorkRequest(workRequest, token);
+      // Create a simplified direct link format that matches the business invite format
+      const inviteUrl = `${appUrl}/auth?invite=${id}&email=${encodeURIComponent(invite.email)}&token=${token}&workerType=${invite.workerType || 'contractor'}&projectName=${encodeURIComponent(invite.projectName || '')}`;
+      
+      // Store the token in the database
+      await storage.updateInviteToken(id, token);
       
       console.log(`[Invite Link] Generated link for invite ID ${invite.id} with token ${token}`);
       
       res.status(201).json({
         inviteId: invite.id,
         token: token,
+        inviteUrl,
         success: true
       });
     } catch (error) {
