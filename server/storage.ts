@@ -55,6 +55,7 @@ export interface IStorage {
   // Milestones
   getMilestone(id: number): Promise<Milestone | undefined>;
   getMilestonesByContractId(contractId: number): Promise<Milestone[]>;
+  getAllMilestones(): Promise<Milestone[]>;
   getUpcomingMilestones(limit: number): Promise<Milestone[]>;
   createMilestone(milestone: InsertMilestone): Promise<Milestone>;
   updateMilestone(id: number, milestone: Partial<InsertMilestone>): Promise<Milestone | undefined>;
@@ -393,6 +394,10 @@ export class MemStorage implements IStorage {
     return Array.from(this.milestones.values()).filter(
       (milestone) => milestone.contractId === contractId
     );
+  }
+  
+  async getAllMilestones(): Promise<Milestone[]> {
+    return Array.from(this.milestones.values());
   }
   
   async getUpcomingMilestones(limit: number): Promise<Milestone[]> {
@@ -1105,6 +1110,10 @@ export class DatabaseStorage implements IStorage {
   
   async getMilestonesByContractId(contractId: number): Promise<Milestone[]> {
     return await db.select().from(milestones).where(eq(milestones.contractId, contractId));
+  }
+  
+  async getAllMilestones(): Promise<Milestone[]> {
+    return await db.select().from(milestones);
   }
   
   async getUpcomingMilestones(limit: number): Promise<Milestone[]> {

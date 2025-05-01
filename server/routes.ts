@@ -1040,8 +1040,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         contracts = await storage.getAllContracts();
       }
       
-      // Get all payments
-      const payments = await storage.getAllPayments();
+      // Get all payments - passing null to get all payments regardless of contract
+      const payments = await storage.getAllPayments(null);
       
       // Get all milestones
       const milestones = await storage.getAllMilestones();
@@ -1080,7 +1080,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Sum payments by month
       payments.forEach(payment => {
-        const paymentDate = new Date(payment.createdAt || new Date());
+        // Use scheduledDate since createdAt might not exist on payment object
+        const paymentDate = new Date(payment.scheduledDate || new Date());
         if (paymentDate.getFullYear() === currentYear) {
           const monthIndex = paymentDate.getMonth();
           paymentsByMonth[monthIndex].value += parseFloat(payment.amount?.toString() || '0');
