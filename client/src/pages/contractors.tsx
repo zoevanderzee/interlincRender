@@ -257,6 +257,51 @@ const Contractors = () => {
       day: "numeric"
     });
   };
+  
+  // Function to directly generate onboarding link
+  const generateOnboardingLink = async () => {
+    try {
+      // Create a basic invite with minimal information
+      const invite: Partial<Invite> = {
+        email: `onboarding-${Date.now()}@invitation.local`,
+        workerType: "contractor", // Default to contractor, user can change later
+        businessId: 1, // Use the current business ID
+        status: "pending",
+        message: "You have been invited to join our platform as a worker. Please sign up to connect with our team.",
+        // Set expiration date to 30 days from now
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        projectName: "Onboarding"
+      };
+      
+      // Create the invite
+      const response = await apiRequest("POST", "/api/invites", invite);
+      const data = await response.json();
+      
+      // Generate the link immediately
+      const linkResponse = await apiRequest("POST", `/api/invites/${data.id}/generate-link`, {});
+      const linkData = await linkResponse.json();
+      
+      // Create the direct onboarding link
+      const baseUrl = window.location.origin;
+      const directLinkUrl = `${baseUrl}/work-request-respond?token=${linkData.token}`;
+      
+      // Set the link in the state
+      setDirectLink(directLinkUrl);
+      setInviteData({ id: data.inviteId, token: linkData.token });
+      
+      // Show the link dialog
+      setIsLinkDialogOpen(true);
+      
+      // Refresh invites list
+      queryClient.invalidateQueries({ queryKey: ['/api/invites'] });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Could not generate onboarding link. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Handle dialog close
   const handleDialogClose = () => {
@@ -293,9 +338,9 @@ const Contractors = () => {
       <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
         <DialogContent className="sm:max-w-[550px]">
           <DialogHeader>
-            <DialogTitle>Invitation Link Generated</DialogTitle>
+            <DialogTitle>Worker Onboarding Link</DialogTitle>
             <DialogDescription>
-              Share this link directly with the freelancer or contractor. They can use it to create an account and join your project.
+              Share this unique onboarding link with freelancers or contractors to invite them to your company's database. Once they register, you'll be able to assign them to projects.
             </DialogDescription>
           </DialogHeader>
           <div className="mt-4 space-y-4">
@@ -363,13 +408,13 @@ const Contractors = () => {
           <p className="text-primary-500 mt-1">Manage your contractors, freelancers, and project collaborators</p>
         </div>
         <div className="mt-4 md:mt-0">
+          <Button onClick={() => generateOnboardingLink()}>
+            <Plus size={16} className="mr-2" />
+            Invite
+          </Button>
+          
+          {/* Keep the dialog hidden but available for the legacy invitation flow */}
           <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={() => form.reset()}>
-                <Plus size={16} className="mr-2" />
-                Invite
-              </Button>
-            </DialogTrigger>
             <DialogContent className="sm:max-w-[550px]">
               <DialogHeader>
                 <DialogTitle>Invite to Project</DialogTitle>
