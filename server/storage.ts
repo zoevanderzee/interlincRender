@@ -1430,13 +1430,17 @@ export class DatabaseStorage implements IStorage {
     // Calculate expiration date if not provided (14 days from now by default)
     const expiresAt = insertWorkRequest.expiresAt || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
     
+    // Handle potentially missing recipient email
+    const recipientEmail = insertWorkRequest.recipientEmail ? 
+      insertWorkRequest.recipientEmail.toLowerCase() : null;
+    
     const [workRequest] = await db
       .insert(workRequests)
       .values({
         ...insertWorkRequest,
         tokenHash,
         expiresAt,
-        recipientEmail: insertWorkRequest.recipientEmail.toLowerCase(),
+        recipientEmail,
         status: insertWorkRequest.status || 'pending',
         contractId: null
       })
