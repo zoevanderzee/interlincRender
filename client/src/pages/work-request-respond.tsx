@@ -171,7 +171,7 @@ export default function WorkRequestRespond() {
   };
   
   // Display loading state
-  if (isLoading) {
+  if (isLoading || isAuthLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 px-4 py-8">
         <Card className="w-full max-w-md">
@@ -271,6 +271,55 @@ export default function WorkRequestRespond() {
     );
   }
   
+  // Check if user is not logged in (need registration/login)
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 px-4 py-8">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle>Registration Required</CardTitle>
+            <CardDescription>
+              You need to register or log in to accept this work request
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700">
+              <h3 className="font-semibold text-lg mb-2">{data.title}</h3>
+              <p className="text-sm text-zinc-400 mb-4">
+                {data.description.length > 150 
+                  ? `${data.description.substring(0, 150)}...` 
+                  : data.description}
+              </p>
+              <div className="flex items-center text-sm text-zinc-500">
+                <Calendar className="h-4 w-4 mr-1" />
+                <span>
+                  {data.dueDate 
+                    ? `Due: ${format(new Date(data.dueDate), 'MMM d, yyyy')}` 
+                    : 'No due date specified'}
+                </span>
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-center gap-2 bg-blue-900/20 border border-blue-800 p-4 rounded-md">
+              <UserPlus className="h-5 w-5 text-blue-400" />
+              <p className="text-blue-300">
+                Create an account to start working with this client
+              </p>
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button
+              onClick={handleRegisterRedirect}
+              className="w-full"
+            >
+              Register or Log In
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
+
   // Display work request details and response options
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 px-4 py-8">
