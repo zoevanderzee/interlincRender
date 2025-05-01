@@ -5,16 +5,18 @@ import { apiRequest, queryClient } from '@/lib/queryClient';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, CheckCircle, XCircle, AlertTriangle, Calendar, DollarSign, Tag } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, AlertTriangle, Calendar, DollarSign, Tag, UserPlus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { WorkRequest } from '@shared/schema';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function WorkRequestRespond() {
   const [location, setLocation] = useLocation();
   const { toast } = useToast();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const [params] = useRoute('/work-requests/respond');
   const searchParams = new URLSearchParams(window.location.search);
   const token = searchParams.get('token');
@@ -155,6 +157,17 @@ export default function WorkRequestRespond() {
   // Handle decline confirmation
   const handleDeclineConfirm = () => {
     declineMutation.mutate();
+  };
+  
+  // Handle registration redirect
+  const handleRegisterRedirect = () => {
+    if (data && data.recipientEmail) {
+      // Redirect to registration page with the email and business ID
+      setLocation(`/auth?invite=${data.id}&email=${encodeURIComponent(data.recipientEmail)}`);
+    } else {
+      // Fallback if no email is available
+      setLocation('/auth');
+    }
   };
   
   // Display loading state

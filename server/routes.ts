@@ -1996,7 +1996,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Hash the token for lookup
-      const tokenHash = createHash('sha256').update(token).digest('hex');
+      const tokenHash = nodeCrypto.createHash('sha256').update(token).digest('hex');
       
       // Find the work request by token hash
       const workRequest = await storage.getWorkRequestByToken(tokenHash);
