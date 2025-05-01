@@ -141,7 +141,13 @@ export const workRequests = pgTable("work_requests", {
 
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
-export const insertInviteSchema = createInsertSchema(invites).omit({ id: true, createdAt: true });
+const baseInviteSchema = createInsertSchema(invites).omit({ id: true, createdAt: true });
+export const insertInviteSchema = baseInviteSchema.extend({
+  // Make expiresAt transform string dates
+  expiresAt: z.string().optional().transform(val => val ? new Date(val) : undefined),
+  // Ensure workerType is always provided with a default
+  workerType: z.string().default("contractor")
+});
 
 // Make contractorId optional in the insert schema and properly handle date strings
 const baseContractSchema = createInsertSchema(contracts).omit({ id: true, createdAt: true });

@@ -332,11 +332,11 @@ export default function WorkRequestRespond() {
           </div>
           
           {/* Attachments if any */}
-          {data.attachmentUrls && data.attachmentUrls.length > 0 && (
+          {data.attachmentUrls && Array.isArray(data.attachmentUrls) && data.attachmentUrls.length > 0 && (
             <div className="space-y-2">
               <h3 className="font-semibold text-lg">Attachments</h3>
               <div className="grid grid-cols-1 gap-2">
-                {data.attachmentUrls.map((url, index) => (
+                {data.attachmentUrls.map((url: string, index: number) => (
                   <a 
                     key={index}
                     href={url}

@@ -177,8 +177,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post(`${apiRouter}/invites`, async (req: Request, res: Response) => {
     try {
+      console.log("[Invite Creation] Request body:", JSON.stringify(req.body));
+      
+      // Extend invitation expiry if not provided
+      if (!req.body.expiresAt) {
+        // Set expiry date to 7 days from now
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 7);
+        req.body.expiresAt = expiresAt.toISOString();
+      }
+      
+      // Ensure workerType is set if not provided
+      if (!req.body.workerType) {
+        req.body.workerType = "contractor"; // Default to contractor if not specified
+      }
+      
+      console.log("[Invite Creation] Processed request body:", JSON.stringify(req.body));
       const inviteInput = insertInviteSchema.parse(req.body);
+      console.log("[Invite Creation] Validated input:", JSON.stringify(inviteInput));
+      
       const newInvite = await storage.createInvite(inviteInput);
+      console.log("[Invite Creation] Invite created:", JSON.stringify(newInvite));
       
       // Send invitation email
       try {
@@ -203,9 +222,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(newInvite);
     } catch (error) {
       if (error instanceof z.ZodError) {
+        console.error("[Invite Creation] Validation error:", JSON.stringify(error.errors));
         return res.status(400).json({ message: "Invalid invite data", errors: error.errors });
       }
-      console.error('Error creating invite:', error);
+      console.error('[Invite Creation] Error:', error);
       res.status(500).json({ message: "Error creating invite" });
     }
   });
