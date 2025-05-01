@@ -155,19 +155,43 @@ export async function sendInvitationEmail(invite: Invite, appUrl: string = 'http
         const verifiedSender = process.env.SENDGRID_VERIFIED_SENDER || 'support@creativlinc.replit.app';
         
         console.log(`Using SendGrid to send invitation email from ${verifiedSender} to ${invite.email}`);
+        console.log(`SendGrid API Key present and starts with: ${process.env.SENDGRID_API_KEY.substring(0, 7)}...`);
         
-        await sgMail.send({
+        // Create the email data
+        const emailData = {
           to: invite.email,
           from: verifiedSender,
           subject: `Invitation to join a project as a ${workerType === 'freelancer' ? 'freelancer' : 'sub contractor'}`,
           text: textContent,
           html: htmlContent
+        };
+
+        // Log basic email data for debugging (omitting content)
+        console.log('Email data for SendGrid:', {
+          to: emailData.to,
+          from: emailData.from,
+          subject: emailData.subject,
+          textLength: textContent.length,
+          htmlLength: htmlContent.length
         });
         
-        console.log(`Invitation email sent via SendGrid to ${invite.email}`);
+        // Send the email
+        const result = await sgMail.send(emailData);
+        
+        console.log(`Invitation email sent via SendGrid to ${invite.email} - Response:`, result);
         return { success: true, provider: 'sendgrid' };
-      } catch (sendGridError) {
+      } catch (sendGridError: any) {
         console.error('SendGrid error, falling back to Nodemailer:', sendGridError);
+        
+        // Extract more detailed error information from SendGrid response
+        if (sendGridError.response && sendGridError.response.body) {
+          console.error('SendGrid detailed error:', JSON.stringify(sendGridError.response.body));
+        }
+        
+        // If the error is related to the sender verification, log a specific message
+        if (sendGridError.message && sendGridError.message.includes('Sender Identity')) {
+          console.error('IMPORTANT: The sender email is not verified in SendGrid. Please verify it in your SendGrid account.');
+        }
       }
     }
     

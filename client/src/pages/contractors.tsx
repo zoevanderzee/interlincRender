@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -29,12 +29,18 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { User, Invite, insertInviteSchema } from "@shared/schema";
-import { Search, Plus, Mail, Send, FileText, UserCheck, ArrowRight, User as UserIcon, Building, Briefcase, Loader2, Clock, CheckCircle2, XCircle, CreditCard, ExternalLink } from "lucide-react";
+import { Search, Plus, Mail, Send, FileText, UserCheck, ArrowRight, User as UserIcon, Building, Briefcase, Loader2, Clock, CheckCircle2, XCircle, CreditCard, ExternalLink, Copy, Link2, Share } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useMutation } from "@tanstack/react-query";
 
@@ -118,34 +124,40 @@ const Contractors = () => {
     },
   });
 
+  // State for direct link dialog
+  const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
+  const [directLink, setDirectLink] = useState("");
+  const linkInputRef = useRef<HTMLInputElement>(null);
+  const [inviteData, setInviteData] = useState<{ id: number, token: string } | null>(null);
+  
   // Create invite mutation
   const createInviteMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof formSchema>) => {
+    mutationFn: async (formData: z.infer<typeof formSchema>) => {
       // Create a more detailed contract object if provided
-      let contractDetailsString = data.contractDetails;
-      if (data.contractDetails) {
+      let contractDetailsString = formData.contractDetails;
+      if (formData.contractDetails) {
         try {
           // Try to parse as JSON if it's a valid JSON string
-          JSON.parse(data.contractDetails);
+          JSON.parse(formData.contractDetails);
         } catch (e) {
           // If not valid JSON, create a simple JSON object
           contractDetailsString = JSON.stringify({
-            description: data.contractDetails
+            description: formData.contractDetails
           });
         }
       }
       
       // Create the invite
       const invite: any = {
-        email: data.email,
-        projectName: data.projectName,
-        projectId: data.projectId,
-        workerType: data.workerType,
-        businessId: data.businessId,
+        email: formData.email,
+        projectName: formData.projectName,
+        projectId: formData.projectId,
+        workerType: formData.workerType,
+        businessId: formData.businessId,
         status: "pending",
-        message: data.message,
+        message: formData.message,
         contractDetails: contractDetailsString,
-        paymentAmount: data.paymentAmount
+        paymentAmount: formData.paymentAmount
       };
       
       // Set expiration date to 7 days from now
@@ -153,14 +165,16 @@ const Contractors = () => {
       expirationDate.setDate(expirationDate.getDate() + 7);
       invite.expiresAt = expirationDate;
       
-      return apiRequest("POST", "/api/invites", invite);
+      const response = await apiRequest("POST", "/api/invites", invite);
+      const responseData = await response.json();
+      return responseData;
     },
-    onSuccess: () => {
-      toast({
-        title: "Invitation sent",
-        description: "The contractor has been invited to join the project.",
-      });
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/invites'] });
+      
+      // Generate a direct link for the invitation
+      generateDirectLinkMutation.mutate({ inviteId: data.id });
+      
       setIsInviteDialogOpen(false);
       form.reset({
         email: "",
@@ -184,6 +198,47 @@ const Contractors = () => {
       });
     },
   });
+  
+  // Generate a direct link for an invitation
+  const generateDirectLinkMutation = useMutation({
+    mutationFn: async ({ inviteId }: { inviteId: number }) => {
+      const response = await apiRequest("POST", `/api/invites/${inviteId}/generate-link`, {});
+      return response.json();
+    },
+    onSuccess: (data) => {
+      // Create the direct link
+      const baseUrl = window.location.origin;
+      const directLinkUrl = `${baseUrl}/work-request-respond?token=${data.token}`;
+      
+      setDirectLink(directLinkUrl);
+      setInviteData({ id: data.inviteId, token: data.token });
+      setIsLinkDialogOpen(true);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Could not generate direct link. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Function to copy a link to clipboard
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      toast({
+        title: "Link copied",
+        description: "The invitation link has been copied to clipboard.",
+      });
+    }).catch(err => {
+      toast({
+        title: "Copy failed",
+        description: "Failed to copy link to clipboard. Please try again.",
+        variant: "destructive",
+      });
+      console.error('Failed to copy: ', err);
+    });
+  };
 
   // Submit handler
   const onSubmit = (data: z.infer<typeof formSchema>) => {
@@ -235,6 +290,73 @@ const Contractors = () => {
 
   return (
     <>
+      {/* Direct Link Dialog */}
+      <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
+        <DialogContent className="sm:max-w-[550px]">
+          <DialogHeader>
+            <DialogTitle>Invitation Link Generated</DialogTitle>
+            <DialogDescription>
+              Share this link directly with the freelancer or contractor. They can use it to create an account and join your project.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 space-y-4">
+            <div className="relative">
+              <Input
+                ref={linkInputRef}
+                value={directLink}
+                readOnly
+                className="pr-20"
+              />
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="absolute right-1 top-1"
+                      onClick={() => copyToClipboard(directLink)}
+                    >
+                      <Copy size={14} />
+                      <span className="ml-1">Copy</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Copy to clipboard</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            <div className="bg-primary-50 p-4 rounded-md border border-primary-100">
+              <h3 className="text-sm font-medium flex items-center">
+                <Share size={16} className="mr-2" />
+                How to share this link
+              </h3>
+              <p className="text-sm mt-1 text-primary-700">
+                Send this link to your freelancer or contractor via any messaging platform (email, Slack, text message, etc.). When they click the link, they'll be able to sign up and join your project.
+              </p>
+            </div>
+            <div className="bg-amber-50 p-4 rounded-md border border-amber-100">
+              <h3 className="text-sm font-medium flex items-center text-amber-800">
+                <Clock size={16} className="mr-2" />
+                Important
+              </h3>
+              <p className="text-sm mt-1 text-amber-700">
+                This invitation link will expire in 7 days. Make sure your contact uses it before then.
+              </p>
+            </div>
+          </div>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setIsLinkDialogOpen(false)}>
+              Close
+            </Button>
+            <Button onClick={() => window.open(directLink, '_blank')}>
+              <ExternalLink size={14} className="mr-2" />
+              Open Link
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <div>
@@ -253,7 +375,7 @@ const Contractors = () => {
               <DialogHeader>
                 <DialogTitle>Invite to Project</DialogTitle>
                 <DialogDescription>
-                  Send an invitation to a contractor or freelancer to join your project. They'll receive an email with instructions to create an account.
+                  Create an invitation for a contractor or freelancer to join your project. You'll get a direct link to share with them.
                 </DialogDescription>
               </DialogHeader>
               <Form {...form}>
@@ -268,7 +390,7 @@ const Contractors = () => {
                           <Input type="email" placeholder="worker@example.com" {...field} />
                         </FormControl>
                         <FormDescription>
-                          We'll send an invitation to this email address
+                          We'll associate this email with the invitation (invitation link will be shared by you)
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -436,7 +558,7 @@ const Contractors = () => {
                       {createInviteMutation.isPending && (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       )}
-                      Send Invitation
+                      Generate Invitation Link
                     </Button>
                   </DialogFooter>
                 </form>

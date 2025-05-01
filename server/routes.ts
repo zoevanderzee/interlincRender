@@ -260,6 +260,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Generate a direct invitation link
+  app.post(`${apiRouter}/invites/:id/generate-link`, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const invite = await storage.getInvite(id);
+      
+      if (!invite) {
+        return res.status(404).json({ message: "Invite not found" });
+      }
+      
+      // Generate a token for this invite
+      const crypto = require('crypto');
+      const token = crypto.randomBytes(32).toString('hex');
+      
+      // Create a work request with this token
+      const workRequest = {
+        inviteId: invite.id,
+        businessId: invite.businessId,
+        projectId: invite.projectId,
+        token: token,
+        recipientEmail: invite.email,
+        status: "pending",
+        message: invite.message,
+        contractDetails: invite.contractDetails,
+        expiresAt: invite.expiresAt,
+        paymentAmount: invite.paymentAmount
+      };
+      
+      const newWorkRequest = await storage.createWorkRequest(workRequest);
+      
+      console.log(`[Invite Link] Generated link for invite ID ${invite.id} with token ${token}`);
+      
+      res.status(201).json({
+        inviteId: invite.id,
+        token: token,
+        success: true
+      });
+    } catch (error) {
+      console.error("Error generating invitation link:", error);
+      res.status(500).json({ message: "Error generating invitation link" });
+    }
+  });
+  
   // Contract routes
   app.get(`${apiRouter}/contracts`, async (req: Request, res: Response) => {
     try {
