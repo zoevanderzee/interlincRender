@@ -1027,25 +1027,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get(`${apiRouter}/reports`, async (req: Request, res: Response) => {
     try {
       const timeRange = req.query.timeRange as string || 'year';
+      const userId = req.user?.id;
+      const userRole = req.user?.role || 'business';
       
-      // For development, return zero values to ensure no test data appears in the UI
-      // Calculate stats based on time range
+      // Get all contracts for the current user
+      let contracts = [];
+      if (userId && userRole === 'business') {
+        contracts = await storage.getContractsByBusinessId(userId);
+      } else if (userId && userRole === 'contractor') {
+        contracts = await storage.getContractsByContractorId(userId);
+      } else {
+        contracts = await storage.getAllContracts();
+      }
+      
+      // Get all payments
+      const payments = await storage.getAllPayments();
+      
+      // Get all milestones
+      const milestones = await storage.getAllMilestones();
+      
+      // Get all users with contractor role
+      const contractors = await storage.getUsersByRole('contractor');
+      
+      // Calculate contract status counts
+      const activeContracts = contracts.filter(contract => contract.status === 'active');
+      const completedContracts = contracts.filter(contract => contract.status === 'completed');
+      const pendingContracts = contracts.filter(contract => 
+        contract.status === 'pending_approval' || contract.status === 'pending');
+      
+      // Calculate average contract value
+      const totalContractValue = contracts.reduce((total, contract) => 
+        total + parseFloat(contract.value?.toString() || '0'), 0);
+      const avgContractValue = contracts.length > 0 ? totalContractValue / contracts.length : 0;
+      
+      // Calculate completion rate
+      const completionRate = contracts.length > 0 
+        ? (completedContracts.length / contracts.length) * 100 
+        : 0;
+      
+      // Group payments by month
+      const paymentsByMonth = [];
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const currentYear = new Date().getFullYear();
+      
+      // Initialize months with zero values
+      months.forEach((month, index) => {
+        paymentsByMonth.push({
+          month,
+          value: 0
+        });
+      });
+      
+      // Sum payments by month
+      payments.forEach(payment => {
+        const paymentDate = new Date(payment.createdAt || new Date());
+        if (paymentDate.getFullYear() === currentYear) {
+          const monthIndex = paymentDate.getMonth();
+          paymentsByMonth[monthIndex].value += parseFloat(payment.amount?.toString() || '0');
+        }
+      });
+      
+      // Get top contractors by payment amount
+      const contractorPayments = new Map();
+      payments.forEach(payment => {
+        const contract = contracts.find(c => c.id === payment.contractId);
+        if (contract && contract.contractorId) {
+          const contractorId = contract.contractorId;
+          const amount = parseFloat(payment.amount?.toString() || '0');
+          
+          if (contractorPayments.has(contractorId)) {
+            contractorPayments.set(contractorId, contractorPayments.get(contractorId) + amount);
+          } else {
+            contractorPayments.set(contractorId, amount);
+          }
+        }
+      });
+      
+      // Convert to array and sort by amount
+      const topContractorsArray = Array.from(contractorPayments.entries())
+        .map(([contractorId, amount]) => {
+          const contractor = contractors.find(c => c.id === contractorId);
+          return {
+            id: contractorId,
+            name: contractor ? `${contractor.firstName} ${contractor.lastName}` : 'Unknown',
+            amount
+          };
+        })
+        .sort((a, b) => b.amount - a.amount)
+        .slice(0, 5);
+      
       const reportsData = {
         summary: {
-          totalContracts: 0,
-          totalContractors: 0,
-          totalPayments: 0,
-          totalMilestones: 0,
-          avgContractValue: 0,
-          completionRate: 0
+          totalContracts: contracts.length,
+          totalContractors: contractors.length,
+          totalPayments: payments.length,
+          totalMilestones: milestones.length,
+          avgContractValue: Math.round(avgContractValue * 100) / 100,
+          completionRate: Math.round(completionRate * 100) / 100
         },
-        paymentsByMonth: [],
+        paymentsByMonth,
         contractsByStatus: [
-          { status: 'active', count: 0 },
-          { status: 'completed', count: 0 },
-          { status: 'pending', count: 0 }
+          { status: 'active', count: activeContracts.length },
+          { status: 'completed', count: completedContracts.length },
+          { status: 'pending', count: pendingContracts.length }
         ],
-        topContractors: []
+        topContractors: topContractorsArray
       };
       
       res.json(reportsData);
