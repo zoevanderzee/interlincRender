@@ -99,7 +99,6 @@ const Contractors = () => {
 
   // Form schema for new invite
   const formSchema = z.object({
-    email: z.string().email("Invalid email address"),
     projectId: z.number().optional(),
     projectName: z.string().min(3, "Project name must be at least 3 characters"),
     workerType: z.enum(["contractor", "freelancer"]),
@@ -113,7 +112,6 @@ const Contractors = () => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      email: "",
       projectId: undefined,
       projectName: "",
       workerType: "contractor",
@@ -149,7 +147,9 @@ const Contractors = () => {
       
       // Create the invite
       const invite: any = {
-        email: formData.email,
+        // Generate a placeholder email for record-keeping. This won't be used for sending emails
+        // as we're using direct link invitation instead
+        email: `invite-${Date.now()}@invitation.local`,
         projectName: formData.projectName,
         projectId: formData.projectId,
         workerType: formData.workerType,
@@ -177,7 +177,6 @@ const Contractors = () => {
       
       setIsInviteDialogOpen(false);
       form.reset({
-        email: "",
         projectId: undefined,
         projectName: "",
         workerType: "contractor",
@@ -193,7 +192,7 @@ const Contractors = () => {
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || "Could not send invitation. Please try again.",
+        description: error.message || "Could not generate invitation. Please try again.",
         variant: "destructive",
       });
     },
@@ -380,22 +379,7 @@ const Contractors = () => {
               </DialogHeader>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email Address</FormLabel>
-                        <FormControl>
-                          <Input type="email" placeholder="worker@example.com" {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          We'll associate this email with the invitation (invitation link will be shared by you)
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {/* Email field removed as per requirements */}
                   <FormField
                     control={form.control}
                     name="projectId"
