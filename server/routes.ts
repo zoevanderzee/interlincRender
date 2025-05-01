@@ -1128,6 +1128,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get(`${apiRouter}/business/verify-token`, async (req: Request, res: Response) => {
+    try {
+      const { token, businessId } = req.query;
+      
+      if (!token || !businessId) {
+        return res.status(400).json({ 
+          valid: false, 
+          message: "Token and businessId are required" 
+        });
+      }
+      
+      // Verify the token is valid
+      const tokenInfo = await storage.verifyOnboardingToken(token as string);
+      
+      if (!tokenInfo || tokenInfo.businessId !== parseInt(businessId as string)) {
+        return res.status(400).json({ 
+          valid: false, 
+          message: "Invalid or expired token" 
+        });
+      }
+      
+      // Get business info to return with verification
+      const business = await storage.getUser(parseInt(businessId as string));
+      
+      res.json({
+        valid: true,
+        businessId: tokenInfo.businessId,
+        workerType: tokenInfo.workerType,
+        businessName: business ? `${business.company || business.firstName + ' ' + business.lastName}` : "Business"
+      });
+    } catch (error) {
+      console.error("Error verifying business token:", error);
+      res.status(500).json({ 
+        valid: false, 
+        message: "Error verifying business token" 
+      });
+    }
+  });
+  
   app.get(`${apiRouter}/business/invite-link`, requireAuth, async (req: Request, res: Response) => {
     try {
       // Only business users can view their invite links
