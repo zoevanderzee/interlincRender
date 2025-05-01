@@ -136,12 +136,22 @@ export function setupAuth(app: Express) {
         return res.status(400).json({ error: "Username already exists" });
       }
 
-      // Check if there's an invite associated with this registration
-      let inviteId = req.body.inviteId ? parseInt(req.body.inviteId) : null;
+      // Check if the email is already registered
+      const existingEmail = await storage.getUserByEmail(req.body.email);
+      if (existingEmail) {
+        return res.status(400).json({ error: "Email already registered" });
+      }
+
+      // Variables to track registration source
       let invite = null;
+      let businessToken = null;
+      let businessInfo = null;
       
-      if (inviteId) {
+      // Check if there's a specific project invite associated with this registration
+      if (req.body.inviteId) {
+        const inviteId = parseInt(req.body.inviteId);
         invite = await storage.getInvite(inviteId);
+        
         if (!invite) {
           return res.status(400).json({ error: "Invalid invitation" });
         }
@@ -161,23 +171,58 @@ export function setupAuth(app: Express) {
           return res.status(400).json({ error: "Invitation has already been used" });
         }
       }
+      
+      // Check if there's a business invite token associated with this registration
+      if (req.body.token) {
+        const tokenInfo = await storage.verifyOnboardingToken(req.body.token);
+        
+        if (!tokenInfo) {
+          return res.status(400).json({ error: "Invalid or expired business invite link" });
+        }
+        
+        businessToken = req.body.token;
+        businessInfo = tokenInfo;
+      }
 
       // Create the user
       const hashedPassword = await hashPassword(req.body.password);
+      
+      // Determine user role and worker type based on registration source
+      let role = 'business'; // Default role
+      let workerType = null; // Default worker type
+      let businessId = null; // For tracking business relationship
+      
+      // Project-specific invitation takes precedence
+      if (invite) {
+        role = 'contractor';
+        workerType = invite.workerType || 'contractor';
+        businessId = invite.businessId;
+      } 
+      // Business invite link
+      else if (businessInfo) {
+        role = 'contractor';
+        workerType = businessInfo.workerType || 'contractor';
+        businessId = businessInfo.businessId;
+      }
+      // Manual setting (if provided in request)
+      else {
+        role = req.body.role || 'business';
+        workerType = req.body.workerType || null;
+      }
       
       // Add worker type from invite if available
       const userData = {
         ...req.body,
         password: hashedPassword,
-        // Default to 'contractor' role for invited users, 'business' for direct registrations
-        role: req.body.role || (invite ? 'contractor' : 'business'),
-        // Only set workerType for contractors/freelancers
-        workerType: invite?.workerType || req.body.workerType || (invite ? 'contractor' : null)
+        role: role,
+        workerType: workerType,
+        // If this was a business invite registration, record the referring business
+        referredByBusinessId: businessId
       };
       
       const user = await storage.createUser(userData);
 
-      // If this registration came from an invite, update the invite status
+      // Handle project-specific invitation
       if (invite) {
         await storage.updateInvite(invite.id, { 
           status: 'accepted'
@@ -221,6 +266,38 @@ export function setupAuth(app: Express) {
           // Continue with login even if email fails
         }
       }
+      
+      // Handle business invite link registration
+      if (businessToken && businessInfo) {
+        try {
+          // Record the onboarding link usage
+          await storage.recordOnboardingUsage(businessInfo.businessId, user.id, businessToken);
+          
+          // Send welcome email to the newly registered contractor
+          try {
+            const { sendEmail } = await import('./services/email');
+            const business = await storage.getUser(businessInfo.businessId);
+            const businessName = business ? (business.companyName || `${business.firstName || ''} ${business.lastName || ''}`).trim() : "Your client";
+            const appUrl = `${req.protocol}://${req.get('host')}`;
+            
+            await sendEmail({
+              to: user.email,
+              subject: `Welcome to ${businessName}'s Team on Creativ Linc`,
+              text: `Welcome to Creativ Linc!\n\n${businessName} has invited you to join their team as a ${businessInfo.workerType || 'contractor'}. You can now login to view your projects and contracts.\n\nVisit ${appUrl} to get started.`,
+              html: `<h1>Welcome to Creativ Linc!</h1>
+                     <p><strong>${businessName}</strong> has invited you to join their team as a ${businessInfo.workerType || 'contractor'}.</p>
+                     <p>You can now login to view your projects and contracts.</p>
+                     <p><a href="${appUrl}" style="background-color: #000; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">Get Started</a></p>`
+            });
+          } catch (emailError) {
+            console.error('Failed to send welcome email:', emailError);
+            // Continue with login even if email fails
+          }
+        } catch (usageError) {
+          console.error('Error recording business invite usage:', usageError);
+          // Continue with user creation even if usage recording fails
+        }
+      }
 
       // Log the user in automatically after registration
       req.login(user, (err) => {
@@ -233,6 +310,11 @@ export function setupAuth(app: Express) {
           inviteDetails: invite ? {
             projectName: invite.projectName,
             businessId: invite.businessId
+          } : null,
+          fromBusinessInvite: businessInfo ? true : false,
+          businessInviteDetails: businessInfo ? {
+            businessId: businessInfo.businessId,
+            workerType: businessInfo.workerType
           } : null
         });
       });

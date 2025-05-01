@@ -1099,6 +1099,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Business Onboarding Link APIs
+  app.post(`${apiRouter}/business/invite-link`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      // Only business users can create invite links
+      if (req.user!.role !== 'business') {
+        return res.status(403).json({ message: "Only business accounts can generate invite links" });
+      }
+      
+      const { workerType = 'contractor' } = req.body;
+      
+      // Create or update the business invite link
+      const link = await storage.createBusinessOnboardingLink(req.user!.id, workerType);
+      
+      // Get the app URL
+      const appUrl = `${req.protocol}://${req.get('host')}`;
+      
+      // Return the link with the full URL for the frontend to use
+      res.json({
+        token: link.token,
+        workerType: link.workerType,
+        active: link.active,
+        url: `${appUrl}/auth?token=${link.token}&businessId=${req.user!.id}&worker=true`
+      });
+    } catch (error: any) {
+      console.error("Error generating business invite link:", error);
+      res.status(500).json({ message: "Error generating business invite link" });
+    }
+  });
+
+  app.get(`${apiRouter}/business/invite-link`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      // Only business users can view their invite links
+      if (req.user!.role !== 'business') {
+        return res.status(403).json({ message: "Only business accounts can access invite links" });
+      }
+      
+      const link = await storage.getBusinessOnboardingLink(req.user!.id);
+      
+      if (!link) {
+        return res.status(404).json({ message: "No active invite link found" });
+      }
+      
+      // Get the app URL
+      const appUrl = `${req.protocol}://${req.get('host')}`;
+      
+      // Return the link with the full URL for the frontend
+      res.json({
+        token: link.token,
+        workerType: link.workerType,
+        active: link.active,
+        url: `${appUrl}/auth?token=${link.token}&businessId=${req.user!.id}&worker=true`
+      });
+    } catch (error: any) {
+      console.error("Error fetching business invite link:", error);
+      res.status(500).json({ message: "Error fetching business invite link" });
+    }
+  });
+
+  app.delete(`${apiRouter}/business/invite-link`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      // Only business users can deactivate their invite links
+      if (req.user!.role !== 'business') {
+        return res.status(403).json({ message: "Only business accounts can manage invite links" });
+      }
+      
+      // Deactivate the invite link by setting active to false
+      await storage.updateBusinessOnboardingLink(req.user!.id, { active: false });
+      
+      res.status(200).json({ message: "Invite link deactivated successfully" });
+    } catch (error: any) {
+      console.error("Error deactivating business invite link:", error);
+      res.status(500).json({ message: "Error deactivating business invite link" });
+    }
+  });
+
+  // Verify business invite token
+  app.post(`${apiRouter}/business/verify-invite`, async (req: Request, res: Response) => {
+    try {
+      const { token } = req.body;
+      
+      if (!token) {
+        return res.status(400).json({ message: "Token is required" });
+      }
+      
+      const linkInfo = await storage.verifyOnboardingToken(token);
+      
+      if (!linkInfo) {
+        return res.status(404).json({ message: "Invalid or expired invite link" });
+      }
+      
+      // Get the business name to show in the registration page
+      const business = await storage.getUser(linkInfo.businessId);
+      
+      res.json({
+        valid: true,
+        businessId: linkInfo.businessId,
+        businessName: business ? (business.companyName || `${business.firstName || ''} ${business.lastName || ''}`).trim() : "Unknown Business",
+        workerType: linkInfo.workerType
+      });
+    } catch (error: any) {
+      console.error("Error verifying business invite link:", error);
+      res.status(500).json({ message: "Error verifying business invite link" });
+    }
+  });
+  
   // Reports API endpoint - integrates with real payment and project data
   app.get(`${apiRouter}/reports`, async (req: Request, res: Response) => {
     try {
