@@ -10,7 +10,8 @@ import {
   insertMilestoneSchema,
   insertPaymentSchema,
   insertDocumentSchema,
-  insertWorkRequestSchema
+  insertWorkRequestSchema,
+  updateWorkRequestSchema
 } from "@shared/schema";
 import { sendPasswordResetEmail, generateWorkRequestToken } from "./services/email";
 import Stripe from "stripe";
@@ -1790,8 +1791,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const tokenData = generateWorkRequestToken();
         token = tokenData.token;
         
-        // Update the work request with the new token hash
-        await storage.updateWorkRequest(id, { tokenHash: tokenData.tokenHash });
+        // Use the updateWorkRequestSchema to ensure tokenHash is accepted
+        const updateData = updateWorkRequestSchema.parse({ tokenHash: tokenData.tokenHash });
+        await storage.updateWorkRequest(id, updateData);
       } else {
         // We can't retrieve the original token since we only store the hash
         // So we'll generate a new token and update the hash
