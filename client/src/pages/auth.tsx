@@ -33,6 +33,9 @@ export default function AuthPage() {
   const [activeTab, setActiveTab] = useState("login");
   const [inviteId, setInviteId] = useState<number | null>(null);
   const [inviteEmail, setInviteEmail] = useState<string | null>(null);
+  const [businessToken, setBusinessToken] = useState<string | null>(null);
+  const [businessId, setBusinessId] = useState<number | null>(null);
+  const [isWorker, setIsWorker] = useState<boolean>(false);
   const [isInviteLoading, setIsInviteLoading] = useState(false);
   const { toast } = useToast();
   
@@ -62,21 +65,37 @@ export default function AuthPage() {
     },
   });
 
-  // Get invite ID and email from URL if present
+  // Get invite parameters from URL
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
+    
+    // Handle project-specific invites (legacy system)
     const inviteParam = searchParams.get('invite');
     const emailParam = searchParams.get('email');
     
+    // Handle business onboarding links
+    const tokenParam = searchParams.get('token');
+    const businessIdParam = searchParams.get('businessId');
+    const workerParam = searchParams.get('worker');
+    
     if (inviteParam && emailParam) {
-      console.log(`Processing invitation: ID=${inviteParam}, Email=${emailParam}`);
+      // Project-specific invitation with email
+      console.log(`Processing project invitation: ID=${inviteParam}, Email=${emailParam}`);
       setInviteId(parseInt(inviteParam));
       setInviteEmail(emailParam);
+      setActiveTab("register"); // Automatically switch to register tab for invites
+    } 
+    else if (tokenParam && businessIdParam) {
+      // Business onboarding link
+      console.log(`Processing business invite link: Token=${tokenParam}, BusinessID=${businessIdParam}`);
+      setBusinessToken(tokenParam);
+      setBusinessId(parseInt(businessIdParam));
+      setIsWorker(workerParam === 'true');
       setActiveTab("register"); // Automatically switch to register tab for invites
     }
   }, [location]);
 
-  // Fetch invite details if we have an ID
+  // Fetch project invite details if we have an ID
   const { data: inviteData, isLoading: isInviteDataLoading } = useQuery({
     queryKey: ['/api/invites', inviteId],
     queryFn: async () => {
@@ -95,6 +114,29 @@ export default function AuthPage() {
       }
     },
     enabled: !!inviteId
+  });
+  
+  // Fetch business invite token info
+  const { data: businessInviteData, isLoading: isBusinessInviteLoading } = useQuery({
+    queryKey: ['/api/business/verify-token', businessToken, businessId],
+    queryFn: async () => {
+      if (!businessToken || !businessId) return null;
+      setIsInviteLoading(true);
+      try {
+        const response = await apiRequest('GET', 
+          `/api/business/verify-token?token=${businessToken}&businessId=${businessId}`
+        );
+        if (!response.ok) throw new Error('Failed to verify business invite link');
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        console.error('Error verifying business invite token:', error);
+        return null;
+      } finally {
+        setIsInviteLoading(false);
+      }
+    },
+    enabled: !!businessToken && !!businessId
   });
 
   // Login form state
@@ -143,6 +185,20 @@ export default function AuthPage() {
       }));
     }
   }, [inviteData]);
+  
+  // Update form when business invite data is loaded
+  useEffect(() => {
+    if (businessInviteData && businessInviteData.valid) {
+      setRegisterForm(prev => ({
+        ...prev,
+        role: "contractor",
+        workerType: businessInviteData.workerType || "contractor",
+        // We store business token in state but pass it during registration
+        businessToken: businessToken,
+        businessId: businessId
+      }));
+    }
+  }, [businessInviteData, businessToken, businessId]);
 
   // Form Error States
   const [loginErrors, setLoginErrors] = useState<Record<string, string>>({});

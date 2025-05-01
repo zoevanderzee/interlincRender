@@ -16,11 +16,10 @@ export default function ContractorInvite() {
   const [copied, setCopied] = useState(false);
   const [inviteType, setInviteType] = useState('contractor');
   
-  // Generate invite link
+  // Generate business invite link
   const generateInviteMutation = useMutation({
     mutationFn: async (type: string) => {
-      const response = await apiRequest('POST', '/api/invites/generate-link', { 
-        businessId: user?.id,
+      const response = await apiRequest('POST', '/api/business/invite-link', { 
         workerType: type
       });
       
@@ -34,9 +33,9 @@ export default function ContractorInvite() {
     onSuccess: () => {
       toast({
         title: 'Invite link generated',
-        description: 'Your invite link has been generated successfully',
+        description: 'Your business invite link has been generated successfully',
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/invites/business'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/business/invite-link'] });
     },
     onError: (error: Error) => {
       toast({
@@ -47,19 +46,24 @@ export default function ContractorInvite() {
     },
   });
   
-  // Get existing invite link
+  // Get existing business invite link
   const { data: inviteData, isLoading } = useQuery({
-    queryKey: ['/api/invites/business'],
+    queryKey: ['/api/business/invite-link'],
     queryFn: async () => {
-      const response = await apiRequest('GET', '/api/invites/business');
+      const response = await apiRequest('GET', '/api/business/invite-link');
       if (!response.ok) {
+        // If 404, it means no active invite link found, which is okay
+        if (response.status === 404) {
+          return null;
+        }
+        
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to fetch invite link');
       }
       
       return response.json();
     },
-    enabled: !!user?.id,
+    enabled: !!user?.id && user?.role === 'business',
   });
   
   // Handle copy to clipboard
@@ -90,11 +94,8 @@ export default function ContractorInvite() {
     generateInviteMutation.mutate(inviteType);
   };
   
-  // Create the full invite URL using the token
-  const getFullInviteUrl = (token: string) => {
-    return `${window.location.origin}/auth?invite=${token}`;
-  };
-
+  // We don't need to create the URL ourselves as it's provided by the API now
+  
   return (
     <div className="container mx-auto py-8">
       <Card className="max-w-3xl mx-auto shadow-lg">
@@ -108,13 +109,13 @@ export default function ContractorInvite() {
         
         <CardContent className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="invite-type">Invite Type</Label>
+            <Label htmlFor="invite-type">Worker Type</Label>
             <Select 
               value={inviteType} 
               onValueChange={setInviteType}
             >
               <SelectTrigger id="invite-type">
-                <SelectValue placeholder="Select type of contractor" />
+                <SelectValue placeholder="Select type of worker" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="contractor">Sub Contractor</SelectItem>
@@ -122,7 +123,7 @@ export default function ContractorInvite() {
               </SelectContent>
             </Select>
             <p className="text-sm text-muted-foreground">
-              This determines how they'll be categorized in your contractors list
+              This determines how they'll be categorized in your workers list
             </p>
           </div>
           
@@ -130,21 +131,21 @@ export default function ContractorInvite() {
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-          ) : inviteData && inviteData.inviteLink ? (
+          ) : inviteData && inviteData.token ? (
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="invite-link">Your Unique Onboarding Link</Label>
                 <div className="flex items-center gap-2">
                   <Input 
                     id="invite-link" 
-                    value={getFullInviteUrl(inviteData.inviteLink)} 
+                    value={inviteData.url} 
                     readOnly
                     className="font-mono text-sm"
                   />
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => handleCopyInviteLink(getFullInviteUrl(inviteData.inviteLink))}
+                    onClick={() => handleCopyInviteLink(inviteData.url)}
                     title="Copy to clipboard"
                   >
                     {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
@@ -158,8 +159,8 @@ export default function ContractorInvite() {
                   Important Information
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  This link is tied to your account and can be used by any contractor you share it with.
-                  When they register using this link, they'll automatically be added to your contractors list.
+                  This link is tied to your account and can be used by any {inviteData.workerType || 'contractor'} you share it with.
+                  When they register using this link, they'll automatically be added to your workers list.
                 </p>
                 <p className="text-sm text-muted-foreground">
                   For security, you can regenerate this link at any time, which will invalidate the old link.
@@ -191,14 +192,10 @@ export default function ContractorInvite() {
           )}
         </CardContent>
         
-        {inviteData && inviteData.inviteLink && (
+        {inviteData && inviteData.token && (
           <CardFooter className="flex justify-between pt-4 border-t">
             <div className="text-sm text-muted-foreground">
-              {inviteData.inviteCount ? (
-                <span>Used by {inviteData.inviteCount} contractors</span>
-              ) : (
-                <span>No contractors have used this link yet</span>
-              )}
+              <span>Worker type: <strong>{inviteData.workerType || 'contractor'}</strong></span>
             </div>
             <Button
               variant="outline"
