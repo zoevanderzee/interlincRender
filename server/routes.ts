@@ -280,8 +280,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         businessId: invite.businessId,
         recipientEmail: invite.email,
         status: "pending",
-        budgetMin: invite.paymentAmount ? parseFloat(invite.paymentAmount) : null,
-        budgetMax: invite.paymentAmount ? parseFloat(invite.paymentAmount) : null,
+        budgetMin: invite.paymentAmount || null,
+        budgetMax: invite.paymentAmount || null,
         expiresAt: invite.expiresAt,
         skills: "",
         attachmentUrls: [] // Add empty attachmentUrls array
@@ -1410,8 +1410,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('Creating simulated direct payment for testing');
         
         // Generate a fake payment intent ID for simulation
-        const fakePaymentIntentId = `pi_${randomBytes(16).toString('hex')}`;
-        const fakeClientSecret = `${fakePaymentIntentId}_secret_${randomBytes(8).toString('hex')}`;
+        const fakePaymentIntentId = `pi_${nodeCrypto.randomBytes(16).toString('hex')}`;
+        const fakeClientSecret = `${fakePaymentIntentId}_secret_${nodeCrypto.randomBytes(8).toString('hex')}`;
         
         // Simulate a payment intent object
         paymentIntent = {
@@ -1421,7 +1421,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
         
         // Generate a fake transfer ID for simulation
-        const fakeTransferId = `tr_${randomBytes(16).toString('hex')}`;
+        const fakeTransferId = `tr_${nodeCrypto.randomBytes(16).toString('hex')}`;
         
         // Update payment with simulated Stripe payment intent details
         await storage.updatePaymentStripeDetails(
@@ -1668,7 +1668,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If token is provided, get the specific work request by token
       if (token) {
         // Hash the provided token for lookup
-        const tokenHash = createHash('sha256').update(token).digest('hex');
+        const tokenHash = nodeCrypto.createHash('sha256').update(token).digest('hex');
         const workRequest = await storage.getWorkRequestByToken(tokenHash);
         workRequests = workRequest ? [workRequest] : [];
       }
