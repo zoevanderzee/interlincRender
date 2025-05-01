@@ -1115,12 +1115,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get the app URL
       const appUrl = `${req.protocol}://${req.get('host')}`;
       
-      // Return the link with the full URL for the frontend to use
+      // Create a simpler, direct link format
+      const businessName = req.user?.company || `${req.user?.firstName || ''} ${req.user?.lastName || ''}`.trim();
+      const inviteUrl = `${appUrl}/auth?invite=contractor&email=direct&token=${link.token}&businessId=${req.user!.id}&workerType=${workerType}`;
+      
       res.json({
         token: link.token,
         workerType: link.workerType,
         active: link.active,
-        url: `${appUrl}/auth?token=${link.token}&businessId=${req.user!.id}&worker=true`
+        url: inviteUrl
       });
     } catch (error: any) {
       console.error("Error generating business invite link:", error);
@@ -1183,12 +1186,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get the app URL
       const appUrl = `${req.protocol}://${req.get('host')}`;
       
-      // Return the link with the full URL for the frontend
+      // Return the link with the same simplified URL format
+      const businessName = req.user?.company || `${req.user?.firstName || ''} ${req.user?.lastName || ''}`.trim();
+      const inviteUrl = `${appUrl}/auth?invite=contractor&email=direct&token=${link.token}&businessId=${req.user!.id}&workerType=${link.workerType}`;
+      
       res.json({
         token: link.token,
         workerType: link.workerType,
         active: link.active,
-        url: `${appUrl}/auth?token=${link.token}&businessId=${req.user!.id}&worker=true`
+        url: inviteUrl
       });
     } catch (error: any) {
       console.error("Error fetching business invite link:", error);

@@ -87,10 +87,21 @@ export default function AuthPage() {
     } 
     else if (tokenParam && businessIdParam) {
       // Business onboarding link
-      console.log(`Processing business invite link: Token=${tokenParam}, BusinessID=${businessIdParam}`);
+      console.log(`Processing business invite link: Token=${tokenParam}, BusinessID=${businessIdParam}, WorkerType=${searchParams.get('workerType')}`);
       setBusinessToken(tokenParam);
       setBusinessId(parseInt(businessIdParam));
-      setIsWorker(workerParam === 'true');
+      const workerTypeParam = searchParams.get('workerType');
+      
+      // Handle direct worker type parameter
+      if (workerTypeParam) {
+        setRegisterForm(prev => ({
+          ...prev,
+          role: "contractor",
+          workerType: workerTypeParam
+        }));
+      }
+      
+      setIsWorker(true); // Always set as worker with the simplified format
       setActiveTab("register"); // Automatically switch to register tab for invites
     }
   }, [location]);
