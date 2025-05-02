@@ -48,9 +48,7 @@ const Contractors = () => {
   const [location, navigate] = useLocation();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
-  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(
-    location.includes("?action=invite")
-  );
+  // Project-specific invitation state removed
 
   // Fetch all external workers (both contractors and freelancers)
   const { data: externalWorkers = [], isLoading: isLoadingWorkers } = useQuery<User[]>({
@@ -149,11 +147,6 @@ const Contractors = () => {
     });
   };
 
-  // Submit handler
-  const onSubmit = (data: z.infer<typeof formSchema>) => {
-    createInviteMutation.mutate(data);
-  };
-
   // Get contract count for a contractor
   const getContractCount = (contractorId: number) => {
     return contracts.filter(c => c.contractorId === contractorId).length;
@@ -213,32 +206,9 @@ const Contractors = () => {
     }
   };
 
-  // Handle dialog close
-  const handleDialogClose = () => {
-    setIsInviteDialogOpen(false);
-    navigate("/contractors", { replace: true });
-  };
+  // Dialog handling has been simplified since we removed the project-specific invitation dialog
   
-  // Function to open the invite dialog with a specific worker type
-  const openInviteDialog = (workerType: 'contractor' | 'freelancer') => {
-    form.setValue("workerType", workerType);
-    setIsInviteDialogOpen(true);
-  };
-
-  // Handle project selection
-  const handleProjectSelect = (contractId: number) => {
-    const selectedContract = contracts.find((c: any) => c.id === contractId);
-    if (selectedContract) {
-      form.setValue("projectId", selectedContract.id);
-      form.setValue("projectName", selectedContract.contractName);
-      form.setValue("contractDetails", selectedContract.description || "");
-      
-      // Format the contract value as payment amount (if available)
-      if (selectedContract.value) {
-        form.setValue("paymentAmount", String(selectedContract.value));
-      }
-    }
-  };
+  // All project-specific invitation related functions have been removed
 
   const isLoading = isLoadingWorkers || isLoadingInvites || isLoadingContracts;
 
@@ -462,9 +432,9 @@ const Contractors = () => {
                       Clear Search
                     </Button>
                   ) : (
-                    <Button onClick={() => openInviteDialog('contractor')}>
+                    <Button onClick={() => generateOnboardingLink()}>
                       <Send size={16} className="mr-2" />
-                      Invite Sub Contractor
+                      Invite Worker
                     </Button>
                   )}
                 </div>
@@ -590,9 +560,9 @@ const Contractors = () => {
                   <p className="text-zinc-400 mb-6">
                     You don't have any active freelancers yet. Send invites to start collaborating.
                   </p>
-                  <Button onClick={() => openInviteDialog('freelancer')}>
+                  <Button onClick={() => generateOnboardingLink()}>
                     <Send size={16} className="mr-2" />
-                    Invite Freelancer
+                    Invite Worker
                   </Button>
                 </div>
               )}
@@ -709,7 +679,7 @@ const Contractors = () => {
                   <p className="text-zinc-400 mb-6">
                     You haven't sent any invitations to contractors or freelancers yet.
                   </p>
-                  <Button onClick={() => openInviteDialog('contractor')}>
+                  <Button onClick={() => generateOnboardingLink()}>
                     <Send size={16} className="mr-2" />
                     Send New Invitation
                   </Button>
