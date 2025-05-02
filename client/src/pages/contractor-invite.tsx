@@ -450,23 +450,23 @@ export default function ContractorInvitePage() {
               <CardDescription className="text-zinc-400">
                 {businessInviteData?.valid ? (
                   <div className="mt-2 p-3 bg-zinc-800 rounded-md border border-zinc-700">
-                    <h4 className="text-white font-medium mb-1">
+                    <div className="text-white font-medium mb-1">
                       Business: {businessInviteData.businessName || "A company"}
-                    </h4>
-                    <p className="text-zinc-400 text-sm mb-1">
+                    </div>
+                    <div className="text-zinc-400 text-sm mb-1">
                       You are being invited as a <strong>{businessInviteData.workerType || "contractor"}</strong>
-                    </p>
-                    <p className="text-zinc-400 text-sm">
+                    </div>
+                    <div className="text-zinc-400 text-sm">
                       Complete registration to join this business's team.
-                    </p>
+                    </div>
                   </div>
                 ) : inviteData ? (
                   <div className="mt-2 p-3 bg-zinc-800 rounded-md border border-zinc-700">
-                    <h4 className="text-white font-medium mb-1">Project: {inviteData.projectName}</h4>
+                    <div className="text-white font-medium mb-1">Project: {inviteData.projectName}</div>
                     {inviteData.message && (
-                      <p className="text-zinc-400 text-sm italic mb-1">{inviteData.message}</p>
+                      <div className="text-zinc-400 text-sm italic mb-1">{inviteData.message}</div>
                     )}
-                    <p className="text-zinc-400 text-sm">Complete registration to accept this invitation.</p>
+                    <div className="text-zinc-400 text-sm">Complete registration to accept this invitation.</div>
                   </div>
                 ) : (
                   "Complete your registration to join the platform"
