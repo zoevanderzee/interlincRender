@@ -1,3 +1,4 @@
+import React from "react";
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -36,6 +37,8 @@ import ContractorInvitePage from "@/pages/contractor-invite";
 import WorkRequestRespond from "./pages/work-request-respond";
 
 function Router() {
+  console.log("Router rendering, current path:", window.location.pathname + window.location.search);
+  
   return (
     <Switch>
       {/* Public Routes */}
@@ -83,7 +86,7 @@ function Router() {
         <WorkRequestRespond />
       </Route>
       
-      <Route path="/contractor-invite/:rest*">
+      <Route path="/contractor-invite/:token?">
         <ContractorInvitePage />
       </Route>
 

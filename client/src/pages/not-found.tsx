@@ -4,6 +4,7 @@ import { AlertTriangle, Home, ArrowLeft, Layers } from "lucide-react";
 import { Link } from "wouter";
 
 export default function NotFound() {
+  console.log("NotFound component mounted, current path:", window.location.pathname + window.location.search);
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-black">
       <Card className="w-full max-w-md mx-4 border-zinc-800 bg-zinc-900">
