@@ -725,7 +725,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(dashboardData);
     } catch (error) {
-      res.status(500).json({ message: "Error fetching dashboard data" });
+      console.error("Dashboard error:", error);
+      res.status(500).json({ message: "Error fetching dashboard data", error: String(error) });
     }
   });
   
