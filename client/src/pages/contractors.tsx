@@ -105,75 +105,8 @@ const Contractors = () => {
   const linkInputRef = useRef<HTMLInputElement>(null);
   const [inviteData, setInviteData] = useState<{ id: number, token: string } | null>(null);
   
-  // Create invite mutation
-  const createInviteMutation = useMutation({
-    mutationFn: async (formData: z.infer<typeof formSchema>) => {
-      // Create a more detailed contract object if provided
-      let contractDetailsString = formData.contractDetails;
-      if (formData.contractDetails) {
-        try {
-          // Try to parse as JSON if it's a valid JSON string
-          JSON.parse(formData.contractDetails);
-        } catch (e) {
-          // If not valid JSON, create a simple JSON object
-          contractDetailsString = JSON.stringify({
-            description: formData.contractDetails
-          });
-        }
-      }
-      
-      // Create the invite
-      const invite: any = {
-        // Generate a placeholder email for record-keeping. This won't be used for sending emails
-        // as we're using direct link invitation instead
-        email: `invite-${Date.now()}@invitation.local`,
-        projectName: formData.projectName,
-        projectId: formData.projectId,
-        workerType: formData.workerType,
-        businessId: formData.businessId,
-        status: "pending",
-        message: formData.message,
-        contractDetails: contractDetailsString,
-        paymentAmount: formData.paymentAmount
-      };
-      
-      // Set expiration date to 7 days from now
-      const expirationDate = new Date();
-      expirationDate.setDate(expirationDate.getDate() + 7);
-      invite.expiresAt = expirationDate;
-      
-      const response = await apiRequest("POST", "/api/invites", invite);
-      const responseData = await response.json();
-      return responseData;
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/invites'] });
-      
-      // Generate a direct link for the invitation
-      generateDirectLinkMutation.mutate({ inviteId: data.id });
-      
-      setIsInviteDialogOpen(false);
-      form.reset({
-        projectId: undefined,
-        projectName: "",
-        workerType: "contractor",
-        paymentAmount: "",
-        businessId: 1,
-        contractDetails: "",
-        message: "We'd like to invite you to join our project. Please sign up to view the details and connect with our team.",
-      });
-      
-      // Remove the query param
-      navigate("/contractors");
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Could not generate invitation. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
+  // Removed project-specific invitation mutation
+  // We now only use the generateOnboardingLink function for company-wide invitations
   
   // Generate a direct link for an invitation
   const generateDirectLinkMutation = useMutation({
