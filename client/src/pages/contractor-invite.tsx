@@ -52,46 +52,76 @@ export default function ContractorInvitePage() {
   
   // Get invite parameters from URL on component mount
   useEffect(() => {
+    console.log("Processing URL parameters");
+    
     const searchParams = new URLSearchParams(window.location.search);
+    console.log("Search params:", Object.fromEntries(searchParams.entries()));
     
     // Handle token-based invitations (new system)
     const tokenParam = searchParams.get('token');
+    const businessIdParam = searchParams.get('businessId');
+    const inviteIdParam = searchParams.get('invite');
+    const emailParam = searchParams.get('email');
+    const workerTypeParam = searchParams.get('workerType');
+    
+    console.log("URL parameters:", { 
+      token: tokenParam, 
+      businessId: businessIdParam, 
+      inviteId: inviteIdParam,
+      email: emailParam,
+      workerType: workerTypeParam
+    });
     
     if (tokenParam) {
       setToken(tokenParam);
       
       // Check if this is a company invite or a project invite
-      const businessIdParam = searchParams.get('businessId');
-      const inviteIdParam = searchParams.get('invite');
-      
       if (businessIdParam) {
         // Company invite
         setBusinessId(parseInt(businessIdParam));
-        const workerTypeParam = searchParams.get('workerType') || "contractor";
-        setWorkerType(workerTypeParam);
+        setWorkerType(workerTypeParam || "contractor");
         
         // Update form with business data
         setRegisterForm(prev => ({
           ...prev,
           role: "contractor",
-          workerType: workerTypeParam,
+          workerType: workerTypeParam || "contractor",
           businessToken: tokenParam,
           businessId: parseInt(businessIdParam)
         }));
+        
+        console.log("Processed as company invite with businessId:", businessIdParam);
       } else if (inviteIdParam) {
         // Project invite
         setInviteId(parseInt(inviteIdParam));
-        const emailParam = searchParams.get('email');
         
         // Update form with invitation data
         setRegisterForm(prev => ({
           ...prev,
           role: "contractor",
-          workerType: searchParams.get('workerType') || "contractor",
+          workerType: workerTypeParam || "contractor",
           email: emailParam || "",
           inviteId: parseInt(inviteIdParam)
         }));
+        
+        console.log("Processed as project invite with inviteId:", inviteIdParam);
       }
+    } else if (inviteIdParam) {
+      // Fallback for invites without token
+      setInviteId(parseInt(inviteIdParam));
+      
+      // Update form with invitation data
+      setRegisterForm(prev => ({
+        ...prev,
+        role: "contractor",
+        workerType: workerTypeParam || "contractor",
+        email: emailParam || "",
+        inviteId: parseInt(inviteIdParam)
+      }));
+      
+      console.log("Processed as legacy project invite with inviteId:", inviteIdParam);
+    } else {
+      console.warn("No valid invitation parameters found in URL");
     }
   }, [location]);
   

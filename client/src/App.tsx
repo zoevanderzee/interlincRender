@@ -83,7 +83,7 @@ function Router() {
         <WorkRequestRespond />
       </Route>
       
-      <Route path="/contractor-invite">
+      <Route path="/contractor-invite/:rest*">
         <ContractorInvitePage />
       </Route>
 
