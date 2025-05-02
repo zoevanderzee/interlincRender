@@ -23,6 +23,8 @@ export default function ContractorInvitePage() {
   const [location, setLocation] = useLocation();
   const { toast } = useToast();
   
+  console.log("ContractorInvitePage mounted", { location, search: window.location.search });
+  
   // Invitation data
   const [token, setToken] = useState<string | null>(null);
   const [businessId, setBusinessId] = useState<number | null>(null);
