@@ -331,8 +331,10 @@ export default function ContractorInvitePage() {
   });
   
   // Render error state if verification fails
-  if ((businessId && businessInviteData && !businessInviteData.valid) || 
-      (inviteId && inviteData === null && !isInviteDataLoading)) {
+  // Only show error if verification is complete and has failed
+  // Don't show error if we're still loading or if there are no invite parameters
+  if ((businessId && businessInviteData && !businessInviteData.valid && !isBusinessInviteLoading) || 
+      (inviteId && inviteData === null && !isInviteDataLoading && !isVerifyingInvite)) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4">
         <div className="max-w-md w-full">
