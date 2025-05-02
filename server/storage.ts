@@ -1086,6 +1086,10 @@ export class DatabaseStorage implements IStorage {
   }
   
   async createInvite(insertInvite: InsertInvite): Promise<Invite> {
+    // Generate a secure token for the invite
+    const crypto = await import('crypto');
+    const token = crypto.randomBytes(32).toString('hex');
+    
     // Set default values similar to MemStorage implementation
     const dataToInsert: InsertInvite = {
       ...insertInvite,
@@ -1095,6 +1099,8 @@ export class DatabaseStorage implements IStorage {
       status: insertInvite.status || 'pending',
       // Set default expiration to 7 days from now if not provided
       expiresAt: insertInvite.expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      // Add the secure token
+      token: token
     };
     
     console.log('[Invite Creation] Final data to insert:', JSON.stringify(dataToInsert));
