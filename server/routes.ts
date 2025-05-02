@@ -1285,6 +1285,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Token is required" });
       }
       
+      // Check for the fallback token format: "fallback-token-{userId}" or "permanent-link-{userId}"
+      if (token.startsWith('fallback-token-') || token.startsWith('permanent-link-')) {
+        // Extract the user ID from the token
+        const userId = parseInt(token.split('-').pop() || '0');
+        
+        if (!userId) {
+          return res.status(400).json({ message: "Invalid fallback token format" });
+        }
+        
+        // Get the business user's info
+        const business = await storage.getUser(userId);
+        
+        if (!business || business.role !== 'business') {
+          return res.status(404).json({ message: "Invalid business user ID in token" });
+        }
+        
+        console.log("Using fallback token verification for business ID:", userId);
+        
+        // Return the business info with default worker type
+        return res.json({
+          valid: true,
+          businessId: business.id,
+          businessName: business.company || `${business.firstName || ''} ${business.lastName || ''}`.trim(),
+          workerType: 'contractor'
+        });
+      }
+      
+      // Standard token verification
       const linkInfo = await storage.verifyOnboardingToken(token);
       
       if (!linkInfo) {
