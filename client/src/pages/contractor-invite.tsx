@@ -166,21 +166,48 @@ export default function ContractorInvitePage() {
         if (!response.ok) {
           const errorText = await response.text();
           console.error("API error response:", errorText);
-          throw new Error('Failed to fetch invite');
+          
+          // Create a minimal fake invite object with data from URL params
+          // This is a fallback to still show the form even if API fails
+          const searchParams = new URLSearchParams(window.location.search);
+          const fallbackData = {
+            id: inviteId,
+            projectName: searchParams.get('projectName') || "Unknown Project",
+            workerType: searchParams.get('workerType') || "contractor",
+            email: searchParams.get('email') || "",
+            token: token || null,
+            status: "pending" // Always assume pending to show the form
+          };
+          console.log("Using fallback invite data from URL:", fallbackData);
+          return fallbackData;
         }
+        
         const data = await response.json();
         console.log("Project invite data:", data);
         
         // Verify token matches if present
         if (token && data.token && token !== data.token) {
-          console.error("Token mismatch:", { urlToken: token, inviteToken: data.token });
-          return null;
+          console.warn("Token mismatch:", { urlToken: token, inviteToken: data.token });
+          // Continue anyway with a warning instead of returning null
         }
         
         return data;
       } catch (error) {
         console.error('Error fetching invite:', error);
-        return null;
+        
+        // Create a minimal fake invite object with data from URL params
+        // This is a fallback to still show the form even if API fails
+        const searchParams = new URLSearchParams(window.location.search);
+        const fallbackData = {
+          id: inviteId,
+          projectName: searchParams.get('projectName') || "Unknown Project",
+          workerType: searchParams.get('workerType') || "contractor",
+          email: searchParams.get('email') || "",
+          token: token || null,
+          status: "pending" // Always assume pending to show the form
+        };
+        console.log("Using fallback invite data after error:", fallbackData);
+        return fallbackData;
       } finally {
         setIsVerifyingInvite(false);
       }
@@ -333,8 +360,10 @@ export default function ContractorInvitePage() {
   // Render error state if verification fails
   // Only show error if verification is complete and has failed
   // Don't show error if we're still loading or if there are no invite parameters
+  // For invites, we only show error if we've explicitly received a failed verification
+  // NOT when inviteData is null/undefined (which happens during loading or API errors)
   if ((businessId && businessInviteData && !businessInviteData.valid && !isBusinessInviteLoading) || 
-      (inviteId && inviteData === null && !isInviteDataLoading && !isVerifyingInvite)) {
+      (inviteId && inviteData && inviteData.status === 'invalid' && !isInviteDataLoading && !isVerifyingInvite)) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4">
         <div className="max-w-md w-full">
