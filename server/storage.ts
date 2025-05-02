@@ -1118,6 +1118,15 @@ export class DatabaseStorage implements IStorage {
     return updatedInvite;
   }
   
+  async updateInviteToken(id: number, token: string): Promise<Invite | undefined> {
+    const [updatedInvite] = await db
+      .update(invites)
+      .set({ token })
+      .where(eq(invites.id, id))
+      .returning();
+    return updatedInvite;
+  }
+  
   // Contract CRUD methods
   async getContract(id: number): Promise<Contract | undefined> {
     const [contract] = await db.select().from(contracts).where(eq(contracts.id, id));

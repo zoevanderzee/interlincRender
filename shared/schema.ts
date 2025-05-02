@@ -40,6 +40,7 @@ export const invites = pgTable("invites", {
   contractDetails: text("contract_details"), // JSON string with contract details
   message: text("message"), // Custom message to the contractor
   paymentAmount: text("payment_amount"), // Payment amount for the worker
+  token: text("token"), // Token used for invite authentication
   createdAt: timestamp("created_at").defaultNow(),
   expiresAt: timestamp("expires_at"), // When the invite expires
 });
