@@ -86,7 +86,7 @@ function Router() {
         <WorkRequestRespond />
       </Route>
       
-      <Route path="/contractor-invite/:token?">
+      <Route path="/contractor-invite">
         <ContractorInvitePage />
       </Route>
 
