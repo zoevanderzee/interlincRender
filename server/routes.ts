@@ -279,8 +279,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create a simplified direct link format that matches the business invite format
       const inviteUrl = `${appUrl}/auth?invite=${id}&email=${encodeURIComponent(invite.email)}&token=${token}&workerType=${invite.workerType || 'contractor'}&projectName=${encodeURIComponent(invite.projectName || '')}`;
       
-      // Store the token in the database
-      await storage.updateInviteToken(id, token);
+      // Store the token in the database using updateInvite instead of updateInviteToken
+      await storage.updateInvite(id, { token });
       
       console.log(`[Invite Link] Generated link for invite ID ${invite.id} with token ${token}`);
       
