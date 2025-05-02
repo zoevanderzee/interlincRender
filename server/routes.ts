@@ -277,9 +277,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const appUrl = `${req.protocol}://${req.get('host')}`;
       
       // Create a simplified direct link format using our dedicated contractor invite page
-      const inviteUrl = `${appUrl}/contractor-invite?invite=${id}&email=${encodeURIComponent(invite.email)}&token=${token}&workerType=${invite.workerType || 'contractor'}&projectName=${encodeURIComponent(invite.projectName || '')}`;
+      // IMPORTANT: This links to our updated contractor-invite page which expects 'invite' parameter (not inviteId)
+      // The URL is structured to match what our contractor-invite.tsx component expects
+      console.log("[Invite Link] Creating URL with", { 
+        inviteId: id, 
+        token, 
+        email: invite.email,
+        workerType: invite.workerType || 'contractor',
+        projectName: invite.projectName || ''
+      });
       
-      // Store the token in the database using updateInvite instead of updateInviteToken
+      const inviteUrl = `${appUrl}/contractor-invite?invite=${id}&email=${encodeURIComponent(invite.email)}&token=${token}&workerType=${encodeURIComponent(invite.workerType || 'contractor')}&projectName=${encodeURIComponent(invite.projectName || '')}`;
+      
+      console.log("[Invite Link] Generated URL:", inviteUrl);
+      
+      // Store the token in the database using updateInvite
       await storage.updateInvite(id, { token });
       
       console.log(`[Invite Link] Generated link for invite ID ${invite.id} with token ${token}`);
