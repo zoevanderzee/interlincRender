@@ -31,6 +31,7 @@ import PaymentSimulator from "@/pages/payment-simulator";
 import Layout from "@/components/layout/Layout";
 import AuthPage from "@/pages/auth";
 import ResetPasswordPage from "@/pages/reset-password";
+import ContractorInvitePage from "@/pages/contractor-invite";
 // Use correct import path to match the file location
 import WorkRequestRespond from "./pages/work-request-respond";
 
@@ -80,6 +81,10 @@ function Router() {
       
       <Route path="/work-requests/respond">
         <WorkRequestRespond />
+      </Route>
+      
+      <Route path="/contractor-invite">
+        <ContractorInvitePage />
       </Route>
 
       {/* Protected Routes - require authentication */}

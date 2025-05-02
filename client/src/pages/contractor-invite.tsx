@@ -1,222 +1,543 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/use-auth';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { apiRequest, queryClient } from '@/lib/queryClient';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Loader2, Copy, Check, RefreshCw, Link as LinkIcon } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardFooter, 
+  CardHeader, 
+  CardTitle 
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import Logo from "@assets/CD_icon_light@2x.png";
 
-export default function ContractorInvite() {
-  const { user } = useAuth();
+export default function ContractorInvitePage() {
+  const { user, isLoading, registerMutation } = useAuth();
+  const [location, setLocation] = useLocation();
   const { toast } = useToast();
-  const [copied, setCopied] = useState(false);
-  const [inviteType, setInviteType] = useState('contractor');
   
-  // Generate business invite link
-  const generateInviteMutation = useMutation({
-    mutationFn: async (type: string) => {
-      const response = await apiRequest('POST', '/api/business/invite-link', { 
-        workerType: type
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to generate invite link');
-      }
-      
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: 'Invite link generated',
-        description: 'Your business invite link has been generated successfully',
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/business/invite-link'] });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: 'Failed to generate invite link',
-        description: error.message,
-        variant: 'destructive',
-      });
-    },
+  // Invitation data
+  const [token, setToken] = useState<string | null>(null);
+  const [businessId, setBusinessId] = useState<number | null>(null);
+  const [workerType, setWorkerType] = useState<string>("contractor");
+  const [inviteId, setInviteId] = useState<number | null>(null);
+  const [isVerifyingInvite, setIsVerifyingInvite] = useState(false);
+  
+  // Registration form state
+  const [registerForm, setRegisterForm] = useState({
+    username: "",
+    password: "",
+    confirmPassword: "",
+    email: "",
+    firstName: "",
+    lastName: "",
+    role: "contractor",
+    workerType: "contractor",
+    businessToken: null as string | null,
+    businessId: null as number | null,
+    inviteId: null as number | null,
   });
   
-  // Get existing business invite link
-  const { data: inviteData, isLoading } = useQuery({
-    queryKey: ['/api/business/invite-link'],
-    queryFn: async () => {
-      const response = await apiRequest('GET', '/api/business/invite-link');
-      if (!response.ok) {
-        // If 404, it means no active invite link found, which is okay
-        if (response.status === 404) {
-          return null;
-        }
+  // Form errors
+  const [registerErrors, setRegisterErrors] = useState<Record<string, string>>({});
+  
+  // Get invite parameters from URL on component mount
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    
+    // Handle token-based invitations (new system)
+    const tokenParam = searchParams.get('token');
+    
+    if (tokenParam) {
+      setToken(tokenParam);
+      
+      // Check if this is a company invite or a project invite
+      const businessIdParam = searchParams.get('businessId');
+      const inviteIdParam = searchParams.get('invite');
+      
+      if (businessIdParam) {
+        // Company invite
+        setBusinessId(parseInt(businessIdParam));
+        const workerTypeParam = searchParams.get('workerType') || "contractor";
+        setWorkerType(workerTypeParam);
         
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to fetch invite link');
+        // Update form with business data
+        setRegisterForm(prev => ({
+          ...prev,
+          role: "contractor",
+          workerType: workerTypeParam,
+          businessToken: tokenParam,
+          businessId: parseInt(businessIdParam)
+        }));
+      } else if (inviteIdParam) {
+        // Project invite
+        setInviteId(parseInt(inviteIdParam));
+        const emailParam = searchParams.get('email');
+        
+        // Update form with invitation data
+        setRegisterForm(prev => ({
+          ...prev,
+          role: "contractor",
+          workerType: searchParams.get('workerType') || "contractor",
+          email: emailParam || "",
+          inviteId: parseInt(inviteIdParam)
+        }));
       }
-      
-      return response.json();
+    }
+  }, [location]);
+  
+  // Verify business invite token if present
+  const { data: businessInviteData, isLoading: isBusinessInviteLoading } = useQuery({
+    queryKey: ['/api/business/verify-token', token, businessId],
+    queryFn: async () => {
+      if (!token || !businessId) return null;
+      setIsVerifyingInvite(true);
+      try {
+        const response = await apiRequest('GET', 
+          `/api/business/verify-token?token=${token}&businessId=${businessId}`
+        );
+        if (!response.ok) throw new Error('Failed to verify business invite link');
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        console.error('Error verifying business invite token:', error);
+        return null;
+      } finally {
+        setIsVerifyingInvite(false);
+      }
     },
-    enabled: !!user?.id && user?.role === 'business',
+    enabled: !!token && !!businessId
   });
   
-  // Handle copy to clipboard
-  const handleCopyInviteLink = async (link: string) => {
-    try {
-      await navigator.clipboard.writeText(link);
-      setCopied(true);
-      toast({
-        title: 'Copied!',
-        description: 'Invite link copied to clipboard',
-      });
-      
-      // Reset copied status after 2 seconds
-      setTimeout(() => {
-        setCopied(false);
-      }, 2000);
-    } catch (err) {
-      toast({
-        title: 'Failed to copy',
-        description: 'Please try again or copy manually',
-        variant: 'destructive',
+  // Fetch project invite details if we have an ID
+  const { data: inviteData, isLoading: isInviteDataLoading } = useQuery({
+    queryKey: ['/api/invites', inviteId],
+    queryFn: async () => {
+      if (!inviteId) return null;
+      setIsVerifyingInvite(true);
+      try {
+        const response = await apiRequest('GET', `/api/invites/${inviteId}`);
+        if (!response.ok) throw new Error('Failed to fetch invite');
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        console.error('Error fetching invite:', error);
+        return null;
+      } finally {
+        setIsVerifyingInvite(false);
+      }
+    },
+    enabled: !!inviteId
+  });
+  
+  // Update form when invite data is loaded
+  useEffect(() => {
+    if (inviteData) {
+      setRegisterForm(prev => ({
+        ...prev,
+        email: inviteData.email || prev.email,
+        role: "contractor",
+        workerType: inviteData.workerType || "contractor",
+        inviteId: inviteData.id
+      }));
+    }
+  }, [inviteData]);
+  
+  // Update form when business invite data is loaded
+  useEffect(() => {
+    if (businessInviteData && businessInviteData.valid) {
+      setRegisterForm(prev => ({
+        ...prev,
+        role: "contractor",
+        workerType: businessInviteData.workerType || "contractor",
+        businessToken: token,
+        businessId: businessId
+      }));
+    }
+  }, [businessInviteData, token, businessId]);
+  
+  // If user is already logged in, redirect to dashboard
+  useEffect(() => {
+    if (user && !isLoading) {
+      setLocation("/dashboard");
+    }
+  }, [user, isLoading, setLocation]);
+  
+  // Handle register form input changes
+  const handleRegisterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setRegisterForm({
+      ...registerForm,
+      [e.target.name]: e.target.value,
+    });
+    // Clear error when field is modified
+    if (registerErrors[e.target.name]) {
+      setRegisterErrors({
+        ...registerErrors,
+        [e.target.name]: "",
       });
     }
   };
   
-  // Handle generate/refresh invite link
-  const handleGenerateInviteLink = () => {
-    generateInviteMutation.mutate(inviteType);
+  // Validate registration form
+  const validateRegisterForm = () => {
+    const errors: Record<string, string> = {};
+    
+    if (!registerForm.username.trim()) {
+      errors.username = "Username is required";
+    }
+    
+    if (!registerForm.password) {
+      errors.password = "Password is required";
+    } else if (registerForm.password.length < 6) {
+      errors.password = "Password must be at least 6 characters";
+    }
+    
+    if (registerForm.password !== registerForm.confirmPassword) {
+      errors.confirmPassword = "Passwords do not match";
+    }
+    
+    if (!registerForm.email.trim()) {
+      errors.email = "Email is required";
+    } else if (!/\S+@\S+\.\S+/.test(registerForm.email)) {
+      errors.email = "Email is invalid";
+    }
+    
+    if (!registerForm.firstName.trim()) {
+      errors.firstName = "First name is required";
+    }
+    
+    if (!registerForm.lastName.trim()) {
+      errors.lastName = "Last name is required";
+    }
+    
+    setRegisterErrors(errors);
+    return Object.keys(errors).length === 0;
   };
   
-  // We don't need to create the URL ourselves as it's provided by the API now
-  
-  return (
-    <div className="container mx-auto py-8">
-      <Card className="max-w-3xl mx-auto shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-2xl">Contractor Onboarding</CardTitle>
-          <CardDescription>
-            Generate and share a unique invitation link that allows contractors to register and
-            connect directly to your account
-          </CardDescription>
-        </CardHeader>
+  // Handle registration form submission
+  const handleRegister = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (validateRegisterForm()) {
+      // Omit confirmPassword as it's not needed for the API
+      const { confirmPassword, ...registerData } = registerForm;
+      
+      // Handle business invite link registration
+      if (token && businessId) {
+        // Include business token information
+        registerData.businessToken = token;
+        registerData.businessId = businessId;
+        registerData.role = 'contractor'; // Always contractor for business invites
         
-        <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="invite-type">Worker Type</Label>
-            <Select 
-              value={inviteType} 
-              onValueChange={setInviteType}
-            >
-              <SelectTrigger id="invite-type">
-                <SelectValue placeholder="Select type of worker" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="contractor">Sub Contractor</SelectItem>
-                <SelectItem value="freelancer">Freelancer</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-sm text-muted-foreground">
-              This determines how they'll be categorized in your workers list
-            </p>
+        // Set worker type from business invite data
+        if (businessInviteData && businessInviteData.workerType) {
+          registerData.workerType = businessInviteData.workerType;
+        } else if (!registerData.workerType) {
+          registerData.workerType = 'contractor';
+        }
+      }
+      // Handle project-specific invite registration
+      else if (inviteId) {
+        registerData.inviteId = inviteId;
+        registerData.role = 'contractor';
+        
+        // Make sure workerType is set properly from invite data
+        if (inviteData && inviteData.workerType) {
+          registerData.workerType = inviteData.workerType;
+        } else if (!registerData.workerType) {
+          registerData.workerType = 'contractor';
+        }
+        
+        // If this is an invite registration, make sure the email matches the invited email
+        if (inviteData && inviteData.email && registerData.email !== inviteData.email) {
+          setRegisterErrors({
+            ...registerErrors,
+            email: `You must use the invited email: ${inviteData.email}`
+          });
+          return;
+        }
+      }
+      
+      registerMutation.mutate(registerData);
+    }
+  };
+  
+  // Render error state if verification fails
+  if ((businessId && businessInviteData && !businessInviteData.valid) || 
+      (inviteId && inviteData === null && !isInviteDataLoading)) {
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4">
+        <div className="max-w-md w-full">
+          <div className="flex justify-center mb-8">
+            <img src={Logo} alt="Creativ Linc Logo" className="h-16" />
           </div>
           
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : inviteData && inviteData.token ? (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="invite-link">Your Unique Onboarding Link</Label>
-                <div className="flex items-center gap-2">
-                  <Input 
-                    id="invite-link" 
-                    value={inviteData.url} 
-                    readOnly
-                    className="font-mono text-sm"
-                  />
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => handleCopyInviteLink(inviteData.url)}
-                    title="Copy to clipboard"
-                  >
-                    {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                  </Button>
-                </div>
-              </div>
-              
-              <div className="bg-amber-900/20 border border-amber-700 rounded-md p-4 space-y-2">
-                <h3 className="font-medium text-amber-500 flex items-center gap-2">
-                  <LinkIcon className="h-4 w-4" />
-                  Important Information
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  This link is tied to your account and can be used by any {inviteData.workerType || 'contractor'} you share it with.
-                  When they register using this link, they'll automatically be added to your workers list.
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  For security, you can regenerate this link at any time, which will invalidate the old link.
+          <Card className="border-zinc-700 bg-zinc-900 text-white">
+            <CardHeader className="text-center">
+              <CardTitle className="text-red-500">Invalid Invitation</CardTitle>
+              <CardDescription className="text-zinc-400">
+                This invitation link is invalid or has expired.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col items-center justify-center p-6 space-y-4">
+                <AlertCircle className="h-16 w-16 text-red-500 mb-2" />
+                <p className="text-zinc-400 text-center">
+                  Please contact the person who invited you to request a new invitation link.
                 </p>
               </div>
-            </div>
-          ) : (
-            <div className="text-center py-8 space-y-4">
-              <p className="text-muted-foreground">
-                You don't have an active invite link yet.
-              </p>
-              <Button
-                onClick={handleGenerateInviteLink}
-                disabled={generateInviteMutation.isPending}
+            </CardContent>
+            <CardFooter className="flex justify-center">
+              <Button 
+                type="button" 
+                onClick={() => setLocation("/auth")}
+                className="bg-white text-black hover:bg-zinc-200"
               >
-                {generateInviteMutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <LinkIcon className="mr-2 h-4 w-4" />
-                    Generate Invite Link
-                  </>
-                )}
+                Go to Login
               </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+  
+  // Render loading state while verifying invite
+  if (isVerifyingInvite || isBusinessInviteLoading || isInviteDataLoading) {
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4">
+        <div className="max-w-md w-full">
+          <div className="flex justify-center mb-8">
+            <img src={Logo} alt="Creativ Linc Logo" className="h-16" />
+          </div>
+          
+          <Card className="border-zinc-700 bg-zinc-900 text-white">
+            <CardHeader className="text-center">
+              <CardTitle>Verifying Invitation</CardTitle>
+              <CardDescription className="text-zinc-400">
+                Please wait while we verify your invitation...
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col items-center justify-center p-6">
+                <Loader2 className="h-16 w-16 animate-spin text-white mb-4" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="min-h-screen bg-black flex flex-col md:flex-row">
+      {/* Registration Form Section */}
+      <div className="w-full md:w-1/2 flex items-center justify-center p-8">
+        <div className="w-full max-w-md">
+          <div className="flex justify-center mb-8">
+            <img src={Logo} alt="Creativ Linc Logo" className="h-16" />
+          </div>
+          
+          <Card className="border-zinc-700 bg-zinc-900 text-white">
+            <CardHeader>
+              <CardTitle>Join as a Worker</CardTitle>
+              <CardDescription className="text-zinc-400">
+                {businessInviteData?.valid ? (
+                  <div className="mt-2 p-3 bg-zinc-800 rounded-md border border-zinc-700">
+                    <h4 className="text-white font-medium mb-1">
+                      Business: {businessInviteData.businessName || "A company"}
+                    </h4>
+                    <p className="text-zinc-400 text-sm mb-1">
+                      You are being invited as a <strong>{businessInviteData.workerType || "contractor"}</strong>
+                    </p>
+                    <p className="text-zinc-400 text-sm">
+                      Complete registration to join this business's team.
+                    </p>
+                  </div>
+                ) : inviteData ? (
+                  <div className="mt-2 p-3 bg-zinc-800 rounded-md border border-zinc-700">
+                    <h4 className="text-white font-medium mb-1">Project: {inviteData.projectName}</h4>
+                    {inviteData.message && (
+                      <p className="text-zinc-400 text-sm italic mb-1">{inviteData.message}</p>
+                    )}
+                    <p className="text-zinc-400 text-sm">Complete registration to accept this invitation.</p>
+                  </div>
+                ) : (
+                  "Complete your registration to join the platform"
+                )}
+              </CardDescription>
+            </CardHeader>
+            
+            <form onSubmit={handleRegister}>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName" className="text-white">First Name</Label>
+                    <Input
+                      id="firstName"
+                      name="firstName"
+                      value={registerForm.firstName}
+                      onChange={handleRegisterChange}
+                      className="bg-zinc-800 border-zinc-700 text-white"
+                    />
+                    {registerErrors.firstName && (
+                      <div className="text-sm text-red-500">{registerErrors.firstName}</div>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lastName" className="text-white">Last Name</Label>
+                    <Input
+                      id="lastName"
+                      name="lastName"
+                      value={registerForm.lastName}
+                      onChange={handleRegisterChange}
+                      className="bg-zinc-800 border-zinc-700 text-white"
+                    />
+                    {registerErrors.lastName && (
+                      <div className="text-sm text-red-500">{registerErrors.lastName}</div>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-white">Email</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    value={registerForm.email}
+                    onChange={handleRegisterChange}
+                    className="bg-zinc-800 border-zinc-700 text-white"
+                    disabled={inviteData?.email ? true : false} // Lock email if it came from invite
+                  />
+                  {registerErrors.email && (
+                    <div className="text-sm text-red-500">{registerErrors.email}</div>
+                  )}
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="username" className="text-white">Username</Label>
+                  <Input
+                    id="username"
+                    name="username"
+                    value={registerForm.username}
+                    onChange={handleRegisterChange}
+                    className="bg-zinc-800 border-zinc-700 text-white"
+                  />
+                  {registerErrors.username && (
+                    <div className="text-sm text-red-500">{registerErrors.username}</div>
+                  )}
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="text-white">Password</Label>
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    value={registerForm.password}
+                    onChange={handleRegisterChange}
+                    className="bg-zinc-800 border-zinc-700 text-white"
+                  />
+                  {registerErrors.password && (
+                    <div className="text-sm text-red-500">{registerErrors.password}</div>
+                  )}
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword" className="text-white">Confirm Password</Label>
+                  <Input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type="password"
+                    value={registerForm.confirmPassword}
+                    onChange={handleRegisterChange}
+                    className="bg-zinc-800 border-zinc-700 text-white"
+                  />
+                  {registerErrors.confirmPassword && (
+                    <div className="text-sm text-red-500">{registerErrors.confirmPassword}</div>
+                  )}
+                </div>
+              </CardContent>
+              
+              <CardFooter>
+                <Button 
+                  type="submit" 
+                  className="w-full bg-white text-black hover:bg-zinc-200"
+                  disabled={registerMutation.isPending}
+                >
+                  {registerMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating Account...
+                    </>
+                  ) : (
+                    "Create Account"
+                  )}
+                </Button>
+              </CardFooter>
+            </form>
+          </Card>
+          
+          <div className="text-center mt-4">
+            <p className="text-zinc-400">
+              Already have an account?{" "}
+              <Button
+                variant="link"
+                className="text-white p-0 h-auto"
+                onClick={() => setLocation("/auth")}
+              >
+                Login
+              </Button>
+            </p>
+          </div>
+        </div>
+      </div>
+      
+      {/* Hero Section */}
+      <div className="hidden md:flex md:w-1/2 bg-zinc-900 items-center justify-center p-8">
+        <div className="max-w-md">
+          <h1 className="text-4xl font-bold text-white mb-4">
+            Welcome to Creativ Linc
+          </h1>
+          <p className="text-lg text-zinc-400 mb-6">
+            Join our smart contract platform for seamless project management and automated payments.
+          </p>
+          
+          <div className="space-y-4">
+            <div className="flex items-start">
+              <CheckCircle2 className="h-5 w-5 text-green-500 mr-2 mt-1" />
+              <div>
+                <h3 className="text-white font-medium">Smart Contract Automation</h3>
+                <p className="text-zinc-500">No more invoicing. Get paid automatically when milestones are completed.</p>
+              </div>
             </div>
-          )}
-        </CardContent>
-        
-        {inviteData && inviteData.token && (
-          <CardFooter className="flex justify-between pt-4 border-t">
-            <div className="text-sm text-muted-foreground">
-              <span>Worker type: <strong>{inviteData.workerType || 'contractor'}</strong></span>
+            
+            <div className="flex items-start">
+              <CheckCircle2 className="h-5 w-5 text-green-500 mr-2 mt-1" />
+              <div>
+                <h3 className="text-white font-medium">Task Management</h3>
+                <p className="text-zinc-500">Track projects, tasks, and deliverables all in one place.</p>
+              </div>
             </div>
-            <Button
-              variant="outline"
-              onClick={handleGenerateInviteLink}
-              disabled={generateInviteMutation.isPending}
-            >
-              {generateInviteMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Regenerating...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Regenerate Link
-                </>
-              )}
-            </Button>
-          </CardFooter>
-        )}
-      </Card>
+            
+            <div className="flex items-start">
+              <CheckCircle2 className="h-5 w-5 text-green-500 mr-2 mt-1" />
+              <div>
+                <h3 className="text-white font-medium">Financial Compliance</h3>
+                <p className="text-zinc-500">All your contract data is stored securely and meets compliance standards.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

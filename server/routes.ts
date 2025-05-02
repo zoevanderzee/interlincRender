@@ -276,8 +276,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get the app URL
       const appUrl = `${req.protocol}://${req.get('host')}`;
       
-      // Create a simplified direct link format that matches the business invite format
-      const inviteUrl = `${appUrl}/auth?invite=${id}&email=${encodeURIComponent(invite.email)}&token=${token}&workerType=${invite.workerType || 'contractor'}&projectName=${encodeURIComponent(invite.projectName || '')}`;
+      // Create a simplified direct link format using our dedicated contractor invite page
+      const inviteUrl = `${appUrl}/contractor-invite?invite=${id}&email=${encodeURIComponent(invite.email)}&token=${token}&workerType=${invite.workerType || 'contractor'}&projectName=${encodeURIComponent(invite.projectName || '')}`;
       
       // Store the token in the database using updateInvite instead of updateInviteToken
       await storage.updateInvite(id, { token });
