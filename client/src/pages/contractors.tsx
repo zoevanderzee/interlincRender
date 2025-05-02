@@ -161,46 +161,31 @@ const Contractors = () => {
     });
   };
   
-  // Function to directly generate onboarding link
+  // Function to get or create the permanent business onboarding link
   const generateOnboardingLink = async () => {
     try {
-      // Create a basic invite with minimal information
-      const invite: Partial<Invite> = {
-        email: `onboarding-${Date.now()}@invitation.local`,
-        workerType: "contractor", // Default to contractor, user can change later
-        businessId: 1, // Use the current business ID
-        status: "pending",
-        message: "You have been invited to join our platform as a worker. Please sign up to connect with our team.",
-        // Set expiration date to 30 days from now
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        projectName: "Onboarding"
-      };
+      // Get or create the business invite link - this won't regenerate the token if a link already exists
+      const response = await apiRequest("POST", "/api/business/invite-link", {
+        workerType: "contractor" // Default to contractor
+      });
+      const linkData = await response.json();
       
-      // Create the invite
-      const response = await apiRequest("POST", "/api/invites", invite);
-      const data = await response.json();
+      if (!linkData.url) {
+        throw new Error("Failed to get a valid onboarding link");
+      }
       
-      // Generate the link immediately
-      const linkResponse = await apiRequest("POST", `/api/invites/${data.id}/generate-link`, {});
-      const linkData = await linkResponse.json();
-      
-      // Create the direct onboarding link
-      const baseUrl = window.location.origin;
-      const directLinkUrl = `${baseUrl}/work-request-respond?token=${linkData.token}`;
-      
-      // Set the link in the state
-      setDirectLink(directLinkUrl);
-      setInviteData({ id: data.inviteId, token: linkData.token });
+      // Set the permanent link in the state
+      setDirectLink(linkData.url);
       
       // Show the link dialog
       setIsLinkDialogOpen(true);
       
-      // Refresh invites list
-      queryClient.invalidateQueries({ queryKey: ['/api/invites'] });
+      console.log("Retrieved permanent business onboarding link:", linkData);
     } catch (error: any) {
+      console.error("Error generating permanent onboarding link:", error);
       toast({
         title: "Error",
-        description: error.message || "Could not generate onboarding link. Please try again.",
+        description: error.message || "Could not retrieve permanent onboarding link. Please try again.",
         variant: "destructive",
       });
     }
@@ -260,12 +245,12 @@ const Contractors = () => {
               </p>
             </div>
             <div className="bg-amber-50 p-4 rounded-md border border-amber-100">
-              <h3 className="text-sm font-medium flex items-center text-amber-800">
-                <Clock size={16} className="mr-2" />
-                Important
+              <h3 className="text-sm font-medium flex items-center text-green-800">
+                <CheckCircle2 size={16} className="mr-2" />
+                Permanent Link
               </h3>
-              <p className="text-sm mt-1 text-amber-700">
-                This invitation link will expire in 7 days. Make sure your contact uses it before then.
+              <p className="text-sm mt-1 text-green-700">
+                This is your company's permanent onboarding link. It will not change or expire, so you can share it with all your workers.
               </p>
             </div>
           </div>

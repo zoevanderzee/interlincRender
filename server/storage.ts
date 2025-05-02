@@ -1515,20 +1515,16 @@ export class DatabaseStorage implements IStorage {
   
   // Business Onboarding Links methods
   async createBusinessOnboardingLink(businessId: number, workerType: string): Promise<BusinessOnboardingLink> {
-    // Generate a random token
-    const crypto = require('crypto');
-    const token = crypto.randomBytes(16).toString('hex');
-
     // Check if a link already exists for this business
     const existingLink = await this.getBusinessOnboardingLink(businessId);
     
     if (existingLink) {
-      // Update the existing link with a new token
+      // Update the existing link without changing the token
+      // This ensures the business keeps the same permanent link
       const [updatedLink] = await db
         .update(businessOnboardingLinks)
         .set({
-          token,
-          workerType,
+          workerType, // Only update the worker type if needed
           updatedAt: new Date(),
           active: true
         })
@@ -1537,6 +1533,10 @@ export class DatabaseStorage implements IStorage {
       
       return updatedLink;
     } else {
+      // Generate a random token for new links only
+      const crypto = require('crypto');
+      const token = crypto.randomBytes(32).toString('hex'); // Using 32 bytes for stronger token
+      
       // Create a new link
       const [newLink] = await db
         .insert(businessOnboardingLinks)
