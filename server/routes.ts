@@ -1146,6 +1146,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { token, businessId } = req.query;
       
+      console.log("Verifying token:", { token, businessId, query: req.query });
+      
       if (!token || !businessId) {
         return res.status(400).json({ 
           valid: false, 
@@ -1155,6 +1157,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Verify the token is valid
       const tokenInfo = await storage.verifyOnboardingToken(token as string);
+      
+      console.log("Token info result:", tokenInfo);
       
       if (!tokenInfo || tokenInfo.businessId !== parseInt(businessId as string)) {
         return res.status(400).json({ 

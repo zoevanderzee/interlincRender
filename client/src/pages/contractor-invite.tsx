@@ -132,11 +132,17 @@ export default function ContractorInvitePage() {
       if (!token || !businessId) return null;
       setIsVerifyingInvite(true);
       try {
+        console.log("Verifying business token:", { token, businessId });
         const response = await apiRequest('GET', 
-          `/api/business/verify-token?token=${token}&businessId=${businessId}`
+          `/api/business/verify-token?token=${encodeURIComponent(token)}&businessId=${encodeURIComponent(businessId.toString())}`
         );
-        if (!response.ok) throw new Error('Failed to verify business invite link');
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("API error response:", errorText);
+          throw new Error('Failed to verify business invite link');
+        }
         const data = await response.json();
+        console.log("Business invite verification response:", data);
         return data;
       } catch (error) {
         console.error('Error verifying business invite token:', error);
@@ -155,9 +161,22 @@ export default function ContractorInvitePage() {
       if (!inviteId) return null;
       setIsVerifyingInvite(true);
       try {
+        console.log("Fetching project invite details:", { inviteId, token });
         const response = await apiRequest('GET', `/api/invites/${inviteId}`);
-        if (!response.ok) throw new Error('Failed to fetch invite');
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("API error response:", errorText);
+          throw new Error('Failed to fetch invite');
+        }
         const data = await response.json();
+        console.log("Project invite data:", data);
+        
+        // Verify token matches if present
+        if (token && data.token && token !== data.token) {
+          console.error("Token mismatch:", { urlToken: token, inviteToken: data.token });
+          return null;
+        }
+        
         return data;
       } catch (error) {
         console.error('Error fetching invite:', error);
@@ -300,6 +319,16 @@ export default function ContractorInvitePage() {
       registerMutation.mutate(registerData);
     }
   };
+  
+  console.log("ContractorInvitePage render state:", {
+    businessId, 
+    businessInviteData, 
+    inviteId, 
+    inviteData, 
+    isBusinessInviteLoading,
+    isInviteDataLoading,
+    isVerifyingInvite
+  });
   
   // Render error state if verification fails
   if ((businessId && businessInviteData && !businessInviteData.valid) || 
