@@ -244,13 +244,13 @@ const Contractors = () => {
                 Send this link to your freelancer or contractor via any messaging platform (email, Slack, text message, etc.). When they click the link, they'll be able to sign up and join your project.
               </p>
             </div>
-            <div className="bg-amber-50 p-4 rounded-md border border-amber-100">
+            <div className="bg-green-50 p-4 rounded-md border border-green-100">
               <h3 className="text-sm font-medium flex items-center text-green-800">
                 <CheckCircle2 size={16} className="mr-2" />
-                Permanent Link
+                Permanent Company Link
               </h3>
               <p className="text-sm mt-1 text-green-700">
-                This is your company's permanent onboarding link. It will not change or expire, so you can share it with all your workers.
+                This is your company's permanent onboarding link. It will never change or expire, so you can bookmark it, save it in your hiring documents, or share it with all your workers.
               </p>
             </div>
           </div>

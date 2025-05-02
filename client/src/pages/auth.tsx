@@ -411,8 +411,9 @@ export default function AuthPage() {
       
       // Handle business invite link registration
       if (businessToken && businessId) {
-        // Include business token information
-        registerData.businessToken = businessToken;
+        // Include business token information - using 'token' as the parameter name
+        // to match what the server is expecting in auth.ts
+        registerData.token = businessToken; // Use 'token' instead of 'businessToken'
         registerData.businessId = businessId;
         registerData.role = 'contractor'; // Always contractor for business invites
         
