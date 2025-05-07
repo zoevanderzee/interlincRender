@@ -104,6 +104,16 @@ export interface IStorage {
   createWorkRequest(workRequest: InsertWorkRequest, tokenHash: string): Promise<WorkRequest>;
   updateWorkRequest(id: number, workRequest: Partial<InsertWorkRequest>): Promise<WorkRequest | undefined>;
   linkWorkRequestToContract(id: number, contractId: number): Promise<WorkRequest | undefined>;
+
+  // Profile Codes and Connection Requests
+  generateProfileCode(userId: number): Promise<string>;
+  getUserByProfileCode(profileCode: string): Promise<User | undefined>;
+  getConnectionRequest(id: number): Promise<ConnectionRequest | undefined>;
+  getConnectionRequestsByBusinessId(businessId: number): Promise<ConnectionRequest[]>;
+  getConnectionRequestsByContractorId(contractorId: number): Promise<ConnectionRequest[]>;
+  getConnectionRequestByProfileCode(businessId: number, profileCode: string): Promise<ConnectionRequest | undefined>;
+  createConnectionRequest(request: InsertConnectionRequest): Promise<ConnectionRequest>;
+  updateConnectionRequest(id: number, request: Partial<InsertConnectionRequest>): Promise<ConnectionRequest | undefined>;
 }
 
 // In-memory storage implementation
@@ -118,6 +128,7 @@ export class MemStorage implements IStorage {
   private workRequests: Map<number, WorkRequest>;
   private businessOnboardingLinks: Map<number, BusinessOnboardingLink>;
   private businessOnboardingUsage: Map<number, BusinessOnboardingUsage>;
+  private connectionRequests: Map<number, ConnectionRequest>;
   
   private userId: number;
   private inviteId: number;
@@ -127,6 +138,7 @@ export class MemStorage implements IStorage {
   private documentId: number;
   private bankAccountId: number;
   private workRequestId: number;
+  private connectionRequestId: number;
   
   // Session store
   public sessionStore: session.Store;
@@ -142,6 +154,7 @@ export class MemStorage implements IStorage {
     this.workRequests = new Map();
     this.businessOnboardingLinks = new Map();
     this.businessOnboardingUsage = new Map();
+    this.connectionRequests = new Map();
     
     this.userId = 1;
     this.inviteId = 1;
@@ -151,6 +164,7 @@ export class MemStorage implements IStorage {
     this.documentId = 1;
     this.bankAccountId = 1;
     this.workRequestId = 1;
+    this.connectionRequestId = 1;
     
     // Create memory store for sessions
     const MemoryStore = require('memorystore')(session);
@@ -1512,6 +1526,146 @@ export class DatabaseStorage implements IStorage {
       .returning();
 
     return updatedWorkRequest;
+  }
+  
+  // Profile Codes and Connection Requests methods
+  async generateProfileCode(userId: number): Promise<string> {
+    const user = await this.getUser(userId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // Check if user already has a profile code
+    if (user.profileCode) {
+      return user.profileCode;
+    }
+
+    // Generate a new unique profile code
+    let code = '';
+    let isUnique = false;
+
+    // Function to create a readable yet unique code
+    // Format: LASTNAME-XXXX where X is alphanumeric
+    const generateCode = () => {
+      const lastName = user.lastName?.toUpperCase() || user.username.toUpperCase();
+      const baseName = lastName.replace(/[^A-Z]/g, '').substring(0, 10);
+      
+      // Generate a 4-digit random alphanumeric suffix
+      const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      let suffix = '';
+      for (let i = 0; i < 4; i++) {
+        suffix += characters.charAt(Math.floor(Math.random() * characters.length));
+      }
+      
+      return `${baseName}-${suffix}`;
+    };
+
+    // Keep generating until we find a unique code
+    while (!isUnique) {
+      code = generateCode();
+      
+      // Check if code is already used
+      const existingUser = await db
+        .select()
+        .from(users)
+        .where(eq(users.profileCode, code))
+        .limit(1);
+      
+      if (existingUser.length === 0) {
+        isUnique = true;
+      }
+    }
+
+    // Update the user with the new profile code
+    const [updatedUser] = await db
+      .update(users)
+      .set({ profileCode: code })
+      .where(eq(users.id, userId))
+      .returning();
+    
+    return code;
+  }
+
+  async getUserByProfileCode(profileCode: string): Promise<User | undefined> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.profileCode, profileCode));
+    
+    return user;
+  }
+  
+  async getConnectionRequest(id: number): Promise<ConnectionRequest | undefined> {
+    const [request] = await db
+      .select()
+      .from(connectionRequests)
+      .where(eq(connectionRequests.id, id));
+    
+    return request;
+  }
+  
+  async getConnectionRequestsByBusinessId(businessId: number): Promise<ConnectionRequest[]> {
+    return db
+      .select()
+      .from(connectionRequests)
+      .where(eq(connectionRequests.businessId, businessId));
+  }
+  
+  async getConnectionRequestsByContractorId(contractorId: number): Promise<ConnectionRequest[]> {
+    return db
+      .select()
+      .from(connectionRequests)
+      .where(eq(connectionRequests.contractorId, contractorId));
+  }
+  
+  async getConnectionRequestByProfileCode(businessId: number, profileCode: string): Promise<ConnectionRequest | undefined> {
+    const [request] = await db
+      .select()
+      .from(connectionRequests)
+      .where(
+        and(
+          eq(connectionRequests.businessId, businessId),
+          eq(connectionRequests.profileCode, profileCode)
+        )
+      );
+    
+    return request;
+  }
+  
+  async createConnectionRequest(request: InsertConnectionRequest): Promise<ConnectionRequest> {
+    // If a profile code is provided, try to find the corresponding contractor
+    let contractorId = null;
+    if (request.profileCode) {
+      const contractor = await this.getUserByProfileCode(request.profileCode);
+      if (contractor) {
+        contractorId = contractor.id;
+      }
+    }
+    
+    const [connectionRequest] = await db
+      .insert(connectionRequests)
+      .values({
+        ...request,
+        contractorId,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
+      .returning();
+    
+    return connectionRequest;
+  }
+  
+  async updateConnectionRequest(id: number, requestData: Partial<InsertConnectionRequest>): Promise<ConnectionRequest | undefined> {
+    const [updatedRequest] = await db
+      .update(connectionRequests)
+      .set({
+        ...requestData,
+        updatedAt: new Date()
+      })
+      .where(eq(connectionRequests.id, id))
+      .returning();
+    
+    return updatedRequest;
   }
   
   // Business Onboarding Links methods
