@@ -20,6 +20,7 @@ export const users = pgTable("users", {
   foundedYear: integer("founded_year"), // Year the company was founded
   employeeCount: integer("employee_count"), // Number of employees
   website: text("website"), // Company website URL
+  profileCode: text("profile_code").unique(), // Unique code for easy worker identification (e.g., "JOHNSON-2025")
   stripeCustomerId: text("stripe_customer_id"), // Stripe customer ID for payment processing
   stripeSubscriptionId: text("stripe_subscription_id"), // Stripe subscription ID for companies
   stripeConnectAccountId: text("stripe_connect_account_id"), // Stripe Connect account ID for contractors
@@ -233,6 +234,30 @@ export const businessOnboardingUsage = pgTable("business_onboarding_usage", {
 // Create insert schemas
 export const insertBusinessOnboardingLinkSchema = createInsertSchema(businessOnboardingLinks);
 export const insertBusinessOnboardingUsageSchema = createInsertSchema(businessOnboardingUsage);
+
+// Connection Requests table
+export const connectionRequests = pgTable("connection_requests", {
+  id: serial("id").primaryKey(),
+  businessId: integer("business_id").notNull().references(() => users.id),
+  contractorId: integer("contractor_id").references(() => users.id), // Optional during creation if using profile code
+  profileCode: text("profile_code"), // Worker's profile code if direct ID not available
+  status: text("status").notNull().default("pending"), // pending, accepted, declined, expired
+  message: text("message"), // Custom message to the contractor
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow()
+});
+
+// Create connection request schema
+export const insertConnectionRequestSchema = createInsertSchema(connectionRequests).omit({ 
+  id: true, 
+  createdAt: true,
+  updatedAt: true,
+  contractorId: true // Will be added conditionally
+});
+
+// Types for connection requests
+export type InsertConnectionRequest = z.infer<typeof insertConnectionRequestSchema>;
+export type ConnectionRequest = typeof connectionRequests.$inferSelect;
 
 // Create types
 export type InsertBusinessOnboardingLink = z.infer<typeof insertBusinessOnboardingLinkSchema>;

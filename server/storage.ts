@@ -1,6 +1,6 @@
 import { 
   users, invites, contracts, milestones, payments, documents, bankAccounts, workRequests,
-  businessOnboardingLinks, businessOnboardingUsage,
+  businessOnboardingLinks, businessOnboardingUsage, connectionRequests,
   type User, type InsertUser, 
   type Invite, type InsertInvite,
   type Contract, type InsertContract,
@@ -10,7 +10,8 @@ import {
   type BankAccount, type InsertBankAccount,
   type WorkRequest, type InsertWorkRequest,
   type BusinessOnboardingLink, type InsertBusinessOnboardingLink,
-  type BusinessOnboardingUsage, type InsertBusinessOnboardingUsage
+  type BusinessOnboardingUsage, type InsertBusinessOnboardingUsage,
+  type ConnectionRequest, type InsertConnectionRequest
 } from "@shared/schema";
 import { eq, and, desc, lte, gte, sql, or } from "drizzle-orm";
 import { db, pool } from "./db";
