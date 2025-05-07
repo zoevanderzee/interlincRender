@@ -1,6 +1,9 @@
 import { useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -11,119 +14,173 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2 } from "lucide-react";
+import { Loader2, Fingerprint } from "lucide-react";
 
 interface FindByProfileCodeDialogProps {
   trigger: React.ReactNode;
   onSuccess?: () => void;
 }
 
+// Create schema for the form
+const formSchema = z.object({
+  profileCode: z.string()
+    .min(3, "Profile code must be at least 3 characters")
+    .max(20, "Profile code cannot exceed 20 characters"),
+  message: z.string()
+    .max(500, "Message cannot exceed 500 characters")
+    .optional(),
+});
+
+type FormValues = z.infer<typeof formSchema>;
+
 export function FindByProfileCodeDialog({ 
-  trigger, 
-  onSuccess 
+  trigger,
+  onSuccess
 }: FindByProfileCodeDialogProps) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
-  const [profileCode, setProfileCode] = useState("");
-  const [message, setMessage] = useState("");
-
-  // Mutation to send a connection request
-  const connectionMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/connection-requests", {
-        profileCode,
-        message: message.trim() || null,
-      });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to send connection request");
+  
+  // Initialize form
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      profileCode: "",
+      message: "",
+    },
+  });
+  
+  // Create connection request mutation
+  const createConnectionMutation = useMutation({
+    mutationFn: async (data: FormValues) => {
+      const response = await apiRequest("POST", "/api/connection-requests", data);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to send connection request");
       }
-      return await res.json();
+      return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/connection-requests"] });
       toast({
-        title: "Connection request sent",
-        description: "The contractor will be notified of your request.",
+        title: "Request sent",
+        description: "Your connection request has been sent to the worker.",
       });
+      form.reset();
       setOpen(false);
-      setProfileCode("");
-      setMessage("");
-      onSuccess?.();
+      if (onSuccess) onSuccess();
     },
     onError: (error: any) => {
       toast({
-        title: "Failed to send connection request",
-        description: error.message || "An error occurred",
+        title: "Request failed",
+        description: error.message || "Failed to send connection request",
         variant: "destructive",
       });
     },
   });
-
+  
+  // Handle form submission
+  const onSubmit = (data: FormValues) => {
+    createConnectionMutation.mutate(data);
+  };
+  
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogTrigger asChild>
+        {trigger}
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[460px]">
         <DialogHeader>
-          <DialogTitle>Connect with a Contractor</DialogTitle>
+          <DialogTitle className="flex items-center">
+            <Fingerprint className="mr-2 h-5 w-5" />
+            Connect by Profile Code
+          </DialogTitle>
           <DialogDescription>
-            Enter the contractor's profile code to send them a connection request.
+            Enter a worker's profile code to send them a connection request.
+            This allows you to quickly find and connect with external workers.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="profile-code" className="text-right">
-              Profile Code
-            </Label>
-            <Input
-              id="profile-code"
-              value={profileCode}
-              onChange={(e) => setProfileCode(e.target.value.toUpperCase())}
-              className="col-span-3"
-              placeholder="e.g. SMITH-X12Y"
+        
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 mt-4">
+            <FormField
+              control={form.control}
+              name="profileCode"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Profile Code</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      placeholder="Enter the worker's profile code"
+                      className="uppercase"
+                      autoComplete="off"
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    The worker's profile code (e.g., JOHNSON-2025)
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-          <div className="grid grid-cols-4 items-start gap-4">
-            <Label htmlFor="message" className="text-right mt-2">
-              Message
-            </Label>
-            <Textarea
-              id="message"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Optional message to introduce yourself or your project"
-              className="col-span-3"
-              rows={3}
+            
+            <FormField
+              control={form.control}
+              name="message"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Message (Optional)</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      {...field}
+                      placeholder="Add a message to introduce yourself or explain why you'd like to connect"
+                      className="min-h-[120px]"
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Include a brief message for the worker
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-        </div>
-        <DialogFooter className="sm:justify-end">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => setOpen(false)}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            onClick={() => connectionMutation.mutate()}
-            disabled={!profileCode || connectionMutation.isPending}
-          >
-            {connectionMutation.isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Sending...
-              </>
-            ) : (
-              "Send Request"
-            )}
-          </Button>
-        </DialogFooter>
+            
+            <DialogFooter>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setOpen(false)}
+                disabled={createConnectionMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit"
+                disabled={createConnectionMutation.isPending}
+              >
+                {createConnectionMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  "Send Request"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
