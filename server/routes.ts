@@ -2259,6 +2259,211 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Error verifying token" });
     }
   });
+  
+  // Profile Code Routes
+  app.get(`${apiRouter}/profile-code`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      // Generate or retrieve a profile code for the authenticated user
+      const userId = req.user?.id;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      // Get the user's existing profile code or generate a new one
+      const profileCode = await storage.generateProfileCode(userId);
+      
+      res.json({ profileCode });
+    } catch (error: any) {
+      console.error('Error generating profile code:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+  
+  // Connection Request Routes
+  app.post(`${apiRouter}/connection-requests`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      // Create a new connection request
+      const { profileCode, message } = req.body;
+      
+      if (!profileCode) {
+        return res.status(400).json({ message: "Profile code is required" });
+      }
+      
+      // First check if the profile code is valid
+      const contractor = await storage.getUserByProfileCode(profileCode);
+      
+      if (!contractor) {
+        return res.status(404).json({ message: "Invalid profile code. Please check and try again." });
+      }
+      
+      // Check if this contractor is already connected to this business
+      // via contracts
+      const businessId = req.user?.id;
+      const existingContracts = await storage.getContractsByBusinessId(businessId);
+      const alreadyConnected = existingContracts.some(contract => contract.contractorId === contractor.id);
+      
+      if (alreadyConnected) {
+        return res.status(400).json({ message: "You are already connected with this contractor." });
+      }
+      
+      // Check if there's already a pending connection request
+      const existingRequest = await storage.getConnectionRequestByProfileCode(businessId, profileCode);
+      
+      if (existingRequest && existingRequest.status === 'pending') {
+        return res.status(400).json({ message: "You already have a pending connection request for this contractor." });
+      }
+      
+      // Create the connection request
+      const connectionRequest = await storage.createConnectionRequest({
+        businessId,
+        profileCode,
+        message: message || null,
+        status: 'pending'
+      });
+      
+      res.status(201).json(connectionRequest);
+    } catch (error: any) {
+      console.error('Error creating connection request:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+  
+  app.get(`${apiRouter}/connection-requests`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      // Get all connection requests for the authenticated user
+      const userId = req.user?.id;
+      const userRole = req.user?.role;
+      
+      let connectionRequests = [];
+      
+      if (userRole === 'business') {
+        // If business, get requests sent by this business
+        connectionRequests = await storage.getConnectionRequestsByBusinessId(userId);
+      } else if (userRole === 'contractor' || userRole === 'freelancer') {
+        // If contractor, get requests where this contractor is the recipient
+        connectionRequests = await storage.getConnectionRequestsByContractorId(userId);
+      }
+      
+      res.json(connectionRequests);
+    } catch (error: any) {
+      console.error('Error fetching connection requests:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+  
+  app.patch(`${apiRouter}/connection-requests/:id`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      
+      if (!status || !['accepted', 'declined'].includes(status)) {
+        return res.status(400).json({ message: "Valid status (accepted or declined) is required" });
+      }
+      
+      // Get the connection request
+      const connectionRequest = await storage.getConnectionRequest(parseInt(id));
+      
+      if (!connectionRequest) {
+        return res.status(404).json({ message: "Connection request not found" });
+      }
+      
+      // Check if the user is authorized to update this request
+      const userId = req.user?.id;
+      const userRole = req.user?.role;
+      
+      // Only the contractor can accept/decline requests
+      if ((userRole !== 'contractor' && userRole !== 'freelancer') || 
+          connectionRequest.contractorId !== userId) {
+        return res.status(403).json({ message: "You are not authorized to update this connection request" });
+      }
+      
+      // Update the request status
+      const updatedRequest = await storage.updateConnectionRequest(parseInt(id), { status });
+      
+      res.json(updatedRequest);
+    } catch (error: any) {
+      console.error('Error updating connection request:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Get company onboarding links
+  app.get(`${apiRouter}/business-onboarding-link`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const businessId = req.user?.id;
+      
+      if (!businessId || req.user?.role !== 'business') {
+        return res.status(403).json({ message: "Only business accounts can access onboarding links" });
+      }
+      
+      // Get the business onboarding link
+      const link = await storage.getBusinessOnboardingLink(businessId);
+      
+      if (!link) {
+        return res.status(404).json({ message: "No onboarding link found" });
+      }
+      
+      // Get application URL, handling both Replit and local environments
+      let appUrl = `${req.protocol}://${req.get('host')}`;
+      
+      // Check if running in Replit
+      if (process.env.REPLIT_DEV_DOMAIN) {
+        // Use the Replit-specific domain from environment
+        appUrl = `https://${process.env.REPLIT_DEV_DOMAIN}`;
+      }
+      
+      // Create the full invitation URL
+      const inviteUrl = `${appUrl}/auth?invite=contractor&email=direct&token=${link.token}&businessId=${businessId}&workerType=${link.workerType}`;
+      
+      res.json({
+        token: link.token,
+        workerType: link.workerType,
+        inviteUrl,
+        createdAt: link.createdAt
+      });
+    } catch (error: any) {
+      console.error('Error retrieving business onboarding link:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+  
+  // Create or update company onboarding link
+  app.post(`${apiRouter}/business-onboarding-link`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const businessId = req.user?.id;
+      const { workerType } = req.body;
+      
+      if (!businessId || req.user?.role !== 'business') {
+        return res.status(403).json({ message: "Only business accounts can create onboarding links" });
+      }
+      
+      // Create or update the business onboarding link
+      const link = await storage.createBusinessOnboardingLink(businessId, workerType || 'contractor');
+      
+      // Get application URL, handling both Replit and local environments
+      let appUrl = `${req.protocol}://${req.get('host')}`;
+      
+      // Check if running in Replit
+      if (process.env.REPLIT_DEV_DOMAIN) {
+        // Use the Replit-specific domain from environment
+        appUrl = `https://${process.env.REPLIT_DEV_DOMAIN}`;
+      }
+      
+      // Create the full invitation URL
+      const inviteUrl = `${appUrl}/auth?invite=contractor&email=direct&token=${link.token}&businessId=${businessId}&workerType=${link.workerType}`;
+      
+      res.status(201).json({
+        token: link.token,
+        workerType: link.workerType,
+        inviteUrl,
+        createdAt: link.createdAt
+      });
+    } catch (error: any) {
+      console.error('Error creating business onboarding link:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;
