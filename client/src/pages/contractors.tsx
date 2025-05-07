@@ -40,8 +40,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { User, Invite, insertInviteSchema } from "@shared/schema";
-import { Search, Plus, Mail, Send, FileText, UserCheck, ArrowRight, User as UserIcon, Building, Briefcase, Loader2, Clock, CheckCircle2, XCircle, CreditCard, ExternalLink, Copy, Link2, Share } from "lucide-react";
+import { Search, Plus, Mail, Send, FileText, UserCheck, ArrowRight, User as UserIcon, Building, Briefcase, Loader2, Clock, CheckCircle2, XCircle, CreditCard, ExternalLink, Copy, Link2, Share, UserPlus, Fingerprint } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { FindByProfileCodeDialog } from "@/components/contractors/FindByProfileCodeDialog";
+import { ConnectionRequestsList } from "@/components/profile/ConnectionRequestsList";
 import { useMutation } from "@tanstack/react-query";
 
 const Contractors = () => {
@@ -314,7 +316,22 @@ const Contractors = () => {
           <h1 className="text-2xl md:text-3xl font-semibold text-primary-900">External Workers</h1>
           <p className="text-primary-500 mt-1">Manage your contractors, freelancers, and project collaborators</p>
         </div>
-        <div className="mt-4 md:mt-0">
+        <div className="mt-4 md:mt-0 flex space-x-2">
+          <FindByProfileCodeDialog 
+            trigger={
+              <Button variant="outline">
+                <Fingerprint size={16} className="mr-2" />
+                Connect by Code
+              </Button>
+            }
+            onSuccess={() => {
+              queryClient.invalidateQueries({ queryKey: ['/api/connection-requests'] });
+              toast({
+                title: "Connection request sent",
+                description: "We'll notify you when the contractor responds."
+              });
+            }}
+          />
           <Button onClick={() => generateOnboardingLink()}>
             <Plus size={16} className="mr-2" />
             Invite
