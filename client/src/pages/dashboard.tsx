@@ -132,55 +132,81 @@ const Dashboard = () => {
     );
   }
 
-  // Calculate total upcoming payments
-  const totalUpcomingPayments = data?.payments.reduce((sum: number, payment: any) => 
-    sum + Number(payment.amount), 0) || 0;
+  // Get budget data from the API endpoint or use placeholder if not available
+  const { data: budgetInfo } = useQuery({
+    queryKey: ['/api/budget'],
+    refetchOnWindowFocus: false,
+  });
+  
+  // Format the remaining budget as a currency string
+  const formatCurrency = (value: string | null): string => {
+    if (!value) return "$0";
+    return `$${parseFloat(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  const budgetRemaining = budgetInfo?.remainingBudget || "0";
 
   return (
     <>
       {/* Page Header */}
-      <div className="mb-6">
+      <div className="mb-8">
         <h1 className="text-2xl md:text-3xl font-semibold text-white">Dashboard</h1>
-        <p className="text-gray-400 mt-1">Welcome back, Sarah. Here's what's happening with your contracts.</p>
+        <p className="text-gray-400 mt-1">Welcome back. Here's your business overview at a glance.</p>
       </div>
       
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatsCard 
-          title="Active Contracts"
-          value={data?.stats.activeContractsCount || 0}
-          icon={<FileText size={20} />}
-          iconBgColor="bg-zinc-800"
-          iconColor="text-accent-500"
-        />
+      {/* Primary Metrics: 4 Key Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Card 1: Payments Processed */}
+        <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-6 hover:shadow-lg transition-shadow">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-gray-400 text-sm font-medium">Payments Processed</h3>
+            <div className="p-2 rounded-full bg-green-500/10">
+              <DollarSign size={20} className="text-green-500" />
+            </div>
+          </div>
+          <p className="text-3xl font-bold text-white">${data?.stats.paymentsProcessed?.toLocaleString('en-US') || '0'}</p>
+          <p className="text-xs text-gray-500 mt-1">Total value of processed payments</p>
+        </div>
         
-        <StatsCard 
-          title="Pending Approvals"
-          value={data?.stats.pendingApprovalsCount || 0}
-          icon={<Clock size={20} />}
-          iconBgColor="bg-zinc-800"
-          iconColor="text-amber-500"
-        />
+        {/* Card 2: Budget Remaining */}
+        <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-6 hover:shadow-lg transition-shadow">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-gray-400 text-sm font-medium">Budget Remaining</h3>
+            <div className="p-2 rounded-full bg-blue-500/10">
+              <Coins size={20} className="text-blue-500" />
+            </div>
+          </div>
+          <p className="text-3xl font-bold text-white">{formatCurrency(budgetRemaining)}</p>
+          <p className="text-xs text-gray-500 mt-1">Available outsourcing budget</p>
+        </div>
         
-        <StatsCard 
-          title="Payments Processed"
-          value={`$${data?.stats.paymentsProcessed?.toLocaleString('en-US') || '0'}`}
-          icon={<DollarSign size={20} />}
-          iconBgColor="bg-zinc-800"
-          iconColor="text-green-500"
-        />
+        {/* Card 3: Active Projects */}
+        <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-6 hover:shadow-lg transition-shadow">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-gray-400 text-sm font-medium">Active Projects</h3>
+            <div className="p-2 rounded-full bg-accent-500/10">
+              <Briefcase size={20} className="text-accent-500" />
+            </div>
+          </div>
+          <p className="text-3xl font-bold text-white">{data?.stats.activeContractsCount || 0}</p>
+          <p className="text-xs text-gray-500 mt-1">Current ongoing contracts</p>
+        </div>
         
-        <StatsCard 
-          title="Active Contractors"
-          value={data?.stats.activeContractorsCount || 0}
-          icon={<Users size={20} />}
-          iconBgColor="bg-zinc-800"
-          iconColor="text-blue-500"
-        />
+        {/* Card 4: Active Contractors */}
+        <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-6 hover:shadow-lg transition-shadow">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-gray-400 text-sm font-medium">Active Contractors</h3>
+            <div className="p-2 rounded-full bg-purple-500/10">
+              <Users size={20} className="text-purple-500" />
+            </div>
+          </div>
+          <p className="text-3xl font-bold text-white">{data?.stats.activeContractorsCount || 0}</p>
+          <p className="text-xs text-gray-500 mt-1">Working professionals</p>
+        </div>
       </div>
       
-      {/* Action Buttons */}
-      <div className="flex flex-wrap gap-3 mb-6">
+      {/* Action Buttons - Simplified */}
+      <div className="flex flex-wrap gap-3 mb-8">
         <Button 
           className="bg-accent-500 hover:bg-accent-600 text-white"
           onClick={handleNewContract}
@@ -197,84 +223,48 @@ const Dashboard = () => {
           <Plus className="mr-2" size={16} />
           Add Contractor
         </Button>
-        
-        <Button 
-          variant="outline"
-          className="text-white border-zinc-700 hover:bg-zinc-800 hover:text-white"
-          onClick={handleExportReports}
-        >
-          <Download className="mr-2" size={16} />
-          Export Reports
-        </Button>
       </div>
       
-      {/* Projects Overview Section */}
-      <section className="mb-8">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-white">
-            <Briefcase className="inline-block mr-2" size={20} />
-            Projects Overview
-          </h2>
-          <Button variant="link" className="text-accent-500 hover:text-accent-600 text-sm font-medium" onClick={() => navigate('/projects')}>
-            View All Projects
-          </Button>
-        </div>
-        
-        <ProjectsOverview 
-          contracts={data?.contracts || []}
-          contractors={data?.contractors || []}
-          milestones={data?.milestones || []}
-          payments={data?.payments || []}
-          onViewProject={handleViewContract}
-        />
-      </section>
-      
-      {/* Additional Dashboard Sections */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
-        <section className="border border-zinc-800 bg-zinc-900 rounded-lg p-4 text-center">
-          <div className="h-12 w-12 bg-zinc-800 mx-auto rounded-full flex items-center justify-center mb-3">
-            <FileText size={20} className="text-accent-500" />
+      {/* Quick Actions Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        {/* Contract Management */}
+        <Button 
+          variant="outline"
+          className="text-white border-zinc-700 hover:bg-zinc-800 hover:text-white h-auto py-3 justify-start"
+          onClick={() => navigate('/contracts')}
+        >
+          <FileText className="mr-3" size={18} />
+          <div className="text-left">
+            <div className="font-medium">Contracts</div>
+            <div className="text-xs text-gray-400">Manage all contracts</div>
           </div>
-          <h3 className="text-lg font-medium text-white mb-1">Contract Management</h3>
-          <p className="text-gray-400 text-sm mb-4">Create, review and manage all your smart contracts</p>
-          <Button 
-            variant="outline"
-            className="text-white border-zinc-700 hover:bg-zinc-800 hover:text-white text-xs"
-            onClick={() => navigate('/contracts')}
-          >
-            Browse Contracts
-          </Button>
-        </section>
+        </Button>
         
-        <section className="border border-zinc-800 bg-zinc-900 rounded-lg p-4 text-center">
-          <div className="h-12 w-12 bg-zinc-800 mx-auto rounded-full flex items-center justify-center mb-3">
-            <Users size={20} className="text-blue-500" />
+        {/* Payments Management */}
+        <Button 
+          variant="outline"
+          className="text-white border-zinc-700 hover:bg-zinc-800 hover:text-white h-auto py-3 justify-start"
+          onClick={() => navigate('/payments')}
+        >
+          <DollarSign className="mr-3" size={18} />
+          <div className="text-left">
+            <div className="font-medium">Payments</div>
+            <div className="text-xs text-gray-400">Process and track payments</div>
           </div>
-          <h3 className="text-lg font-medium text-white mb-1">Contractor Database</h3>
-          <p className="text-gray-400 text-sm mb-4">Manage your private network of trusted professionals</p>
-          <Button 
-            variant="outline"
-            className="text-white border-zinc-700 hover:bg-zinc-800 hover:text-white text-xs"
-            onClick={() => navigate('/contractors')}
-          >
-            View Contractors
-          </Button>
-        </section>
+        </Button>
         
-        <section className="border border-zinc-800 bg-zinc-900 rounded-lg p-4 text-center">
-          <div className="h-12 w-12 bg-zinc-800 mx-auto rounded-full flex items-center justify-center mb-3">
-            <Coins size={20} className="text-green-500" />
+        {/* Budget Configuration */}
+        <Button 
+          variant="outline"
+          className="text-white border-zinc-700 hover:bg-zinc-800 hover:text-white h-auto py-3 justify-start"
+          onClick={() => navigate('/settings')}
+        >
+          <Coins className="mr-3" size={18} />
+          <div className="text-left">
+            <div className="font-medium">Budget</div>
+            <div className="text-xs text-gray-400">Manage budget settings</div>
           </div>
-          <h3 className="text-lg font-medium text-white mb-1">Financial Reporting</h3>
-          <p className="text-gray-400 text-sm mb-4">Access payment history and financial reporting</p>
-          <Button 
-            variant="outline"
-            className="text-white border-zinc-700 hover:bg-zinc-800 hover:text-white text-xs"
-            onClick={() => navigate('/payments')}
-          >
-            View Finances
-          </Button>
-        </section>
+        </Button>
       </div>
     </>
   );
