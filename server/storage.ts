@@ -1907,6 +1907,167 @@ export class DatabaseStorage implements IStorage {
     
     return updatedRequest;
   }
+  
+  // Budget Management Methods
+  
+  async setBudgetCap(userId: number, budgetCap: number, period: string = 'yearly', startDate?: Date, endDate?: Date): Promise<User | undefined> {
+    try {
+      // Calculate end date if not provided
+      let calculatedEndDate = endDate;
+      if (!calculatedEndDate && startDate) {
+        calculatedEndDate = new Date(startDate);
+        
+        if (period === 'monthly') {
+          calculatedEndDate.setMonth(calculatedEndDate.getMonth() + 1);
+        } else if (period === 'quarterly') {
+          calculatedEndDate.setMonth(calculatedEndDate.getMonth() + 3);
+        } else { // yearly
+          calculatedEndDate.setFullYear(calculatedEndDate.getFullYear() + 1);
+        }
+      }
+      
+      // If start date not provided, use current date
+      const calculatedStartDate = startDate || new Date();
+      
+      // Update user with budget information
+      const [updatedUser] = await db
+        .update(users)
+        .set({
+          budgetCap: budgetCap.toString(),
+          budgetPeriod: period,
+          budgetStartDate: calculatedStartDate,
+          budgetEndDate: calculatedEndDate
+        })
+        .where(eq(users.id, userId))
+        .returning();
+      
+      return updatedUser;
+    } catch (error) {
+      console.error("Error setting budget cap:", error);
+      return undefined;
+    }
+  }
+  
+  async increaseBudgetUsed(userId: number, amount: number): Promise<User | undefined> {
+    try {
+      // Get current user to get current budgetUsed
+      const user = await this.getUser(userId);
+      if (!user) return undefined;
+      
+      // Calculate new used amount
+      const currentUsed = user.budgetUsed ? parseFloat(user.budgetUsed.toString()) : 0;
+      const newUsed = currentUsed + amount;
+      
+      // Update budgetUsed
+      const [updatedUser] = await db
+        .update(users)
+        .set({
+          budgetUsed: newUsed.toString()
+        })
+        .where(eq(users.id, userId))
+        .returning();
+      
+      return updatedUser;
+    } catch (error) {
+      console.error("Error increasing budget used:", error);
+      return undefined;
+    }
+  }
+  
+  async decreaseBudgetUsed(userId: number, amount: number): Promise<User | undefined> {
+    try {
+      // Get current user to get current budgetUsed
+      const user = await this.getUser(userId);
+      if (!user) return undefined;
+      
+      // Calculate new used amount, don't go below 0
+      const currentUsed = user.budgetUsed ? parseFloat(user.budgetUsed.toString()) : 0;
+      const newUsed = Math.max(0, currentUsed - amount);
+      
+      // Update budgetUsed
+      const [updatedUser] = await db
+        .update(users)
+        .set({
+          budgetUsed: newUsed.toString()
+        })
+        .where(eq(users.id, userId))
+        .returning();
+      
+      return updatedUser;
+    } catch (error) {
+      console.error("Error decreasing budget used:", error);
+      return undefined;
+    }
+  }
+  
+  async resetBudgetUsed(userId: number): Promise<User | undefined> {
+    try {
+      // Update budgetUsed to 0
+      const [updatedUser] = await db
+        .update(users)
+        .set({
+          budgetUsed: "0"
+        })
+        .where(eq(users.id, userId))
+        .returning();
+      
+      return updatedUser;
+    } catch (error) {
+      console.error("Error resetting budget used:", error);
+      return undefined;
+    }
+  }
+  
+  async checkBudgetAvailable(userId: number, amount: number): Promise<boolean> {
+    try {
+      // Get user to check budget cap and used
+      const user = await this.getUser(userId);
+      if (!user) return false;
+      
+      // If no budget cap set, assume unlimited budget
+      if (!user.budgetCap) return true;
+      
+      // Check if budget period has expired and should be reset
+      if (user.budgetResetEnabled && user.budgetEndDate && new Date() > new Date(user.budgetEndDate)) {
+        // Budget period has expired, should reset used amount
+        await this.resetBudgetUsed(userId);
+        
+        // Calculate new budget period
+        const newStartDate = new Date();
+        let newEndDate = new Date(newStartDate);
+        
+        if (user.budgetPeriod === 'monthly') {
+          newEndDate.setMonth(newEndDate.getMonth() + 1);
+        } else if (user.budgetPeriod === 'quarterly') {
+          newEndDate.setMonth(newEndDate.getMonth() + 3);
+        } else { // yearly
+          newEndDate.setFullYear(newEndDate.getFullYear() + 1);
+        }
+        
+        // Update budget period dates
+        await db
+          .update(users)
+          .set({
+            budgetStartDate: newStartDate,
+            budgetEndDate: newEndDate
+          })
+          .where(eq(users.id, userId));
+        
+        // After reset, only need to check if amount is under cap
+        const budgetCap = parseFloat(user.budgetCap.toString());
+        return amount <= budgetCap;
+      }
+      
+      // Check if adding this amount would exceed budget
+      const budgetCap = parseFloat(user.budgetCap.toString());
+      const budgetUsed = user.budgetUsed ? parseFloat(user.budgetUsed.toString()) : 0;
+      
+      return (budgetUsed + amount) <= budgetCap;
+    } catch (error) {
+      console.error("Error checking budget availability:", error);
+      return false;
+    }
+  }
 }
 
 // Use DatabaseStorage instead of MemStorage
