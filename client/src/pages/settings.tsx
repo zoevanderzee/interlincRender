@@ -9,9 +9,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ProfileCodeSection } from "@/components/profile/ProfileCodeSection";
 import { ConnectionRequestsList } from "@/components/profile/ConnectionRequestsList";
+import { BudgetSettings } from "@/components/settings/BudgetSettings";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useMutation } from "@tanstack/react-query";
-import { Loader2, User, Lock, Fingerprint, Bell, Settings as SettingsIcon } from "lucide-react";
+import { Loader2, User, Lock, Fingerprint, Bell, Settings as SettingsIcon, DollarSign } from "lucide-react";
 
 export default function Settings() {
   const { user } = useAuth();
