@@ -40,6 +40,13 @@ export interface IStorage {
   getUserByResetToken(token: string): Promise<User | undefined>;
   setPasswordResetToken(email: string, token: string, expires: Date): Promise<User | undefined>;
   
+  // Budget Management
+  setBudgetCap(userId: number, budgetCap: number, period?: string, startDate?: Date, endDate?: Date): Promise<User | undefined>;
+  increaseBudgetUsed(userId: number, amount: number): Promise<User | undefined>;
+  decreaseBudgetUsed(userId: number, amount: number): Promise<User | undefined>;
+  resetBudgetUsed(userId: number): Promise<User | undefined>;
+  checkBudgetAvailable(userId: number, amount: number): Promise<boolean>;
+  
   // Profile Code
   generateProfileCode(userId: number): Promise<string>;
   regenerateProfileCode(userId: number): Promise<string>;

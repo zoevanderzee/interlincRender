@@ -25,6 +25,12 @@ export const users = pgTable("users", {
   stripeSubscriptionId: text("stripe_subscription_id"), // Stripe subscription ID for companies
   stripeConnectAccountId: text("stripe_connect_account_id"), // Stripe Connect account ID for contractors
   payoutEnabled: boolean("payout_enabled").default(false), // Whether the contractor is ready to receive payments
+  budgetCap: decimal("budget_cap", { precision: 15, scale: 2 }), // Maximum budget for outsourcing (for business accounts)
+  budgetUsed: decimal("budget_used", { precision: 15, scale: 2 }).default("0"), // Amount of budget already allocated to projects
+  budgetPeriod: text("budget_period").default("yearly"), // Budget period: monthly, quarterly, yearly
+  budgetStartDate: timestamp("budget_start_date"), // When the current budget period began
+  budgetEndDate: timestamp("budget_end_date"), // When the current budget period ends
+  budgetResetEnabled: boolean("budget_reset_enabled").default(false), // Whether budget should automatically reset at the end of period
   resetPasswordToken: text("reset_password_token"), // Token for password reset
   resetPasswordExpires: timestamp("reset_password_expires") // Expiration time for password reset token
 });
