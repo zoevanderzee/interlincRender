@@ -161,7 +161,7 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
                   onClick={() => handleSort("contractName")}
                 >
                   <div className="flex items-center">
-                    Contract Name
+                    Project Name
                     {sortField === "contractName" && (
                       <ArrowUpDown className={`ml-2 h-4 w-4 ${sortDirection === "asc" ? "rotate-180" : ""}`} />
                     )}
@@ -218,7 +218,7 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
               {filteredAndSortedContracts.length === 0 ? (
                 <TableRow className="hover:bg-zinc-800 border-b border-zinc-700">
                   <TableCell colSpan={6} className="text-center py-6 text-zinc-400">
-                    No contracts found
+                    No projects found
                   </TableCell>
                 </TableRow>
               ) : (
@@ -272,7 +272,7 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
                               onClick={() => onEditContract && onEditContract(contract.id)}
                             >
                               <Edit className="h-4 w-4 mr-2" />
-                              Edit Contract
+                              Edit Project
                             </DropdownMenuItem>
                           )}
                         </DropdownMenuContent>

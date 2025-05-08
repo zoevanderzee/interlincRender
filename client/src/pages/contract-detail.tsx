@@ -230,7 +230,7 @@ export default function ContractDetailPage() {
           <CardHeader className="pb-2">
             <div className="flex items-center space-x-2">
               <AlertTriangle className="h-7 w-7 text-yellow-500" />
-              <CardTitle className="text-2xl font-bold text-white">Contract Not Found</CardTitle>
+              <CardTitle className="text-2xl font-bold text-white">Project Not Found</CardTitle>
             </div>
           </CardHeader>
           
