@@ -1,199 +1,351 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/use-auth";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
 } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { 
-  Loader2, 
-  CheckCircle2, 
-  XCircle, 
-  Building, 
-  RefreshCw 
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Loader2,
+  RefreshCw,
+  CheckCircle,
+  XCircle,
+  Clock,
+  BadgeCheck,
+  AlertCircle,
+  Building2
 } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+
+type ConnectionRequest = {
+  id: number;
+  businessId: number;
+  contractorId: number | null;
+  profileCode: string | null;
+  status: string;
+  message: string | null;
+  createdAt: string;
+  updatedAt: string;
+  // Include these fields when joining with users table
+  businessName?: string;
+};
 
 export function ConnectionRequestsList() {
   const { toast } = useToast();
-  const { user } = useAuth();
-  const isContractor = user?.role === "contractor" || user?.role === "freelancer";
+  const [activeTab, setActiveTab] = useState("pending");
   
   // Query to fetch connection requests
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['/api/connection-requests'],
-    retry: false,
+    retry: false
   });
   
-  // Mutation to respond to a connection request
-  const respondToRequestMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: number; status: 'accepted' | 'declined' }) => {
-      const res = await apiRequest('PATCH', `/api/connection-requests/${id}`, { status });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to update connection request");
+  // Mutation to accept or decline a connection request
+  const updateRequestMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: number; status: string }) => {
+      const response = await apiRequest("PATCH", `/api/connection-requests/${id}`, { status });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to update connection request");
       }
-      return await res.json();
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/connection-requests'] });
       toast({
-        title: "Request updated",
-        description: "The connection request has been updated.",
+        title: "Connection request updated",
+        description: "The connection request has been updated successfully.",
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Failed to update request",
-        description: error.message || "An error occurred",
+        title: "Update failed",
+        description: error.message || "Failed to update connection request",
         variant: "destructive",
       });
     },
   });
   
-  // Handle accepting a request
-  const handleAccept = (requestId: number) => {
-    respondToRequestMutation.mutate({ id: requestId, status: 'accepted' });
+  // Handle accept/decline actions
+  const handleAccept = (id: number) => {
+    updateRequestMutation.mutate({ id, status: "accepted" });
   };
   
-  // Handle declining a request
-  const handleDecline = (requestId: number) => {
-    respondToRequestMutation.mutate({ id: requestId, status: 'declined' });
+  const handleDecline = (id: number) => {
+    updateRequestMutation.mutate({ id, status: "declined" });
   };
   
-  // Format the request status for display
-  const getStatusBadge = (status: string) => {
+  // Filter connection requests by status
+  const filterRequests = (status: string) => {
+    if (!data || !Array.isArray(data)) return [];
+    return data.filter((request: ConnectionRequest) => request.status === status);
+  };
+  
+  // Get requests for each category
+  const pendingRequests = filterRequests("pending");
+  const acceptedRequests = filterRequests("accepted");
+  const declinedRequests = filterRequests("declined");
+  
+  // Render status badge
+  const renderStatusBadge = (status: string) => {
     switch (status) {
-      case 'pending':
-        return <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-md text-xs font-medium">Pending</span>;
-      case 'accepted':
-        return <span className="bg-green-100 text-green-800 px-2 py-1 rounded-md text-xs font-medium">Accepted</span>;
-      case 'declined':
-        return <span className="bg-red-100 text-red-800 px-2 py-1 rounded-md text-xs font-medium">Declined</span>;
+      case "pending":
+        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
+      case "accepted":
+        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200"><BadgeCheck className="h-3 w-3 mr-1" />Accepted</Badge>;
+      case "declined":
+        return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200"><XCircle className="h-3 w-3 mr-1" />Declined</Badge>;
       default:
-        return <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded-md text-xs font-medium">{status}</span>;
+        return <Badge variant="outline">{status}</Badge>;
     }
   };
-
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Connection Requests</CardTitle>
-          <CardDescription>
-            {isContractor 
-              ? "Businesses that want to connect with you" 
-              : "Your connection requests to contractors"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center py-8">
+  
+  // Format date
+  const formatDate = (dateString: string) => {
+    try {
+      return format(new Date(dateString), "MMM d, yyyy");
+    } catch (error) {
+      return "Invalid date";
+    }
+  };
+  
+  // Generate business name initials for avatar
+  const getInitials = (businessId: number) => {
+    const request = data?.find((r: ConnectionRequest) => r.businessId === businessId);
+    return request?.businessName 
+      ? request.businessName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
+      : "B" + businessId.toString().substring(0, 1);
+  };
+  
+  return (
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle className="flex items-center">
+          <Building2 className="mr-2 h-5 w-5" />
+          Connection Requests
+        </CardTitle>
+        <CardDescription>
+          Manage connection requests from businesses who want to work with you.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-6">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (error) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Connection Requests</CardTitle>
-          <CardDescription>
-            {isContractor 
-              ? "Businesses that want to connect with you" 
-              : "Your connection requests to contractors"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8">
+        ) : error ? (
+          <div className="text-center py-6">
             <p className="text-destructive mb-4">Failed to load connection requests</p>
             <Button variant="secondary" onClick={() => refetch()}>
               <RefreshCw className="mr-2 h-4 w-4" />
               Retry
             </Button>
           </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Connection Requests</CardTitle>
-        <CardDescription>
-          {isContractor 
-            ? "Businesses that want to connect with you" 
-            : "Your connection requests to contractors"}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {!data || data.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <p>{isContractor 
-              ? "You don't have any connection requests from businesses yet." 
-              : "You haven't sent any connection requests to contractors yet."}</p>
-          </div>
         ) : (
-          <div className="space-y-4">
-            {data.map((request: any) => (
-              <div key={request.id} className="border rounded-lg p-4">
-                <div className="flex justify-between items-start mb-2">
-                  <div className="flex items-center">
-                    <Building className="h-5 w-5 mr-2 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">
-                        {isContractor ? "Business Request" : `Request to ${request.profileCode}`}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
-                      </p>
-                    </div>
-                  </div>
-                  <div>{getStatusBadge(request.status)}</div>
+          <Tabs defaultValue="pending" value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="pending" className="relative">
+                Pending
+                {pendingRequests.length > 0 && (
+                  <span className="absolute top-0 right-0 -mt-1 -mr-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
+                    {pendingRequests.length}
+                  </span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="accepted">Accepted</TabsTrigger>
+              <TabsTrigger value="declined">Declined</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="pending">
+              {pendingRequests.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <AlertCircle className="mx-auto h-8 w-8 mb-2 opacity-50" />
+                  <p>No pending connection requests</p>
                 </div>
-                
-                {request.message && (
-                  <div className="bg-secondary/30 p-3 rounded-md my-3">
-                    <p className="text-sm">{request.message}</p>
-                  </div>
-                )}
-                
-                {isContractor && request.status === 'pending' && (
-                  <div className="flex space-x-2 mt-4">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600"
-                      onClick={() => handleDecline(request.id)}
-                      disabled={respondToRequestMutation.isPending}
-                    >
-                      <XCircle className="mr-1 h-4 w-4" />
-                      Decline
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="text-green-500 border-green-200 hover:bg-green-50 hover:text-green-600"
-                      onClick={() => handleAccept(request.id)}
-                      disabled={respondToRequestMutation.isPending}
-                    >
-                      <CheckCircle2 className="mr-1 h-4 w-4" />
-                      Accept
-                    </Button>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Business</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Message</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pendingRequests.map((request: ConnectionRequest) => (
+                      <TableRow key={request.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-8 w-8 bg-primary/10">
+                              <AvatarFallback className="text-xs font-medium">
+                                {getInitials(request.businessId)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium">Business #{request.businessId}</p>
+                              <p className="text-xs text-muted-foreground">Sent via Profile Code</p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{formatDate(request.createdAt)}</TableCell>
+                        <TableCell>
+                          {request.message ? (
+                            <p className="max-w-[200px] truncate">{request.message}</p>
+                          ) : (
+                            <span className="text-muted-foreground text-sm italic">No message</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex space-x-2">
+                            <Button
+                              size="sm"
+                              onClick={() => handleAccept(request.id)}
+                              disabled={updateRequestMutation.isPending}
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              {updateRequestMutation.isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <CheckCircle className="h-4 w-4 mr-1" />
+                              )}
+                              Accept
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDecline(request.id)}
+                              disabled={updateRequestMutation.isPending}
+                              className="border-red-200 text-red-700 hover:bg-red-50"
+                            >
+                              {updateRequestMutation.isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <XCircle className="h-4 w-4 mr-1" />
+                              )}
+                              Decline
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </TabsContent>
+            
+            <TabsContent value="accepted">
+              {acceptedRequests.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <AlertCircle className="mx-auto h-8 w-8 mb-2 opacity-50" />
+                  <p>No accepted connection requests</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Business</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Message</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {acceptedRequests.map((request: ConnectionRequest) => (
+                      <TableRow key={request.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-8 w-8 bg-primary/10">
+                              <AvatarFallback className="text-xs font-medium">
+                                {getInitials(request.businessId)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium">Business #{request.businessId}</p>
+                              <p className="text-xs text-muted-foreground">Sent via Profile Code</p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{formatDate(request.createdAt)}</TableCell>
+                        <TableCell>
+                          {request.message ? (
+                            <p className="max-w-[200px] truncate">{request.message}</p>
+                          ) : (
+                            <span className="text-muted-foreground text-sm italic">No message</span>
+                          )}
+                        </TableCell>
+                        <TableCell>{renderStatusBadge(request.status)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </TabsContent>
+            
+            <TabsContent value="declined">
+              {declinedRequests.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <AlertCircle className="mx-auto h-8 w-8 mb-2 opacity-50" />
+                  <p>No declined connection requests</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Business</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Message</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {declinedRequests.map((request: ConnectionRequest) => (
+                      <TableRow key={request.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-8 w-8 bg-primary/10">
+                              <AvatarFallback className="text-xs font-medium">
+                                {getInitials(request.businessId)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium">Business #{request.businessId}</p>
+                              <p className="text-xs text-muted-foreground">Sent via Profile Code</p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{formatDate(request.createdAt)}</TableCell>
+                        <TableCell>
+                          {request.message ? (
+                            <p className="max-w-[200px] truncate">{request.message}</p>
+                          ) : (
+                            <span className="text-muted-foreground text-sm italic">No message</span>
+                          )}
+                        </TableCell>
+                        <TableCell>{renderStatusBadge(request.status)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </TabsContent>
+          </Tabs>
         )}
       </CardContent>
     </Card>

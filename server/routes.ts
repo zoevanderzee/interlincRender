@@ -2263,14 +2263,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Profile Code Routes
   app.get(`${apiRouter}/profile-code`, requireAuth, async (req: Request, res: Response) => {
     try {
-      // Generate or retrieve a profile code for the authenticated user
+      // Retrieve a user's profile code
       const userId = req.user?.id;
       
       if (!userId) {
         return res.status(401).json({ message: "Authentication required" });
       }
       
-      // Get the user's existing profile code or generate a new one
+      // Get the user
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Return the profile code (might be null if not generated yet)
+      res.json({ profileCode: user.profileCode });
+    } catch (error: any) {
+      console.error('Error retrieving profile code:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+  
+  app.post(`${apiRouter}/profile-code`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      // Generate a new profile code for the authenticated user
+      const userId = req.user?.id;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      // Only contractors and freelancers can have profile codes
+      const userRole = req.user?.role;
+      if (userRole !== 'contractor' && userRole !== 'freelancer') {
+        return res.status(403).json({ message: "Only contractors and freelancers can generate profile codes" });
+      }
+      
+      // Generate a new profile code
       const profileCode = await storage.generateProfileCode(userId);
       
       res.json({ profileCode });
