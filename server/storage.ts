@@ -1772,6 +1772,121 @@ export class DatabaseStorage implements IStorage {
     
     return usage;
   }
+  
+  // Profile code methods
+  async generateProfileCode(userId: number): Promise<string> {
+    const user = await this.getUser(userId);
+    if (!user) {
+      throw new Error(`User with ID ${userId} not found`);
+    }
+    
+    // Generate a profile code based on user's name or username
+    let baseName = "";
+    if (user.lastName) {
+      baseName = user.lastName.toUpperCase();
+    } else if (user.firstName) {
+      baseName = user.firstName.toUpperCase();
+    } else {
+      baseName = user.username.toUpperCase();
+    }
+    
+    // Add a random suffix (current year + random number)
+    const currentYear = new Date().getFullYear();
+    const suffix = Math.floor(Math.random() * 100).toString().padStart(2, '0');
+    const profileCode = `${baseName.substring(0, 8)}-${currentYear}`;
+    
+    // Update user with the new profile code
+    await db.update(users)
+      .set({ profileCode })
+      .where(eq(users.id, userId));
+    
+    return profileCode;
+  }
+  
+  async getUserByProfileCode(profileCode: string): Promise<User | undefined> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.profileCode, profileCode));
+    
+    return user;
+  }
+  
+  // Connection requests methods
+  async getConnectionRequest(id: number): Promise<ConnectionRequest | undefined> {
+    const [request] = await db
+      .select()
+      .from(connectionRequests)
+      .where(eq(connectionRequests.id, id));
+    
+    return request;
+  }
+  
+  async getConnectionRequestsByBusinessId(businessId: number): Promise<ConnectionRequest[]> {
+    return await db
+      .select()
+      .from(connectionRequests)
+      .where(eq(connectionRequests.businessId, businessId))
+      .orderBy(desc(connectionRequests.createdAt));
+  }
+  
+  async getConnectionRequestsByContractorId(contractorId: number): Promise<ConnectionRequest[]> {
+    return await db
+      .select()
+      .from(connectionRequests)
+      .where(eq(connectionRequests.contractorId, contractorId))
+      .orderBy(desc(connectionRequests.createdAt));
+  }
+  
+  async getConnectionRequestByProfileCode(businessId: number, profileCode: string): Promise<ConnectionRequest | undefined> {
+    const [request] = await db
+      .select()
+      .from(connectionRequests)
+      .where(
+        and(
+          eq(connectionRequests.businessId, businessId),
+          eq(connectionRequests.profileCode, profileCode)
+        )
+      );
+    
+    return request;
+  }
+  
+  async createConnectionRequest(request: InsertConnectionRequest): Promise<ConnectionRequest> {
+    // Find contractor by profile code if provided
+    let contractorId = null;
+    if (request.profileCode) {
+      const contractor = await this.getUserByProfileCode(request.profileCode);
+      if (contractor) {
+        contractorId = contractor.id;
+      }
+    }
+    
+    const [newRequest] = await db
+      .insert(connectionRequests)
+      .values({
+        ...request,
+        contractorId,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
+      .returning();
+    
+    return newRequest;
+  }
+  
+  async updateConnectionRequest(id: number, updates: Partial<InsertConnectionRequest>): Promise<ConnectionRequest | undefined> {
+    const [updatedRequest] = await db
+      .update(connectionRequests)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(eq(connectionRequests.id, id))
+      .returning();
+    
+    return updatedRequest;
+  }
 }
 
 // Use DatabaseStorage instead of MemStorage
