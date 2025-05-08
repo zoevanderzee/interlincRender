@@ -120,6 +120,16 @@ export default function Settings() {
                     Connections
                   </Button>
                 )}
+                {user.role === "business" && (
+                  <Button
+                    variant={activeTab === "budget" ? "default" : "ghost"}
+                    className="w-full justify-start"
+                    onClick={() => setActiveTab("budget")}
+                  >
+                    <DollarSign className="mr-2 h-4 w-4" />
+                    Budget
+                  </Button>
+                )}
                 <Button
                   variant={activeTab === "preferences" ? "default" : "ghost"}
                   className="w-full justify-start"
@@ -266,6 +276,10 @@ export default function Settings() {
                 </p>
               </CardContent>
             </Card>
+          )}
+
+          {activeTab === "budget" && user.role === "business" && (
+            <BudgetSettings />
           )}
 
           {activeTab === "notifications" && (

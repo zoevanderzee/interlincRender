@@ -22,81 +22,69 @@ export type SetBudgetParams = {
 
 export function useBudget() {
   const { toast } = useToast();
-
-  const { 
-    data: budget,
-    isLoading,
-    error,
-    isError,
-  } = useQuery<BudgetInfo, Error>({
+  
+  const { data: budgetInfo, isLoading, error } = useQuery<BudgetInfo>({
     queryKey: ["/api/budget"],
-    queryFn: async () => {
-      const res = await apiRequest("GET", "/api/budget");
-      if (!res.ok) {
-        throw new Error("Failed to fetch budget information");
-      }
-      return res.json();
-    },
+    refetchOnWindowFocus: false,
   });
-
+  
   const setBudgetMutation = useMutation({
     mutationFn: async (data: SetBudgetParams) => {
       const res = await apiRequest("POST", "/api/budget", data);
       if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to set budget");
+        const error = await res.json();
+        throw new Error(error.message || "Failed to set budget");
       }
       return res.json();
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/budget"] });
       toast({
         title: "Budget updated",
         description: "Your budget settings have been updated successfully.",
       });
-      queryClient.setQueryData(["/api/budget"], data);
     },
     onError: (error: Error) => {
       toast({
-        title: "Failed to update budget",
-        description: error.message,
+        title: "Update failed",
+        description: error.message || "Failed to update budget settings",
         variant: "destructive",
       });
     },
   });
-
+  
   const resetBudgetMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/budget/reset");
       if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to reset budget");
+        const error = await res.json();
+        throw new Error(error.message || "Failed to reset budget");
       }
       return res.json();
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/budget"] });
       toast({
         title: "Budget reset",
-        description: "Your budget usage has been reset to zero.",
+        description: "Your budget has been reset successfully.",
       });
-      queryClient.setQueryData(["/api/budget"], data);
     },
     onError: (error: Error) => {
       toast({
-        title: "Failed to reset budget",
-        description: error.message,
+        title: "Reset failed",
+        description: error.message || "Failed to reset budget",
         variant: "destructive",
       });
     },
   });
-
+  
   return {
-    budget,
+    budgetInfo,
     isLoading,
     error,
-    isError,
     setBudget: setBudgetMutation.mutate,
     resetBudget: resetBudgetMutation.mutate,
-    isBudgetUpdating: setBudgetMutation.isPending,
-    isBudgetResetting: resetBudgetMutation.isPending,
+    isSettingBudget: setBudgetMutation.isPending,
+    isResettingBudget: resetBudgetMutation.isPending,
   };
 }

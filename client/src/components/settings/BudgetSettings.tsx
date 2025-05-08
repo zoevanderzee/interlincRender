@@ -1,92 +1,118 @@
-import React, { useState } from "react";
-import { useBudget, type SetBudgetParams } from "@/hooks/use-budget";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useState, useEffect } from "react";
+import { useBudget, SetBudgetParams } from "@/hooks/use-budget";
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardHeader, 
+  CardTitle,
+  CardFooter
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
-import { AlertCircle, AlertTriangle, RefreshCw } from "lucide-react";
+import { Loader2, AlertTriangle, Check, CreditCard, Wallet, BarChart3 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { DatePicker } from "@/components/ui/date-picker";
-import { format } from "date-fns";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Progress } from "@/components/ui/progress";
+import { format, parse, parseISO } from "date-fns";
+import { isValid } from "date-fns";
 
 export function BudgetSettings() {
-  const { budget, isLoading, isError, setBudget, resetBudget, isBudgetUpdating, isBudgetResetting } = useBudget();
-  const [budgetCap, setBudgetCap] = useState(budget?.budgetCap ? parseFloat(budget.budgetCap) : 0);
-  const [budgetPeriod, setBudgetPeriod] = useState<'monthly' | 'quarterly' | 'yearly'>(
-    (budget?.budgetPeriod as any) || 'yearly'
-  );
-  const [startDate, setStartDate] = useState<Date | undefined>(
-    budget?.budgetStartDate ? new Date(budget.budgetStartDate) : undefined
-  );
-  const [endDate, setEndDate] = useState<Date | undefined>(
-    budget?.budgetEndDate ? new Date(budget.budgetEndDate) : undefined
-  );
-  const [resetEnabled, setResetEnabled] = useState(budget?.budgetResetEnabled || false);
-  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const { budgetInfo, isLoading, error, setBudget, resetBudget, isSettingBudget, isResettingBudget } = useBudget();
 
-  // Format currency for display
-  const formatCurrency = (amount: string | null) => {
-    if (!amount) return '$0.00';
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(parseFloat(amount));
-  };
-  
-  // Calculate budget usage percentage
-  const usagePercentage = React.useMemo(() => {
-    if (!budget?.budgetCap || parseFloat(budget.budgetCap) === 0) return 0;
-    return Math.min(100, (parseFloat(budget.budgetUsed) / parseFloat(budget.budgetCap)) * 100);
-  }, [budget]);
+  const [budgetCap, setBudgetCap] = useState("");
+  const [budgetPeriod, setBudgetPeriod] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  const [resetEnabled, setResetEnabled] = useState(false);
 
-  const handleSave = () => {
+  useEffect(() => {
+    if (budgetInfo) {
+      setBudgetCap(budgetInfo.budgetCap || "");
+      setBudgetPeriod(budgetInfo.budgetPeriod as any || 'monthly');
+      setResetEnabled(budgetInfo.budgetResetEnabled);
+      
+      if (budgetInfo.budgetStartDate) {
+        try {
+          const parsedStartDate = parseISO(budgetInfo.budgetStartDate);
+          if (isValid(parsedStartDate)) {
+            setStartDate(parsedStartDate);
+          }
+        } catch (e) {
+          console.error("Error parsing start date:", e);
+        }
+      }
+      
+      if (budgetInfo.budgetEndDate) {
+        try {
+          const parsedEndDate = parseISO(budgetInfo.budgetEndDate);
+          if (isValid(parsedEndDate)) {
+            setEndDate(parsedEndDate);
+          }
+        } catch (e) {
+          console.error("Error parsing end date:", e);
+        }
+      }
+    }
+  }, [budgetInfo]);
+
+  const handleSubmit = () => {
     const data: SetBudgetParams = {
-      budgetCap,
+      budgetCap: parseFloat(budgetCap),
       budgetPeriod,
       resetEnabled,
     };
-    
+
     if (startDate) {
       data.startDate = format(startDate, 'yyyy-MM-dd');
     }
-    
+
     if (endDate) {
       data.endDate = format(endDate, 'yyyy-MM-dd');
     }
-    
+
     setBudget(data);
   };
 
-  const handleConfirmReset = () => {
-    resetBudget();
-    setResetDialogOpen(false);
+  const formatCurrency = (value: string | null): string => {
+    if (!value) return "$0";
+    return `$${parseFloat(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  const calculateUsage = (): number => {
+    if (!budgetInfo?.budgetCap || parseFloat(budgetInfo.budgetCap) === 0) return 0;
+    return Math.min(100, (parseFloat(budgetInfo.budgetUsed) / parseFloat(budgetInfo.budgetCap)) * 100);
   };
 
   if (isLoading) {
     return (
-      <Card className="w-full">
+      <Card>
         <CardHeader>
           <CardTitle>Budget Management</CardTitle>
-          <CardDescription>Loading budget information...</CardDescription>
+          <CardDescription>Control your outsourcing budget and spending limits</CardDescription>
         </CardHeader>
+        <CardContent className="flex justify-center items-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </CardContent>
       </Card>
     );
   }
 
-  if (isError) {
+  if (error) {
     return (
-      <Card className="w-full">
+      <Card>
         <CardHeader>
           <CardTitle>Budget Management</CardTitle>
-          <CardDescription>Failed to load budget information</CardDescription>
+          <CardDescription>Control your outsourcing budget and spending limits</CardDescription>
         </CardHeader>
         <CardContent>
           <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
+            <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Error</AlertTitle>
             <AlertDescription>
-              There was a problem loading your budget information. Please try again later.
+              There was an error loading your budget information. Please try again.
             </AlertDescription>
           </Alert>
         </CardContent>
@@ -95,139 +121,185 @@ export function BudgetSettings() {
   }
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle>Budget Management</CardTitle>
-        <CardDescription>
-          Set and manage your outsourcing budget caps to control spending
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Budget Usage Display */}
-        <div className="space-y-2">
-          <div className="flex justify-between">
-            <span className="text-sm font-medium">Budget Usage</span>
-            <span className="text-sm text-muted-foreground">
-              {formatCurrency(budget?.budgetUsed || '0')} / {formatCurrency(budget?.budgetCap || '0')}
-            </span>
-          </div>
-          <Progress value={usagePercentage} 
-            className={usagePercentage > 90 ? "bg-red-200" : usagePercentage > 75 ? "bg-amber-200" : ""} />
-          
-          {budget?.remainingBudget && parseFloat(budget.remainingBudget) < 0 && (
-            <Alert variant="destructive" className="mt-2">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Budget Exceeded</AlertTitle>
-              <AlertDescription>
-                You have exceeded your budget by {formatCurrency((parseFloat(budget.remainingBudget) * -1).toString())}
-              </AlertDescription>
-            </Alert>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Budget Management</CardTitle>
+          <CardDescription>Control your outsourcing budget and spending limits</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {budgetInfo?.budgetCap && (
+            <div className="mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <Card className="md:col-span-1">
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-4">
+                      <div className="p-2 rounded-full bg-primary/10">
+                        <Wallet className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total Budget</p>
+                        <p className="text-2xl font-bold">{formatCurrency(budgetInfo.budgetCap)}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card className="md:col-span-1">
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-4">
+                      <div className="p-2 rounded-full bg-primary/10">
+                        <CreditCard className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Spent</p>
+                        <p className="text-2xl font-bold">{formatCurrency(budgetInfo.budgetUsed)}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card className="md:col-span-1">
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-4">
+                      <div className="p-2 rounded-full bg-primary/10">
+                        <BarChart3 className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Remaining</p>
+                        <p className="text-2xl font-bold">{formatCurrency(budgetInfo.remainingBudget)}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+              
+              <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
+                <div 
+                  className="bg-primary h-full rounded-full transition-all duration-500 ease-in-out"
+                  style={{ width: `${calculateUsage()}%` }}
+                ></div>
+              </div>
+              <div className="flex justify-between mt-1 text-xs text-muted-foreground">
+                <span>0%</span>
+                <span>{calculateUsage().toFixed(1)}% used</span>
+                <span>100%</span>
+              </div>
+              
+              <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div>
+                  <p className="text-sm font-medium">Budget period: <span className="text-muted-foreground capitalize">{budgetInfo.budgetPeriod}</span></p>
+                  <p className="text-sm text-muted-foreground">
+                    {budgetInfo.budgetStartDate && budgetInfo.budgetEndDate ? (
+                      <>Period: {format(parseISO(budgetInfo.budgetStartDate), 'MMM dd, yyyy')} to {format(parseISO(budgetInfo.budgetEndDate), 'MMM dd, yyyy')}</>
+                    ) : (
+                      <>No period set</>
+                    )}
+                  </p>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => resetBudget()} 
+                  disabled={isResettingBudget}
+                >
+                  {isResettingBudget ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Resetting...
+                    </>
+                  ) : (
+                    "Reset Budget Usage"
+                  )}
+                </Button>
+              </div>
+            </div>
           )}
-        </div>
 
-        {/* Budget Cap Input */}
-        <div className="space-y-2">
-          <Label htmlFor="budgetCap">Budget Cap</Label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2">$</span>
-            <Input
-              id="budgetCap"
-              type="number"
-              min="0"
-              step="0.01"
-              value={budgetCap}
-              onChange={(e) => setBudgetCap(parseFloat(e.target.value) || 0)}
-              className="pl-8"
-            />
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="budgetCap">Budget Allocation</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                <Input
+                  id="budgetCap"
+                  type="number"
+                  placeholder="Enter budget amount"
+                  className="pl-7"
+                  value={budgetCap}
+                  onChange={(e) => setBudgetCap(e.target.value)}
+                />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Set the maximum amount for your outsourcing budget.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Budget Period</Label>
+              <RadioGroup value={budgetPeriod} onValueChange={(value) => setBudgetPeriod(value as any)}>
+                <div className="flex flex-col space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="monthly" id="monthly" />
+                    <Label htmlFor="monthly" className="cursor-pointer">Monthly</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="quarterly" id="quarterly" />
+                    <Label htmlFor="quarterly" className="cursor-pointer">Quarterly</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="yearly" id="yearly" />
+                    <Label htmlFor="yearly" className="cursor-pointer">Yearly</Label>
+                  </div>
+                </div>
+              </RadioGroup>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Start Date</Label>
+                <DatePicker date={startDate} setDate={setStartDate} />
+              </div>
+              <div className="space-y-2">
+                <Label>End Date</Label>
+                <DatePicker date={endDate} setDate={setEndDate} />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="resetEnabled" className="cursor-pointer">Automatic Budget Reset</Label>
+                <Switch
+                  id="resetEnabled"
+                  checked={resetEnabled}
+                  onCheckedChange={setResetEnabled}
+                />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                When enabled, your budget usage will automatically reset at the end of each period.
+              </p>
+            </div>
           </div>
-          <p className="text-sm text-muted-foreground">
-            Set the maximum amount you want to spend on outsourcing
-          </p>
-        </div>
-
-        {/* Budget Period Selection */}
-        <div className="space-y-2">
-          <Label htmlFor="budgetPeriod">Budget Period</Label>
-          <Select
-            value={budgetPeriod}
-            onValueChange={(value) => setBudgetPeriod(value as 'monthly' | 'quarterly' | 'yearly')}
+        </CardContent>
+        <CardFooter className="flex justify-end space-x-2">
+          <Button 
+            disabled={!budgetCap || isNaN(parseFloat(budgetCap)) || isSettingBudget} 
+            onClick={handleSubmit}
           >
-            <SelectTrigger id="budgetPeriod">
-              <SelectValue placeholder="Select a budget period" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="monthly">Monthly</SelectItem>
-              <SelectItem value="quarterly">Quarterly</SelectItem>
-              <SelectItem value="yearly">Yearly</SelectItem>
-            </SelectContent>
-          </Select>
-          <p className="text-sm text-muted-foreground">
-            Choose how often your budget resets
-          </p>
-        </div>
-
-        {/* Date Range Selection */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="startDate">Start Date</Label>
-            <DatePicker
-              date={startDate}
-              setDate={setStartDate}
-              className="w-full"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="endDate">End Date</Label>
-            <DatePicker
-              date={endDate}
-              setDate={setEndDate}
-              className="w-full"
-            />
-          </div>
-        </div>
-
-        {/* Auto Reset Toggle */}
-        <div className="flex items-center justify-between">
-          <div>
-            <Label htmlFor="resetEnabled" className="block">Auto-Reset Budget</Label>
-            <p className="text-sm text-muted-foreground">
-              Automatically reset budget usage at the end of each period
-            </p>
-          </div>
-          <Switch
-            id="resetEnabled"
-            checked={resetEnabled}
-            onCheckedChange={setResetEnabled}
-          />
-        </div>
-      </CardContent>
-      <CardFooter className="flex justify-between">
-        <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
-          <DialogTrigger asChild>
-            <Button variant="outline" disabled={isBudgetResetting}>
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Reset Usage
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Reset Budget Usage</DialogTitle>
-              <DialogDescription>
-                Are you sure you want to reset your budget usage to zero? This action cannot be undone.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setResetDialogOpen(false)}>Cancel</Button>
-              <Button variant="destructive" onClick={handleConfirmReset} disabled={isBudgetResetting}>
-                {isBudgetResetting ? "Resetting..." : "Reset Usage"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-        <Button onClick={handleSave} disabled={isBudgetUpdating}>
-          {isBudgetUpdating ? "Saving..." : "Save Budget Settings"}
-        </Button>
-      </CardFooter>
-    </Card>
+            {isSettingBudget ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Check className="mr-2 h-4 w-4" />
+                Save Budget Settings
+              </>
+            )}
+          </Button>
+        </CardFooter>
+      </Card>
+    </div>
   );
 }
