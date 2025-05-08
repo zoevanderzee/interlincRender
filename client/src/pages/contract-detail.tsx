@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useRoute, Link } from 'wouter';
+import { useRoute, Link, useLocation } from 'wouter';
 import { Contract, Milestone, User } from '@shared/schema';
 import Layout from '@/components/layout/Layout';
 import ContractTimeline from '@/components/contracts/ContractTimeline';
@@ -11,6 +11,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { getQueryFn, apiRequest, queryClient } from '@/lib/queryClient';
 import { Separator } from '@/components/ui/separator';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { format } from 'date-fns';
 import { 
   Download, 
@@ -177,6 +187,40 @@ export default function ContractDetailPage() {
       });
     }
   };
+  
+  // Handle contract deletion
+  const handleDeleteContract = async () => {
+    try {
+      // Check if the contract has associated contractors
+      if (getContractorCount() > 0) {
+        toast({
+          title: "Cannot delete project",
+          description: "This project has contractors assigned. Remove all contractors before deleting.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      await apiRequest(`/api/contracts/${contractId}`, 'DELETE');
+      
+      // Invalidate relevant queries
+      queryClient.invalidateQueries({ queryKey: ['/api/contracts'] });
+      
+      toast({
+        title: "Project deleted",
+        description: "The project has been successfully removed.",
+      });
+      
+      // Navigate back to the contracts list
+      navigate('/contracts');
+    } catch (error) {
+      toast({
+        title: "Error deleting project",
+        description: "Please try again later.",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Show error state if there's a contract error
   if (contractError) {
@@ -326,11 +370,46 @@ export default function ContractDetailPage() {
               </span>
             </div>
           </div>
-          <div className="mt-4 md:mt-0">
-            <Button variant="outline" className="mr-2">
+          <div className="mt-4 md:mt-0 flex flex-wrap gap-2">
+            <Button variant="outline">
               Export Contract
             </Button>
-            <Button>Edit Contract</Button>
+            <Button variant="outline">
+              Edit Contract
+            </Button>
+            
+            {getContractorCount() === 0 && (
+              <Button 
+                variant="destructive" 
+                onClick={() => setIsDeleteDialogOpen(true)}
+              >
+                Delete Project
+              </Button>
+            )}
+            
+            {/* Delete confirmation dialog */}
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+              <AlertDialogContent className="bg-zinc-900 border-zinc-700">
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="text-white">Are you sure?</AlertDialogTitle>
+                  <AlertDialogDescription className="text-zinc-400">
+                    This action cannot be undone. This will permanently delete the project
+                    and remove all associated data.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel className="bg-zinc-800 text-white border-zinc-700 hover:bg-zinc-700">
+                    Cancel
+                  </AlertDialogCancel>
+                  <AlertDialogAction 
+                    className="bg-red-600 text-white hover:bg-red-700"
+                    onClick={handleDeleteContract}
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
 
