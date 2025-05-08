@@ -56,8 +56,8 @@ const Dashboard = () => {
     return `$${parseFloat(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
-  // Navigate to create contract page
-  const handleNewContract = () => {
+  // Navigate to create project page
+  const handleNewProject = () => {
     navigate('/contracts/new');
   };
 
@@ -137,10 +137,10 @@ const Dashboard = () => {
           <p className="text-xs text-gray-500 mt-1">Available outsourcing budget</p>
         </div>
         
-        {/* Card 3: Active Contracts */}
+        {/* Card 3: Active Projects */}
         <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-6 hover:shadow-lg transition-shadow">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-gray-400 text-sm font-medium">Active Contracts</h3>
+            <h3 className="text-gray-400 text-sm font-medium">Active Projects</h3>
             <div className="p-2 rounded-full bg-accent-500/10">
               <Briefcase size={20} className="text-accent-500" />
             </div>
@@ -166,10 +166,10 @@ const Dashboard = () => {
       <div className="flex flex-wrap gap-3 mb-8">
         <Button 
           className="bg-accent-500 hover:bg-accent-600 text-white"
-          onClick={handleNewContract}
+          onClick={handleNewProject}
         >
           <Plus className="mr-2" size={16} />
-          New Contract
+          New Project
         </Button>
         
         <Button 
@@ -192,7 +192,7 @@ const Dashboard = () => {
         >
           <FileText className="mr-3" size={18} />
           <div className="text-left">
-            <div className="font-medium">Contracts</div>
+            <div className="font-medium">Projects</div>
             <div className="text-xs text-gray-400">Manage all contracts</div>
           </div>
         </Button>
