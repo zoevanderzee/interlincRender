@@ -11,8 +11,8 @@ async function checkSession() {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        username: 'jay999',
-        password: 'password'
+        username: 'testuser',
+        password: 'testpassword'
       }),
       credentials: 'include'
     });
