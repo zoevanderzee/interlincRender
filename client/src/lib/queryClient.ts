@@ -134,12 +134,13 @@ export const queryClient = new QueryClient({
     queries: {
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
-      refetchOnWindowFocus: false,
-      staleTime: Infinity,
-      retry: false,
+      refetchOnWindowFocus: true, // Enable refetching when window is focused
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      retry: 1, // Retry once to handle temporary network issues
+      retryDelay: 1000, // Retry after 1 second
     },
     mutations: {
-      retry: false,
+      retry: 1, // Retry once to handle temporary network issues
     },
   },
 });

@@ -7,10 +7,13 @@ import {
   Users, 
   Plus, 
   Briefcase,
-  Coins
+  Coins, 
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Contract, User, Payment, Milestone } from "@shared/schema";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 
 interface DashboardData {
   stats: {
@@ -37,17 +40,29 @@ interface BudgetData {
 
 const Dashboard = () => {
   const [_, navigate] = useLocation();
+  const { user, isLoading: isAuthLoading } = useAuth();
+  const { toast } = useToast();
 
-  // Fetch dashboard data
+  // Fetch dashboard data only when user is authenticated
   const { data, isLoading, error } = useQuery<DashboardData>({
     queryKey: ['/api/dashboard'],
-    refetchInterval: false
+    refetchInterval: false,
+    enabled: !!user, // Only run query when user is authenticated
+    onError: (err) => {
+      console.error("Dashboard data fetch error:", err);
+      toast({
+        title: "Error loading dashboard data",
+        description: "Could not load your dashboard information. Please try again.",
+        variant: "destructive",
+      });
+    }
   });
 
   // Fetch budget data
-  const { data: budgetInfo } = useQuery<BudgetData>({
+  const { data: budgetInfo, isLoading: isBudgetLoading } = useQuery<BudgetData>({
     queryKey: ['/api/budget'],
     refetchOnWindowFocus: false,
+    enabled: !!user, // Only run query when user is authenticated
   });
 
   // Format the remaining budget as currency
@@ -85,8 +100,8 @@ const Dashboard = () => {
     );
   }
 
-  // Show skeleton while loading
-  if (isLoading) {
+  // Show skeleton while loading (auth or data)
+  if (isAuthLoading || (!user) || (!!user && (isLoading || isBudgetLoading))) {
     return (
       <div className="animate-pulse">
         <div className="h-8 w-1/4 bg-zinc-800 rounded mb-2"></div>
@@ -99,6 +114,25 @@ const Dashboard = () => {
         </div>
         
         <div className="h-10 w-1/3 bg-zinc-800 rounded mb-6"></div>
+      </div>
+    );
+  }
+
+  // If user is authenticated but no data was returned, show a message
+  if (user && !isLoading && !data) {
+    return (
+      <div className="text-center py-12">
+        <div className="h-24 w-24 mx-auto mb-6 flex items-center justify-center rounded-full bg-zinc-800">
+          <AlertTriangle size={40} className="text-yellow-500" />
+        </div>
+        <h2 className="text-xl font-semibold text-white mb-2">No Dashboard Data</h2>
+        <p className="text-gray-400 mb-6">We couldn't find any data for your dashboard. You might need to create projects first.</p>
+        <Button 
+          className="bg-accent-500 hover:bg-accent-600 text-white"
+          onClick={handleNewProject}
+        >
+          Create Your First Project
+        </Button>
       </div>
     );
   }
