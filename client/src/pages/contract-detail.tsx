@@ -241,15 +241,15 @@ export default function ContractDetailPage() {
               </div>
               
               <p className="text-gray-400 text-center">
-                The contract you are looking for doesn't exist or has been removed.
+                The project you are looking for doesn't exist or has been removed.
               </p>
               
               <div className="mt-2 p-4 bg-zinc-800 rounded-md border border-zinc-700">
                 <h3 className="text-sm font-medium text-white mb-2">Possible reasons:</h3>
                 <ul className="text-sm text-gray-400 space-y-1 list-disc pl-5">
-                  <li>The contract ID might be incorrect</li>
-                  <li>The contract may have been removed</li>
-                  <li>You might not have permission to view this contract</li>
+                  <li>The project ID might be incorrect</li>
+                  <li>The project may have been removed</li>
+                  <li>You might not have permission to view this project</li>
                   <li>There might be a temporary system error</li>
                 </ul>
               </div>
@@ -280,7 +280,7 @@ export default function ContractDetailPage() {
                   className="flex-1 border-zinc-700 text-gray-300 hover:bg-zinc-800 hover:text-white"
                 >
                   <Layers className="mr-2 h-4 w-4" />
-                  View Contracts
+                  View Projects
                 </Button>
               </Link>
             </div>
@@ -372,10 +372,10 @@ export default function ContractDetailPage() {
           </div>
           <div className="mt-4 md:mt-0 flex flex-wrap gap-2">
             <Button variant="outline">
-              Export Contract
+              Export Project
             </Button>
             <Button variant="outline">
-              Edit Contract
+              Edit Project
             </Button>
             
             {getContractorCount() === 0 && (
@@ -420,9 +420,9 @@ export default function ContractDetailPage() {
               <Clock className="h-6 w-6 text-zinc-400" />
             </div>
             <div>
-              <h3 className="font-medium text-white">Contract Setup In Progress</h3>
+              <h3 className="font-medium text-white">Project Setup In Progress</h3>
               <p className="text-sm text-zinc-400">
-                This contract is being set up. You can add freelancers or contractors using the "Add Worker" button below.
+                This project is being set up. You can add freelancers or contractors using the "Add Worker" button below.
               </p>
             </div>
           </div>
@@ -443,21 +443,21 @@ export default function ContractDetailPage() {
             <div>
               <h3 className="font-medium text-white">
                 {contract.status === 'active' 
-                  ? 'Active Contract' 
+                  ? 'Active Project' 
                   : contract.status === 'pending' 
-                  ? 'Pending Contract' 
+                  ? 'Pending Project' 
                   : contract.status === 'draft' 
-                  ? 'Draft Contract'
-                  : 'Contract Issue'}
+                  ? 'Draft Project'
+                  : 'Project Issue'}
               </h3>
               <p className="text-sm text-zinc-400">
                 {contract.status === 'active' 
-                  ? 'This contract is currently active and in progress.' 
+                  ? 'This project is currently active and in progress.' 
                   : contract.status === 'pending' 
-                  ? 'This contract is waiting for approval or activation.' 
+                  ? 'This project is waiting for approval or activation.' 
                   : contract.status === 'draft'
-                  ? 'This contract is in draft mode and can be edited.'
-                  : 'This contract has been cancelled or has issues that need attention.'}
+                  ? 'This project is in draft mode and can be edited.'
+                  : 'This project has been cancelled or has issues that need attention.'}
               </p>
             </div>
           </div>
@@ -544,9 +544,9 @@ export default function ContractDetailPage() {
               <div className="md:col-span-2">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Contract Details</CardTitle>
+                    <CardTitle>Project Details</CardTitle>
                     <CardDescription>
-                      Summary of the contract between your business and project workers
+                      Summary of the project between your business and project workers
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -560,12 +560,12 @@ export default function ContractDetailPage() {
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <h4 className="text-sm font-medium text-muted-foreground mb-1">Contract Dates</h4>
+                          <h4 className="text-sm font-medium text-muted-foreground mb-1">Project Dates</h4>
                           <p><span className="font-medium">Start:</span> {startDate}</p>
                           <p><span className="font-medium">End:</span> {endDate}</p>
                         </div>
                         <div>
-                          <h4 className="text-sm font-medium text-muted-foreground mb-1">Contract Value</h4>
+                          <h4 className="text-sm font-medium text-muted-foreground mb-1">Project Value</h4>
                           <p><span className="font-medium">Total:</span> ${totalContractValue.toFixed(2)}</p>
                           <p><span className="font-medium">Remaining:</span> ${remainingAmount.toFixed(2)}</p>
                         </div>
