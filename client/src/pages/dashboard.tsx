@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { 
   AlertTriangle, 
@@ -57,8 +56,8 @@ const Dashboard = () => {
     return `$${parseFloat(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
-  // Navigate to create contract page
-  const handleNewContract = () => {
+  // Navigate to create project page
+  const handleNewProject = () => {
     navigate('/contracts/new');
   };
 
@@ -167,10 +166,10 @@ const Dashboard = () => {
       <div className="flex flex-wrap gap-3 mb-8">
         <Button 
           className="bg-accent-500 hover:bg-accent-600 text-white"
-          onClick={handleNewContract}
+          onClick={handleNewProject}
         >
           <Plus className="mr-2" size={16} />
-          New Contract
+          New Project
         </Button>
         
         <Button 
@@ -193,7 +192,7 @@ const Dashboard = () => {
         >
           <FileText className="mr-3" size={18} />
           <div className="text-left">
-            <div className="font-medium">Contracts</div>
+            <div className="font-medium">Projects</div>
             <div className="text-xs text-gray-400">Manage all contracts</div>
           </div>
         </Button>
