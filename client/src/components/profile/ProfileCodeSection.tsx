@@ -1,96 +1,156 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { 
-  Loader2, 
-  RefreshCw, 
-  Copy, 
-  Check,
-  Fingerprint
-} from "lucide-react";
-import { 
+import { Input } from "@/components/ui/input";
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Copy, RefreshCw, Loader2, Fingerprint, Check, AlertTriangle } from "lucide-react";
 
 export function ProfileCodeSection() {
+  const { user } = useAuth();
   const { toast } = useToast();
-  const [copied, setCopied] = useState(false);
-  
-  // Query to fetch the current user's profile code
-  const { data, isLoading, error, refetch } = useQuery({
+  const [isCopied, setIsCopied] = useState(false);
+  const [isRegenerateDialogOpen, setIsRegenerateDialogOpen] = useState(false);
+
+  // Query to fetch the user's profile code
+  const {
+    data: profileCode,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ['/api/profile-code'],
-    retry: false
+    retry: false,
   });
-  
-  // Mutation to generate a new profile code
-  const generateCodeMutation = useMutation({
+
+  // Mutation to regenerate the profile code
+  const regenerateCodeMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest('POST', '/api/profile-code', {});
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to generate new code");
+      const response = await apiRequest("POST", "/api/profile-code/regenerate");
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to regenerate profile code");
       }
-      return await res.json();
+      return await response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/profile-code'] });
       toast({
-        title: "Profile code updated",
-        description: "Your new profile code has been generated.",
+        title: "Profile code regenerated",
+        description: "Your new profile code has been generated successfully.",
       });
+      setIsRegenerateDialogOpen(false);
     },
     onError: (error: any) => {
       toast({
-        title: "Failed to generate code",
-        description: error.message || "An error occurred",
+        title: "Regeneration failed",
+        description: error.message || "Failed to regenerate profile code",
         variant: "destructive",
       });
     },
   });
-  
+
   // Copy profile code to clipboard
   const copyToClipboard = () => {
-    if (!data?.profileCode) return;
-    
-    navigator.clipboard.writeText(data.profileCode)
-      .then(() => {
-        setCopied(true);
-        toast({
-          title: "Copied to clipboard",
-          description: "Profile code has been copied to clipboard",
-        });
-        setTimeout(() => setCopied(false), 2000);
-      })
-      .catch(() => {
-        toast({
-          title: "Copy failed",
-          description: "Failed to copy code to clipboard",
-          variant: "destructive",
-        });
+    if (profileCode?.code) {
+      navigator.clipboard.writeText(profileCode.code);
+      setIsCopied(true);
+      toast({
+        title: "Copied to clipboard",
+        description: "Your profile code has been copied to clipboard.",
       });
+      
+      // Reset the copied state after 2 seconds
+      setTimeout(() => {
+        setIsCopied(false);
+      }, 2000);
+    }
   };
-  
+
+  // Handle regenerate button click
+  const handleRegenerateClick = () => {
+    setIsRegenerateDialogOpen(true);
+  };
+
+  // Handle regenerate confirmation
+  const confirmRegenerate = () => {
+    regenerateCodeMutation.mutate();
+  };
+
+  // Check if we need to generate an initial profile code
+  const needsInitialCode = !isLoading && !error && (!profileCode || !profileCode.code);
+
+  // Generate initial code mutation
+  const generateInitialCodeMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/profile-code/generate");
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to generate profile code");
+      }
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/profile-code'] });
+      toast({
+        title: "Profile code generated",
+        description: "Your profile code has been generated successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Generation failed",
+        description: error.message || "Failed to generate profile code",
+        variant: "destructive",
+      });
+    },
+  });
+
+  if (!user || user.role !== "contractor") {
+    return null;
+  }
+
   return (
-    <Card>
+    <Card className="w-full">
       <CardHeader>
         <CardTitle className="flex items-center">
           <Fingerprint className="mr-2 h-5 w-5" />
-          Worker Profile Code
+          Your Profile Code
         </CardTitle>
         <CardDescription>
-          Share this code with businesses to let them connect with you. It's like a business card that identifies you in the system.
+          Share your unique profile code with businesses to connect without exposing your email address.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -106,85 +166,104 @@ export function ProfileCodeSection() {
               Retry
             </Button>
           </div>
+        ) : needsInitialCode ? (
+          <div className="text-center py-6">
+            <div className="flex items-center justify-center mb-4 text-muted-foreground">
+              <Fingerprint className="h-12 w-12 opacity-50 mb-2" />
+            </div>
+            <p className="mb-6">You don't have a profile code yet. Generate one to let businesses find and connect with you.</p>
+            <Button
+              onClick={() => generateInitialCodeMutation.mutate()}
+              disabled={generateInitialCodeMutation.isPending}
+              className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700"
+            >
+              {generateInitialCodeMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Fingerprint className="mr-2 h-4 w-4" />
+              )}
+              Generate Profile Code
+            </Button>
+          </div>
         ) : (
           <div className="space-y-6">
-            {data?.profileCode ? (
-              <>
-                <div className="bg-primary-900 p-6 rounded-lg text-center">
-                  <h3 className="text-xs text-primary-400 uppercase tracking-wider mb-2">Your Profile Code</h3>
-                  <div className="flex items-center justify-center space-x-2">
-                    <p className="text-2xl font-bold text-white tracking-wide">{data.profileCode}</p>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-primary-300 hover:text-white hover:bg-primary-800"
-                            onClick={copyToClipboard}
-                          >
-                            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Copy to clipboard</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <div className="bg-primary-50 p-4 rounded-md border border-primary-100">
-                    <h4 className="font-medium mb-2">How to use your profile code</h4>
-                    <p className="text-sm text-primary-700">
-                      Share this code with businesses who want to connect with you. They'll enter it in their system to send you a connection request.
-                    </p>
-                  </div>
-                  <div className="flex justify-end">
-                    <Button
-                      variant="outline"
-                      onClick={() => generateCodeMutation.mutate()}
-                      disabled={generateCodeMutation.isPending}
-                    >
-                      {generateCodeMutation.isPending ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Generating...
-                        </>
-                      ) : (
-                        <>
-                          <RefreshCw className="mr-2 h-4 w-4" />
-                          Generate New Code
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="text-center py-6">
-                <p className="mb-4">You don't have a profile code yet.</p>
-                <Button
-                  onClick={() => generateCodeMutation.mutate()}
-                  disabled={generateCodeMutation.isPending}
-                >
-                  {generateCodeMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Fingerprint className="mr-2 h-4 w-4" />
-                      Generate Profile Code
-                    </>
-                  )}
-                </Button>
+            <div className="rounded-md bg-muted p-6 relative">
+              <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full absolute -top-3 -left-3 px-3 py-1 text-xs text-white">
+                Your Code
               </div>
-            )}
+              <div className="flex items-center mt-2">
+                <Input
+                  className="font-mono text-xl text-center bg-transparent border-none h-14 shadow-none"
+                  value={profileCode?.code || ""}
+                  readOnly
+                />
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="ml-2 focus:ring-0"
+                        onClick={copyToClipboard}
+                      >
+                        {isCopied ? (
+                          <Check className="h-5 w-5 text-green-500" />
+                        ) : (
+                          <Copy className="h-5 w-5" />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Copy to clipboard</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <p className="text-sm mt-2 text-muted-foreground text-center">
+                Share this code with businesses who want to connect with you.
+              </p>
+            </div>
+
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                onClick={handleRegenerateClick}
+                disabled={regenerateCodeMutation.isPending}
+              >
+                {regenerateCodeMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                )}
+                Regenerate Code
+              </Button>
+            </div>
           </div>
         )}
       </CardContent>
+
+      {/* Regenerate confirmation dialog */}
+      <AlertDialog open={isRegenerateDialogOpen} onOpenChange={setIsRegenerateDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center">
+              <AlertTriangle className="h-5 w-5 text-amber-500 mr-2" />
+              Regenerate Profile Code?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Your current profile code will be invalidated and a new one will be generated. 
+              Businesses that have your current code won't be able to use it anymore.
+              Are you sure you want to continue?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmRegenerate}>
+              Regenerate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

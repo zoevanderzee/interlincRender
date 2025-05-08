@@ -2278,14 +2278,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Return the profile code (might be null if not generated yet)
-      res.json({ profileCode: user.profileCode });
+      res.json({
+        code: user.profileCode,
+        userId: user.id,
+        createdAt: user.updatedAt // Using updatedAt as a proxy for when the code was created/updated
+      });
     } catch (error: any) {
       console.error('Error retrieving profile code:', error);
       res.status(500).json({ message: error.message });
     }
   });
   
-  app.post(`${apiRouter}/profile-code`, requireAuth, async (req: Request, res: Response) => {
+  app.post(`${apiRouter}/profile-code/generate`, requireAuth, async (req: Request, res: Response) => {
     try {
       // Generate a new profile code for the authenticated user
       const userId = req.user?.id;
@@ -2303,9 +2307,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate a new profile code
       const profileCode = await storage.generateProfileCode(userId);
       
-      res.json({ profileCode });
+      res.json({ 
+        code: profileCode,
+        userId: userId,
+        createdAt: new Date()
+      });
     } catch (error: any) {
       console.error('Error generating profile code:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+  
+  app.post(`${apiRouter}/profile-code/regenerate`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      // Regenerate a profile code for the authenticated user
+      const userId = req.user?.id;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      // Only contractors and freelancers can have profile codes
+      const userRole = req.user?.role;
+      if (userRole !== 'contractor' && userRole !== 'freelancer') {
+        return res.status(403).json({ message: "Only contractors and freelancers can regenerate profile codes" });
+      }
+      
+      // Generate a new profile code
+      const profileCode = await storage.regenerateProfileCode(userId);
+      
+      res.json({ 
+        code: profileCode,
+        userId: userId,
+        createdAt: new Date()
+      });
+    } catch (error: any) {
+      console.error('Error regenerating profile code:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+  
+  app.get(`${apiRouter}/contractors/find-by-profile-code/:profileCode`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { profileCode } = req.params;
+      
+      if (!profileCode) {
+        return res.status(400).json({ message: "Profile code is required" });
+      }
+      
+      // Only businesses can search for contractors by profile code
+      const userRole = req.user?.role;
+      if (userRole !== 'business') {
+        return res.status(403).json({ message: "Only businesses can search for contractors by profile code" });
+      }
+      
+      // Find the contractor by profile code
+      const contractor = await storage.getUserByProfileCode(profileCode);
+      
+      if (!contractor) {
+        return res.status(404).json({ message: "No contractor found with this profile code" });
+      }
+      
+      // Return limited contractor information
+      res.json({
+        id: contractor.id,
+        username: contractor.username,
+        firstName: contractor.firstName,
+        lastName: contractor.lastName,
+        companyName: contractor.companyName,
+        title: contractor.title,
+        // Don't include email, password, or other sensitive information
+      });
+    } catch (error: any) {
+      console.error('Error finding contractor by profile code:', error);
       res.status(500).json({ message: error.message });
     }
   });

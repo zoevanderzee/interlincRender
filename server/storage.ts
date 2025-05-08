@@ -40,6 +40,19 @@ export interface IStorage {
   getUserByResetToken(token: string): Promise<User | undefined>;
   setPasswordResetToken(email: string, token: string, expires: Date): Promise<User | undefined>;
   
+  // Profile Code
+  generateProfileCode(userId: number): Promise<string>;
+  regenerateProfileCode(userId: number): Promise<string>;
+  getUserByProfileCode(profileCode: string): Promise<User | undefined>;
+  
+  // Connection Requests
+  createConnectionRequest(request: { businessId: number, profileCode: string, message?: string | null, status?: string }): Promise<ConnectionRequest>;
+  getConnectionRequest(id: number): Promise<ConnectionRequest | undefined>;
+  getConnectionRequestByProfileCode(businessId: number, profileCode: string): Promise<ConnectionRequest | undefined>;
+  getConnectionRequestsByBusinessId(businessId: number): Promise<ConnectionRequest[]>;
+  getConnectionRequestsByContractorId(contractorId: number): Promise<ConnectionRequest[]>;
+  updateConnectionRequest(id: number, updates: Partial<ConnectionRequest>): Promise<ConnectionRequest>;
+  
   // Invites
   getInvite(id: number): Promise<Invite | undefined>;
   getInviteByEmail(email: string): Promise<Invite | undefined>;

@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useMutation } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +18,6 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -26,58 +26,108 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Fingerprint } from "lucide-react";
+import { Loader2, Search, CheckCircle2, AlertCircle } from "lucide-react";
 
-interface FindByProfileCodeDialogProps {
-  trigger: React.ReactNode;
-  onSuccess?: () => void;
-}
-
-// Create schema for the form
+// Form schema
 const formSchema = z.object({
-  profileCode: z.string()
-    .min(3, "Profile code must be at least 3 characters")
-    .max(20, "Profile code cannot exceed 20 characters"),
-  message: z.string()
-    .max(500, "Message cannot exceed 500 characters")
+  profileCode: z
+    .string()
+    .min(1, { message: "Profile code is required" })
+    .max(50, { message: "Profile code is too long" })
+    .regex(/^[A-Z0-9-]+$/, {
+      message: "Profile code can only contain uppercase letters, numbers, and hyphens",
+    }),
+  message: z
+    .string()
+    .max(500, { message: "Message cannot exceed 500 characters" })
     .optional(),
 });
 
-type FormValues = z.infer<typeof formSchema>;
-
-export function FindByProfileCodeDialog({ 
+export function FindByProfileCodeDialog({
   trigger,
   onSuccess
-}: FindByProfileCodeDialogProps) {
+}: {
+  trigger: React.ReactNode;
+  onSuccess?: () => void;
+}) {
+  const { user } = useAuth();
   const { toast } = useToast();
-  const [open, setOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [foundContractor, setFoundContractor] = useState<{
+    id: number;
+    username: string;
+    companyName?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+    title?: string | null;
+  } | null>(null);
+  const [searchError, setSearchError] = useState<string | null>(null);
   
   // Initialize form
-  const form = useForm<FormValues>({
+  const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       profileCode: "",
       message: "",
     },
   });
+
+  // Handle search by profile code
+  const handleSearch = async (profileCode: string) => {
+    setIsSearching(true);
+    setSearchError(null);
+    setFoundContractor(null);
+    
+    try {
+      const response = await apiRequest("GET", `/api/contractors/find-by-profile-code/${profileCode}`);
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to find contractor with this profile code");
+      }
+      
+      const data = await response.json();
+      setFoundContractor(data);
+    } catch (error: any) {
+      setSearchError(error.message);
+      toast({
+        title: "Contractor not found",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSearching(false);
+    }
+  };
   
-  // Create connection request mutation
-  const createConnectionMutation = useMutation({
-    mutationFn: async (data: FormValues) => {
-      const response = await apiRequest("POST", "/api/connection-requests", data);
+  // Handle form submission to create connection request
+  const connectionMutation = useMutation({
+    mutationFn: async (values: z.infer<typeof formSchema>) => {
+      if (!foundContractor) {
+        throw new Error("No contractor selected");
+      }
+      
+      const response = await apiRequest("POST", "/api/connection-requests", {
+        profileCode: values.profileCode,
+        message: values.message || null,
+      });
+      
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || "Failed to send connection request");
       }
+      
       return await response.json();
     },
     onSuccess: () => {
       toast({
-        title: "Request sent",
-        description: "Your connection request has been sent to the worker.",
+        title: "Connection request sent",
+        description: "Your connection request has been sent successfully.",
       });
+      setIsOpen(false);
       form.reset();
-      setOpen(false);
+      setFoundContractor(null);
       if (onSuccess) onSuccess();
     },
     onError: (error: any) => {
@@ -89,93 +139,147 @@ export function FindByProfileCodeDialog({
     },
   });
   
-  // Handle form submission
-  const onSubmit = (data: FormValues) => {
-    createConnectionMutation.mutate(data);
+  // Handle dialog close
+  const handleDialogClose = () => {
+    form.reset();
+    setFoundContractor(null);
+    setSearchError(null);
+    setIsOpen(false);
   };
   
+  // Handle form submission
+  const onSubmit = (values: z.infer<typeof formSchema>) => {
+    if (!foundContractor) {
+      handleSearch(values.profileCode);
+    } else {
+      connectionMutation.mutate(values);
+    }
+  };
+  
+  // Get display name for contractor
+  const getDisplayName = () => {
+    if (foundContractor?.companyName) return foundContractor.companyName;
+    if (foundContractor?.firstName && foundContractor?.lastName) 
+      return `${foundContractor.firstName} ${foundContractor.lastName}`;
+    return foundContractor?.username || "Contractor";
+  };
+  
+  if (!user || user.role !== "business") {
+    return null;
+  }
+  
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger}
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[460px]">
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center">
-            <Fingerprint className="mr-2 h-5 w-5" />
-            Connect by Profile Code
-          </DialogTitle>
+          <DialogTitle>Connect by Profile Code</DialogTitle>
           <DialogDescription>
-            Enter a worker's profile code to send them a connection request.
-            This allows you to quickly find and connect with external workers.
+            Enter a contractor's profile code to send them a connection request.
           </DialogDescription>
         </DialogHeader>
         
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 mt-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="profileCode"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Profile Code</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      placeholder="Enter the worker's profile code"
-                      className="uppercase"
-                      autoComplete="off"
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    The worker's profile code (e.g., JOHNSON-2025)
-                  </FormDescription>
+                  <div className="flex gap-2">
+                    <FormControl>
+                      <Input
+                        placeholder="e.g. JOHNSON-2025"
+                        {...field}
+                        className="uppercase"
+                        disabled={!!foundContractor || isSearching}
+                      />
+                    </FormControl>
+                    {!foundContractor && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="shrink-0"
+                        onClick={() => handleSearch(form.getValues("profileCode"))}
+                        disabled={isSearching || !form.getValues("profileCode")}
+                      >
+                        {isSearching ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Search className="h-4 w-4" />
+                        )}
+                      </Button>
+                    )}
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
             />
             
-            <FormField
-              control={form.control}
-              name="message"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Message (Optional)</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      {...field}
-                      placeholder="Add a message to introduce yourself or explain why you'd like to connect"
-                      className="min-h-[120px]"
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Include a brief message for the worker
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {searchError && (
+              <div className="flex items-center gap-2 p-3 rounded-md bg-destructive/10 text-destructive text-sm">
+                <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                <p>{searchError}</p>
+              </div>
+            )}
             
-            <DialogFooter>
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => setOpen(false)}
-                disabled={createConnectionMutation.isPending}
+            {foundContractor && (
+              <div className="p-3 rounded-md bg-muted">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  <p className="font-medium">Contractor Found</p>
+                </div>
+                <div className="text-sm">
+                  <p className="font-medium">{getDisplayName()}</p>
+                  {foundContractor.title && (
+                    <p className="text-muted-foreground">{foundContractor.title}</p>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {foundContractor && (
+              <FormField
+                control={form.control}
+                name="message"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Message (Optional)</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Introduce yourself or explain why you'd like to connect..."
+                        className="resize-none"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+            
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleDialogClose}
               >
                 Cancel
               </Button>
-              <Button 
+              <Button
                 type="submit"
-                disabled={createConnectionMutation.isPending}
+                disabled={isSearching || connectionMutation.isPending}
               >
-                {createConnectionMutation.isPending ? (
+                {isSearching || connectionMutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Sending...
+                    {foundContractor ? "Sending Request..." : "Searching..."}
                   </>
+                ) : foundContractor ? (
+                  "Send Connection Request"
                 ) : (
-                  "Send Request"
+                  "Find Contractor"
                 )}
               </Button>
             </DialogFooter>
