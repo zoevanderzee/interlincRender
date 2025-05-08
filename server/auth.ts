@@ -55,15 +55,8 @@ export function setupAuth(app: Express) {
     store: storage.sessionStore
   };
   
-  // Clear any stale sessions on startup
-  try {
-    if (storage.sessionStore.clear) {
-      storage.sessionStore.clear();
-      console.log('Cleared session store on startup');
-    }
-  } catch (e) {
-    console.error('Failed to clear session store:', e);
-  }
+  // Don't clear sessions on startup anymore to maintain user sessions
+  console.log('Session store initialized, keeping existing sessions');
 
   // Configure Express to trust proxy headers when in production
   // This is needed for secure cookies to work behind a proxy
@@ -100,16 +93,21 @@ export function setupAuth(app: Express) {
   );
 
   // Configure how users are stored in the session
-  passport.serializeUser((user, done) => done(null, user.id));
+  passport.serializeUser((user, done) => {
+    console.log("Serializing user:", user.id);
+    done(null, user.id);
+  });
   
   // Configure how users are retrieved from the session
   passport.deserializeUser(async (id: number, done) => {
     try {
       // If id is undefined or null, return undefined
       if (id === undefined || id === null) {
+        console.log("Deserializing with undefined/null user ID");
         return done(null, undefined);
       }
       
+      console.log("Deserializing user with ID:", id);
       const user = await storage.getUser(id);
       
       // If no user found, return undefined instead of null
@@ -327,31 +325,64 @@ export function setupAuth(app: Express) {
   // Login route
   app.post("/api/login", (req, res, next) => {
     passport.authenticate("local", (err: Error, user: Express.User, info: any) => {
-      if (err) return next(err);
+      if (err) {
+        console.error("Login error:", err);
+        return next(err);
+      }
       
       if (!user) {
+        console.log("Login failed - invalid credentials");
         return res.status(401).json({ error: info?.message || "Invalid username or password" });
       }
       
-      req.login(user, (err) => {
-        if (err) return next(err);
+      // Log in the user (create the session)
+      req.login(user, (loginErr) => {
+        if (loginErr) {
+          console.error("Session creation error:", loginErr);
+          return next(loginErr);
+        }
+        
+        console.log("Login successful for user:", user.id, "Session ID:", req.sessionID);
+        
         // Return user info without the password
         const { password, ...userInfo } = user;
-        res.status(200).json(userInfo);
+        
+        // Force immediate session save to ensure the cookie is set
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            console.error("Session save error:", saveErr);
+            return next(saveErr);
+          }
+          return res.status(200).json(userInfo);
+        });
       });
     })(req, res, next);
   });
 
   // Logout route
   app.post("/api/logout", (req, res, next) => {
+    const sessionID = req.sessionID;
+    console.log("Logging out session:", sessionID);
+    
     req.logout((err) => {
       if (err) return next(err);
-      res.sendStatus(200);
+      
+      // Destroy the session
+      req.session.destroy((destroyErr) => {
+        if (destroyErr) {
+          console.error("Session destruction error:", destroyErr);
+          return next(destroyErr);
+        }
+        res.clearCookie('creativlinc.sid');
+        res.sendStatus(200);
+      });
     });
   });
 
   // Get current user route
   app.get("/api/user", (req, res) => {
+    console.log("Auth check for session:", req.sessionID, "Authenticated:", req.isAuthenticated());
+    
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
     }
@@ -443,6 +474,8 @@ export function setupAuth(app: Express) {
 
   // Create middleware to check user authentication
   const requireAuth = (req: any, res: any, next: any) => {
+    console.log("Auth check in requireAuth middleware:", req.isAuthenticated(), "Session ID:", req.sessionID);
+    
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
     }
