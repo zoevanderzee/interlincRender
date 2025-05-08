@@ -1823,6 +1823,123 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register Plaid routes
   plaidRoutes(app, apiRouter, requireAuth);
   
+  // Budget Management Routes
+  
+  // Get budget information for the current user
+  app.get(`${apiRouter}/budget`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      // Get the user with budget information
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Return budget-related information
+      res.json({
+        budgetCap: user.budgetCap || null,
+        budgetUsed: user.budgetUsed || '0',
+        budgetPeriod: user.budgetPeriod || 'yearly',
+        budgetStartDate: user.budgetStartDate || null,
+        budgetEndDate: user.budgetEndDate || null,
+        budgetResetEnabled: user.budgetResetEnabled || false,
+        remainingBudget: user.budgetCap 
+          ? (parseFloat(user.budgetCap.toString()) - parseFloat(user.budgetUsed?.toString() || '0')).toFixed(2)
+          : null
+      });
+    } catch (error) {
+      console.error("Error fetching budget information:", error);
+      res.status(500).json({ message: "Error fetching budget information" });
+    }
+  });
+  
+  // Set budget cap for the current user
+  app.post(`${apiRouter}/budget`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      // Validate request body
+      const { budgetCap, budgetPeriod, startDate, endDate, resetEnabled } = req.body;
+      
+      if (!budgetCap || isNaN(parseFloat(budgetCap))) {
+        return res.status(400).json({ message: "Valid budget cap is required" });
+      }
+      
+      // Parse dates if provided
+      const parsedStartDate = startDate ? new Date(startDate) : undefined;
+      const parsedEndDate = endDate ? new Date(endDate) : undefined;
+      
+      // Set budget cap
+      const user = await storage.setBudgetCap(
+        userId, 
+        parseFloat(budgetCap), 
+        budgetPeriod || 'yearly',
+        parsedStartDate,
+        parsedEndDate
+      );
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Update reset flag if provided
+      if (resetEnabled !== undefined) {
+        await storage.updateUser(userId, { budgetResetEnabled: resetEnabled });
+      }
+      
+      // Return updated budget information
+      res.json({
+        budgetCap: user.budgetCap,
+        budgetUsed: user.budgetUsed || '0',
+        budgetPeriod: user.budgetPeriod,
+        budgetStartDate: user.budgetStartDate,
+        budgetEndDate: user.budgetEndDate,
+        budgetResetEnabled: resetEnabled !== undefined ? resetEnabled : user.budgetResetEnabled,
+        remainingBudget: user.budgetCap 
+          ? (parseFloat(user.budgetCap.toString()) - parseFloat(user.budgetUsed?.toString() || '0')).toFixed(2)
+          : null
+      });
+    } catch (error) {
+      console.error("Error setting budget cap:", error);
+      res.status(500).json({ message: "Error setting budget cap" });
+    }
+  });
+  
+  // Reset budget used amount to zero
+  app.post(`${apiRouter}/budget/reset`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const user = await storage.resetBudgetUsed(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      res.json({
+        budgetCap: user.budgetCap,
+        budgetUsed: '0',
+        budgetPeriod: user.budgetPeriod,
+        budgetStartDate: user.budgetStartDate,
+        budgetEndDate: user.budgetEndDate,
+        budgetResetEnabled: user.budgetResetEnabled,
+        remainingBudget: user.budgetCap ? parseFloat(user.budgetCap.toString()).toFixed(2) : null
+      });
+    } catch (error) {
+      console.error("Error resetting budget used:", error);
+      res.status(500).json({ message: "Error resetting budget used" });
+    }
+  });
+  
   // Create a Stripe payment intent
   app.post(`${apiRouter}/create-payment-intent`, async (req: Request, res: Response) => {
     try {
