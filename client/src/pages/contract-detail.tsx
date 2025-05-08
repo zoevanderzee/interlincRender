@@ -82,7 +82,7 @@ export default function ContractDetailPage() {
     });
     
     if (res.status === 404) {
-      throw new Error("Contract not found");
+      throw new Error("Project not found");
     }
     
     if (!res.ok) {
@@ -99,7 +99,7 @@ export default function ContractDetailPage() {
     enabled: contractId > 0,
   });
 
-  // Fetch milestones for this contract
+  // Fetch milestones for this project
   const { data: milestones = [], isLoading: isLoadingMilestones } = useQuery<Milestone[]>({
     queryKey: ['/api/milestones', { contractId }],
     queryFn: getQueryFn({ on401: 'throw' }),
@@ -113,14 +113,14 @@ export default function ContractDetailPage() {
     enabled: !contractError,
   });
 
-  // Fetch documents for this contract
+  // Fetch documents for this project
   const { data: documents = [], isLoading: isLoadingDocuments } = useQuery<any[]>({
     queryKey: ['/api/documents', { contractId }],
     queryFn: getQueryFn({ on401: 'throw' }),
     enabled: contractId > 0 && !contractError,
   });
 
-  // Fetch payments for this contract
+  // Fetch payments for this project
   const { data: payments = [], isLoading: isLoadingPayments } = useQuery<any[]>({
     queryKey: ['/api/payments', { contractId }],
     queryFn: getQueryFn({ on401: 'throw' }),
@@ -188,10 +188,10 @@ export default function ContractDetailPage() {
     }
   };
   
-  // Handle contract deletion
+  // Handle project deletion
   const handleDeleteContract = async () => {
     try {
-      // Check if the contract has associated contractors
+      // Check if the project has associated contractors
       if (getContractorCount() > 0) {
         toast({
           title: "Cannot delete project",
@@ -222,7 +222,7 @@ export default function ContractDetailPage() {
     }
   };
 
-  // Show error state if there's a contract error
+  // Show error state if there's a project error
   if (contractError) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-black">
@@ -312,15 +312,15 @@ export default function ContractDetailPage() {
     );
   }
 
-  // Calculate contract stats
-  // Check if contract.value exists and is valid before parsing
+  // Calculate project stats
+  // Check if project value exists and is valid before parsing
   const contractValue = contract.value || "0";
   const totalValue = isNaN(parseFloat(contractValue)) ? 0 : parseFloat(contractValue);
   
-  // Get virtual payments (contract value payments) from the payments array
+  // Get virtual payments (project value payments) from the payments array
   const virtualPayments = payments.filter((p: any) => p.isVirtual === true);
   
-  // If we have virtual payments but no contract value, use the virtual payment amount
+  // If we have virtual payments but no project value, use the virtual payment amount
   const totalContractValue = totalValue === 0 && virtualPayments.length > 0 
     ? parseFloat(virtualPayments[0].amount || "0") 
     : totalValue;
@@ -350,7 +350,7 @@ export default function ContractDetailPage() {
   return (
     <Layout>
       <div className="container py-6">
-        {/* Contract header */}
+        {/* Project header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold text-primary-900">{contract.contractName}</h1>
@@ -428,7 +428,7 @@ export default function ContractDetailPage() {
           </div>
         )}
         
-        {/* Status banner - only show for contracts with contractors or other statuses */}
+        {/* Status banner - only show for projects with contractors or other statuses */}
         {getContractorCount() > 0 && (
           <div className="p-4 rounded-lg mb-6 flex items-center bg-zinc-800 border border-zinc-700">
             <div className="mr-3">
