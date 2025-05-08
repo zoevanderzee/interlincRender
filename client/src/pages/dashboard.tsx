@@ -1,23 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { AlertTriangle } from "lucide-react";
 import { 
+  AlertTriangle, 
   FileText, 
-  Clock, 
   DollarSign, 
   Users, 
   Plus, 
-  Download,
   Briefcase,
   Coins
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import StatsCard from "@/components/dashboard/StatsCard";
-import ContractsTable from "@/components/dashboard/ContractsTable";
-import MilestonesList from "@/components/dashboard/MilestonesList";
-import PaymentsList from "@/components/dashboard/PaymentsList";
-import ProjectsOverview from "@/components/dashboard/ProjectsOverview";
 import { Contract, User, Payment, Milestone } from "@shared/schema";
 
 interface DashboardData {
@@ -33,8 +26,17 @@ interface DashboardData {
   payments: Payment[];
 }
 
+interface BudgetData {
+  budgetCap: string | null;
+  budgetUsed: string;
+  budgetPeriod: string;
+  budgetStartDate: string | null;
+  budgetEndDate: string | null;
+  budgetResetEnabled: boolean;
+  remainingBudget: string | null;
+}
+
 const Dashboard = () => {
-  const { toast } = useToast();
   const [_, navigate] = useLocation();
 
   // Fetch dashboard data
@@ -42,6 +44,28 @@ const Dashboard = () => {
     queryKey: ['/api/dashboard'],
     refetchInterval: false
   });
+
+  // Fetch budget data
+  const { data: budgetInfo } = useQuery<BudgetData>({
+    queryKey: ['/api/budget'],
+    refetchOnWindowFocus: false,
+  });
+
+  // Format the remaining budget as currency
+  const formatCurrency = (value: string | null): string => {
+    if (!value) return "$0";
+    return `$${parseFloat(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  // Navigate to create contract page
+  const handleNewContract = () => {
+    navigate('/contracts/new');
+  };
+
+  // Navigate to add contractor page
+  const handleAddContractor = () => {
+    navigate('/contractors?action=new');
+  };
 
   // Show error state
   if (error) {
@@ -62,52 +86,6 @@ const Dashboard = () => {
     );
   }
 
-  // Navigate to create contract page
-  const handleNewContract = () => {
-    navigate('/contracts/new');
-  };
-
-  // Navigate to add contractor page
-  const handleAddContractor = () => {
-    navigate('/contractors?action=new');
-  };
-
-  // Navigate to export reports page
-  const handleExportReports = () => {
-    navigate('/reports?action=export');
-  };
-
-  // View contract details
-  const handleViewContract = (id: number) => {
-    navigate(`/contract/${id}`);
-  };
-
-  // Edit contract
-  const handleEditContract = (id: number) => {
-    navigate(`/contracts/${id}/edit`);
-  };
-
-  // View milestone details
-  const handleViewMilestone = (id: number) => {
-    navigate(`/milestones/${id}`);
-  };
-
-  // Approve milestone
-  const handleApproveMilestone = (id: number) => {
-    toast({
-      title: "Milestone approved",
-      description: "The milestone has been approved successfully.",
-    });
-  };
-
-  // Request update for milestone
-  const handleRequestUpdate = (id: number) => {
-    toast({
-      title: "Update requested",
-      description: "A request for update has been sent to the contractor.",
-    });
-  };
-
   // Show skeleton while loading
   if (isLoading) {
     return (
@@ -122,29 +100,9 @@ const Dashboard = () => {
         </div>
         
         <div className="h-10 w-1/3 bg-zinc-800 rounded mb-6"></div>
-        <div className="bg-zinc-900 h-64 rounded-lg shadow-sm border border-zinc-800 mb-8"></div>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-zinc-900 h-96 rounded-lg shadow-sm border border-zinc-800"></div>
-          <div className="bg-zinc-900 h-96 rounded-lg shadow-sm border border-zinc-800"></div>
-        </div>
       </div>
     );
   }
-
-  // Get budget data from the API endpoint or use placeholder if not available
-  const { data: budgetInfo } = useQuery({
-    queryKey: ['/api/budget'],
-    refetchOnWindowFocus: false,
-  });
-  
-  // Format the remaining budget as a currency string
-  const formatCurrency = (value: string | null): string => {
-    if (!value) return "$0";
-    return `$${parseFloat(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  };
-
-  const budgetRemaining = budgetInfo?.remainingBudget || "0";
 
   return (
     <>
@@ -176,7 +134,7 @@ const Dashboard = () => {
               <Coins size={20} className="text-blue-500" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-white">{formatCurrency(budgetRemaining)}</p>
+          <p className="text-3xl font-bold text-white">{formatCurrency(budgetInfo?.remainingBudget || "0")}</p>
           <p className="text-xs text-gray-500 mt-1">Available outsourcing budget</p>
         </div>
         
