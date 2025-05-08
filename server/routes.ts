@@ -681,7 +681,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Dashboard summary endpoint
-  app.get(`${apiRouter}/dashboard`, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/dashboard`, requireAuth, async (req: Request, res: Response) => {
     try {
       // Get the current user
       const userId = req.user?.id;
