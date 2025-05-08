@@ -29,9 +29,11 @@ import {
 
 export default function ContractDetailPage() {
   const [, params] = useRoute('/contract/:id');
+  const [, navigate] = useLocation();
   const contractId = params?.id ? parseInt(params.id) : 0;
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('overview');
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   
   // Helper function to get associated contractors
   const getAssociatedContractors = () => {

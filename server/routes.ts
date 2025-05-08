@@ -413,6 +413,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  app.delete(`${apiRouter}/contracts/:id`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const contract = await storage.getContract(id);
+      
+      if (!contract) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      
+      // Check if user has permission (is the business owner of the contract)
+      if (req.user?.id !== contract.businessId) {
+        return res.status(403).json({ message: "You don't have permission to delete this project" });
+      }
+      
+      // Try to delete the contract
+      const deleted = await storage.deleteContract(id);
+      
+      if (!deleted) {
+        return res.status(400).json({ 
+          message: "Cannot delete this project. Make sure it doesn't have any contractors assigned." 
+        });
+      }
+      
+      res.status(200).json({ message: "Project deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting contract:", error);
+      res.status(500).json({ message: "Error deleting project" });
+    }
+  });
+  
   // Milestone routes
   app.get(`${apiRouter}/milestones`, async (req: Request, res: Response) => {
     try {
