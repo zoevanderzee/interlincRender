@@ -11,13 +11,15 @@ async function checkSession() {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        username: 'Creativlinc',
-        password: 'Password123'
-      })
+        username: 'jay999',
+        password: 'password'
+      }),
+      credentials: 'include'
     });
 
     if (!loginResponse.ok) {
-      throw new Error(`Login failed with status: ${loginResponse.status}`);
+      const errorData = await loginResponse.text();
+      throw new Error(`Login failed with status: ${loginResponse.status} - ${errorData}`);
     }
 
     const loginData = await loginResponse.json();
@@ -34,6 +36,24 @@ async function checkSession() {
     // Save cookies to file for inspection
     fs.writeFileSync('cookies.txt', cookies.join('\n'));
     console.log('Cookies saved to cookies.txt');
+
+    // Now try to access the user endpoint with the same cookie
+    console.log('\nAttempting to access user data...');
+    const userResponse = await fetch('http://localhost:5000/api/user', {
+      headers: {
+        'Cookie': cookies[0]
+      }
+    });
+
+    console.log('User response status:', userResponse.status);
+    
+    if (userResponse.ok) {
+      const userData = await userResponse.json();
+      console.log('User data:', JSON.stringify(userData, null, 2));
+    } else {
+      const errorText = await userResponse.text();
+      console.error('User request failed:', errorText);
+    }
 
     // Now try to access the dashboard with the same cookie
     console.log('\nAttempting to access dashboard...');
@@ -53,20 +73,33 @@ async function checkSession() {
       console.error('Dashboard request failed:', errorText);
     }
 
-    // Check session status
-    console.log('\nChecking session status...');
-    const sessionResponse = await fetch('http://localhost:5000/api/session-debug', {
+    // Test logout to make sure it properly clears the session
+    console.log('\nTesting logout...');
+    const logoutResponse = await fetch('http://localhost:5000/api/logout', {
+      method: 'POST',
       headers: {
         'Cookie': cookies[0]
       }
     });
 
-    if (sessionResponse.ok) {
-      const sessionData = await sessionResponse.json();
-      console.log('Session status:', JSON.stringify(sessionData, null, 2));
+    console.log('Logout response status:', logoutResponse.status);
+    
+    // Try user endpoint again - should fail after logout
+    console.log('\nAttempting to access user after logout...');
+    const userAfterLogoutResponse = await fetch('http://localhost:5000/api/user', {
+      headers: {
+        'Cookie': cookies[0]
+      }
+    });
+
+    console.log('User after logout response status:', userAfterLogoutResponse.status);
+    
+    if (userAfterLogoutResponse.ok) {
+      const userData = await userAfterLogoutResponse.json();
+      console.log('User data after logout (should be empty):', JSON.stringify(userData, null, 2));
     } else {
-      const errorText = await sessionResponse.text();
-      console.error('Session check failed:', errorText);
+      const errorText = await userAfterLogoutResponse.text();
+      console.log('User request after logout correctly failed with:', userAfterLogoutResponse.status);
     }
 
   } catch (error) {
