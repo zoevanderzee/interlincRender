@@ -61,14 +61,14 @@ const Contracts = () => {
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <div>
-          <h1 className="text-2xl md:text-3xl font-semibold text-white">Smart Contracts</h1>
-          <p className="text-zinc-400 mt-1">Manage and track all your contract agreements</p>
+          <h1 className="text-2xl md:text-3xl font-semibold text-white">Projects</h1>
+          <p className="text-zinc-400 mt-1">Manage and track all your project agreements</p>
         </div>
         <div className="mt-4 md:mt-0">
           <Link href="/contracts/new">
             <Button className="w-full md:w-auto">
               <Plus size={16} className="mr-2" />
-              New Contract
+              New Project
             </Button>
           </Link>
         </div>
@@ -80,7 +80,7 @@ const Contracts = () => {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" size={18} />
             <Input
-              placeholder="Search contracts..."
+              placeholder="Search projects..."
               className="pl-9 bg-zinc-900 border-zinc-700 text-white"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -143,11 +143,11 @@ const Contracts = () => {
               </svg>
             </div>
           </div>
-          <h3 className="text-lg font-medium text-white mb-2">No contracts found</h3>
+          <h3 className="text-lg font-medium text-white mb-2">No projects found</h3>
           <p className="text-zinc-400 mb-6">
             {searchTerm || statusFilter ? 
-              "No contracts match your search criteria. Try changing your filters." : 
-              "Get started by creating your first smart contract."}
+              "No projects match your search criteria. Try changing your filters." : 
+              "Get started by creating your first project."}
           </p>
           {searchTerm || statusFilter ? (
             <Button variant="outline" onClick={clearFilters}>
@@ -157,7 +157,7 @@ const Contracts = () => {
             <Link href="/contracts/new">
               <Button>
                 <Plus size={16} className="mr-2" />
-                Create Contract
+                Create Project
               </Button>
             </Link>
           )}

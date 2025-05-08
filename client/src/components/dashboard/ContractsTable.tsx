@@ -137,14 +137,14 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <CardTitle className="text-lg text-white flex items-center">
             <Briefcase className="mr-2 h-5 w-5 text-blue-500" />
-            Recent Contracts
+            Recent Projects
           </CardTitle>
           
           <div className="relative w-full md:w-60">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-500" size={16} />
             <Input
               className="pl-9 bg-zinc-800 border-zinc-700 text-white w-full"
-              placeholder="Search contracts..."
+              placeholder="Search projects..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
