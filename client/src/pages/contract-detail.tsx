@@ -92,7 +92,7 @@ export default function ContractDetailPage() {
     return res.json();
   };
 
-  // Fetch contract details
+  // Fetch project details
   const { data: contract, isLoading: isLoadingContract, error: contractError } = useQuery<Contract>({
     queryKey: ['/api/contracts', contractId],
     queryFn: contractQueryFn,
@@ -477,7 +477,7 @@ export default function ContractDetailPage() {
                 ${totalContractValue.toFixed(2)}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Contract: {contract.contractCode}
+                Project: {contract.contractCode}
               </p>
             </CardContent>
           </Card>
@@ -711,7 +711,7 @@ export default function ContractDetailPage() {
                 <CardHeader>
                   <CardTitle>No Milestones Found</CardTitle>
                   <CardDescription>
-                    No milestones have been defined for this contract yet.
+                    No milestones have been defined for this project yet.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -728,9 +728,9 @@ export default function ContractDetailPage() {
           <TabsContent value="documents">
             <Card>
               <CardHeader>
-                <CardTitle>Contract Documents</CardTitle>
+                <CardTitle>Project Documents</CardTitle>
                 <CardDescription>
-                  Access and manage all contract-related documents
+                  Access and manage all project-related documents
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -763,7 +763,7 @@ export default function ContractDetailPage() {
                     ))}
                   </div>
                 ) : (
-                  <p>No documents have been uploaded for this contract.</p>
+                  <p>No documents have been uploaded for this project.</p>
                 )}
               </CardContent>
               <CardFooter>
@@ -779,7 +779,7 @@ export default function ContractDetailPage() {
               <CardHeader>
                 <CardTitle>Payment History</CardTitle>
                 <CardDescription>
-                  Track all payments related to this contract
+                  Track all payments related to this project
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -829,7 +829,7 @@ export default function ContractDetailPage() {
                     </table>
                   </div>
                 ) : (
-                  <p>No payments have been made for this contract yet.</p>
+                  <p>No payments have been made for this project yet.</p>
                 )}
               </CardContent>
             </Card>
