@@ -40,12 +40,12 @@ export function setupAuth(app: Express) {
 
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || 'creativlinc-secret-key',
-    resave: true, // Changed to true to ensure session is saved on each request
-    saveUninitialized: true, // Changed to true to ensure new sessions are saved
+    resave: true, // Keep true to ensure session is saved on each request
+    saveUninitialized: true, // Keep true to ensure new sessions are saved
     name: 'creativlinc.sid', // Custom name instead of the default connect.sid
     rolling: true, // Reset expiration time on each request
     cookie: {
-      secure: false, // Changed to false to work in all environments
+      secure: process.env.NODE_ENV === 'production', // Only secure in production
       maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
       httpOnly: true,
       sameSite: 'lax', // Helps with CSRF protection while allowing normal navigation
@@ -54,6 +54,21 @@ export function setupAuth(app: Express) {
     // Use the storage implementation's session store
     store: storage.sessionStore
   };
+  
+  // Log session configuration for debugging
+  console.log("Session configuration:", {
+    secret: sessionSettings.secret ? "HIDDEN" : "NOT SET",
+    resave: sessionSettings.resave,
+    saveUninitialized: sessionSettings.saveUninitialized,
+    name: sessionSettings.name,
+    cookie: {
+      secure: sessionSettings.cookie?.secure,
+      maxAge: sessionSettings.cookie?.maxAge,
+      httpOnly: sessionSettings.cookie?.httpOnly,
+      sameSite: sessionSettings.cookie?.sameSite,
+    },
+    storePresent: !!sessionSettings.store
+  });
   
   // Don't clear sessions on startup anymore to maintain user sessions
   console.log('Session store initialized, keeping existing sessions');

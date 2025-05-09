@@ -101,20 +101,32 @@ export const getQueryFn: <T>(options: {
   async ({ queryKey }) => {
     try {
       const endpoint = queryKey[0] as string;
+      console.log(`Fetching data from ${endpoint}`);
+      
       const res = await fetch(endpoint, {
-        credentials: "include",
+        method: 'GET',
+        credentials: "include", // Important: include cookies with the request
+        headers: {
+          'Accept': 'application/json',
+          'Cache-Control': 'no-cache'
+        }
       });
 
       // Update CSRF token from response
       updateCsrfToken(res);
+      
+      console.log(`Response status for ${endpoint}:`, res.status);
 
       if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+        console.log(`Auth check failed for ${endpoint}, returning null as requested`);
         return null;
       }
 
       await throwIfResNotOk(res);
       return await res.json();
     } catch (error) {
+      console.error(`Error fetching data from ${queryKey[0]}:`, error);
+      
       if ((error as ApiError).isApiError) {
         throw error;
       }
