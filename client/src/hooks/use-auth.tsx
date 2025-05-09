@@ -46,37 +46,75 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   } = useQuery<User | null, Error>({
     queryKey: ["/api/user"],
     queryFn: async () => {
+      console.log("Fetching current user data...");
       try {
-        const res = await apiRequest("GET", "/api/user");
+        const res = await fetch("/api/user", {
+          method: "GET",
+          credentials: "include", // Important: include cookies with the request
+          headers: {
+            "Accept": "application/json",
+            "Cache-Control": "no-cache"
+          }
+        });
+        
+        console.log("User data response status:", res.status);
+        
         if (!res.ok) {
+          console.log("User not authenticated, returning null");
           return null;
         }
-        return await res.json();
+        
+        const userData = await res.json();
+        console.log("User authenticated:", userData?.username);
+        return userData;
       } catch (error) {
+        console.error("Error fetching user data:", error);
         return null;
       }
     },
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
     initialData: null // Ensure we always have a User | null type
   });
 
   // Login mutation
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
-      const res = await apiRequest("POST", "/api/login", credentials);
+      console.log("Attempting login...");
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(credentials),
+        credentials: "include", // Important: include cookies with the request
+      });
+      
+      console.log("Login response status:", res.status);
+      
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.error || "Login failed");
       }
+      
       return await res.json();
     },
     onSuccess: (data: User) => {
+      console.log("Login successful, saving user data to query cache");
       queryClient.setQueryData(["/api/user"], data);
+      
+      // After login, explicitly invalidate dashboard and other dependent queries
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/budget"] });
+      
       toast({
         title: "Login successful",
         description: `Welcome back, ${data.firstName}!`,
       });
     },
     onError: (error: Error) => {
+      console.error("Login error:", error);
       toast({
         title: "Login failed",
         description: error.message,
@@ -88,21 +126,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Registration mutation
   const registerMutation = useMutation({
     mutationFn: async (userData: RegisterData) => {
-      const res = await apiRequest("POST", "/api/register", userData);
+      console.log("Attempting registration...");
+      const res = await fetch("/api/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(userData),
+        credentials: "include", // Important: include cookies with the request
+      });
+      
+      console.log("Registration response status:", res.status);
+      
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.error || "Registration failed");
       }
+      
       return await res.json();
     },
     onSuccess: (data: User) => {
+      console.log("Registration successful, saving user data to query cache");
       queryClient.setQueryData(["/api/user"], data);
+      
+      // After registration, explicitly invalidate dashboard and other dependent queries
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/budget"] });
+      
       toast({
         title: "Registration successful",
         description: `Welcome to Creativ Linc, ${data.firstName}!`,
       });
     },
     onError: (error: Error) => {
+      console.error("Registration error:", error);
       toast({
         title: "Registration failed",
         description: error.message,
@@ -114,20 +171,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Logout mutation
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/logout");
+      console.log("Attempting logout...");
+      const res = await fetch("/api/logout", {
+        method: "POST",
+        credentials: "include", // Important: include cookies with the request
+      });
+      
+      console.log("Logout response status:", res.status);
+      
       if (!res.ok) {
         throw new Error("Logout failed");
       }
     },
     onSuccess: () => {
+      console.log("Logout successful, clearing user data from query cache");
+      
+      // Clear user data and invalidate all protected queries
       queryClient.setQueryData(["/api/user"], null);
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/budget"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/contracts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/payments"] });
+      
       toast({
         title: "Logged out",
         description: "You have been successfully logged out.",
       });
     },
     onError: (error: Error) => {
+      console.error("Logout error:", error);
       toast({
         title: "Logout failed",
         description: error.message,

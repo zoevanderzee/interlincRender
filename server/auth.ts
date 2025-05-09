@@ -491,6 +491,15 @@ export function setupAuth(app: Express) {
   const requireAuth = (req: any, res: any, next: any) => {
     console.log("Auth check in requireAuth middleware:", req.isAuthenticated(), "Session ID:", req.sessionID);
     
+    // Debug session information
+    console.log("Session data:", {
+      isSessionDefined: !!req.session,
+      sessionID: req.sessionID,
+      userID: req.session?.passport?.user,
+      passportInitialized: !!req.session?.passport,
+      passport: req.session?.passport
+    });
+    
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
     }
