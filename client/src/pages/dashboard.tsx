@@ -15,12 +15,15 @@ import { Contract, User, Payment, Milestone } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 
+// Define interface for dashboard data
 interface DashboardData {
   stats: {
     activeContractsCount: number;
     pendingApprovalsCount: number;
     paymentsProcessed: number;
     activeContractorsCount: number;
+    totalPendingValue?: number;
+    pendingInvitesCount?: number;
   };
   contracts: Contract[];
   contractors: User[];
@@ -28,6 +31,7 @@ interface DashboardData {
   payments: Payment[];
 }
 
+// Define interface for budget data
 interface BudgetData {
   budgetCap: string | null;
   budgetUsed: string;
@@ -43,67 +47,84 @@ const Dashboard = () => {
   const { user, isLoading: isAuthLoading } = useAuth();
   const { toast } = useToast();
 
-  // Fetch dashboard data only when user is authenticated
-  const { data, isLoading, error } = useQuery<DashboardData>({
+  // Dashboard data query with explicit fetch to ensure credentials are included
+  const { 
+    data: dashboardData, 
+    isLoading: isDashboardLoading, 
+    error: dashboardError 
+  } = useQuery<DashboardData>({
     queryKey: ['/api/dashboard'],
     queryFn: async () => {
       console.log("Fetching dashboard data...");
       
-      const res = await fetch("/api/dashboard", {
-        method: "GET",
-        credentials: "include", // Important: include cookies with every request
-        headers: {
-          "Accept": "application/json",
-          "Cache-Control": "no-cache"
+      try {
+        const res = await fetch("/api/dashboard", {
+          method: "GET",
+          credentials: "include", // Important: include cookies with every request
+          headers: {
+            "Accept": "application/json",
+            "Cache-Control": "no-cache"
+          }
+        });
+        
+        console.log("Dashboard response status:", res.status);
+        
+        if (!res.ok) {
+          console.error(`Dashboard fetch failed with status: ${res.status}`);
+          throw new Error("Could not load dashboard data");
         }
-      });
-      
-      console.log("Dashboard response status:", res.status);
-      
-      if (!res.ok) {
-        console.error(`Dashboard fetch failed with status: ${res.status}`);
-        throw new Error("Could not load dashboard data");
+        
+        const data = await res.json();
+        console.log("Dashboard data loaded successfully", data);
+        return data as DashboardData;
+      } catch (error) {
+        console.error("Dashboard fetch error:", error);
+        toast({
+          title: "Error loading dashboard",
+          description: "Could not load your dashboard information. Please try again.",
+          variant: "destructive",
+        });
+        throw error;
       }
-      
-      const dashboardData = await res.json() as DashboardData;
-      console.log("Dashboard data loaded successfully");
-      return dashboardData;
     },
-    refetchInterval: false,
     enabled: !!user, // Only run query when user is authenticated
   });
 
-  // Fetch budget data
-  const { data: budgetInfo, isLoading: isBudgetLoading } = useQuery<BudgetData>({
+  // Budget data query with explicit fetch to ensure credentials are included
+  const { 
+    data: budgetData, 
+    isLoading: isBudgetLoading 
+  } = useQuery<BudgetData>({
     queryKey: ['/api/budget'],
     queryFn: async () => {
       console.log("Fetching budget data...");
       
-      const res = await fetch("/api/budget", {
-        method: "GET",
-        credentials: "include", // Important: include cookies with every request
-        headers: {
-          "Accept": "application/json",
-          "Cache-Control": "no-cache"
+      try {
+        const res = await fetch("/api/budget", {
+          method: "GET",
+          credentials: "include", // Important: include cookies with every request
+          headers: {
+            "Accept": "application/json",
+            "Cache-Control": "no-cache"
+          }
+        });
+        
+        console.log("Budget response status:", res.status);
+        
+        if (!res.ok) {
+          console.error(`Budget fetch failed with status: ${res.status}`);
+          throw new Error("Could not load budget data");
         }
-      });
-      
-      console.log("Budget response status:", res.status);
-      
-      if (!res.ok) {
-        console.error(`Budget fetch failed with status: ${res.status}`);
-        throw new Error("Could not load budget data");
+        
+        const data = await res.json();
+        console.log("Budget data loaded successfully", data);
+        return data as BudgetData;
+      } catch (error) {
+        console.error("Budget fetch error:", error);
+        throw error;
       }
-      
-      const budgetData = await res.json();
-      console.log("Budget data loaded successfully");
-      return budgetData;
     },
-    refetchOnWindowFocus: false,
     enabled: !!user, // Only run query when user is authenticated
-    onError: (err) => {
-      console.error("Budget data fetch error:", err);
-    }
   });
 
   // Format the remaining budget as currency
@@ -123,7 +144,7 @@ const Dashboard = () => {
   };
 
   // Show error state
-  if (error) {
+  if (dashboardError) {
     return (
       <div className="text-center py-12">
         <div className="h-24 w-24 mx-auto mb-6 flex items-center justify-center rounded-full bg-zinc-800">
@@ -141,8 +162,9 @@ const Dashboard = () => {
     );
   }
 
-  // Show skeleton while loading (auth or data)
-  if (isAuthLoading || (!user) || (!!user && (isLoading || isBudgetLoading))) {
+  // Show loading state
+  const isLoading = isAuthLoading || isDashboardLoading || isBudgetLoading;
+  if (!user || isLoading) {
     return (
       <div className="animate-pulse">
         <div className="h-8 w-1/4 bg-zinc-800 rounded mb-2"></div>
@@ -160,7 +182,7 @@ const Dashboard = () => {
   }
 
   // If user is authenticated but no data was returned, show a message
-  if (user && !isLoading && !data) {
+  if (user && !isDashboardLoading && !dashboardData) {
     return (
       <div className="text-center py-12">
         <div className="h-24 w-24 mx-auto mb-6 flex items-center justify-center rounded-full bg-zinc-800">
@@ -196,7 +218,7 @@ const Dashboard = () => {
               <DollarSign size={20} className="text-green-500" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-white">${data?.stats.paymentsProcessed?.toLocaleString('en-US') || '0'}</p>
+          <p className="text-3xl font-bold text-white">${dashboardData?.stats.paymentsProcessed?.toLocaleString('en-US') || '0'}</p>
           <p className="text-xs text-gray-500 mt-1">Total value of processed payments</p>
         </div>
         
@@ -208,7 +230,7 @@ const Dashboard = () => {
               <Coins size={20} className="text-blue-500" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-white">{formatCurrency(budgetInfo?.remainingBudget || "0")}</p>
+          <p className="text-3xl font-bold text-white">{formatCurrency(budgetData?.remainingBudget || "0")}</p>
           <p className="text-xs text-gray-500 mt-1">Available outsourcing budget</p>
         </div>
         
@@ -220,7 +242,7 @@ const Dashboard = () => {
               <Briefcase size={20} className="text-accent-500" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-white">{data?.stats.activeContractsCount || 0}</p>
+          <p className="text-3xl font-bold text-white">{dashboardData?.stats.activeContractsCount || 0}</p>
           <p className="text-xs text-gray-500 mt-1">Current ongoing contracts</p>
         </div>
         
@@ -232,7 +254,7 @@ const Dashboard = () => {
               <Users size={20} className="text-purple-500" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-white">{data?.stats.activeContractorsCount || 0}</p>
+          <p className="text-3xl font-bold text-white">{dashboardData?.stats.activeContractorsCount || 0}</p>
           <p className="text-xs text-gray-500 mt-1">Working professionals</p>
         </div>
       </div>
