@@ -82,6 +82,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
       console.log("Attempting login...");
+      
+      // Ensure there are no existing cookies that might interfere
+      document.cookie.split(';').forEach(cookie => {
+        const [name] = cookie.trim().split('=');
+        if (name.includes('creativlinc')) {
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
+        }
+      });
+      
       const res = await fetch("/api/login", {
         method: "POST",
         headers: {
@@ -97,6 +106,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const errorData = await res.json();
         throw new Error(errorData.error || "Login failed");
       }
+      
+      // Log the cookies after login for debugging
+      console.log("Cookies after login:", document.cookie);
       
       return await res.json();
     },
