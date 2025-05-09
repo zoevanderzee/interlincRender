@@ -1,5 +1,5 @@
-const fetch = require('node-fetch');
-const fs = require('fs');
+import fetch from 'node-fetch';
+import fs from 'fs';
 
 async function testAPIAuth() {
   console.log('=== Testing API Authentication Flow ===');
@@ -13,7 +13,7 @@ async function testAPIAuth() {
     },
     body: JSON.stringify({
       username: 'testuser',
-      password: 'password123'
+      password: 'testpassword'
     })
   });
   
@@ -141,6 +141,7 @@ async function testAPIAuth() {
   }
 }
 
+// Call the function directly
 testAPIAuth().catch(error => {
   console.error('Test failed with error:', error);
 });

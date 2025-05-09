@@ -46,23 +46,64 @@ const Dashboard = () => {
   // Fetch dashboard data only when user is authenticated
   const { data, isLoading, error } = useQuery<DashboardData>({
     queryKey: ['/api/dashboard'],
+    queryFn: async () => {
+      console.log("Fetching dashboard data...");
+      
+      const res = await fetch("/api/dashboard", {
+        method: "GET",
+        credentials: "include", // Important: include cookies with every request
+        headers: {
+          "Accept": "application/json",
+          "Cache-Control": "no-cache"
+        }
+      });
+      
+      console.log("Dashboard response status:", res.status);
+      
+      if (!res.ok) {
+        console.error(`Dashboard fetch failed with status: ${res.status}`);
+        throw new Error("Could not load dashboard data");
+      }
+      
+      const dashboardData = await res.json() as DashboardData;
+      console.log("Dashboard data loaded successfully");
+      return dashboardData;
+    },
     refetchInterval: false,
     enabled: !!user, // Only run query when user is authenticated
-    onError: (err) => {
-      console.error("Dashboard data fetch error:", err);
-      toast({
-        title: "Error loading dashboard data",
-        description: "Could not load your dashboard information. Please try again.",
-        variant: "destructive",
-      });
-    }
   });
 
   // Fetch budget data
   const { data: budgetInfo, isLoading: isBudgetLoading } = useQuery<BudgetData>({
     queryKey: ['/api/budget'],
+    queryFn: async () => {
+      console.log("Fetching budget data...");
+      
+      const res = await fetch("/api/budget", {
+        method: "GET",
+        credentials: "include", // Important: include cookies with every request
+        headers: {
+          "Accept": "application/json",
+          "Cache-Control": "no-cache"
+        }
+      });
+      
+      console.log("Budget response status:", res.status);
+      
+      if (!res.ok) {
+        console.error(`Budget fetch failed with status: ${res.status}`);
+        throw new Error("Could not load budget data");
+      }
+      
+      const budgetData = await res.json();
+      console.log("Budget data loaded successfully");
+      return budgetData;
+    },
     refetchOnWindowFocus: false,
     enabled: !!user, // Only run query when user is authenticated
+    onError: (err) => {
+      console.error("Budget data fetch error:", err);
+    }
   });
 
   // Format the remaining budget as currency
