@@ -45,7 +45,7 @@ export function setupAuth(app: Express) {
     name: 'creativlinc.sid', // Custom name instead of the default connect.sid
     rolling: true, // Reset expiration time on each request
     cookie: {
-      secure: process.env.NODE_ENV === 'production', // Only secure in production
+      secure: false, // Set to false in all environments to ensure cookies work in development
       maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
       httpOnly: true,
       sameSite: 'lax', // Helps with CSRF protection while allowing normal navigation
