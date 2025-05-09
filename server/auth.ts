@@ -48,8 +48,9 @@ export function setupAuth(app: Express) {
       secure: false, // Set to false in all environments to ensure cookies work in development
       maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
       httpOnly: true,
-      sameSite: 'lax', // Helps with CSRF protection while allowing normal navigation
+      sameSite: 'none', // Allow cross-site cookie sharing for development
       path: '/',
+      domain: undefined // Don't restrict the cookie to a specific domain
     },
     // Use the storage implementation's session store
     store: storage.sessionStore
@@ -73,11 +74,9 @@ export function setupAuth(app: Express) {
   // Don't clear sessions on startup anymore to maintain user sessions
   console.log('Session store initialized, keeping existing sessions');
 
-  // Configure Express to trust proxy headers when in production
-  // This is needed for secure cookies to work behind a proxy
-  if (process.env.NODE_ENV === "production") {
-    app.set("trust proxy", 1);
-  }
+  // Configure Express to trust proxy headers in all environments
+  // This is needed for cookies to work properly in Replit
+  app.set("trust proxy", 1);
 
   // Setup session middleware
   app.use(session(sessionSettings));
@@ -339,6 +338,12 @@ export function setupAuth(app: Express) {
 
   // Login route
   app.post("/api/login", (req, res, next) => {
+    // Log request headers for debugging
+    console.log("Login request headers:", {
+      cookie: req.headers.cookie,
+      'user-agent': req.headers['user-agent']
+    });
+    
     passport.authenticate("local", (err: Error, user: Express.User, info: any) => {
       if (err) {
         console.error("Login error:", err);
@@ -368,6 +373,13 @@ export function setupAuth(app: Express) {
             console.error("Session save error:", saveErr);
             return next(saveErr);
           }
+          
+          // Log response headers being sent back
+          console.log("Login response - setting cookie:", {
+            'Set-Cookie': res.getHeader('Set-Cookie'),
+            sessionID: req.sessionID
+          });
+          
           return res.status(200).json(userInfo);
         });
       });
@@ -397,6 +409,12 @@ export function setupAuth(app: Express) {
   // Get current user route
   app.get("/api/user", (req, res) => {
     console.log("Auth check for session:", req.sessionID, "Authenticated:", req.isAuthenticated());
+    
+    // Log request headers for debugging
+    console.log("User API request headers:", {
+      cookie: req.headers.cookie,
+      'user-agent': req.headers['user-agent']
+    });
     
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
@@ -490,6 +508,13 @@ export function setupAuth(app: Express) {
   // Create middleware to check user authentication
   const requireAuth = (req: any, res: any, next: any) => {
     console.log("Auth check in requireAuth middleware:", req.isAuthenticated(), "Session ID:", req.sessionID);
+    
+    // Log request headers for debugging
+    console.log("API request headers in requireAuth:", {
+      cookie: req.headers.cookie,
+      'user-agent': req.headers['user-agent'],
+      path: req.path
+    });
     
     // Debug session information
     console.log("Session data:", {

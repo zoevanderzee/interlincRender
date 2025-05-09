@@ -66,15 +66,27 @@ export async function apiRequest(
     
     const headers: Record<string, string> = { ...defaultHeaders, ...(customHeaders || {}) };
     
+    // Log the fetch request for debugging
+    console.log(`API Request: ${method} ${url}`, { headers, hasCookies: document.cookie.length > 0 });
+    
     const res = await fetch(url, {
       method,
       headers,
       body: data ? JSON.stringify(data) : undefined,
-      credentials: "include",
+      credentials: "include", // Always include credentials
+      mode: 'cors', // Enable CORS for cross-origin requests
+      cache: 'no-cache', // Disable caching to ensure fresh responses
     });
 
     // Update CSRF token from response
     updateCsrfToken(res);
+    
+    // Log the response status and headers
+    console.log(`API Response: ${method} ${url}`, { 
+      status: res.status, 
+      setCookie: res.headers.get('set-cookie'),
+      contentType: res.headers.get('content-type')
+    });
 
     await throwIfResNotOk(res);
     return res;
@@ -103,19 +115,32 @@ export const getQueryFn: <T>(options: {
       const endpoint = queryKey[0] as string;
       console.log(`Fetching data from ${endpoint}`);
       
+      // Log the fetch request for debugging
+      console.log(`Query Request: GET ${endpoint}`, { 
+        hasCookies: document.cookie.length > 0,
+        cookieString: document.cookie
+      });
+      
       const res = await fetch(endpoint, {
         method: 'GET',
         credentials: "include", // Important: include cookies with the request
         headers: {
           'Accept': 'application/json',
           'Cache-Control': 'no-cache'
-        }
+        },
+        mode: 'cors', // Enable CORS for cross-origin requests
+        cache: 'no-cache' // Disable caching to ensure fresh responses
       });
 
       // Update CSRF token from response
       updateCsrfToken(res);
       
-      console.log(`Response status for ${endpoint}:`, res.status);
+      // Log the response status and headers
+      console.log(`Query Response: GET ${endpoint}`, { 
+        status: res.status, 
+        setCookie: res.headers.get('set-cookie'),
+        contentType: res.headers.get('content-type')
+      });
 
       if (unauthorizedBehavior === "returnNull" && res.status === 401) {
         console.log(`Auth check failed for ${endpoint}, returning null as requested`);
