@@ -109,6 +109,12 @@ function Router() {
         </Layout>
       </ProtectedRoute>
       
+      <ProtectedRoute path="/contracts/:id/edit">
+        <Layout>
+          <NewContract />
+        </Layout>
+      </ProtectedRoute>
+      
       <ProtectedRoute path="/contract/:id">
         <Layout>
           <ContractDetail />

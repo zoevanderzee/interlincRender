@@ -40,9 +40,16 @@ import { useAuth } from "@/hooks/use-auth";
 interface ContractFormProps {
   contractors: User[];
   onSuccess?: () => void;
+  contractData?: any; // The contract data when in edit mode
+  isEditMode?: boolean; // Flag to indicate we're editing
 }
 
-const ContractForm = ({ contractors, onSuccess }: ContractFormProps) => {
+const ContractForm = ({ 
+  contractors, 
+  onSuccess, 
+  contractData, 
+  isEditMode = false 
+}: ContractFormProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [submitting, setSubmitting] = useState(false);
