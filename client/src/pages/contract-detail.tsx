@@ -201,7 +201,25 @@ export default function ContractDetailPage() {
         return;
       }
       
-      await apiRequest(`/api/contracts/${contractId}`, 'DELETE');
+      // Get stored user data for authentication fallback
+      const storedUser = localStorage.getItem('creativlinc_user');
+      let headers = {};
+      
+      // Add X-User-ID header from localStorage if available
+      if (storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          if (parsedUser && parsedUser.id) {
+            headers = { 'X-User-ID': parsedUser.id.toString() };
+            console.log("Adding X-User-ID header to delete request:", parsedUser.id);
+          }
+        } catch (e) {
+          console.error("Error parsing stored user for delete request:", e);
+        }
+      }
+      
+      // Use the modified apiRequest with custom headers
+      await apiRequest(`/api/contracts/${contractId}`, 'DELETE', undefined, headers);
       
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['/api/contracts'] });
@@ -214,6 +232,7 @@ export default function ContractDetailPage() {
       // Navigate back to the contracts list
       navigate('/contracts');
     } catch (error) {
+      console.error("Delete project error:", error);
       toast({
         title: "Error deleting project",
         description: "Please try again later.",

@@ -57,10 +57,17 @@ export async function apiRequest(
   customHeaders?: Record<string, string>
 ): Promise<Response> {
   try {
-    const defaultHeaders: Record<string, string> = data ? { "Content-Type": "application/json" } : {};
+    // Normalize method name to uppercase
+    const normalizedMethod = method.toUpperCase();
+    
+    // Content-Type is only needed for methods with a body (POST, PUT, PATCH)
+    const defaultHeaders: Record<string, string> = 
+      data && ['POST', 'PUT', 'PATCH'].includes(normalizedMethod) 
+        ? { "Content-Type": "application/json" } 
+        : {};
     
     // Add CSRF token to headers for non-GET requests if available
-    if (csrfToken && !['GET', 'HEAD', 'OPTIONS'].includes(method.toUpperCase())) {
+    if (csrfToken && !['GET', 'HEAD', 'OPTIONS'].includes(normalizedMethod)) {
       defaultHeaders['X-CSRF-Token'] = csrfToken;
     }
     
@@ -71,21 +78,25 @@ export async function apiRequest(
         const parsedUser = JSON.parse(storedUser);
         if (parsedUser && parsedUser.id) {
           defaultHeaders['X-User-ID'] = parsedUser.id.toString();
+          console.log(`Adding X-User-ID header to ${normalizedMethod} request:`, parsedUser.id);
         }
       } catch (e) {
-        console.error("Error parsing stored user for API request headers:", e);
+        console.error(`Error parsing stored user for ${normalizedMethod} request headers:`, e);
       }
     }
     
     const headers: Record<string, string> = { ...defaultHeaders, ...(customHeaders || {}) };
     
     // Log the fetch request for debugging
-    console.log(`API Request: ${method} ${url}`, { headers, hasCookies: document.cookie.length > 0 });
+    console.log(`API Request: ${url} ${normalizedMethod}`, { headers, hasCookies: document.cookie.length > 0 });
+    
+    // Only include body for methods that support it
+    const hasBody = ['POST', 'PUT', 'PATCH'].includes(normalizedMethod);
     
     const res = await fetch(url, {
-      method,
+      method: normalizedMethod,
       headers,
-      body: data ? JSON.stringify(data) : undefined,
+      body: hasBody && data ? JSON.stringify(data) : undefined,
       credentials: "include", // Always include credentials
       mode: 'cors', // Enable CORS for cross-origin requests
       cache: 'no-cache', // Disable caching to ensure fresh responses
