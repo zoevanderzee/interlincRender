@@ -77,10 +77,34 @@ const ContractForm = ({
     contractorId: z.number().optional().nullable(),
   });
 
-  // Form hook
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
+  // Prepare default values or use existing contract data for edit mode
+  const getDefaultValues = () => {
+    // If we're in edit mode and have contract data, use it
+    if (isEditMode && contractData) {
+      // Parse dates from strings if needed
+      const startDate = contractData.startDate 
+        ? new Date(contractData.startDate) 
+        : new Date();
+      
+      const endDate = contractData.endDate 
+        ? new Date(contractData.endDate) 
+        : new Date(new Date().setMonth(new Date().getMonth() + 3));
+      
+      return {
+        contractName: contractData.contractName || "",
+        contractCode: contractData.contractCode || "",
+        businessId: contractData.businessId || user?.id || 0,
+        contractorId: contractData.contractorId || undefined,
+        description: contractData.description || "",
+        status: contractData.status || "draft",
+        value: contractData.value || "",
+        startDate,
+        endDate,
+      };
+    }
+    
+    // Default values for new contract
+    return {
       contractName: "",
       contractCode: `SC-${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-`,
       businessId: user?.id || 0, // Use the current user's ID
@@ -90,10 +114,16 @@ const ContractForm = ({
       value: "",
       startDate: new Date(),
       endDate: new Date(new Date().setMonth(new Date().getMonth() + 3)), // Default 3 months from now
-    },
+    };
+  };
+
+  // Form hook
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: getDefaultValues(),
   });
 
-  // Submit mutation
+  // Create contract mutation
   const createContractMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
       return apiRequest("POST", "/api/contracts", data);
@@ -115,18 +145,54 @@ const ContractForm = ({
       });
     },
   });
+  
+  // Update contract mutation
+  const updateContractMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof formSchema>) => {
+      if (!contractData?.id) throw new Error("Missing contract ID for update");
+      return apiRequest("PATCH", `/api/contracts/${contractData.id}`, data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Project updated",
+        description: "The project has been updated successfully!",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/contracts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      if (onSuccess) onSuccess();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Could not update project. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
 
-  // Submit handler
+  // Submit handler - now handles both create and update
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       setSubmitting(true);
+      
       // Ensure the businessId is always the current user's id
       const formData = {
         ...values,
         businessId: user?.id || 0
       };
-      await createContractMutation.mutateAsync(formData);
-      form.reset();
+      
+      // Use the appropriate mutation based on whether we're editing or creating
+      if (isEditMode && contractData) {
+        console.log("Updating existing project:", contractData.id);
+        await updateContractMutation.mutateAsync(formData);
+      } else {
+        console.log("Creating new project");
+        await createContractMutation.mutateAsync(formData);
+        // Only reset form on create, not on update
+        form.reset();
+      }
+    } catch (error) {
+      console.error("Form submission error:", error);
     } finally {
       setSubmitting(false);
     }
@@ -353,19 +419,27 @@ const ContractForm = ({
           <Button 
             type="button" 
             variant="outline" 
-            onClick={() => form.reset()} 
+            onClick={() => {
+              if (isEditMode && onSuccess) {
+                // If in edit mode, clicking cancel should navigate back to contracts list
+                onSuccess();
+              } else {
+                // If in create mode, just reset the form
+                form.reset();
+              }
+            }} 
             className="border-zinc-700 text-white hover:bg-zinc-800"
           >
-            Cancel
+            {isEditMode ? 'Back' : 'Reset'}
           </Button>
           <Button 
             type="submit" 
-            disabled={submitting || createContractMutation.isPending}
+            disabled={submitting || createContractMutation.isPending || updateContractMutation.isPending}
           >
-            {(submitting || createContractMutation.isPending) && (
+            {(submitting || createContractMutation.isPending || updateContractMutation.isPending) && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
-            Create Project
+            {isEditMode ? 'Update Project' : 'Create Project'}
           </Button>
         </div>
       </form>
