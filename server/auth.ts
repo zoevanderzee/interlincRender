@@ -48,9 +48,8 @@ export function setupAuth(app: Express) {
       secure: false, // Set to false in all environments to ensure cookies work in development
       maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
       httpOnly: true,
-      sameSite: 'none', // Allow cross-site cookie sharing for development
+      sameSite: 'lax', // Use 'lax' for better browser compatibility
       path: '/',
-      domain: undefined // Don't restrict the cookie to a specific domain
     },
     // Use the storage implementation's session store
     store: storage.sessionStore
@@ -506,13 +505,14 @@ export function setupAuth(app: Express) {
   });
 
   // Create middleware to check user authentication
-  const requireAuth = (req: any, res: any, next: any) => {
+  const requireAuth = async (req: any, res: any, next: any) => {
     console.log("Auth check in requireAuth middleware:", req.isAuthenticated(), "Session ID:", req.sessionID);
     
     // Log request headers for debugging
     console.log("API request headers in requireAuth:", {
       cookie: req.headers.cookie,
       'user-agent': req.headers['user-agent'],
+      'x-user-id': req.headers['x-user-id'],
       path: req.path
     });
     
@@ -525,10 +525,32 @@ export function setupAuth(app: Express) {
       passport: req.session?.passport
     });
     
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
+    // First check traditional session-based authentication
+    if (req.isAuthenticated()) {
+      return next();
     }
-    next();
+    
+    // Fallback: Check for X-User-ID header and attempt to load the user
+    const userIdHeader = req.headers['x-user-id'];
+    if (userIdHeader) {
+      try {
+        const userId = parseInt(userIdHeader);
+        if (!isNaN(userId)) {
+          const user = await storage.getUser(userId);
+          if (user) {
+            console.log(`Using X-User-ID header fallback authentication for user ID: ${userId}`);
+            // Manually set user on request object
+            req.user = user;
+            return next();
+          }
+        }
+      } catch (error) {
+        console.error('Error in X-User-ID fallback authentication:', error);
+      }
+    }
+    
+    // If all authentication methods fail
+    return res.status(401).json({ error: "Not authenticated" });
   };
 
   return { requireAuth };

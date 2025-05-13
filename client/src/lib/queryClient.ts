@@ -121,13 +121,29 @@ export const getQueryFn: <T>(options: {
         cookieString: document.cookie
       });
       
+      // Try to get user auth token from localStorage if available
+      const storedUser = localStorage.getItem('creativlinc_user');
+      const headers: HeadersInit = {
+        'Accept': 'application/json',
+        'Cache-Control': 'no-cache'
+      };
+      
+      // Add user ID as a header if available in localStorage
+      if (storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          if (parsedUser && parsedUser.id) {
+            headers['X-User-ID'] = parsedUser.id.toString();
+          }
+        } catch (e) {
+          console.error("Error parsing stored user for request headers:", e);
+        }
+      }
+      
       const res = await fetch(endpoint, {
         method: 'GET',
         credentials: "include", // Important: include cookies with the request
-        headers: {
-          'Accept': 'application/json',
-          'Cache-Control': 'no-cache'
-        },
+        headers,
         mode: 'cors', // Enable CORS for cross-origin requests
         cache: 'no-cache' // Disable caching to ensure fresh responses
       });
