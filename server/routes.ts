@@ -316,23 +316,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user?.id;
       const userRole = req.user?.role || 'business';
       
+      console.log(`Fetching contracts for user ID ${userId} with role ${userRole}`);
+      
       let contracts = [];
       if (businessId) {
+        // Filter by specific business ID from query param
         contracts = await storage.getContractsByBusinessId(businessId);
       } else if (contractorId) {
+        // Filter by specific contractor ID from query param
         contracts = await storage.getContractsByContractorId(contractorId);
-      } else if (userId && userRole === 'business') {
-        // If logged in as a business user and no specific filter is provided,
-        // return contracts associated with the current user
-        contracts = await storage.getContractsByBusinessId(userId);
-      } else if (userId && userRole === 'contractor') {
-        // If logged in as a contractor and no specific filter is provided,
-        // return contracts associated with the current contractor
-        contracts = await storage.getContractsByContractorId(userId);
+      } else if (userId) {
+        if (userRole === 'business') {
+          // For business users, only show their own contracts
+          console.log(`Getting contracts for business user ID: ${userId}`);
+          contracts = await storage.getContractsByBusinessId(userId);
+        } else if (userRole === 'contractor') {
+          // For contractors, only show contracts they're assigned to
+          console.log(`Getting contracts for contractor user ID: ${userId}`);
+          contracts = await storage.getContractsByContractorId(userId);
+        } else {
+          // For unknown roles with valid user IDs, still filter by their ID as a business
+          console.log(`Getting contracts for user with unknown role. User ID: ${userId}`);
+          contracts = await storage.getContractsByBusinessId(userId);
+        }
       } else {
-        // If not logged in or no specific filter is provided, return all contracts (for demo purposes)
-        // In a production environment, this would be restricted
-        contracts = await storage.getAllContracts();
+        // If somehow no authentication exists, return empty array for security
+        console.log("No authenticated user found, returning empty contracts array");
+        contracts = [];
       }
       
       res.json(contracts);
@@ -351,8 +361,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Contract not found" });
       }
       
+      // Check if the user has permission to view this contract
+      const userId = req.user?.id;
+      const userRole = req.user?.role || 'business';
+      
+      if (!userId) {
+        console.log("No user ID found when accessing contract detail");
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      // Allow access if user is the business owner or the assigned contractor
+      const hasAccess = 
+        (userRole === 'business' && contract.businessId === userId) || 
+        (userRole === 'contractor' && contract.contractorId === userId);
+        
+      if (!hasAccess) {
+        console.log(`User ${userId} with role ${userRole} tried to access contract ${id} without permission`);
+        return res.status(403).json({ message: "You don't have permission to view this project" });
+      }
+      
       res.json(contract);
     } catch (error) {
+      console.error("Error fetching contract:", error);
       res.status(500).json({ message: "Error fetching contract" });
     }
   });
