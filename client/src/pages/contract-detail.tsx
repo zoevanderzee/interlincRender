@@ -218,8 +218,10 @@ export default function ContractDetailPage() {
         }
       }
       
-      // Use the modified apiRequest with custom headers
-      await apiRequest(`/api/contracts/${contractId}`, 'DELETE', undefined, headers);
+      console.log(`Adding X-User-ID header to /api/contracts/${contractId} request:`, headers["X-User-ID"]);
+      
+      // Note: apiRequest method signature is (url, method, data, headers)
+      await apiRequest(`/api/contracts/${contractId}`, 'delete', undefined, headers);
       
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['/api/contracts'] });
