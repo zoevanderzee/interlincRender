@@ -147,9 +147,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Get the response data
       const userData = await res.json();
       
+      console.log("Login successful, storing user data in localStorage:", userData);
+      
       // Store the user data in localStorage for session persistence
       // This acts as a fallback when cookies fail
       localStorage.setItem('creativlinc_user', JSON.stringify(userData));
+      
+      // Verify storage was successful
+      const storedData = localStorage.getItem('creativlinc_user');
+      console.log("Verification - localStorage data after setting:", storedData);
       
       return userData;
     },

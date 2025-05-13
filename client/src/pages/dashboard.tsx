@@ -58,13 +58,37 @@ const Dashboard = () => {
       console.log("Fetching dashboard data...");
       
       try {
+        // Get stored user data directly from localStorage
+        const storedUser = localStorage.getItem('creativlinc_user');
+        console.log("Dashboard - Stored user data in localStorage:", storedUser);
+        
+        // Build headers with user ID if available
+        const headers: HeadersInit = {
+          "Accept": "application/json",
+          "Cache-Control": "no-cache"
+        };
+        
+        // Add user ID from localStorage
+        if (storedUser) {
+          try {
+            const parsedUser = JSON.parse(storedUser);
+            if (parsedUser && parsedUser.id) {
+              headers['X-User-ID'] = parsedUser.id.toString();
+              console.log("Adding X-User-ID header:", parsedUser.id);
+            }
+          } catch (e) {
+            console.error("Error parsing stored user for dashboard request:", e);
+          }
+        } else if (user && user.id) {
+          // Fallback to auth context if localStorage fails
+          headers['X-User-ID'] = user.id.toString();
+          console.log("Adding X-User-ID header from auth context:", user.id);
+        }
+        
         const res = await fetch("/api/dashboard", {
           method: "GET",
           credentials: "include", // Important: include cookies with every request
-          headers: {
-            "Accept": "application/json",
-            "Cache-Control": "no-cache"
-          }
+          headers
         });
         
         console.log("Dashboard response status:", res.status);
@@ -100,13 +124,36 @@ const Dashboard = () => {
       console.log("Fetching budget data...");
       
       try {
+        // Get stored user data directly from localStorage
+        const storedUser = localStorage.getItem('creativlinc_user');
+        
+        // Build headers with user ID if available
+        const headers: HeadersInit = {
+          "Accept": "application/json",
+          "Cache-Control": "no-cache"
+        };
+        
+        // Add user ID from localStorage
+        if (storedUser) {
+          try {
+            const parsedUser = JSON.parse(storedUser);
+            if (parsedUser && parsedUser.id) {
+              headers['X-User-ID'] = parsedUser.id.toString();
+              console.log("Adding X-User-ID header to budget request:", parsedUser.id);
+            }
+          } catch (e) {
+            console.error("Error parsing stored user for budget request:", e);
+          }
+        } else if (user && user.id) {
+          // Fallback to auth context if localStorage fails
+          headers['X-User-ID'] = user.id.toString();
+          console.log("Adding X-User-ID header to budget request from auth context:", user.id);
+        }
+        
         const res = await fetch("/api/budget", {
           method: "GET",
           credentials: "include", // Important: include cookies with every request
-          headers: {
-            "Accept": "application/json",
-            "Cache-Control": "no-cache"
-          }
+          headers
         });
         
         console.log("Budget response status:", res.status);
