@@ -1249,30 +1249,34 @@ export class DatabaseStorage implements IStorage {
         return false;
       }
       
-      // Delete any associated payments
-      await db
-        .delete(payments)
-        .where(eq(payments.contractId, id));
-        
-      // Delete any associated milestones
-      await db
-        .delete(milestones)
-        .where(eq(milestones.contractId, id));
-        
-      // Delete any associated documents
-      await db
-        .delete(documents)
-        .where(eq(documents.contractId, id));
-      
-      // Finally delete the contract
+      // Instead of deleting, mark the contract as deleted
       const result = await db
-        .delete(contracts)
+        .update(contracts)
+        .set({ status: 'deleted' })
         .where(eq(contracts.id, id));
+      
+      console.log(`Contract ${id} marked as deleted instead of being removed`);
       
       return true;
     } catch (error) {
-      console.error('Error deleting contract:', error);
+      console.error('Error marking contract as deleted:', error);
       return false;
+    }
+  }
+  
+  // Get all deleted contracts for a business (for "Deleted Projects" folder)
+  async getDeletedContractsByBusinessId(businessId: number): Promise<Contract[]> {
+    try {
+      return await db
+        .select()
+        .from(contracts)
+        .where(and(
+          eq(contracts.businessId, businessId),
+          eq(contracts.status, 'deleted')
+        ));
+    } catch (error) {
+      console.error('Error fetching deleted contracts:', error);
+      return [];
     }
   }
   

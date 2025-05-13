@@ -319,11 +319,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Fetching contracts for user ID ${userId} with role ${userRole}`);
       
       let contracts = [];
+      
+      // First, for debugging, get all contracts to see what's in the system
+      const allContracts = await storage.getAllContracts();
+      console.log(`DEBUG: All contracts in system: ${JSON.stringify(allContracts.map(c => ({ id: c.id, name: c.contractName, businessId: c.businessId })))}`);
+      
       if (businessId) {
         // Filter by specific business ID from query param
+        console.log(`Filtering by specific business ID from query param: ${businessId}`);
         contracts = await storage.getContractsByBusinessId(businessId);
       } else if (contractorId) {
         // Filter by specific contractor ID from query param
+        console.log(`Filtering by specific contractor ID from query param: ${contractorId}`);
         contracts = await storage.getContractsByContractorId(contractorId);
       } else if (userId) {
         if (userRole === 'business') {
@@ -344,6 +351,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log("No authenticated user found, returning empty contracts array");
         contracts = [];
       }
+      
+      // Log filtered contracts for debugging
+      console.log(`Filtered contracts for user ${userId}: ${JSON.stringify(contracts.map(c => ({ id: c.id, name: c.contractName, businessId: c.businessId })))}`);
+      
       
       res.json(contracts);
     } catch (error) {

@@ -60,7 +60,7 @@ export const contracts = pgTable("contracts", {
   businessId: integer("business_id").notNull(),
   contractorId: integer("contractor_id"), // Made optional for initial project creation
   description: text("description"),
-  status: text("status").notNull().default("draft"), // draft, active, completed, terminated
+  status: text("status").notNull().default("draft"), // draft, active, completed, terminated, deleted
   value: decimal("value", { precision: 10, scale: 2 }).notNull(),
   startDate: timestamp("start_date"),
   endDate: timestamp("end_date"),
