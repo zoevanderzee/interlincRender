@@ -203,14 +203,15 @@ export default function ContractDetailPage() {
       
       // Get stored user data for authentication fallback
       const storedUser = localStorage.getItem('creativlinc_user');
-      let headers = {};
+      // Initialize headers with proper type
+      const headers: Record<string, string> = {};
       
       // Add X-User-ID header from localStorage if available
       if (storedUser) {
         try {
           const parsedUser = JSON.parse(storedUser);
           if (parsedUser && parsedUser.id) {
-            headers = { 'X-User-ID': parsedUser.id.toString() };
+            headers['X-User-ID'] = parsedUser.id.toString();
             console.log("Adding X-User-ID header to delete request:", parsedUser.id);
           }
         } catch (e) {
@@ -218,7 +219,10 @@ export default function ContractDetailPage() {
         }
       }
       
-      console.log(`Adding X-User-ID header to /api/contracts/${contractId} request:`, headers["X-User-ID"]);
+      // Log the header value if it exists
+      if (headers['X-User-ID']) {
+        console.log(`Adding X-User-ID header to /api/contracts/${contractId} request:`, headers['X-User-ID']);
+      }
       
       // Note: apiRequest method signature is (url, method, data, headers)
       await apiRequest(`/api/contracts/${contractId}`, 'delete', undefined, headers);

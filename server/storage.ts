@@ -1241,6 +1241,41 @@ export class DatabaseStorage implements IStorage {
     return updatedContract;
   }
   
+  async deleteContract(id: number): Promise<boolean> {
+    try {
+      // First, get the contract to ensure it exists
+      const contract = await this.getContract(id);
+      if (!contract) {
+        return false;
+      }
+      
+      // Delete any associated payments
+      await db
+        .delete(payments)
+        .where(eq(payments.contractId, id));
+        
+      // Delete any associated milestones
+      await db
+        .delete(milestones)
+        .where(eq(milestones.contractId, id));
+        
+      // Delete any associated documents
+      await db
+        .delete(documents)
+        .where(eq(documents.contractId, id));
+      
+      // Finally delete the contract
+      const result = await db
+        .delete(contracts)
+        .where(eq(contracts.id, id));
+      
+      return true;
+    } catch (error) {
+      console.error('Error deleting contract:', error);
+      return false;
+    }
+  }
+  
   // Milestone CRUD methods
   async getMilestone(id: number): Promise<Milestone | undefined> {
     const [milestone] = await db.select().from(milestones).where(eq(milestones.id, id));
