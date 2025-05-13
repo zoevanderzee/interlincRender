@@ -51,8 +51,8 @@ function updateCsrfToken(res: Response) {
 }
 
 export async function apiRequest(
-  method: string,
   url: string,
+  method: string = 'GET',
   data?: unknown | undefined,
   customHeaders?: Record<string, string>
 ): Promise<Response> {
@@ -87,13 +87,16 @@ export async function apiRequest(
     
     const headers: Record<string, string> = { ...defaultHeaders, ...(customHeaders || {}) };
     
+    // Make sure the URL is always lowercase to match server routes
+    const normalizedUrl = url.toLowerCase();
+    
     // Log the fetch request for debugging
-    console.log(`API Request: ${url} ${normalizedMethod}`, { headers, hasCookies: document.cookie.length > 0 });
+    console.log(`API Request: ${normalizedMethod} ${normalizedUrl}`, { headers, hasCookies: document.cookie.length > 0 });
     
     // Only include body for methods that support it
     const hasBody = ['POST', 'PUT', 'PATCH'].includes(normalizedMethod);
     
-    const res = await fetch(url, {
+    const res = await fetch(normalizedUrl, {
       method: normalizedMethod,
       headers,
       body: hasBody && data ? JSON.stringify(data) : undefined,
@@ -106,7 +109,7 @@ export async function apiRequest(
     updateCsrfToken(res);
     
     // Log the response status and headers
-    console.log(`API Response: ${method} ${url}`, { 
+    console.log(`API Response: ${normalizedMethod} ${normalizedUrl}`, { 
       status: res.status, 
       setCookie: res.headers.get('set-cookie'),
       contentType: res.headers.get('content-type')
@@ -136,7 +139,7 @@ export const getQueryFn: <T>(options: {
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
     try {
-      const endpoint = queryKey[0] as string;
+      const endpoint = (queryKey[0] as string).toLowerCase();
       console.log(`Fetching data from ${endpoint}`);
       
       // Log the fetch request for debugging
