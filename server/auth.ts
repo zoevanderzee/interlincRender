@@ -406,22 +406,44 @@ export function setupAuth(app: Express) {
   });
 
   // Get current user route
-  app.get("/api/user", (req, res) => {
+  app.get("/api/user", async (req, res) => {
     console.log("Auth check for session:", req.sessionID, "Authenticated:", req.isAuthenticated());
     
     // Log request headers for debugging
     console.log("User API request headers:", {
       cookie: req.headers.cookie,
-      'user-agent': req.headers['user-agent']
+      'user-agent': req.headers['user-agent'],
+      'x-user-id': req.headers['x-user-id']
     });
     
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
+    // Check if user is authenticated via session
+    if (req.isAuthenticated()) {
+      // Return user info without the password
+      const { password, ...userInfo } = req.user as Express.User;
+      return res.json(userInfo);
     }
     
-    // Return user info without the password
-    const { password, ...userInfo } = req.user as Express.User;
-    res.json(userInfo);
+    // Fallback: Check X-User-ID header for localStorage-based authentication
+    const userIdHeader = req.headers['x-user-id'];
+    if (userIdHeader) {
+      try {
+        const userId = parseInt(userIdHeader as string);
+        if (!isNaN(userId)) {
+          const user = await storage.getUser(userId);
+          if (user) {
+            console.log(`Authenticating /api/user request via X-User-ID header: ${userId}`);
+            // Return user info without the password
+            const { password, ...userInfo } = user;
+            return res.json(userInfo);
+          }
+        }
+      } catch (error) {
+        console.error('Error in X-User-ID fallback for /api/user:', error);
+      }
+    }
+    
+    // If all authentication methods fail
+    return res.status(401).json({ error: "Not authenticated" });
   });
 
   // Forgot password route

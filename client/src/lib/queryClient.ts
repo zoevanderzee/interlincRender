@@ -64,6 +64,19 @@ export async function apiRequest(
       defaultHeaders['X-CSRF-Token'] = csrfToken;
     }
     
+    // Add user ID from localStorage if available (for header-based authentication fallback)
+    const storedUser = localStorage.getItem('creativlinc_user');
+    if (storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        if (parsedUser && parsedUser.id) {
+          defaultHeaders['X-User-ID'] = parsedUser.id.toString();
+        }
+      } catch (e) {
+        console.error("Error parsing stored user for API request headers:", e);
+      }
+    }
+    
     const headers: Record<string, string> = { ...defaultHeaders, ...(customHeaders || {}) };
     
     // Log the fetch request for debugging

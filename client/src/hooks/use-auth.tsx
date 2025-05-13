@@ -237,7 +237,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     },
     onSuccess: () => {
-      console.log("Logout successful, clearing user data from query cache");
+      console.log("Logout successful, clearing user data");
+      
+      // Clear localStorage-based authentication data
+      localStorage.removeItem('creativlinc_user');
       
       // Clear user data and invalidate all protected queries
       queryClient.setQueryData(["/api/user"], null);
@@ -254,6 +257,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onError: (error: Error) => {
       console.error("Logout error:", error);
+      
+      // Clear localStorage-based authentication data even if server logout fails
+      localStorage.removeItem('creativlinc_user');
+      
+      // Clear query cache data too
+      queryClient.setQueryData(["/api/user"], null);
+      
       toast({
         title: "Logout failed",
         description: error.message,
