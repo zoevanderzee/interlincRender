@@ -59,6 +59,11 @@ const DataRoom = () => {
     queryKey: ['/api/contracts'],
   });
   
+  // Fetch deleted contracts for "Deleted Projects" folder
+  const { data: deletedContracts = [], isLoading: isLoadingDeleted } = useQuery<Contract[]>({
+    queryKey: ['/api/deleted-contracts'],
+  });
+  
   // Fetch users for reference
   const { data: users = [], isLoading: isLoadingUsers } = useQuery<User[]>({
     queryKey: ['/api/users'],
@@ -154,7 +159,7 @@ const DataRoom = () => {
   };
   
   // Loading state
-  if (isLoadingDocuments || isLoadingContracts || isLoadingUsers) {
+  if (isLoadingDocuments || isLoadingContracts || isLoadingUsers || isLoadingDeleted) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-accent-500" />
@@ -189,6 +194,7 @@ const DataRoom = () => {
           <TabsTrigger value="all" className="data-[state=active]:bg-gray-800 data-[state=active]:text-white text-gray-400">All Documents</TabsTrigger>
           <TabsTrigger value="contracts" className="data-[state=active]:bg-gray-800 data-[state=active]:text-white text-gray-400">Smart Contracts</TabsTrigger>
           <TabsTrigger value="compliance" className="data-[state=active]:bg-gray-800 data-[state=active]:text-white text-gray-400">Compliance Documents</TabsTrigger>
+          <TabsTrigger value="deleted" className="data-[state=active]:bg-gray-800 data-[state=active]:text-white text-gray-400">Deleted Projects</TabsTrigger>
         </TabsList>
         
         <TabsContent value="all">
@@ -392,6 +398,82 @@ const DataRoom = () => {
               Compliance documents are automatically generated to ensure legal and regulatory requirements are met.
             </p>
           </Card>
+        </TabsContent>
+        
+        <TabsContent value="deleted">
+          {deletedContracts.length > 0 ? (
+            <div className="grid gap-6">
+              {deletedContracts.map((contract) => (
+                <Card key={contract.id} className="border border-gray-800 bg-gray-900 p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <div className="flex items-center">
+                        <div className="h-10 w-10 mr-3 bg-red-900/30 border border-red-800/50 text-red-400 rounded-md flex items-center justify-center">
+                          <Trash2 size={18} />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-medium text-white">{contract.contractName}</h3>
+                          <p className="text-sm text-gray-400">Contract Code: {contract.contractCode}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleProjectSelect(selectedProjectId === contract.id ? null : contract.id)}
+                        className="border-gray-700 text-white hover:bg-gray-800"
+                      >
+                        {selectedProjectId === contract.id ? "Hide Details" : "View Details"}
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {selectedProjectId === contract.id && (
+                    <div className="mt-4 border-t border-gray-800 pt-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <p className="text-gray-400 text-sm">Project Value</p>
+                          <p className="text-white font-medium">${parseFloat(contract.value.toString()).toFixed(2)}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-400 text-sm">Deletion Date</p>
+                          <p className="text-white font-medium">{formatDate(contract.endDate || new Date())}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-400 text-sm">Project Status</p>
+                          <p className="text-white font-medium">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-900/30 text-red-400 border border-red-800/50">
+                              Deleted
+                            </span>
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-gray-400 text-sm">Created On</p>
+                          <p className="text-white font-medium">{formatDate(contract.createdAt)}</p>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <p className="text-gray-400 text-sm mb-1">Description</p>
+                        <p className="text-white">{contract.description || "No description available"}</p>
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card className="border border-gray-800 bg-gray-900 p-8 text-center">
+              <div className="mx-auto h-16 w-16 rounded-full bg-gray-800 flex items-center justify-center text-gray-400 mb-4">
+                <Trash2 size={24} />
+              </div>
+              <h3 className="text-lg font-medium text-white mb-2">No Deleted Projects</h3>
+              <p className="text-gray-400 mb-6">
+                Deleted projects will appear here for reference purposes. They remain accessible for compliance and audit needs.
+              </p>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
     </div>
