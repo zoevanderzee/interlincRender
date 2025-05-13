@@ -693,6 +693,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Deleted Projects folder in Data Room
+  app.get(`${apiRouter}/deleted-contracts`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      
+      if (!userId) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+      
+      const userRole = req.user?.role || 'business';
+      if (userRole !== 'business') {
+        return res.status(403).json({ message: 'Only business users can access deleted projects' });
+      }
+      
+      const deletedContracts = await storage.getDeletedContractsByBusinessId(userId);
+      console.log(`Retrieved ${deletedContracts.length} deleted contracts for business ${userId}`);
+      
+      res.json(deletedContracts);
+    } catch (error) {
+      console.error('Error fetching deleted contracts:', error);
+      res.status(500).json({ message: 'Error fetching deleted contracts' });
+    }
+  });
+
   app.get(`${apiRouter}/documents/:id`, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
