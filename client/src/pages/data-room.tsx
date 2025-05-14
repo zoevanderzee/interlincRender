@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogClose,
 } from "@/components/ui/dialog";
 import { Document, Contract, User } from "@shared/schema";
 import { 
@@ -41,13 +42,17 @@ import {
   Filter,
   Folder,
   Plus,
-  Loader2
+  Loader2,
+  AlertTriangle
 } from "lucide-react";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 const DataRoom = () => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
+  const [contractToDelete, setContractToDelete] = useState<Contract | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   
   // Fetch documents
   const { data: documents = [], isLoading: isLoadingDocuments } = useQuery<Document[]>({
@@ -67,6 +72,35 @@ const DataRoom = () => {
   // Fetch users for reference
   const { data: users = [], isLoading: isLoadingUsers } = useQuery<User[]>({
     queryKey: ['/api/users'],
+  });
+  
+  // Mutation for permanently deleting a contract
+  const permanentDeleteMutation = useMutation({
+    mutationFn: async (contractId: number) => {
+      const response = await apiRequest("DELETE", `/api/contracts/${contractId}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to permanently delete the project");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Project Permanently Deleted",
+        description: "The project and all associated data has been permanently deleted from the system.",
+        variant: "default",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/deleted-contracts'] });
+      setContractToDelete(null);
+      setIsDeleteDialogOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Deletion Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
   
   // Filter documents by search term
@@ -457,6 +491,23 @@ const DataRoom = () => {
                       <div>
                         <p className="text-gray-400 text-sm mb-1">Description</p>
                         <p className="text-white">{contract.description || "No description available"}</p>
+                      </div>
+                      
+                      <div className="mt-4 pt-4 border-t border-gray-800">
+                        <div className="flex justify-end">
+                          <Button 
+                            variant="destructive" 
+                            size="sm"
+                            onClick={() => {
+                              setContractToDelete(contract);
+                              setIsDeleteDialogOpen(true);
+                            }}
+                            className="bg-red-900 hover:bg-red-800 text-white"
+                          >
+                            <Trash2 size={16} className="mr-2" />
+                            Permanently Delete
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   )}
