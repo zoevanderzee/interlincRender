@@ -81,6 +81,7 @@ export interface IStorage {
   getContractsByBusinessId(businessId: number): Promise<Contract[]>;
   getContractsByContractorId(contractorId: number): Promise<Contract[]>;
   getAllContracts(): Promise<Contract[]>;
+  getDeletedContractsByBusinessId(businessId: number): Promise<Contract[]>;
   createContract(contract: InsertContract): Promise<Contract>;
   updateContract(id: number, contract: Partial<InsertContract>): Promise<Contract | undefined>;
   deleteContract(id: number): Promise<boolean>;
@@ -417,18 +418,24 @@ export class MemStorage implements IStorage {
   
   async getContractsByBusinessId(businessId: number): Promise<Contract[]> {
     return Array.from(this.contracts.values()).filter(
-      (contract) => contract.businessId === businessId
+      (contract) => contract.businessId === businessId && contract.status !== 'deleted'
     );
   }
   
   async getContractsByContractorId(contractorId: number): Promise<Contract[]> {
     return Array.from(this.contracts.values()).filter(
-      (contract) => contract.contractorId === contractorId
+      (contract) => contract.contractorId === contractorId && contract.status !== 'deleted'
     );
   }
   
   async getAllContracts(): Promise<Contract[]> {
     return Array.from(this.contracts.values());
+  }
+  
+  async getDeletedContractsByBusinessId(businessId: number): Promise<Contract[]> {
+    return Array.from(this.contracts.values()).filter(
+      (contract) => contract.businessId === businessId && contract.status === 'deleted'
+    );
   }
   
   async createContract(insertContract: InsertContract): Promise<Contract> {
