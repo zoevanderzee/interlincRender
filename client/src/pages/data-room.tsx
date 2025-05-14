@@ -192,6 +192,63 @@ const DataRoom = () => {
     });
   };
   
+  // Confirmation dialog for permanent deletion
+  const ConfirmationDialog = () => {
+    if (!contractToDelete) return null;
+    
+    return (
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="bg-gray-900 border border-gray-800 text-white max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl text-white flex items-center">
+              <AlertTriangle className="text-red-500 mr-2" size={20} />
+              Confirm Permanent Deletion
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              You are about to permanently delete the project <span className="font-semibold text-white">{contractToDelete.contractName}</span>.
+              This action cannot be undone and will remove all associated data including milestones, payments, and documents.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="bg-red-900/20 border border-red-800/40 p-4 rounded-md my-4">
+            <p className="text-red-400 text-sm">
+              <span className="font-semibold">Warning:</span> Permanently deleted projects cannot be recovered.
+              This data will be completely removed from the system.
+            </p>
+          </div>
+          
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsDeleteDialogOpen(false);
+                setContractToDelete(null);
+              }}
+              className="border-gray-700 text-white hover:bg-gray-800"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              className="bg-red-900 hover:bg-red-800 text-white"
+              onClick={() => contractToDelete && permanentDeleteMutation.mutate(contractToDelete.id)}
+              disabled={permanentDeleteMutation.isPending}
+            >
+              {permanentDeleteMutation.isPending ? (
+                <>
+                  <Loader2 size={16} className="mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Permanently Delete"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
   // Loading state
   if (isLoadingDocuments || isLoadingContracts || isLoadingUsers || isLoadingDeleted) {
     return (
@@ -210,6 +267,9 @@ const DataRoom = () => {
           <p className="text-gray-400 mt-1">Secure repository of all automatically generated smart contracts organized by project</p>
         </div>
       </div>
+      
+      {/* Render confirmation dialog */}
+      <ConfirmationDialog />
       
       {/* Document Search */}
       <div className="relative mb-6">
