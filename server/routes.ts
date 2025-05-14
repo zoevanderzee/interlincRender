@@ -575,63 +575,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const contractId = req.query.contractId ? parseInt(req.query.contractId as string) : null;
       let payments = await storage.getAllPayments(contractId);
       
-      // Get contracts relevant to the current user
-      let userContracts = [];
-      if (userId && userRole === 'business') {
-        userContracts = await storage.getContractsByBusinessId(userId);
-      } else if (userId && userRole === 'contractor') {
-        userContracts = await storage.getContractsByContractorId(userId);
-      } else {
-        // For development/testing only when not logged in - should be empty in production
-        userContracts = [];
+      // Log debugging information
+      console.log(`Fetching payments for user ID ${userId} with role ${userRole}`);
+      
+      if (!userId) {
+        console.log("No authenticated user, returning empty payments array");
+        return res.json([]);
       }
       
-      // Get a list of active contract IDs belonging to the current user
+      // Get all contracts for the current user
+      let userContracts = [];
+      if (userRole === 'business') {
+        userContracts = await storage.getContractsByBusinessId(userId);
+      } else if (userRole === 'contractor') {
+        userContracts = await storage.getContractsByContractorId(userId);
+      }
+      
+      console.log(`Found ${userContracts.length} contracts for user ${userId}`);
+      
+      // Get IDs of all the user's contracts (both active and deleted)
       const userContractIds = userContracts.map(contract => contract.id);
       
-      // Filter out payments that don't belong to the user's contracts
+      // First filter: only keep payments for this user's contracts
       payments = payments.filter(payment => userContractIds.includes(payment.contractId));
+      console.log(`After filtering for user's contracts: ${payments.length} payments remaining`);
       
-      // Filter out contracts that are deleted
+      // Second filter: exclude payments for deleted contracts
       const activeContracts = userContracts.filter(contract => contract.status !== 'deleted');
       const activeContractIds = activeContracts.map(contract => contract.id);
       
-      // Further filter payments to exclude those for deleted contracts
       payments = payments.filter(payment => activeContractIds.includes(payment.contractId));
+      console.log(`After filtering out deleted contracts: ${payments.length} payments remaining`);
       
-      // For each active contract, create a virtual pending payment if there are no payments
-      // or if the total payment amount doesn't match the contract value
-      const pendingContractPayments = activeContracts.map(contract => {
-        // Skip if not a valid contract
-        if (!contract) return null;
-        
-        // Convert contract value to number
-        const contractValueNum = parseFloat(contract.value.toString());
-        
-        // Calculate total existing payments for this contract
-        const existingPaymentsTotal = payments
-          .filter(payment => payment.contractId === contract.id)
-          .reduce((total, payment) => total + parseFloat(payment.amount.toString()), 0);
-        
-        // If there are no payments or the total doesn't match the contract value,
-        // create a virtual pending payment
-        if (existingPaymentsTotal < contractValueNum) {
-          const remainingAmount = contractValueNum - existingPaymentsTotal;
-          return {
-            id: -contract.id, // Use a negative ID to indicate this is a virtual payment
-            contractId: contract.id,
-            milestoneId: 0, // No milestone associated yet
-            amount: remainingAmount.toFixed(2),
-            status: 'pending',
-            scheduledDate: contract.startDate || new Date(),
-            completedDate: null,
-            notes: `Pending contract payment for ${contract.contractName}`,
-            contractName: contract.contractName, // Add contract name for display purposes
-            isVirtual: true // Mark as virtual so we know it's not a real payment record
-          };
-        }
-        return null;
-      }).filter(Boolean);
+      // Only create virtual pending payments for ACTIVE contracts
+      const pendingContractPayments = activeContracts
+        .filter(contract => contract.status !== 'deleted') // Double-check no deleted contracts slip through
+        .map(contract => {
+          // Convert contract value to number
+          const contractValueNum = parseFloat(contract.value.toString());
+          
+          // Calculate total existing payments for this contract
+          const existingPaymentsTotal = payments
+            .filter(payment => payment.contractId === contract.id)
+            .reduce((total, payment) => total + parseFloat(payment.amount.toString()), 0);
+          
+          // If there are no payments or the total doesn't match the contract value,
+          // create a virtual pending payment
+          if (existingPaymentsTotal < contractValueNum) {
+            const remainingAmount = contractValueNum - existingPaymentsTotal;
+            return {
+              id: -contract.id, // Use a negative ID to indicate this is a virtual payment
+              contractId: contract.id,
+              milestoneId: 0, // No milestone associated yet
+              amount: remainingAmount.toFixed(2),
+              status: 'pending',
+              scheduledDate: contract.startDate || new Date(),
+              completedDate: null,
+              notes: `Pending contract payment for ${contract.contractName}`,
+              contractName: contract.contractName, // Add contract name for display purposes
+              isVirtual: true // Mark as virtual so we know it's not a real payment record
+            };
+          }
+          return null;
+        }).filter(Boolean); // Remove null entries
+      
+      console.log(`Generated ${pendingContractPayments.length} virtual pending payments`);
       
       // Combine actual payments with virtual payments
       const allPayments = [...payments, ...pendingContractPayments];
