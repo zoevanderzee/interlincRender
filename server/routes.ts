@@ -492,9 +492,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let milestones;
       if (contractId) {
+        // Check if the contract is deleted
+        const contract = await storage.getContract(contractId);
+        if (contract && contract.status === 'deleted') {
+          return res.json([]); // Return empty array for deleted contracts
+        }
         milestones = await storage.getMilestonesByContractId(contractId);
       } else if (upcoming) {
         milestones = await storage.getUpcomingMilestones(5); // Limit to 5 for dashboard
+        
+        // Get all active contracts to filter milestones
+        const allContracts = await storage.getAllContracts();
+        const activeContractIds = allContracts
+          .filter(contract => contract && contract.status !== 'deleted')
+          .map(contract => contract.id);
+          
+        // Filter out milestones for deleted contracts
+        milestones = milestones.filter(milestone => 
+          activeContractIds.includes(milestone.contractId));
       } else {
         // Default behavior
         milestones = [];
@@ -782,14 +797,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const pendingApprovals = userContracts.filter(contract => contract.status === 'pending_approval');
       
       // Get the upcoming payments (5 most recent)
-      const upcomingPayments = await storage.getUpcomingPayments(5);
+      let upcomingPayments = await storage.getUpcomingPayments(5);
+      
+      // Get active contract IDs to filter payments
+      const activeContractIds = userContracts
+        .filter(contract => contract.status !== 'deleted')
+        .map(contract => contract.id);
+      
+      // Filter out payments for deleted contracts
+      upcomingPayments = upcomingPayments.filter(payment => 
+        activeContractIds.includes(payment.contractId));
       
       // Get the upcoming milestones (5 most recent)
-      const upcomingMilestones = await storage.getUpcomingMilestones(5);
+      let upcomingMilestones = await storage.getUpcomingMilestones(5);
       
-      // For each contract, ensure there are payments that reflect the contract value
+      // Filter out milestones for deleted contracts using the activeContractIds
+      upcomingMilestones = upcomingMilestones.filter(milestone => 
+        activeContractIds.includes(milestone.contractId));
+      
+      // For each active contract, ensure there are payments that reflect the contract value
       // If not, create a virtual pending payment for the dashboard
-      const pendingContractPayments = userContracts.map(contract => {
+      const pendingContractPayments = userContracts
+        .filter(contract => contract.status !== 'deleted')
+        .map(contract => {
         // Convert contract value to number
         const contractValueNum = parseFloat(contract.value.toString());
         
