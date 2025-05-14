@@ -569,24 +569,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Payment routes
   app.get(`${apiRouter}/payments`, async (req: Request, res: Response) => {
     try {
+      const userId = req.user?.id || (req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
+      const userRole = req.user?.role || 'business'; // Default to business if not specified
+      
       const contractId = req.query.contractId ? parseInt(req.query.contractId as string) : null;
       let payments = await storage.getAllPayments(contractId);
       
-      // Add virtual pending payments based on contract values
-      const allContracts = contractId 
-        ? [await storage.getContract(contractId)].filter(Boolean) 
-        : await storage.getAllContracts();
+      // Get contracts relevant to the current user
+      let userContracts = [];
+      if (userId && userRole === 'business') {
+        userContracts = await storage.getContractsByBusinessId(userId);
+      } else if (userId && userRole === 'contractor') {
+        userContracts = await storage.getContractsByContractorId(userId);
+      } else {
+        // For development/testing only when not logged in - should be empty in production
+        userContracts = [];
+      }
       
-      // Get a list of active contract IDs
-      const activeContractIds = allContracts
-        .filter(contract => contract && contract.status !== 'deleted')
-        .map(contract => contract.id);
+      // Get a list of active contract IDs belonging to the current user
+      const userContractIds = userContracts.map(contract => contract.id);
       
-      // Filter out payments for deleted contracts
-      payments = payments.filter(payment => activeContractIds.includes(payment.contractId));
-        
+      // Filter out payments that don't belong to the user's contracts
+      payments = payments.filter(payment => userContractIds.includes(payment.contractId));
+      
       // Filter out contracts that are deleted
-      const activeContracts = allContracts.filter(contract => contract && contract.status !== 'deleted');
+      const activeContracts = userContracts.filter(contract => contract.status !== 'deleted');
+      const activeContractIds = activeContracts.map(contract => contract.id);
+      
+      // Further filter payments to exclude those for deleted contracts
+      payments = payments.filter(payment => activeContractIds.includes(payment.contractId));
       
       // For each active contract, create a virtual pending payment if there are no payments
       // or if the total payment amount doesn't match the contract value
