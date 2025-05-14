@@ -368,13 +368,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       const contract = await storage.getContract(id);
       
+      // Detailed debugging for authentication
+      console.log(`GET /contracts/${id} - Request headers:`, req.headers);
+      console.log(`GET /contracts/${id} - Cookie:`, req.headers.cookie);
+      console.log(`GET /contracts/${id} - X-User-ID:`, req.headers['x-user-id']);
+      console.log(`GET /contracts/${id} - User from session:`, req.user);
+      
       if (!contract) {
         return res.status(404).json({ message: "Contract not found" });
       }
       
       // Check if the user has permission to view this contract
       // Use X-User-ID header as fallback for authentication
-      const userId = req.user?.id || (req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
+      let userId = null;
+      if (req.user && req.user.id) {
+        userId = req.user.id;
+        console.log(`Using session user ID: ${userId}`);
+      } else if (req.headers['x-user-id']) {
+        userId = parseInt(req.headers['x-user-id'] as string);
+        console.log(`Using X-User-ID header: ${userId}`);
+      }
+      
       const userRole = req.user?.role || 'business';
       
       if (!userId) {
