@@ -1569,30 +1569,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Reports API endpoint - integrates with real payment and project data
-  app.get(`${apiRouter}/reports`, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/reports`, requireAuth, async (req: Request, res: Response) => {
     try {
       const timeRange = req.query.timeRange as string || 'year';
-      const userId = req.user?.id;
-      const userRole = req.user?.role || 'business';
+      
+      // Get the authenticated user ID - use X-User-ID header as a fallback
+      let userId: number | undefined;
+      let userRole: string = 'business';
+      
+      // First try to get user from the session
+      if (req.user) {
+        userId = req.user.id;
+        userRole = req.user.role || 'business';
+      } else {
+        // Fallback to X-User-ID header
+        const userIdHeader = req.headers['x-user-id'];
+        if (userIdHeader) {
+          userId = parseInt(userIdHeader.toString(), 10);
+          
+          // Get user role from storage
+          try {
+            const user = await storage.getUser(userId);
+            if (user) {
+              userRole = user.role || 'business';
+            }
+          } catch (err) {
+            console.error('Error getting user from X-User-ID header:', err);
+          }
+        }
+      }
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      console.log(`Generating reports for user ${userId} with role ${userRole}`);
       
       // Get all contracts for the current user
       let contracts = [];
-      if (userId && userRole === 'business') {
+      if (userRole === 'business') {
         contracts = await storage.getContractsByBusinessId(userId);
-      } else if (userId && userRole === 'contractor') {
+      } else if (userRole === 'contractor') {
         contracts = await storage.getContractsByContractorId(userId);
       } else {
         contracts = await storage.getAllContracts();
       }
       
-      // Get all payments - passing null to get all payments regardless of contract
-      const payments = await storage.getAllPayments(null);
+      // Filter out deleted contracts
+      contracts = contracts.filter(contract => contract.status !== 'deleted');
       
-      // Get all milestones
-      const milestones = await storage.getAllMilestones();
+      // Get only payments related to the user's contracts
+      const contractIds = contracts.map(contract => contract.id);
+      console.log(`Filtering payments for contract IDs: ${contractIds.join(', ')}`);
       
-      // Get all users with contractor role
+      // Only get payments for the filtered contracts
+      let payments = await storage.getAllPayments(null);
+      if (contractIds.length > 0) {
+        payments = payments.filter(payment => contractIds.includes(payment.contractId));
+      } else {
+        payments = []; // No contracts means no payments
+      }
+      
+      // Get only milestones related to the user's contracts
+      let milestones = await storage.getAllMilestones();
+      if (contractIds.length > 0) {
+        milestones = milestones.filter(milestone => contractIds.includes(milestone.contractId));
+      } else {
+        milestones = []; // No contracts means no milestones
+      }
+      
+      // Get contractors associated with the user's contracts
       const contractors = await storage.getUsersByRole('contractor');
+      
+      // Get the list of contractor IDs from the user's contracts
+      const contractorIds = contracts
+        .filter(contract => contract.contractorId !== null)
+        .map(contract => contract.contractorId as number);
+      
+      // Filter contractors to only include those associated with the user's contracts
+      const filteredContractors = contractorIds.length > 0
+        ? contractors.filter(contractor => contractorIds.includes(contractor.id))
+        : [];
       
       // Calculate contract status counts
       const activeContracts = contracts.filter(contract => contract.status === 'active');
