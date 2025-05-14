@@ -555,16 +555,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get(`${apiRouter}/payments`, async (req: Request, res: Response) => {
     try {
       const contractId = req.query.contractId ? parseInt(req.query.contractId as string) : null;
-      const payments = await storage.getAllPayments(contractId);
+      let payments = await storage.getAllPayments(contractId);
       
       // Add virtual pending payments based on contract values
       const allContracts = contractId 
         ? [await storage.getContract(contractId)].filter(Boolean) 
         : await storage.getAllContracts();
       
-      // For each contract, create a virtual pending payment if there are no payments
+      // Get a list of active contract IDs
+      const activeContractIds = allContracts
+        .filter(contract => contract && contract.status !== 'deleted')
+        .map(contract => contract.id);
+      
+      // Filter out payments for deleted contracts
+      payments = payments.filter(payment => activeContractIds.includes(payment.contractId));
+        
+      // Filter out contracts that are deleted
+      const activeContracts = allContracts.filter(contract => contract && contract.status !== 'deleted');
+      
+      // For each active contract, create a virtual pending payment if there are no payments
       // or if the total payment amount doesn't match the contract value
-      const pendingContractPayments = allContracts.map(contract => {
+      const pendingContractPayments = activeContracts.map(contract => {
         // Skip if not a valid contract
         if (!contract) return null;
         
