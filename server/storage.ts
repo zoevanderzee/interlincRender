@@ -459,40 +459,17 @@ export class MemStorage implements IStorage {
     const existingContract = this.contracts.get(id);
     if (!existingContract) return false;
     
-    // Check if the contract has a contractor assigned
-    if (existingContract.contractorId) {
-      return false; // Can't delete contracts with assigned contractors
-    }
+    // Instead of deleting, mark the contract as deleted
+    const updatedContract = {
+      ...existingContract,
+      status: 'deleted'
+    };
     
-    // Delete all milestones for this contract
-    const milestoneIdsToDelete = Array.from(this.milestones.values())
-      .filter(milestone => milestone.contractId === id)
-      .map(milestone => milestone.id);
+    // Update the contract in the store
+    this.contracts.set(id, updatedContract);
+    console.log(`Contract ${id} marked as deleted instead of being removed`);
     
-    milestoneIdsToDelete.forEach(milestoneId => {
-      this.milestones.delete(milestoneId);
-    });
-    
-    // Delete all payments for this contract
-    const paymentIdsToDelete = Array.from(this.payments.values())
-      .filter(payment => payment.contractId === id)
-      .map(payment => payment.id);
-    
-    paymentIdsToDelete.forEach(paymentId => {
-      this.payments.delete(paymentId);
-    });
-    
-    // Delete all documents for this contract
-    const documentIdsToDelete = Array.from(this.documents.values())
-      .filter(document => document.contractId === id)
-      .map(document => document.id);
-    
-    documentIdsToDelete.forEach(documentId => {
-      this.documents.delete(documentId);
-    });
-    
-    // Finally, delete the contract
-    return this.contracts.delete(id);
+    return true;
   }
   
   // Milestone CRUD methods
