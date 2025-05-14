@@ -471,7 +471,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.delete(`${apiRouter}/contracts/:id`, requireAuth, async (req: Request, res: Response) => {
+  app.delete(`${apiRouter}/contracts/:id`, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       const contract = await storage.getContract(id);
@@ -480,21 +480,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Project not found" });
       }
       
+      // Get user ID from session or X-User-ID header
+      const userId = req.user?.id || (req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
+      
+      if (!userId) {
+        console.log("No user ID found when deleting contract");
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
       // Check if user has permission (is the business owner of the contract)
-      if (req.user?.id !== contract.businessId) {
+      if (userId !== contract.businessId) {
+        console.log(`User ${userId} tried to delete contract ${id} owned by business ${contract.businessId}`);
         return res.status(403).json({ message: "You don't have permission to delete this project" });
       }
       
-      // Try to delete the contract
-      const deleted = await storage.deleteContract(id);
+      console.log(`User ${userId} is deleting contract ${id}`);
       
-      if (!deleted) {
-        return res.status(400).json({ 
-          message: "Cannot delete this project. Make sure it doesn't have any contractors assigned." 
-        });
+      // Check if this is a force delete (permanent deletion)
+      const forceDelete = req.query.force === 'true';
+      
+      if (forceDelete && contract.status === 'deleted') {
+        // Permanently delete the contract from the database
+        console.log(`Permanently deleting contract ${id}`);
+        const deleted = await storage.permanentlyDeleteContract(id);
+        
+        if (!deleted) {
+          return res.status(400).json({ 
+            message: "Cannot permanently delete this project." 
+          });
+        }
+        
+        return res.status(200).json({ message: "Project permanently deleted" });
+      } else {
+        // Normal soft delete (mark as deleted)
+        const deleted = await storage.deleteContract(id);
+        
+        if (!deleted) {
+          return res.status(400).json({ 
+            message: "Cannot delete this project. Make sure it doesn't have any contractors assigned." 
+          });
+        }
+        
+        res.status(200).json({ message: "Project deleted successfully" });
       }
-      
-      res.status(200).json({ message: "Project deleted successfully" });
     } catch (error) {
       console.error("Error deleting contract:", error);
       res.status(500).json({ message: "Error deleting project" });

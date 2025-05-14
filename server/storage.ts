@@ -85,6 +85,7 @@ export interface IStorage {
   createContract(contract: InsertContract): Promise<Contract>;
   updateContract(id: number, contract: Partial<InsertContract>): Promise<Contract | undefined>;
   deleteContract(id: number): Promise<boolean>;
+  permanentlyDeleteContract(id: number): Promise<boolean>;
   
   // Milestones
   getMilestone(id: number): Promise<Milestone | undefined>;
@@ -468,6 +469,23 @@ export class MemStorage implements IStorage {
     // Update the contract in the store
     this.contracts.set(id, updatedContract);
     console.log(`Contract ${id} marked as deleted instead of being removed`);
+    
+    return true;
+  }
+  
+  async permanentlyDeleteContract(id: number): Promise<boolean> {
+    const existingContract = this.contracts.get(id);
+    if (!existingContract) return false;
+    
+    // Check if contract is already marked as deleted
+    if (existingContract.status !== 'deleted') {
+      console.log(`Contract ${id} must be marked as deleted before it can be permanently removed`);
+      return false;
+    }
+    
+    // Actually remove the contract from the store
+    this.contracts.delete(id);
+    console.log(`Contract ${id} permanently deleted from memory storage`);
     
     return true;
   }
@@ -1244,6 +1262,72 @@ export class DatabaseStorage implements IStorage {
       return true;
     } catch (error) {
       console.error('Error marking contract as deleted:', error);
+      return false;
+    }
+  }
+  
+  async permanentlyDeleteContract(id: number): Promise<boolean> {
+    try {
+      // First, get the contract to ensure it exists and is already marked as deleted
+      const contract = await this.getContract(id);
+      if (!contract) {
+        console.log(`Contract ${id} not found`);
+        return false;
+      }
+      
+      // Check if the contract is marked as deleted
+      if (contract.status !== 'deleted') {
+        console.log(`Contract ${id} must be marked as deleted before it can be permanently removed`);
+        return false;
+      }
+      
+      console.log(`Permanently deleting contract ${id} and all associated data...`);
+      
+      // First, delete all related data in the proper order to maintain referential integrity
+      
+      // 1. Delete associated payments
+      try {
+        await db
+          .delete(paymentRecords)
+          .where(eq(paymentRecords.contractId, id));
+        console.log(`Deleted payments associated with contract ${id}`);
+      } catch (err) {
+        console.error(`Error deleting payments for contract ${id}:`, err);
+        // Continue with deletion even if some related records fail
+      }
+      
+      // 2. Delete associated milestones
+      try {
+        await db
+          .delete(milestones_table)
+          .where(eq(milestones_table.contractId, id));
+        console.log(`Deleted milestones associated with contract ${id}`);
+      } catch (err) {
+        console.error(`Error deleting milestones for contract ${id}:`, err);
+        // Continue with deletion even if some related records fail
+      }
+      
+      // 3. Delete associated documents
+      try {
+        await db
+          .delete(documents_table)
+          .where(eq(documents_table.contractId, id));
+        console.log(`Deleted documents associated with contract ${id}`);
+      } catch (err) {
+        console.error(`Error deleting documents for contract ${id}:`, err);
+        // Continue with deletion even if some related records fail
+      }
+      
+      // Finally, delete the contract itself
+      const result = await db
+        .delete(contracts)
+        .where(eq(contracts.id, id));
+      
+      console.log(`Contract ${id} permanently deleted from database`);
+      
+      return result.rowCount > 0;
+    } catch (error) {
+      console.error("Error permanently deleting contract:", error);
       return false;
     }
   }
