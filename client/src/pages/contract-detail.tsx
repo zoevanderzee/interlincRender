@@ -77,8 +77,27 @@ export default function ContractDetailPage() {
   // Custom query function to handle 404 errors properly
   const contractQueryFn = async ({ queryKey }: { queryKey: (string | number)[] }) => {
     const endpoint = `/api/contracts/${contractId}`;
+    
+    // Get stored user data for authentication fallback
+    const headers: Record<string, string> = {};
+    const storedUser = localStorage.getItem('creativlinc_user');
+    
+    // Add X-User-ID header from localStorage if available
+    if (storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        if (parsedUser && parsedUser.id) {
+          headers['X-User-ID'] = parsedUser.id.toString();
+          console.log(`Adding X-User-ID header to contract detail request:`, parsedUser.id);
+        }
+      } catch (e) {
+        console.error("Error parsing stored user for contract detail request:", e);
+      }
+    }
+    
     const res = await fetch(endpoint, {
       credentials: "include",
+      headers: headers
     });
     
     if (res.status === 404) {

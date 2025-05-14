@@ -388,25 +388,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Load the full user if not already loaded
       let user = req.user;
+      let userRole = 'business';
+      
       if (!user && userId) {
         try {
           user = await storage.getUser(userId);
           if (user) {
             console.log(`Using X-User-ID header fallback authentication for user ID: ${userId}`);
+            userRole = user.role || 'business';
           }
         } catch (error) {
           console.error('Error loading user from X-User-ID header:', error);
         }
-      }
-      
-      // Check if the user has permission to view this contract
-      // User ID already retrieved above from session or X-User-ID header
-      
-      const userRole = req.user?.role || 'business';
-      
-      if (!userId) {
-        console.log("No user ID found when accessing contract detail");
-        return res.status(401).json({ message: "Authentication required" });
+      } else if (user) {
+        userRole = user.role || 'business';
       }
       
       console.log(`User ${userId} with role ${userRole} is accessing contract ${id}`);
