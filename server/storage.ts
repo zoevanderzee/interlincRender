@@ -1288,8 +1288,8 @@ export class DatabaseStorage implements IStorage {
       // 1. Delete associated payments
       try {
         await db
-          .delete(paymentRecords)
-          .where(eq(paymentRecords.contractId, id));
+          .delete(payments)
+          .where(eq(payments.contractId, id));
         console.log(`Deleted payments associated with contract ${id}`);
       } catch (err) {
         console.error(`Error deleting payments for contract ${id}:`, err);
@@ -1299,8 +1299,8 @@ export class DatabaseStorage implements IStorage {
       // 2. Delete associated milestones
       try {
         await db
-          .delete(milestones_table)
-          .where(eq(milestones_table.contractId, id));
+          .delete(milestones)
+          .where(eq(milestones.contractId, id));
         console.log(`Deleted milestones associated with contract ${id}`);
       } catch (err) {
         console.error(`Error deleting milestones for contract ${id}:`, err);
@@ -1310,8 +1310,8 @@ export class DatabaseStorage implements IStorage {
       // 3. Delete associated documents
       try {
         await db
-          .delete(documents_table)
-          .where(eq(documents_table.contractId, id));
+          .delete(documents)
+          .where(eq(documents.contractId, id));
         console.log(`Deleted documents associated with contract ${id}`);
       } catch (err) {
         console.error(`Error deleting documents for contract ${id}:`, err);

@@ -378,16 +378,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Contract not found" });
       }
       
-      // Check if the user has permission to view this contract
-      // Use X-User-ID header as fallback for authentication
-      let userId = null;
-      if (req.user && req.user.id) {
-        userId = req.user.id;
-        console.log(`Using session user ID: ${userId}`);
-      } else if (req.headers['x-user-id']) {
-        userId = parseInt(req.headers['x-user-id'] as string);
-        console.log(`Using X-User-ID header: ${userId}`);
+      // Get user ID from session or X-User-ID header
+      const userId = req.user?.id || (req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
+      
+      if (!userId) {
+        console.log("No user ID found when accessing contract detail");
+        return res.status(401).json({ message: "Authentication required" });
       }
+      
+      // Load the full user if not already loaded
+      let user = req.user;
+      if (!user && userId) {
+        try {
+          user = await storage.getUser(userId);
+          if (user) {
+            console.log(`Using X-User-ID header fallback authentication for user ID: ${userId}`);
+          }
+        } catch (error) {
+          console.error('Error loading user from X-User-ID header:', error);
+        }
+      }
+      
+      // Check if the user has permission to view this contract
+      // User ID already retrieved above from session or X-User-ID header
       
       const userRole = req.user?.role || 'business';
       
@@ -399,7 +412,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`User ${userId} with role ${userRole} is accessing contract ${id}`);
       
       // Allow access if user is the business owner or the assigned contractor
-      const hasAccess = 
+      const hasAccess =
         (userRole === 'business' && contract.businessId === userId) || 
         (userRole === 'contractor' && contract.contractorId === userId);
         
