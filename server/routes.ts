@@ -1709,7 +1709,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Convert to array and sort by amount
       const topContractorsArray = Array.from(contractorPayments.entries())
         .map(([contractorId, amount]) => {
-          const contractor = contractors.find(c => c.id === contractorId);
+          const contractor = filteredContractors.find(c => c.id === contractorId);
           return {
             id: contractorId,
             name: contractor ? `${contractor.firstName} ${contractor.lastName}` : 'Unknown',
@@ -1722,7 +1722,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const reportsData = {
         summary: {
           totalContracts: contracts.length,
-          totalContractors: contractors.length,
+          totalContractors: filteredContractors.length,
           totalPayments: payments.length,
           totalMilestones: milestones.length,
           avgContractValue: Math.round(avgContractValue * 100) / 100,
