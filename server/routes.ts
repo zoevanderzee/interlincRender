@@ -373,13 +373,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if the user has permission to view this contract
-      const userId = req.user?.id;
+      // Use X-User-ID header as fallback for authentication
+      const userId = req.user?.id || (req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
       const userRole = req.user?.role || 'business';
       
       if (!userId) {
         console.log("No user ID found when accessing contract detail");
         return res.status(401).json({ message: "Authentication required" });
       }
+      
+      console.log(`User ${userId} with role ${userRole} is accessing contract ${id}`);
       
       // Allow access if user is the business owner or the assigned contractor
       const hasAccess = 
