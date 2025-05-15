@@ -251,14 +251,18 @@ export class MemStorage implements IStorage {
   }
   
   async getContractorsByBusinessId(businessId: number): Promise<User[]> {
-    // First get all contracts for this business
+    // First get all active contracts for this business
     const contractorIds = new Set(
       Array.from(this.contracts.values())
-        .filter(contract => contract.businessId === businessId && contract.contractorId !== null)
+        .filter(contract => 
+          contract.businessId === businessId && 
+          contract.contractorId !== null &&
+          contract.status === 'active' // Only include contractors with active contracts
+        )
         .map(contract => contract.contractorId)
     );
     
-    // Then get all contractors
+    // Then get all contractors with active contracts
     return Array.from(this.users.values()).filter(
       user => contractorIds.has(user.id) && (user.role === 'contractor' || user.role === 'freelancer')
     );
