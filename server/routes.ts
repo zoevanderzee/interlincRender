@@ -964,7 +964,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           pendingApprovalsCount: pendingApprovals.length,
           paymentsProcessed: totalPaymentsValue,
           totalPendingValue: totalPendingValue, // Add total pending value from contracts
-          activeContractorsCount: allContractors.length,
+          activeContractorsCount: activeContractorsCount, // Use the proper active contractors count
           pendingInvitesCount: pendingInvites.length
         },
         contracts: userContracts,

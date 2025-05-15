@@ -1007,7 +1007,7 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getContractorsByBusinessId(businessId: number): Promise<User[]> {
-    // Find all contractors who have contracts with this business
+    // Find all contractors who have ACTIVE contracts with this business
     const contractorsWithContracts = await db
       .select()
       .from(users)
@@ -1015,6 +1015,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(contracts.businessId, businessId),
+          eq(contracts.status, 'active'), // Only include contractors with active contracts
           or(
             eq(users.role, 'contractor'),
             eq(users.role, 'freelancer')
