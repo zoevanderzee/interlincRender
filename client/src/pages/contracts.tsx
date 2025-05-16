@@ -158,20 +158,23 @@ const Contracts = () => {
           <p className="text-zinc-400 mb-6">
             {searchTerm || statusFilter ? 
               "No projects match your search criteria. Try changing your filters." : 
-              "Get started by creating your first project."}
+              isContractor ? 
+                "You haven't been assigned to any projects yet." : 
+                "Get started by creating your first project."
+            }
           </p>
           {searchTerm || statusFilter ? (
             <Button variant="outline" onClick={clearFilters}>
               Clear Filters
             </Button>
-          ) : (
+          ) : !isContractor ? (
             <Link href="/contracts/new">
               <Button>
                 <Plus size={16} className="mr-2" />
                 Create Project
               </Button>
             </Link>
-          )}
+          ) : null}
         </div>
       )}
     </>
