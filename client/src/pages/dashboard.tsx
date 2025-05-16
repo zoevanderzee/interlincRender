@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Contract, User, Payment, Milestone } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { ContractorDashboard } from "@/components/dashboard/ContractorDashboard";
 
 // Define interface for dashboard data
 interface DashboardData {
@@ -209,6 +210,8 @@ const Dashboard = () => {
     );
   }
 
+  // Show contractor or business dashboard based on role
+
   // Show loading state
   const isLoading = isAuthLoading || isDashboardLoading || isBudgetLoading;
   if (!user || isLoading) {
@@ -236,17 +239,213 @@ const Dashboard = () => {
           <AlertTriangle size={40} className="text-yellow-500" />
         </div>
         <h2 className="text-xl font-semibold text-white mb-2">No Dashboard Data</h2>
-        <p className="text-gray-400 mb-6">We couldn't find any data for your dashboard. You might need to create projects first.</p>
-        <Button 
-          className="bg-accent-500 hover:bg-accent-600 text-white"
-          onClick={handleNewProject}
-        >
-          Create Your First Project
-        </Button>
+        <p className="text-gray-400 mb-6">We couldn't find any data for your dashboard.</p>
+        {user.role === 'business' ? (
+          <Button 
+            className="bg-accent-500 hover:bg-accent-600 text-white"
+            onClick={handleNewProject}
+          >
+            Create Your First Project
+          </Button>
+        ) : (
+          <Button 
+            className="bg-accent-500 hover:bg-accent-600 text-white"
+            onClick={() => navigate('/settings')}
+          >
+            Complete Your Profile
+          </Button>
+        )}
       </div>
     );
   }
 
+  // If user is a contractor, show a specialized contractor interface
+  if (user && user.role === 'contractor' && dashboardData) {
+    return (
+      <>
+        {/* Page Header */}
+        <div className="mb-8">
+          <h1 className="text-2xl md:text-3xl font-semibold text-white">Contractor Dashboard</h1>
+          <p className="text-gray-400 mt-1">Manage your projects and track your payments</p>
+        </div>
+        
+        {/* Primary Metrics: 3 Key Cards for contractors */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {/* Card 1: Active Projects */}
+          <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-6 hover:shadow-lg transition-shadow">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-gray-400 text-sm font-medium">Active Projects</h3>
+              <div className="p-2 rounded-full bg-accent-500/10">
+                <Briefcase size={20} className="text-accent-500" />
+              </div>
+            </div>
+            <p className="text-3xl font-bold text-white">
+              {dashboardData.contracts.filter(c => c.status === 'active').length}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">Current projects in progress</p>
+          </div>
+          
+          {/* Card 2: Total Earnings */}
+          <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-6 hover:shadow-lg transition-shadow">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-gray-400 text-sm font-medium">Total Earnings</h3>
+              <div className="p-2 rounded-full bg-green-500/10">
+                <DollarSign size={20} className="text-green-500" />
+              </div>
+            </div>
+            <p className="text-3xl font-bold text-white">
+              ${dashboardData.payments
+                .filter(p => p.status === 'completed')
+                .reduce((sum, payment) => sum + parseFloat(payment.amount), 0)
+                .toLocaleString('en-US')}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">Completed payments</p>
+          </div>
+          
+          {/* Card 3: Pending Earnings */}
+          <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-6 hover:shadow-lg transition-shadow">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-gray-400 text-sm font-medium">Pending Earnings</h3>
+              <div className="p-2 rounded-full bg-yellow-500/10">
+                <Clock size={20} className="text-yellow-500" />
+              </div>
+            </div>
+            <p className="text-3xl font-bold text-white">
+              ${dashboardData.payments
+                .filter(p => p.status !== 'completed')
+                .reduce((sum, payment) => sum + parseFloat(payment.amount), 0)
+                .toLocaleString('en-US')}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">Upcoming payments</p>
+          </div>
+        </div>
+        
+        {/* Quick Actions for Contractors */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          {/* Projects */}
+          <Button 
+            variant="outline"
+            className="text-white border-zinc-700 hover:bg-zinc-800 hover:text-white h-auto py-3 justify-start"
+            onClick={() => navigate('/contracts')}
+          >
+            <Briefcase className="mr-3" size={18} />
+            <div className="text-left">
+              <div className="font-medium">My Projects</div>
+              <div className="text-xs text-gray-400">View active projects</div>
+            </div>
+          </Button>
+          
+          {/* Payments */}
+          <Button 
+            variant="outline"
+            className="text-white border-zinc-700 hover:bg-zinc-800 hover:text-white h-auto py-3 justify-start"
+            onClick={() => navigate('/payments')}
+          >
+            <DollarSign className="mr-3" size={18} />
+            <div className="text-left">
+              <div className="font-medium">Payments</div>
+              <div className="text-xs text-gray-400">View payment history</div>
+            </div>
+          </Button>
+          
+          {/* Settings */}
+          <Button 
+            variant="outline"
+            className="text-white border-zinc-700 hover:bg-zinc-800 hover:text-white h-auto py-3 justify-start"
+            onClick={() => navigate('/settings')}
+          >
+            <FileText className="mr-3" size={18} />
+            <div className="text-left">
+              <div className="font-medium">Profile</div>
+              <div className="text-xs text-gray-400">Update your information</div>
+            </div>
+          </Button>
+        </div>
+        
+        {/* Projects Section */}
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold text-white mb-4">My Projects</h2>
+          {dashboardData.contracts.length > 0 ? (
+            <div className="overflow-hidden rounded-lg border border-zinc-800">
+              <table className="w-full divide-y divide-zinc-800">
+                <thead className="bg-zinc-900">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Project
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Value
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Timeline
+                    </th>
+                    <th scope="col" className="relative px-6 py-3">
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-zinc-900 divide-y divide-zinc-800">
+                  {dashboardData.contracts.slice(0, 5).map((contract) => (
+                    <tr key={contract.id} className="hover:bg-zinc-800/50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div>
+                            <div className="text-sm font-medium text-white">{contract.contractName}</div>
+                            <div className="text-xs text-gray-400">{contract.contractCode}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                          ${contract.status === 'active' ? 'bg-green-500/10 text-green-400' : 
+                          contract.status === 'pending' ? 'bg-yellow-500/10 text-yellow-400' : 
+                          'bg-red-500/10 text-red-400'}`}>
+                          {contract.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
+                        ${parseFloat(contract.value).toLocaleString('en-US')}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                        {contract.startDate && contract.endDate ? 
+                          `${new Date(contract.startDate).toLocaleDateString()} - ${new Date(contract.endDate).toLocaleDateString()}` : 
+                          'No dates set'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          className="text-accent-500 hover:text-accent-400"
+                          onClick={() => navigate(`/contract/${contract.id}`)}
+                        >
+                          View
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-10 bg-zinc-900 rounded-lg border border-zinc-800">
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-zinc-800">
+                <AlertTriangle className="h-6 w-6 text-yellow-500" />
+              </div>
+              <h3 className="mb-2 text-lg font-medium text-white">No Projects Found</h3>
+              <p className="text-sm text-gray-400">
+                You haven't been assigned to any projects yet.
+              </p>
+            </div>
+          )}
+        </div>
+      </>
+    );
+  }
+
+  // Otherwise, show the business dashboard
   return (
     <>
       {/* Page Header */}

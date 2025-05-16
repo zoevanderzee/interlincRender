@@ -1,11 +1,9 @@
-import React from 'react';
-import { useNavigate } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
+import { useLocation } from 'wouter';
 import { Contract, Payment, Milestone } from '@shared/schema';
-import { DollarSign, FileText, Calendar, Clock, AlertTriangle, CheckCircle } from 'lucide-react';
+import { DollarSign, FileText, Calendar, Clock, AlertTriangle, CheckCircle, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { format } from 'date-fns';
 
 interface DashboardData {
@@ -22,68 +20,22 @@ interface DashboardData {
   payments: Payment[];
 }
 
-export function ContractorDashboard({ userId }: { userId: number }) {
-  const navigate = useNavigate();
-  
-  // Fetch contractor-specific data
-  const { data: dashboardData, isLoading } = useQuery<DashboardData>({
-    queryKey: ['/api/dashboard'],
-    queryFn: async () => {
-      try {
-        // Add user ID from localStorage
-        const headers: HeadersInit = {
-          "Accept": "application/json",
-          "Cache-Control": "no-cache",
-          "X-User-ID": userId.toString()
-        };
-        
-        const res = await fetch("/api/dashboard", {
-          method: "GET",
-          credentials: "include",
-          headers
-        });
-        
-        if (!res.ok) {
-          throw new Error(`API error: ${res.status}`);
-        }
-        
-        return await res.json();
-      } catch (error) {
-        console.error("Error fetching contractor dashboard:", error);
-        throw error;
-      }
-    }
-  });
+// Calculate total earnings from completed payments
+const calculateTotalEarnings = (payments: Payment[]) => {
+  return payments
+    .filter(p => p.status === 'completed')
+    .reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
+};
 
-  if (isLoading) {
-    return (
-      <div className="animate-pulse">
-        <div className="h-8 w-1/4 bg-zinc-800 rounded mb-2"></div>
-        <div className="h-4 w-2/3 bg-zinc-800 rounded mb-8"></div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-zinc-900 h-32 rounded-lg shadow-sm border border-zinc-800"></div>
-          ))}
-        </div>
-      </div>
-    );
-  }
+// Calculate pending earnings from upcoming payments
+const calculatePendingEarnings = (payments: Payment[]) => {
+  return payments
+    .filter(p => p.status !== 'completed')
+    .reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
+};
 
-  if (!dashboardData) {
-    return (
-      <div className="text-center py-12">
-        <div className="h-24 w-24 mx-auto mb-6 flex items-center justify-center rounded-full bg-zinc-800">
-          <AlertTriangle size={40} className="text-yellow-500" />
-        </div>
-        <h2 className="text-xl font-semibold text-white mb-2">No Project Data</h2>
-        <p className="text-gray-400 mb-6">We couldn't find any projects assigned to you yet.</p>
-      </div>
-    );
-  }
-
-  // Active projects for this contractor
-  const activeProjects = dashboardData.contracts.filter(c => c.status === 'active');
+export function ContractorDashboard({ dashboardData }: { dashboardData: DashboardData }) {
+  const [_, navigate] = useLocation();
   
   // Calculate upcoming payments (next 30 days)
   const now = new Date();
@@ -97,22 +49,12 @@ export function ContractorDashboard({ userId }: { userId: number }) {
            paymentDate <= thirtyDaysFromNow;
   });
   
-  // Get next payment
-  const nextPayment = upcomingPayments.length > 0 
-    ? upcomingPayments.sort((a, b) => 
-        new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime()
-      )[0]
-    : null;
+  // Active projects for this contractor
+  const activeProjects = dashboardData.contracts.filter(c => c.status === 'active');
   
-  // Calculate total earnings
-  const totalEarnings = dashboardData.payments
-    .filter(p => p.status === 'completed')
-    .reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
-  
-  // Calculate pending earnings
-  const pendingEarnings = dashboardData.payments
-    .filter(p => p.status !== 'completed')
-    .reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
+  // Calculate total and pending earnings
+  const totalEarnings = calculateTotalEarnings(dashboardData.payments);
+  const pendingEarnings = calculatePendingEarnings(dashboardData.payments);
 
   return (
     <>
@@ -128,8 +70,8 @@ export function ContractorDashboard({ userId }: { userId: number }) {
         <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-6 hover:shadow-lg transition-shadow">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-gray-400 text-sm font-medium">Active Projects</h3>
-            <div className="p-2 rounded-full bg-blue-500/10">
-              <FileText size={20} className="text-blue-500" />
+            <div className="p-2 rounded-full bg-accent-500/10">
+              <Briefcase size={20} className="text-accent-500" />
             </div>
           </div>
           <p className="text-3xl font-bold text-white">{activeProjects.length}</p>
@@ -178,6 +120,48 @@ export function ContractorDashboard({ userId }: { userId: number }) {
         >
           <DollarSign className="mr-2" size={16} />
           Payment History
+        </Button>
+      </div>
+      
+      {/* Quick Actions Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        {/* Projects */}
+        <Button 
+          variant="outline"
+          className="text-white border-zinc-700 hover:bg-zinc-800 hover:text-white h-auto py-3 justify-start"
+          onClick={() => navigate('/contracts')}
+        >
+          <Briefcase className="mr-3" size={18} />
+          <div className="text-left">
+            <div className="font-medium">My Projects</div>
+            <div className="text-xs text-gray-400">View active projects</div>
+          </div>
+        </Button>
+        
+        {/* Payments */}
+        <Button 
+          variant="outline"
+          className="text-white border-zinc-700 hover:bg-zinc-800 hover:text-white h-auto py-3 justify-start"
+          onClick={() => navigate('/payments')}
+        >
+          <DollarSign className="mr-3" size={18} />
+          <div className="text-left">
+            <div className="font-medium">Payments</div>
+            <div className="text-xs text-gray-400">View payment history</div>
+          </div>
+        </Button>
+        
+        {/* Settings */}
+        <Button 
+          variant="outline"
+          className="text-white border-zinc-700 hover:bg-zinc-800 hover:text-white h-auto py-3 justify-start"
+          onClick={() => navigate('/settings')}
+        >
+          <Clock className="mr-3" size={18} />
+          <div className="text-left">
+            <div className="font-medium">Profile</div>
+            <div className="text-xs text-gray-400">Update your information</div>
+          </div>
         </Button>
       </div>
       
