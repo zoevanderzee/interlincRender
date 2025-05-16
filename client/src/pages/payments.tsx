@@ -277,7 +277,11 @@ const Payments = () => {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <div>
           <h1 className="text-2xl md:text-3xl font-semibold text-white">Payments</h1>
-          <p className="text-gray-400 mt-1">Manage automated payments to contractors</p>
+          {isContractor ? (
+            <p className="text-gray-400 mt-1">Track your payment history and upcoming earnings</p>
+          ) : (
+            <p className="text-gray-400 mt-1">Manage automated payments to contractors</p>
+          )}
         </div>
         <div className="mt-4 md:mt-0 flex space-x-3">
           <Button 
@@ -286,15 +290,17 @@ const Payments = () => {
             onClick={handleExportPayments}
           >
             <Download className="mr-2" size={16} />
-            Export
+            {isContractor ? "Export Statement" : "Export"}
           </Button>
-          <Button 
-            onClick={handleAddPayment}
-            className="bg-indigo-600 hover:bg-indigo-700"
-          >
-            <Plus className="mr-2" size={16} />
-            Add Payment
-          </Button>
+          {!isContractor && (
+            <Button 
+              onClick={handleAddPayment}
+              className="bg-indigo-600 hover:bg-indigo-700"
+            >
+              <Plus className="mr-2" size={16} />
+              Add Payment
+            </Button>
+          )}
         </div>
       </div>
       
