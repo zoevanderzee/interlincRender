@@ -21,6 +21,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { Milestone, Contract, User, Payment } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { 
   Search, 
   Plus, 
@@ -53,6 +54,8 @@ interface DashboardData {
 const Projects = () => {
   const [_, navigate] = useLocation();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const isContractor = user?.role === "contractor";
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -141,14 +144,20 @@ const Projects = () => {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <div>
           <h1 className="text-2xl md:text-3xl font-semibold text-white">Projects</h1>
-          <p className="text-zinc-400 mt-1">Track project milestones and deliverables</p>
+          {isContractor ? (
+            <p className="text-zinc-400 mt-1">View your assigned projects</p>
+          ) : (
+            <p className="text-zinc-400 mt-1">Track project milestones and deliverables</p>
+          )}
         </div>
-        <div className="mt-4 md:mt-0">
-          <Button onClick={() => navigate("/contracts/new")}>
-            <Plus size={16} className="mr-2" />
-            Create New Project
-          </Button>
-        </div>
+        {!isContractor && (
+          <div className="mt-4 md:mt-0">
+            <Button onClick={() => navigate("/contracts/new")}>
+              <Plus size={16} className="mr-2" />
+              Create New Project
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Payment Stats - Using real data from API */}
@@ -349,11 +358,15 @@ const Projects = () => {
               >
                 Clear Filters
               </Button>
-            ) : (
+            ) : !isContractor ? (
               <Button onClick={() => navigate("/contracts/new")}>
                 <Plus size={16} className="mr-2" />
                 Create New Project
               </Button>
+            ) : (
+              <p className="text-zinc-500">
+                You'll see your assigned projects here
+              </p>
             )}
           </div>
         )}
