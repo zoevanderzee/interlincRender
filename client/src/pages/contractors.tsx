@@ -247,7 +247,13 @@ const Contractors = () => {
   // Function to get contractor's profile code
   const getProfileCode = async () => {
     try {
-      const response = await apiRequest("GET", "/api/profile-code");
+      const response = await fetch("/api/profile-code", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "X-User-ID": user?.id.toString() || ""
+        }
+      });
       const data = await response.json();
       
       if (data && data.profileCode) {
@@ -270,7 +276,13 @@ const Contractors = () => {
   // Function to generate a new profile code if one doesn't exist
   const generateProfileCode = async () => {
     try {
-      const response = await apiRequest("POST", "/api/profile-code/generate");
+      const response = await fetch("/api/profile-code/generate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-User-ID": user?.id.toString() || ""
+        }
+      });
       const data = await response.json();
       
       if (data && data.profileCode) {
@@ -293,7 +305,7 @@ const Contractors = () => {
     <>
       {/* Unique ID Button - Only visible for contractors */}
       {isContractor && (
-        <div className="fixed top-20 left-4 z-10">
+        <div className="fixed top-20 right-4 z-10">
           <Button 
             variant="outline" 
             size="sm" 
