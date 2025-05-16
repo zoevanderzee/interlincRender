@@ -1,9 +1,8 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import {
   Dialog,
@@ -12,17 +11,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 import {
   Tabs,
   TabsContent,
@@ -35,12 +24,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { User, Invite, insertInviteSchema } from "@shared/schema";
-import { Search, Plus, Mail, Send, FileText, UserCheck, ArrowRight, User as UserIcon, Building, Briefcase, Loader2, Clock, CheckCircle2, XCircle, CreditCard, ExternalLink, Copy, Link2, Share, UserPlus, Fingerprint } from "lucide-react";
+import { User, Invite } from "@shared/schema";
+import { Search, Plus, Mail, Building, Briefcase, UserIcon, ArrowRight, Copy, Share, ExternalLink, CheckCircle2, Fingerprint, CreditCard } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { FindByProfileCodeDialog } from "@/components/contractors/FindByProfileCodeDialog";
 import { ConnectionRequestsList } from "@/components/profile/ConnectionRequestsList";
@@ -53,16 +39,25 @@ const Contractors = () => {
   const { user } = useAuth();
   const isContractor = user?.role === "contractor";
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState("contractors");
-  // Project-specific invitation state removed
+  
+  // State for direct link dialog
+  const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
+  const [directLink, setDirectLink] = useState("");
+  const linkInputRef = useRef<HTMLInputElement>(null);
+  const [inviteData, setInviteData] = useState<{ id: number, token: string } | null>(null);
 
   // Fetch all external workers (both contractors and freelancers)
   const { data: externalWorkers = [], isLoading: isLoadingWorkers } = useQuery<User[]>({
     queryKey: ['/api/users', { role: 'contractor' }],
   });
   
+  // Fetch business accounts (for contractors view)
+  const { data: businessAccounts = [], isLoading: isLoadingBusinesses } = useQuery<User[]>({
+    queryKey: ['/api/users', { role: 'business' }],
+    enabled: isContractor, // Only load for contractors 
+  });
+  
   // Filter contractors and freelancers
-  // Double-check that users have 'contractor' role to ensure business accounts don't show up here
   const contractors = externalWorkers.filter(worker => 
     worker.role === 'contractor' && (worker.workerType === 'contractor' || !worker.workerType)
   );
@@ -92,25 +87,28 @@ const Contractors = () => {
 
   // Filter contractors by search term
   const filteredContractors = contractors.filter((contractor) => {
+    if (!contractor) return false;
     return (
       searchTerm === "" ||
       (contractor.companyName && contractor.companyName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      contractor.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (contractor.title && contractor.title.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (contractor.industry && contractor.industry.toLowerCase().includes(searchTerm.toLowerCase())) ||
       contractor.email.toLowerCase().includes(searchTerm.toLowerCase())
     );
   });
 
-  // We've removed the project-specific invitation form
-
-  // State for direct link dialog
-  const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
-  const [directLink, setDirectLink] = useState("");
-  const linkInputRef = useRef<HTMLInputElement>(null);
-  const [inviteData, setInviteData] = useState<{ id: number, token: string } | null>(null);
-  
-  // Removed project-specific invitation mutation
-  // We now only use the generateOnboardingLink function for company-wide invitations
+  // Filter businesses for contractors view
+  const filteredBusinesses = businessAccounts.filter((business) => {
+    if (!business) return false;
+    return (
+      searchTerm === "" ||
+      (business.companyName && business.companyName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (business.firstName && business.firstName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (business.lastName && business.lastName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (business.industry && business.industry.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      business.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
   
   // Generate a direct link for an invitation
   const generateDirectLinkMutation = useMutation({
@@ -154,8 +152,9 @@ const Contractors = () => {
   };
 
   // Get contract count for a contractor
-  const getContractCount = (contractorId: number) => {
-    return contracts.filter(c => c.contractorId === contractorId).length;
+  const getContractCount = (userId: number) => {
+    if (!contracts || !Array.isArray(contracts)) return 0;
+    return contracts.filter(c => c.contractorId === userId || c.businessId === userId).length;
   };
 
   // Format date for display
@@ -239,11 +238,7 @@ const Contractors = () => {
     }
   };
 
-  // Dialog handling has been simplified since we removed the project-specific invitation dialog
-  
-  // All project-specific invitation related functions have been removed
-
-  const isLoading = isLoadingWorkers || isLoadingInvites || isLoadingContracts;
+  const isLoading = isLoadingWorkers || isLoadingInvites || isLoadingContracts || (isContractor && isLoadingBusinesses);
 
   return (
     <>
@@ -381,7 +376,7 @@ const Contractors = () => {
           </div>
 
           {/* Contractors/Companies Grid */}
-          {isLoadingWorkers ? (
+          {isLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {[1, 2, 3, 4, 5, 6].map((i) => (
                 <div key={i} className="animate-pulse">
@@ -392,75 +387,8 @@ const Contractors = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {isContractor ? (
-                // Display business accounts for contractors
-                externalWorkers
-                  .filter(user => user.role === 'business')
-                  .filter(company => 
-                    searchTerm === "" || 
-                    (company.companyName && company.companyName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                    (company.firstName && company.firstName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                    (company.lastName && company.lastName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                    (company.industry && company.industry.toLowerCase().includes(searchTerm.toLowerCase()))
-                  )
-                  .map((company) => (
-                    <Card 
-                      key={company.id} 
-                      className="p-5 border border-zinc-800 bg-zinc-900 hover:border-zinc-700 transition-all"
-                    >
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex items-center">
-                          <div className="h-16 w-16 rounded-md bg-zinc-800 flex items-center justify-center text-zinc-400 mr-3 overflow-hidden">
-                            {company.companyLogo ? (
-                              <img 
-                                src={company.companyLogo} 
-                                alt={company.companyName || "Company logo"}
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
-                              <Building size={32} />
-                            )}
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-white">
-                              {company.companyName || `${company.firstName} ${company.lastName}`}
-                            </h3>
-                            <p className="text-sm text-zinc-400">{company.industry || "Business"}</p>
-                          </div>
-                        </div>
-                        <div className="px-2 py-1 bg-zinc-800 rounded-md text-xs font-medium text-zinc-300">
-                          {getContractCount(company.id)} {getContractCount(company.id) === 1 ? 'project' : 'projects'}
-                        </div>
-                      </div>
-                      
-                      {company.email && (
-                        <div className="flex items-center text-sm text-zinc-400 mb-3">
-                          <Mail size={16} className="mr-2" />
-                          {company.email}
-                        </div>
-                      )}
-                      
-                      {company.address && (
-                        <div className="flex items-center text-sm text-zinc-400 mb-3">
-                          <Building size={16} className="mr-2" />
-                          {company.address}
-                        </div>
-                      )}
-                      
-                      <div className="border-t border-zinc-800 pt-3 mt-3">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-zinc-300 hover:text-white w-full"
-                          onClick={() => navigate(`/contracts`)}
-                        >
-                          View Projects
-                        </Button>
-                      </div>
-                    </Card>
-                  ))
-              ) : (hTerm.toLowerCase())) ||
-                    (company.industry && company.industry.toLowerCase().includes(searchTerm.toLowerCase())))
-                  .map((company) => (
+                // Companies view for contractors
+                filteredBusinesses.map((company) => (
                   <Card 
                     key={company.id} 
                     className="p-5 border border-zinc-800 bg-zinc-900 hover:border-zinc-700 transition-all"
@@ -489,6 +417,31 @@ const Contractors = () => {
                         {getContractCount(company.id)} {getContractCount(company.id) === 1 ? 'project' : 'projects'}
                       </div>
                     </div>
+                    
+                    {company.email && (
+                      <div className="flex items-center text-sm text-zinc-400 mb-3">
+                        <Mail size={16} className="mr-2" />
+                        {company.email}
+                      </div>
+                    )}
+                    
+                    {company.address && (
+                      <div className="flex items-center text-sm text-zinc-400 mb-3">
+                        <Building size={16} className="mr-2" />
+                        {company.address}
+                      </div>
+                    )}
+                    
+                    <div className="border-t border-zinc-800 pt-3 mt-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-zinc-300 hover:text-white w-full"
+                        onClick={() => navigate(`/contracts`)}
+                      >
+                        View Projects
+                      </Button>
+                    </div>
                   </Card>
                 ))
               ) : (
@@ -508,7 +461,7 @@ const Contractors = () => {
                               className="h-full w-full object-cover"
                             />
                           ) : (
-                            <Building size={32} />
+                            <UserIcon size={32} />
                           )}
                         </div>
                         <div>
@@ -523,67 +476,42 @@ const Contractors = () => {
                       </div>
                     </div>
                   
-                  {contractor.industry && (
-                    <div className="flex items-center text-sm text-primary-600 mb-3">
-                      <Building size={16} className="mr-2" />
-                      {contractor.industry}
+                    {contractor.industry && (
+                      <div className="flex items-center text-sm text-zinc-400 mb-3">
+                        <Briefcase size={16} className="mr-2" />
+                        {contractor.industry}
+                      </div>
+                    )}
+                  
+                    <div className="flex items-center text-sm text-zinc-400 mb-3">
+                      <Mail size={16} className="mr-2" />
+                      {contractor.email}
                     </div>
-                  )}
                   
-                  <div className="flex items-center text-sm text-primary-600 mb-3">
-                    <Mail size={16} className="mr-2" />
-                    {contractor.email}
-                  </div>
+                    {contractor.hourlyRate && (
+                      <div className="flex items-center text-sm text-zinc-400 mb-3">
+                        <CreditCard size={16} className="mr-2" />
+                        ${contractor.hourlyRate}/hr
+                      </div>
+                    )}
                   
-                  <div className="flex items-center text-sm text-primary-600 mb-4">
-                    <Briefcase size={16} className="mr-2" />
-                    {contractor.title}
-                  </div>
-                  
-                  <div className="flex flex-wrap justify-between mt-auto pt-4 border-t border-primary-100 gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => navigate(`/contractors/${contractor.id}`)}
-                    >
-                      <UserCheck size={16} className="mr-1" />
-                      Profile
-                    </Button>
-                    
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => navigate(`/contracts?contractor=${contractor.id}`)}
-                    >
-                      <FileText size={16} className="mr-1" />
-                      Contracts
-                    </Button>
-                    
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-600 hover:to-purple-700 border-0"
-                      onClick={() => navigate(`/contractors/${contractor.id}/connect`)}
-                    >
-                      <CreditCard size={16} className="mr-1" />
-                      Connect
-                    </Button>
-                    
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-accent-500 hover:text-accent-600 hover:bg-accent-50"
-                      onClick={() => navigate(`/contracts/new?contractor=${contractor.id}`)}
-                    >
-                      Assign
-                      <ArrowRight size={16} className="ml-1" />
-                    </Button>
-                  </div>
-                </Card>
-              ))}
+                    <div className="border-t border-zinc-800 pt-3 mt-3 flex justify-end">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-zinc-300 hover:text-zinc-100"
+                        onClick={() => navigate(`/contracts/new?contractor=${contractor.id}`)}
+                      >
+                        Assign
+                        <ArrowRight size={16} className="ml-1" />
+                      </Button>
+                    </div>
+                  </Card>
+                ))
+              )}
               
-              {/* Empty state */}
-              {filteredContractors.length === 0 && (
+              {/* Empty state for business users */}
+              {!isContractor && filteredContractors.length === 0 && (
                 <div className="col-span-full bg-black text-white rounded-lg shadow-sm border border-zinc-800 p-8 text-center">
                   <div className="mx-auto h-16 w-16 rounded-full bg-zinc-800 flex items-center justify-center text-white mb-4">
                     <UserIcon size={32} />
@@ -592,18 +520,25 @@ const Contractors = () => {
                   <p className="text-zinc-400 mb-6">
                     {searchTerm ? 
                       "No contractors match your search criteria." : 
-                      "You don't have any active contractors yet. Send invites to start collaborating."}
+                      "Start by inviting contractors to join your projects."}
                   </p>
-                  {searchTerm ? (
-                    <Button variant="outline" onClick={() => setSearchTerm("")}>
-                      Clear Search
-                    </Button>
-                  ) : (
-                    <Button onClick={() => generateOnboardingLink()}>
-                      <Send size={16} className="mr-2" />
-                      Invite Worker
-                    </Button>
-                  )}
+                  <Button onClick={() => navigate("/contractors")}>
+                    <Plus size={16} className="mr-2" />
+                    Invite Contractors
+                  </Button>
+                </div>
+              )}
+              
+              {/* Empty state for contractors */}
+              {isContractor && filteredBusinesses.length === 0 && (
+                <div className="col-span-full bg-black text-white rounded-lg shadow-sm border border-zinc-800 p-8 text-center">
+                  <div className="mx-auto h-16 w-16 rounded-full bg-zinc-800 flex items-center justify-center text-white mb-4">
+                    <Building size={32} />
+                  </div>
+                  <h3 className="text-lg font-medium text-white mb-2">No companies found</h3>
+                  <p className="text-zinc-400 mb-6">
+                    You are not currently working with any companies on the platform.
+                  </p>
                 </div>
               )}
             </div>
@@ -611,250 +546,243 @@ const Contractors = () => {
         </TabsContent>
         
         <TabsContent value="freelancers">
-          {/* Search */}
+          {/* Search for freelancers tab */}
           <div className="mb-6 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary-400" size={18} />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" size={18} />
             <Input
               placeholder="Search freelancers..."
-              className="pl-9"
+              className="pl-9 bg-zinc-900 border-zinc-700 text-white"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
 
-          {/* Freelancers Grid */}
           {isLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {[1, 2, 3, 4, 5, 6].map((i) => (
                 <div key={i} className="animate-pulse">
-                  <Card className="p-5 h-64"></Card>
+                  <Card className="p-5 h-64 bg-zinc-900 border-zinc-800"></Card>
                 </div>
               ))}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {freelancers.map((freelancer) => (
-                <Card 
-                  key={freelancer.id} 
-                  className="p-5 border border-primary-100 hover:shadow-md transition-shadow"
-                >
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-center">
-                      <div className="h-12 w-12 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 mr-3">
-                        {freelancer.profileImageUrl ? (
-                          <img 
-                            src={freelancer.profileImageUrl} 
-                            alt={`${freelancer.firstName} ${freelancer.lastName}`}
-                            className="h-full w-full rounded-full object-cover"
-                          />
-                        ) : (
-                          <UserIcon size={24} />
-                        )}
+              {freelancers
+                .filter(freelancer => 
+                  searchTerm === "" || 
+                  freelancer.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                  freelancer.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                  (freelancer.title && freelancer.title.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                  (freelancer.industry && freelancer.industry.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                  freelancer.email.toLowerCase().includes(searchTerm.toLowerCase())
+                )
+                .map((freelancer) => (
+                  <Card 
+                    key={freelancer.id} 
+                    className="p-5 border border-zinc-800 bg-zinc-900 hover:border-zinc-700 transition-all"
+                  >
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex items-center">
+                        <div className="h-16 w-16 rounded-md bg-zinc-800 flex items-center justify-center text-zinc-400 mr-3 overflow-hidden">
+                          {freelancer.profileImage ? (
+                            <img 
+                              src={freelancer.profileImage} 
+                              alt={`${freelancer.firstName} ${freelancer.lastName}`}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <UserIcon size={32} />
+                          )}
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-white">
+                            {freelancer.firstName} {freelancer.lastName}
+                          </h3>
+                          <p className="text-sm text-zinc-400">{freelancer.title || "Freelancer"}</p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-primary-900">
-                          {freelancer.firstName} {freelancer.lastName}
-                        </h3>
-                        <p className="text-sm text-primary-500">{freelancer.title}</p>
+                      <div className="px-2 py-1 bg-zinc-800 rounded-md text-xs font-medium text-zinc-300">
+                        {getContractCount(freelancer.id)} {getContractCount(freelancer.id) === 1 ? 'project' : 'projects'}
                       </div>
                     </div>
-                    <div className="px-2 py-1 bg-primary-100 rounded-md text-xs font-medium text-primary-700">
-                      {getContractCount(freelancer.id)} {getContractCount(freelancer.id) === 1 ? 'contract' : 'contracts'}
+                    
+                    {freelancer.industry && (
+                      <div className="flex items-center text-sm text-zinc-400 mb-3">
+                        <Briefcase size={16} className="mr-2" />
+                        {freelancer.industry}
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center text-sm text-zinc-400 mb-3">
+                      <Mail size={16} className="mr-2" />
+                      {freelancer.email}
                     </div>
-                  </div>
-                  
-                  <div className="flex items-center text-sm text-primary-600 mb-3">
-                    <Mail size={16} className="mr-2" />
-                    {freelancer.email}
-                  </div>
-                  
-                  {freelancer.title && (
-                    <div className="flex items-center text-sm text-primary-600 mb-4">
-                      <Briefcase size={16} className="mr-2" />
-                      {freelancer.title}
+                    
+                    {freelancer.hourlyRate && (
+                      <div className="flex items-center text-sm text-zinc-400 mb-3">
+                        <CreditCard size={16} className="mr-2" />
+                        ${freelancer.hourlyRate}/hr
+                      </div>
+                    )}
+                    
+                    {!isContractor && (
+                      <div className="border-t border-zinc-800 pt-3 mt-3 flex justify-end">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-zinc-300 hover:text-zinc-100"
+                          onClick={() => navigate(`/contracts/new?contractor=${freelancer.id}`)}
+                        >
+                          Assign
+                          <ArrowRight size={16} className="ml-1" />
+                        </Button>
+                      </div>
+                    )}
+                  </Card>
+                ))}
+                
+                {/* Empty State for Freelancers */}
+                {freelancers.length === 0 && (
+                  <div className="col-span-full bg-black text-white rounded-lg shadow-sm border border-zinc-800 p-8 text-center">
+                    <div className="mx-auto h-16 w-16 rounded-full bg-zinc-800 flex items-center justify-center text-white mb-4">
+                      <UserIcon size={32} />
                     </div>
-                  )}
-                  
-                  <div className="flex flex-wrap justify-between mt-auto pt-4 border-t border-primary-100 gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => navigate(`/contractors/${freelancer.id}`)}
-                    >
-                      <UserCheck size={16} className="mr-1" />
-                      Profile
-                    </Button>
-                    
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => navigate(`/contracts?contractor=${freelancer.id}`)}
-                    >
-                      <FileText size={16} className="mr-1" />
-                      Contracts
-                    </Button>
-                    
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-600 hover:to-purple-700 border-0"
-                      onClick={() => navigate(`/contractors/${freelancer.id}/connect`)}
-                    >
-                      <CreditCard size={16} className="mr-1" />
-                      Connect
-                    </Button>
-                    
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-accent-500 hover:text-accent-600 hover:bg-accent-50"
-                      onClick={() => navigate(`/contracts/new?contractor=${freelancer.id}`)}
-                    >
-                      Assign
-                      <ArrowRight size={16} className="ml-1" />
-                    </Button>
+                    <h3 className="text-lg font-medium text-white mb-2">No freelancers found</h3>
+                    <p className="text-zinc-400 mb-6">
+                      {searchTerm ? 
+                        "No freelancers match your search criteria." : 
+                        "Start by inviting freelancers to join your projects."}
+                    </p>
+                    {!isContractor && (
+                      <Button onClick={() => navigate("/contractors")}>
+                        <Plus size={16} className="mr-2" />
+                        Invite Freelancers
+                      </Button>
+                    )}
                   </div>
-                </Card>
-              ))}
-              
-              {/* Empty state */}
-              {freelancers.length === 0 && (
-                <div className="col-span-full bg-black text-white rounded-lg shadow-sm border border-zinc-800 p-8 text-center">
-                  <div className="mx-auto h-16 w-16 rounded-full bg-zinc-800 flex items-center justify-center text-white mb-4">
-                    <UserIcon size={32} />
-                  </div>
-                  <h3 className="text-lg font-medium text-white mb-2">No freelancers found</h3>
-                  <p className="text-zinc-400 mb-6">
-                    You don't have any active freelancers yet. Send invites to start collaborating.
-                  </p>
-                  <Button onClick={() => generateOnboardingLink()}>
-                    <Send size={16} className="mr-2" />
-                    Invite Worker
-                  </Button>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
           )}
         </TabsContent>
         
-        <TabsContent value="invites">
-          {/* Invites List */}
-          {isLoading ? (
-            <div className="grid grid-cols-1 gap-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="animate-pulse">
-                  <Card className="p-5 h-28"></Card>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-4">
-              {allInvites.map((invite) => (
-                <Card
-                  key={invite.id}
-                  className="p-5 border border-primary-100 hover:shadow-md transition-shadow"
-                >
-                  <div className="flex justify-between">
-                    <div>
-                      <div className="flex items-center mb-2">
-                        <h3 className="font-semibold text-primary-900 mr-3">
-                          {invite.email}
-                        </h3>
-                        <div className="flex gap-2">
-                          <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded-md text-xs font-medium">
-                            Pending
-                          </span>
-                          <span className={`px-2 py-1 rounded-md text-xs font-medium ${
-                            invite.workerType === 'freelancer' 
-                              ? 'bg-blue-100 text-blue-700' 
-                              : 'bg-green-100 text-green-700'
-                          }`}>
-                            {invite.workerType === 'freelancer' ? 'Freelancer' : 'Sub Contractor'}
-                          </span>
-                        </div>
-                      </div>
-                      <p className="text-sm text-primary-600 mb-2">
-                        <span className="font-medium">Project: </span>
-                        {invite.projectName}
-                      </p>
-                      {invite.paymentAmount && (
-                        <p className="text-sm text-primary-600 mb-2">
-                          <span className="font-medium">Payment: </span>
-                          ${invite.paymentAmount}
-                        </p>
-                      )}
-                      <div className="flex items-center text-xs text-primary-500">
-                        <Clock size={14} className="mr-1" />
-                        Sent on {formatDate(invite.createdAt)} • Expires {formatDate(invite.expiresAt)}
-                      </div>
-                    </div>
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-primary-600"
-                        onClick={() => {
-                          // Re-send invitation logic
-                          toast({
-                            title: "Invitation resent",
-                            description: "The invitation has been sent again to " + invite.email,
-                          });
-                        }}
-                      >
-                        <Send size={14} className="mr-1" />
-                        Resend
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                        onClick={() => {
-                          // Cancel invitation logic
-                          // This would typically call an API to update the invite status
-                          apiRequest("PATCH", `/api/invites/${invite.id}`, { status: "cancelled" })
-                            .then(() => {
-                              queryClient.invalidateQueries({ queryKey: ['/api/invites'] });
-                              toast({
-                                title: "Invitation cancelled",
-                                description: "The invitation has been cancelled.",
-                              });
-                            })
-                            .catch((error) => {
-                              toast({
-                                title: "Error",
-                                description: "Failed to cancel invitation. Please try again.",
-                                variant: "destructive",
-                              });
-                            });
-                        }}
-                      >
-                        <XCircle size={14} className="mr-1" />
-                        Cancel
-                      </Button>
-                    </div>
+        {!isContractor && (
+          <TabsContent value="invites">
+            <div className="space-y-6">
+              <div className="bg-black rounded-lg border border-zinc-800 overflow-hidden">
+                <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
+                  <div>
+                    <h3 className="text-lg font-medium text-white">Pending Invitations</h3>
+                    <p className="mt-1 max-w-2xl text-sm text-zinc-400">
+                      These are invitations that have been sent but not yet accepted.
+                    </p>
                   </div>
-                </Card>
-              ))}
+                </div>
+                
+                {isLoadingInvites ? (
+                  <div className="animate-pulse p-6">
+                    <div className="h-7 bg-zinc-800 rounded w-1/4 mb-3"></div>
+                    <div className="h-4 bg-zinc-800 rounded w-3/4 mb-2"></div>
+                    <div className="h-4 bg-zinc-800 rounded w-2/4 mb-6"></div>
+                    
+                    <div className="h-7 bg-zinc-800 rounded w-1/3 mb-3"></div>
+                    <div className="h-4 bg-zinc-800 rounded w-3/5 mb-2"></div>
+                    <div className="h-4 bg-zinc-800 rounded w-2/5"></div>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-zinc-800">
+                      <thead className="bg-zinc-900">
+                        <tr>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider"
+                          >
+                            Invitation
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider"
+                          >
+                            Recipient
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider"
+                          >
+                            Type
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider"
+                          >
+                            Status
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider"
+                          >
+                            Sent
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-right text-xs font-medium text-zinc-400 uppercase tracking-wider"
+                          >
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-zinc-950 divide-y divide-zinc-800">
+                        {allInvites.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="px-6 py-8 text-center text-sm text-zinc-400">
+                              No pending invitations
+                            </td>
+                          </tr>
+                        ) : (
+                          allInvites.map((invite) => (
+                            <tr key={invite.id}>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
+                                {invite.contractId ? 'Project Invitation' : 'General Invitation'}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
+                                {invite.email}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
+                                {invite.workerType === 'freelancer' ? 'Freelancer' : 'Contractor'}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                  Pending
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-400">
+                                {formatDate(invite.createdAt)}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => generateDirectLinkMutation.mutate({ inviteId: invite.id })}
+                                  className="text-zinc-400 hover:text-white mr-2"
+                                >
+                                  <Link2 size={14} className="mr-1" />
+                                  Get Link
+                                </Button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
               
-              {/* Empty state for invites */}
-              {allInvites.length === 0 && (
-                <div className="col-span-full bg-black text-white rounded-lg shadow-sm border border-zinc-800 p-8 text-center">
-                  <div className="mx-auto h-16 w-16 rounded-full bg-zinc-800 flex items-center justify-center text-white mb-4">
-                    <Mail size={32} />
-                  </div>
-                  <h3 className="text-lg font-medium text-white mb-2">No pending invites</h3>
-                  <p className="text-zinc-400 mb-6">
-                    You haven't sent any invitations to contractors or freelancers yet.
-                  </p>
-                  <Button onClick={() => generateOnboardingLink()}>
-                    <Send size={16} className="mr-2" />
-                    Send New Invitation
-                  </Button>
-                </div>
-              )}
+              {/* Connection Requests */}
+              <ConnectionRequestsList />
             </div>
-          )}
-        </TabsContent>
+          </TabsContent>
+        )}
       </Tabs>
     </>
   );
