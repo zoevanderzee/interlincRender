@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
 import {
   Table,
   TableBody,
@@ -54,6 +55,8 @@ import PaymentProcessor from "@/components/payments/PaymentProcessor";
 const Payments = () => {
   const { toast } = useToast();
   const [_, navigate] = useLocation();
+  const { user } = useAuth();
+  const isContractor = user?.role === 'contractor';
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [fromDateFilter, setFromDateFilter] = useState("");
@@ -96,16 +99,37 @@ const Payments = () => {
   // Identify virtual payments (those from contract values without milestones)
   const virtualPayments = allPayments.filter(payment => 'isVirtual' in payment && payment.isVirtual === true);
   
+  // Filter payments based on user role
+  const filteredPayments = isContractor && user 
+    ? allPayments.filter(payment => {
+        // Find the contract for this payment
+        const contract = contracts.find(c => c.id === payment.contractId);
+        // Only show payments for contracts assigned to this contractor
+        return contract && contract.contractorId === user.id;
+      })
+    : allPayments;
+
   // Get regular payments by status
   const getPaymentsByStatus = (status: string) => {
+    // Get the base payments array based on user role
+    const paymentsToFilter = filteredPayments;
+    
     // Return both regular payments with the specified status and virtual payments for "pending" status
     if (status === "pending") {
+      // For contractors, only include virtual payments related to their contracts
+      const relevantVirtualPayments = isContractor && user
+        ? virtualPayments.filter(payment => {
+            const contract = contracts.find(c => c.id === payment.contractId);
+            return contract && contract.contractorId === user.id;
+          })
+        : virtualPayments;
+        
       return [
-        ...allPayments.filter(payment => payment.status === status && (!('isVirtual' in payment) || !payment.isVirtual)),
-        ...virtualPayments
+        ...paymentsToFilter.filter(payment => payment.status === status && (!('isVirtual' in payment) || !payment.isVirtual)),
+        ...relevantVirtualPayments
       ];
     }
-    return allPayments.filter(payment => payment.status === status && (!('isVirtual' in payment) || !payment.isVirtual));
+    return paymentsToFilter.filter(payment => payment.status === status && (!('isVirtual' in payment) || !payment.isVirtual));
   };
   
   // Scheduled payments
