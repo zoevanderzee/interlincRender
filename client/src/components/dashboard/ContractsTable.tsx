@@ -13,13 +13,15 @@ interface ContractsTableProps {
   contractors: User[];
   onViewContract?: (id: number) => void;
   onEditContract?: (id: number) => void;
+  isContractor?: boolean;
 }
 
 const ContractsTable: React.FC<ContractsTableProps> = ({
   contracts,
   contractors,
   onViewContract,
-  onEditContract
+  onEditContract,
+  isContractor = false
 }) => {
   const [searchTerm, setSearchTerm] = React.useState("");
   const [sortField, setSortField] = React.useState<string>("createdAt");
@@ -48,7 +50,8 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
   };
 
   // Get contractor name
-  const getContractorName = (contractorId: number) => {
+  const getContractorName = (contractorId: number | null) => {
+    if (!contractorId) return "Unassigned";
     const contractor = contractors.find(c => c.id === contractorId);
     return contractor ? `${contractor.firstName} ${contractor.lastName}` : 'Unknown';
   };
@@ -246,37 +249,49 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
                       {getStatusBadge(contract.status)}
                     </TableCell>
                     <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            className="h-8 w-8 p-0 text-zinc-400 hover:text-white hover:bg-zinc-700"
-                          >
-                            <span className="sr-only">Open menu</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-zinc-900 border-zinc-800 text-white">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuSeparator className="bg-zinc-700" />
-                          <DropdownMenuItem 
-                            className="hover:bg-zinc-800 cursor-pointer"
-                            onClick={() => onViewContract && onViewContract(contract.id)}
-                          >
-                            <Eye className="h-4 w-4 mr-2" />
-                            View Details
-                          </DropdownMenuItem>
-                          {(contract.status === 'draft' || contract.status === 'active') && (
+                      {isContractor ? (
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          className="text-accent-500 hover:text-accent-400"
+                          onClick={() => onViewContract && onViewContract(contract.id)}
+                        >
+                          <Eye className="mr-2 h-4 w-4" />
+                          View
+                        </Button>
+                      ) : (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              className="h-8 w-8 p-0 text-zinc-400 hover:text-white hover:bg-zinc-700"
+                            >
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-zinc-900 border-zinc-800 text-white">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuSeparator className="bg-zinc-700" />
                             <DropdownMenuItem 
                               className="hover:bg-zinc-800 cursor-pointer"
-                              onClick={() => onEditContract && onEditContract(contract.id)}
+                              onClick={() => onViewContract && onViewContract(contract.id)}
                             >
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit Project
+                              <Eye className="h-4 w-4 mr-2" />
+                              View Details
                             </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                            {(contract.status === 'draft' || contract.status === 'active') && onEditContract && (
+                              <DropdownMenuItem 
+                                className="hover:bg-zinc-800 cursor-pointer"
+                                onClick={() => onEditContract(contract.id)}
+                              >
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit Project
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))
