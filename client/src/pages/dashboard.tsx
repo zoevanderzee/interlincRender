@@ -333,7 +333,7 @@ const Dashboard = () => {
             <Briefcase className="mr-3" size={18} />
             <div className="text-left">
               <div className="font-medium">My Projects</div>
-              <div className="text-xs text-gray-400">View active projects</div>
+              <div className="text-xs text-gray-400">View assigned projects</div>
             </div>
           </Button>
           

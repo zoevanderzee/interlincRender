@@ -13,11 +13,14 @@ import {
 import ContractsTable from "@/components/dashboard/ContractsTable";
 import { Plus, Search, FilterX } from "lucide-react";
 import { Contract, User } from "@shared/schema";
+import { useAuth } from "@/hooks/use-auth";
 
 const Contracts = () => {
   const [_, navigate] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const { user } = useAuth();
+  const isContractor = user?.role === 'contractor';
 
   // Fetch contracts
   const { data: contracts = [], isLoading: isLoadingContracts } = useQuery<Contract[]>({
@@ -27,6 +30,7 @@ const Contracts = () => {
   // Fetch contractors
   const { data: contractors = [], isLoading: isLoadingContractors } = useQuery<User[]>({
     queryKey: ['/api/users', { role: 'contractor' }],
+    enabled: !isContractor, // Only fetch contractors list if user is not a contractor
   });
 
   // Filter contracts by search term and status
@@ -62,16 +66,22 @@ const Contracts = () => {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <div>
           <h1 className="text-2xl md:text-3xl font-semibold text-white">Projects</h1>
-          <p className="text-zinc-400 mt-1">Manage and track all your project agreements</p>
+          {isContractor ? (
+            <p className="text-zinc-400 mt-1">View your assigned projects</p>
+          ) : (
+            <p className="text-zinc-400 mt-1">Manage and track all your project agreements</p>
+          )}
         </div>
-        <div className="mt-4 md:mt-0">
-          <Link href="/contracts/new">
-            <Button className="w-full md:w-auto">
-              <Plus size={16} className="mr-2" />
-              New Project
-            </Button>
-          </Link>
-        </div>
+        {!isContractor && (
+          <div className="mt-4 md:mt-0">
+            <Link href="/contracts/new">
+              <Button className="w-full md:w-auto">
+                <Plus size={16} className="mr-2" />
+                New Project
+              </Button>
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Filters */}
@@ -125,7 +135,8 @@ const Contracts = () => {
           contracts={filteredContracts}
           contractors={contractors}
           onViewContract={handleViewContract}
-          onEditContract={handleEditContract}
+          onEditContract={isContractor ? undefined : handleEditContract}
+          isContractor={isContractor}
         />
       )}
 
