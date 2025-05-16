@@ -53,6 +53,7 @@ const Contractors = () => {
   const { user } = useAuth();
   const isContractor = user?.role === "contractor";
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useState("contractors");
   // Project-specific invitation state removed
 
   // Fetch all external workers (both contractors and freelancers)
@@ -350,66 +351,177 @@ const Contractors = () => {
         )}
       </div>
 
-      {/* Tabs for Workers Types and Invites */}
+      {/* Tabs for Workers/Companies */}
       <Tabs defaultValue="contractors" className="mb-6">
         <TabsList className="mb-4">
-          <TabsTrigger value="contractors">Sub Contractors</TabsTrigger>
-          <TabsTrigger value="freelancers">Freelancers</TabsTrigger>
-          <TabsTrigger value="invites">Pending Invites</TabsTrigger>
+          {isContractor ? (
+            <>
+              <TabsTrigger value="contractors">Active Companies</TabsTrigger>
+              <TabsTrigger value="freelancers">Previous Companies</TabsTrigger>
+            </>
+          ) : (
+            <>
+              <TabsTrigger value="contractors">Sub Contractors</TabsTrigger>
+              <TabsTrigger value="freelancers">Freelancers</TabsTrigger>
+              <TabsTrigger value="invites">Pending Invites</TabsTrigger>
+            </>
+          )}
         </TabsList>
         
         <TabsContent value="contractors">
           {/* Search */}
           <div className="mb-6 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary-400" size={18} />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" size={18} />
             <Input
-              placeholder="Search contractors..."
-              className="pl-9"
+              placeholder={isContractor ? "Search companies..." : "Search contractors..."}
+              className="pl-9 bg-zinc-900 border-zinc-700 text-white"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
 
-          {/* Contractors Grid */}
-          {isLoading ? (
+          {/* Contractors/Companies Grid */}
+          {isLoadingWorkers ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {[1, 2, 3, 4, 5, 6].map((i) => (
                 <div key={i} className="animate-pulse">
-                  <Card className="p-5 h-64"></Card>
+                  <Card className="p-5 h-64 bg-zinc-900 border-zinc-800"></Card>
                 </div>
               ))}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredContractors.map((contractor) => (
-                <Card 
-                  key={contractor.id} 
-                  className="p-5 border border-primary-100 hover:shadow-md transition-shadow"
-                >
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-center">
-                      <div className="h-16 w-16 rounded-md bg-primary-100 flex items-center justify-center text-primary-600 mr-3 overflow-hidden">
-                        {contractor.companyLogo ? (
-                          <img 
-                            src={contractor.companyLogo} 
-                            alt={contractor.companyName || "Company logo"}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <Building size={32} />
-                        )}
+              {isContractor ? (
+                // Display business accounts for contractors
+                externalWorkers
+                  .filter(user => user.role === 'business')
+                  .filter(company => 
+                    searchTerm === "" || 
+                    (company.companyName && company.companyName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                    (company.firstName && company.firstName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                    (company.lastName && company.lastName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                    (company.industry && company.industry.toLowerCase().includes(searchTerm.toLowerCase()))
+                  )
+                  .map((company) => (
+                    <Card 
+                      key={company.id} 
+                      className="p-5 border border-zinc-800 bg-zinc-900 hover:border-zinc-700 transition-all"
+                    >
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex items-center">
+                          <div className="h-16 w-16 rounded-md bg-zinc-800 flex items-center justify-center text-zinc-400 mr-3 overflow-hidden">
+                            {company.companyLogo ? (
+                              <img 
+                                src={company.companyLogo} 
+                                alt={company.companyName || "Company logo"}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <Building size={32} />
+                            )}
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-white">
+                              {company.companyName || `${company.firstName} ${company.lastName}`}
+                            </h3>
+                            <p className="text-sm text-zinc-400">{company.industry || "Business"}</p>
+                          </div>
+                        </div>
+                        <div className="px-2 py-1 bg-zinc-800 rounded-md text-xs font-medium text-zinc-300">
+                          {getContractCount(company.id)} {getContractCount(company.id) === 1 ? 'project' : 'projects'}
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-primary-900">
-                          {contractor.companyName || "Company Name"}
-                        </h3>
-                        <p className="text-sm text-primary-500">{contractor.title}</p>
+                      
+                      {company.email && (
+                        <div className="flex items-center text-sm text-zinc-400 mb-3">
+                          <Mail size={16} className="mr-2" />
+                          {company.email}
+                        </div>
+                      )}
+                      
+                      {company.address && (
+                        <div className="flex items-center text-sm text-zinc-400 mb-3">
+                          <Building size={16} className="mr-2" />
+                          {company.address}
+                        </div>
+                      )}
+                      
+                      <div className="border-t border-zinc-800 pt-3 mt-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-zinc-300 hover:text-white w-full"
+                          onClick={() => navigate(`/contracts`)}
+                        >
+                          View Projects
+                        </Button>
+                      </div>
+                    </Card>
+                  ))
+              ) : (hTerm.toLowerCase())) ||
+                    (company.industry && company.industry.toLowerCase().includes(searchTerm.toLowerCase())))
+                  .map((company) => (
+                  <Card 
+                    key={company.id} 
+                    className="p-5 border border-zinc-800 bg-zinc-900 hover:border-zinc-700 transition-all"
+                  >
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex items-center">
+                        <div className="h-16 w-16 rounded-md bg-zinc-800 flex items-center justify-center text-zinc-400 mr-3 overflow-hidden">
+                          {company.companyLogo ? (
+                            <img 
+                              src={company.companyLogo} 
+                              alt={company.companyName || "Company logo"}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <Building size={32} />
+                          )}
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-white">
+                            {company.companyName || `${company.firstName} ${company.lastName}`}
+                          </h3>
+                          <p className="text-sm text-zinc-400">{company.industry || "Business"}</p>
+                        </div>
+                      </div>
+                      <div className="px-2 py-1 bg-zinc-800 rounded-md text-xs font-medium text-zinc-300">
+                        {getContractCount(company.id)} {getContractCount(company.id) === 1 ? 'project' : 'projects'}
                       </div>
                     </div>
-                    <div className="px-2 py-1 bg-primary-100 rounded-md text-xs font-medium text-primary-700">
-                      {getContractCount(contractor.id)} {getContractCount(contractor.id) === 1 ? 'contract' : 'contracts'}
+                  </Card>
+                ))
+              ) : (
+                // Original contractors view for business users
+                filteredContractors.map((contractor) => (
+                  <Card 
+                    key={contractor.id} 
+                    className="p-5 border border-zinc-800 bg-zinc-900 hover:border-zinc-700 transition-all"
+                  >
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex items-center">
+                        <div className="h-16 w-16 rounded-md bg-zinc-800 flex items-center justify-center text-zinc-400 mr-3 overflow-hidden">
+                          {contractor.companyLogo ? (
+                            <img 
+                              src={contractor.companyLogo} 
+                              alt={contractor.companyName || "Company logo"}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <Building size={32} />
+                          )}
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-white">
+                            {contractor.firstName} {contractor.lastName}
+                          </h3>
+                          <p className="text-sm text-zinc-400">{contractor.title || "Contractor"}</p>
+                        </div>
+                      </div>
+                      <div className="px-2 py-1 bg-zinc-800 rounded-md text-xs font-medium text-zinc-300">
+                        {getContractCount(contractor.id)} {getContractCount(contractor.id) === 1 ? 'contract' : 'contracts'}
+                      </div>
                     </div>
-                  </div>
                   
                   {contractor.industry && (
                     <div className="flex items-center text-sm text-primary-600 mb-3">
