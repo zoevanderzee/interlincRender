@@ -45,6 +45,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { FindByProfileCodeDialog } from "@/components/contractors/FindByProfileCodeDialog";
 import { ConnectionRequestsList } from "@/components/profile/ConnectionRequestsList";
 import { useMutation } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
 
 const Contractors = () => {
   const [location, navigate] = useLocation();

@@ -1,5 +1,6 @@
 import { Link, useLocation } from "wouter";
 import logoImage from "../../assets/CD_icon_light@2x.png"; // Will keep using the same image file
+import { useAuth } from "@/hooks/use-auth";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -10,6 +11,8 @@ interface SidebarProps {
 
 const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: SidebarProps) => {
   const [location] = useLocation();
+  const { user } = useAuth();
+  const isContractor = user?.role === "contractor";
 
   // Check if a nav link is active
   const isActive = (path: string) => {
@@ -69,7 +72,7 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
                 </Link>
               </div>
               <div className="invisible group-hover:visible opacity-0 group-hover:opacity-100 absolute left-full ml-2 px-2 py-1 bg-primary-800 text-white text-xs rounded transition-opacity whitespace-nowrap">
-                Contractors
+                {isContractor ? "Companies" : "Contractors"}
               </div>
             </li>
             <li className="relative group">
@@ -168,7 +171,7 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                   <circle cx="12" cy="7" r="4"></circle>
                 </svg>
-                Contractors
+                {isContractor ? "Companies" : "Contractors"}
               </Link>
             </li>
           </ul>
