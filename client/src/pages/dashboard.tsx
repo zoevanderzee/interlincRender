@@ -8,7 +8,9 @@ import {
   Plus, 
   Briefcase,
   Coins, 
-  Loader2
+  Loader2,
+  Clock,
+  Calendar
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Contract, User, Payment, Milestone } from "@shared/schema";
