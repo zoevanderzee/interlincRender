@@ -50,6 +50,8 @@ import { useAuth } from "@/hooks/use-auth";
 const Contractors = () => {
   const [location, navigate] = useLocation();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const isContractor = user?.role === "contractor";
   const [searchTerm, setSearchTerm] = useState("");
   // Project-specific invitation state removed
 
@@ -314,30 +316,38 @@ const Contractors = () => {
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <div>
-          <h1 className="text-2xl md:text-3xl font-semibold text-primary-900">External Workers</h1>
-          <p className="text-primary-500 mt-1">Manage your contractors, freelancers, and project collaborators</p>
+          <h1 className="text-2xl md:text-3xl font-semibold text-white">
+            {isContractor ? "Companies" : "External Workers"}
+          </h1>
+          <p className="text-zinc-400 mt-1">
+            {isContractor 
+              ? "View companies you work with and their projects" 
+              : "Manage your contractors, freelancers, and project collaborators"}
+          </p>
         </div>
-        <div className="mt-4 md:mt-0 flex space-x-2">
-          <FindByProfileCodeDialog 
-            trigger={
-              <Button variant="outline">
-                <Fingerprint size={16} className="mr-2" />
-                Connect by Code
-              </Button>
-            }
-            onSuccess={() => {
-              queryClient.invalidateQueries({ queryKey: ['/api/connection-requests'] });
-              toast({
-                title: "Connection request sent",
-                description: "We'll notify you when the contractor responds."
-              });
-            }}
-          />
-          <Button onClick={() => generateOnboardingLink()}>
-            <Plus size={16} className="mr-2" />
-            Invite
-          </Button>
-        </div>
+        {!isContractor && (
+          <div className="mt-4 md:mt-0 flex space-x-2">
+            <FindByProfileCodeDialog 
+              trigger={
+                <Button variant="outline">
+                  <Fingerprint size={16} className="mr-2" />
+                  Connect by Code
+                </Button>
+              }
+              onSuccess={() => {
+                queryClient.invalidateQueries({ queryKey: ['/api/connection-requests'] });
+                toast({
+                  title: "Connection request sent",
+                  description: "We'll notify you when the contractor responds."
+                });
+              }}
+            />
+            <Button onClick={() => generateOnboardingLink()}>
+              <Plus size={16} className="mr-2" />
+              Invite
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Tabs for Workers Types and Invites */}
