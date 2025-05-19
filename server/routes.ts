@@ -2915,10 +2915,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Get the contractor's current data
           const contractor = await storage.getUser(userId);
           
-          // If they exist and are currently classified as a freelancer, update them to contractor
-          if (contractor && contractor.workerType === 'freelancer') {
+          // If they exist, update them to contractor regardless of current type
+          if (contractor) {
             await storage.updateUser(userId, { workerType: 'contractor' });
-            console.log(`Updated user ${userId} type from freelancer to contractor after connection acceptance`);
+            console.log(`Updated user ${userId} type to contractor after connection acceptance (previous type: ${contractor.workerType || 'null'})`);
           }
         } catch (updateError) {
           console.error('Error updating contractor type:', updateError);
