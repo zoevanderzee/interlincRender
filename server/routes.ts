@@ -53,16 +53,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If the current user is a business user
       if (currentUser && currentUser.role === "business") {
         if (role === "contractor" || role === "freelancer") {
-          // Only return contractors/freelancers that have a contract with this business
-          // or have been invited by this business
+          // Return contractors/freelancers that have a contract with this business,
+          // have been invited by this business, or connected via connection requests
           const contractorsWithContracts = await storage.getContractorsByBusinessId(currentUser.id);
           const contractorsByInvites = await storage.getContractorsByBusinessInvites(currentUser.id);
           
-          // Combine both sets of contractors and remove duplicates
+          // Get contractors who accepted connection requests from this business
+          let contractorsByConnections: any[] = [];
+          try {
+            // Get all contractors who have accepted connection requests from this business
+            const connections = await storage.getConnectionRequests({
+              businessId: currentUser.id,
+              status: 'accepted'
+            });
+            
+            if (connections && connections.length > 0) {
+              for (const connection of connections) {
+                if (connection.contractorId) {
+                  const contractor = await storage.getUser(connection.contractorId);
+                  if (contractor) {
+                    contractorsByConnections.push(contractor);
+                  }
+                }
+              }
+            }
+          } catch (error) {
+            console.error("Error fetching connected contractors:", error);
+          }
+          
+          // Combine all sources and remove duplicates
           const contractorIds = new Set();
           const uniqueContractors: any[] = [];
           
-          [...contractorsWithContracts, ...contractorsByInvites].forEach(contractor => {
+          [...contractorsWithContracts, ...contractorsByInvites, ...contractorsByConnections].forEach(contractor => {
             // Double-check that the user actually has the contractor role
             if (!contractorIds.has(contractor.id) && contractor.role === 'contractor') {
               contractorIds.add(contractor.id);
