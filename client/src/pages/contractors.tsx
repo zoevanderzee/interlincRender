@@ -500,6 +500,7 @@ const Contractors = () => {
           {isContractor ? (
             <>
               <TabsTrigger value="contractors">Active Companies</TabsTrigger>
+              <TabsTrigger value="requests">Company Requests</TabsTrigger>
               <TabsTrigger value="freelancers">Previous Companies</TabsTrigger>
             </>
           ) : (
@@ -689,6 +690,28 @@ const Contractors = () => {
                   </p>
                 </div>
               )}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="requests">
+          {/* Connection Requests Display */}
+          {isContractor && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium text-white">Company Connection Requests</h3>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    queryClient.invalidateQueries({ queryKey: ['/api/connection-requests'] });
+                  }}
+                >
+                  Refresh
+                </Button>
+              </div>
+              
+              <ConnectionRequestsList />
             </div>
           )}
         </TabsContent>
