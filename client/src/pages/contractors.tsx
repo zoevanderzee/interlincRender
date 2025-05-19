@@ -505,7 +505,7 @@ const Contractors = () => {
             </>
           ) : (
             <>
-              <TabsTrigger value="contractors">Contractors</TabsTrigger>
+              <TabsTrigger value="contractors">Sub Contractors</TabsTrigger>
               <TabsTrigger value="freelancers">Contractors</TabsTrigger>
               <TabsTrigger value="invites">Pending Invites</TabsTrigger>
             </>
