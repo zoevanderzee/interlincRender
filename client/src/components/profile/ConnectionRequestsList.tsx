@@ -1,62 +1,105 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Loader2,
-  RefreshCw,
-  CheckCircle,
-  XCircle,
-  Clock,
-  BadgeCheck,
-  AlertCircle,
-  Building2
-} from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { CheckCircle2, XCircle, Clock, MessageSquare, Building2, User } from "lucide-react";
 import { format } from "date-fns";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
-type ConnectionRequest = {
+// Connection request type
+interface ConnectionRequest {
   id: number;
-  businessId: number;
-  contractorId: number | null;
   profileCode: string | null;
-  status: string;
+  businessId: number;
+  businessName?: string;
+  contractorId: number | null;
+  contractorName?: string;
   message: string | null;
+  status: string;
   createdAt: string;
   updatedAt: string;
-  // Include these fields when joining with users table
-  businessName?: string;
-};
+}
 
 export function ConnectionRequestsList() {
+  const { user } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("pending");
   
-  // Query to fetch connection requests
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['/api/connection-requests'],
-    retry: false
+  // Fetch connection requests
+  const { data: connectionRequests = [], isLoading, refetch } = useQuery({
+    queryKey: ["/api/connection-requests"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/connection-requests");
+      if (!response.ok) {
+        throw new Error("Failed to fetch connection requests");
+      }
+      const data = await response.json();
+      
+      // If business user, fetch contractor names for each request
+      if (user?.role === "business") {
+        return Promise.all(data.map(async (request: ConnectionRequest) => {
+          if (request.profileCode) {
+            try {
+              const contractorRes = await apiRequest(
+                "GET", 
+                `/api/contractors/find-by-profile-code/${request.profileCode}`
+              );
+              
+              if (contractorRes.ok) {
+                const contractor = await contractorRes.json();
+                return {
+                  ...request,
+                  contractorName: contractor.companyName || 
+                    (contractor.firstName && contractor.lastName 
+                      ? `${contractor.firstName} ${contractor.lastName}` 
+                      : contractor.username)
+                };
+              }
+            } catch (error) {
+              console.error("Error fetching contractor details:", error);
+            }
+          }
+          return request;
+        }));
+      } 
+      // If contractor user, fetch business names for each request
+      else if (user?.role === "contractor") {
+        return Promise.all(data.map(async (request: ConnectionRequest) => {
+          if (request.businessId) {
+            try {
+              const businessRes = await apiRequest(
+                "GET", 
+                `/api/users/${request.businessId}`
+              );
+              
+              if (businessRes.ok) {
+                const business = await businessRes.json();
+                return {
+                  ...request,
+                  businessName: business.companyName || 
+                    (business.firstName && business.lastName 
+                      ? `${business.firstName} ${business.lastName}` 
+                      : business.username)
+                };
+              }
+            } catch (error) {
+              console.error("Error fetching business details:", error);
+            }
+          }
+          return request;
+        }));
+      }
+      
+      return data;
+    },
+    enabled: !!user,
   });
   
-  // Mutation to accept or decline a connection request
+  // Accept or decline connection request
   const updateRequestMutation = useMutation({
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
       const response = await apiRequest("PATCH", `/api/connection-requests/${id}`, { status });
@@ -67,7 +110,8 @@ export function ConnectionRequestsList() {
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/connection-requests'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/connection-requests"] });
+      refetch();
       toast({
         title: "Connection request updated",
         description: "The connection request has been updated successfully.",
@@ -76,13 +120,12 @@ export function ConnectionRequestsList() {
     onError: (error: any) => {
       toast({
         title: "Update failed",
-        description: error.message || "Failed to update connection request",
+        description: error.message,
         variant: "destructive",
       });
     },
   });
   
-  // Handle accept/decline actions
   const handleAccept = (id: number) => {
     updateRequestMutation.mutate({ id, status: "accepted" });
   };
@@ -91,32 +134,12 @@ export function ConnectionRequestsList() {
     updateRequestMutation.mutate({ id, status: "declined" });
   };
   
-  // Filter connection requests by status
-  const filterRequests = (status: string) => {
-    if (!data || !Array.isArray(data)) return [];
-    return data.filter((request: ConnectionRequest) => request.status === status);
-  };
+  // Filter requests based on tab
+  const pendingRequests = connectionRequests.filter((req: ConnectionRequest) => req.status === "pending");
+  const acceptedRequests = connectionRequests.filter((req: ConnectionRequest) => req.status === "accepted");
+  const declinedRequests = connectionRequests.filter((req: ConnectionRequest) => req.status === "declined");
   
-  // Get requests for each category
-  const pendingRequests = filterRequests("pending");
-  const acceptedRequests = filterRequests("accepted");
-  const declinedRequests = filterRequests("declined");
-  
-  // Render status badge
-  const renderStatusBadge = (status: string) => {
-    switch (status) {
-      case "pending":
-        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
-      case "accepted":
-        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200"><BadgeCheck className="h-3 w-3 mr-1" />Accepted</Badge>;
-      case "declined":
-        return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200"><XCircle className="h-3 w-3 mr-1" />Declined</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
-  
-  // Format date
+  // Format date for display
   const formatDate = (dateString: string) => {
     try {
       return format(new Date(dateString), "MMM d, yyyy");
@@ -125,228 +148,211 @@ export function ConnectionRequestsList() {
     }
   };
   
-  // Generate business name initials for avatar
-  const getInitials = (businessId: number) => {
-    const request = data?.find((r: ConnectionRequest) => r.businessId === businessId);
-    return request?.businessName 
-      ? request.businessName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
-      : "B" + businessId.toString().substring(0, 1);
-  };
+  // Handle empty state
+  if (!isLoading && connectionRequests.length === 0) {
+    return (
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle>Connection Requests</CardTitle>
+          <CardDescription>
+            {user?.role === "contractor" 
+              ? "Businesses who want to work with you will send connection requests here."
+              : "Send connection requests to contractors to add them to your network."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
+            <p>No connection requests yet</p>
+            {user?.role === "business" && (
+              <p className="mt-2">
+                Use the "Connect by Profile Code" button to add contractors to your network.
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
   
+  // When requests exist
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle className="flex items-center">
-          <Building2 className="mr-2 h-5 w-5" />
-          Connection Requests
-        </CardTitle>
+        <CardTitle>Connection Requests</CardTitle>
         <CardDescription>
-          Manage connection requests from businesses who want to work with you.
+          {user?.role === "contractor" 
+            ? "Manage connection requests from businesses"
+            : "Manage your contractor connection requests"}
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {isLoading ? (
-          <div className="flex items-center justify-center py-6">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : error ? (
-          <div className="text-center py-6">
-            <p className="text-destructive mb-4">Failed to load connection requests</p>
-            <Button variant="secondary" onClick={() => refetch()}>
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Retry
-            </Button>
-          </div>
-        ) : (
-          <Tabs defaultValue="pending" value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="pending" className="relative">
-                Pending
-                {pendingRequests.length > 0 && (
-                  <span className="absolute top-0 right-0 -mt-1 -mr-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
-                    {pendingRequests.length}
-                  </span>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="accepted">Accepted</TabsTrigger>
-              <TabsTrigger value="declined">Declined</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="pending">
-              {pendingRequests.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <AlertCircle className="mx-auto h-8 w-8 mb-2 opacity-50" />
-                  <p>No pending connection requests</p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Business</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Message</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {pendingRequests.map((request: ConnectionRequest) => (
-                      <TableRow key={request.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Avatar className="h-8 w-8 bg-primary/10">
-                              <AvatarFallback className="text-xs font-medium">
-                                {getInitials(request.businessId)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-medium">Business #{request.businessId}</p>
-                              <p className="text-xs text-muted-foreground">Sent via Profile Code</p>
-                            </div>
+        <Tabs defaultValue="pending" value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="mb-4">
+            <TabsTrigger value="pending">
+              Pending <Badge variant="outline" className="ml-2">{pendingRequests.length}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="accepted">
+              Accepted <Badge variant="outline" className="ml-2">{acceptedRequests.length}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="declined">
+              Declined <Badge variant="outline" className="ml-2">{declinedRequests.length}</Badge>
+            </TabsTrigger>
+          </TabsList>
+          
+          {/* Pending Requests */}
+          <TabsContent value="pending" className="space-y-4">
+            {pendingRequests.length === 0 ? (
+              <div className="py-4 text-center text-muted-foreground">
+                No pending requests
+              </div>
+            ) : (
+              pendingRequests.map((request: ConnectionRequest) => (
+                <Card key={request.id} className="overflow-hidden">
+                  <CardHeader className="pb-3">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        {user?.role === "contractor" ? (
+                          <div className="flex items-center space-x-2">
+                            <Building2 className="h-4 w-4 text-muted-foreground" />
+                            <CardTitle className="text-base">
+                              {request.businessName || "Unknown Business"}
+                            </CardTitle>
                           </div>
-                        </TableCell>
-                        <TableCell>{formatDate(request.createdAt)}</TableCell>
-                        <TableCell>
-                          {request.message ? (
-                            <p className="max-w-[200px] truncate">{request.message}</p>
-                          ) : (
-                            <span className="text-muted-foreground text-sm italic">No message</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex space-x-2">
-                            <Button
-                              size="sm"
-                              onClick={() => handleAccept(request.id)}
-                              disabled={updateRequestMutation.isPending}
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              {updateRequestMutation.isPending ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <CheckCircle className="h-4 w-4 mr-1" />
-                              )}
-                              Accept
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleDecline(request.id)}
-                              disabled={updateRequestMutation.isPending}
-                              className="border-red-200 text-red-700 hover:bg-red-50"
-                            >
-                              {updateRequestMutation.isPending ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <XCircle className="h-4 w-4 mr-1" />
-                              )}
-                              Decline
-                            </Button>
+                        ) : (
+                          <div className="flex items-center space-x-2">
+                            <User className="h-4 w-4 text-muted-foreground" />
+                            <CardTitle className="text-base">
+                              {request.contractorName || "Unknown Contractor"}
+                            </CardTitle>
                           </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </TabsContent>
-            
-            <TabsContent value="accepted">
-              {acceptedRequests.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <AlertCircle className="mx-auto h-8 w-8 mb-2 opacity-50" />
-                  <p>No accepted connection requests</p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Business</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Message</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {acceptedRequests.map((request: ConnectionRequest) => (
-                      <TableRow key={request.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Avatar className="h-8 w-8 bg-primary/10">
-                              <AvatarFallback className="text-xs font-medium">
-                                {getInitials(request.businessId)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-medium">Business #{request.businessId}</p>
-                              <p className="text-xs text-muted-foreground">Sent via Profile Code</p>
-                            </div>
+                        )}
+                        <CardDescription>
+                          Request sent {formatDate(request.createdAt)}
+                        </CardDescription>
+                      </div>
+                      <Badge className="bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20 border-yellow-500/20">
+                        <Clock className="mr-1 h-3 w-3" /> Pending
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  
+                  {request.message && (
+                    <CardContent className="pb-3">
+                      <div className="flex space-x-2 text-sm">
+                        <MessageSquare className="h-4 w-4 text-muted-foreground mt-0.5" />
+                        <div className="italic text-muted-foreground">"{request.message}"</div>
+                      </div>
+                    </CardContent>
+                  )}
+                  
+                  {user?.role === "contractor" && (
+                    <CardFooter className="flex justify-end space-x-2 bg-muted/30 py-3">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleDecline(request.id)}
+                        disabled={updateRequestMutation.isPending}
+                      >
+                        <XCircle className="mr-2 h-4 w-4" />
+                        Decline
+                      </Button>
+                      <Button 
+                        size="sm"
+                        onClick={() => handleAccept(request.id)}
+                        disabled={updateRequestMutation.isPending}
+                      >
+                        <CheckCircle2 className="mr-2 h-4 w-4" />
+                        Accept
+                      </Button>
+                    </CardFooter>
+                  )}
+                </Card>
+              ))
+            )}
+          </TabsContent>
+          
+          {/* Accepted Requests */}
+          <TabsContent value="accepted" className="space-y-4">
+            {acceptedRequests.length === 0 ? (
+              <div className="py-4 text-center text-muted-foreground">
+                No accepted requests
+              </div>
+            ) : (
+              acceptedRequests.map((request: ConnectionRequest) => (
+                <Card key={request.id}>
+                  <CardHeader className="pb-3">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        {user?.role === "contractor" ? (
+                          <div className="flex items-center space-x-2">
+                            <Building2 className="h-4 w-4 text-muted-foreground" />
+                            <CardTitle className="text-base">
+                              {request.businessName || "Unknown Business"}
+                            </CardTitle>
                           </div>
-                        </TableCell>
-                        <TableCell>{formatDate(request.createdAt)}</TableCell>
-                        <TableCell>
-                          {request.message ? (
-                            <p className="max-w-[200px] truncate">{request.message}</p>
-                          ) : (
-                            <span className="text-muted-foreground text-sm italic">No message</span>
-                          )}
-                        </TableCell>
-                        <TableCell>{renderStatusBadge(request.status)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </TabsContent>
-            
-            <TabsContent value="declined">
-              {declinedRequests.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <AlertCircle className="mx-auto h-8 w-8 mb-2 opacity-50" />
-                  <p>No declined connection requests</p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Business</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Message</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {declinedRequests.map((request: ConnectionRequest) => (
-                      <TableRow key={request.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Avatar className="h-8 w-8 bg-primary/10">
-                              <AvatarFallback className="text-xs font-medium">
-                                {getInitials(request.businessId)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-medium">Business #{request.businessId}</p>
-                              <p className="text-xs text-muted-foreground">Sent via Profile Code</p>
-                            </div>
+                        ) : (
+                          <div className="flex items-center space-x-2">
+                            <User className="h-4 w-4 text-muted-foreground" />
+                            <CardTitle className="text-base">
+                              {request.contractorName || "Unknown Contractor"}
+                            </CardTitle>
                           </div>
-                        </TableCell>
-                        <TableCell>{formatDate(request.createdAt)}</TableCell>
-                        <TableCell>
-                          {request.message ? (
-                            <p className="max-w-[200px] truncate">{request.message}</p>
-                          ) : (
-                            <span className="text-muted-foreground text-sm italic">No message</span>
-                          )}
-                        </TableCell>
-                        <TableCell>{renderStatusBadge(request.status)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </TabsContent>
-          </Tabs>
-        )}
+                        )}
+                        <CardDescription>
+                          Connected on {formatDate(request.updatedAt)}
+                        </CardDescription>
+                      </div>
+                      <Badge className="bg-green-500/10 text-green-500 hover:bg-green-500/20 border-green-500/20">
+                        <CheckCircle2 className="mr-1 h-3 w-3" /> Connected
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                </Card>
+              ))
+            )}
+          </TabsContent>
+          
+          {/* Declined Requests */}
+          <TabsContent value="declined" className="space-y-4">
+            {declinedRequests.length === 0 ? (
+              <div className="py-4 text-center text-muted-foreground">
+                No declined requests
+              </div>
+            ) : (
+              declinedRequests.map((request: ConnectionRequest) => (
+                <Card key={request.id}>
+                  <CardHeader className="pb-3">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        {user?.role === "contractor" ? (
+                          <div className="flex items-center space-x-2">
+                            <Building2 className="h-4 w-4 text-muted-foreground" />
+                            <CardTitle className="text-base">
+                              {request.businessName || "Unknown Business"}
+                            </CardTitle>
+                          </div>
+                        ) : (
+                          <div className="flex items-center space-x-2">
+                            <User className="h-4 w-4 text-muted-foreground" />
+                            <CardTitle className="text-base">
+                              {request.contractorName || "Unknown Contractor"}
+                            </CardTitle>
+                          </div>
+                        )}
+                        <CardDescription>
+                          Declined on {formatDate(request.updatedAt)}
+                        </CardDescription>
+                      </div>
+                      <Badge className="bg-red-500/10 text-red-500 hover:bg-red-500/20 border-red-500/20">
+                        <XCircle className="mr-1 h-3 w-3" /> Declined
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                </Card>
+              ))
+            )}
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   );
