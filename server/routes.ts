@@ -2940,16 +2940,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update the request status
       const updatedRequest = await storage.updateConnectionRequest(parseInt(id), { status });
       
-      // If the request is accepted, update the contractor's workerType to "freelancer" instead of "contractor"
+      // If the request is accepted, make sure the contractor has the correct workerType
+      // According to client/src/pages/contractors.tsx:
+      // "Sub Contractors" tab shows workers with workerType="contractor"
+      // "Contractors" tab shows workers with workerType="freelancer" or !workerType
       if (status === 'accepted') {
         try {
           // Get the contractor's current data
           const contractor = await storage.getUser(userId);
           
-          // If they exist, update them to freelancer type
+          // For contractors that accept connection requests, make sure they are in the "Contractors" tab
+          // by either leaving workerType null or setting it to "freelancer"
           if (contractor) {
-            await storage.updateUser(userId, { workerType: 'freelancer' });
-            console.log(`Updated user ${userId} type to freelancer after connection acceptance (previous type: ${contractor.workerType || 'null'})`);
+            // Clear workerType or set to "freelancer" to ensure they show in Contractors tab
+            await storage.updateUser(userId, { workerType: null });
+            console.log(`Updated user ${userId} workerType to null after connection acceptance (previous type: ${contractor.workerType || 'null'})`);
           }
         } catch (updateError) {
           console.error('Error updating contractor type:', updateError);
