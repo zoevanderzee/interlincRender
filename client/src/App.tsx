@@ -13,6 +13,7 @@ import NewContract from "@/pages/new-contract";
 import ContractDetail from "@/pages/contract-detail";
 import Projects from "@/pages/projects";
 import Contractors from "@/pages/contractors";
+import Connections from "@/pages/connections";
 import Payments from "@/pages/payments";
 import Reports from "@/pages/reports";
 import DataRoom from "@/pages/data-room";
@@ -130,6 +131,12 @@ function Router() {
       <ProtectedRoute path="/contractors">
         <Layout>
           <Contractors />
+        </Layout>
+      </ProtectedRoute>
+      
+      <ProtectedRoute path="/connections">
+        <Layout>
+          <Connections />
         </Layout>
       </ProtectedRoute>
       

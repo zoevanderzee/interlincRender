@@ -75,6 +75,24 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
                 {isContractor ? "Companies" : "Contractors"}
               </div>
             </li>
+            
+            <li className="relative group">
+              <div className={`flex justify-center px-2 py-3 rounded-md ${isActive("/connections") ? "text-accent-600 bg-accent-50" : "text-primary-600 hover:bg-primary-50"}`}>
+                <Link href="/connections">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="text-lg w-5 h-5" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 17a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3"></path>
+                    <path d="M13 7H7a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h3"></path>
+                    <path d="M10 15V9"></path>
+                    <path d="M17 15V9"></path>
+                    <path d="M13 13h4"></path>
+                    <path d="M13 11h4"></path>
+                  </svg>
+                </Link>
+              </div>
+              <div className="invisible group-hover:visible opacity-0 group-hover:opacity-100 absolute left-full ml-2 px-2 py-1 bg-primary-800 text-white text-xs rounded transition-opacity whitespace-nowrap">
+                Connections
+              </div>
+            </li>
             <li className="relative group">
               <div className={`flex justify-center px-2 py-3 rounded-md ${isActive("/payments") ? "text-accent-600 bg-accent-50" : "text-primary-600 hover:bg-primary-50"}`}>
                 <Link href="/payments">
