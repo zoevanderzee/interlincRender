@@ -2012,6 +2012,25 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(connectionRequests.createdAt));
   }
   
+  async getConnectionRequests(filters: { businessId?: number, contractorId?: number, status?: string }): Promise<ConnectionRequest[]> {
+    let query = db.select().from(connectionRequests);
+    
+    // Apply filters
+    if (filters.businessId !== undefined) {
+      query = query.where(eq(connectionRequests.businessId, filters.businessId));
+    }
+    
+    if (filters.contractorId !== undefined) {
+      query = query.where(eq(connectionRequests.contractorId, filters.contractorId));
+    }
+    
+    if (filters.status !== undefined) {
+      query = query.where(eq(connectionRequests.status, filters.status));
+    }
+    
+    return await query.orderBy(desc(connectionRequests.createdAt));
+  }
+  
   async getConnectionRequestByProfileCode(businessId: number, profileCode: string): Promise<ConnectionRequest | undefined> {
     const [request] = await db
       .select()
