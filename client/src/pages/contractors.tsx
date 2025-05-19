@@ -62,12 +62,12 @@ const Contractors = () => {
   });
   
   // Filter contractors and freelancers
-  const contractors = externalWorkers.filter(worker => 
-    worker.role === 'contractor' && (worker.workerType === 'contractor' || !worker.workerType)
+  const subContractors = externalWorkers.filter(worker => 
+    worker.role === 'contractor' && worker.workerType === 'contractor'
   );
   
-  const freelancers = externalWorkers.filter(worker => 
-    worker.role === 'contractor' && worker.workerType === 'freelancer'
+  const contractors = externalWorkers.filter(worker => 
+    worker.role === 'contractor' && (worker.workerType === 'freelancer' || !worker.workerType)
   );
 
   // Fetch pending invites
@@ -89,7 +89,19 @@ const Contractors = () => {
     queryKey: ['/api/contracts'],
   });
 
-  // Filter contractors by search term
+  // Filter sub contractors by search term
+  const filteredSubContractors = subContractors.filter((contractor) => {
+    if (!contractor) return false;
+    return (
+      searchTerm === "" ||
+      (contractor.companyName && contractor.companyName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (contractor.title && contractor.title.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (contractor.industry && contractor.industry.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      contractor.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
+  
+  // Filter regular contractors by search term
   const filteredContractors = contractors.filter((contractor) => {
     if (!contractor) return false;
     return (
