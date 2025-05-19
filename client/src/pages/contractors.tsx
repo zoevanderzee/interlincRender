@@ -61,14 +61,18 @@ const Contractors = () => {
     enabled: isContractor, // Only load for contractors 
   });
   
-  // Filter contractors and freelancers
+  // Filter contractors and freelancers - based on the tabs we've defined
   const subContractors = externalWorkers.filter(worker => 
     worker.role === 'contractor' && worker.workerType === 'contractor'
   );
   
+  // "Contractors" tab shows freelancers (since we swapped the labels but kept the same value)
   const contractors = externalWorkers.filter(worker => 
     worker.role === 'contractor' && (worker.workerType === 'freelancer' || !worker.workerType)
   );
+  
+  // Keep this for code compatibility - we'll update references from freelancers to contractors
+  const freelancers = contractors;
 
   // Fetch pending invites
   const { data: allInvites = [], isLoading: isLoadingInvites } = useQuery<Invite[]>({
@@ -606,8 +610,8 @@ const Contractors = () => {
                   </Card>
                 ))
               ) : (
-                // Original contractors view for business users
-                filteredContractors.map((contractor) => (
+                // Sub contractors view for business users (tab value="contractors" is for sub contractors)
+                filteredSubContractors.map((contractor) => (
                   <Card 
                     key={contractor.id} 
                     className="p-5 border border-zinc-800 bg-zinc-900 hover:border-zinc-700 transition-all"
@@ -733,7 +737,7 @@ const Contractors = () => {
           <div className="mb-6 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" size={18} />
             <Input
-              placeholder="Search freelancers..."
+              placeholder="Search contractors..."
               className="pl-9 bg-zinc-900 border-zinc-700 text-white"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -750,15 +754,7 @@ const Contractors = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {freelancers
-                .filter(freelancer => 
-                  searchTerm === "" || 
-                  freelancer.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  freelancer.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  (freelancer.title && freelancer.title.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                  (freelancer.industry && freelancer.industry.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                  freelancer.email.toLowerCase().includes(searchTerm.toLowerCase())
-                )
+              {filteredContractors
                 .map((freelancer) => (
                   <Card 
                     key={freelancer.id} 
