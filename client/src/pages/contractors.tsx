@@ -53,6 +53,15 @@ const Contractors = () => {
   // Fetch all external workers (both contractors and freelancers)
   const { data: externalWorkers = [], isLoading: isLoadingWorkers } = useQuery<User[]>({
     queryKey: ['/api/users', { role: 'contractor' }],
+    onSuccess: (data) => {
+      console.log("Received workers from API:", data);
+      console.log("Worker types:", data.map(w => ({ 
+        id: w.id, 
+        username: w.username, 
+        workerType: w.workerType,
+        role: w.role 
+      })));
+    },
   });
   
   // Fetch business accounts (for contractors view)

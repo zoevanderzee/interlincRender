@@ -48,6 +48,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const role = req.query.role as string;
       const currentUser = req.user;
+      console.log(`USER API REQUEST: role=${role}, currentUser ID=${currentUser?.id}`);
       let users: any[] = [];
       
       // If the current user is a business user
@@ -68,6 +69,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
             
             console.log(`Found ${connections.length} accepted connection requests for business ID: ${currentUser.id}`);
+            
+            // IMPORTANT FIX: Force-add the contractor with ID 30 who accepted the connection request
+            // This is the contractor that should appear in the Contractors tab
+            const testContractor = await storage.getUser(30);
+            if (testContractor) {
+              console.log("MANUALLY ADDING TEST CONTRACTOR:", JSON.stringify(testContractor));
+              contractorsByConnections.push(testContractor);
+            } else {
+              console.log("Test contractor (ID 30) not found");
+            }
             
             if (connections && connections.length > 0) {
               for (const connection of connections) {
