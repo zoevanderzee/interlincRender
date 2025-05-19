@@ -2909,6 +2909,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update the request status
       const updatedRequest = await storage.updateConnectionRequest(parseInt(id), { status });
       
+      // If the request is accepted, update the contractor's workerType to "contractor" if they're currently a "freelancer"
+      if (status === 'accepted') {
+        try {
+          // Get the contractor's current data
+          const contractor = await storage.getUser(userId);
+          
+          // If they exist and are currently classified as a freelancer, update them to contractor
+          if (contractor && contractor.workerType === 'freelancer') {
+            await storage.updateUser(userId, { workerType: 'contractor' });
+            console.log(`Updated user ${userId} type from freelancer to contractor after connection acceptance`);
+          }
+        } catch (updateError) {
+          console.error('Error updating contractor type:', updateError);
+          // Don't fail the request if this update fails, just log it
+        }
+      }
+      
       res.json(updatedRequest);
     } catch (error: any) {
       console.error('Error updating connection request:', error);
