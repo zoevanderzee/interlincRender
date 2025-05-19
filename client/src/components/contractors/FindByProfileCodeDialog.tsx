@@ -115,9 +115,17 @@ export function FindByProfileCodeDialog({
         throw new Error("No contractor selected");
       }
       
-      const response = await apiRequest("POST", "/api/connection-requests", {
-        profileCode: values.profileCode,
-        message: values.message || null,
+      // Use direct fetch to ensure headers are set properly
+      const response = await fetch("/api/connection-requests", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-User-ID": user?.id?.toString() || "",
+        },
+        body: JSON.stringify({
+          profileCode: values.profileCode,
+          message: values.message || null,
+        }),
       });
       
       if (!response.ok) {

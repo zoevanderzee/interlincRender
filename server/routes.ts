@@ -2821,7 +2821,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Only businesses can create connection requests
-      if (currentUser.role !== 'business') {
+      if (currentUser && currentUser.role !== 'business') {
         return res.status(403).json({ message: "Only businesses can create connection requests" });
       }
       
@@ -2842,22 +2842,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "You are already connected with this contractor." });
       }
       
-      // Check if there's already a pending connection request
-      const existingRequest = await storage.getConnectionRequestByProfileCode(businessId, profileCode);
-      
-      if (existingRequest && existingRequest.status === 'pending') {
-        return res.status(400).json({ message: "You already have a pending connection request for this contractor." });
-      }
-      
       // Create the connection request
-      const connectionRequest = await storage.createConnectionRequest({
-        businessId,
-        profileCode,
+      const createdRequest = await storage.createConnectionRequest({
+        businessId: businessId,
+        profileCode: profileCode,
         message: message || null,
         status: 'pending'
       });
       
-      res.status(201).json(connectionRequest);
+      res.status(201).json(createdRequest);
     } catch (error: any) {
       console.error('Error creating connection request:', error);
       res.status(500).json({ message: error.message });
