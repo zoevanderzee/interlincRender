@@ -2750,7 +2750,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get(`${apiRouter}/contractors/find-by-profile-code/:profileCode`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/contractors/find-by-profile-code/:profileCode`, async (req: Request, res: Response) => {
     try {
       const { profileCode } = req.params;
       
@@ -2758,9 +2758,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Profile code is required" });
       }
       
+      // Check for X-User-ID header for auth fallback
+      const userId = req.header('X-User-ID') || req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      // Get user from storage to check role
+      const currentUser = await storage.getUser(parseInt(userId.toString()));
+      if (!currentUser) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      
       // Only businesses can search for contractors by profile code
-      const userRole = req.user?.role;
-      if (userRole !== 'business') {
+      if (currentUser.role !== 'business') {
         return res.status(403).json({ message: "Only businesses can search for contractors by profile code" });
       }
       

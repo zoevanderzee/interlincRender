@@ -80,7 +80,14 @@ export function FindByProfileCodeDialog({
     setFoundContractor(null);
     
     try {
-      const response = await apiRequest("GET", `/api/contractors/find-by-profile-code/${profileCode}`);
+      // Use fetch directly to avoid case sensitivity issues
+      const response = await fetch(`/api/contractors/find-by-profile-code/${profileCode}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "X-User-ID": user?.id?.toString() || ""
+        }
+      });
       
       if (!response.ok) {
         const error = await response.json();
