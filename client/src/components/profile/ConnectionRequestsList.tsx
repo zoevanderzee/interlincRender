@@ -141,7 +141,9 @@ export function ConnectionRequestsList() {
       return await response.json();
     },
     onSuccess: () => {
+      // Invalidate both connection requests and users to refresh the categorization
       queryClient.invalidateQueries({ queryKey: ["/api/connection-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       refetch();
       toast({
         title: "Connection request updated",

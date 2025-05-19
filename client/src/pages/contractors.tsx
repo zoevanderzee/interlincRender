@@ -62,13 +62,14 @@ const Contractors = () => {
   });
   
   // Filter contractors and freelancers - based on the tabs we've defined
+  // "Sub Contractors" tab shows workers with role=contractor AND workerType=contractor
   const subContractors = externalWorkers.filter(worker => 
     worker.role === 'contractor' && worker.workerType === 'contractor'
   );
   
-  // "Contractors" tab shows freelancers (since we swapped the labels but kept the same value)
+  // "Contractors" tab shows workers with role=contractor who are either freelancers or don't have a workerType
   const contractors = externalWorkers.filter(worker => 
-    worker.role === 'contractor' && (worker.workerType === 'freelancer' || !worker.workerType)
+    worker.role === 'contractor' && (worker.workerType === 'freelancer' || !worker.workerType || worker.workerType === '')
   );
   
   // Keep this for code compatibility - we'll update references from freelancers to contractors
