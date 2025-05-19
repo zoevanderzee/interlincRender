@@ -92,7 +92,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const uniqueContractors: any[] = [];
           
           [...contractorsWithContracts, ...contractorsByInvites, ...contractorsByConnections].forEach(contractor => {
-            // Double-check that the user actually has the contractor role
+            // Add all users with the contractor role
+            // Note: We want contractors to appear in the Contractors tab with workerType='freelancer'
+            // and in the Sub Contractors tab with workerType='contractor'
             if (!contractorIds.has(contractor.id) && contractor.role === 'contractor') {
               contractorIds.add(contractor.id);
               uniqueContractors.push(contractor);
@@ -2938,16 +2940,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update the request status
       const updatedRequest = await storage.updateConnectionRequest(parseInt(id), { status });
       
-      // If the request is accepted, update the contractor's workerType to "contractor" if they're currently a "freelancer"
+      // If the request is accepted, update the contractor's workerType to "freelancer" instead of "contractor"
       if (status === 'accepted') {
         try {
           // Get the contractor's current data
           const contractor = await storage.getUser(userId);
           
-          // If they exist, update them to contractor regardless of current type
+          // If they exist, update them to freelancer type
           if (contractor) {
-            await storage.updateUser(userId, { workerType: 'contractor' });
-            console.log(`Updated user ${userId} type to contractor after connection acceptance (previous type: ${contractor.workerType || 'null'})`);
+            await storage.updateUser(userId, { workerType: 'freelancer' });
+            console.log(`Updated user ${userId} type to freelancer after connection acceptance (previous type: ${contractor.workerType || 'null'})`);
           }
         } catch (updateError) {
           console.error('Error updating contractor type:', updateError);
