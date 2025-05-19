@@ -67,16 +67,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
               status: 'accepted'
             });
             
+            console.log(`Found ${connections.length} accepted connection requests for business ID: ${currentUser.id}`);
+            
             if (connections && connections.length > 0) {
               for (const connection of connections) {
+                console.log(`Processing connection: ${JSON.stringify(connection)}`);
                 if (connection.contractorId) {
                   const contractor = await storage.getUser(connection.contractorId);
+                  console.log(`Found contractor: ${contractor ? JSON.stringify(contractor) : 'null'}`);
                   if (contractor) {
                     contractorsByConnections.push(contractor);
                   }
                 }
               }
             }
+            
+            console.log(`Found ${contractorsByConnections.length} contractors through connections`);
           } catch (error) {
             console.error("Error fetching connected contractors:", error);
           }
