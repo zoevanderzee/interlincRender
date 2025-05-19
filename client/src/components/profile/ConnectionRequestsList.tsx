@@ -33,76 +33,101 @@ export function ConnectionRequestsList() {
   const { data: connectionRequests = [], isLoading, refetch } = useQuery({
     queryKey: ["/api/connection-requests"],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/connection-requests");
-      if (!response.ok) {
-        throw new Error("Failed to fetch connection requests");
-      }
-      const data = await response.json();
+      if (!user) return [];
       
-      // If business user, fetch contractor names for each request
-      if (user?.role === "business") {
-        return Promise.all(data.map(async (request: ConnectionRequest) => {
-          if (request.profileCode) {
-            try {
-              const contractorRes = await apiRequest(
-                "GET", 
-                `/api/contractors/find-by-profile-code/${request.profileCode}`
-              );
-              
-              if (contractorRes.ok) {
-                const contractor = await contractorRes.json();
-                return {
-                  ...request,
-                  contractorName: contractor.companyName || 
-                    (contractor.firstName && contractor.lastName 
-                      ? `${contractor.firstName} ${contractor.lastName}` 
-                      : contractor.username)
-                };
-              }
-            } catch (error) {
-              console.error("Error fetching contractor details:", error);
-            }
+      try {
+        const response = await fetch("/api/connection-requests", {
+          headers: {
+            "X-User-ID": user.id.toString()
           }
-          return request;
-        }));
-      } 
-      // If contractor user, fetch business names for each request
-      else if (user?.role === "contractor") {
-        return Promise.all(data.map(async (request: ConnectionRequest) => {
-          if (request.businessId) {
-            try {
-              const businessRes = await apiRequest(
-                "GET", 
-                `/api/users/${request.businessId}`
-              );
-              
-              if (businessRes.ok) {
-                const business = await businessRes.json();
-                return {
-                  ...request,
-                  businessName: business.companyName || 
-                    (business.firstName && business.lastName 
-                      ? `${business.firstName} ${business.lastName}` 
-                      : business.username)
-                };
+        });
+        
+        if (!response.ok) {
+          throw new Error("Failed to fetch connection requests");
+        }
+        
+        const data = await response.json();
+        
+        // If business user, fetch contractor names for each request
+        if (user.role === "business") {
+          const requests = await Promise.all(data.map(async (request: ConnectionRequest) => {
+            if (request.profileCode) {
+              try {
+                const contractorRes = await fetch(`/api/contractors/find-by-profile-code/${request.profileCode}`, {
+                  headers: {
+                    "X-User-ID": user.id.toString()
+                  }
+                });
+                
+                if (contractorRes.ok) {
+                  const contractor = await contractorRes.json();
+                  return {
+                    ...request,
+                    contractorName: contractor.companyName || 
+                      (contractor.firstName && contractor.lastName 
+                        ? `${contractor.firstName} ${contractor.lastName}` 
+                        : contractor.username)
+                  };
+                }
+              } catch (error) {
+                console.error("Error fetching contractor details:", error);
               }
-            } catch (error) {
-              console.error("Error fetching business details:", error);
             }
-          }
-          return request;
-        }));
+            return request;
+          }));
+          return requests;
+        } 
+        // If contractor user, fetch business names for each request
+        else if (user.role === "contractor") {
+          const requests = await Promise.all(data.map(async (request: ConnectionRequest) => {
+            if (request.businessId) {
+              try {
+                const businessRes = await fetch(`/api/users/${request.businessId}`, {
+                  headers: {
+                    "X-User-ID": user.id.toString()
+                  }
+                });
+                
+                if (businessRes.ok) {
+                  const business = await businessRes.json();
+                  return {
+                    ...request,
+                    businessName: business.companyName || 
+                      (business.firstName && business.lastName 
+                        ? `${business.firstName} ${business.lastName}` 
+                        : business.username)
+                  };
+                }
+              } catch (error) {
+                console.error("Error fetching business details:", error);
+              }
+            }
+            return request;
+          }));
+          return requests;
+        }
+        
+        return data;
+      } catch (error) {
+        console.error("Error fetching connection requests:", error);
+        return [];
       }
-      
-      return data;
     },
-    enabled: !!user,
+    enabled: !!user
   });
   
   // Accept or decline connection request
   const updateRequestMutation = useMutation({
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
-      const response = await apiRequest("PATCH", `/api/connection-requests/${id}`, { status });
+      const response = await fetch(`/api/connection-requests/${id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "X-User-ID": user?.id?.toString() || ""
+        },
+        body: JSON.stringify({ status })
+      });
+      
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || "Failed to update connection request");
