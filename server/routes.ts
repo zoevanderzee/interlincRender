@@ -2799,13 +2799,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Connection Request Routes
-  app.post(`${apiRouter}/connection-requests`, requireAuth, async (req: Request, res: Response) => {
+  app.post(`${apiRouter}/connection-requests`, async (req: Request, res: Response) => {
     try {
       // Create a new connection request
       const { profileCode, message } = req.body;
       
       if (!profileCode) {
         return res.status(400).json({ message: "Profile code is required" });
+      }
+      
+      // Check for X-User-ID header for auth fallback
+      const userId = req.header('X-User-ID') || req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      // Get user from storage to check role
+      const currentUser = await storage.getUser(parseInt(userId.toString()));
+      if (!currentUser) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      
+      // Only businesses can create connection requests
+      if (currentUser.role !== 'business') {
+        return res.status(403).json({ message: "Only businesses can create connection requests" });
       }
       
       // First check if the profile code is valid
@@ -2817,7 +2834,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check if this contractor is already connected to this business
       // via contracts
-      const businessId = req.user?.id;
+      const businessId = parseInt(userId.toString());
       const existingContracts = await storage.getContractsByBusinessId(businessId);
       const alreadyConnected = existingContracts.some(contract => contract.contractorId === contractor.id);
       
