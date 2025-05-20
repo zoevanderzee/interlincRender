@@ -39,8 +39,13 @@ export function ConnectionRequestsNotification() {
   const [location, navigate] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
 
+  // Early return but after ALL hooks are called to avoid React hook rules violation
+  if (!user) {
+    return null;
+  }
+  
   // Only show for contractors
-  if (!user || user.role !== "contractor") {
+  if (user.role !== "contractor") {
     return null;
   }
 
