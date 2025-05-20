@@ -2894,13 +2894,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if this contractor is already connected to this business
-      // via contracts
       const businessId = parseInt(userId.toString());
-      const existingContracts = await storage.getContractsByBusinessId(businessId);
-      const alreadyConnected = existingContracts.some(contract => contract.contractorId === contractor.id);
       
-      if (alreadyConnected) {
-        return res.status(400).json({ message: "You are already connected with this contractor." });
+      // Check for existing contracts with this contractor
+      const existingContracts = await storage.getContractsByBusinessId(businessId);
+      const alreadyContracted = existingContracts.some(contract => contract.contractorId === contractor.id);
+      
+      if (alreadyContracted) {
+        return res.status(400).json({ message: "You already have contracts with this contractor." });
+      }
+      
+      // Check for existing connection requests with this contractor
+      const existingRequests = await storage.getConnectionRequestsByBusinessId(businessId);
+      const alreadyRequested = existingRequests.some(req => {
+        // Check if there's already a pending or accepted request for this contractor
+        return req.profileCode === profileCode && 
+               (req.status === 'pending' || req.status === 'accepted');
+      });
+      
+      if (alreadyRequested) {
+        return res.status(400).json({ 
+          message: "You've already sent a connection request to this contractor." 
+        });
       }
       
       // Create the connection request
