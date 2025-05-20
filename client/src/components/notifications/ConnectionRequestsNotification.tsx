@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import {
@@ -15,7 +15,6 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Badge } from "@/components/ui/badge";
 import { Building2, Bell, CheckCircle2, XCircle, MessageSquare } from "lucide-react";
 import { format } from "date-fns";
-import { useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -33,21 +32,13 @@ interface ConnectionRequest {
   updatedAt: string;
 }
 
-export function ConnectionRequestsNotification() {
+// Inner component that handles the actual notification logic
+// This ensures consistent hook call order across renders
+function ContractorNotification() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [location, navigate] = useLocation();
+  const [_, navigate] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
-
-  // Early return but after ALL hooks are called to avoid React hook rules violation
-  if (!user) {
-    return null;
-  }
-  
-  // Only show for contractors
-  if (user.role !== "contractor") {
-    return null;
-  }
 
   // Fetch connection requests
   const { data: connectionRequests = [], isLoading, refetch } = useQuery({
@@ -111,11 +102,13 @@ export function ConnectionRequestsNotification() {
   // Update request mutation
   const updateRequestMutation = useMutation({
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
+      if (!user) throw new Error("User not authenticated");
+      
       const response = await fetch(`/api/connection-requests/${id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          "X-User-ID": user?.id?.toString() || ""
+          "X-User-ID": user.id.toString()
         },
         body: JSON.stringify({ status })
       });
@@ -170,13 +163,17 @@ export function ConnectionRequestsNotification() {
     if (pendingRequests.length > 0 && !isLoading) {
       setIsOpen(true);
     }
-  }, [pendingRequests, isLoading]);
+  }, [pendingRequests.length, isLoading]);
 
   // View all requests
   const viewAllRequests = () => {
     setIsOpen(false);
     navigate("/connections");
   };
+
+  if (pendingRequests.length === 0) {
+    return null;
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -256,4 +253,16 @@ export function ConnectionRequestsNotification() {
       </DialogContent>
     </Dialog>
   );
+}
+
+// Wrapper component that handles authentication status
+export function ConnectionRequestsNotification() {
+  const { user } = useAuth();
+  
+  // Only render for contractors
+  if (!user || user.role !== "contractor") {
+    return null;
+  }
+  
+  return <ContractorNotification />;
 }
