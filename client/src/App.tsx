@@ -34,6 +34,7 @@ import Layout from "@/components/layout/Layout";
 import AuthPage from "@/pages/auth";
 import ResetPasswordPage from "@/pages/reset-password";
 import ContractorInvitePage from "@/pages/contractor-invite";
+import { ConnectionRequestsNotification } from "@/components/notifications/ConnectionRequestsNotification";
 // Use correct import path to match the file location
 import WorkRequestRespond from "./pages/work-request-respond";
 
@@ -199,6 +200,7 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <Router />
+          <ConnectionRequestsNotification />
           <Toaster />
         </AuthProvider>
       </QueryClientProvider>
