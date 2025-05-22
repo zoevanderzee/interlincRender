@@ -578,7 +578,7 @@ export default function ContractDetailPage() {
         <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab} className="mt-6">
           <TabsList className="mb-6">
             <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="milestones">Milestones</TabsTrigger>
+            <TabsTrigger value="deliverables">Deliverables</TabsTrigger>
             <TabsTrigger value="documents">Documents</TabsTrigger>
             <TabsTrigger value="payments">Payments</TabsTrigger>
           </TabsList>
@@ -691,7 +691,7 @@ export default function ContractDetailPage() {
             </div>
           </TabsContent>
           
-          <TabsContent value="milestones">
+          <TabsContent value="deliverables">
             {isLoadingMilestones ? (
               <div className="animate-pulse space-y-8">
                 <div className="h-4 w-full rounded bg-primary-100"></div>
@@ -704,8 +704,8 @@ export default function ContractDetailPage() {
             ) : getMilestonesByContractor().length > 0 ? (
               <div className="space-y-10">
                 {getMilestonesByContractor().map((item, index) => (
-                  <Card key={item.contractor.id}>
-                    <CardHeader>
+                  <Card key={item.contractor.id} className="overflow-hidden">
+                    <CardHeader className="bg-zinc-950 border-b border-zinc-800">
                       <div className="flex items-center">
                         <div className="mr-4 h-12 w-12 rounded-md bg-primary-100 flex items-center justify-center text-primary-500 overflow-hidden">
                           {item.contractor.companyLogo ? (
@@ -720,49 +720,141 @@ export default function ContractDetailPage() {
                         </div>
                         <div>
                           <CardTitle>
-                            {item.contractor.companyName || "Company"}
+                            {item.contractor.firstName} {item.contractor.lastName}
                           </CardTitle>
                           <CardDescription>
-                            {item.contractor.title || item.contractor.industry || 'Sub Contractor'}
+                            {item.contractor.companyName || item.contractor.title || item.contractor.workerType || 'Contractor'}
                           </CardDescription>
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent>
-                      {item.milestones.length > 0 && contract ? (
-                        <ContractTimeline 
-                          contract={contract as Contract | null} 
-                          milestones={item.milestones}
-                          contractor={item.contractor}
-                          onMilestoneComplete={handleMilestoneComplete}
-                          onMilestoneApprove={handleMilestoneApprove}
-                        />
+                    <CardContent className="p-0">
+                      {item.milestones.length > 0 ? (
+                        <div className="divide-y divide-zinc-800">
+                          {item.milestones.map((deliverable, idx) => {
+                            const isPending = deliverable.status === 'pending';
+                            const isCompleted = deliverable.status === 'completed' || deliverable.status === 'approved';
+                            const isInProgress = !isPending && !isCompleted;
+                            
+                            return (
+                              <div key={deliverable.id} className="p-4 flex items-center justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center">
+                                    {isCompleted ? (
+                                      <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+                                    ) : isPending ? (
+                                      <Clock className="h-5 w-5 text-amber-500 mr-2" />
+                                    ) : (
+                                      <AlertTriangle className="h-5 w-5 text-orange-500 mr-2" />
+                                    )}
+                                    <h3 className="font-medium text-white">
+                                      {deliverable.name || `Deliverable ${idx + 1}`}
+                                    </h3>
+                                  </div>
+                                  
+                                  <div className="mt-1 text-sm text-zinc-400 ml-7">
+                                    {deliverable.description || 'No description provided'}
+                                  </div>
+                                  
+                                  <div className="mt-2 ml-7 flex flex-wrap gap-2 text-xs">
+                                    {deliverable.dueDate && (
+                                      <span className="px-2 py-1 rounded bg-zinc-800 text-zinc-300 flex items-center">
+                                        <Calendar className="h-3 w-3 mr-1" />
+                                        Due: {format(new Date(deliverable.dueDate), 'MMM d, yyyy')}
+                                      </span>
+                                    )}
+                                    
+                                    <span className={`px-2 py-1 rounded flex items-center ${
+                                      isCompleted ? 'bg-green-900/30 text-green-400' : 
+                                      isPending ? 'bg-amber-900/30 text-amber-400' : 
+                                      'bg-orange-900/30 text-orange-400'
+                                    }`}>
+                                      {isCompleted ? 'Completed' : isPending ? 'Pending' : 'In Progress'}
+                                    </span>
+                                    
+                                    {deliverable.paymentAmount && (
+                                      <span className="px-2 py-1 rounded bg-zinc-800 text-zinc-300 flex items-center">
+                                        <DollarSign className="h-3 w-3 mr-1" />
+                                        ${parseFloat(deliverable.paymentAmount).toFixed(2)}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                
+                                <div className="flex gap-2">
+                                  {isPending && (
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline"
+                                      onClick={() => {
+                                        toast({
+                                          title: "Reminder sent",
+                                          description: `Reminder sent to ${item.contractor.firstName} ${item.contractor.lastName} about this deliverable.`,
+                                        });
+                                      }}
+                                    >
+                                      Send Reminder
+                                    </Button>
+                                  )}
+                                  
+                                  {!isCompleted && (
+                                    <Button 
+                                      size="sm" 
+                                      variant="default"
+                                      onClick={() => handleMilestoneComplete(deliverable.id)}
+                                    >
+                                      Mark Completed
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       ) : (
-                        <p>No milestones have been defined for this worker.</p>
+                        <div className="p-6 text-center text-zinc-400">
+                          No deliverables have been defined for this worker.
+                        </div>
                       )}
                     </CardContent>
+                    <CardFooter className="bg-zinc-950 border-t border-zinc-800 flex justify-between p-4">
+                      <Button variant="outline" size="sm">
+                        View Worker Profile
+                      </Button>
+                      <Button variant="default" size="sm">
+                        Add Deliverable
+                      </Button>
+                    </CardFooter>
                   </Card>
                 ))}
                 
                 <div className="flex justify-center mt-6">
-                  <Button variant="outline">
-                    Add New Milestone
-                  </Button>
+                  <AddContractorModal 
+                    contractId={contractId} 
+                    contractors={contractors}
+                    onSuccess={() => {
+                      queryClient.invalidateQueries({ queryKey: ['/api/contracts', contractId] });
+                    }} 
+                  />
                 </div>
               </div>
             ) : (
               <Card>
                 <CardHeader>
-                  <CardTitle>No Milestones Found</CardTitle>
+                  <CardTitle>No Deliverables Found</CardTitle>
                   <CardDescription>
-                    No milestones have been defined for this project yet.
+                    No deliverables have been defined for this project yet. Start by adding a worker to the project.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="flex justify-center">
-                    <Button>
-                      Add First Milestone
-                    </Button>
+                    <AddContractorModal 
+                      contractId={contractId} 
+                      contractors={contractors}
+                      onSuccess={() => {
+                        queryClient.invalidateQueries({ queryKey: ['/api/contracts', contractId] });
+                      }} 
+                    />
                   </div>
                 </CardContent>
               </Card>
