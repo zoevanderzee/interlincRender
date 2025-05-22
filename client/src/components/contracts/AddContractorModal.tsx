@@ -36,6 +36,9 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
   const [contractorValue, setContractorValue] = useState<string>('');
   const [isOpen, setIsOpen] = useState(false);
   const [budgetWarning, setBudgetWarning] = useState<string | null>(null);
+  const [deliverables, setDeliverables] = useState<string>('');
+  const [dueDate, setDueDate] = useState<string>('');
+  const [amount, setAmount] = useState<string>('');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -116,7 +119,7 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
     }
   }, [contract, contractorValue]);
 
-  // Mutation to update contract with contractor
+  // Mutation to update contract with contractor and deliverables
   const updateContractMutation = useMutation({
     mutationFn: async () => {
       return await apiRequest(
@@ -124,7 +127,9 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
         `/api/contracts/${contractId}`, 
         { 
           contractorId: parseInt(selectedContractorId),
-          contractorValue: contractorValue ? parseFloat(contractorValue) : undefined
+          contractorValue: contractorValue ? parseFloat(contractorValue) : undefined,
+          deliverables: deliverables,
+          dueDate: dueDate
         }
       );
     },
@@ -157,7 +162,7 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
     },
   });
 
-  // Function to handle contractor assignment with budget checks
+  // Function to handle contractor assignment with required fields checks
   const assignContractorToProject = () => {
     if (!selectedContractorId) {
       toast({
@@ -168,10 +173,28 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
       return;
     }
     
+    if (!deliverables) {
+      toast({
+        title: "Deliverables required",
+        description: "Please enter what the worker is expected to deliver.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!dueDate) {
+      toast({
+        title: "Due date required",
+        description: "Please enter when the deliverables are due.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     if (!contractorValue || isNaN(parseFloat(contractorValue)) || parseFloat(contractorValue) <= 0) {
       toast({
-        title: "Invalid contractor value",
-        description: "Please enter a valid amount for this contractor.",
+        title: "Invalid amount",
+        description: "Please enter a valid payment amount for this deliverable.",
         variant: "destructive",
       });
       return;
@@ -241,7 +264,33 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="contractorValue">Contractor Budget Allocation ($)</Label>
+              <Label htmlFor="deliverables">Deliverables</Label>
+              <Input
+                id="deliverables"
+                placeholder="Website design, logo, etc."
+                value={deliverables}
+                onChange={(e) => setDeliverables(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                What the worker is expected to deliver
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="dueDate">Due Date</Label>
+              <Input
+                id="dueDate"
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                When the deliverables are due
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="contractorValue">Amount ($)</Label>
               <div className="flex relative">
                 <DollarSign className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -254,7 +303,7 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                Enter the amount allocated to this contractor for the project
+                Payment amount for this deliverable
               </p>
             </div>
             
