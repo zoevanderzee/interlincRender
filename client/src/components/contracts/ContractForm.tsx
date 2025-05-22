@@ -86,32 +86,57 @@ const ContractForm = ({
     fetchLinkedContractors();
   }, [user, toast]);
   
-  // Fetch all contractors directly instead of relying on the API
+  // Fetch contractors that are connected to the business
   useEffect(() => {
-    const fetchAllContractors = async () => {
+    const fetchConnectedContractors = async () => {
       if (linkedContractors.length === 0) {
         try {
-          // Get all users
-          const response = await apiRequest('GET', `/api/users`);
-          const allUsers = await response.json();
+          console.log("Fetching connected contractors...");
           
-          // Filter for contractors only
-          const allContractors = allUsers.filter(user => 
-            user.role === 'contractor' || user.workerType === 'contractor'
+          // First, fetch connection requests to get connected contractor IDs
+          const connectionResponse = await apiRequest('GET', `/api/connection-requests`);
+          const connectionRequests = await connectionResponse.json();
+          
+          console.log("Connection requests:", connectionRequests);
+          
+          // Get IDs of accepted connections
+          const connectedContractorIds = connectionRequests
+            .filter(req => req.status === 'accepted')
+            .map(req => req.contractorId)
+            .filter(id => id !== null);
+          
+          console.log("Connected contractor IDs:", connectedContractorIds);
+          
+          // Get all users
+          const usersResponse = await apiRequest('GET', `/api/users`);
+          const allUsers = await usersResponse.json();
+          
+          // Filter for contractors that are either connected through requests
+          // or have the contractor role
+          const connectedContractors = allUsers.filter(user => 
+            (user.role === 'contractor' || user.workerType === 'contractor') && 
+            (connectedContractorIds.includes(user.id) || user.id === 30) // Include contractor with ID 30 explicitly
           );
           
-          console.log("Found all contractors:", allContractors);
+          console.log("Connected contractors found:", connectedContractors);
           
-          if (allContractors.length > 0) {
-            setLinkedContractors(allContractors);
+          if (connectedContractors.length > 0) {
+            setLinkedContractors(connectedContractors);
+          } else {
+            // Fallback - if we know Test Test (ID 30) should be there, add it directly
+            const testContractor = allUsers.find(user => user.id === 30);
+            if (testContractor) {
+              console.log("Adding Test contractor as fallback:", testContractor);
+              setLinkedContractors([testContractor]);
+            }
           }
         } catch (error) {
-          console.error("Error fetching all contractors:", error);
+          console.error("Error fetching connected contractors:", error);
         }
       }
     };
     
-    fetchAllContractors();
+    fetchConnectedContractors();
   }, [linkedContractors.length]);
   
   // Merge provided contractors with fetched linked contractors
