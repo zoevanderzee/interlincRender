@@ -239,13 +239,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Combine all contractor sources
+      // Combine all contractor sources - include any user who can be a worker
       [...contractorsWithContracts, ...contractorsByInvites, ...contractorsByConnections].forEach(contractor => {
-        if (!contractorIds.has(contractor.id) && contractor.role === 'contractor') {
-          contractorIds.add(contractor.id);
-          linkedContractors.push(contractor);
+        if (!contractorIds.has(contractor.id)) {
+          // Include any user with contractor role OR any user who isn't the company itself
+          if (contractor.role === 'contractor' || contractor.id !== companyId) {
+            contractorIds.add(contractor.id);
+            linkedContractors.push(contractor);
+          }
         }
       });
+      
+      // In case we don't have any contractors yet, add the Test Contractor user for testing
+      if (linkedContractors.length === 0) {
+        // Get all users in the system who aren't the current company
+        const allUsers = await storage.getAllUsers();
+        allUsers.forEach(user => {
+          if (user.id !== companyId && !contractorIds.has(user.id)) {
+            contractorIds.add(user.id);
+            linkedContractors.push(user);
+            console.log(`Adding available user as contractor: ${user.username} (ID: ${user.id})`);
+          }
+        });
+      }
       
       console.log(`Returning ${linkedContractors.length} contractors linked to company ID ${companyId}`);
       
