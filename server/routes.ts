@@ -528,6 +528,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       const updateData = req.body;
       
+      // If a contractor is being assigned and a contractor value is provided
+      if (updateData.contractorId && updateData.contractorValue) {
+        console.log(`Assigning contractor ${updateData.contractorId} to contract ${id} with value ${updateData.contractorValue}`);
+        
+        // Get the existing contract
+        const existingContract = await storage.getContract(id);
+        if (!existingContract) {
+          return res.status(404).json({ message: "Project not found" });
+        }
+        
+        // Get the business user who owns the contract
+        const businessUser = await storage.getUser(existingContract.businessId);
+        if (!businessUser) {
+          return res.status(404).json({ message: "Business user not found" });
+        }
+        
+        // Verify contractor exists and is linked to this business
+        const contractor = await storage.getUser(updateData.contractorId);
+        if (!contractor || contractor.role !== 'contractor') {
+          return res.status(400).json({ message: "Invalid contractor" });
+        }
+        
+        // Check if the contractor is linked to this business
+        const isLinkedContractor = await storage.isContractorLinkedToBusiness(
+          existingContract.businessId, 
+          updateData.contractorId
+        );
+        
+        if (!isLinkedContractor) {
+          console.log(`Contractor ${updateData.contractorId} is not linked to business ${existingContract.businessId}`);
+          return res.status(400).json({ 
+            message: "Contractor is not linked to this business",
+            error: "This contractor is not connected to your business. Please establish a connection first."
+          });
+        }
+        
+        // Budget validation: Check if there's enough budget in the contract
+        const contractValue = parseFloat(existingContract.value || '0');
+        const contractorValue = parseFloat(updateData.contractorValue.toString());
+        
+        if (contractorValue > contractValue) {
+          console.log(`Budget validation failed: Contractor value ${contractorValue} exceeds contract value ${contractValue}`);
+          return res.status(400).json({
+            message: "Budget exceeded",
+            error: "The contractor value exceeds the project budget. Please adjust the values."
+          });
+        }
+        
+        // All checks passed, proceed with the update
+        console.log("Budget validation passed, updating contract with contractor");
+      }
+      
       const updatedContract = await storage.updateContract(id, updateData);
       
       if (!updatedContract) {
@@ -536,6 +588,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(updatedContract);
     } catch (error) {
+      console.error("Error updating contract:", error);
       res.status(500).json({ message: "Error updating contract" });
     }
   });

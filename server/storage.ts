@@ -60,6 +60,7 @@ export interface IStorage {
   getConnectionRequestsByContractorId(contractorId: number): Promise<ConnectionRequest[]>;
   getConnectionRequests(filters: { businessId?: number, contractorId?: number, status?: string }): Promise<ConnectionRequest[]>;
   updateConnectionRequest(id: number, updates: Partial<ConnectionRequest>): Promise<ConnectionRequest>;
+  isContractorLinkedToBusiness(businessId: number, contractorId: number): Promise<boolean>;
   
   // Invites
   getInvite(id: number): Promise<Invite | undefined>;

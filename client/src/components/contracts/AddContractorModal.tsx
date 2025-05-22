@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Contract, User } from '@shared/schema';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -20,7 +20,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { AlertCircle, DollarSign, Loader2 } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface AddContractorModalProps {
   contractId: number;
@@ -30,9 +33,23 @@ interface AddContractorModalProps {
 
 export default function AddContractorModal({ contractId, contractors, onSuccess }: AddContractorModalProps) {
   const [selectedContractorId, setSelectedContractorId] = useState<string>('');
+  const [contractorValue, setContractorValue] = useState<string>('');
   const [isOpen, setIsOpen] = useState(false);
+  const [budgetWarning, setBudgetWarning] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Fetch the current contract details
+  const { data: contract } = useQuery<Contract>({
+    queryKey: ['/api/contracts', contractId],
+    enabled: isOpen, // Only fetch when modal is open
+  });
+
+  // Fetch company budget info
+  const { data: budgetData } = useQuery({
+    queryKey: ['/api/budget'],
+    enabled: isOpen, // Only fetch when modal is open
+  });
 
   // Filter contractor/freelancer type users who have been onboarded into the system
   // Making sure we show ALL contractors regardless of their workerType
@@ -42,24 +59,43 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
   );
   console.log("Available contractors after filtering:", availableContractors);
 
+  // Check if adding this contractor would exceed the project budget
+  useEffect(() => {
+    if (contract && contractorValue) {
+      const contractorValueNum = parseFloat(contractorValue);
+      const contractValueNum = parseFloat(contract.value || '0');
+      
+      // If contractor value would exceed contract value
+      if (contractorValueNum > contractValueNum) {
+        setBudgetWarning(`Warning: The contractor value ($${contractorValueNum}) exceeds the total project budget ($${contractValueNum}).`);
+      } else {
+        setBudgetWarning(null);
+      }
+    }
+  }, [contract, contractorValue]);
+
   // Mutation to update contract with contractor
   const updateContractMutation = useMutation({
     mutationFn: async () => {
       return await apiRequest(
         'PATCH', 
         `/api/contracts/${contractId}`, 
-        { contractorId: parseInt(selectedContractorId) }
+        { 
+          contractorId: parseInt(selectedContractorId),
+          contractorValue: contractorValue ? parseFloat(contractorValue) : undefined
+        }
       );
     },
     onSuccess: () => {
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['/api/contracts'] });
       queryClient.invalidateQueries({ queryKey: ['/api/contracts', contractId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/budget'] });
       
       // Show success message
       toast({
         title: "Contractor added successfully",
-        description: "The contractor has been assigned to this contract.",
+        description: "The contractor has been assigned to this project with budget allocation.",
       });
       
       // Close modal
@@ -79,8 +115,8 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  // Function to handle contractor assignment with budget checks
+  const assignContractorToProject = () => {
     if (!selectedContractorId) {
       toast({
         title: "Please select a contractor",
@@ -90,7 +126,35 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
       return;
     }
     
+    if (!contractorValue || isNaN(parseFloat(contractorValue)) || parseFloat(contractorValue) <= 0) {
+      toast({
+        title: "Invalid contractor value",
+        description: "Please enter a valid amount for this contractor.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const contractorValueNum = parseFloat(contractorValue);
+    const contractValueNum = parseFloat(contract?.value || '0');
+    
+    // Budget check: Verify contractor value doesn't exceed project budget
+    if (contractorValueNum > contractValueNum) {
+      toast({
+        title: "Budget exceeded",
+        description: `The contractor value ($${contractorValueNum}) exceeds the project budget ($${contractValueNum}).`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // All checks passed, proceed with contractor assignment
     updateContractMutation.mutate();
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    assignContractorToProject();
   };
 
   return (
@@ -110,9 +174,7 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <label htmlFor="contractor" className="text-sm font-medium">
-                Select Worker
-              </label>
+              <Label htmlFor="contractor">Select Worker</Label>
               <Select
                 value={selectedContractorId}
                 onValueChange={setSelectedContractorId}
@@ -135,7 +197,36 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
                 </SelectContent>
               </Select>
             </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="contractorValue">Contractor Budget Allocation ($)</Label>
+              <div className="flex relative">
+                <DollarSign className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="contractorValue"
+                  type="number"
+                  placeholder="0.00"
+                  className="pl-8"
+                  value={contractorValue}
+                  onChange={(e) => setContractorValue(e.target.value)}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Enter the amount allocated to this contractor for the project
+              </p>
+            </div>
+            
+            {budgetWarning && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Budget Warning</AlertTitle>
+                <AlertDescription>
+                  {budgetWarning}
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
+          
           <DialogFooter>
             <Button 
               type="button" 
@@ -147,7 +238,7 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
             </Button>
             <Button 
               type="submit" 
-              disabled={!selectedContractorId || updateContractMutation.isPending}
+              disabled={!selectedContractorId || !contractorValue || updateContractMutation.isPending}
             >
               {updateContractMutation.isPending ? (
                 <>
