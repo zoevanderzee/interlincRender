@@ -119,31 +119,57 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
     }
   }, [contract, contractorValue]);
 
-  // Mutation to update contract with contractor and deliverables
+  // Mutation to update contract with contractor
   const updateContractMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest(
+      // First update the contract with the contractor
+      const contractResponse = await apiRequest(
         'PATCH', 
         `/api/contracts/${contractId}`, 
         { 
           contractorId: parseInt(selectedContractorId),
-          contractorValue: contractorValue ? parseFloat(contractorValue) : undefined,
-          deliverables: deliverables,
-          dueDate: dueDate
+          contractorValue: contractorValue ? parseFloat(contractorValue) : undefined
         }
       );
+      
+      // Then create a milestone for the deliverable
+      if (deliverables) {
+        await apiRequest(
+          'POST',
+          '/api/milestones',
+          {
+            contractId: contractId,
+            name: deliverables,
+            description: `Due: ${dueDate}`,
+            dueDate: dueDate || new Date(),
+            status: 'pending',
+            paymentAmount: contractorValue
+          }
+        );
+      }
+      
+      return contractResponse;
     },
     onSuccess: () => {
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['/api/contracts'] });
       queryClient.invalidateQueries({ queryKey: ['/api/contracts', contractId] });
       queryClient.invalidateQueries({ queryKey: ['/api/budget'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/milestones'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/milestones', { contractId }] });
       
       // Show success message
       toast({
-        title: "Contractor added successfully",
-        description: "The contractor has been assigned to this project with budget allocation.",
+        title: "Worker added successfully",
+        description: "The worker has been assigned to this project with deliverables.",
       });
+      
+      // Reset form fields
+      setSelectedContractorId('');
+      setContractorValue('');
+      setDeliverables('');
+      setDueDate('');
+      setAmount('');
       
       // Close modal
       setIsOpen(false);
