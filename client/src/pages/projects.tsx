@@ -64,18 +64,36 @@ const Projects = () => {
     queryKey: ['/api/dashboard'],
   });
 
+  // Fetch projects/contracts directly to ensure we have the latest data
+  const { data: contractsData = [], isLoading: isLoadingContractsData } = useQuery<Contract[]>({
+    queryKey: ['/api/contracts'],
+  });
+
+  // Fetch contractors directly as well
+  const { data: contractorsData = [], isLoading: isLoadingContractorsData } = useQuery<User[]>({
+    queryKey: ['/api/users'],
+  });
+
+  // Fetch milestones for all contracts
+  const { data: milestonesData = [], isLoading: isLoadingMilestonesData } = useQuery<Milestone[]>({
+    queryKey: ['/api/milestones'],
+  });
+
   // Extract the data from the dashboard API response
-  const milestones = dashboardData?.milestones || [];
-  const contracts = dashboardData?.contracts || [];
-  const contractors = dashboardData?.contractors || [];
+  // Prioritize direct API data, but fall back to dashboard data if needed
+  const milestones = milestonesData.length > 0 ? milestonesData : (dashboardData?.milestones || []);
+  const contracts = contractsData.length > 0 ? contractsData : (dashboardData?.contracts || []);
+  const contractors = contractorsData.filter(u => u.role === 'contractor').length > 0 
+    ? contractorsData.filter(u => u.role === 'contractor') 
+    : (dashboardData?.contractors || []);
   
   // Get financial stats
   const totalPendingValue = dashboardData?.stats?.totalPendingValue || 0;
   const paymentsProcessed = dashboardData?.stats?.paymentsProcessed || 0;
 
-  const isLoadingMilestones = isLoadingDashboard;
-  const isLoadingContracts = isLoadingDashboard;
-  const isLoadingContractors = isLoadingDashboard;
+  const isLoadingMilestones = isLoadingDashboard || isLoadingMilestonesData;
+  const isLoadingContracts = isLoadingDashboard || isLoadingContractsData;
+  const isLoadingContractors = isLoadingDashboard || isLoadingContractorsData;
   
   // Fetch payments
   const { data: payments = [], isLoading: isLoadingPayments } = useQuery<Payment[]>({
