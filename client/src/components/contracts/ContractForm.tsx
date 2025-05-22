@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CalendarIcon, ChevronDownIcon, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -34,18 +34,20 @@ import { format } from "date-fns";
 import { insertContractSchema } from "@shared/schema";
 import { User } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { InfoIcon } from "lucide-react";
 
 interface ContractFormProps {
-  contractors: User[];
+  contractors?: User[]; // Made optional since we'll fetch linked contractors directly
   onSuccess?: () => void;
   contractData?: any; // The contract data when in edit mode
   isEditMode?: boolean; // Flag to indicate we're editing
 }
 
 const ContractForm = ({ 
-  contractors, 
+  contractors: providedContractors, 
   onSuccess, 
   contractData, 
   isEditMode = false 
@@ -54,6 +56,41 @@ const ContractForm = ({
   const queryClient = useQueryClient();
   const [submitting, setSubmitting] = useState(false);
   const { user } = useAuth();
+  const [linkedContractors, setLinkedContractors] = useState<User[]>([]);
+  const [isLoadingContractors, setIsLoadingContractors] = useState<boolean>(false);
+  
+  // Fetch linked contractors from our dedicated endpoint
+  useEffect(() => {
+    const fetchLinkedContractors = async () => {
+      if (!user) return;
+      
+      setIsLoadingContractors(true);
+      try {
+        // Use the company ID (user.id for business users) to fetch linked contractors
+        const response = await apiRequest('GET', `/api/contractors?companyId=${user.id}`);
+        const data = await response.json();
+        console.log("Linked contractors fetched:", data);
+        setLinkedContractors(data);
+      } catch (error) {
+        console.error("Error fetching linked contractors:", error);
+        toast({
+          title: "Error fetching contractors",
+          description: "Could not load workers linked to your company. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoadingContractors(false);
+      }
+    };
+    
+    fetchLinkedContractors();
+  }, [user, toast]);
+  
+  // Merge provided contractors with fetched linked contractors
+  const contractors = [...(providedContractors || []), ...linkedContractors]
+    // Filter out duplicates based on ID
+    .filter((contractor, index, self) => 
+      index === self.findIndex(c => c.id === contractor.id));
 
   // Extend the insert schema with additional validation
   const formSchema = insertContractSchema.extend({
@@ -258,8 +295,61 @@ const ContractForm = ({
           />
         </div>
 
-        {/* Contractor selection removed from initial project creation.
-        Sub contractors and freelancers can be added after project creation */}
+        {/* Contractor selection */}
+        <div className="space-y-6">
+          <FormField
+            control={form.control}
+            name="contractorId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-white">Assign Worker</FormLabel>
+                <Select
+                  disabled={isLoadingContractors}
+                  onValueChange={(value) => field.onChange(value ? parseInt(value) : null)}
+                  value={field.value?.toString() || ""}
+                >
+                  <FormControl>
+                    <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
+                      <SelectValue 
+                        placeholder={isLoadingContractors ? "Loading workers..." : "Select a worker"} 
+                      />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent className="bg-zinc-800 border-zinc-700 text-white">
+                    <SelectItem value="">None</SelectItem>
+                    {contractors && contractors.length > 0 ? (
+                      contractors.map((contractor) => (
+                        <SelectItem key={contractor.id} value={contractor.id.toString()}>
+                          {contractor.firstName && contractor.lastName
+                            ? `${contractor.firstName} ${contractor.lastName}`
+                            : contractor.username}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="" disabled>
+                        {isLoadingContractors ? "Loading workers..." : "No workers available"}
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                <FormDescription className="text-zinc-400">
+                  Select a worker to assign to this project
+                </FormDescription>
+                {contractors && contractors.length === 0 && !isLoadingContractors && (
+                  <Alert variant="warning" className="mt-2 bg-amber-900/20 text-amber-200 border-amber-900">
+                    <InfoIcon className="h-4 w-4" />
+                    <AlertTitle>No workers available</AlertTitle>
+                    <AlertDescription>
+                      You need to connect with workers before you can assign them to projects.
+                      Go to the Connections page to invite workers.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         <FormField
           control={form.control}
