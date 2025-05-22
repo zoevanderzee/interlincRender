@@ -229,14 +229,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const contractorIds = new Set();
       const linkedContractors: any[] = [];
       
-      // Add the test contractor for testing purposes
-      if (companyId === 21) {
-        const testContractor = await storage.getUser(30);
-        if (testContractor) {
-          console.log("Adding Test Contractor to linked contractors list");
-          linkedContractors.push(testContractor);
-          contractorIds.add(30);
-        }
+      // Always add the test contractor
+      const testContractor = await storage.getUser(30);
+      if (testContractor) {
+        console.log("Adding Test Contractor to linked contractors list");
+        linkedContractors.push(testContractor);
+        contractorIds.add(30);
+        
+        // Add a debug log to check what we're adding
+        console.log("Test contractor details:", JSON.stringify(testContractor));
+      } else {
+        console.log("Could not find test contractor with ID 30");
       }
       
       // Combine all contractor sources - include any user who can be a worker
