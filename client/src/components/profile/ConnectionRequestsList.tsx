@@ -167,9 +167,29 @@ export function ConnectionRequestsList() {
     updateRequestMutation.mutate({ id, status: "declined" });
   };
   
-  // Filter requests based on tab
+  // Filter requests based on tab and deduplicate entries by businessId
+  // This prevents showing the same business multiple times in accepted requests
+  
+  // Helper function to deduplicate by businessId
+  const deduplicateByBusinessId = (requests: ConnectionRequest[]) => {
+    const seen = new Set();
+    return requests.filter(req => {
+      // For each businessId, only keep the first occurrence
+      if (seen.has(req.businessId)) {
+        return false;
+      }
+      seen.add(req.businessId);
+      return true;
+    });
+  };
+  
   const pendingRequests = connectionRequests.filter((req: ConnectionRequest) => req.status === "pending");
-  const acceptedRequests = connectionRequests.filter((req: ConnectionRequest) => req.status === "accepted");
+  
+  // Deduplicate accepted requests to show each company only once
+  const acceptedRequests = deduplicateByBusinessId(
+    connectionRequests.filter((req: ConnectionRequest) => req.status === "accepted")
+  );
+  
   const declinedRequests = connectionRequests.filter((req: ConnectionRequest) => req.status === "declined");
   
   // Format date for display
