@@ -2907,8 +2907,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check for existing connection requests with this contractor
       const existingRequests = await storage.getConnectionRequestsByBusinessId(businessId);
       const alreadyRequested = existingRequests.some(req => {
-        // Check if there's already a pending or accepted request for this contractor
-        return req.profileCode === profileCode && 
+        // Stronger validation to prevent duplicate requests:
+        // 1. Check by profile code (case insensitive)
+        const profileCodeMatch = req.profileCode && 
+                                profileCode && 
+                                req.profileCode.toUpperCase() === profileCode.toUpperCase();
+        
+        // 2. Check by contractor ID directly
+        const contractorIdMatch = req.contractorId === contractor.id;
+        
+        // Consider it a duplicate if either matches and status is pending or accepted
+        return (profileCodeMatch || contractorIdMatch) && 
                (req.status === 'pending' || req.status === 'accepted');
       });
       
