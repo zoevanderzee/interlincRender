@@ -35,9 +35,12 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
   const queryClient = useQueryClient();
 
   // Filter contractor/freelancer type users who have been onboarded into the system
+  // Making sure we show ALL contractors regardless of their workerType
+  console.log("Available contractors before filtering:", contractors);
   const availableContractors = contractors.filter(c => 
-    (c.role === 'contractor' || c.workerType === 'contractor' || c.workerType === 'freelancer')
+    c.role === 'contractor' // Only filter by role 'contractor', don't check workerType
   );
+  console.log("Available contractors after filtering:", availableContractors);
 
   // Mutation to update contract with contractor
   const updateContractMutation = useMutation({
