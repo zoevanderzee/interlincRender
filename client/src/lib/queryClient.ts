@@ -51,8 +51,8 @@ function updateCsrfToken(res: Response) {
 }
 
 export async function apiRequest(
-  url: string,
   method: string = 'GET',
+  url: string,
   data?: unknown | undefined,
   customHeaders?: Record<string, string>
 ): Promise<Response> {

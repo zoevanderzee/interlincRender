@@ -126,6 +126,7 @@ const ContractForm = ({
   // Create contract mutation
   const createContractMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
+      // Note: Parameter order matters - method first, then URL, then data
       return apiRequest("POST", "/api/contracts", data);
     },
     onSuccess: () => {
@@ -150,6 +151,7 @@ const ContractForm = ({
   const updateContractMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
       if (!contractData?.id) throw new Error("Missing contract ID for update");
+      // Method first, then URL, then data
       return apiRequest("PATCH", `/api/contracts/${contractData.id}`, data);
     },
     onSuccess: () => {
