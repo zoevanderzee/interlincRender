@@ -62,6 +62,7 @@ export const contracts = pgTable("contracts", {
   description: text("description"),
   status: text("status").notNull().default("draft"), // draft, active, completed, terminated, deleted
   value: decimal("value", { precision: 10, scale: 2 }).notNull(),
+  contractorBudget: decimal("contractor_budget", { precision: 10, scale: 2 }), // Budget allocated to the contractor for this project
   startDate: timestamp("start_date"),
   endDate: timestamp("end_date"),
   createdAt: timestamp("created_at").defaultNow(),

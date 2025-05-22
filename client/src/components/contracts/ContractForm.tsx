@@ -112,6 +112,22 @@ const ContractForm = ({
     }),
     // Explicitly make contractorId optional
     contractorId: z.number().optional().nullable(),
+    // Add budget allocation field for contractors
+    contractorBudget: z.string().optional()
+      .refine(val => !val || /^\d+(\.\d{1,2})?$/.test(val), {
+        message: "Budget must be a valid amount (e.g. 1000 or 1000.50)",
+      })
+      .refine((val, ctx) => {
+        // Skip validation if contractorId is not set or budget is not set
+        if (!ctx.data.contractorId || !val) return true;
+        
+        // Ensure budget allocation doesn't exceed project value
+        const projectValue = parseFloat(ctx.data.value || "0");
+        const budgetValue = parseFloat(val);
+        return budgetValue <= projectValue;
+      }, {
+        message: "Worker budget cannot exceed project budget",
+      }),
   });
 
   // Prepare default values or use existing contract data for edit mode
@@ -214,9 +230,12 @@ const ContractForm = ({
     try {
       setSubmitting(true);
       
+      // Extract contractorBudget from values
+      const { contractorBudget, ...contractData } = values;
+      
       // Ensure the businessId is always the current user's id
       const formData = {
-        ...values,
+        ...contractData,
         businessId: user?.id || 0
       };
       
@@ -225,8 +244,37 @@ const ContractForm = ({
         console.log("Updating existing project:", contractData.id);
         await updateContractMutation.mutateAsync(formData);
       } else {
-        console.log("Creating new project");
-        await createContractMutation.mutateAsync(formData);
+        console.log("Creating new project with data:", formData);
+        
+        // First, create the project
+        const response = await createContractMutation.mutateAsync(formData);
+        const newProject = await response.json();
+        
+        // If project creation was successful and we have both a contractor ID and budget allocation
+        if (newProject?.id && values.contractorId && contractorBudget) {
+          console.log(`Allocating budget $${contractorBudget} to contractor ${values.contractorId} for project ${newProject.id}`);
+          
+          try {
+            // Send request to allocate budget for this contractor on the project
+            await apiRequest("POST", `/api/contracts/${newProject.id}/allocate-budget`, {
+              contractorId: values.contractorId,
+              budget: contractorBudget
+            });
+            
+            toast({
+              title: "Worker assigned",
+              description: `Worker has been assigned to the project with a budget of $${contractorBudget}`,
+            });
+          } catch (error) {
+            console.error("Error allocating budget:", error);
+            toast({
+              title: "Worker assignment failed",
+              description: "Project was created but worker assignment failed. You can add workers later.",
+              variant: "destructive",
+            });
+          }
+        }
+        
         // Only reset form on create, not on update
         form.reset();
       }
@@ -295,60 +343,98 @@ const ContractForm = ({
           />
         </div>
 
-        {/* Contractor selection */}
+        {/* Contractor selection and budget allocation */}
         <div className="space-y-6">
-          <FormField
-            control={form.control}
-            name="contractorId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-white">Assign Worker</FormLabel>
-                <Select
-                  disabled={isLoadingContractors}
-                  onValueChange={(value) => field.onChange(value ? parseInt(value) : null)}
-                  value={field.value?.toString() || ""}
-                >
-                  <FormControl>
-                    <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
-                      <SelectValue 
-                        placeholder={isLoadingContractors ? "Loading workers..." : "Select a worker"} 
-                      />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent className="bg-zinc-800 border-zinc-700 text-white">
-                    <SelectItem value="">None</SelectItem>
-                    {contractors && contractors.length > 0 ? (
-                      contractors.map((contractor) => (
-                        <SelectItem key={contractor.id} value={contractor.id.toString()}>
-                          {contractor.firstName && contractor.lastName
-                            ? `${contractor.firstName} ${contractor.lastName}`
-                            : contractor.username}
+          <div className="space-y-6">
+            <FormField
+              control={form.control}
+              name="contractorId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-white">Assign Worker</FormLabel>
+                  <Select
+                    disabled={isLoadingContractors}
+                    onValueChange={(value) => field.onChange(value ? parseInt(value) : null)}
+                    value={field.value?.toString() || ""}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
+                        <SelectValue 
+                          placeholder={isLoadingContractors ? "Loading workers..." : "Select a worker"} 
+                        />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent className="bg-zinc-800 border-zinc-700 text-white">
+                      <SelectItem value="">None</SelectItem>
+                      {contractors && contractors.length > 0 ? (
+                        contractors.map((contractor) => (
+                          <SelectItem key={contractor.id} value={contractor.id.toString()}>
+                            {contractor.firstName && contractor.lastName
+                              ? `${contractor.firstName} ${contractor.lastName}`
+                              : contractor.username}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="" disabled>
+                          {isLoadingContractors ? "Loading workers..." : "No workers available"}
                         </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="" disabled>
-                        {isLoadingContractors ? "Loading workers..." : "No workers available"}
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-                <FormDescription className="text-zinc-400">
-                  Select a worker to assign to this project
-                </FormDescription>
-                {contractors && contractors.length === 0 && !isLoadingContractors && (
-                  <Alert variant="warning" className="mt-2 bg-amber-900/20 text-amber-200 border-amber-900">
-                    <InfoIcon className="h-4 w-4" />
-                    <AlertTitle>No workers available</AlertTitle>
-                    <AlertDescription>
-                      You need to connect with workers before you can assign them to projects.
-                      Go to the Connections page to invite workers.
-                    </AlertDescription>
-                  </Alert>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription className="text-zinc-400">
+                    Select a worker to assign to this project
+                  </FormDescription>
+                  {contractors && contractors.length === 0 && !isLoadingContractors && (
+                    <Alert variant="warning" className="mt-2 bg-amber-900/20 text-amber-200 border-amber-900">
+                      <InfoIcon className="h-4 w-4" />
+                      <AlertTitle>No workers available</AlertTitle>
+                      <AlertDescription>
+                        You need to connect with workers before you can assign them to projects.
+                        Go to the Connections page to invite workers.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            {/* Budget allocation field - only shows when a contractor is selected */}
+            {form.watch("contractorId") && (
+              <FormField
+                control={form.control}
+                name="contractorBudget"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-white">Worker Budget Allocation</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <span className="absolute left-3 top-2.5 text-zinc-400">$</span>
+                        <Input
+                          {...field}
+                          className="bg-zinc-900 border-zinc-700 text-white pl-7"
+                          placeholder="0.00"
+                          type="text"
+                          pattern="^\d*(\.\d{0,2})?$"
+                          onChange={(e) => {
+                            // Only allow numbers and a decimal point with up to 2 decimal places
+                            const value = e.target.value;
+                            if (value === "" || /^\d*(\.\d{0,2})?$/.test(value)) {
+                              field.onChange(value);
+                            }
+                          }}
+                        />
+                      </div>
+                    </FormControl>
+                    <FormDescription className="text-zinc-400">
+                      Allocate a budget for this worker (must not exceed project budget)
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
                 )}
-                <FormMessage />
-              </FormItem>
+              />
             )}
-          />
+          </div>
         </div>
 
         <FormField

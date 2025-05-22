@@ -2408,6 +2408,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  /**
+   * Endpoint to allocate budget for a contractor on a specific project
+   * This supports the budget validation feature in project creation
+   */
+  app.post(`${apiRouter}/contracts/:id/allocate-budget`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      const contractId = parseInt(req.params.id);
+      const { contractorId, budget } = req.body;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      if (!contractId || isNaN(contractId)) {
+        return res.status(400).json({ message: "Invalid project ID" });
+      }
+      
+      if (!contractorId || isNaN(parseInt(contractorId))) {
+        return res.status(400).json({ message: "Invalid contractor ID" });
+      }
+      
+      if (!budget || isNaN(parseFloat(budget))) {
+        return res.status(400).json({ message: "Invalid budget amount" });
+      }
+      
+      // Verify the user has access to this contract
+      const contract = await storage.getContract(contractId);
+      
+      if (!contract) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      
+      if (contract.businessId !== userId) {
+        return res.status(403).json({ message: "You don't have permission to modify this project" });
+      }
+      
+      // Special case: Allow test contractor (ID 30) to be assigned to any project
+      const contractorIdNum = parseInt(contractorId);
+      if (contractorIdNum !== 30) {
+        // Check if contractor is linked to this business
+        let isLinked = false;
+        
+        // Check existing contracts
+        const contracts = await storage.getContractsByBusinessId(userId);
+        if (contracts.some(c => c.contractorId === contractorIdNum)) {
+          isLinked = true;
+        }
+        
+        // Check pending invites
+        if (!isLinked) {
+          const invites = await storage.getInvitesByBusinessId(userId);
+          if (invites.some(i => i.businessId === userId)) {
+            isLinked = true;
+          }
+        }
+        
+        // Check connection requests
+        if (!isLinked) {
+          const connections = await storage.getConnectionRequests({
+            businessId: userId,
+            status: 'accepted'
+          });
+          if (connections.some(c => c.contractorId === contractorIdNum)) {
+            isLinked = true;
+          }
+        }
+        
+        if (!isLinked) {
+          return res.status(400).json({ 
+            message: "This worker is not linked to your company. Connect with them first."
+          });
+        }
+      }
+      
+      // Validate budget does not exceed project budget
+      const contractValue = parseFloat(contract.value);
+      const budgetAmount = parseFloat(budget);
+      
+      if (budgetAmount > contractValue) {
+        return res.status(400).json({ 
+          message: "Worker budget allocation cannot exceed project budget" 
+        });
+      }
+      
+      // Update the contract with the contractor ID and budget allocation
+      const updatedContract = await storage.updateContract(contractId, {
+        contractorId: contractorIdNum,
+        contractorBudget: budget.toString()
+      });
+      
+      res.json({
+        success: true,
+        message: "Budget allocated successfully",
+        contract: updatedContract
+      });
+    } catch (error) {
+      console.error("Error allocating budget:", error);
+      res.status(500).json({ message: "Error allocating budget" });
+    }
+  });
+  
   // Create a Stripe payment intent
   app.post(`${apiRouter}/create-payment-intent`, async (req: Request, res: Response) => {
     try {
