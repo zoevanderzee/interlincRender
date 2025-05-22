@@ -51,50 +51,12 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
     enabled: isOpen, // Only fetch when modal is open
   });
 
-  // Add a test contractor directly to the list
-  const testContractor = {
-    id: 30,
-    username: "Test Contractor",
-    firstName: "Test",
-    lastName: "Contractor",
-    email: "test@example.com",
-    role: "contractor",
-    workerType: null,
-    profileImageUrl: null,
-    companyName: null,
-    companyLogo: null,
-    title: null,
-    industry: null,
-    foundedYear: null,
-    employeeCount: null,
-    website: null,
-    profileCode: null,
-    stripeCustomerId: null,
-    stripeSubscriptionId: null,
-    stripeConnectAccountId: null,
-    payoutEnabled: false,
-    budgetCap: null,
-    budgetUsed: null,
-    budgetPeriod: null,
-    budgetStartDate: null,
-    budgetEndDate: null,
-    budgetResetEnabled: null,
-    resetPasswordToken: null,
-    resetPasswordExpires: null
-  };
+  // We'll use the provided contractors directly
+  console.log("Available contractors before filtering:", contractors);
   
-  // Add our test contractor to the contractors list if it's not already there
-  let enhancedContractors = [...contractors];
-  if (!enhancedContractors.some(c => c.id === 30)) {
-    enhancedContractors.push(testContractor as User);
-  }
-  
-  console.log("Available contractors before filtering:", enhancedContractors);
-  
-  // Filter contractor/freelancer type users who have been onboarded into the system
-  // Include ALL users who have the contractor role regardless of worker type
-  const availableContractors = enhancedContractors.filter(c => 
-    c.role === 'contractor' || c.id === 30 // Include either contractors or our test contractor
+  // Filter to include ALL users who have the contractor role regardless of worker type
+  const availableContractors = contractors.filter(c => 
+    c.role === 'contractor' // Include all users with the contractor role
   );
   
   console.log("Available contractors after filtering:", availableContractors);
