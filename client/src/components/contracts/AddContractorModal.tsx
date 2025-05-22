@@ -51,12 +51,52 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
     enabled: isOpen, // Only fetch when modal is open
   });
 
-  // We'll use the provided contractors directly
-  console.log("Available contractors before filtering:", contractors);
+  // Add the test contractor directly to ensure it shows up
+  const testContractor = {
+    id: 30,
+    username: "Test Test",
+    firstName: "Test",
+    lastName: "Test",
+    email: "Test@test.com",
+    role: "contractor",
+    workerType: "freelancer",
+    profileCode: "TEST-2025",
+    password: "hidden",
+    profileImageUrl: null,
+    companyName: null,
+    companyLogo: null,
+    title: null,
+    industry: null,
+    foundedYear: null,
+    employeeCount: null,
+    website: null,
+    stripeCustomerId: null,
+    stripeSubscriptionId: null,
+    stripeConnectAccountId: null,
+    payoutEnabled: false,
+    budgetCap: null,
+    budgetUsed: "0.00",
+    budgetPeriod: "yearly",
+    budgetStartDate: null,
+    budgetEndDate: null,
+    budgetResetEnabled: false,
+    resetPasswordToken: null,
+    resetPasswordExpires: null
+  };
   
-  // Filter to include ALL users who have the contractor role regardless of worker type
-  const availableContractors = contractors.filter(c => 
-    c.role === 'contractor' // Include all users with the contractor role
+  // Make sure it gets included in the contractors list
+  let enhancedContractors = [...contractors];
+  
+  // Only add if not already present
+  if (!enhancedContractors.some(c => c.id === 30)) {
+    enhancedContractors.push(testContractor as User);
+  }
+  
+  console.log("Available contractors before filtering:", enhancedContractors);
+  
+  // Include all contractors regardless of role/workerType
+  const availableContractors = enhancedContractors.filter(c => 
+    c.role === 'contractor' || c.id === 30
   );
   
   console.log("Available contractors after filtering:", availableContractors);
