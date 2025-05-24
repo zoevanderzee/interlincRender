@@ -141,9 +141,27 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
             contractId: contractId,
             name: deliverables,
             description: `Due: ${dueDate}`,
-            dueDate: dueDate || new Date(),
+            dueDate: dueDate ? new Date(dueDate) : new Date(),
             status: 'pending',
-            paymentAmount: contractorValue
+            paymentAmount: parseFloat(contractorValue || '0'),
+            progress: 0
+          }
+        );
+        
+        // Also create a work request to notify the contractor
+        await apiRequest(
+          'POST',
+          '/api/work-requests',
+          {
+            title: deliverables,
+            description: `Project deliverable: ${deliverables}`,
+            businessId: contract?.businessId || 0,
+            recipientEmail: selectedContractor?.email,
+            status: 'pending',
+            budgetMin: parseFloat(contractorValue || '0'),
+            budgetMax: parseFloat(contractorValue || '0'),
+            dueDate: dueDate ? new Date(dueDate) : new Date(),
+            skills: 'Required for project'
           }
         );
       }
