@@ -48,18 +48,15 @@ export default function ContractDetailPage() {
   // Helper function to get associated contractors
   const getAssociatedContractors = () => {
     if (!contract || !contractors || !Array.isArray(contractors)) return [];
-    // Find the contractor by ID
-    const contractorMatches = contractors.filter((c: User) => 
-      c.role === 'contractor' && 
-      c.id === contract.contractorId
-    );
     
-    console.log("Contract data:", contract);
-    console.log("Contractor ID from contract:", contract.contractorId);
-    console.log("All contractors:", contractors);
-    console.log("Matched contractors:", contractorMatches);
+    // Get contractor ID from the contract
+    const contractorId = contract.contractorId;
     
-    return contractorMatches;
+    // If no contractor ID, return empty array
+    if (!contractorId) return [];
+    
+    // Find the contractor that matches the ID
+    return contractors.filter(c => c.id === contractorId);
   };
   
   // Helper function to count associated contractors
@@ -136,7 +133,7 @@ export default function ContractDetailPage() {
     enabled: contractId > 0 && !contractError,
   });
 
-  // Fetch all contractors
+  // Fetch all contractors - use the users endpoint
   const { data: contractors = [], isLoading: isLoadingContractors } = useQuery<User[]>({
     queryKey: ['/api/users'],
     queryFn: getQueryFn({ on401: 'throw' }),
