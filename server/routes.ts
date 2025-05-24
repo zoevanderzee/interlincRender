@@ -2798,23 +2798,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       const { token, contractId } = req.body;
       
-      if (!token) {
-        return res.status(400).json({ message: "Token is required to verify work request" });
-      }
-      
       // Get the work request
       const workRequest = await storage.getWorkRequest(id);
       if (!workRequest) {
         return res.status(404).json({ message: "Work request not found" });
       }
       
-      // Verify the token
-      const isValidToken = await import('./services/email').then(
-        ({ verifyWorkRequestToken }) => verifyWorkRequestToken(token, workRequest.tokenHash)
-      );
+      let isValidToken = false;
+      
+      // Special handling for contractor users accepting work requests
+      // If the user is logged in and the request is sent to their email, allow automatic acceptance
+      if (token === 'auto-accept' && req.headers['x-user-id']) {
+        const userId = parseInt(req.headers['x-user-id'] as string);
+        const user = await storage.getUser(userId);
+        
+        if (user && user.email && workRequest.recipientEmail && 
+            user.email.toLowerCase() === workRequest.recipientEmail.toLowerCase()) {
+          isValidToken = true;
+          console.log(`Auto-accepting work request #${id} for user ${userId} (${user.email})`);
+        }
+      } else if (workRequest.tokenHash && token) {
+        // Standard token verification
+        isValidToken = await import('./services/email').then(
+          ({ verifyWorkRequestToken }) => verifyWorkRequestToken(token, workRequest.tokenHash)
+        );
+      } else if (!workRequest.tokenHash) {
+        // If no token hash stored, allow acceptance (fallback for older requests)
+        isValidToken = true;
+      }
       
       if (!isValidToken) {
-        return res.status(401).json({ message: "Invalid token" });
+        return res.status(401).json({ message: "Invalid token or unauthorized to accept this request" });
       }
       
       // Check if the work request is still pending and not expired

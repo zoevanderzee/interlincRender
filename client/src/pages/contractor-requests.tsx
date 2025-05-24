@@ -95,7 +95,20 @@ const ContractorRequests = () => {
   // Accept work request mutation
   const acceptMutation = useMutation({
     mutationFn: async (requestId: number) => {
-      return await apiRequest('POST', `/api/work-requests/${requestId}/accept`, {});
+      // Get the token from the URL if available
+      const tokenFromUrl = new URLSearchParams(window.location.search).get('token');
+      
+      // Find the matching request and contract
+      const request = workRequests.find(req => req.id === requestId);
+      const matchingContract = request ? contracts.find(
+        c => c.contractName?.toLowerCase() === request.title?.toLowerCase()
+      ) : null;
+      
+      // Send both token and contractId when accepting the request
+      return await apiRequest('POST', `/api/work-requests/${requestId}/accept`, {
+        token: tokenFromUrl || 'auto-accept', 
+        contractId: request?.contractId || matchingContract?.id
+      });
     },
     onSuccess: () => {
       toast({
@@ -106,6 +119,7 @@ const ContractorRequests = () => {
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['/api/work-requests'] });
       queryClient.invalidateQueries({ queryKey: ['/api/contracts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
     },
     onError: (error) => {
       toast({
