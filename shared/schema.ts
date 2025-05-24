@@ -168,7 +168,13 @@ export const insertContractSchema = baseContractSchema.extend({
   endDate: z.string().transform((val) => new Date(val)),
 });
 
-export const insertMilestoneSchema = createInsertSchema(milestones).omit({ id: true });
+// Create base milestone schema
+const baseMilestoneSchema = createInsertSchema(milestones).omit({ id: true });
+// Extend it to handle date strings properly
+export const insertMilestoneSchema = baseMilestoneSchema.extend({
+  // Handle date strings from frontend forms
+  dueDate: z.string().transform((val) => new Date(val)),
+});
 export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true, completedDate: true });
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, uploadedAt: true });
 export const insertBankAccountSchema = createInsertSchema(bankAccounts).omit({ id: true, createdAt: true, isVerified: true });
