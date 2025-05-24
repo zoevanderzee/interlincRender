@@ -141,9 +141,9 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
             contractId: contractId,
             name: deliverables,
             description: `Due: ${dueDate}`,
-            dueDate: dueDate ? new Date(dueDate) : new Date(),
+            dueDate: dueDate ? new Date(dueDate).toISOString() : new Date().toISOString(),
             status: 'pending',
-            paymentAmount: parseFloat(contractorValue || '0'),
+            paymentAmount: contractorValue || '0', // Send as string instead of number
             progress: 0
           }
         );
@@ -158,9 +158,9 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
             businessId: contract?.businessId || 0,
             recipientEmail: availableContractors.find(c => c.id.toString() === selectedContractorId)?.email,
             status: 'pending',
-            budgetMin: parseFloat(contractorValue || '0'),
-            budgetMax: parseFloat(contractorValue || '0'),
-            dueDate: dueDate ? new Date(dueDate) : new Date(),
+            budgetMin: contractorValue || '0', // Send as string instead of number
+            budgetMax: contractorValue || '0', // Send as string instead of number
+            dueDate: dueDate ? new Date(dueDate).toISOString() : new Date().toISOString(),
             skills: 'Required for project'
           }
         );
