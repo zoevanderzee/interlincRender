@@ -48,7 +48,18 @@ export default function ContractDetailPage() {
   // Helper function to get associated contractors
   const getAssociatedContractors = () => {
     if (!contract || !contractors || !Array.isArray(contractors)) return [];
-    return contractors.filter((c: User) => c.role === 'contractor' && c.id === (contract as Contract).contractorId);
+    // Find the contractor by ID
+    const contractorMatches = contractors.filter((c: User) => 
+      c.role === 'contractor' && 
+      c.id === contract.contractorId
+    );
+    
+    console.log("Contract data:", contract);
+    console.log("Contractor ID from contract:", contract.contractorId);
+    console.log("All contractors:", contractors);
+    console.log("Matched contractors:", contractorMatches);
+    
+    return contractorMatches;
   };
   
   // Helper function to count associated contractors
