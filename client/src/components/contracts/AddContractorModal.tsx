@@ -141,7 +141,7 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
             contractId: contractId,
             name: deliverables,
             description: `Due: ${dueDate}`,
-            dueDate: dueDate ? new Date(dueDate).toISOString() : new Date().toISOString(),
+            dueDate: dueDate ? new Date(dueDate) : new Date(), // Pass as Date object
             status: 'pending',
             paymentAmount: contractorValue || '0', // Send as string instead of number
             progress: 0
@@ -160,7 +160,7 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
             status: 'pending',
             budgetMin: contractorValue || '0', // Send as string instead of number
             budgetMax: contractorValue || '0', // Send as string instead of number
-            dueDate: dueDate ? new Date(dueDate).toISOString() : new Date().toISOString(),
+            dueDate: dueDate ? new Date(dueDate) : new Date(),
             skills: 'Required for project'
           }
         );
