@@ -134,6 +134,11 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
       
       // Then create a milestone for the deliverable
       if (deliverables) {
+        // Format dates properly for the server
+        const formattedDueDate = dueDate 
+          ? new Date(dueDate).toISOString()
+          : new Date().toISOString();
+            
         await apiRequest(
           'POST',
           '/api/milestones',
@@ -141,9 +146,9 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
             contractId: contractId,
             name: deliverables,
             description: `Due: ${dueDate}`,
-            dueDate: dueDate ? new Date(dueDate) : new Date(), // Pass as Date object
+            dueDate: formattedDueDate,
             status: 'pending',
-            paymentAmount: contractorValue || '0', // Send as string instead of number
+            paymentAmount: contractorValue || '0',
             progress: 0
           }
         );
@@ -160,7 +165,7 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
             status: 'pending',
             budgetMin: contractorValue || '0', // Send as string instead of number
             budgetMax: contractorValue || '0', // Send as string instead of number
-            dueDate: dueDate ? new Date(dueDate) : new Date(),
+            dueDate: dueDate ? new Date(dueDate).toISOString() : new Date().toISOString(),
             skills: 'Required for project'
           }
         );
