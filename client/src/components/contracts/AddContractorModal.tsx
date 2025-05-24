@@ -156,7 +156,7 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
             title: deliverables,
             description: `Project deliverable: ${deliverables}`,
             businessId: contract?.businessId || 0,
-            recipientEmail: selectedContractor?.email,
+            recipientEmail: availableContractors.find(c => c.id.toString() === selectedContractorId)?.email,
             status: 'pending',
             budgetMin: parseFloat(contractorValue || '0'),
             budgetMax: parseFloat(contractorValue || '0'),

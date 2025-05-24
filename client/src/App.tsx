@@ -22,6 +22,7 @@ import Settings from "@/pages/settings";
 import Subscribe from "@/pages/subscribe";
 import Help from "@/pages/help";
 import ContractorConnect from "@/pages/contractor-connect";
+import ContractorRequests from "@/pages/contractor-requests";
 import TestLogin from "@/pages/test-login";
 import PaymentTest from "@/pages/payment-test";
 import StripeDebug from "@/pages/stripe-debug";
@@ -144,6 +145,12 @@ function Router() {
       <ProtectedRoute path="/contractors/:id/connect">
         <Layout>
           <ContractorConnect />
+        </Layout>
+      </ProtectedRoute>
+      
+      <ProtectedRoute path="/contractor-requests">
+        <Layout>
+          <ContractorRequests />
         </Layout>
       </ProtectedRoute>
       
