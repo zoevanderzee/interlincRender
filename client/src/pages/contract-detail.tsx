@@ -49,14 +49,24 @@ export default function ContractDetailPage() {
   const getAssociatedContractors = () => {
     if (!contract || !contractors || !Array.isArray(contractors)) return [];
     
+    // Explicitly cast contract to any to access the contractorId property
+    const contractData = contract as any;
+    
+    // Log what we're seeing
+    console.log("Contractor access - Contract data:", contractData);
+    
     // Get contractor ID from the contract
-    const contractorId = contract.contractorId;
+    const contractorId = contractData.contractorId;
+    console.log("Contractor access - Contractor ID:", contractorId);
     
     // If no contractor ID, return empty array
     if (!contractorId) return [];
     
-    // Find the contractor that matches the ID
-    return contractors.filter(c => c.id === contractorId);
+    // Find matching contractors 
+    const matchingContractors = contractors.filter(c => c.id === contractorId);
+    console.log("Contractor access - Matching contractors:", matchingContractors);
+    
+    return matchingContractors;
   };
   
   // Helper function to count associated contractors
@@ -124,6 +134,7 @@ export default function ContractDetailPage() {
     queryKey: ['/api/contracts', contractId],
     queryFn: contractQueryFn,
     enabled: contractId > 0,
+    staleTime: 0, // Disable caching to ensure fresh data
   });
 
   // Fetch milestones for this project
