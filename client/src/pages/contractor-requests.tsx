@@ -70,12 +70,25 @@ const ContractorRequests = () => {
   // Enrich work requests with business and contract names
   const enrichedRequests = workRequests.map(request => {
     const business = businesses.find((b: any) => b.id === request.businessId);
-    const contract = contracts.find((c: any) => c.id === request.contractId);
+    
+    // Look for the contract in the contracts array
+    let contract = contracts.find((c: any) => c.id === request.contractId);
+    
+    // If the contractId is null but the title matches a contract name, try to find the contract
+    if (!request.contractId && request.title) {
+      const matchByTitle = contracts.find((c: any) => 
+        c.contractName?.toLowerCase() === request.title.toLowerCase()
+      );
+      if (matchByTitle) {
+        contract = matchByTitle;
+      }
+    }
     
     return {
       ...request,
       businessName: business?.companyName || business?.username || `Business ID: ${request.businessId}`,
-      contractName: contract?.contractName || `Project ID: ${request.contractId}`
+      contractName: contract?.contractName || request.title || 'Project Request',
+      contractId: contract?.id || request.contractId
     };
   }).filter(request => filterStatus === 'all' || request.status === filterStatus);
 
@@ -224,7 +237,16 @@ const ContractorRequests = () => {
                       </div>
                     </TableCell>
                     <TableCell className="text-white">{request.businessName}</TableCell>
-                    <TableCell className="text-white">{request.contractName || 'N/A'}</TableCell>
+                    <TableCell className="text-white">
+                      {request.contractId ? (
+                        <div className="flex flex-col">
+                          <span>{request.contractName}</span>
+                          <span className="text-xs text-zinc-400">ID: {request.contractId}</span>
+                        </div>
+                      ) : (
+                        <span className="text-zinc-500">Not linked</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-white">
                       {request.budgetMin && request.budgetMax && request.budgetMin === request.budgetMax ? (
                         <div>${request.budgetMin.toLocaleString()}</div>
