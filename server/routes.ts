@@ -3522,6 +3522,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Create or update company onboarding link
+  // Notifications endpoints
+  app.get(`${apiRouter}/notifications`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      if (!user) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+
+      const notifications = await storage.getNotificationsByUserId(user.id);
+      return res.json(notifications);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      return res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
+  app.get(`${apiRouter}/notifications/count`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      if (!user) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+
+      const count = await storage.getUnreadNotificationCount(user.id);
+      return res.json({ count });
+    } catch (error) {
+      console.error('Error fetching notification count:', error);
+      return res.status(500).json({ message: "Failed to fetch notification count" });
+    }
+  });
+
+  app.patch(`${apiRouter}/notifications/:id/read`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const user = req.user as User;
+      if (!user) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+
+      const notification = await storage.markNotificationAsRead(parseInt(id));
+      return res.json(notification);
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      return res.status(500).json({ message: "Failed to mark notification as read" });
+    }
+  });
+
   app.post(`${apiRouter}/business-onboarding-link`, requireAuth, async (req: Request, res: Response) => {
     try {
       const businessId = req.user?.id;
