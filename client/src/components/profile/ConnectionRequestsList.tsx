@@ -35,6 +35,8 @@ export function ConnectionRequestsList() {
     queryFn: async () => {
       if (!user) return [];
       
+      console.log("Fetching connection requests for user:", user.id, user.role);
+      
       try {
         const response = await fetch("/api/connection-requests", {
           headers: {
