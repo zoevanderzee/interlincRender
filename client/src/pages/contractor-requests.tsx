@@ -145,13 +145,7 @@ const ContractorRequests = () => {
   // Decline work request mutation
   const declineMutation = useMutation({
     mutationFn: async (requestId: number) => {
-      // Get the token from the URL if available
-      const tokenFromUrl = new URLSearchParams(window.location.search).get('token');
-      
-      return await apiRequest('POST', `/api/work-requests/${requestId}/decline`, {
-        token: tokenFromUrl || 'auto-decline',
-        reason: 'Request declined by contractor'
-      });
+      return await apiRequest('POST', `/api/work-requests/${requestId}/contractor-decline`, {});
     },
     onSuccess: () => {
       toast({

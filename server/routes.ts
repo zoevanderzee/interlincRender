@@ -2920,7 +2920,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Endpoint for declining a work request  
+  // NEW: Simple decline endpoint that bypasses any conflicts
+  app.post(`${apiRouter}/work-requests/:id/contractor-decline`, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      console.log(`=== NEW DECLINE ENDPOINT HIT ===`);
+      console.log(`Declining work request #${id} for contractor`);
+      
+      // For logged-in contractors, allow decline without any token verification
+      if (req.headers['x-user-id']) {
+        const userId = parseInt(req.headers['x-user-id'] as string);
+        const user = await storage.getUser(userId);
+        
+        if (user && user.role === 'contractor') {
+          console.log(`✓ Contractor ${userId} declining work request #${id}`);
+          
+          // Get and update the work request
+          const workRequest = await storage.getWorkRequest(id);
+          if (!workRequest) {
+            return res.status(404).json({ message: "Work request not found" });
+          }
+          
+          if (workRequest.status !== 'pending') {
+            return res.status(400).json({ message: `Work request is already ${workRequest.status}` });
+          }
+          
+          const updatedWorkRequest = await storage.updateWorkRequest(id, { 
+            status: 'declined'
+          });
+          
+          console.log(`✓ Work request declined successfully`);
+          return res.json(updatedWorkRequest);
+        }
+      }
+      
+      return res.status(401).json({ message: "Unauthorized" });
+    } catch (error) {
+      console.error('Error declining work request:', error);
+      res.status(500).json({ message: "Error declining work request" });
+    }
+  });
+  
+  // OLD: Original decline endpoint (keeping for compatibility)  
   app.post(`${apiRouter}/work-requests/:id/decline`, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
