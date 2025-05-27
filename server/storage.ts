@@ -1667,11 +1667,13 @@ export class DatabaseStorage implements IStorage {
     return workRequest;
   }
 
-  async updateWorkRequest(id: number, workRequestData: Partial<InsertWorkRequest>): Promise<WorkRequest | undefined> {
+  async updateWorkRequest(id: number, workRequestData: any): Promise<WorkRequest | undefined> {
     // If email is being updated, make sure it's lowercase
     if (workRequestData.recipientEmail) {
       workRequestData.recipientEmail = workRequestData.recipientEmail.toLowerCase();
     }
+    
+    console.log(`Storage: Updating work request ${id} with data:`, workRequestData);
     
     const [updatedWorkRequest] = await db
       .update(workRequests)
@@ -1679,6 +1681,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(workRequests.id, id))
       .returning();
 
+    console.log(`Storage: Updated work request result:`, updatedWorkRequest);
     return updatedWorkRequest;
   }
 
