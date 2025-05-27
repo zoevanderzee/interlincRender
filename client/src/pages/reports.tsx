@@ -241,7 +241,7 @@ export default function Reports() {
     );
   }
 
-  // Business owner view - keep existing complex functionality  
+  // Business owner view - comprehensive reporting dashboard
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between">
@@ -249,13 +249,168 @@ export default function Reports() {
           <h1 className="text-2xl md:text-3xl font-semibold text-white">Business Reports</h1>
           <p className="text-gray-400 mt-1">Analyze business performance and contractor metrics</p>
         </div>
+        <Button className="mt-4 md:mt-0 bg-blue-600 hover:bg-blue-700">
+          <Download className="mr-2" size={16} />
+          Export Report
+        </Button>
       </div>
-      
-      <div className="text-center py-12">
-        <FileText className="h-16 w-16 text-gray-600 mx-auto mb-4" />
-        <h3 className="text-xl font-medium text-gray-400 mb-2">Business Analytics</h3>
-        <p className="text-gray-500">Advanced business reporting features are being developed</p>
+
+      {/* Key Performance Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="bg-black border-gray-800">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-gray-400">Total Contracts</CardTitle>
+            <FileText className="h-4 w-4 text-blue-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">{reportData?.summary?.totalContracts || 0}</div>
+            <p className="text-xs text-gray-400">Active projects</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-black border-gray-800">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-gray-400">Total Contractors</CardTitle>
+            <TrendingUp className="h-4 w-4 text-green-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">{reportData?.summary?.totalContractors || 0}</div>
+            <p className="text-xs text-gray-400">Working with you</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-black border-gray-800">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-gray-400">Total Spent</CardTitle>
+            <DollarSign className="h-4 w-4 text-yellow-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">${reportData?.summary?.totalSpent?.toLocaleString() || '0'}</div>
+            <p className="text-xs text-gray-400">All time payments</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-black border-gray-800">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-gray-400">Completion Rate</CardTitle>
+            <CheckCircle className="h-4 w-4 text-purple-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">{reportData?.summary?.completionRate || 0}%</div>
+            <p className="text-xs text-gray-400">Projects completed</p>
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Monthly Spending Chart */}
+        <Card className="bg-black border-gray-800">
+          <CardHeader>
+            <CardTitle className="text-white">Monthly Spending</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={reportData?.monthlyPayments || []}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis dataKey="month" stroke="#9CA3AF" />
+                  <YAxis stroke="#9CA3AF" />
+                  <Tooltip 
+                    contentStyle={{
+                      backgroundColor: '#111827',
+                      border: '1px solid #374151',
+                      borderRadius: '6px',
+                      color: '#F9FAFB'
+                    }}
+                  />
+                  <Bar dataKey="amount" fill="#3b82f6" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Contract Distribution */}
+        <Card className="bg-black border-gray-800">
+          <CardHeader>
+            <CardTitle className="text-white">Contract Status Distribution</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={reportData?.contractDistribution || []}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, value }) => `${name}: ${value}`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {(reportData?.contractDistribution || []).map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{
+                      backgroundColor: '#111827',
+                      border: '1px solid #374151',
+                      borderRadius: '6px',
+                      color: '#F9FAFB'
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Activity Table */}
+      <Card className="bg-black border-gray-800">
+        <CardHeader>
+          <CardTitle className="text-white">Recent Business Activity</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {(!reportData?.recentActivity || reportData.recentActivity.length === 0) ? (
+            <div className="text-center py-8">
+              <TrendingUp className="h-12 w-12 text-gray-600 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-400 mb-2">No recent activity</h3>
+              <p className="text-gray-500">Business activity and contractor interactions will appear here</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="border-gray-800">
+                  <TableHead className="text-gray-400">Date</TableHead>
+                  <TableHead className="text-gray-400">Contractor</TableHead>
+                  <TableHead className="text-gray-400">Project</TableHead>
+                  <TableHead className="text-gray-400">Activity</TableHead>
+                  <TableHead className="text-gray-400">Amount</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {reportData.recentActivity.map((activity, index) => (
+                  <TableRow key={index} className="border-gray-800">
+                    <TableCell className="text-white">
+                      {new Date(activity.date).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="text-white">{activity.contractor}</TableCell>
+                    <TableCell className="text-white">{activity.project}</TableCell>
+                    <TableCell className="text-gray-300">{activity.activity}</TableCell>
+                    <TableCell className="text-white font-medium">
+                      {activity.amount ? `$${activity.amount.toLocaleString()}` : '-'}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
