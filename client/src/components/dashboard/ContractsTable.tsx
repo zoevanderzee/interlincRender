@@ -86,10 +86,11 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
 
   // Filter and sort contracts
   const filteredAndSortedContracts = React.useMemo(() => {
-    // Filter first
+    // Filter first - exclude deleted projects and apply search
     const filtered = contracts.filter(contract =>
-      contract.contractName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      getContractorName(contract.contractorId).toLowerCase().includes(searchTerm.toLowerCase())
+      contract.status !== 'deleted' &&
+      (contract.contractName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      getContractorName(contract.contractorId).toLowerCase().includes(searchTerm.toLowerCase()))
     );
     
     // Then sort

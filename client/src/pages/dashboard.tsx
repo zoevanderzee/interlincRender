@@ -367,9 +367,9 @@ const Dashboard = () => {
         {/* My Assignments Section */}
         <div className="mb-8">
           <h2 className="text-xl font-semibold text-white mb-4">My Assignments</h2>
-          {dashboardData.contracts.length > 0 ? (
+          {dashboardData.contracts.filter(contract => contract.status !== 'deleted').length > 0 ? (
             <div className="grid gap-4">
-              {dashboardData.contracts.slice(0, 5).map((contract) => (
+              {dashboardData.contracts.filter(contract => contract.status !== 'deleted').slice(0, 5).map((contract) => (
                 <div key={contract.id} className="bg-zinc-900 rounded-lg border border-zinc-800 p-4">
                   <div className="flex justify-between items-start mb-3">
                     <div>

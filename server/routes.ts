@@ -569,8 +569,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Log filtered contracts for debugging
       console.log(`Filtered contracts for user ${userId}: ${JSON.stringify(contracts.map(c => ({ id: c.id, name: c.contractName, businessId: c.businessId })))}`);
       
+      // Filter out deleted projects - they should only appear in data room
+      const activeContracts = contracts.filter(contract => contract.status !== 'deleted');
       
-      res.json(contracts);
+      res.json(activeContracts);
     } catch (error) {
       console.error("Error fetching contracts:", error);
       res.status(500).json({ message: "Error fetching contracts" });
@@ -1234,7 +1236,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           activeContractorsCount: activeContractorsCount, // Use the proper active contractors count
           pendingInvitesCount: pendingInvites.length
         },
-        contracts: userContracts,
+        contracts: userContracts.filter(contract => contract.status !== 'deleted'),
         contractors: allContractors,  // Add contractors data
         milestones: upcomingMilestones,
         payments: allUpcomingPayments, // Include virtual payments
