@@ -2950,6 +2950,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           
           console.log(`✓ Work request declined successfully`);
+          
+          // Send email notification to the business owner
+          try {
+            const businessOwner = await storage.getUser(workRequest.businessId);
+            if (businessOwner && businessOwner.email) {
+              const { sendWorkRequestDeclinedEmail } = await import('./services/email');
+              await sendWorkRequestDeclinedEmail(
+                businessOwner.email,
+                businessOwner.firstName || businessOwner.username,
+                workRequest.title,
+                user.firstName && user.lastName 
+                  ? `${user.firstName} ${user.lastName}` 
+                  : user.username,
+                workRequest.description
+              );
+              console.log(`Decline notification sent to ${businessOwner.email}`);
+            }
+          } catch (emailError) {
+            console.error('Failed to send decline notification:', emailError);
+            // Don't fail the decline operation if email fails
+          }
+          
           return res.json(updatedWorkRequest);
         }
       }
