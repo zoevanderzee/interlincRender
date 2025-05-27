@@ -69,9 +69,11 @@ const Contracts = () => {
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <div>
-          <h1 className="text-2xl md:text-3xl font-semibold text-white">Projects</h1>
+          <h1 className="text-2xl md:text-3xl font-semibold text-white">
+            {isContractor ? "My Assignments" : "Projects"}
+          </h1>
           {isContractor ? (
-            <p className="text-zinc-400 mt-1">View your assigned projects</p>
+            <p className="text-zinc-400 mt-1">View your work assignments and earnings</p>
           ) : (
             <p className="text-zinc-400 mt-1">Manage and track all your project agreements</p>
           )}
