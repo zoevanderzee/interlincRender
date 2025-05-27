@@ -145,7 +145,7 @@ const ContractorRequests = () => {
   // Decline work request mutation
   const declineMutation = useMutation({
     mutationFn: async (requestId: number) => {
-      return await apiRequest('POST', `/api/work-requests/${requestId}/contractor-decline`, {});
+      return await apiRequest('POST', `/api/contractor/decline-work/${requestId}`, {});
     },
     onSuccess: () => {
       toast({

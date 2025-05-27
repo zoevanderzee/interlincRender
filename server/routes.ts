@@ -2920,8 +2920,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // NEW: Simple decline endpoint that bypasses any conflicts
-  app.post(`${apiRouter}/work-requests/:id/contractor-decline`, async (req: Request, res: Response) => {
+  // BRAND NEW: Completely different endpoint path to avoid all conflicts
+  app.post(`${apiRouter}/contractor/decline-work/:id`, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       console.log(`=== NEW DECLINE ENDPOINT HIT ===`);
