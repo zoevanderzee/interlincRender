@@ -1,8 +1,18 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -22,6 +32,7 @@ import { Card } from "@/components/ui/card";
 import { Milestone, Contract, User, Payment } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { apiRequest } from "@/lib/queryClient";
 import { 
   Search, 
   Plus, 
@@ -55,9 +66,16 @@ const Projects = () => {
   const [_, navigate] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const isContractor = user?.role === "contractor";
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  
+  // Work submission form state
+  const [showSubmissionModal, setShowSubmissionModal] = useState(false);
+  const [selectedContractId, setSelectedContractId] = useState<number | null>(null);
+  const [submissionTitle, setSubmissionTitle] = useState("");
+  const [submissionDescription, setSubmissionDescription] = useState("");
 
   // Fetch dashboard data which includes financial information
   const { data: dashboardData, isLoading: isLoadingDashboard } = useQuery<DashboardData>({
@@ -140,6 +158,59 @@ const Projects = () => {
     });
   };
 
+  // Work submission mutation
+  const submitWorkMutation = useMutation({
+    mutationFn: async (submissionData: { contractId: number; title: string; description: string }) => {
+      return apiRequest(`/api/work-submissions`, {
+        method: 'POST',
+        body: JSON.stringify(submissionData),
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Work Submitted Successfully",
+        description: "Your work has been submitted for review.",
+      });
+      setShowSubmissionModal(false);
+      setSubmissionTitle("");
+      setSubmissionDescription("");
+      setSelectedContractId(null);
+      queryClient.invalidateQueries({ queryKey: ['/api/work-submissions'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Submission Failed",
+        description: error.message || "Failed to submit work. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Handle submit work
+  const handleSubmitWork = (contractId: number) => {
+    setSelectedContractId(contractId);
+    setShowSubmissionModal(true);
+  };
+
+  // Handle form submission
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedContractId || !submissionTitle.trim()) {
+      toast({
+        title: "Missing Information",
+        description: "Please provide a title for your submission.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    submitWorkMutation.mutate({
+      contractId: selectedContractId,
+      title: submissionTitle.trim(),
+      description: submissionDescription.trim(),
+    });
+  };
+
   // Show loading state
   if (isLoadingMilestones || isLoadingContracts || isLoadingContractors) {
     return (
@@ -201,6 +272,7 @@ const Projects = () => {
                 <Button 
                   className="bg-green-600 hover:bg-green-700 text-white"
                   size="sm"
+                  onClick={() => handleSubmitWork(contract.id)}
                 >
                   Submit Work
                 </Button>
