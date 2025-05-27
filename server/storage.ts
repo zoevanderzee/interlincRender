@@ -132,12 +132,8 @@ export interface IStorage {
   updateWorkRequest(id: number, workRequest: Partial<InsertWorkRequest>): Promise<WorkRequest | undefined>;
   linkWorkRequestToContract(id: number, contractId: number): Promise<WorkRequest | undefined>;
 
-  // Profile Codes and Connection Requests
-  generateProfileCode(userId: number): Promise<string>;
-  getUserByProfileCode(profileCode: string): Promise<User | undefined>;
-  getConnectionRequest(id: number): Promise<ConnectionRequest | undefined>;
-  getConnectionRequestsByBusinessId(businessId: number): Promise<ConnectionRequest[]>;
-  getConnectionRequestsByContractorId(contractorId: number): Promise<ConnectionRequest[]>;
+  // Profile Codes and Connection Requests (methods already declared above)
+  // Removing duplicate declarations
   getConnectionRequestByProfileCode(businessId: number, profileCode: string): Promise<ConnectionRequest | undefined>;
   createConnectionRequest(request: InsertConnectionRequest): Promise<ConnectionRequest>;
   updateConnectionRequest(id: number, request: Partial<InsertConnectionRequest>): Promise<ConnectionRequest | undefined>;
