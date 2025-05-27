@@ -2920,8 +2920,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Endpoint for declining a work request
+  // Endpoint for declining a work request  
   app.post(`${apiRouter}/work-requests/:id/decline`, async (req: Request, res: Response) => {
+    console.log(`=== DECLINE ENDPOINT HIT ===`);
     try {
       const id = parseInt(req.params.id);
       const { token, reason } = req.body;
