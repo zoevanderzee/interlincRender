@@ -1,6 +1,6 @@
 import { 
   users, invites, contracts, milestones, payments, documents, bankAccounts, workRequests,
-  businessOnboardingLinks, businessOnboardingUsage, connectionRequests, notifications,
+  businessOnboardingLinks, businessOnboardingUsage, connectionRequests, notifications, workSubmissions,
   type User, type InsertUser, 
   type Invite, type InsertInvite,
   type Contract, type InsertContract,
@@ -12,7 +12,8 @@ import {
   type BusinessOnboardingLink, type InsertBusinessOnboardingLink,
   type BusinessOnboardingUsage, type InsertBusinessOnboardingUsage,
   type ConnectionRequest, type InsertConnectionRequest,
-  type Notification, type InsertNotification
+  type Notification, type InsertNotification,
+  type WorkSubmission, type InsertWorkSubmission
 } from "@shared/schema";
 import { eq, and, desc, lte, gte, sql, or } from "drizzle-orm";
 import { db, pool } from "./db";
@@ -146,6 +147,15 @@ export interface IStorage {
   getNotificationsByUserId(userId: number): Promise<any[]>;
   markNotificationAsRead(id: number): Promise<any>;
   getUnreadNotificationCount(userId: number): Promise<number>;
+
+  // Work Submissions
+  createWorkSubmission(submission: InsertWorkSubmission): Promise<WorkSubmission>;
+  getWorkSubmissionsByContractId(contractId: number): Promise<WorkSubmission[]>;
+  getWorkSubmissionsByContractorId(contractorId: number): Promise<WorkSubmission[]>;
+  getWorkSubmissionsByBusinessId(businessId: number): Promise<WorkSubmission[]>;
+  getWorkSubmission(id: number): Promise<WorkSubmission | undefined>;
+  updateWorkSubmission(id: number, submission: Partial<InsertWorkSubmission>): Promise<WorkSubmission | undefined>;
+  reviewWorkSubmission(id: number, status: string, reviewNotes?: string): Promise<WorkSubmission | undefined>;
 }
 
 // In-memory storage implementation

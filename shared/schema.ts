@@ -284,15 +284,43 @@ export const notifications = pgTable("notifications", {
   createdAt: timestamp("created_at").notNull().defaultNow()
 });
 
+// Work Submissions table
+export const workSubmissions = pgTable("work_submissions", {
+  id: serial("id").primaryKey(),
+  contractId: integer("contract_id").notNull().references(() => contracts.id),
+  contractorId: integer("contractor_id").notNull().references(() => users.id),
+  businessId: integer("business_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  notes: text("notes"), // Additional notes from contractor
+  attachmentUrls: jsonb("attachment_urls"), // Array of file URLs
+  status: text("status").notNull().default("pending"), // pending, approved, rejected, revision_requested
+  submittedAt: timestamp("submitted_at").notNull().defaultNow(),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNotes: text("review_notes"), // Feedback from business owner
+  milestoneId: integer("milestone_id").references(() => milestones.id) // Optional milestone reference
+});
+
 // Create notification schema
 export const insertNotificationSchema = createInsertSchema(notifications).omit({ 
   id: true, 
   createdAt: true 
 });
 
+// Create work submission schema
+export const insertWorkSubmissionSchema = createInsertSchema(workSubmissions).omit({ 
+  id: true, 
+  submittedAt: true,
+  reviewedAt: true 
+});
+
 // Types for notifications
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type Notification = typeof notifications.$inferSelect;
+
+// Types for work submissions
+export type InsertWorkSubmission = z.infer<typeof insertWorkSubmissionSchema>;
+export type WorkSubmission = typeof workSubmissions.$inferSelect;
 
 // Create types
 export type InsertBusinessOnboardingLink = z.infer<typeof insertBusinessOnboardingLinkSchema>;
