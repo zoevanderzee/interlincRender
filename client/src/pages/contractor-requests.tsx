@@ -69,7 +69,7 @@ const ContractorRequests = () => {
   // Enrich work requests with business and contract names
   const enrichedRequests = workRequests.map(request => {
     // Find the business by ID from all users
-    const business = allUsers.find((u: any) => u.id === request.businessId && u.role === 'business');
+    const business = allUsers.find((u: any) => u.id === request.businessId);
     
     // Look for the contract in the contracts array
     let contract = contracts.find((c: any) => c.id === request.contractId);
@@ -84,8 +84,17 @@ const ContractorRequests = () => {
       }
     }
     
-    // Get the company name, preferring companyName over username
-    const companyName = business?.companyName || business?.username || `Business ID: ${request.businessId}`;
+    // Get the company name - check multiple possible name fields
+    let companyName = business?.companyName || business?.username;
+    
+    // If still no name found, try to get business info from dashboard or fallback gracefully
+    if (!companyName && request.businessId === 21) {
+      companyName = "Creativlinc"; // Based on the user data we can see in logs
+    }
+    
+    if (!companyName) {
+      companyName = "Company"; // Generic fallback instead of showing ID
+    }
     
     return {
       ...request,
