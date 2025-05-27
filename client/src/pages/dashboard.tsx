@@ -328,7 +328,7 @@ const Dashboard = () => {
           <Button 
             variant="outline"
             className="text-white border-zinc-700 hover:bg-zinc-800 hover:text-white h-auto py-3 justify-start"
-            onClick={() => navigate('/contracts')}
+            onClick={() => navigate('/projects')}
           >
             <Briefcase className="mr-3" size={18} />
             <div className="text-left">
