@@ -2941,6 +2941,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const userId = parseInt(req.headers['x-user-id'] as string);
         const user = await storage.getUser(userId);
         
+        console.log(`Checking auto-decline for user ${userId}:`, {
+          userEmail: user?.email,
+          recipientEmail: workRequest.recipientEmail,
+          emailsMatch: user?.email?.toLowerCase() === workRequest.recipientEmail?.toLowerCase()
+        });
+        
         if (user && user.email && workRequest.recipientEmail && 
             user.email.toLowerCase() === workRequest.recipientEmail.toLowerCase()) {
           isValidToken = true;
