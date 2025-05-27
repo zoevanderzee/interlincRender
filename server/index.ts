@@ -1,7 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { initializeEmailService } from "./services/email";
+// Email service disabled
 import { initializeLogger, requestLogger, errorLogger } from "./services/logger";
 import { addCsrfToken, csrfProtection } from "./middleware/csrf";
 import { securityHeaders } from "./middleware/security-headers";
@@ -51,7 +51,6 @@ app.use((req, res, next) => {
 
 (async () => {
   // Initialize services
-  initializeEmailService();
   await initializeLogger();
   
   // Setup database health checks (every 5 minutes)

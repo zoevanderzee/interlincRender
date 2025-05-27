@@ -13,7 +13,7 @@ import {
   insertWorkRequestSchema,
   updateWorkRequestSchema
 } from "@shared/schema";
-import { sendPasswordResetEmail, generateWorkRequestToken } from "./services/email";
+import { generateWorkRequestToken } from "./services/email";
 import Stripe from "stripe";
 import stripeService from "./services/stripe";
 import notificationService from "./services/notifications";
@@ -413,38 +413,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const newInvite = await storage.createInvite(inviteInput);
       console.log("[Invite Creation] Invite created:", JSON.stringify(newInvite));
       
-      // Send invitation email
-      try {
-        const { sendInvitationEmail, initializeEmailService } = await import('./services/email');
-        
-        // Make sure email service is initialized
-        initializeEmailService();
-        
-        // Get application URL, handling both Replit and local environments
-        let appUrl = `${req.protocol}://${req.get('host')}`;
-        
-        // Check if running in Replit
-        if (process.env.REPLIT_DEV_DOMAIN) {
-          // Use the Replit-specific domain from environment
-          appUrl = `https://${process.env.REPLIT_DEV_DOMAIN}`;
-        }
-        
-        console.log(`Generated invite URL using appUrl: ${appUrl}`);
-        
-        // Send the invitation email with more detailed logging
-        console.log(`Attempting to send invitation email to ${newInvite.email} for project '${newInvite.projectName}'`);
-        const emailResult = await sendInvitationEmail(newInvite, appUrl);
-        
-        console.log(`Invitation email sent successfully to ${newInvite.email}:`, 
-          emailResult.provider === 'sendgrid' 
-            ? 'via SendGrid' 
-            : `via Nodemailer, message ID: ${emailResult.info?.messageId || 'unknown'}`);
-      } catch (emailError) {
-        console.error('Failed to send invitation email:', emailError);
-        console.error('Error details:', emailError instanceof Error ? emailError.message : 'Unknown error');
-        // Continue with the response even if email fails
-        // In production, you might want to queue these for retry
-      }
+      // Email functionality disabled - invites created without email notifications
+      console.log(`Invite created for ${newInvite.email} - email notifications disabled`);
       
       res.status(201).json(newInvite);
     } catch (error) {
@@ -1433,34 +1403,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           console.log(`ACH Payment ${paymentId} marked as completed`);
           
-          // Send notifications to relevant parties
-          if (payment) {
-            try {
-              // Get the contract to determine business and contractor IDs
-              const contract = await storage.getContract(payment.contractId);
-              if (contract) {
-                // Notify business user
-                await notificationService.sendPaymentNotification(
-                  payment, 
-                  'completed', 
-                  contract.businessId,
-                  'The funds have been successfully transferred.'
-                );
-                
-                // Notify contractor user
-                await notificationService.sendPaymentNotification(
-                  payment, 
-                  'completed', 
-                  contract.contractorId,
-                  'The payment has been processed and funds will be available in your account soon.'
-                );
-                
-                console.log(`Sent completion notifications for payment ${paymentId}`);
-              }
-            } catch (notifyError) {
-              console.error(`Error sending payment notifications: ${notifyError}`);
-            }
-          }
+          // Email notifications disabled
+          console.log(`Payment ${paymentId} completed - email notifications disabled`);
           
           // Handle transfer to contractor if this was a Connect payment
           if (charge.transfer && charge.transfer_data && charge.transfer_data.destination) {
@@ -1499,34 +1443,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           console.log(`ACH Payment ${paymentId} marked as pending`);
           
-          // Send notifications to relevant parties
-          if (payment) {
-            try {
-              // Get the contract to determine business and contractor IDs
-              const contract = await storage.getContract(payment.contractId);
-              if (contract) {
-                // Notify business user
-                await notificationService.sendPaymentNotification(
-                  payment, 
-                  'pending', 
-                  contract.businessId,
-                  'Your payment is being processed and funds will be transferred shortly.'
-                );
-                
-                // Notify contractor user
-                await notificationService.sendPaymentNotification(
-                  payment, 
-                  'pending', 
-                  contract.contractorId,
-                  'A payment is being processed and will be available in your account soon.'
-                );
-                
-                console.log(`Sent pending notifications for payment ${paymentId}`);
-              }
-            } catch (notifyError) {
-              console.error(`Error sending payment notifications: ${notifyError}`);
-            }
-          }
+          // Email notifications disabled
+          console.log(`Payment ${paymentId} pending - email notifications disabled`);
         }
       }
       
@@ -1551,36 +1469,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           console.log(`ACH Payment ${paymentId} marked as failed: ${charge.failure_message}`);
           
-          // Send notifications to relevant parties
-          if (payment) {
-            try {
-              // Get the contract to determine business and contractor IDs
-              const contract = await storage.getContract(payment.contractId);
-              if (contract) {
-                const failureReason = charge.failure_message || 'The payment could not be processed';
-                
-                // Notify business user
-                await notificationService.sendPaymentNotification(
-                  payment, 
-                  'failed', 
-                  contract.businessId,
-                  `The payment failed: ${failureReason}. Please check your payment method and try again.`
-                );
-                
-                // Notify contractor user
-                await notificationService.sendPaymentNotification(
-                  payment, 
-                  'failed', 
-                  contract.contractorId,
-                  'A scheduled payment has failed. The business has been notified to address the issue.'
-                );
-                
-                console.log(`Sent failure notifications for payment ${paymentId}`);
-              }
-            } catch (notifyError) {
-              console.error(`Error sending payment failure notifications: ${notifyError}`);
-            }
-          }
+          // Email notifications disabled
+          console.log(`Payment ${paymentId} failed - email notifications disabled`);
         }
       }
       
@@ -2823,18 +2713,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate the shareable link
       const shareableLink = `${appUrl}/work-requests/respond?token=${token}`;
       
-      // Send the email invitation if recipientEmail is provided
+      // Email functionality disabled - work requests created without email notifications
       if (newWorkRequest.recipientEmail) {
-        try {
-          const { sendWorkRequestEmail } = await import('./services/email');
-          
-          console.log(`Sending work request email to ${newWorkRequest.recipientEmail}`);
-          await sendWorkRequestEmail(newWorkRequest, token, businessName, appUrl);
-          console.log(`Work request email sent to ${newWorkRequest.recipientEmail}`);
-        } catch (emailError) {
-          console.error('Failed to send work request email:', emailError);
-          // Continue with the response even if email fails
-        }
+        console.log(`Work request created for ${newWorkRequest.recipientEmail} - email notifications disabled`);
       }
       
       // Return the created work request along with the shareable link
