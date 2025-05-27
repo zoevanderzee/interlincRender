@@ -58,7 +58,7 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
                 </Link>
               </div>
               <div className="invisible group-hover:visible opacity-0 group-hover:opacity-100 absolute left-full ml-2 px-2 py-1 bg-primary-800 text-white text-xs rounded transition-opacity whitespace-nowrap">
-                Projects
+                {isContractor ? "Assignments" : "Projects"}
               </div>
             </li>
 
@@ -176,7 +176,7 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
                   <line x1="3" y1="12" x2="3.01" y2="12"></line>
                   <line x1="3" y1="18" x2="3.01" y2="18"></line>
                 </svg>
-                Projects
+                {isContractor ? "Assignments" : "Projects"}
               </Link>
             </li>
 
