@@ -3266,9 +3266,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get(`${apiRouter}/connection-requests`, requireAuth, async (req: Request, res: Response) => {
     try {
-      // Get all connection requests for the authenticated user
-      const userId = req.user?.id;
-      const userRole = req.user?.role;
+      // Get user ID and role, handling fallback authentication
+      let userId = req.user?.id;
+      let userRole = req.user?.role;
+      
+      // Handle fallback authentication via X-User-ID header
+      if (!userId && req.headers['x-user-id']) {
+        const fallbackUserId = parseInt(req.headers['x-user-id'] as string);
+        const fallbackUser = await storage.getUser(fallbackUserId);
+        if (fallbackUser) {
+          userId = fallbackUser.id;
+          userRole = fallbackUser.role;
+          console.log(`Using X-User-ID header fallback for connection requests: user ${userId} with role ${userRole}`);
+        }
+      }
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
       
       let connectionRequests = [];
       
@@ -3280,7 +3295,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         connectionRequests = await storage.getConnectionRequestsByContractorId(userId);
       }
       
-      res.json(connectionRequests);
+      // Enrich requests with business and contractor names
+      const enrichedRequests = await Promise.all(
+        connectionRequests.map(async (request) => {
+          const business = await storage.getUser(request.businessId);
+          const contractor = request.contractorId ? await storage.getUser(request.contractorId) : null;
+          
+          return {
+            ...request,
+            businessName: business?.companyName || business?.username || `Business ${request.businessId}`,
+            contractorName: contractor?.username || contractor?.firstName && contractor?.lastName 
+              ? `${contractor.firstName} ${contractor.lastName}` 
+              : `Contractor ${request.contractorId}`
+          };
+        })
+      );
+      
+      console.log(`Returning ${enrichedRequests.length} connection requests for user ${userId} (${userRole})`);
+      res.json(enrichedRequests);
     } catch (error: any) {
       console.error('Error fetching connection requests:', error);
       res.status(500).json({ message: error.message });
