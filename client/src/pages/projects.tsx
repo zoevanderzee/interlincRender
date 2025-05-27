@@ -42,7 +42,9 @@ import {
   AlertCircle,
   Clock,
   FileText,
-  ChevronRight
+  ChevronRight,
+  Upload,
+  X
 } from "lucide-react";
 import MilestonesList from "@/components/dashboard/MilestonesList";
 
@@ -76,6 +78,7 @@ const Projects = () => {
   const [selectedContractId, setSelectedContractId] = useState<number | null>(null);
   const [submissionTitle, setSubmissionTitle] = useState("");
   const [submissionDescription, setSubmissionDescription] = useState("");
+  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
 
   // Fetch dashboard data which includes financial information
   const { data: dashboardData, isLoading: isLoadingDashboard } = useQuery<DashboardData>({
@@ -175,6 +178,7 @@ const Projects = () => {
       setSubmissionTitle("");
       setSubmissionDescription("");
       setSelectedContractId(null);
+      setAttachmentFiles([]);
       queryClient.invalidateQueries({ queryKey: ['/api/work-submissions'] });
     },
     onError: (error: any) => {
@@ -190,6 +194,15 @@ const Projects = () => {
   const handleSubmitWork = (contractId: number) => {
     setSelectedContractId(contractId);
     setShowSubmissionModal(true);
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    setAttachmentFiles(prev => [...prev, ...files]);
+  };
+
+  const removeFile = (index: number) => {
+    setAttachmentFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   // Handle form submission
@@ -331,6 +344,56 @@ const Projects = () => {
                   className="bg-zinc-800 border-zinc-700 text-white min-h-[100px]"
                   rows={4}
                 />
+              </div>
+              
+              {/* File Upload Section */}
+              <div>
+                <Label className="text-white">Attach Files</Label>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-center w-full">
+                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-zinc-700 border-dashed rounded-lg cursor-pointer bg-zinc-800 hover:bg-zinc-750">
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        <Upload className="w-8 h-8 mb-4 text-zinc-400" />
+                        <p className="mb-2 text-sm text-zinc-400">
+                          <span className="font-semibold">Click to upload</span> or drag and drop
+                        </p>
+                        <p className="text-xs text-zinc-500">PNG, JPG, PDF, DOC, TXT (MAX. 10MB)</p>
+                      </div>
+                      <input
+                        type="file"
+                        className="hidden"
+                        multiple
+                        accept=".png,.jpg,.jpeg,.pdf,.doc,.docx,.txt,.zip"
+                        onChange={handleFileUpload}
+                      />
+                    </label>
+                  </div>
+                  
+                  {/* Display uploaded files */}
+                  {attachmentFiles.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-sm text-zinc-400">Attached files:</p>
+                      {attachmentFiles.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between bg-zinc-800 p-2 rounded">
+                          <div className="flex items-center space-x-2">
+                            <FileText className="w-4 h-4 text-zinc-400" />
+                            <span className="text-sm text-white">{file.name}</span>
+                            <span className="text-xs text-zinc-500">({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeFile(index)}
+                            className="text-zinc-400 hover:text-red-400"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="flex justify-end gap-3">
                 <Button
