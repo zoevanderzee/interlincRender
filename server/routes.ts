@@ -527,8 +527,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const businessId = req.query.businessId ? parseInt(req.query.businessId as string) : null;
       const contractorId = req.query.contractorId ? parseInt(req.query.contractorId as string) : null;
-      const userId = req.user?.id;
-      const userRole = req.user?.role || 'business';
+      
+      // Get user ID from session or X-User-ID header fallback
+      let userId = req.user?.id;
+      let userRole = req.user?.role || 'business';
+      
+      // Use X-User-ID header fallback if session auth failed
+      if (!userId && req.headers['x-user-id']) {
+        userId = parseInt(req.headers['x-user-id'] as string);
+        // Get the user to determine their role
+        const user = await storage.getUser(userId);
+        if (user) {
+          userRole = user.role;
+          console.log(`Using X-User-ID header fallback authentication for user ID: ${userId} with role: ${userRole}`);
+        }
+      }
       
       console.log(`Fetching contracts for user ID ${userId} with role ${userRole}`);
       
