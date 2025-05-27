@@ -239,21 +239,64 @@ export function ConnectionRequestsList() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="pending" value={activeTab} onValueChange={setActiveTab}>
+        <Tabs defaultValue="active" value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-4">
-            <TabsTrigger value="pending">
-              Pending <Badge variant="outline" className="ml-2">{pendingRequests.length}</Badge>
+            <TabsTrigger value="active">
+              Active Companies <Badge variant="outline" className="ml-2">{acceptedRequests.length}</Badge>
             </TabsTrigger>
-            <TabsTrigger value="accepted">
-              Accepted <Badge variant="outline" className="ml-2">{acceptedRequests.length}</Badge>
+            <TabsTrigger value="requests">
+              Company Requests <Badge variant="outline" className="ml-2">{pendingRequests.length}</Badge>
             </TabsTrigger>
-            <TabsTrigger value="declined">
-              Declined <Badge variant="outline" className="ml-2">{declinedRequests.length}</Badge>
+            <TabsTrigger value="previous">
+              Previous Companies <Badge variant="outline" className="ml-2">{declinedRequests.length}</Badge>
             </TabsTrigger>
           </TabsList>
           
-          {/* Pending Requests */}
-          <TabsContent value="pending" className="space-y-4">
+          {/* Active Companies */}
+          <TabsContent value="active" className="space-y-4">
+            {acceptedRequests.length === 0 ? (
+              <div className="py-4 text-center text-muted-foreground">
+                No active company connections
+              </div>
+            ) : (
+              acceptedRequests.map((request: ConnectionRequest) => (
+                <Card key={request.id} className="overflow-hidden">
+                  <CardHeader className="pb-3">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <Building2 className="h-4 w-4 text-green-500" />
+                          <CardTitle className="text-base">
+                            {request.businessName || "Unknown Business"}
+                          </CardTitle>
+                        </div>
+                        <CardDescription className="mt-1">
+                          Connected on {formatDate(request.updatedAt)}
+                        </CardDescription>
+                      </div>
+                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                        <CheckCircle2 className="h-3 w-3 mr-1" />
+                        Connected
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  {request.message && (
+                    <CardContent className="pt-0">
+                      <div className="bg-muted p-3 rounded-md">
+                        <div className="flex items-start space-x-2">
+                          <MessageSquare className="h-4 w-4 text-muted-foreground mt-0.5" />
+                          <p className="text-sm text-muted-foreground">{request.message}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  )}
+                </Card>
+              ))
+            )}
+          </TabsContent>
+
+          {/* Company Requests */}
+          <TabsContent value="requests" className="space-y-4">
             {pendingRequests.length === 0 ? (
               <div className="py-4 text-center text-muted-foreground">
                 No pending requests
@@ -365,8 +408,8 @@ export function ConnectionRequestsList() {
             )}
           </TabsContent>
           
-          {/* Declined Requests */}
-          <TabsContent value="declined" className="space-y-4">
+          {/* Previous Companies */}
+          <TabsContent value="previous" className="space-y-4">
             {declinedRequests.length === 0 ? (
               <div className="py-4 text-center text-muted-foreground">
                 No declined requests
