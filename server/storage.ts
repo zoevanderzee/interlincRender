@@ -2378,6 +2378,78 @@ export class DatabaseStorage implements IStorage {
       ));
     return result[0]?.count || 0;
   }
+
+  // Work Submission methods
+  async createWorkSubmission(submission: InsertWorkSubmission): Promise<WorkSubmission> {
+    const [result] = await db.insert(workSubmissions).values({
+      ...submission,
+      submittedAt: new Date(),
+      status: 'pending'
+    }).returning();
+    return result;
+  }
+
+  async getWorkSubmissionsByContractId(contractId: number): Promise<WorkSubmission[]> {
+    return await db
+      .select()
+      .from(workSubmissions)
+      .where(eq(workSubmissions.contractId, contractId))
+      .orderBy(desc(workSubmissions.submittedAt));
+  }
+
+  async getWorkSubmissionsByContractorId(contractorId: number): Promise<WorkSubmission[]> {
+    return await db
+      .select()
+      .from(workSubmissions)
+      .where(eq(workSubmissions.contractorId, contractorId))
+      .orderBy(desc(workSubmissions.submittedAt));
+  }
+
+  async getWorkSubmissionsByBusinessId(businessId: number): Promise<WorkSubmission[]> {
+    const contractsList = await this.getContractsByBusinessId(businessId);
+    const contractIds = contractsList.map(c => c.id);
+    
+    if (contractIds.length === 0) return [];
+    
+    return await db
+      .select()
+      .from(workSubmissions)
+      .where(inArray(workSubmissions.contractId, contractIds))
+      .orderBy(desc(workSubmissions.submittedAt));
+  }
+
+  async getWorkSubmission(id: number): Promise<WorkSubmission | undefined> {
+    const [submission] = await db
+      .select()
+      .from(workSubmissions)
+      .where(eq(workSubmissions.id, id));
+    
+    return submission;
+  }
+
+  async updateWorkSubmission(id: number, submission: Partial<InsertWorkSubmission>): Promise<WorkSubmission | undefined> {
+    const [updated] = await db
+      .update(workSubmissions)
+      .set(submission)
+      .where(eq(workSubmissions.id, id))
+      .returning();
+    
+    return updated;
+  }
+
+  async reviewWorkSubmission(id: number, status: string, reviewNotes?: string): Promise<WorkSubmission | undefined> {
+    const [updated] = await db
+      .update(workSubmissions)
+      .set({
+        status,
+        reviewNotes,
+        reviewedAt: new Date()
+      })
+      .where(eq(workSubmissions.id, id))
+      .returning();
+    
+    return updated;
+  }
 }
 
 // Use DatabaseStorage instead of MemStorage

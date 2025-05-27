@@ -3605,6 +3605,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Work Submissions Routes
+  app.post('/api/work-submissions', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { contractId, title, description, attachmentUrls } = req.body;
+      const contractorId = req.user!.id;
+
+      // Verify the contractor has access to this contract
+      const contract = await storage.getContract(contractId);
+      if (!contract || contract.contractorId !== contractorId) {
+        return res.status(403).json({ message: 'Access denied to this contract' });
+      }
+
+      const submission = await storage.createWorkSubmission({
+        contractId,
+        contractorId,
+        title,
+        description,
+        attachmentUrls: attachmentUrls || []
+      });
+
+      res.json(submission);
+    } catch (error: any) {
+      console.error('Error creating work submission:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get('/api/work-submissions/contractor/:contractorId', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const contractorId = parseInt(req.params.contractorId);
+      
+      // Only allow contractors to see their own submissions
+      if (req.user!.role === 'contractor' && req.user!.id !== contractorId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      const submissions = await storage.getWorkSubmissionsByContractorId(contractorId);
+      res.json(submissions);
+    } catch (error: any) {
+      console.error('Error fetching contractor work submissions:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get('/api/work-submissions/business/:businessId', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const businessId = parseInt(req.params.businessId);
+      
+      // Only allow business owners to see submissions for their business
+      if (req.user!.role === 'business' && req.user!.id !== businessId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      const submissions = await storage.getWorkSubmissionsByBusinessId(businessId);
+      res.json(submissions);
+    } catch (error: any) {
+      console.error('Error fetching business work submissions:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.patch('/api/work-submissions/:id/review', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const submissionId = parseInt(req.params.id);
+      const { status, reviewNotes } = req.body;
+
+      // Get the submission to verify access
+      const submission = await storage.getWorkSubmission(submissionId);
+      if (!submission) {
+        return res.status(404).json({ message: 'Work submission not found' });
+      }
+
+      // Get the contract to verify the business owner has access
+      const contract = await storage.getContract(submission.contractId);
+      if (!contract || contract.businessId !== req.user!.id) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      const updatedSubmission = await storage.reviewWorkSubmission(submissionId, status, reviewNotes);
+      res.json(updatedSubmission);
+    } catch (error: any) {
+      console.error('Error reviewing work submission:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
