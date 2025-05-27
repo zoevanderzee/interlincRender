@@ -2926,6 +2926,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       const { token, reason } = req.body;
       
+      console.log(`Decline request received:`, {
+        id,
+        requestBody: req.body,
+        headers: {
+          'x-user-id': req.headers['x-user-id'],
+          'content-type': req.headers['content-type']
+        }
+      });
+      
       // Get the work request
       const workRequest = await storage.getWorkRequest(id);
       if (!workRequest) {
