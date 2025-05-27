@@ -2924,7 +2924,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post(`${apiRouter}/work-requests/:id/decline`, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
-      console.log(`Decline request for work request #${id}`);
+      const { token, reason } = req.body;
+      console.log(`Decline request for work request #${id} with body:`, req.body);
       
       // Get the work request
       const workRequest = await storage.getWorkRequest(id);
@@ -2954,7 +2955,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      return res.status(401).json({ message: "Unauthorized" });
+      // If not logged in contractor, check for valid token
+      if (workRequest.tokenHash && token) {
+        const isValidToken = await import('./services/email').then(
+          ({ verifyWorkRequestToken }) => verifyWorkRequestToken(token, workRequest.tokenHash)
+        );
+        
+        if (isValidToken) {
+          const updatedWorkRequest = await storage.updateWorkRequest(id, { 
+            status: 'declined'
+          });
+          return res.json(updatedWorkRequest);
+        }
+      }
+      
+      return res.status(401).json({ message: "Invalid token" });
       
       // Check if the work request is still pending and not expired
       if (workRequest.status !== 'pending') {
