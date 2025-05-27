@@ -2944,40 +2944,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let isValidToken = false;
       
-      // Special handling for contractor users declining work requests
-      // If the user is logged in, allow them to decline work requests
-      console.log(`Decline request debug:`, {
-        token,
-        hasUserId: !!req.headers['x-user-id'],
-        userId: req.headers['x-user-id']
-      });
-      
-      if (token === 'auto-decline' && req.headers['x-user-id']) {
+      // Check if user is logged in as contractor - if so, allow decline
+      if (req.headers['x-user-id']) {
         const userId = parseInt(req.headers['x-user-id'] as string);
         const user = await storage.getUser(userId);
         
-        console.log(`User lookup for decline:`, {
-          userId,
-          userFound: !!user,
-          userRole: user?.role
-        });
-        
         if (user && user.role === 'contractor') {
           isValidToken = true;
-          console.log(`Auto-declining work request #${id} for logged-in contractor ${userId}`);
+          console.log(`Allowing contractor ${userId} to decline work request #${id}`);
         }
-      } else if (workRequest.tokenHash && token) {
-        // Standard token verification
+      }
+      
+      // If not logged in contractor, check token verification
+      if (!isValidToken && workRequest.tokenHash && token) {
         isValidToken = await import('./services/email').then(
           ({ verifyWorkRequestToken }) => verifyWorkRequestToken(token, workRequest.tokenHash)
         );
-      } else if (!workRequest.tokenHash) {
-        // If no token hash stored, allow decline (fallback for older requests)
+      }
+      
+      // If no token hash stored, allow decline (fallback for older requests)
+      if (!isValidToken && !workRequest.tokenHash) {
         isValidToken = true;
       }
       
       if (!isValidToken) {
-        return res.status(401).json({ message: "Invalid token or unauthorized to decline this request" });
+        return res.status(401).json({ message: "Invalid token" });
       }
       
       // Check if the work request is still pending and not expired
