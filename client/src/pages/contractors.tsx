@@ -569,11 +569,13 @@ const Contractors = () => {
       </div>
 
       {/* Tabs for Workers/Companies */}
-      <Tabs defaultValue={isContractor ? "requests" : "contractors"} className="mb-6">
+      <Tabs defaultValue="contractors" className="mb-6">
         <TabsList className="mb-4">
           {isContractor ? (
             <>
+              <TabsTrigger value="contractors">Active Companies</TabsTrigger>
               <TabsTrigger value="requests">Company Requests</TabsTrigger>
+              <TabsTrigger value="freelancers">Previous Companies</TabsTrigger>
             </>
           ) : (
             <>
@@ -584,22 +586,20 @@ const Contractors = () => {
           )}
         </TabsList>
         
-        {!isContractor && (
-          <>
-            <TabsContent value="contractors">
-            {/* Search */}
-            <div className="mb-6 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" size={18} />
-              <Input
-                placeholder="Search contractors..."
-                className="pl-9 bg-zinc-900 border-zinc-700 text-white"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
+        <TabsContent value="contractors">
+          {/* Search */}
+          <div className="mb-6 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" size={18} />
+            <Input
+              placeholder={isContractor ? "Search companies..." : "Search contractors..."}
+              className="pl-9 bg-zinc-900 border-zinc-700 text-white"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
 
-            {/* Contractors/Companies Grid */}
-            {isLoading ? (
+          {/* Contractors/Companies Grid */}
+          {isLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {[1, 2, 3, 4, 5, 6].map((i) => (
                 <div key={i} className="animate-pulse">
@@ -1019,8 +1019,6 @@ const Contractors = () => {
               <ConnectionRequestsList />
             </div>
           </TabsContent>
-        )}
-          </>
         )}
       </Tabs>
     </>
