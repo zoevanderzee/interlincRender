@@ -2922,19 +2922,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Endpoint for declining a work request  
   app.post(`${apiRouter}/work-requests/:id/decline`, async (req: Request, res: Response) => {
-    console.log(`=== DECLINE ENDPOINT HIT ===`);
     try {
       const id = parseInt(req.params.id);
-      const { token, reason } = req.body;
-      
-      console.log(`Decline request received:`, {
-        id,
-        requestBody: req.body,
-        headers: {
-          'x-user-id': req.headers['x-user-id'],
-          'content-type': req.headers['content-type']
-        }
-      });
+      console.log(`Decline request for work request #${id}`);
       
       // Get the work request
       const workRequest = await storage.getWorkRequest(id);
@@ -2942,34 +2932,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Work request not found" });
       }
       
-      let isValidToken = false;
-      
-      // Check if user is logged in as contractor - if so, allow decline
+      // For logged-in contractors, allow decline without token verification
       if (req.headers['x-user-id']) {
         const userId = parseInt(req.headers['x-user-id'] as string);
         const user = await storage.getUser(userId);
         
         if (user && user.role === 'contractor') {
-          isValidToken = true;
-          console.log(`Allowing contractor ${userId} to decline work request #${id}`);
+          console.log(`Contractor ${userId} declining work request #${id}`);
+          
+          // Check if the work request is still pending
+          if (workRequest.status !== 'pending') {
+            return res.status(400).json({ message: `Work request is already ${workRequest.status}` });
+          }
+          
+          // Update the work request status to 'declined'
+          const updatedWorkRequest = await storage.updateWorkRequest(id, { 
+            status: 'declined'
+          });
+          
+          return res.json(updatedWorkRequest);
         }
       }
       
-      // If not logged in contractor, check token verification
-      if (!isValidToken && workRequest.tokenHash && token) {
-        isValidToken = await import('./services/email').then(
-          ({ verifyWorkRequestToken }) => verifyWorkRequestToken(token, workRequest.tokenHash)
-        );
-      }
-      
-      // If no token hash stored, allow decline (fallback for older requests)
-      if (!isValidToken && !workRequest.tokenHash) {
-        isValidToken = true;
-      }
-      
-      if (!isValidToken) {
-        return res.status(401).json({ message: "Invalid token" });
-      }
+      return res.status(401).json({ message: "Unauthorized" });
       
       // Check if the work request is still pending and not expired
       if (workRequest.status !== 'pending') {
