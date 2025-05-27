@@ -2925,34 +2925,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const { token, reason } = req.body;
-      console.log(`Decline request for work request #${id} with body:`, req.body);
+      console.log(`=== DECLINE ENDPOINT DEBUG ===`);
+      console.log(`Request ID: ${id}`);
+      console.log(`Request body:`, req.body);
+      console.log(`X-User-ID header:`, req.headers['x-user-id']);
       
       // Get the work request
       const workRequest = await storage.getWorkRequest(id);
       if (!workRequest) {
+        console.log(`Work request ${id} not found`);
         return res.status(404).json({ message: "Work request not found" });
       }
+      
+      console.log(`Found work request:`, workRequest);
       
       // For logged-in contractors, allow decline without token verification
       if (req.headers['x-user-id']) {
         const userId = parseInt(req.headers['x-user-id'] as string);
+        console.log(`Checking user ${userId}...`);
+        
         const user = await storage.getUser(userId);
+        console.log(`User found:`, user ? `${user.username} (${user.role})` : 'null');
         
         if (user && user.role === 'contractor') {
-          console.log(`Contractor ${userId} declining work request #${id}`);
+          console.log(`✓ Contractor ${userId} declining work request #${id}`);
           
           // Check if the work request is still pending
           if (workRequest.status !== 'pending') {
+            console.log(`Work request status is ${workRequest.status}, not pending`);
             return res.status(400).json({ message: `Work request is already ${workRequest.status}` });
           }
           
+          console.log(`Updating work request status to declined...`);
           // Update the work request status to 'declined'
           const updatedWorkRequest = await storage.updateWorkRequest(id, { 
             status: 'declined'
           });
           
+          console.log(`✓ Work request declined successfully:`, updatedWorkRequest);
           return res.json(updatedWorkRequest);
+        } else {
+          console.log(`User is not a contractor or not found`);
         }
+      } else {
+        console.log(`No X-User-ID header found`);
       }
       
       // If not logged in contractor, check for valid token
