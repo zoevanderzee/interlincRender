@@ -2970,20 +2970,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       return res.status(401).json({ message: "Invalid token" });
-      
-      // Check if the work request is still pending and not expired
-      if (workRequest.status !== 'pending') {
-        return res.status(400).json({ message: `Work request is already ${workRequest.status}` });
-      }
-      
-      // Update the work request status to 'declined'
-      const updatedWorkRequest = await storage.updateWorkRequest(id, { 
-        status: 'declined',
-        // Store the reason in the description field since that exists in the schema
-        description: reason || 'Request declined' // Optional reason for declining
-      });
-      
-      res.json(updatedWorkRequest);
     } catch (error) {
       console.error('Error declining work request:', error);
       res.status(500).json({ message: "Error declining work request" });
