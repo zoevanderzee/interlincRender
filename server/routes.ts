@@ -2867,15 +2867,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let isValidToken = false;
       
       // Special handling for contractor users accepting work requests
-      // If the user is logged in and the request is sent to their email, allow automatic acceptance
+      // If the user is logged in, allow them to accept work requests
       if (token === 'auto-accept' && req.headers['x-user-id']) {
         const userId = parseInt(req.headers['x-user-id'] as string);
         const user = await storage.getUser(userId);
         
-        if (user && user.email && workRequest.recipientEmail && 
-            user.email.toLowerCase() === workRequest.recipientEmail.toLowerCase()) {
+        if (user && user.role === 'contractor') {
           isValidToken = true;
-          console.log(`Auto-accepting work request #${id} for user ${userId} (${user.email})`);
+          console.log(`Auto-accepting work request #${id} for logged-in contractor ${userId}`);
         }
       } else if (workRequest.tokenHash && token) {
         // Standard token verification
@@ -2936,21 +2935,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let isValidToken = false;
       
       // Special handling for contractor users declining work requests
-      // If the user is logged in and the request is sent to their email, allow automatic decline
+      // If the user is logged in, allow them to decline work requests
       if (token === 'auto-decline' && req.headers['x-user-id']) {
         const userId = parseInt(req.headers['x-user-id'] as string);
         const user = await storage.getUser(userId);
         
-        console.log(`Checking auto-decline for user ${userId}:`, {
-          userEmail: user?.email,
-          recipientEmail: workRequest.recipientEmail,
-          emailsMatch: user?.email?.toLowerCase() === workRequest.recipientEmail?.toLowerCase()
-        });
-        
-        if (user && user.email && workRequest.recipientEmail && 
-            user.email.toLowerCase() === workRequest.recipientEmail.toLowerCase()) {
+        if (user && user.role === 'contractor') {
           isValidToken = true;
-          console.log(`Auto-declining work request #${id} for user ${userId} (${user.email})`);
+          console.log(`Auto-declining work request #${id} for logged-in contractor ${userId}`);
         }
       } else if (workRequest.tokenHash && token) {
         // Standard token verification
