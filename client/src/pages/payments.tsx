@@ -175,21 +175,134 @@ export default function Payments() {
     );
   }
 
-  // Business owner view - keep existing complex functionality
+  // Business owner view - full payment management functionality
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl md:text-3xl font-semibold text-white">Payments</h1>
+          <h1 className="text-2xl md:text-3xl font-semibold text-white">Payment Management</h1>
           <p className="text-gray-400 mt-1">Manage payments to contractors and track expenses</p>
         </div>
+        <Button className="mt-4 md:mt-0 bg-blue-600 hover:bg-blue-700">
+          <DollarSign className="mr-2" size={16} />
+          Process Payment
+        </Button>
       </div>
-      
-      <div className="text-center py-12">
-        <DollarSign className="h-16 w-16 text-gray-600 mx-auto mb-4" />
-        <h3 className="text-xl font-medium text-gray-400 mb-2">Payment Management</h3>
-        <p className="text-gray-500">Business payment management features are being developed</p>
+
+      {/* Payment Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="bg-black border-gray-800">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-gray-400">Total Paid</CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">${totalEarned.toLocaleString()}</div>
+            <p className="text-xs text-gray-400">{completedPayments.length} payments completed</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-black border-gray-800">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-gray-400">Pending Payments</CardTitle>
+            <Clock className="h-4 w-4 text-yellow-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">${totalPending.toLocaleString()}</div>
+            <p className="text-xs text-gray-400">{pendingPayments.length} payments scheduled</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-black border-gray-800">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-gray-400">Processing</CardTitle>
+            <TrendingUp className="h-4 w-4 text-blue-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">${totalProcessing.toLocaleString()}</div>
+            <p className="text-xs text-gray-400">{processingPayments.length} payments processing</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-black border-gray-800">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-gray-400">Monthly Total</CardTitle>
+            <Calendar className="h-4 w-4 text-purple-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">${(totalEarned + totalPending + totalProcessing).toLocaleString()}</div>
+            <p className="text-xs text-gray-400">This month's activity</p>
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Payment Management Table */}
+      <Card className="bg-black border-gray-800">
+        <CardHeader>
+          <CardTitle className="text-white">Payment History & Management</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {payments.length === 0 ? (
+            <div className="text-center py-8">
+              <DollarSign className="mx-auto h-12 w-12 text-gray-600 mb-4" />
+              <h3 className="text-lg font-medium text-white mb-2">No Payments Yet</h3>
+              <p className="text-gray-400">Payments to contractors will appear here once you start processing them</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="border-gray-800">
+                  <TableHead className="text-gray-400">Contractor</TableHead>
+                  <TableHead className="text-gray-400">Project</TableHead>
+                  <TableHead className="text-gray-400">Amount</TableHead>
+                  <TableHead className="text-gray-400">Due Date</TableHead>
+                  <TableHead className="text-gray-400">Status</TableHead>
+                  <TableHead className="text-gray-400">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {payments.map((payment: Payment) => (
+                  <TableRow key={payment.id} className="border-gray-800">
+                    <TableCell className="text-white">
+                      {payment.contractorId ? `Contractor #${payment.contractorId}` : 'Contractor'}
+                    </TableCell>
+                    <TableCell className="text-gray-300">
+                      {getContractName(payment.contractId)}
+                    </TableCell>
+                    <TableCell className="text-white font-medium">
+                      ${parseFloat(payment.amount).toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-gray-300">
+                      {payment.dueDate ? new Date(payment.dueDate).toLocaleDateString() : 'Not set'}
+                    </TableCell>
+                    <TableCell>
+                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                        payment.status === 'completed' ? 'bg-green-500/10 text-green-400' :
+                        payment.status === 'processing' ? 'bg-blue-500/10 text-blue-400' :
+                        payment.status === 'scheduled' ? 'bg-yellow-500/10 text-yellow-400' :
+                        'bg-gray-500/10 text-gray-400'
+                      }`}>
+                        {payment.status}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      {payment.status === 'pending' || payment.status === 'scheduled' ? (
+                        <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+                          Process Now
+                        </Button>
+                      ) : (
+                        <Button variant="outline" size="sm" className="border-gray-700 text-gray-400">
+                          View Details
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
