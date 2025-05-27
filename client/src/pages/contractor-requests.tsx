@@ -56,20 +56,20 @@ const ContractorRequests = () => {
     }
   });
   
-  // Get business data to display names
-  const { data: businesses = [] } = useQuery<any[]>({
-    queryKey: ['/api/users'],
-    select: (data: any) => data.filter((u: any) => u.role === 'business')
+  // Get all users data (including businesses) for contractor users
+  const { data: allUsers = [] } = useQuery<any[]>({
+    queryKey: ['/api/users']
   });
   
-  // Get contracts to display names
+  // Get contracts data
   const { data: contracts = [] } = useQuery<any[]>({
     queryKey: ['/api/contracts']
   });
   
   // Enrich work requests with business and contract names
   const enrichedRequests = workRequests.map(request => {
-    const business = businesses.find((b: any) => b.id === request.businessId);
+    // Find the business by ID from all users
+    const business = allUsers.find((u: any) => u.id === request.businessId && u.role === 'business');
     
     // Look for the contract in the contracts array
     let contract = contracts.find((c: any) => c.id === request.contractId);
@@ -84,9 +84,12 @@ const ContractorRequests = () => {
       }
     }
     
+    // Get the company name, preferring companyName over username
+    const companyName = business?.companyName || business?.username || `Business ID: ${request.businessId}`;
+    
     return {
       ...request,
-      businessName: business?.companyName || business?.username || `Business ID: ${request.businessId}`,
+      businessName: companyName,
       contractName: contract?.contractName || request.title || 'Project Request',
       contractId: contract?.id || request.contractId
     };

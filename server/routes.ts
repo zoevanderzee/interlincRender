@@ -142,11 +142,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If the current user is a contractor/freelancer
       else if (currentUser.role === "contractor" || currentUser.role === "freelancer") {
         if (role === "business") {
-          // Only return businesses that have a contract with this contractor
-          users = await storage.getBusinessesByContractorId(currentUser.id);
+          // Return businesses that have contracts with this contractor AND businesses that sent work requests
+          const businessesWithContracts = await storage.getBusinessesByContractorId(currentUser.id);
+          
+          // Get work requests sent to this contractor to find additional businesses
+          const workRequests = await storage.getWorkRequestsByEmail(currentUser.email);
+          const businessIdsFromRequests = [...new Set(workRequests.map(wr => wr.businessId))];
+          
+          // Get business users for work request senders
+          const businessesFromRequests = [];
+          for (const businessId of businessIdsFromRequests) {
+            const business = await storage.getUser(businessId);
+            if (business && business.role === 'business') {
+              businessesFromRequests.push(business);
+            }
+          }
+          
+          // Combine and deduplicate businesses
+          const allBusinesses = [...businessesWithContracts, ...businessesFromRequests];
+          const uniqueBusinesses = allBusinesses.filter((business, index, self) => 
+            index === self.findIndex(b => b.id === business.id)
+          );
+          
+          users = uniqueBusinesses;
         } else if (!role || role === "contractor" || role === "freelancer") {
           // Contractors can only see themselves
           users = [currentUser];
+        } else {
+          // For contractor users requesting all users (no role filter), include businesses they work with
+          const businessesWithContracts = await storage.getBusinessesByContractorId(currentUser.id);
+          
+          // Get work requests sent to this contractor to find additional businesses
+          const workRequests = await storage.getWorkRequestsByEmail(currentUser.email);
+          const businessIdsFromRequests = [...new Set(workRequests.map(wr => wr.businessId))];
+          
+          // Get business users for work request senders
+          const businessesFromRequests = [];
+          for (const businessId of businessIdsFromRequests) {
+            const business = await storage.getUser(businessId);
+            if (business && business.role === 'business') {
+              businessesFromRequests.push(business);
+            }
+          }
+          
+          // Combine contractor and business data
+          const allBusinesses = [...businessesWithContracts, ...businessesFromRequests];
+          const uniqueBusinesses = allBusinesses.filter((business, index, self) => 
+            index === self.findIndex(b => b.id === business.id)
+          );
+          
+          users = [currentUser, ...uniqueBusinesses];
         }
       }
       // Admin users (if implemented) can see everyone
