@@ -268,7 +268,7 @@ const Dashboard = () => {
         {/* Page Header */}
         <div className="mb-8">
           <h1 className="text-2xl md:text-3xl font-semibold text-white">Contractor Dashboard</h1>
-          <p className="text-gray-400 mt-1">Manage your projects and track your payments</p>
+          <p className="text-gray-400 mt-1">View your assigned projects and track your payments</p>
         </div>
         
         {/* Primary Metrics: 3 Key Cards for contractors */}
@@ -417,14 +417,9 @@ const Dashboard = () => {
                           'No dates set'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          className="text-accent-500 hover:text-accent-400"
-                          onClick={() => navigate(`/contract/${contract.id}`)}
-                        >
-                          View
-                        </Button>
+                        <span className="text-xs text-gray-500">
+                          Read Only
+                        </span>
                       </td>
                     </tr>
                   ))}

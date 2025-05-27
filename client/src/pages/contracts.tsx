@@ -50,8 +50,12 @@ const Contracts = () => {
     setStatusFilter("all");
   };
 
-  // Handle view contract
+  // Handle view contract - contractors get read-only view
   const handleViewContract = (id: number) => {
+    if (isContractor) {
+      // Contractors shouldn't access full contract details
+      return;
+    }
     navigate(`/contract/${id}`);
   };
 

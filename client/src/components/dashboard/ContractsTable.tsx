@@ -250,15 +250,9 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
                     </TableCell>
                     <TableCell className="text-right">
                       {isContractor ? (
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          className="text-accent-500 hover:text-accent-400"
-                          onClick={() => onViewContract && onViewContract(contract.id)}
-                        >
-                          <Eye className="mr-2 h-4 w-4" />
-                          View
-                        </Button>
+                        <span className="text-xs text-zinc-500">
+                          Read Only
+                        </span>
                       ) : (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
