@@ -299,6 +299,59 @@ const Projects = () => {
             </div>
           </Card>
         </div>
+
+        {/* Submit Work Modal */}
+        <Dialog open={showSubmissionModal} onOpenChange={setShowSubmissionModal}>
+          <DialogContent className="bg-zinc-900 border-zinc-800 text-white">
+            <DialogHeader>
+              <DialogTitle>Submit Your Work</DialogTitle>
+              <DialogDescription className="text-zinc-400">
+                Submit your completed work for review and approval.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleFormSubmit} className="space-y-4">
+              <div>
+                <Label htmlFor="title" className="text-white">Work Title</Label>
+                <Input
+                  id="title"
+                  value={submissionTitle}
+                  onChange={(e) => setSubmissionTitle(e.target.value)}
+                  placeholder="Enter a title for your submission"
+                  className="bg-zinc-800 border-zinc-700 text-white"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="description" className="text-white">Description</Label>
+                <Textarea
+                  id="description"
+                  value={submissionDescription}
+                  onChange={(e) => setSubmissionDescription(e.target.value)}
+                  placeholder="Describe what you've completed..."
+                  className="bg-zinc-800 border-zinc-700 text-white min-h-[100px]"
+                  rows={4}
+                />
+              </div>
+              <div className="flex justify-end gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowSubmissionModal(false)}
+                  className="border-zinc-700 text-white hover:bg-zinc-800"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={submitWorkMutation.isPending || !submissionTitle.trim()}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  {submitWorkMutation.isPending ? "Submitting..." : "Submit Work"}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       </>
     );
   }
