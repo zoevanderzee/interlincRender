@@ -2951,25 +2951,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           console.log(`✓ Work request declined successfully`);
           
-          // Send email notification to the business owner
+          // Create in-app notification for the business owner
           try {
-            const businessOwner = await storage.getUser(workRequest.businessId);
-            if (businessOwner && businessOwner.email) {
-              const { sendWorkRequestDeclinedEmail } = await import('./services/email');
-              await sendWorkRequestDeclinedEmail(
-                businessOwner.email,
-                businessOwner.firstName || businessOwner.username,
-                workRequest.title,
-                user.firstName && user.lastName 
-                  ? `${user.firstName} ${user.lastName}` 
-                  : user.username,
-                workRequest.description
-              );
-              console.log(`Decline notification sent to ${businessOwner.email}`);
-            }
-          } catch (emailError) {
-            console.error('Failed to send decline notification:', emailError);
-            // Don't fail the decline operation if email fails
+            const contractorName = user.firstName && user.lastName 
+              ? `${user.firstName} ${user.lastName}` 
+              : user.username;
+            
+            await storage.createNotification({
+              userId: workRequest.businessId,
+              title: 'Work Request Declined',
+              message: `${contractorName} has declined your work request: "${workRequest.title}"`,
+              type: 'work_request_declined',
+              relatedId: id,
+              isRead: false
+            });
+            console.log(`In-app notification created for business owner (ID: ${workRequest.businessId})`);
+          } catch (notificationError) {
+            console.error('Failed to create notification:', notificationError);
+            // Don't fail the decline operation if notification fails
           }
           
           return res.json(updatedWorkRequest);

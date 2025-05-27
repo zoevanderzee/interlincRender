@@ -1,6 +1,6 @@
 import { 
   users, invites, contracts, milestones, payments, documents, bankAccounts, workRequests,
-  businessOnboardingLinks, businessOnboardingUsage, connectionRequests,
+  businessOnboardingLinks, businessOnboardingUsage, connectionRequests, notifications,
   type User, type InsertUser, 
   type Invite, type InsertInvite,
   type Contract, type InsertContract,
@@ -11,7 +11,8 @@ import {
   type WorkRequest, type InsertWorkRequest,
   type BusinessOnboardingLink, type InsertBusinessOnboardingLink,
   type BusinessOnboardingUsage, type InsertBusinessOnboardingUsage,
-  type ConnectionRequest, type InsertConnectionRequest
+  type ConnectionRequest, type InsertConnectionRequest,
+  type Notification, type InsertNotification
 } from "@shared/schema";
 import { eq, and, desc, lte, gte, sql, or } from "drizzle-orm";
 import { db, pool } from "./db";
@@ -139,6 +140,12 @@ export interface IStorage {
   getConnectionRequestByProfileCode(businessId: number, profileCode: string): Promise<ConnectionRequest | undefined>;
   createConnectionRequest(request: InsertConnectionRequest): Promise<ConnectionRequest>;
   updateConnectionRequest(id: number, request: Partial<InsertConnectionRequest>): Promise<ConnectionRequest | undefined>;
+
+  // Notifications
+  createNotification(notification: any): Promise<any>;
+  getNotificationsByUserId(userId: number): Promise<any[]>;
+  markNotificationAsRead(id: number): Promise<any>;
+  getUnreadNotificationCount(userId: number): Promise<number>;
 }
 
 // In-memory storage implementation
@@ -2326,6 +2333,40 @@ export class DatabaseStorage implements IStorage {
       console.error(`Error checking contractor link:`, error);
       return false;
     }
+  }
+
+  // Notification methods
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    const [result] = await db.insert(notifications).values(notification).returning();
+    return result;
+  }
+
+  async getNotificationsByUserId(userId: number): Promise<Notification[]> {
+    return await db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.userId, userId))
+      .orderBy(desc(notifications.createdAt));
+  }
+
+  async markNotificationAsRead(id: number): Promise<Notification | undefined> {
+    const [result] = await db
+      .update(notifications)
+      .set({ isRead: true })
+      .where(eq(notifications.id, id))
+      .returning();
+    return result;
+  }
+
+  async getUnreadNotificationCount(userId: number): Promise<number> {
+    const result = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(notifications)
+      .where(and(
+        eq(notifications.userId, userId),
+        eq(notifications.isRead, false)
+      ));
+    return result[0]?.count || 0;
   }
 }
 

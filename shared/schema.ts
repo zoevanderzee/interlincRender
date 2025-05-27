@@ -272,6 +272,28 @@ export const insertConnectionRequestSchema = createInsertSchema(connectionReques
 export type InsertConnectionRequest = z.infer<typeof insertConnectionRequestSchema>;
 export type ConnectionRequest = typeof connectionRequests.$inferSelect;
 
+// Notifications table
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  type: text("type").notNull(), // 'work_request_declined', 'payment_completed', etc.
+  relatedId: integer("related_id"), // ID of the related entity (work request, payment, etc.)
+  isRead: boolean("is_read").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow()
+});
+
+// Create notification schema
+export const insertNotificationSchema = createInsertSchema(notifications).omit({ 
+  id: true, 
+  createdAt: true 
+});
+
+// Types for notifications
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type Notification = typeof notifications.$inferSelect;
+
 // Create types
 export type InsertBusinessOnboardingLink = z.infer<typeof insertBusinessOnboardingLinkSchema>;
 export type BusinessOnboardingLink = typeof businessOnboardingLinks.$inferSelect;
