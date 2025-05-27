@@ -156,26 +156,95 @@ const Projects = () => {
     );
   }
 
+  // If user is a contractor, show work submission interface
+  if (isContractor) {
+    return (
+      <>
+        {/* Contractor Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-semibold text-white">My Work Assignments</h1>
+            <p className="text-zinc-400 mt-1">Submit completed work and track progress</p>
+          </div>
+        </div>
+
+        {/* Assignment Cards */}
+        <div className="space-y-4 mb-6">
+          {contracts.map((contract) => (
+            <Card key={contract.id} className="p-6 border border-zinc-800 bg-zinc-900">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-white">{contract.contractName}</h3>
+                  <p className="text-sm text-zinc-400">Assignment Code: {contract.contractCode}</p>
+                </div>
+                <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                  contract.status === 'active' ? 'bg-green-500/10 text-green-400' : 
+                  contract.status === 'pending' ? 'bg-yellow-500/10 text-yellow-400' : 
+                  'bg-blue-500/10 text-blue-400'
+                }`}>
+                  {contract.status}
+                </span>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <span className="text-zinc-400 text-sm">Your Earnings:</span>
+                  <div className="text-white font-semibold">${parseFloat(contract.value).toLocaleString()}</div>
+                </div>
+                <div>
+                  <span className="text-zinc-400 text-sm">Due Date:</span>
+                  <div className="text-white">{contract.endDate ? new Date(contract.endDate).toLocaleDateString() : 'Not set'}</div>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button 
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  size="sm"
+                >
+                  Submit Work
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="border-zinc-700 text-white hover:bg-zinc-800"
+                  size="sm"
+                >
+                  View Details
+                </Button>
+              </div>
+            </Card>
+          ))}
+        </div>
+
+        {/* Work Submissions Section */}
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold text-white mb-4">Recent Submissions</h2>
+          <Card className="p-6 border border-zinc-800 bg-zinc-900">
+            <div className="text-center py-8">
+              <FileText className="mx-auto h-12 w-12 text-zinc-500 mb-4" />
+              <h3 className="text-lg font-medium text-white mb-2">No submissions yet</h3>
+              <p className="text-zinc-400">Your submitted work will appear here for approval tracking</p>
+            </div>
+          </Card>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
-      {/* Page Header */}
+      {/* Business Owner Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <div>
           <h1 className="text-2xl md:text-3xl font-semibold text-white">Projects</h1>
-          {isContractor ? (
-            <p className="text-zinc-400 mt-1">View your assigned projects</p>
-          ) : (
-            <p className="text-zinc-400 mt-1">Track project milestones and deliverables</p>
-          )}
+          <p className="text-zinc-400 mt-1">Track project milestones and deliverables</p>
         </div>
-        {!isContractor && (
-          <div className="mt-4 md:mt-0">
-            <Button onClick={() => navigate("/contracts/new")}>
-              <Plus size={16} className="mr-2" />
-              Create New Project
-            </Button>
-          </div>
-        )}
+        <div className="mt-4 md:mt-0">
+          <Button onClick={() => navigate("/contracts/new")}>
+            <Plus size={16} className="mr-2" />
+            Create New Project
+          </Button>
+        </div>
       </div>
 
       {/* Payment Stats - Using real data from API */}
