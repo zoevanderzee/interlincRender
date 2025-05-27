@@ -1,21 +1,15 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card } from "@/components/ui/card";
+import { useAuth } from "@/hooks/use-auth";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { 
   BarChart, 
   Bar, 
@@ -26,232 +20,148 @@ import {
   ResponsiveContainer,
   PieChart,
   Pie,
-  Cell,
-  LineChart,
-  Line,
-  Legend 
+  Cell
 } from "recharts";
 import { 
   Download, 
   FileText, 
-  BarChart as BarChartIcon, 
-  PieChart as PieChartIcon, 
-  LineChart as LineChartIcon,
-  Calendar,
-  Loader2
+  TrendingUp,
+  Clock,
+  CheckCircle,
+  DollarSign
 } from "lucide-react";
-
-// Default empty data for charts
-const EMPTY_DATA = {
-  monthlyPayments: [
-    { name: 'Jan', amount: 0 },
-    { name: 'Feb', amount: 0 },
-    { name: 'Mar', amount: 0 },
-    { name: 'Apr', amount: 0 },
-    { name: 'May', amount: 0 },
-    { name: 'Jun', amount: 0 }
-  ],
-  contractDistribution: [
-    { name: 'Fixed Price', value: 0 },
-    { name: 'Time & Materials', value: 0 },
-    { name: 'Retainer', value: 0 }
-  ],
-  statusDistribution: [
-    { name: 'Active', value: 0 },
-    { name: 'Pending', value: 0 },
-    { name: 'Completed', value: 0 }
-  ],
-  contractGrowth: [
-    { name: 'Jan', contracts: 0 },
-    { name: 'Feb', contracts: 0 },
-    { name: 'Mar', contracts: 0 },
-    { name: 'Apr', contracts: 0 },
-    { name: 'May', contracts: 0 },
-    { name: 'Jun', contracts: 0 }
-  ]
-};
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
-const Reports = () => {
-  const { toast } = useToast();
-  const [timeRange, setTimeRange] = useState('year');
-  const [isExporting, setIsExporting] = useState(false);
+export default function Reports() {
+  const { user } = useAuth();
   
-  // Fetch real report data from the API
-  const { data, isLoading } = useQuery({
-    queryKey: ['/api/reports', timeRange],
+  const isContractor = user?.role === 'contractor';
+
+  // Fetch reports data
+  const { data: reportData, isLoading } = useQuery({
+    queryKey: ['/api/reports'],
+    enabled: !!user
   });
-  
-  // Handle export reports
-  const handleExport = (format: string) => {
-    setIsExporting(true);
-    
-    // Simulate export process
-    setTimeout(() => {
-      setIsExporting(false);
-      toast({
-        title: "Report exported",
-        description: `Your report has been exported as ${format.toUpperCase()}.`,
-      });
-    }, 1500);
-  };
-  
-  // Loading state
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-accent-500" />
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading your reports...</p>
+        </div>
       </div>
     );
   }
-  
-  // Create report data from API or fall back to empty data
-  const reportData = {
-    monthlyPayments: EMPTY_DATA.monthlyPayments,
-    contractDistribution: EMPTY_DATA.contractDistribution,
-    statusDistribution: data?.contractsByStatus?.map((item: any) => ({
-      name: item.status.charAt(0).toUpperCase() + item.status.slice(1).replace('_', ' '),
-      value: item.count || 0
-    })) || EMPTY_DATA.statusDistribution,
-    contractGrowth: EMPTY_DATA.contractGrowth
-  };
-  
-  return (
-    <>
-      {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-semibold text-primary-900">Financial Reports</h1>
-          <p className="text-primary-500 mt-1">Track performance and analyze payment data</p>
-        </div>
-        <div className="mt-4 md:mt-0 flex items-center space-x-4">
-          <Select
-            value={timeRange}
-            onValueChange={setTimeRange}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select time range" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="month">This Month</SelectItem>
-              <SelectItem value="quarter">This Quarter</SelectItem>
-              <SelectItem value="year">This Year</SelectItem>
-              <SelectItem value="all">All Time</SelectItem>
-            </SelectContent>
-          </Select>
-          
-          <div className="hidden md:flex space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleExport('csv')}
-              disabled={isExporting}
-            >
-              {isExporting ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Download size={16} className="mr-2" />
-              )}
-              CSV
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleExport('pdf')}
-              disabled={isExporting}
-            >
-              {isExporting ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <FileText size={16} className="mr-2" />
-              )}
-              PDF
-            </Button>
+
+  if (isContractor) {
+    // Contractor view - simplified work performance focused
+    return (
+      <div className="space-y-6">
+        {/* Page Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-semibold text-white">My Work Report</h1>
+            <p className="text-gray-400 mt-1">Track your work performance and earnings over time</p>
           </div>
+          <Button 
+            variant="outline"
+            className="mt-4 md:mt-0 border-gray-700 text-white hover:bg-gray-800"
+          >
+            <Download className="mr-2" size={16} />
+            Download Report
+          </Button>
         </div>
-      </div>
-      
-      {/* Mobile Export Button Group */}
-      <div className="flex md:hidden space-x-2 mb-4">
-        <Button
-          variant="outline"
-          className="flex-1"
-          onClick={() => handleExport('csv')}
-          disabled={isExporting}
-        >
-          {isExporting ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Download size={16} className="mr-2" />
-          )}
-          Export as CSV
-        </Button>
-        <Button
-          variant="outline"
-          className="flex-1"
-          onClick={() => handleExport('pdf')}
-          disabled={isExporting}
-        >
-          {isExporting ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <FileText size={16} className="mr-2" />
-          )}
-          Export as PDF
-        </Button>
-      </div>
-      
-      {/* Report Tabs */}
-      <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="overview" className="flex items-center">
-            <BarChartIcon size={16} className="mr-2" />
-            Overview
-          </TabsTrigger>
-          <TabsTrigger value="payments" className="flex items-center">
-            <LineChartIcon size={16} className="mr-2" />
-            Payments
-          </TabsTrigger>
-          <TabsTrigger value="contracts" className="flex items-center">
-            <PieChartIcon size={16} className="mr-2" />
-            Contracts
-          </TabsTrigger>
-        </TabsList>
-        
-        {/* Overview Tab */}
-        <TabsContent value="overview">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Monthly Payments Chart */}
-            <Card className="p-5 border border-primary-100">
-              <h3 className="text-lg font-medium text-primary-900 mb-4">Monthly Payments</h3>
+
+        {/* Summary Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card className="bg-black border-gray-800">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-400">Active Projects</CardTitle>
+              <FileText className="h-4 w-4 text-blue-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-white">{reportData?.summary?.totalContracts || 0}</div>
+              <p className="text-xs text-gray-400">Currently working on</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-black border-gray-800">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-400">Total Earned</CardTitle>
+              <DollarSign className="h-4 w-4 text-green-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-white">${reportData?.summary?.totalEarnings || 0}</div>
+              <p className="text-xs text-gray-400">All time earnings</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-black border-gray-800">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-400">Completed</CardTitle>
+              <CheckCircle className="h-4 w-4 text-green-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-white">{reportData?.summary?.completedContracts || 0}</div>
+              <p className="text-xs text-gray-400">Projects finished</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-black border-gray-800">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-400">Avg Response</CardTitle>
+              <Clock className="h-4 w-4 text-yellow-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-white">24h</div>
+              <p className="text-xs text-gray-400">Response time</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Charts Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Monthly Earnings Chart */}
+          <Card className="bg-black border-gray-800">
+            <CardHeader>
+              <CardTitle className="text-white">Monthly Earnings</CardTitle>
+            </CardHeader>
+            <CardContent>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={reportData.monthlyPayments}
-                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
+                  <BarChart data={reportData?.monthlyPayments || []}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                    <XAxis dataKey="name" stroke="#9CA3AF" />
+                    <YAxis stroke="#9CA3AF" />
                     <Tooltip 
-                      formatter={(value) => [`$${value}`, 'Amount']}
-                      labelFormatter={(label) => `Month: ${label}`}
+                      contentStyle={{ 
+                        backgroundColor: '#1F2937', 
+                        border: '1px solid #374151',
+                        borderRadius: '6px',
+                        color: '#F9FAFB'
+                      }}
+                      formatter={(value) => [`$${value}`, 'Earnings']}
                     />
-                    <Bar dataKey="amount" fill="#3b82f6" />
+                    <Bar dataKey="amount" fill="#3B82F6" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-            </Card>
-            
-            {/* Contract Distribution Chart */}
-            <Card className="p-5 border border-primary-100">
-              <h3 className="text-lg font-medium text-primary-900 mb-4">Contract Distribution</h3>
+            </CardContent>
+          </Card>
+
+          {/* Project Types Distribution */}
+          <Card className="bg-black border-gray-800">
+            <CardHeader>
+              <CardTitle className="text-white">Project Types</CardTitle>
+            </CardHeader>
+            <CardContent>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={reportData.contractDistribution}
+                      data={reportData?.contractDistribution || []}
                       cx="50%"
                       cy="50%"
                       labelLine={false}
@@ -260,183 +170,92 @@ const Reports = () => {
                       fill="#8884d8"
                       dataKey="value"
                     >
-                      {reportData.contractDistribution.map((entry, index) => (
+                      {(reportData?.contractDistribution || []).map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value) => [`${value} contracts`, 'Count']} />
-                    <Legend />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: '#1F2937', 
+                        border: '1px solid #374151',
+                        borderRadius: '6px',
+                        color: '#F9FAFB'
+                      }}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-            </Card>
-            
-            {/* Status Distribution Chart */}
-            <Card className="p-5 border border-primary-100 md:col-span-2">
-              <h3 className="text-lg font-medium text-primary-900 mb-4">Contract Status Distribution</h3>
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={reportData.statusDistribution}
-                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                    layout="vertical"
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" />
-                    <YAxis dataKey="name" type="category" width={150} />
-                    <Tooltip formatter={(value) => [`${value} contracts`, 'Count']} />
-                    <Bar dataKey="value" fill="#10b981" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-          </div>
-        </TabsContent>
-        
-        {/* Payments Tab */}
-        <TabsContent value="payments">
-          <div className="grid grid-cols-1 gap-6">
-            <Card className="p-5 border border-primary-100">
-              <h3 className="text-lg font-medium text-primary-900 mb-4">Payment Trends</h3>
-              <div className="h-96">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart
-                    data={reportData.monthlyPayments}
-                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip formatter={(value) => [`$${value}`, 'Amount']} />
-                    <Legend />
-                    <Line 
-                      type="monotone" 
-                      dataKey="amount" 
-                      stroke="#3b82f6" 
-                      activeDot={{ r: 8 }} 
-                      name="Payment Amount"
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-            
-            {/* Payment Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="p-5 border border-primary-100">
-                <div className="flex items-center mb-2">
-                  <Calendar className="h-5 w-5 text-accent-500 mr-2" />
-                  <h3 className="text-lg font-medium text-primary-900">This Month</h3>
-                </div>
-                <p className="text-3xl font-semibold text-primary-900">
-                  $0
-                </p>
-                <p className="text-sm text-primary-500 mt-1">Total payments processed</p>
-              </Card>
-              
-              <Card className="p-5 border border-primary-100">
-                <div className="flex items-center mb-2">
-                  <BarChartIcon className="h-5 w-5 text-accent-500 mr-2" />
-                  <h3 className="text-lg font-medium text-primary-900">Average</h3>
-                </div>
-                <p className="text-3xl font-semibold text-primary-900">
-                  $0
-                </p>
-                <p className="text-sm text-primary-500 mt-1">Monthly average</p>
-              </Card>
-              
-              <Card className="p-5 border border-primary-100">
-                <div className="flex items-center mb-2">
-                  <LineChartIcon className="h-5 w-5 text-accent-500 mr-2" />
-                  <h3 className="text-lg font-medium text-primary-900">Year to Date</h3>
-                </div>
-                <p className="text-3xl font-semibold text-primary-900">
-                  $0
-                </p>
-                <p className="text-sm text-primary-500 mt-1">Total for the year</p>
-              </Card>
-            </div>
-          </div>
-        </TabsContent>
-        
-        {/* Contracts Tab */}
-        <TabsContent value="contracts">
-          <div className="grid grid-cols-1 gap-6">
-            <Card className="p-5 border border-primary-100">
-              <h3 className="text-lg font-medium text-primary-900 mb-4">Contract Growth</h3>
-              <div className="h-96">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart
-                    data={reportData.contractGrowth}
-                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip formatter={(value) => [`${value} contracts`, 'Count']} />
-                    <Legend />
-                    <Line 
-                      type="monotone" 
-                      dataKey="contracts" 
-                      stroke="#10b981" 
-                      activeDot={{ r: 8 }} 
-                      name="Active Contracts"
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card className="p-5 border border-primary-100">
-                <h3 className="text-lg font-medium text-primary-900 mb-4">Contract Types</h3>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={reportData.contractDistribution}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {reportData.contractDistribution.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value) => [`${value} contracts`, 'Count']} />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </Card>
-              
-              <Card className="p-5 border border-primary-100">
-                <h3 className="text-lg font-medium text-primary-900 mb-4">Contract Status</h3>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={reportData.statusDistribution}
-                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip formatter={(value) => [`${value} contracts`, 'Count']} />
-                      <Bar dataKey="value" fill="#f59e0b" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </Card>
-            </div>
-          </div>
-        </TabsContent>
-      </Tabs>
-    </>
-  );
-};
+            </CardContent>
+          </Card>
+        </div>
 
-export default Reports;
+        {/* Recent Work Activity */}
+        <Card className="bg-black border-gray-800">
+          <CardHeader>
+            <CardTitle className="text-white">Recent Activity</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {(!reportData?.recentActivity || reportData.recentActivity.length === 0) ? (
+              <div className="text-center py-8">
+                <TrendingUp className="h-12 w-12 text-gray-600 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-400 mb-2">No activity yet</h3>
+                <p className="text-gray-500">Your work activity will appear here as you complete projects</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-gray-800">
+                    <TableHead className="text-gray-400">Date</TableHead>
+                    <TableHead className="text-gray-400">Project</TableHead>
+                    <TableHead className="text-gray-400">Activity</TableHead>
+                    <TableHead className="text-gray-400">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {reportData.recentActivity.map((activity, index) => (
+                    <TableRow key={index} className="border-gray-800">
+                      <TableCell className="text-white">
+                        {new Date(activity.date).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-white">{activity.project}</TableCell>
+                      <TableCell className="text-white">{activity.description}</TableCell>
+                      <TableCell>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          activity.status === 'completed' 
+                            ? 'bg-green-900/30 text-green-400'
+                            : activity.status === 'in-progress'
+                            ? 'bg-blue-900/30 text-blue-400'
+                            : 'bg-yellow-900/30 text-yellow-400'
+                        }`}>
+                          {activity.status}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Business owner view - keep existing complex functionality  
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-semibold text-white">Business Reports</h1>
+          <p className="text-gray-400 mt-1">Analyze business performance and contractor metrics</p>
+        </div>
+      </div>
+      
+      <div className="text-center py-12">
+        <FileText className="h-16 w-16 text-gray-600 mx-auto mb-4" />
+        <h3 className="text-xl font-medium text-gray-400 mb-2">Business Analytics</h3>
+        <p className="text-gray-500">Advanced business reporting features are being developed</p>
+      </div>
+    </div>
+  );
+}
