@@ -53,15 +53,6 @@ const Contractors = () => {
   // Fetch all external workers (both contractors and freelancers)
   const { data: externalWorkers = [], isLoading: isLoadingWorkers } = useQuery<User[]>({
     queryKey: ['/api/users', { role: 'contractor' }],
-    onSuccess: (data) => {
-      console.log("Received workers from API:", data);
-      console.log("Worker types:", data.map(w => ({ 
-        id: w.id, 
-        username: w.username, 
-        workerType: w.workerType,
-        role: w.role 
-      })));
-    },
   });
   
   // Fetch business accounts (for contractors view)
@@ -72,12 +63,12 @@ const Contractors = () => {
   
   // Filter contractors and freelancers - based on the tabs we've defined
   // "Sub Contractors" tab shows workers with role=contractor AND workerType=contractor
-  const subContractors = externalWorkers.filter(worker => 
+  const subContractors = (externalWorkers || []).filter((worker: User) => 
     worker.role === 'contractor' && worker.workerType === 'contractor'
   );
   
   // "Contractors" tab shows workers with role=contractor who are either freelancers or don't have a workerType
-  let contractors = externalWorkers.filter(worker => 
+  let contractors = (externalWorkers || []).filter((worker: User) => 
     worker.role === 'contractor' && (worker.workerType === 'freelancer' || !worker.workerType || worker.workerType === '')
   );
   
@@ -86,7 +77,7 @@ const Contractors = () => {
     console.log("Adding Test Contractor directly to UI - Current Contractors:", contractors);
     
     // Check if the Test Contractor with ID 30 is already in the list
-    const hasTestContractor = contractors.some(c => c.id === 30);
+    const hasTestContractor = contractors.some((c: User) => c.id === 30);
     
     if (!hasTestContractor) {
       // Create a complete contractor object to ensure no missing fields
@@ -152,7 +143,7 @@ const Contractors = () => {
   });
 
   // Filter sub contractors by search term
-  const filteredSubContractors = subContractors.filter((contractor) => {
+  const filteredSubContractors = subContractors.filter((contractor: User) => {
     if (!contractor) return false;
     return (
       searchTerm === "" ||
@@ -164,7 +155,7 @@ const Contractors = () => {
   });
   
   // Filter regular contractors by search term
-  const filteredContractors = contractors.filter((contractor) => {
+  const filteredContractors = contractors.filter((contractor: User) => {
     if (!contractor) return false;
     return (
       searchTerm === "" ||
@@ -648,10 +639,10 @@ const Contractors = () => {
                       </div>
                     )}
                     
-                    {company.address && (
+                    {(company as any).address && (
                       <div className="flex items-center text-sm text-zinc-400 mb-3">
                         <Building size={16} className="mr-2" />
-                        {company.address}
+                        {(company as any).address}
                       </div>
                     )}
                     
