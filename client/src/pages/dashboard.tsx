@@ -364,62 +364,7 @@ const Dashboard = () => {
           </Button>
         </div>
         
-        {/* My Assignments Section */}
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold text-white mb-4">My Assignments</h2>
-          {dashboardData.contracts.filter(contract => contract.status !== 'deleted').length > 0 ? (
-            <div className="grid gap-4">
-              {dashboardData.contracts.filter(contract => contract.status !== 'deleted').slice(0, 5).map((contract) => (
-                <div key={contract.id} className="bg-zinc-900 rounded-lg border border-zinc-800 p-4">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h3 className="text-lg font-medium text-white">{contract.contractName}</h3>
-                      <p className="text-sm text-gray-400">Assignment Code: {contract.contractCode}</p>
-                    </div>
-                    <span className={`px-3 py-1 text-xs font-semibold rounded-full 
-                      ${contract.status === 'active' ? 'bg-green-500/10 text-green-400' : 
-                      contract.status === 'pending' ? 'bg-yellow-500/10 text-yellow-400' : 
-                      contract.status === 'draft' ? 'bg-blue-500/10 text-blue-400' :
-                      'bg-red-500/10 text-red-400'}`}>
-                      {contract.status}
-                    </span>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-400">Your Earnings:</span>
-                      <div className="text-white font-medium">${parseFloat(contract.value).toLocaleString('en-US')}</div>
-                    </div>
-                    <div>
-                      <span className="text-gray-400">Timeline:</span>
-                      <div className="text-white">
-                        {contract.startDate && contract.endDate ? 
-                          `${new Date(contract.startDate).toLocaleDateString()} - ${new Date(contract.endDate).toLocaleDateString()}` : 
-                          'Dates pending'}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-3 pt-3 border-t border-zinc-800">
-                    <p className="text-xs text-gray-500">
-                      This is your work assignment. Contact your project manager for details.
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-10 bg-zinc-900 rounded-lg border border-zinc-800">
-              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-zinc-800">
-                <AlertTriangle className="h-6 w-6 text-yellow-500" />
-              </div>
-              <h3 className="mb-2 text-lg font-medium text-white">No Assignments Yet</h3>
-              <p className="text-sm text-gray-400">
-                You haven't been assigned to any work yet. Check back later.
-              </p>
-            </div>
-          )}
-        </div>
+
       </>
     );
   }
