@@ -2936,9 +2936,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Special handling for contractor users declining work requests
       // If the user is logged in, allow them to decline work requests
+      console.log(`Decline request debug:`, {
+        token,
+        hasUserId: !!req.headers['x-user-id'],
+        userId: req.headers['x-user-id']
+      });
+      
       if (token === 'auto-decline' && req.headers['x-user-id']) {
         const userId = parseInt(req.headers['x-user-id'] as string);
         const user = await storage.getUser(userId);
+        
+        console.log(`User lookup for decline:`, {
+          userId,
+          userFound: !!user,
+          userRole: user?.role
+        });
         
         if (user && user.role === 'contractor') {
           isValidToken = true;
