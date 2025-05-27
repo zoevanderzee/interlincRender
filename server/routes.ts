@@ -1996,22 +1996,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .sort((a, b) => b.amount - a.amount)
         .slice(0, 5);
       
+      // Calculate total spending amount for business metrics
+      const totalSpent = payments.reduce((sum, payment) => {
+        const amount = parseFloat(payment.amount) || 0;
+        return sum + amount;
+      }, 0);
+
+      // Generate monthly payments data for chart
+      const monthlyPayments = paymentsByMonth.map(monthData => ({
+        month: monthData.month,
+        amount: monthData.totalAmount
+      }));
+
+      // Convert contract status data for pie chart
+      const contractDistribution = [
+        { name: 'Active', value: activeContracts.length },
+        { name: 'Completed', value: completedContracts.length },
+        { name: 'Pending', value: pendingContracts.length }
+      ].filter(item => item.value > 0); // Only show categories with data
+
+      // Generate recent activity data
+      const recentActivity = payments
+        .slice(0, 10) // Get latest 10 payments
+        .map(payment => {
+          const contract = contracts.find(c => c.id === payment.contractId);
+          const contractor = filteredContractors.find(c => c.id === contract?.contractorId);
+          
+          return {
+            date: payment.scheduledDate || payment.completedDate || new Date(),
+            contractor: contractor ? `${contractor.firstName} ${contractor.lastName}` : 'Unknown',
+            project: contract?.contractName || 'Unknown Project',
+            activity: payment.status === 'completed' ? 'Payment Completed' : 'Payment Scheduled',
+            amount: parseFloat(payment.amount) || 0
+          };
+        });
+
       const reportsData = {
         summary: {
           totalContracts: contracts.length,
           totalContractors: filteredContractors.length,
-          totalPayments: payments.length,
-          totalMilestones: milestones.length,
-          avgContractValue: Math.round(avgContractValue * 100) / 100,
-          completionRate: Math.round(completionRate * 100) / 100
+          totalSpent: totalSpent,
+          completionRate: Math.round(completionRate)
         },
-        paymentsByMonth,
-        contractsByStatus: [
-          { status: 'active', count: activeContracts.length },
-          { status: 'completed', count: completedContracts.length },
-          { status: 'pending', count: pendingContracts.length }
-        ],
-        topContractors: topContractorsArray
+        monthlyPayments,
+        contractDistribution,
+        recentActivity
       };
       
       res.json(reportsData);
