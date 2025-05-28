@@ -407,8 +407,14 @@ const ContractForm = ({
                   <FormLabel className="text-white">Assign Worker</FormLabel>
                   <Select
                     disabled={isLoadingContractors}
-                    onValueChange={(value) => field.onChange(value ? parseInt(value) : null)}
-                    value={field.value?.toString() || ""}
+                    onValueChange={(value) => {
+                      if (value === "none" || value === "no-workers") {
+                        field.onChange(null);
+                      } else {
+                        field.onChange(value ? parseInt(value) : null);
+                      }
+                    }}
+                    value={field.value ? field.value.toString() : "none"}
                   >
                     <FormControl>
                       <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
@@ -418,20 +424,20 @@ const ContractForm = ({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent className="bg-zinc-800 border-zinc-700 text-white">
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                       {contractors && contractors.length > 0 ? (
-                        contractors.map((contractor) => (
+                        contractors.filter(contractor => contractor.id).map((contractor) => (
                           <SelectItem key={contractor.id} value={contractor.id.toString()}>
                             {contractor.firstName && contractor.lastName
                               ? `${contractor.firstName} ${contractor.lastName}`
                               : contractor.username}
                           </SelectItem>
                         ))
-                      ) : (
-                        <SelectItem value="" disabled>
-                          {isLoadingContractors ? "Loading workers..." : "No workers available"}
+                      ) : !isLoadingContractors ? (
+                        <SelectItem value="no-workers" disabled>
+                          No workers available
                         </SelectItem>
-                      )}
+                      ) : null}
                     </SelectContent>
                   </Select>
                   <FormDescription className="text-zinc-400">
