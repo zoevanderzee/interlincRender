@@ -407,8 +407,8 @@ const ContractForm = ({
                   <FormLabel className="text-white">Assign Worker</FormLabel>
                   <Select
                     disabled={isLoadingContractors}
-                    onValueChange={(value) => field.onChange(value ? parseInt(value) : null)}
-                    value={field.value?.toString() || ""}
+                    onValueChange={(value) => field.onChange(value === "none" ? null : parseInt(value))}
+                    value={field.value?.toString() || "none"}
                   >
                     <FormControl>
                       <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
@@ -418,7 +418,7 @@ const ContractForm = ({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent className="bg-zinc-800 border-zinc-700 text-white">
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                       {contractors && contractors.length > 0 ? (
                         contractors.map((contractor) => (
                           <SelectItem key={contractor.id} value={contractor.id.toString()}>
