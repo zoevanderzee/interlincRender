@@ -95,6 +95,12 @@ const Projects = () => {
     queryKey: ['/api/users'],
   });
 
+  // Fetch work requests for contractors
+  const { data: workRequestsData = [], isLoading: isLoadingWorkRequestsData } = useQuery({
+    queryKey: ['/api/work-requests'],
+    enabled: isContractor,
+  });
+
   // Fetch milestones for all contracts
   const { data: milestonesData = [], isLoading: isLoadingMilestonesData } = useQuery<Milestone[]>({
     queryKey: ['/api/milestones'],
@@ -225,7 +231,7 @@ const Projects = () => {
   };
 
   // Show loading state
-  if (isLoadingMilestones || isLoadingContracts || isLoadingContractors) {
+  if (isLoadingMilestones || isLoadingContracts || isLoadingContractors || isLoadingWorkRequestsData) {
     return (
       <div className="animate-pulse space-y-6">
         <div className="h-12 bg-zinc-800 rounded w-1/3"></div>
@@ -254,8 +260,9 @@ const Projects = () => {
 
         {/* Assignment Cards */}
         <div className="space-y-4 mb-6">
+          {/* Show contracts */}
           {contracts.map((contract) => (
-            <Card key={contract.id} className="p-6 border border-zinc-800 bg-zinc-900">
+            <Card key={`contract-${contract.id}`} className="p-6 border border-zinc-800 bg-zinc-900">
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <h3 className="text-lg font-semibold text-white">{contract.contractName}</h3>
@@ -299,6 +306,77 @@ const Projects = () => {
               </div>
             </Card>
           ))}
+
+          {/* Show accepted work requests */}
+          {workRequestsData
+            .filter((request: any) => request.status === 'accepted' && request.recipientEmail === user?.email)
+            .map((request: any) => (
+            <Card key={`work-request-${request.id}`} className="p-6 border border-zinc-800 bg-zinc-900">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-white">{request.title}</h3>
+                  <p className="text-sm text-zinc-400">Work Request #{request.id}</p>
+                </div>
+                <span className="px-3 py-1 text-xs font-semibold rounded-full bg-green-500/10 text-green-400">
+                  Accepted
+                </span>
+              </div>
+              
+              <div className="mb-4">
+                <p className="text-zinc-300 text-sm">{request.description}</p>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <span className="text-zinc-400 text-sm">Payment Range:</span>
+                  <div className="text-white font-semibold">
+                    {request.budgetMin && request.budgetMax 
+                      ? `$${request.budgetMin} - $${request.budgetMax}`
+                      : 'To be discussed'
+                    }
+                  </div>
+                </div>
+                <div>
+                  <span className="text-zinc-400 text-sm">Due Date:</span>
+                  <div className="text-white">
+                    {request.dueDate ? new Date(request.dueDate).toLocaleDateString() : 'Not specified'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button 
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  size="sm"
+                  onClick={() => {
+                    if (request.contractId) {
+                      handleSubmitWork(request.contractId);
+                    }
+                  }}
+                >
+                  Submit Work
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="border-zinc-700 text-white hover:bg-zinc-800"
+                  size="sm"
+                >
+                  View Details
+                </Button>
+              </div>
+            </Card>
+          ))}
+
+          {/* Show empty state if no assignments */}
+          {contracts.length === 0 && workRequestsData.filter((request: any) => request.status === 'accepted' && request.recipientEmail === user?.email).length === 0 && (
+            <Card className="p-8 border border-zinc-800 bg-zinc-900 text-center">
+              <div className="mx-auto h-16 w-16 rounded-full bg-zinc-800 flex items-center justify-center text-white mb-4">
+                <Briefcase size={32} />
+              </div>
+              <h3 className="text-lg font-medium text-white mb-2">No assignments yet</h3>
+              <p className="text-zinc-400">Your accepted work assignments will appear here</p>
+            </Card>
+          )}
         </div>
 
         {/* Work Submissions Section */}
