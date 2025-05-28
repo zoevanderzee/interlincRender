@@ -44,7 +44,8 @@ import {
   FileText,
   ChevronRight,
   Upload,
-  X
+  X,
+  Briefcase
 } from "lucide-react";
 import MilestonesList from "@/components/dashboard/MilestonesList";
 
@@ -96,7 +97,7 @@ const Projects = () => {
   });
 
   // Fetch work requests for contractors
-  const { data: workRequestsData = [], isLoading: isLoadingWorkRequestsData } = useQuery({
+  const { data: workRequestsData = [], isLoading: isLoadingWorkRequestsData } = useQuery<any[]>({
     queryKey: ['/api/work-requests'],
     enabled: isContractor,
   });
@@ -309,7 +310,11 @@ const Projects = () => {
 
           {/* Show accepted work requests */}
           {workRequestsData
-            .filter((request: any) => request.status === 'accepted' && request.recipientEmail === user?.email)
+            .filter((request: any) => 
+              request.status === 'accepted' && 
+              user?.email && 
+              request.recipientEmail?.toLowerCase() === user.email.toLowerCase()
+            )
             .map((request: any) => (
             <Card key={`work-request-${request.id}`} className="p-6 border border-zinc-800 bg-zinc-900">
               <div className="flex justify-between items-start mb-4">
@@ -368,7 +373,11 @@ const Projects = () => {
           ))}
 
           {/* Show empty state if no assignments */}
-          {contracts.length === 0 && workRequestsData.filter((request: any) => request.status === 'accepted' && request.recipientEmail === user?.email).length === 0 && (
+          {contracts.length === 0 && workRequestsData.filter((request: any) => 
+            request.status === 'accepted' && 
+            user?.email && 
+            request.recipientEmail?.toLowerCase() === user.email.toLowerCase()
+          ).length === 0 && (
             <Card className="p-8 border border-zinc-800 bg-zinc-900 text-center">
               <div className="mx-auto h-16 w-16 rounded-full bg-zinc-800 flex items-center justify-center text-white mb-4">
                 <Briefcase size={32} />
