@@ -218,10 +218,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
    */
   app.get(`${apiRouter}/contractors`, requireAuth, async (req: Request, res: Response) => {
     try {
-      console.log("DEBUG: req.query =", req.query);
       const companyId = req.query.companyId ? parseInt(req.query.companyId as string) : 
                         req.query.companyid ? parseInt(req.query.companyid as string) : null;
-      console.log("DEBUG: extracted companyId =", companyId);
       
       if (!companyId) {
         return res.status(400).json({ message: "Company ID is required" });

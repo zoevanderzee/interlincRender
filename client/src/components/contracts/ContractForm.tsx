@@ -1,8 +1,8 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { useState, useEffect } from "react";
-import { CalendarIcon, ChevronDownIcon, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { CalendarIcon, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -32,162 +32,49 @@ import {
 } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { insertContractSchema } from "@shared/schema";
-import { User } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
-import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { InfoIcon } from "lucide-react";
 
 interface ContractFormProps {
-  contractors?: User[]; // Made optional since we'll fetch linked contractors directly
   onSuccess?: () => void;
-  contractData?: any; // The contract data when in edit mode
-  isEditMode?: boolean; // Flag to indicate we're editing
+  contractData?: any;
+  isEditMode?: boolean;
 }
 
 const ContractForm = ({ 
-  contractors: providedContractors, 
-  onSuccess, 
-  contractData, 
-  isEditMode = false 
+  onSuccess,
+  contractData,
+  isEditMode = false
 }: ContractFormProps) => {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [submitting, setSubmitting] = useState(false);
   const { user } = useAuth();
-  const [linkedContractors, setLinkedContractors] = useState<User[]>([]);
-  const [isLoadingContractors, setIsLoadingContractors] = useState<boolean>(false);
-  
-  // Fetch linked contractors from our dedicated endpoint
-  useEffect(() => {
-    const fetchLinkedContractors = async () => {
-      if (!user) return;
-      
-      setIsLoadingContractors(true);
-      try {
-        // Use the company ID (user.id for business users) to fetch linked contractors
-        const response = await apiRequest('GET', `/api/contractors?companyId=${user.id}`);
-        const data = await response.json();
-        console.log("Linked contractors fetched:", data);
-        setLinkedContractors(data);
-      } catch (error) {
-        console.error("Error fetching linked contractors:", error);
-        toast({
-          title: "Error fetching contractors",
-          description: "Could not load workers linked to your company. Please try again.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoadingContractors(false);
-      }
-    };
-    
-    fetchLinkedContractors();
-  }, [user, toast]);
-  
-  // Fetch contractors that are connected to the business
-  useEffect(() => {
-    const fetchConnectedContractors = async () => {
-      if (linkedContractors.length === 0) {
-        try {
-          console.log("Fetching connected contractors...");
-          
-          // First, fetch connection requests to get connected contractor IDs
-          const connectionResponse = await apiRequest('GET', `/api/connection-requests`);
-          const connectionRequests = await connectionResponse.json();
-          
-          console.log("Connection requests:", connectionRequests);
-          
-          // Get IDs of accepted connections
-          const connectedContractorIds = connectionRequests
-            .filter(req => req.status === 'accepted')
-            .map(req => req.contractorId)
-            .filter(id => id !== null);
-          
-          console.log("Connected contractor IDs:", connectedContractorIds);
-          
-          // Get all users
-          const usersResponse = await apiRequest('GET', `/api/users`);
-          const allUsers = await usersResponse.json();
-          
-          // Filter for contractors that are either connected through requests
-          // or have the contractor role
-          const connectedContractors = allUsers.filter(user => 
-            (user.role === 'contractor' || user.workerType === 'contractor') && 
-            (connectedContractorIds.includes(user.id) || user.id === 30) // Include contractor with ID 30 explicitly
-          );
-          
-          console.log("Connected contractors found:", connectedContractors);
-          
-          if (connectedContractors.length > 0) {
-            setLinkedContractors(connectedContractors);
-          } else {
-            // Fallback - if we know Test Test (ID 30) should be there, add it directly
-            const testContractor = allUsers.find(user => user.id === 30);
-            if (testContractor) {
-              console.log("Adding Test contractor as fallback:", testContractor);
-              setLinkedContractors([testContractor]);
-            }
-          }
-        } catch (error) {
-          console.error("Error fetching connected contractors:", error);
-        }
-      }
-    };
-    
-    fetchConnectedContractors();
-  }, [linkedContractors.length]);
-  
-  // Merge provided contractors with fetched linked contractors
-  const contractors = [...(providedContractors || []), ...linkedContractors]
-    // Filter out duplicates based on ID
-    .filter((contractor, index, self) => 
-      index === self.findIndex(c => c.id === contractor.id));
+  const queryClient = useQueryClient();
 
-  // Extend the insert schema with additional validation
-  const formSchema = insertContractSchema.extend({
-    // Allow both date objects and date strings (we'll transform strings to dates in the schema)
-    startDate: z.union([
-      z.date().min(new Date("2020-01-01"), {
-        message: "Start date must be after January 1, 2020",
-      }),
-      z.string().transform(val => new Date(val))
-    ]),
-    endDate: z.union([
-      z.date().min(new Date(), {
-        message: "End date must be in the future",
-      }),
-      z.string().transform(val => new Date(val))
-    ]),
+  const contractFormSchema = z.object({
+    contractName: z.string().min(2, {
+      message: "Contract name must be at least 2 characters.",
+    }),
+    contractCode: z.string().min(3, {
+      message: "Contract code must be at least 3 characters.",
+    }),
+    description: z.string().min(10, {
+      message: "Description must be at least 10 characters.",
+    }),
+    status: z.string().min(1, "Status is required"),
+    startDate: z.date().min(new Date("2020-01-01"), {
+      message: "Start date must be after January 1, 2020",
+    }),
+    endDate: z.date().min(new Date(), {
+      message: "End date must be in the future",
+    }),
     value: z.string().min(1, "Value is required").regex(/^\d+(\.\d{1,2})?$/, {
       message: "Value must be a valid amount (e.g. 1000 or 1000.50)",
     }),
-    // Explicitly make contractorId optional
-    contractorId: z.number().optional().nullable(),
-    // Add budget allocation field for contractors
-    contractorBudget: z.string().optional()
-      .refine(val => !val || /^\d+(\.\d{1,2})?$/.test(val), {
-        message: "Budget must be a valid amount (e.g. 1000 or 1000.50)",
-      })
-      .refine((val, ctx) => {
-        // Skip validation if contractorId is not set or budget is not set
-        if (!ctx.data.contractorId || !val) return true;
-        
-        // Ensure budget allocation doesn't exceed project value
-        const projectValue = parseFloat(ctx.data.value || "0");
-        const budgetValue = parseFloat(val);
-        return budgetValue <= projectValue;
-      }, {
-        message: "Worker budget cannot exceed project budget",
-      }),
   });
 
-  // Prepare default values or use existing contract data for edit mode
   const getDefaultValues = () => {
-    // If we're in edit mode and have contract data, use it
     if (isEditMode && contractData) {
-      // Parse dates from strings if needed
       const startDate = contractData.startDate 
         ? new Date(contractData.startDate) 
         : new Date();
@@ -199,156 +86,77 @@ const ContractForm = ({
       return {
         contractName: contractData.contractName || "",
         contractCode: contractData.contractCode || "",
-        businessId: contractData.businessId || user?.id || 0,
-        contractorId: contractData.contractorId || undefined,
         description: contractData.description || "",
-        status: contractData.status || "draft",
-        value: contractData.value || "",
+        status: contractData.status || "Draft",
         startDate,
         endDate,
+        value: contractData.value?.toString() || "",
       };
     }
-    
-    // Default values for new contract
+
     return {
       contractName: "",
-      contractCode: `SC-${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-`,
-      businessId: user?.id || 0, // Use the current user's ID
-      contractorId: undefined, // No contractor selected initially - they will be added after project creation
-      description: "", // Always default to empty string, not null
-      status: "draft",
-      value: "",
+      contractCode: "",
+      description: "",
+      status: "Draft",
       startDate: new Date(),
-      endDate: new Date(new Date().setMonth(new Date().getMonth() + 3)), // Default 3 months from now
+      endDate: new Date(new Date().setMonth(new Date().getMonth() + 3)),
+      value: "",
     };
   };
 
-  // Form hook
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<z.infer<typeof contractFormSchema>>({
+    resolver: zodResolver(contractFormSchema),
     defaultValues: getDefaultValues(),
   });
 
-  // Create contract mutation
   const createContractMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof formSchema>) => {
-      // Note: Parameter order matters - method first, then URL, then data
-      return apiRequest("POST", "/api/contracts", data);
-    },
-    onSuccess: () => {
-      toast({
-        title: "Project created",
-        description: "The project has been created successfully!",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/contracts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
-      if (onSuccess) onSuccess();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Could not create project. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-  
-  // Update contract mutation
-  const updateContractMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof formSchema>) => {
-      if (!contractData?.id) throw new Error("Missing contract ID for update");
-      // Method first, then URL, then data
-      return apiRequest("PATCH", `/api/contracts/${contractData.id}`, data);
-    },
-    onSuccess: () => {
-      toast({
-        title: "Project updated",
-        description: "The project has been updated successfully!",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/contracts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
-      if (onSuccess) onSuccess();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Could not update project. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Submit handler - now handles both create and update
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    try {
-      setSubmitting(true);
+    mutationFn: async (data: z.infer<typeof contractFormSchema>) => {
+      const endpoint = isEditMode ? `/api/contracts/${contractData.id}` : '/api/contracts';
+      const method = isEditMode ? 'PUT' : 'POST';
       
-      // Extract contractorBudget from values
-      const { contractorBudget, ...contractData } = values;
-      
-      // Ensure the businessId is always the current user's id
-      const formData = {
-        ...contractData,
-        businessId: user?.id || 0
+      const payload = {
+        ...data,
+        businessId: user?.id,
+        startDate: data.startDate.toISOString(),
+        endDate: data.endDate.toISOString(),
       };
-      
-      // Use the appropriate mutation based on whether we're editing or creating
-      if (isEditMode && contractData) {
-        console.log("Updating existing project:", contractData.id);
-        await updateContractMutation.mutateAsync(formData);
-      } else {
-        console.log("Creating new project with data:", formData);
-        
-        // First, create the project
-        const response = await createContractMutation.mutateAsync(formData);
-        const newProject = await response.json();
-        
-        // If project creation was successful and we have both a contractor ID and budget allocation
-        if (newProject?.id && values.contractorId && contractorBudget) {
-          console.log(`Allocating budget $${contractorBudget} to contractor ${values.contractorId} for project ${newProject.id}`);
-          
-          try {
-            // Send request to allocate budget for this contractor on the project
-            await apiRequest("POST", `/api/contracts/${newProject.id}/allocate-budget`, {
-              contractorId: values.contractorId,
-              budget: contractorBudget
-            });
-            
-            toast({
-              title: "Worker assigned",
-              description: `Worker has been assigned to the project with a budget of $${contractorBudget}`,
-            });
-          } catch (error) {
-            console.error("Error allocating budget:", error);
-            toast({
-              title: "Worker assignment failed",
-              description: "Project was created but worker assignment failed. You can add workers later.",
-              variant: "destructive",
-            });
-          }
-        }
-        
-        // Only reset form on create, not on update
-        form.reset();
-      }
-    } catch (error) {
-      console.error("Form submission error:", error);
-    } finally {
-      setSubmitting(false);
-    }
-  }
 
-  // Generate contract code
-  const generateContractCode = () => {
-    const year = new Date().getFullYear();
-    const month = String(new Date().getMonth() + 1).padStart(2, "0");
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, "0");
-    return `SC-${year}-${month}-${random}`;
+      const response = await apiRequest(method, endpoint, payload);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/contracts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
+      
+      toast({
+        title: isEditMode ? "Project Updated" : "Project Created",
+        description: isEditMode 
+          ? "The project has been updated successfully." 
+          : "Your new project has been created successfully.",
+      });
+      
+      if (onSuccess) {
+        onSuccess();
+      }
+    },
+    onError: (error: any) => {
+      console.error('Contract creation error:', error);
+      toast({
+        title: "Error",
+        description: error?.data?.message || `Failed to ${isEditMode ? 'update' : 'create'} project. Please try again.`,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onSubmit = (data: z.infer<typeof contractFormSchema>) => {
+    createContractMutation.mutate(data);
   };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField
             control={form.control}
@@ -357,10 +165,14 @@ const ContractForm = ({
               <FormItem>
                 <FormLabel className="text-white">Project Name</FormLabel>
                 <FormControl>
-                  <Input placeholder="Website Redesign Project" {...field} className="bg-zinc-900 border-zinc-700 text-white" />
+                  <Input 
+                    placeholder="Enter project name" 
+                    {...field} 
+                    className="bg-zinc-900 border-zinc-700 text-white"
+                  />
                 </FormControl>
                 <FormDescription className="text-zinc-400">
-                  A descriptive name for the project
+                  A clear, descriptive name for your project
                 </FormDescription>
                 <FormMessage />
               </FormItem>
@@ -373,20 +185,13 @@ const ContractForm = ({
             render={({ field }) => (
               <FormItem>
                 <FormLabel className="text-white">Project Code</FormLabel>
-                <div className="flex items-center space-x-2">
-                  <FormControl>
-                    <Input {...field} className="bg-zinc-900 border-zinc-700 text-white" />
-                  </FormControl>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="text-white border-zinc-700 hover:bg-zinc-800"
-                    onClick={() => form.setValue("contractCode", generateContractCode())}
-                  >
-                    Generate
-                  </Button>
-                </div>
+                <FormControl>
+                  <Input 
+                    placeholder="e.g. WEB-2024-001" 
+                    {...field} 
+                    className="bg-zinc-900 border-zinc-700 text-white"
+                  />
+                </FormControl>
                 <FormDescription className="text-zinc-400">
                   A unique identifier for this project
                 </FormDescription>
@@ -394,100 +199,6 @@ const ContractForm = ({
               </FormItem>
             )}
           />
-        </div>
-
-        {/* Contractor selection and budget allocation */}
-        <div className="space-y-6">
-          <div className="space-y-6">
-            <FormField
-              control={form.control}
-              name="contractorId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-white">Assign Worker</FormLabel>
-                  <Select
-                    disabled={isLoadingContractors}
-                    onValueChange={(value) => field.onChange(value === "none" ? null : parseInt(value))}
-                    value={field.value?.toString() || "none"}
-                  >
-                    <FormControl>
-                      <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
-                        <SelectValue 
-                          placeholder={isLoadingContractors ? "Loading workers..." : "Select a worker"} 
-                        />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent className="bg-zinc-800 border-zinc-700 text-white">
-                      <SelectItem value="none">None</SelectItem>
-                      {contractors && contractors.length > 0 ? (
-                        contractors.map((contractor) => (
-                          <SelectItem key={contractor.id} value={contractor.id.toString()}>
-                            {contractor.firstName && contractor.lastName
-                              ? `${contractor.firstName} ${contractor.lastName}`
-                              : contractor.username}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="" disabled>
-                          {isLoadingContractors ? "Loading workers..." : "No workers available"}
-                        </SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <FormDescription className="text-zinc-400">
-                    Select a worker to assign to this project
-                  </FormDescription>
-                  {contractors && contractors.length === 0 && !isLoadingContractors && (
-                    <Alert variant="warning" className="mt-2 bg-amber-900/20 text-amber-200 border-amber-900">
-                      <InfoIcon className="h-4 w-4" />
-                      <AlertTitle>No workers available</AlertTitle>
-                      <AlertDescription>
-                        You need to connect with workers before you can assign them to projects.
-                        Go to the Connections page to invite workers.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            {/* Budget allocation field - only shows when a contractor is selected */}
-            {form.watch("contractorId") && (
-              <FormField
-                control={form.control}
-                name="contractorBudget"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-white">Worker Budget Allocation</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <span className="absolute left-3 top-2.5 text-zinc-400">$</span>
-                        <Input
-                          {...field}
-                          className="bg-zinc-900 border-zinc-700 text-white pl-7"
-                          placeholder="0.00"
-                          type="text"
-                          pattern="^\d*(\.\d{0,2})?$"
-                          onChange={(e) => {
-                            // Only allow numbers and a decimal point with up to 2 decimal places
-                            const value = e.target.value;
-                            if (value === "" || /^\d*(\.\d{0,2})?$/.test(value)) {
-                              field.onChange(value);
-                            }
-                          }}
-                        />
-                      </div>
-                    </FormControl>
-                    <FormDescription className="text-zinc-400">
-                      Allocate a budget for this worker (must not exceed project budget)
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-          </div>
         </div>
 
         <FormField
@@ -498,13 +209,9 @@ const ContractForm = ({
               <FormLabel className="text-white">Description</FormLabel>
               <FormControl>
                 <Textarea
-                  placeholder="Brief description of the project scope and deliverables"
-                  className="resize-none min-h-[100px] bg-zinc-900 border-zinc-700 text-white"
-                  value={field.value || ''}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  name={field.name}
-                  ref={field.ref}
+                  placeholder="Describe the project requirements, deliverables, and expectations..."
+                  className="resize-none bg-zinc-900 border-zinc-700 text-white"
+                  {...field}
                 />
               </FormControl>
               <FormDescription className="text-zinc-400">
@@ -522,15 +229,19 @@ const ContractForm = ({
             render={({ field }) => (
               <FormItem>
                 <FormLabel className="text-white">Project Value</FormLabel>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-white">
-                    $
-                  </span>
-                  <FormControl>
-                    <Input className="pl-7 bg-zinc-900 border-zinc-700 text-white" placeholder="5000" {...field} />
-                  </FormControl>
-                </div>
-                <FormDescription className="text-zinc-400">Total project value in USD</FormDescription>
+                <FormControl>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400">$</span>
+                    <Input 
+                      placeholder="4000" 
+                      {...field} 
+                      className="pl-8 bg-zinc-900 border-zinc-700 text-white"
+                    />
+                  </div>
+                </FormControl>
+                <FormDescription className="text-zinc-400">
+                  Total project value in USD
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -547,9 +258,7 @@ const ContractForm = ({
                     <FormControl>
                       <Button
                         variant={"outline"}
-                        className={`w-full pl-3 text-left font-normal bg-zinc-900 border-zinc-700 text-white hover:bg-zinc-800 ${
-                          !field.value && "text-muted-foreground"
-                        }`}
+                        className="w-full pl-3 text-left font-normal bg-zinc-900 border-zinc-700 text-white hover:bg-zinc-800"
                       >
                         {field.value ? (
                           format(field.value, "PPP")
@@ -560,13 +269,16 @@ const ContractForm = ({
                       </Button>
                     </FormControl>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
+                  <PopoverContent className="w-auto p-0 bg-zinc-800 border-zinc-700" align="start">
                     <CalendarComponent
                       mode="single"
                       selected={field.value}
                       onSelect={field.onChange}
-                      disabled={(date) => date < new Date("2020-01-01")}
+                      disabled={(date) =>
+                        date < new Date("1900-01-01")
+                      }
                       initialFocus
+                      className="bg-zinc-800 text-white"
                     />
                   </PopoverContent>
                 </Popover>
@@ -586,9 +298,7 @@ const ContractForm = ({
                     <FormControl>
                       <Button
                         variant={"outline"}
-                        className={`w-full pl-3 text-left font-normal bg-zinc-900 border-zinc-700 text-white hover:bg-zinc-800 ${
-                          !field.value && "text-muted-foreground"
-                        }`}
+                        className="w-full pl-3 text-left font-normal bg-zinc-900 border-zinc-700 text-white hover:bg-zinc-800"
                       >
                         {field.value ? (
                           format(field.value, "PPP")
@@ -599,13 +309,16 @@ const ContractForm = ({
                       </Button>
                     </FormControl>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
+                  <PopoverContent className="w-auto p-0 bg-zinc-800 border-zinc-700" align="start">
                     <CalendarComponent
                       mode="single"
                       selected={field.value}
                       onSelect={field.onChange}
-                      disabled={(date) => date < new Date()}
+                      disabled={(date) =>
+                        date < new Date("1900-01-01")
+                      }
                       initialFocus
+                      className="bg-zinc-800 text-white"
                     />
                   </PopoverContent>
                 </Popover>
@@ -621,21 +334,17 @@ const ContractForm = ({
           render={({ field }) => (
             <FormItem>
               <FormLabel className="text-white">Status</FormLabel>
-              <Select
-                onValueChange={field.onChange}
-                defaultValue={field.value}
-              >
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
-                    <SelectValue placeholder="Select a status" />
+                    <SelectValue placeholder="Select project status" />
                   </SelectTrigger>
                 </FormControl>
-                <SelectContent className="bg-zinc-900 border-zinc-700 text-white">
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="pending_approval">Pending Approval</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="terminated">Terminated</SelectItem>
+                <SelectContent className="bg-zinc-800 border-zinc-700 text-white">
+                  <SelectItem value="Draft">Draft</SelectItem>
+                  <SelectItem value="Active">Active</SelectItem>
+                  <SelectItem value="Completed">Completed</SelectItem>
+                  <SelectItem value="On Hold">On Hold</SelectItem>
                 </SelectContent>
               </Select>
               <FormDescription className="text-zinc-400">
@@ -646,31 +355,28 @@ const ContractForm = ({
           )}
         />
 
-        <div className="flex justify-end space-x-4">
+        <div className="flex gap-4">
           <Button 
-            type="button" 
+            type="reset" 
             variant="outline" 
-            onClick={() => {
-              if (isEditMode && onSuccess) {
-                // If in edit mode, clicking cancel should navigate back to contracts list
-                onSuccess();
-              } else {
-                // If in create mode, just reset the form
-                form.reset();
-              }
-            }} 
-            className="border-zinc-700 text-white hover:bg-zinc-800"
+            className="flex-1 bg-transparent border-zinc-700 text-white hover:bg-zinc-800"
+            onClick={() => form.reset(getDefaultValues())}
           >
-            {isEditMode ? 'Back' : 'Reset'}
+            Reset
           </Button>
           <Button 
             type="submit" 
-            disabled={submitting || createContractMutation.isPending || updateContractMutation.isPending}
+            className="flex-1" 
+            disabled={createContractMutation.isPending}
           >
-            {(submitting || createContractMutation.isPending || updateContractMutation.isPending) && (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            {createContractMutation.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {isEditMode ? 'Updating...' : 'Creating...'}
+              </>
+            ) : (
+              isEditMode ? 'Update Project' : 'Create Project'
             )}
-            {isEditMode ? 'Update Project' : 'Create Project'}
           </Button>
         </div>
       </form>
