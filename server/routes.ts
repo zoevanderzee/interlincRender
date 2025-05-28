@@ -626,7 +626,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post(`${apiRouter}/contracts`, requireAuth, async (req: Request, res: Response) => {
     try {
       console.log("[Contract Creation] Request body:", JSON.stringify(req.body));
-      const contractInput = insertContractSchema.parse(req.body);
+      
+      // Generate project code automatically
+      const generateProjectCode = (projectName: string) => {
+        const prefix = projectName
+          .toUpperCase()
+          .replace(/[^A-Z0-9]/g, '')
+          .substring(0, 3)
+          .padEnd(3, 'X');
+        
+        const year = new Date().getFullYear();
+        const month = String(new Date().getMonth() + 1).padStart(2, '0');
+        const day = String(new Date().getDate()).padStart(2, '0');
+        const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+        
+        return `${prefix}-${year}${month}${day}-${random}`;
+      };
+      
+      // Add the generated project code to the request body
+      const contractData = {
+        ...req.body,
+        contractCode: generateProjectCode(req.body.contractName || 'PROJECT')
+      };
+      
+      const contractInput = insertContractSchema.parse(contractData);
       const userId = req.user?.id;
       
       // If creating a business contract, check budget availability

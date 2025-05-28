@@ -55,9 +55,6 @@ const ContractForm = ({
     contractName: z.string().min(2, {
       message: "Contract name must be at least 2 characters.",
     }),
-    contractCode: z.string().min(3, {
-      message: "Contract code must be at least 3 characters.",
-    }),
     description: z.string().min(10, {
       message: "Description must be at least 10 characters.",
     }),
@@ -85,7 +82,6 @@ const ContractForm = ({
       
       return {
         contractName: contractData.contractName || "",
-        contractCode: contractData.contractCode || "",
         description: contractData.description || "",
         status: contractData.status || "Draft",
         startDate,
@@ -96,7 +92,6 @@ const ContractForm = ({
 
     return {
       contractName: "",
-      contractCode: "",
       description: "",
       status: "Draft",
       startDate: new Date(),
@@ -157,49 +152,26 @@ const ContractForm = ({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <FormField
-            control={form.control}
-            name="contractName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-white">Project Name</FormLabel>
-                <FormControl>
-                  <Input 
-                    placeholder="Enter project name" 
-                    {...field} 
-                    className="bg-zinc-900 border-zinc-700 text-white"
-                  />
-                </FormControl>
-                <FormDescription className="text-zinc-400">
-                  A clear, descriptive name for your project
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="contractCode"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-white">Project Code</FormLabel>
-                <FormControl>
-                  <Input 
-                    placeholder="e.g. WEB-2024-001" 
-                    {...field} 
-                    className="bg-zinc-900 border-zinc-700 text-white"
-                  />
-                </FormControl>
-                <FormDescription className="text-zinc-400">
-                  A unique identifier for this project
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+        <FormField
+          control={form.control}
+          name="contractName"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-white">Project Name</FormLabel>
+              <FormControl>
+                <Input 
+                  placeholder="Enter project name" 
+                  {...field} 
+                  className="bg-zinc-900 border-zinc-700 text-white"
+                />
+              </FormControl>
+              <FormDescription className="text-zinc-400">
+                A clear, descriptive name for your project. We'll automatically generate a unique project code for you.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <FormField
           control={form.control}
