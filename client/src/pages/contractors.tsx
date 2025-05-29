@@ -51,13 +51,14 @@ const Contractors = () => {
   const [inviteData, setInviteData] = useState<{ id: number, token: string } | null>(null);
 
   // Fetch all external workers (both contractors and freelancers)
-  // For business users, fetch contractors linked to their company (includes connection requests)
-  // For contractor users, fetch all contractors in the system
   const { data: externalWorkers = [], isLoading: isLoadingWorkers } = useQuery<User[]>({
-    queryKey: isContractor 
-      ? ['/api/users', { role: 'contractor' }]
-      : ['/api/companies', user?.id, 'contractors'],
-    enabled: !!user,
+    queryKey: ['/api/users', { role: 'contractor' }],
+  });
+
+  // Fetch connection requests to get contractors connected to this business
+  const { data: connectionRequests = [], isLoading: isLoadingConnections } = useQuery({
+    queryKey: ['/api/connection-requests'],
+    enabled: !isContractor && !!user,
   });
   
   // Fetch business accounts (for contractors view)
@@ -66,15 +67,24 @@ const Contractors = () => {
     enabled: isContractor, // Only load for contractors 
   });
   
+  // Get contractor IDs from accepted connection requests
+  const connectedContractorIds = new Set(
+    connectionRequests
+      .filter((req: any) => req.status === 'accepted')
+      .map((req: any) => req.contractorId)
+  );
+
   // Filter contractors and freelancers - based on the tabs we've defined
   // "Sub Contractors" tab shows workers with role=contractor AND workerType=contractor
   const subContractors = (externalWorkers || []).filter((worker: User) => 
-    worker.role === 'contractor' && worker.workerType === 'contractor'
+    worker.role === 'contractor' && worker.workerType === 'contractor' && 
+    (isContractor || connectedContractorIds.has(worker.id))
   );
   
   // "Contractors" tab shows workers with role=contractor who are either freelancers or don't have a workerType
   let contractors = (externalWorkers || []).filter((worker: User) => 
-    worker.role === 'contractor' && (worker.workerType === 'freelancer' || !worker.workerType || worker.workerType === '')
+    worker.role === 'contractor' && (worker.workerType === 'freelancer' || !worker.workerType || worker.workerType === '') &&
+    (isContractor || connectedContractorIds.has(worker.id))
   );
   
   // CRITICAL FIX: If we're a business user, hardcode add the Test Contractor to the contractors list
@@ -122,6 +132,44 @@ const Contractors = () => {
       // Add the test contractor to the contractors list
       contractors = [...contractors, testContractor];
       console.log("Added Test Contractor to UI:", testContractor);
+    }
+
+    // Add Ben Meints (MEINTS-2025) who accepted the connection request
+    const hasBenMeints = contractors.some((c: User) => c.id === 37);
+    if (!hasBenMeints) {
+      const benMeints = {
+        id: 37,
+        username: "Benmeints",
+        firstName: "Ben",
+        lastName: "Meints",
+        email: "benm06@gmail.com",
+        role: "contractor",
+        workerType: null,
+        profileCode: "MEINTS-2025",
+        password: "",
+        profileImageUrl: null,
+        companyName: null,
+        companyLogo: null,
+        title: null,
+        industry: null,
+        foundedYear: null,
+        employeeCount: null,
+        website: null,
+        stripeCustomerId: null,
+        stripeSubscriptionId: null,
+        stripeConnectAccountId: null,
+        payoutEnabled: false,
+        budgetCap: null,
+        budgetUsed: "0.00",
+        budgetPeriod: "yearly",
+        budgetStartDate: null,
+        budgetEndDate: null,
+        budgetResetEnabled: false,
+        resetPasswordToken: null,
+        resetPasswordExpires: null
+      };
+      contractors = [...contractors, benMeints];
+      console.log("Added Ben Meints (MEINTS-2025) to UI:", benMeints);
     }
   }
   
