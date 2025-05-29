@@ -51,8 +51,13 @@ const Contractors = () => {
   const [inviteData, setInviteData] = useState<{ id: number, token: string } | null>(null);
 
   // Fetch all external workers (both contractors and freelancers)
+  // For business users, fetch contractors linked to their company (includes connection requests)
+  // For contractor users, fetch all contractors in the system
   const { data: externalWorkers = [], isLoading: isLoadingWorkers } = useQuery<User[]>({
-    queryKey: ['/api/users', { role: 'contractor' }],
+    queryKey: isContractor 
+      ? ['/api/users', { role: 'contractor' }]
+      : ['/api/companies', user?.id, 'contractors'],
+    enabled: !!user,
   });
   
   // Fetch business accounts (for contractors view)
