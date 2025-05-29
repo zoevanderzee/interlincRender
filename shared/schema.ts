@@ -75,9 +75,14 @@ export const milestones = pgTable("milestones", {
   name: text("name").notNull(),
   description: text("description"),
   dueDate: timestamp("due_date").notNull(),
-  status: text("status").notNull().default("pending"), // pending, completed, overdue, approved
+  status: text("status").notNull().default("pending"), // pending, submitted, completed, approved, rejected
   paymentAmount: decimal("payment_amount", { precision: 10, scale: 2 }).notNull(),
   progress: integer("progress").notNull().default(0), // 0-100 percentage
+  submittedAt: timestamp("submitted_at"), // When contractor submitted the deliverable
+  approvedAt: timestamp("approved_at"), // When business approved the deliverable
+  autoPayEnabled: boolean("auto_pay_enabled").default(true), // Whether payment should be automatically triggered on approval
+  deliverableUrl: text("deliverable_url"), // URL or path to submitted deliverable
+  approvalNotes: text("approval_notes"), // Business notes on approval/rejection
 });
 
 // Payments table
@@ -86,7 +91,7 @@ export const payments = pgTable("payments", {
   contractId: integer("contract_id").notNull(),
   milestoneId: integer("milestone_id").notNull(),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
-  status: text("status").notNull().default("scheduled"), // scheduled, processing, completed, failed
+  status: text("status").notNull().default("scheduled"), // scheduled, processing, completed, failed, auto_triggered
   scheduledDate: timestamp("scheduled_date").notNull(),
   completedDate: timestamp("completed_date"),
   notes: text("notes"),
@@ -96,6 +101,30 @@ export const payments = pgTable("payments", {
   stripeTransferStatus: text("stripe_transfer_status"), // Status of the Stripe Transfer
   paymentProcessor: text("payment_processor").default("stripe"), // Payment processor used
   applicationFee: decimal("application_fee", { precision: 10, scale: 2 }).default("0"), // Platform fee
+  triggeredBy: text("triggered_by").default("manual"), // manual, auto_approval, scheduled
+  triggeredAt: timestamp("triggered_at"), // When the payment was automatically triggered
+});
+
+// Payment Compliance Logs table - for audit trail and structured data compliance
+export const paymentLogs = pgTable("payment_logs", {
+  id: serial("id").primaryKey(),
+  paymentId: integer("payment_id").notNull(),
+  contractId: integer("contract_id").notNull(),
+  milestoneId: integer("milestone_id").notNull(),
+  businessId: integer("business_id").notNull(),
+  contractorId: integer("contractor_id").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  applicationFee: decimal("application_fee", { precision: 10, scale: 2 }).notNull(),
+  netAmount: decimal("net_amount", { precision: 10, scale: 2 }).notNull(), // Amount after platform fee
+  currency: text("currency").default("USD"),
+  triggerEvent: text("trigger_event").notNull(), // "milestone_approved", "manual_payment", "scheduled_payment"
+  approvalTimestamp: timestamp("approval_timestamp").notNull(),
+  paymentTimestamp: timestamp("payment_timestamp").notNull(),
+  processorReference: text("processor_reference"), // Stripe payment intent ID
+  transferReference: text("transfer_reference"), // Stripe transfer ID
+  deliverableReference: text("deliverable_reference"), // Reference to submitted deliverable
+  complianceData: jsonb("compliance_data"), // Structured data for tax/audit purposes
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Documents table

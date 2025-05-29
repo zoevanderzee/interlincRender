@@ -17,6 +17,7 @@ import { generateWorkRequestToken } from "./services/email";
 import Stripe from "stripe";
 import stripeService from "./services/stripe";
 import notificationService from "./services/notifications";
+import automatedPaymentService from "./services/automated-payments";
 import { setupAuth } from "./auth";
 import plaidRoutes from "./plaid-routes";
 
@@ -892,6 +893,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(updatedMilestone);
     } catch (error) {
       res.status(500).json({ message: "Error updating milestone" });
+    }
+  });
+
+  // Milestone approval endpoint - triggers automated payment
+  app.post(`${apiRouter}/milestones/:id/approve`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const milestoneId = parseInt(req.params.id);
+      const approvedBy = req.user?.id;
+      const { approvalNotes } = req.body;
+
+      if (!approvedBy) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Update milestone status to approved
+      const updatedMilestone = await storage.updateMilestone(milestoneId, {
+        status: 'approved',
+        approvedAt: new Date(),
+        approvalNotes: approvalNotes || null
+      });
+
+      if (!updatedMilestone) {
+        return res.status(404).json({ message: "Milestone not found" });
+      }
+
+      // Trigger automated payment processing
+      const paymentResult = await automatedPaymentService.processMilestoneApproval(milestoneId, approvedBy);
+
+      if (paymentResult.success) {
+        res.json({
+          message: "Milestone approved and payment processed automatically",
+          milestone: updatedMilestone,
+          payment: {
+            id: paymentResult.paymentId,
+            transferId: paymentResult.transferId,
+            logId: paymentResult.logId
+          }
+        });
+      } else {
+        // Milestone was approved but payment failed - still return success for approval
+        console.error('Automated payment failed:', paymentResult.error);
+        res.json({
+          message: "Milestone approved, but automated payment failed",
+          milestone: updatedMilestone,
+          paymentError: paymentResult.error
+        });
+      }
+
+    } catch (error) {
+      console.error("Error approving milestone:", error);
+      res.status(500).json({ message: "Error approving milestone" });
     }
   });
   
