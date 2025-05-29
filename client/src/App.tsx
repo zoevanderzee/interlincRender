@@ -31,6 +31,7 @@ import StripeTestV2 from "@/pages/stripe-test-v2";
 import StripeTestSimple from "@/pages/stripe-test-simple";
 import StripeCheckout from "@/pages/stripe-checkout";
 import PaymentSimulator from "@/pages/payment-simulator";
+import PayContractor from "@/pages/pay-contractor";
 import Layout from "@/components/layout/Layout";
 import AuthPage from "@/pages/auth";
 import ResetPasswordPage from "@/pages/reset-password";
@@ -157,6 +158,12 @@ function Router() {
       <ProtectedRoute path="/payments">
         <Layout>
           <Payments />
+        </Layout>
+      </ProtectedRoute>
+      
+      <ProtectedRoute path="/pay-contractor/:contractorId?">
+        <Layout>
+          <PayContractor />
         </Layout>
       </ProtectedRoute>
       
