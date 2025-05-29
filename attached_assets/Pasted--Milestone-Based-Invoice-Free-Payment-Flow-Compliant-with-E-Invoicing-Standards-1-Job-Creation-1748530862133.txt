@@ -1,0 +1,72 @@
+✅ Milestone-Based, Invoice-Free Payment Flow (Compliant with E-Invoicing Standards)
+
+1. Job Creation by Company
+Company creates a project with:
+Title, description, deliverables
+Budget
+Timeline
+Custom payment terms (e.g., pay on approval or after 7 days)
+Contractor(s) assigned from internal database
+➡ Data stored: project_id, company_id, contractor_ids, payment_terms, created_at, milestones[]
+
+2. Smart Work Request Sent to Contractor
+Contractor receives work request (pre-approved agreement = smart contract structure)
+Upon acceptance:
+Contractor is tied to the job
+Work request metadata logged
+➡ Data stored: work_request_id, contractor_id, acceptance_timestamp, job_linked
+
+3. Deliverables Submitted & Approved
+Contractor submits deliverables via platform
+Company reviews and either:
+Approves → triggers payment
+Rejects → request revision
+➡ Data stored:
+
+submission_id
+approval_status (yes/no)
+approved_at
+approver_id
+4. Trigger Payment Logic (Using Stripe Connect / Trolley API)
+Platform triggers payment only after approval
+Use metadata from the project and submission to generate a compliant receipt
+Backend Action:
+
+if (approval_status === "approved") {
+  initiatePayout({
+    contractor_id,
+    amount,
+    project_id,
+    approved_at,
+    deliverable_id,
+    company_id
+  });
+}
+➡ Transaction metadata saved:
+
+Payment amount
+contractor_id
+company_id
+project_id
+milestone_id
+approved_at
+transaction_id
+5. Generate E-Invoice Style Data Receipt
+Auto-generate a non-editable PDF/data receipt:
+Timestamp
+Job description
+Milestone title
+Payer/payee
+Amount
+Approval date
+Unique transaction ID
+Store it in a secure Data Room per transaction
+Made accessible to finance/procurement teams only
+➡ Stored securely for audit, tax, and legal compliance
+
+Tools/Tech Stack:
+Payments API: Stripe Connect / Trolley (manual transfers triggered by backend)
+Database: PostgreSQL (Drizzle ORM)
+PDF Generation: e.g., Puppeteer or PDFKit to create compliant receipts
+Secure storage: AWS S3 or encrypted data room folder
+Logs: Write every transaction to a ledger-style audit table
