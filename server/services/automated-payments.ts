@@ -134,19 +134,59 @@ class AutomatedPaymentService {
     contract: any
   ): Promise<{ success: boolean; paymentIntentId?: string; transferId?: string; error?: string }> {
     try {
+      // Get business owner details
+      const business = await storage.getUser(contract.businessId);
+      if (!business) {
+        return { success: false, error: 'Business user not found' };
+      }
+
+      // Check if business has Stripe customer and payment method
+      if (!business.stripeCustomerId) {
+        return { success: false, error: 'Business must add a payment method before automated payments can be processed' };
+      }
+
+      // Get business customer's default payment method
+      const customer = await stripe.customers.retrieve(business.stripeCustomerId);
+      if (!customer || customer.deleted) {
+        return { success: false, error: 'Business Stripe customer not found' };
+      }
+
+      // Get default payment method
+      let defaultPaymentMethod = null;
+      if (typeof customer === 'object' && 'invoice_settings' in customer) {
+        defaultPaymentMethod = customer.invoice_settings?.default_payment_method;
+      }
+
+      if (!defaultPaymentMethod) {
+        // Fallback: get first available payment method
+        const paymentMethods = await stripe.paymentMethods.list({
+          customer: business.stripeCustomerId,
+          type: 'card',
+          limit: 1
+        });
+
+        if (paymentMethods.data.length === 0) {
+          return { success: false, error: 'Business must add a payment method to process automated payments' };
+        }
+
+        defaultPaymentMethod = paymentMethods.data[0].id;
+      }
+
       const amountInCents = Math.round(amount * 100);
       const applicationFeeInCents = Math.round(applicationFee * 100);
 
       let paymentIntentData: any = {
         amount: amountInCents,
         currency: 'usd',
+        customer: business.stripeCustomerId,
+        payment_method: defaultPaymentMethod,
         confirm: true,
-        payment_method: 'pm_card_visa', // For demo - in production this would come from business payment method
         metadata: {
           paymentId: paymentId.toString(),
           milestoneId: milestone.id.toString(),
           contractId: contract.id.toString(),
           contractorId: contractor.id.toString(),
+          businessId: contract.businessId.toString(),
           triggerEvent: 'milestone_approved'
         }
       };
@@ -164,7 +204,7 @@ class AutomatedPaymentService {
       return {
         success: true,
         paymentIntentId: paymentIntent.id,
-        transferId: paymentIntent.transfer_data?.destination
+        transferId: contractor.stripeConnectAccountId || undefined
       };
 
     } catch (error: any) {
