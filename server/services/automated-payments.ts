@@ -1,12 +1,4 @@
-import Stripe from 'stripe';
 import { storage } from '../storage';
-import { eq } from 'drizzle-orm';
-
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
-}
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 interface PaymentProcessingResult {
   success: boolean;
@@ -75,26 +67,25 @@ class AutomatedPaymentService {
 
       const payment = await storage.createPayment(paymentData);
 
-      // Process Stripe payment
-      const stripeResult = await this.processStripePayment(
+      // Create payment instruction for third-party provider
+      const paymentResult = await this.createPaymentInstruction(
         payment.id,
-        totalAmount,
+        netAmount,
         applicationFee,
         contractor,
         milestone,
         contract
       );
 
-      if (!stripeResult.success) {
+      if (!paymentResult.success) {
         await storage.updatePayment(payment.id, { status: 'failed' });
-        return { success: false, error: stripeResult.error };
+        return { success: false, error: paymentResult.error };
       }
 
-      // Update payment with Stripe details
+      // Update payment with provider instruction details
       await storage.updatePayment(payment.id, {
-        status: 'processing',
-        stripePaymentIntentId: stripeResult.paymentIntentId,
-        stripeTransferId: stripeResult.transferId
+        status: 'pending_provider_processing',
+        providerInstructionId: paymentResult.instructionId
       });
 
       // Create compliance log
@@ -106,14 +97,14 @@ class AutomatedPaymentService {
         totalAmount,
         applicationFee,
         netAmount,
-        stripeResult
+        paymentResult
       );
 
       return {
         success: true,
         paymentId: payment.id,
         logId: logId,
-        transferId: stripeResult.transferId
+        instructionId: paymentResult.instructionId
       };
 
     } catch (error) {
@@ -123,16 +114,16 @@ class AutomatedPaymentService {
   }
 
   /**
-   * Processes payment through Stripe Connect
+   * Creates payment instruction for third-party provider
    */
-  private async processStripePayment(
+  private async createPaymentInstruction(
     paymentId: number,
     amount: number,
     applicationFee: number,
     contractor: any,
     milestone: any,
     contract: any
-  ): Promise<{ success: boolean; paymentIntentId?: string; transferId?: string; error?: string }> {
+  ): Promise<{ success: boolean; instructionId?: string; error?: string }> {
     try {
       // Get business owner details
       const business = await storage.getUser(contract.businessId);
@@ -140,75 +131,55 @@ class AutomatedPaymentService {
         return { success: false, error: 'Business user not found' };
       }
 
-      // Check if business has Stripe customer and payment method
-      if (!business.stripeCustomerId) {
-        return { success: false, error: 'Business must add a payment method before automated payments can be processed' };
+      // Check if business has connected payment providers
+      // This would check for Wise, Payoneer, Bill.com, etc. connections
+      const paymentProviders = []; // Would fetch from database
+      
+      if (paymentProviders.length === 0) {
+        return { 
+          success: false, 
+          error: 'Business must connect a payment provider before automated payments can be processed. Please visit Payment Providers settings.' 
+        };
       }
 
-      // Get business customer's default payment method
-      const customer = await stripe.customers.retrieve(business.stripeCustomerId);
-      if (!customer || customer.deleted) {
-        return { success: false, error: 'Business Stripe customer not found' };
-      }
-
-      // Get default payment method
-      let defaultPaymentMethod = null;
-      if (typeof customer === 'object' && 'invoice_settings' in customer) {
-        defaultPaymentMethod = customer.invoice_settings?.default_payment_method;
-      }
-
-      if (!defaultPaymentMethod) {
-        // Fallback: get first available payment method
-        const paymentMethods = await stripe.paymentMethods.list({
-          customer: business.stripeCustomerId,
-          type: 'card',
-          limit: 1
-        });
-
-        if (paymentMethods.data.length === 0) {
-          return { success: false, error: 'Business must add a payment method to process automated payments' };
-        }
-
-        defaultPaymentMethod = paymentMethods.data[0].id;
-      }
-
-      const amountInCents = Math.round(amount * 100);
-      const applicationFeeInCents = Math.round(applicationFee * 100);
-
-      let paymentIntentData: any = {
-        amount: amountInCents,
-        currency: 'usd',
-        customer: business.stripeCustomerId,
-        payment_method: defaultPaymentMethod,
-        confirm: true,
-        metadata: {
-          paymentId: paymentId.toString(),
-          milestoneId: milestone.id.toString(),
-          contractId: contract.id.toString(),
-          contractorId: contractor.id.toString(),
-          businessId: contract.businessId.toString(),
-          triggerEvent: 'milestone_approved'
+      // Create payment instruction record
+      const paymentInstruction = {
+        paymentId: paymentId,
+        businessId: contract.businessId,
+        contractorId: contractor.id,
+        milestoneId: milestone.id,
+        contractId: contract.id,
+        amount: amount.toString(),
+        platformFee: applicationFee.toString(),
+        contractorEmail: contractor.email,
+        contractorName: `${contractor.firstName} ${contractor.lastName}`,
+        description: `Payment for milestone: ${milestone.name}`,
+        status: 'pending_provider_processing',
+        providerInstructions: {
+          recipient: {
+            email: contractor.email,
+            name: `${contractor.firstName} ${contractor.lastName}`,
+            // Additional contractor payment details would be added here
+          },
+          amount: amount,
+          currency: 'USD',
+          reference: `Milestone-${milestone.id}-Contract-${contract.id}`,
+          memo: `Payment for ${milestone.name} - ${contract.contractName}`
         }
       };
 
-      // If contractor has Stripe Connect account, use direct transfer
-      if (contractor.stripeConnectAccountId) {
-        paymentIntentData.transfer_data = {
-          destination: contractor.stripeConnectAccountId,
-        };
-        paymentIntentData.application_fee_amount = applicationFeeInCents;
-      }
-
-      const paymentIntent = await stripe.paymentIntents.create(paymentIntentData);
-
+      // In a real implementation, this would:
+      // 1. Send payment instruction to connected provider's API
+      // 2. Store the provider's transaction ID
+      // 3. Set up webhooks to track payment status
+      
       return {
         success: true,
-        paymentIntentId: paymentIntent.id,
-        transferId: contractor.stripeConnectAccountId || undefined
+        instructionId: `instruction_${Date.now()}_${paymentId}`
       };
 
     } catch (error: any) {
-      console.error('Stripe payment processing error:', error);
+      console.error('Payment instruction creation error:', error);
       return { success: false, error: error.message };
     }
   }

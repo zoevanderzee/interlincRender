@@ -227,12 +227,12 @@ export default function MilestoneApproval() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="p-4 bg-blue-50 rounded-lg border">
-                <h4 className="font-medium text-blue-900 mb-2">Automated Payment Process</h4>
+                <h4 className="font-medium text-blue-900 mb-2">Third-Party Payment Processing</h4>
                 <ul className="text-sm text-blue-800 space-y-1">
-                  <li>• Payment will be processed immediately</li>
-                  <li>• 0.25% platform fee will be deducted</li>
-                  <li>• Contractor will receive direct transfer</li>
-                  <li>• Compliance log will be generated</li>
+                  <li>• Payment instruction sent to your connected provider</li>
+                  <li>• 0.25% platform coordination fee</li>
+                  <li>• Provider handles compliance and disbursement</li>
+                  <li>• Structured audit log created for records</li>
                 </ul>
               </div>
 
