@@ -1266,6 +1266,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Stripe integration routes
   
+  // Create payment intent for contractor payment
+  app.post(`${apiRouter}/create-payment-intent`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { amount, description, contractorId, connectedAccountId } = req.body;
+      const businessId = req.user?.id;
+
+      if (!businessId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      if (!amount || !contractorId) {
+        return res.status(400).json({ message: "Amount and contractor ID are required" });
+      }
+
+      // Convert amount to cents
+      const amountInCents = Math.round(parseFloat(amount) * 100);
+
+      // Get contractor details
+      const contractor = await storage.getUser(contractorId);
+      if (!contractor) {
+        return res.status(404).json({ message: "Contractor not found" });
+      }
+
+      // Create payment intent
+      let paymentIntentData: any = {
+        amount: amountInCents,
+        currency: 'usd',
+        metadata: {
+          businessId: businessId.toString(),
+          contractorId: contractorId.toString(),
+          description: description || 'Contractor payment'
+        }
+      };
+
+      // If contractor has a Stripe Connect account, use it for direct transfer
+      if (contractor.stripeConnectAccountId) {
+        paymentIntentData.transfer_data = {
+          destination: contractor.stripeConnectAccountId,
+        };
+        paymentIntentData.application_fee_amount = Math.round(amountInCents * 0.03); // 3% platform fee
+      }
+
+      const paymentIntent = await stripe.paymentIntents.create(paymentIntentData);
+
+      res.json({
+        clientSecret: paymentIntent.client_secret,
+        paymentIntentId: paymentIntent.id
+      });
+
+    } catch (error: any) {
+      console.error('Error creating payment intent:', error);
+      res.status(500).json({ message: "Error creating payment intent: " + error.message });
+    }
+  });
+
   // Create payment intent for a specific payment
   app.post(`${apiRouter}/payments/:id/create-intent`, requireAuth, async (req: Request, res: Response) => {
     try {

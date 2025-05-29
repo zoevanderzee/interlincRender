@@ -138,7 +138,7 @@ export default function PayContractor() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const contractorId = match && typeof match === 'object' && 'contractorId' in match 
+  const contractorId = match && typeof match === 'object' && 'contractorId' in match && match.contractorId
     ? parseInt(match.contractorId as string) 
     : null;
 
