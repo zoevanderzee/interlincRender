@@ -1059,8 +1059,8 @@ const Contractors = () => {
                 )}
               </div>
               
-              {/* Connection Requests */}
-              <ConnectionRequestsList />
+              {/* Connection Requests - Only show for contractors */}
+              {isContractor && <ConnectionRequestsList />}
             </div>
           </TabsContent>
         )}
