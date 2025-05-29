@@ -56,7 +56,7 @@ class AutomatedPaymentService {
 
       // Calculate payment amounts
       const totalAmount = parseFloat(milestone.paymentAmount);
-      const platformFeeRate = 0.03; // 3% platform fee
+      const platformFeeRate = 0.0025; // 0.25% platform fee
       const applicationFee = totalAmount * platformFeeRate;
       const netAmount = totalAmount - applicationFee;
 

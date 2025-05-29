@@ -230,7 +230,7 @@ export default function MilestoneApproval() {
                 <h4 className="font-medium text-blue-900 mb-2">Automated Payment Process</h4>
                 <ul className="text-sm text-blue-800 space-y-1">
                   <li>• Payment will be processed immediately</li>
-                  <li>• 3% platform fee will be deducted</li>
+                  <li>• 0.25% platform fee will be deducted</li>
                   <li>• Contractor will receive direct transfer</li>
                   <li>• Compliance log will be generated</li>
                 </ul>
