@@ -1,5 +1,5 @@
 import { 
-  users, invites, contracts, milestones, payments, documents, bankAccounts, workRequests,
+  users, invites, contracts, milestones, payments, paymentLogs, documents, bankAccounts, workRequests,
   businessOnboardingLinks, businessOnboardingUsage, connectionRequests, notifications, workSubmissions,
   type User, type InsertUser, 
   type Invite, type InsertInvite,
@@ -102,12 +102,17 @@ export interface IStorage {
   // Payments
   getPayment(id: number): Promise<Payment | undefined>;
   getPaymentsByContractId(contractId: number): Promise<Payment[]>;
+  getPaymentByMilestoneId(milestoneId: number): Promise<Payment | undefined>;
   getAllPayments(contractId: number | null): Promise<Payment[]>;
   getUpcomingPayments(limit: number): Promise<Payment[]>;
+  getApprovedMilestonesWithoutPayments(): Promise<Milestone[]>;
   createPayment(payment: InsertPayment): Promise<Payment>;
   updatePayment(id: number, payment: Partial<InsertPayment>): Promise<Payment | undefined>;
   updatePaymentStripeDetails(id: number, stripePaymentIntentId: string, stripePaymentIntentStatus: string): Promise<Payment | undefined>;
   updatePaymentTransferDetails(id: number, stripeTransferId: string, stripeTransferStatus: string, applicationFee: number): Promise<Payment | undefined>;
+  
+  // Payment Logs for compliance
+  createPaymentLog(log: any): Promise<any>;
   
   // Documents
   getDocument(id: number): Promise<Document | undefined>;
@@ -1497,6 +1502,43 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     return updatedPayment;
+  }
+
+  // Get payment by milestone ID for automated payment checks
+  async getPaymentByMilestoneId(milestoneId: number): Promise<Payment | undefined> {
+    const [payment] = await db
+      .select()
+      .from(payments)
+      .where(eq(payments.milestoneId, milestoneId));
+    return payment;
+  }
+
+  // Get approved milestones that don't have payments yet
+  async getApprovedMilestonesWithoutPayments(): Promise<Milestone[]> {
+    const approvedMilestones = await db
+      .select()
+      .from(milestones)
+      .where(eq(milestones.status, 'approved'));
+
+    // Filter out milestones that already have payments
+    const milestonesWithoutPayments: Milestone[] = [];
+    for (const milestone of approvedMilestones) {
+      const existingPayment = await this.getPaymentByMilestoneId(milestone.id);
+      if (!existingPayment || existingPayment.status === 'failed') {
+        milestonesWithoutPayments.push(milestone);
+      }
+    }
+
+    return milestonesWithoutPayments;
+  }
+
+  // Create payment compliance log
+  async createPaymentLog(logData: any): Promise<any> {
+    const [log] = await db
+      .insert(paymentLogs)
+      .values(logData)
+      .returning();
+    return log;
   }
   
   // Document CRUD methods
