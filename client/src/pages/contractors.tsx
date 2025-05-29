@@ -907,7 +907,16 @@ const Contractors = () => {
                     )}
                     
                     {!isContractor && (
-                      <div className="border-t border-zinc-800 pt-3 mt-3 flex justify-end">
+                      <div className="border-t border-zinc-800 pt-3 mt-3 flex justify-between">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-green-400 border-green-400 hover:bg-green-400 hover:text-black"
+                          onClick={() => navigate(`/pay-contractor/${freelancer.id}`)}
+                        >
+                          <CreditCard size={16} className="mr-1" />
+                          Pay
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"

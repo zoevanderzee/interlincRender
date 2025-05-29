@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
+import { useLocation } from "wouter";
 import {
   Table,
   TableBody,
@@ -17,11 +18,13 @@ import {
   Clock, 
   CheckCircle, 
   Download,
-  TrendingUp
+  TrendingUp,
+  CreditCard
 } from "lucide-react";
 
 export default function Payments() {
   const { user } = useAuth();
+  const [, navigate] = useLocation();
   
   const isContractor = user?.role === 'contractor';
 
@@ -183,10 +186,19 @@ export default function Payments() {
           <h1 className="text-2xl md:text-3xl font-semibold text-white">Payment Management</h1>
           <p className="text-gray-400 mt-1">Manage payments to contractors and track expenses</p>
         </div>
-        <Button className="mt-4 md:mt-0 bg-blue-600 hover:bg-blue-700">
-          <DollarSign className="mr-2" size={16} />
-          Process Payment
-        </Button>
+        <div className="flex gap-2 mt-4 md:mt-0">
+          <Button 
+            onClick={() => navigate('/pay-contractor')}
+            className="bg-green-600 hover:bg-green-700"
+          >
+            <CreditCard className="mr-2" size={16} />
+            Pay Contractor
+          </Button>
+          <Button className="bg-blue-600 hover:bg-blue-700">
+            <DollarSign className="mr-2" size={16} />
+            Process Payment
+          </Button>
+        </div>
       </div>
 
       {/* Payment Summary Cards */}
