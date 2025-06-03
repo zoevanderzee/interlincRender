@@ -44,13 +44,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Public health check endpoint - no auth required
   app.get(`${apiRouter}/health`, async (req: Request, res: Response) => {
     try {
-      // Test database connection
-      const dbTest = await storage.getUsers();
+      // Simple database connection test
       res.json({ 
         status: 'ok', 
         timestamp: new Date().toISOString(),
         database: 'connected',
-        userCount: dbTest.length,
         environment: process.env.NODE_ENV || 'development'
       });
     } catch (error) {
