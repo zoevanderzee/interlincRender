@@ -100,6 +100,8 @@ export const payments = pgTable("payments", {
   stripePaymentIntentId: text("stripe_payment_intent_id"), // Stripe Payment Intent ID
   stripePaymentIntentStatus: text("stripe_payment_intent_status"), // Stripe Payment Intent Status
   stripeTransferId: text("stripe_transfer_id"), // Stripe Transfer ID for Connect payouts
+  trolleyBatchId: text("trolley_batch_id"), // Trolley batch ID for Embedded Payouts
+  trolleyPaymentId: text("trolley_payment_id"), // Trolley payment ID for tracking
   stripeTransferStatus: text("stripe_transfer_status"), // Status of the Stripe Transfer
   paymentProcessor: text("payment_processor").default("stripe"), // Payment processor used
   applicationFee: decimal("application_fee", { precision: 10, scale: 2 }).default("0"), // Platform fee
