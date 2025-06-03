@@ -38,22 +38,18 @@ export function setupAuth(app: Express) {
     process.env.SESSION_SECRET = randomBytes(32).toString("hex");
   }
 
-  // Deployment-safe session configuration
-  const isProduction = process.env.NODE_ENV === 'production';
-  
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || 'creativlinc-secret-key',
-    resave: false,
-    saveUninitialized: false,
+    resave: true, // Restore original working setting
+    saveUninitialized: true, // Restore original working setting
     name: 'creativlinc.sid',
-    rolling: false,
+    rolling: true, // Restore original working setting
     cookie: {
-      secure: isProduction && process.env.HTTPS === 'true', // Only secure in production with HTTPS
+      secure: false, // Keep false for all environments like before
       maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
       httpOnly: true,
-      sameSite: isProduction ? 'strict' : 'lax', // Stricter in production
+      sameSite: 'lax',
       path: '/',
-      domain: isProduction ? undefined : undefined, // Let browser determine domain
     },
     store: storage.sessionStore
   };
@@ -113,10 +109,6 @@ export function setupAuth(app: Express) {
     done(null, user.id);
   });
   
-  // Session user cache to prevent excessive database calls
-  const userCache = new Map();
-  const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-  
   // Configure how users are retrieved from the session
   passport.deserializeUser(async (id: number, done) => {
     try {
@@ -124,18 +116,7 @@ export function setupAuth(app: Express) {
         return done(null, undefined);
       }
       
-      // Check cache first
-      const cached = userCache.get(id);
-      if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-        return done(null, cached.user);
-      }
-      
-      // Fetch from database and cache
       const user = await storage.getUser(id);
-      if (user) {
-        userCache.set(id, { user, timestamp: Date.now() });
-      }
-      
       return done(null, user || undefined);
     } catch (error) {
       return done(error);
