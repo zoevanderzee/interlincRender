@@ -64,6 +64,15 @@ app.use((req, res, next) => {
   // app.use(addCsrfToken);
   // app.use('/api', csrfProtection);
   
+  // Serve static HTML files for deployment
+  app.get('/', (req, res) => {
+    res.sendFile(path.resolve(__dirname, '..', 'client', 'public', 'index.html'));
+  });
+  
+  app.get('/dashboard.html', (req, res) => {
+    res.sendFile(path.resolve(__dirname, '..', 'client', 'public', 'dashboard.html'));
+  });
+  
   // Serve test login HTML
   app.get('/test-login-html', (req, res) => {
     res.sendFile(path.resolve(__dirname, '..', 'client', 'test-login.html'));
