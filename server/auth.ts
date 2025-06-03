@@ -38,20 +38,23 @@ export function setupAuth(app: Express) {
     process.env.SESSION_SECRET = randomBytes(32).toString("hex");
   }
 
+  // Deployment-safe session configuration
+  const isProduction = process.env.NODE_ENV === 'production';
+  
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || 'creativlinc-secret-key',
-    resave: false, // Changed to false to prevent race conditions
-    saveUninitialized: false, // Changed to false to prevent unnecessary sessions
+    resave: false,
+    saveUninitialized: false,
     name: 'creativlinc.sid',
-    rolling: false, // Disabled rolling to prevent session issues
+    rolling: false,
     cookie: {
-      secure: false,
+      secure: isProduction && process.env.HTTPS === 'true', // Only secure in production with HTTPS
       maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
       httpOnly: true,
-      sameSite: 'lax',
+      sameSite: isProduction ? 'strict' : 'lax', // Stricter in production
       path: '/',
+      domain: isProduction ? undefined : undefined, // Let browser determine domain
     },
-    // Use the storage implementation's session store
     store: storage.sessionStore
   };
   
@@ -107,31 +110,34 @@ export function setupAuth(app: Express) {
 
   // Configure how users are stored in the session
   passport.serializeUser((user, done) => {
-    console.log("Serializing user:", user.id);
     done(null, user.id);
   });
+  
+  // Session user cache to prevent excessive database calls
+  const userCache = new Map();
+  const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
   
   // Configure how users are retrieved from the session
   passport.deserializeUser(async (id: number, done) => {
     try {
-      // If id is undefined or null, return undefined
       if (id === undefined || id === null) {
-        console.log("Deserializing with undefined/null user ID");
         return done(null, undefined);
       }
       
-      console.log("Deserializing user with ID:", id);
+      // Check cache first
+      const cached = userCache.get(id);
+      if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+        return done(null, cached.user);
+      }
+      
+      // Fetch from database and cache
       const user = await storage.getUser(id);
-      
-      // If no user found, return undefined instead of null
-      if (!user) {
-        console.log(`No user found with ID: ${id}`);
-        return done(null, undefined);
+      if (user) {
+        userCache.set(id, { user, timestamp: Date.now() });
       }
       
-      return done(null, user);
+      return done(null, user || undefined);
     } catch (error) {
-      console.error('Error deserializing user:', error);
       return done(error);
     }
   });
