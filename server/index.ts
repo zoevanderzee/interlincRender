@@ -64,8 +64,6 @@ app.use((req, res, next) => {
   // app.use(addCsrfToken);
   // app.use('/api', csrfProtection);
   
-  // Remove static HTML fallback routes to restore React app
-  
   // Serve test login HTML
   app.get('/test-login-html', (req, res) => {
     res.sendFile(path.resolve(__dirname, '..', 'client', 'test-login.html'));
