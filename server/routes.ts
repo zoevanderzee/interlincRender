@@ -41,6 +41,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.sendFile(path.resolve(__dirname, '..', 'client', 'public', 'login.html'));
   });
   
+  // Public health check endpoint - no auth required
+  app.get(`${apiRouter}/health`, async (req: Request, res: Response) => {
+    try {
+      // Test database connection
+      const dbTest = await storage.getUsers();
+      res.json({ 
+        status: 'ok', 
+        timestamp: new Date().toISOString(),
+        database: 'connected',
+        userCount: dbTest.length,
+        environment: process.env.NODE_ENV || 'development'
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        status: 'error', 
+        timestamp: new Date().toISOString(),
+        database: 'disconnected',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        environment: process.env.NODE_ENV || 'development'
+      });
+    }
+  });
+
   // Public routes are defined above (login, register) in the auth.ts file
   
   // Protected routes - require authentication
