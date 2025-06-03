@@ -286,7 +286,7 @@ const DataRoom = () => {
       <Tabs defaultValue="all" className="w-full">
         <TabsList className="mb-6 bg-gray-900 border border-gray-800">
           <TabsTrigger value="all" className="data-[state=active]:bg-gray-800 data-[state=active]:text-white text-gray-400">All Documents</TabsTrigger>
-          <TabsTrigger value="contracts" className="data-[state=active]:bg-gray-800 data-[state=active]:text-white text-gray-400">Smart Contracts</TabsTrigger>
+          <TabsTrigger value="contracts" className="data-[state=active]:bg-gray-800 data-[state=active]:text-white text-gray-400">Contracts</TabsTrigger>
           <TabsTrigger value="compliance" className="data-[state=active]:bg-gray-800 data-[state=active]:text-white text-gray-400">Compliance Documents</TabsTrigger>
           <TabsTrigger value="deleted" className="data-[state=active]:bg-gray-800 data-[state=active]:text-white text-gray-400">Deleted Projects</TabsTrigger>
         </TabsList>
