@@ -24,6 +24,8 @@ export const users = pgTable("users", {
   stripeCustomerId: text("stripe_customer_id"), // Stripe customer ID for payment processing
   stripeSubscriptionId: text("stripe_subscription_id"), // Stripe subscription ID for companies
   stripeConnectAccountId: text("stripe_connect_account_id"), // Stripe Connect account ID for contractors
+  trolleyCompanyProfileId: text("trolley_company_profile_id"), // Trolley company profile ID for Embedded Payouts
+  trolleyRecipientId: text("trolley_recipient_id"), // Trolley recipient ID for contractors
   payoutEnabled: boolean("payout_enabled").default(false), // Whether the contractor is ready to receive payments
   budgetCap: decimal("budget_cap", { precision: 15, scale: 2 }), // Maximum budget for outsourcing (for business accounts)
   budgetUsed: decimal("budget_used", { precision: 15, scale: 2 }).default("0"), // Amount of budget already allocated to projects
