@@ -264,7 +264,7 @@ const DataRoom = () => {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <div>
           <h1 className="text-2xl md:text-3xl font-semibold text-white">Data Room</h1>
-          <p className="text-gray-400 mt-1">Secure repository of all automatically generated smart contracts organized by project</p>
+          <p className="text-gray-400 mt-1">Secure repository of all automatically generated contracts organized by project</p>
         </div>
       </div>
       
@@ -459,8 +459,8 @@ const DataRoom = () => {
                         </Table>
                       ) : (
                         <div className="text-center py-8 text-gray-400">
-                          <p>No smart contract documents available for this project.</p>
-                          <p className="text-sm mt-1">Smart contracts are automatically generated when contracts are created.</p>
+                          <p>No contract documents available for this project.</p>
+                          <p className="text-sm mt-1">Contract documents are automatically generated when contracts are created.</p>
                         </div>
                       )}
                     </div>
@@ -473,9 +473,9 @@ const DataRoom = () => {
               <div className="mx-auto h-16 w-16 rounded-full bg-gray-800 flex items-center justify-center text-gray-400 mb-4">
                 <FileText size={24} />
               </div>
-              <h3 className="text-lg font-medium text-white mb-2">No Smart Contracts</h3>
+              <h3 className="text-lg font-medium text-white mb-2">No Contracts</h3>
               <p className="text-gray-400 mb-6">
-                Smart contracts will appear here automatically when contracts are created in the system.
+                Contracts will appear here automatically when contracts are created in the system.
               </p>
             </Card>
           )}
