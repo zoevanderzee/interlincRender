@@ -82,7 +82,9 @@ app.use((req, res, next) => {
   // doesn't interfere with the other routes
   if (app.get("env") === "development") {
     await setupVite(app, server);
+    console.log("Running in development mode with Vite");
   } else {
+    console.log("Running in production mode, serving static files");
     serveStatic(app);
   }
 

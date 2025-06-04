@@ -71,18 +71,28 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(__dirname, "public");
+  // In production, look for the dist folder created by the build process
+  const distPath = path.resolve(__dirname, "..", "dist", "public");
+  
+  // Fallback to the old path if the new one doesn't exist
+  const fallbackDistPath = path.resolve(__dirname, "public");
+  
+  let finalDistPath = distPath;
+  if (!fs.existsSync(distPath) && fs.existsSync(fallbackDistPath)) {
+    finalDistPath = fallbackDistPath;
+  }
 
-  if (!fs.existsSync(distPath)) {
+  if (!fs.existsSync(finalDistPath)) {
     throw new Error(
-      `Could not find the build directory: ${distPath}, make sure to build the client first`,
+      `Could not find the build directory: ${finalDistPath}, make sure to build the client first. Tried: ${distPath} and ${fallbackDistPath}`,
     );
   }
 
-  app.use(express.static(distPath));
+  console.log(`Serving static files from: ${finalDistPath}`);
+  app.use(express.static(finalDistPath));
 
   // fall through to index.html if the file doesn't exist
   app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
+    res.sendFile(path.resolve(finalDistPath, "index.html"));
   });
 }
