@@ -64,6 +64,8 @@ app.use((req, res, next) => {
   // app.use(addCsrfToken);
   // app.use('/api', csrfProtection);
   
+  // Remove static HTML fallback routes to restore React app
+  
   // Serve test login HTML
   app.get('/test-login-html', (req, res) => {
     res.sendFile(path.resolve(__dirname, '..', 'client', 'test-login.html'));
@@ -82,9 +84,7 @@ app.use((req, res, next) => {
   // doesn't interfere with the other routes
   if (app.get("env") === "development") {
     await setupVite(app, server);
-    console.log("Running in development mode with Vite");
   } else {
-    console.log("Running in production mode, serving static files");
     serveStatic(app);
   }
 

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug - Creativ Linc</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            padding: 20px; 
+            background: #1a1a1a; 
+            color: white; 
+        }
+        .error { color: #ff6b6b; }
+        .success { color: #51cf66; }
+        pre { background: #2d2d2d; padding: 10px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>Deployment Diagnostic</h1>
+    <div id="status"></div>
+    
+    <script>
+        const status = document.getElementById('status');
+        
+        // Test 1: Basic JS execution
+        status.innerHTML += '<p class="success">✓ JavaScript is executing</p>';
+        
+        // Test 2: API connectivity
+        fetch('/api/health')
+            .then(response => response.json())
+            .then(data => {
+                status.innerHTML += `<p class="success">✓ API Health: ${data.status}</p>`;
+                status.innerHTML += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            })
+            .catch(error => {
+                status.innerHTML += `<p class="error">✗ API Error: ${error.message}</p>`;
+            });
+            
+        // Test 3: Environment detection
+        status.innerHTML += `<p>Environment: ${window.location.hostname}</p>`;
+        status.innerHTML += `<p>Protocol: ${window.location.protocol}</p>`;
+        
+        // Test 4: Console errors
+        window.addEventListener('error', (e) => {
+            status.innerHTML += `<p class="error">✗ Runtime Error: ${e.message}</p>`;
+        });
+        
+        // Test 5: Module loading test
+        try {
+            import('/assets/index-DG4UFulq.js')
+                .then(() => {
+                    status.innerHTML += '<p class="success">✓ Main module loaded successfully</p>';
+                })
+                .catch(error => {
+                    status.innerHTML += `<p class="error">✗ Module loading failed: ${error.message}</p>`;
+                });
+        } catch (error) {
+            status.innerHTML += `<p class="error">✗ Import error: ${error.message}</p>`;
+        }
+    </script>
+</body>
+</html>

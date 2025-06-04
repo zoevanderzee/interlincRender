@@ -264,7 +264,7 @@ const DataRoom = () => {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <div>
           <h1 className="text-2xl md:text-3xl font-semibold text-white">Data Room</h1>
-          <p className="text-gray-400 mt-1">Secure repository of all automatically generated smart contracts organized by project</p>
+          <p className="text-gray-400 mt-1">Secure repository of all automatically generated contracts organized by project</p>
         </div>
       </div>
       
@@ -286,7 +286,7 @@ const DataRoom = () => {
       <Tabs defaultValue="all" className="w-full">
         <TabsList className="mb-6 bg-gray-900 border border-gray-800">
           <TabsTrigger value="all" className="data-[state=active]:bg-gray-800 data-[state=active]:text-white text-gray-400">All Documents</TabsTrigger>
-          <TabsTrigger value="contracts" className="data-[state=active]:bg-gray-800 data-[state=active]:text-white text-gray-400">Smart Contracts</TabsTrigger>
+          <TabsTrigger value="contracts" className="data-[state=active]:bg-gray-800 data-[state=active]:text-white text-gray-400">Contracts</TabsTrigger>
           <TabsTrigger value="compliance" className="data-[state=active]:bg-gray-800 data-[state=active]:text-white text-gray-400">Compliance Documents</TabsTrigger>
           <TabsTrigger value="deleted" className="data-[state=active]:bg-gray-800 data-[state=active]:text-white text-gray-400">Deleted Projects</TabsTrigger>
         </TabsList>
@@ -387,15 +387,40 @@ const DataRoom = () => {
               {documentsByProject.map(({ contract, documents }) => (
                 <Card key={contract.id} className="border border-gray-800 bg-gray-900 p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <div>
+                    <div className="flex-1">
                       <h3 className="text-lg font-medium text-white">{contract.contractName}</h3>
                       <p className="text-sm text-gray-400">Contract Code: {contract.contractCode}</p>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3 text-sm">
+                        <div>
+                          <span className="text-gray-400">Status:</span>
+                          <span className={`ml-2 px-2 py-1 rounded text-xs ${
+                            contract.status === 'Active' ? 'bg-green-900 text-green-200' :
+                            contract.status === 'Draft' ? 'bg-yellow-900 text-yellow-200' :
+                            contract.status === 'completed' ? 'bg-blue-900 text-blue-200' :
+                            'bg-gray-900 text-gray-200'
+                          }`}>
+                            {contract.status}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Value:</span>
+                          <span className="ml-2 text-white font-medium">${parseFloat(contract.value).toLocaleString()}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Start Date:</span>
+                          <span className="ml-2 text-white">{contract.startDate ? new Date(contract.startDate).toLocaleDateString() : 'Not set'}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">End Date:</span>
+                          <span className="ml-2 text-white">{contract.endDate ? new Date(contract.endDate).toLocaleDateString() : 'Not set'}</span>
+                        </div>
+                      </div>
                     </div>
                     <Button 
                       variant="outline" 
                       size="sm"
                       onClick={() => handleProjectSelect(selectedProjectId === contract.id ? null : contract.id)}
-                      className="border-gray-700 text-white hover:bg-gray-800"
+                      className="border-gray-700 text-white hover:bg-gray-800 ml-4"
                     >
                       {selectedProjectId === contract.id ? "Hide Details" : "View Details"}
                     </Button>
@@ -403,66 +428,132 @@ const DataRoom = () => {
                   
                   {selectedProjectId === contract.id && (
                     <div className="mt-4 border-t border-gray-800 pt-4">
-                      {documents.length > 0 ? (
-                        <Table>
-                          <TableHeader>
-                            <TableRow className="border-gray-800">
-                              <TableHead className="text-gray-400">Document</TableHead>
-                              <TableHead className="text-gray-400">Type</TableHead>
-                              <TableHead className="text-gray-400">Date</TableHead>
-                              <TableHead className="text-gray-400 text-right">Actions</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {documents.map((document) => (
-                              <TableRow key={document.id} className="border-gray-800">
-                                <TableCell>
-                                  <div className="flex items-center">
-                                    <div className="h-8 w-8 mr-3 bg-gray-800 text-white rounded-md flex items-center justify-center">
-                                      {getDocumentIcon(document.fileType)}
-                                    </div>
-                                    <div>
-                                      <div className="font-medium text-white">{document.fileName}</div>
-                                      {document.description && (
-                                        <div className="text-xs text-gray-400">{document.description}</div>
-                                      )}
-                                    </div>
-                                  </div>
-                                </TableCell>
-                                <TableCell className="text-white">{document.fileType.split('/')[1].toUpperCase()}</TableCell>
-                                <TableCell className="text-white">{formatDate(document.uploadedAt || new Date())}</TableCell>
-                                <TableCell className="text-right">
-                                  <div className="flex justify-end space-x-2">
-                                    <Button 
-                                      variant="ghost" 
-                                      size="icon"
-                                      onClick={() => handlePreview(document)}
-                                      title="Preview"
-                                      className="text-white hover:text-white hover:bg-gray-800"
-                                    >
-                                      <Eye size={16} />
-                                    </Button>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="icon"
-                                      onClick={() => handleDownload(document)}
-                                      title="Download"
-                                      className="text-white hover:text-white hover:bg-gray-800"
-                                    >
-                                      <Download size={16} />
-                                    </Button>
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      ) : (
-                        <div className="text-center py-8 text-gray-400">
-                          <p>No smart contract documents available for this project.</p>
-                          <p className="text-sm mt-1">Smart contracts are automatically generated when contracts are created.</p>
+                      {/* Full Compliance Details */}
+                      <div className="mb-6 space-y-4">
+                        <h4 className="text-white font-medium mb-3">Contract Details for Compliance</h4>
+                        
+                        {/* Contract Metadata */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                          <div className="bg-gray-800 p-3 rounded">
+                            <span className="text-gray-400 block">Contract ID:</span>
+                            <span className="text-white font-mono">{contract.id}</span>
+                          </div>
+                          <div className="bg-gray-800 p-3 rounded">
+                            <span className="text-gray-400 block">Created Date:</span>
+                            <span className="text-white">{new Date(contract.createdAt).toLocaleString()}</span>
+                          </div>
+                          <div className="bg-gray-800 p-3 rounded">
+                            <span className="text-gray-400 block">Business ID:</span>
+                            <span className="text-white font-mono">{contract.businessId}</span>
+                          </div>
+                          <div className="bg-gray-800 p-3 rounded">
+                            <span className="text-gray-400 block">Contractor ID:</span>
+                            <span className="text-white font-mono">{contract.contractorId || 'Not assigned'}</span>
+                          </div>
+                          {contract.contractorBudget && (
+                            <div className="bg-gray-800 p-3 rounded">
+                              <span className="text-gray-400 block">Contractor Budget:</span>
+                              <span className="text-white font-medium">${parseFloat(contract.contractorBudget).toLocaleString()}</span>
+                            </div>
+                          )}
+                          <div className="bg-gray-800 p-3 rounded">
+                            <span className="text-gray-400 block">Total Value:</span>
+                            <span className="text-white font-medium">${parseFloat(contract.value).toLocaleString()}</span>
+                          </div>
                         </div>
-                      )}
+
+                        {/* Project Description */}
+                        {contract.description && (
+                          <div className="bg-gray-800 p-4 rounded">
+                            <span className="text-gray-400 block mb-2">Project Description:</span>
+                            <p className="text-white text-sm leading-relaxed">{contract.description}</p>
+                          </div>
+                        )}
+
+                        {/* Contract Period */}
+                        <div className="bg-gray-800 p-4 rounded">
+                          <span className="text-gray-400 block mb-2">Contract Period:</span>
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm">
+                            <span className="text-white">
+                              From: {contract.startDate ? new Date(contract.startDate).toLocaleDateString() : 'Not specified'}
+                            </span>
+                            <span className="text-gray-400 hidden sm:inline">→</span>
+                            <span className="text-white">
+                              To: {contract.endDate ? new Date(contract.endDate).toLocaleDateString() : 'Not specified'}
+                            </span>
+                            {contract.startDate && contract.endDate && (
+                              <span className="text-gray-400 ml-auto">
+                                Duration: {Math.ceil((new Date(contract.endDate).getTime() - new Date(contract.startDate).getTime()) / (1000 * 60 * 60 * 24))} days
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Documents Section */}
+                      <div className="border-t border-gray-700 pt-4">
+                        <h4 className="text-white font-medium mb-3">Associated Documents</h4>
+                        {documents.length > 0 ? (
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="border-gray-800">
+                                <TableHead className="text-gray-400">Document</TableHead>
+                                <TableHead className="text-gray-400">Type</TableHead>
+                                <TableHead className="text-gray-400">Upload Date</TableHead>
+                                <TableHead className="text-gray-400 text-right">Actions</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {documents.map((document) => (
+                                <TableRow key={document.id} className="border-gray-800">
+                                  <TableCell>
+                                    <div className="flex items-center">
+                                      <div className="h-8 w-8 mr-3 bg-gray-800 text-white rounded-md flex items-center justify-center">
+                                        {getDocumentIcon(document.fileType)}
+                                      </div>
+                                      <div>
+                                        <div className="font-medium text-white">{document.fileName}</div>
+                                        {document.description && (
+                                          <div className="text-xs text-gray-400">{document.description}</div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-white">{document.fileType.split('/')[1].toUpperCase()}</TableCell>
+                                  <TableCell className="text-white">{formatDate(document.uploadedAt || new Date())}</TableCell>
+                                  <TableCell className="text-right">
+                                    <div className="flex justify-end space-x-2">
+                                      <Button 
+                                        variant="ghost" 
+                                        size="icon"
+                                        onClick={() => handlePreview(document)}
+                                        title="Preview"
+                                        className="text-white hover:text-white hover:bg-gray-800"
+                                      >
+                                        <Eye size={16} />
+                                      </Button>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="icon"
+                                        onClick={() => handleDownload(document)}
+                                        title="Download"
+                                        className="text-white hover:text-white hover:bg-gray-800"
+                                      >
+                                        <Download size={16} />
+                                      </Button>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        ) : (
+                          <div className="text-center py-6 text-gray-400 bg-gray-800 rounded">
+                            <p>No contract documents available for this project.</p>
+                            <p className="text-sm mt-1">Contract documents are automatically generated when contracts are created.</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </Card>
@@ -473,9 +564,9 @@ const DataRoom = () => {
               <div className="mx-auto h-16 w-16 rounded-full bg-gray-800 flex items-center justify-center text-gray-400 mb-4">
                 <FileText size={24} />
               </div>
-              <h3 className="text-lg font-medium text-white mb-2">No Smart Contracts</h3>
+              <h3 className="text-lg font-medium text-white mb-2">No Contracts</h3>
               <p className="text-gray-400 mb-6">
-                Smart contracts will appear here automatically when contracts are created in the system.
+                Contracts will appear here automatically when contracts are created in the system.
               </p>
             </Card>
           )}

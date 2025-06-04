@@ -67,8 +67,8 @@ class AutomatedPaymentService {
 
       const payment = await storage.createPayment(paymentData);
 
-      // Create payment instruction for third-party provider
-      const paymentResult = await this.createPaymentInstruction(
+      // Create payment through Trolley API
+      const paymentResult = await this.createTrolleyPayment(
         payment.id,
         netAmount,
         applicationFee,
@@ -82,10 +82,11 @@ class AutomatedPaymentService {
         return { success: false, error: paymentResult.error };
       }
 
-      // Update payment with provider instruction details
+      // Update payment with Trolley batch details
       await storage.updatePayment(payment.id, {
-        status: 'pending_provider_processing',
-        providerInstructionId: paymentResult.instructionId
+        status: 'processing_via_trolley',
+        trolleyBatchId: paymentResult.batchId,
+        trolleyPaymentId: paymentResult.paymentId
       });
 
       // Create compliance log
@@ -104,7 +105,7 @@ class AutomatedPaymentService {
         success: true,
         paymentId: payment.id,
         logId: logId,
-        instructionId: paymentResult.instructionId
+        transferId: paymentResult.batchId
       };
 
     } catch (error) {
@@ -114,16 +115,17 @@ class AutomatedPaymentService {
   }
 
   /**
-   * Creates payment instruction for third-party provider
+   * Creates payment through Trolley Embedded Payouts
+   * Company wallet funds are used to pay contractors
    */
-  private async createPaymentInstruction(
+  private async createTrolleyPayment(
     paymentId: number,
     amount: number,
     applicationFee: number,
     contractor: any,
     milestone: any,
     contract: any
-  ): Promise<{ success: boolean; instructionId?: string; error?: string }> {
+  ): Promise<{ success: boolean; batchId?: string; paymentId?: string; error?: string }> {
     try {
       // Get business owner details
       const business = await storage.getUser(contract.businessId);
@@ -131,55 +133,93 @@ class AutomatedPaymentService {
         return { success: false, error: 'Business user not found' };
       }
 
-      // Check if business has connected payment providers
-      // This would check for Wise, Payoneer, Bill.com, etc. connections
-      const paymentProviders = []; // Would fetch from database
-      
-      if (paymentProviders.length === 0) {
+      // Check if Trolley API is configured
+      if (!process.env.TROLLEY_API_KEY) {
         return { 
           success: false, 
-          error: 'Business must connect a payment provider before automated payments can be processed. Please visit Payment Providers settings.' 
+          error: 'Trolley API key not configured. Contact support to enable payment processing.' 
         };
       }
 
-      // Create payment instruction record
-      const paymentInstruction = {
-        paymentId: paymentId,
-        businessId: contract.businessId,
-        contractorId: contractor.id,
-        milestoneId: milestone.id,
-        contractId: contract.id,
-        amount: amount.toString(),
-        platformFee: applicationFee.toString(),
-        contractorEmail: contractor.email,
-        contractorName: `${contractor.firstName} ${contractor.lastName}`,
-        description: `Payment for milestone: ${milestone.name}`,
-        status: 'pending_provider_processing',
-        providerInstructions: {
-          recipient: {
-            email: contractor.email,
-            name: `${contractor.firstName} ${contractor.lastName}`,
-            // Additional contractor payment details would be added here
-          },
-          amount: amount,
-          currency: 'USD',
-          reference: `Milestone-${milestone.id}-Contract-${contract.id}`,
-          memo: `Payment for ${milestone.name} - ${contract.contractName}`
+      // Check if business has Trolley company profile
+      if (!business.trolleyCompanyProfileId) {
+        return {
+          success: false,
+          error: 'Company must complete Trolley onboarding before processing payments. Please visit Payment Setup.'
+        };
+      }
+
+      // Prepare Trolley Embedded Payout data
+      const embeddedPayoutData = {
+        companyProfileId: business.trolleyCompanyProfileId,
+        recipient: {
+          id: contractor.trolleyRecipientId || contractor.email,
+          email: contractor.email,
+          firstName: contractor.firstName,
+          lastName: contractor.lastName,
+          type: 'individual'
+        },
+        payment: {
+          sourceAmount: amount,
+          sourceCurrency: 'USD',
+          targetCurrency: contractor.preferredCurrency || 'USD',
+          purpose: 'contractor_payment',
+          memo: `Milestone: ${milestone.name} - Contract ${contract.contractCode}`,
+          compliance: {
+            category: 'contractor_services',
+            subcategory: 'milestone_completion',
+            taxCategory: 'professional_services'
+          }
+        },
+        platformMetadata: {
+          contractId: contract.id,
+          milestoneId: milestone.id,
+          contractCode: contract.contractCode,
+          businessId: contract.businessId,
+          platformPaymentId: paymentId,
+          platformFee: applicationFee,
+          netContractorAmount: amount
         }
       };
 
-      // In a real implementation, this would:
-      // 1. Send payment instruction to connected provider's API
-      // 2. Store the provider's transaction ID
-      // 3. Set up webhooks to track payment status
-      
+      console.log('Processing Trolley Embedded Payout:', {
+        companyProfile: business.trolleyCompanyProfileId,
+        contractorEmail: contractor.email,
+        amount: amount,
+        milestone: milestone.name,
+        contract: contract.contractCode
+      });
+
+      // For development: simulate Trolley API response
+      // In production, this would call the actual Trolley Embedded Payouts API
+      const mockTrolleyResponse = {
+        batch: {
+          id: `embedded_batch_${Date.now()}`,
+          status: 'processing',
+          companyProfile: business.trolleyCompanyProfileId,
+          payments: [{
+            id: `embedded_payment_${Date.now()}`,
+            status: 'pending_compliance',
+            recipient: {
+              id: contractor.email
+            },
+            amount: amount,
+            fees: {
+              trolleyFee: amount * 0.01, // 1% Trolley fee
+              platformFee: applicationFee
+            }
+          }]
+        }
+      };
+
       return {
         success: true,
-        instructionId: `instruction_${Date.now()}_${paymentId}`
+        batchId: mockTrolleyResponse.batch.id,
+        paymentId: mockTrolleyResponse.batch.payments[0].id
       };
 
     } catch (error: any) {
-      console.error('Payment instruction creation error:', error);
+      console.error('Trolley Embedded Payout error:', error);
       return { success: false, error: error.message };
     }
   }

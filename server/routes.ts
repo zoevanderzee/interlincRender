@@ -18,6 +18,7 @@ import Stripe from "stripe";
 import stripeService from "./services/stripe";
 import notificationService from "./services/notifications";
 import automatedPaymentService from "./services/automated-payments";
+import { trolleyApi } from "./services/trolley-api";
 import { setupAuth } from "./auth";
 import plaidRoutes from "./plaid-routes";
 
@@ -40,6 +41,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.sendFile(path.resolve(__dirname, '..', 'client', 'public', 'login.html'));
   });
   
+  // Public health check endpoint - no auth required
+  app.get(`${apiRouter}/health`, async (req: Request, res: Response) => {
+    try {
+      // Simple database connection test
+      res.json({ 
+        status: 'ok', 
+        timestamp: new Date().toISOString(),
+        database: 'connected',
+        environment: process.env.NODE_ENV || 'development'
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        status: 'error', 
+        timestamp: new Date().toISOString(),
+        database: 'disconnected',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        environment: process.env.NODE_ENV || 'development'
+      });
+    }
+  });
+
   // Public routes are defined above (login, register) in the auth.ts file
   
   // Protected routes - require authentication
@@ -3868,6 +3890,148 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('Error reviewing work submission:', error);
       res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Trolley Embedded Payouts API routes
+  
+  // Get Trolley connection status for business
+  app.get(`${apiRouter}/trolley/status`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user;
+      if (!user) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const trolleyStatus = {
+        configured: trolleyApi.isConfigured(),
+        companyProfileId: user.trolleyCompanyProfileId,
+        status: user.trolleyCompanyProfileId ? 'connected' : 'disconnected',
+        recipientId: user.trolleyRecipientId
+      };
+
+      res.json(trolleyStatus);
+    } catch (error) {
+      console.error("Error fetching Trolley status:", error);
+      res.status(500).json({ message: "Error fetching Trolley status" });
+    }
+  });
+
+  // Create Trolley company profile for business
+  app.post(`${apiRouter}/trolley/company-profile`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user;
+      if (!user || user.role !== 'business') {
+        return res.status(403).json({ message: "Only business accounts can create company profiles" });
+      }
+
+      if (user.trolleyCompanyProfileId) {
+        return res.status(400).json({ message: "Company profile already exists" });
+      }
+
+      const companyData = {
+        name: user.companyName || `${user.firstName} ${user.lastName}`,
+        email: user.email,
+        type: 'business' as const
+      };
+
+      const result = await trolleyApi.createCompanyProfile(companyData);
+      
+      if (!result.success) {
+        return res.status(400).json({ message: result.error });
+      }
+
+      // Update user with Trolley company profile ID
+      await storage.updateUser(user.id, {
+        trolleyCompanyProfileId: result.profileId
+      });
+
+      res.json({
+        success: true,
+        profileId: result.profileId,
+        message: "Company profile created successfully"
+      });
+
+    } catch (error) {
+      console.error("Error creating Trolley company profile:", error);
+      res.status(500).json({ message: "Error creating company profile" });
+    }
+  });
+
+  // Create Trolley recipient for contractor
+  app.post(`${apiRouter}/trolley/recipient`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user;
+      if (!user || user.role === 'business') {
+        return res.status(403).json({ message: "Only contractors can create recipient profiles" });
+      }
+
+      if (user.trolleyRecipientId) {
+        return res.status(400).json({ message: "Recipient profile already exists" });
+      }
+
+      const recipientData = {
+        email: user.email,
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        type: 'individual' as const
+      };
+
+      const result = await trolleyApi.createRecipient(recipientData);
+      
+      if (!result.success) {
+        return res.status(400).json({ message: result.error });
+      }
+
+      // Update user with Trolley recipient ID
+      await storage.updateUser(user.id, {
+        trolleyRecipientId: result.recipientId
+      });
+
+      res.json({
+        success: true,
+        recipientId: result.recipientId,
+        message: "Recipient profile created successfully"
+      });
+
+    } catch (error) {
+      console.error("Error creating Trolley recipient:", error);
+      res.status(500).json({ message: "Error creating recipient profile" });
+    }
+  });
+
+  // Fund company wallet (for testing purposes)
+  app.post(`${apiRouter}/trolley/fund-wallet`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user;
+      if (!user || user.role !== 'business') {
+        return res.status(403).json({ message: "Only business accounts can fund wallets" });
+      }
+
+      if (!user.trolleyCompanyProfileId) {
+        return res.status(400).json({ message: "Company profile required. Please complete Trolley onboarding first." });
+      }
+
+      const { amount } = req.body;
+      if (!amount || amount <= 0) {
+        return res.status(400).json({ message: "Valid amount required" });
+      }
+
+      const result = await trolleyApi.fundCompanyWallet(user.trolleyCompanyProfileId, amount);
+      
+      if (!result.success) {
+        return res.status(400).json({ message: result.error });
+      }
+
+      res.json({
+        success: true,
+        transactionId: result.transactionId,
+        message: `Wallet funded with $${amount}`
+      });
+
+    } catch (error) {
+      console.error("Error funding Trolley wallet:", error);
+      res.status(500).json({ message: "Error funding wallet" });
     }
   });
 

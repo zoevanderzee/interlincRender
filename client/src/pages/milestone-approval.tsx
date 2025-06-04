@@ -227,12 +227,12 @@ export default function MilestoneApproval() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="p-4 bg-blue-50 rounded-lg border">
-                <h4 className="font-medium text-blue-900 mb-2">Third-Party Payment Processing</h4>
+                <h4 className="font-medium text-blue-900 mb-2">Trolley Payment Processing</h4>
                 <ul className="text-sm text-blue-800 space-y-1">
-                  <li>• Payment instruction sent to your connected provider</li>
+                  <li>• Payment processed through your Trolley sub-account</li>
                   <li>• 0.25% platform coordination fee</li>
-                  <li>• Provider handles compliance and disbursement</li>
-                  <li>• Structured audit log created for records</li>
+                  <li>• Trolley handles compliance and KYC verification</li>
+                  <li>• Structured audit log created for tax records</li>
                 </ul>
               </div>
 

@@ -40,17 +40,18 @@ export function setupAuth(app: Express) {
 
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || 'creativlinc-secret-key',
-    resave: true, // Restore original working setting
-    saveUninitialized: true, // Restore original working setting
-    name: 'creativlinc.sid',
-    rolling: true, // Restore original working setting
+    resave: true, // Keep true to ensure session is saved on each request
+    saveUninitialized: true, // Keep true to ensure new sessions are saved
+    name: 'creativlinc.sid', // Custom name instead of the default connect.sid
+    rolling: true, // Reset expiration time on each request
     cookie: {
-      secure: false, // Keep false for all environments like before
+      secure: false, // Set to false in all environments to ensure cookies work in development
       maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
       httpOnly: true,
-      sameSite: 'lax',
+      sameSite: 'lax', // Use 'lax' for better browser compatibility
       path: '/',
     },
+    // Use the storage implementation's session store
     store: storage.sessionStore
   };
   
@@ -106,19 +107,31 @@ export function setupAuth(app: Express) {
 
   // Configure how users are stored in the session
   passport.serializeUser((user, done) => {
+    console.log("Serializing user:", user.id);
     done(null, user.id);
   });
   
   // Configure how users are retrieved from the session
   passport.deserializeUser(async (id: number, done) => {
     try {
+      // If id is undefined or null, return undefined
       if (id === undefined || id === null) {
+        console.log("Deserializing with undefined/null user ID");
         return done(null, undefined);
       }
       
+      console.log("Deserializing user with ID:", id);
       const user = await storage.getUser(id);
-      return done(null, user || undefined);
+      
+      // If no user found, return undefined instead of null
+      if (!user) {
+        console.log(`No user found with ID: ${id}`);
+        return done(null, undefined);
+      }
+      
+      return done(null, user);
     } catch (error) {
+      console.error('Error deserializing user:', error);
       return done(error);
     }
   });
@@ -515,38 +528,31 @@ export function setupAuth(app: Express) {
 
   // Create middleware to check user authentication
   const requireAuth = async (req: any, res: any, next: any) => {
-    // Skip authentication checks in deployment environments due to platform session issues
-    const isDeployment = process.env.REPLIT_DEPLOYMENT === 'true' || 
-                        process.env.NODE_ENV === 'production' ||
-                        !req.headers.cookie; // No cookies typically means deployment
+    console.log("Auth check in requireAuth middleware:", req.isAuthenticated(), "Session ID:", req.sessionID);
     
-    if (isDeployment) {
-      // Use X-User-ID header for deployment authentication
-      const userIdHeader = req.headers['x-user-id'];
-      if (userIdHeader) {
-        const userId = parseInt(userIdHeader);
-        if (!isNaN(userId)) {
-          const user = await storage.getUser(userId);
-          if (user) {
-            req.user = user;
-            return next();
-          }
-        }
-      }
-      // Default to business user for deployment
-      const defaultUser = await storage.getUser(21);
-      if (defaultUser) {
-        req.user = defaultUser;
-        return next();
-      }
-    }
+    // Log request headers for debugging
+    console.log("API request headers in requireAuth:", {
+      cookie: req.headers.cookie,
+      'user-agent': req.headers['user-agent'],
+      'x-user-id': req.headers['x-user-id'],
+      path: req.path
+    });
     
-    // Development environment authentication
+    // Debug session information
+    console.log("Session data:", {
+      isSessionDefined: !!req.session,
+      sessionID: req.sessionID,
+      userID: req.session?.passport?.user,
+      passportInitialized: !!req.session?.passport,
+      passport: req.session?.passport
+    });
+    
+    // First check traditional session-based authentication
     if (req.isAuthenticated()) {
       return next();
     }
     
-    // Fallback for development
+    // Fallback: Check for X-User-ID header and attempt to load the user
     const userIdHeader = req.headers['x-user-id'];
     if (userIdHeader) {
       try {
@@ -554,6 +560,8 @@ export function setupAuth(app: Express) {
         if (!isNaN(userId)) {
           const user = await storage.getUser(userId);
           if (user) {
+            console.log(`Using X-User-ID header fallback authentication for user ID: ${userId}`);
+            // Manually set user on request object
             req.user = user;
             return next();
           }
@@ -563,6 +571,7 @@ export function setupAuth(app: Express) {
       }
     }
     
+    // If all authentication methods fail
     return res.status(401).json({ error: "Not authenticated" });
   };
 

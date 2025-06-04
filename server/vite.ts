@@ -71,41 +71,18 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
-  // In production deployment, the build output is in dist/public from the root
-  const rootDistPath = path.resolve(process.cwd(), "dist", "public");
-  const serverDistPath = path.resolve(__dirname, "..", "dist", "public");
-  const fallbackDistPath = path.resolve(__dirname, "public");
-  
-  let finalDistPath = rootDistPath;
-  
-  // Try different possible locations for the built files
-  if (fs.existsSync(rootDistPath)) {
-    finalDistPath = rootDistPath;
-  } else if (fs.existsSync(serverDistPath)) {
-    finalDistPath = serverDistPath;
-  } else if (fs.existsSync(fallbackDistPath)) {
-    finalDistPath = fallbackDistPath;
-  }
+  const distPath = path.resolve(__dirname, "public");
 
-  if (!fs.existsSync(finalDistPath)) {
-    console.error(`Build directory not found. Tried:
-      - ${rootDistPath}
-      - ${serverDistPath} 
-      - ${fallbackDistPath}`);
+  if (!fs.existsSync(distPath)) {
     throw new Error(
-      `Could not find the build directory. Make sure to build the client first.`,
+      `Could not find the build directory: ${distPath}, make sure to build the client first`,
     );
   }
 
-  console.log(`Serving static files from: ${finalDistPath}`);
-  console.log(`Files in directory:`, fs.readdirSync(finalDistPath));
-  
-  app.use(express.static(finalDistPath));
+  app.use(express.static(distPath));
 
   // fall through to index.html if the file doesn't exist
   app.use("*", (_req, res) => {
-    const indexPath = path.resolve(finalDistPath, "index.html");
-    console.log(`Serving index.html from: ${indexPath}`);
-    res.sendFile(indexPath);
+    res.sendFile(path.resolve(distPath, "index.html"));
   });
 }

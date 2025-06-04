@@ -5,70 +5,30 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ExternalLink, Shield, CheckCircle, Plus, Settings } from "lucide-react";
+import { ExternalLink, Shield, CheckCircle, Plus, Settings, CreditCard, Users, Globe } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
-interface PaymentProvider {
+interface TrolleyConnection {
   id: string;
-  name: string;
-  type: string;
   status: 'connected' | 'pending' | 'disconnected';
-  logo: string;
-  description: string;
-  features: string[];
+  subAccountId?: string;
+  connectedAt?: string;
+  lastSync?: string;
 }
 
-const AVAILABLE_PROVIDERS = [
-  {
-    id: 'wise',
-    name: 'Wise Business',
-    type: 'international_transfer',
-    logo: '🌍',
-    description: 'Global payments and multi-currency accounts',
-    features: ['International transfers', 'Multi-currency wallets', 'Low fees', 'Fast transfers']
-  },
-  {
-    id: 'payoneer',
-    name: 'Payoneer',
-    type: 'global_payments',
-    logo: '💳',
-    description: 'Global payment platform for businesses',
-    features: ['Worldwide payments', 'Mass payouts', 'Local bank details', 'Currency conversion']
-  },
-  {
-    id: 'bill_com',
-    name: 'Bill.com',
-    type: 'ap_automation',
-    logo: '📋',
-    description: 'Accounts payable automation',
-    features: ['Invoice management', 'Approval workflows', 'ACH payments', 'Check payments']
-  },
-  {
-    id: 'tipalti',
-    name: 'Tipalti',
-    type: 'supplier_payments',
-    logo: '🏦',
-    description: 'Global supplier payment automation',
-    features: ['Tax compliance', 'Global payouts', 'Payment methods', 'Supplier onboarding']
-  }
-];
-
 export default function PaymentProviders() {
-  const [selectedProvider, setSelectedProvider] = useState<string>('');
   const [apiKey, setApiKey] = useState('');
-  const [secretKey, setSecretKey] = useState('');
   const [showSetup, setShowSetup] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch connected payment providers
-  const { data: connectedProviders = [], isLoading } = useQuery({
-    queryKey: ['/api/payment-providers'],
+  // Fetch Trolley connection status
+  const { data: trolleyConnection, isLoading } = useQuery({
+    queryKey: ['/api/trolley/status'],
     queryFn: async () => {
-      const response = await fetch('/api/payment-providers');
-      if (!response.ok) return [];
+      const response = await fetch('/api/trolley/status');
+      if (!response.ok) return null;
       return response.json();
     }
   });
