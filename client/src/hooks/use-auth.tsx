@@ -48,12 +48,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryFn: async () => {
       console.log("Fetching current user data...");
       try {
-        // Try to get user data from localStorage first as a fallback
-        const storedUser = localStorage.getItem('creativlinc_user');
-        
         const res = await fetch("/api/user", {
           method: "GET",
-          credentials: "include", // Important: include cookies with the request
+          credentials: "include",
           headers: {
             "Accept": "application/json",
             "Cache-Control": "no-cache"
@@ -63,20 +60,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log("User data response status:", res.status);
         
         if (!res.ok) {
-          console.log("User not authenticated via API, checking localStorage");
-          
-          // If API call fails, try using localStorage data
-          if (storedUser) {
-            try {
-              const parsedUser = JSON.parse(storedUser);
-              console.log("Using stored user data:", parsedUser?.username);
-              return parsedUser as User;
-            } catch (e) {
-              console.error("Error parsing stored user:", e);
-              localStorage.removeItem('creativlinc_user');
-            }
-          }
-          
+          console.log("User not authenticated via API");
+          // Clear any stale localStorage data
+          localStorage.removeItem('creativlinc_user');
           return null;
         }
         
@@ -89,27 +75,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return userData;
       } catch (error) {
         console.error("Error fetching user data:", error);
-        
-        // On error, try using localStorage as fallback
-        const storedUser = localStorage.getItem('creativlinc_user');
-        if (storedUser) {
-          try {
-            const parsedUser = JSON.parse(storedUser);
-            console.log("Using stored user data after fetch error:", parsedUser?.username);
-            return parsedUser as User;
-          } catch (e) {
-            console.error("Error parsing stored user after fetch error:", e);
-            localStorage.removeItem('creativlinc_user');
-          }
-        }
-        
+        // Clear localStorage on network errors
+        localStorage.removeItem('creativlinc_user');
         return null;
       }
     },
-    staleTime: 10 * 60 * 1000, // 10 minutes
+    retry: false, // Don't retry failed authentication requests
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
     refetchOnWindowFocus: true,
     refetchOnMount: true,
-    initialData: null // Ensure we always have a User | null type
+    initialData: null
   });
 
   // Login mutation
