@@ -13,20 +13,21 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Payment, Contract, User, Milestone } from "@shared/schema";
 
-// Define interface for dashboard data
+// Define interface for dashboard data (matches server/routes.ts dashboard endpoint)
 interface DashboardData {
   stats: {
     activeContractsCount: number;
     pendingApprovalsCount: number;
     paymentsProcessed: number;
+    totalPendingValue: number;
     activeContractorsCount: number;
-    totalPendingValue?: number;
-    pendingInvitesCount?: number;
+    pendingInvitesCount: number;
   };
   contracts: Contract[];
   contractors: User[];
-  milestones: Milestone[];
-  payments: Payment[];
+  milestones: any[];
+  payments: any[];
+  invites: any[];
 }
 import { 
   DollarSign, 
@@ -289,7 +290,7 @@ export default function Payments() {
                 {payments.map((payment: Payment) => (
                   <TableRow key={payment.id} className="border-gray-800">
                     <TableCell className="text-white">
-                      {payment.contractorId ? `Contractor #${payment.contractorId}` : 'Contractor'}
+                      {payment.contractId ? `Contract #${payment.contractId}` : 'Contract'}
                     </TableCell>
                     <TableCell className="text-gray-300">
                       {getContractName(payment.contractId)}
@@ -298,7 +299,7 @@ export default function Payments() {
                       ${parseFloat(payment.amount).toLocaleString()}
                     </TableCell>
                     <TableCell className="text-gray-300">
-                      {payment.dueDate ? new Date(payment.dueDate).toLocaleDateString() : 'Not set'}
+                      {payment.scheduledDate ? new Date(payment.scheduledDate).toLocaleDateString() : 'Not set'}
                     </TableCell>
                     <TableCell>
                       <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
