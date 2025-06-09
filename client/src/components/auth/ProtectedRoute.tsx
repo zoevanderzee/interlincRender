@@ -1,6 +1,6 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { Redirect, Route } from "wouter";
+import { Redirect, Route, useLocation } from "wouter";
 import { Loader2 } from "lucide-react";
 
 type ProtectedRouteProps = {
@@ -10,8 +10,16 @@ type ProtectedRouteProps = {
 
 export function ProtectedRoute({ path, children }: ProtectedRouteProps) {
   const { user, isLoading } = useAuth();
+  const [, setLocation] = useLocation();
 
   console.log("ProtectedRoute:", { path, isLoading, hasUser: !!user });
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      console.log("Force redirecting to /auth");
+      setLocation("/auth");
+    }
+  }, [isLoading, user, setLocation]);
 
   return (
     <Route path={path}>
@@ -25,10 +33,11 @@ export function ProtectedRoute({ path, children }: ProtectedRouteProps) {
       ) : user ? (
         children
       ) : (
-        <>
-          {console.log("Redirecting to /auth...")}
-          <Redirect to="/auth" />
-        </>
+        <div className="flex items-center justify-center min-h-screen bg-black">
+          <div className="text-center">
+            <p className="text-white">Redirecting to login...</p>
+          </div>
+        </div>
       )}
     </Route>
   );

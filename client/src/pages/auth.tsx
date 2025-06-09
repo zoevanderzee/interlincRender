@@ -25,9 +25,10 @@ import {
 import { Loader2, ArrowLeft, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import Logo from "@assets/CD_icon_light@2x.png";
+// import Logo from "@assets/CD_icon_light@2x.png";
 
 export default function AuthPage() {
+  console.log("AuthPage component rendering");
   const { user, isLoading, loginMutation, registerMutation } = useAuth();
   const [location] = useLocation();
   const [activeTab, setActiveTab] = useState("login");
