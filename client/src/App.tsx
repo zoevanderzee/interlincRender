@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Switch, Route } from "wouter";
-import { queryClient } from "./lib/queryClient";
+import { queryClient, clearAuthCache } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/hooks/use-auth";
@@ -209,6 +209,12 @@ function Router() {
 }
 
 function App() {
+  // Force clear all authentication data on app initialization
+  useEffect(() => {
+    console.log("App initializing, clearing all auth caches");
+    clearAuthCache();
+  }, []);
+
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>

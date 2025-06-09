@@ -45,11 +45,12 @@ export function setupAuth(app: Express) {
     name: 'creativlinc.sid',
     rolling: false,
     cookie: {
-      secure: process.env.NODE_ENV === 'production',
+      secure: false, // Force disable secure for Replit deployment compatibility
       maxAge: 1000 * 60 * 60 * 24, // 24 hours instead of 1 week
       httpOnly: true,
       sameSite: 'strict', // Critical: Prevent cross-site cookie sharing
       path: '/',
+      domain: undefined, // Let browser set domain automatically
     },
     // Use the storage implementation's session store
     store: storage.sessionStore

@@ -227,13 +227,43 @@ export const queryClient = new QueryClient({
 
 // Clear all cached data and force fresh authentication check
 export function clearAuthCache() {
+  console.log("Clearing all authentication caches and data");
+  
+  // Clear React Query cache
   queryClient.clear();
+  queryClient.removeQueries();
+  
+  // Clear all browser storage
   localStorage.clear();
   sessionStorage.clear();
-  // Clear all cookies
-  document.cookie.split(';').forEach(cookie => {
-    const [name] = cookie.trim().split('=');
-    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.replit.app`;
+  
+  // Clear all cookies aggressively
+  const cookies = document.cookie.split(';');
+  for (let cookie of cookies) {
+    const eqPos = cookie.indexOf('=');
+    const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+    // Clear for multiple domain variations
     document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
-  });
+    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname};`;
+    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.${window.location.hostname};`;
+    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.replit.app;`;
+    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.replit.dev;`;
+  }
+  
+  // Clear IndexedDB
+  if ('indexedDB' in window) {
+    indexedDB.deleteDatabase('keyval-store');
+    indexedDB.deleteDatabase('firebaseLocalStorageDb');
+  }
+  
+  // Clear any cached user headers
+  if ('caches' in window) {
+    caches.keys().then(names => {
+      names.forEach(name => {
+        caches.delete(name);
+      });
+    });
+  }
+  
+  console.log("All authentication data cleared");
 }
