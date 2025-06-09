@@ -45,9 +45,25 @@ export default function Payments() {
   
   const isContractor = user?.role === 'contractor';
 
-  // Use dashboard data for payments and contracts
+  // Use dashboard data for payments and contracts with proper authentication
   const { data: dashboardData, isLoading: paymentsLoading } = useQuery<DashboardData>({
     queryKey: ['/api/dashboard'],
+    queryFn: async () => {
+      const res = await fetch("/api/dashboard", {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          "Accept": "application/json",
+          "Cache-Control": "no-cache"
+        }
+      });
+      
+      if (!res.ok) {
+        throw new Error("Could not load dashboard data");
+      }
+      
+      return await res.json();
+    },
     enabled: !!user
   });
 
