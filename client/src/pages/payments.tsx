@@ -11,7 +11,23 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Payment, Contract } from "@shared/schema";
+import { Payment, Contract, User, Milestone } from "@shared/schema";
+
+// Define interface for dashboard data
+interface DashboardData {
+  stats: {
+    activeContractsCount: number;
+    pendingApprovalsCount: number;
+    paymentsProcessed: number;
+    activeContractorsCount: number;
+    totalPendingValue?: number;
+    pendingInvitesCount?: number;
+  };
+  contracts: Contract[];
+  contractors: User[];
+  milestones: Milestone[];
+  payments: Payment[];
+}
 import { 
   DollarSign, 
   Calendar, 
@@ -28,17 +44,14 @@ export default function Payments() {
   
   const isContractor = user?.role === 'contractor';
 
-  // Fetch payments data
-  const { data: payments = [], isLoading: paymentsLoading } = useQuery({
-    queryKey: ['/api/payments'],
+  // Use dashboard data for payments and contracts
+  const { data: dashboardData, isLoading: paymentsLoading } = useQuery<DashboardData>({
+    queryKey: ['/api/dashboard'],
     enabled: !!user
   });
 
-  // Fetch contracts data for context
-  const { data: contracts = [] } = useQuery({
-    queryKey: ['/api/contracts'],
-    enabled: !!user
-  });
+  const payments = dashboardData?.payments || [];
+  const contracts = dashboardData?.contracts || [];
 
   if (paymentsLoading) {
     return (

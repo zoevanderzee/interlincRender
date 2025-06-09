@@ -13,6 +13,23 @@ import {
 import ContractsTable from "@/components/dashboard/ContractsTable";
 import { Plus, Search, FilterX } from "lucide-react";
 import { Contract, User } from "@shared/schema";
+
+// Define interface for dashboard data (matches server/routes.ts dashboard endpoint)
+interface DashboardData {
+  stats: {
+    activeContractsCount: number;
+    pendingApprovalsCount: number;
+    paymentsProcessed: number;
+    totalPendingValue: number;
+    activeContractorsCount: number;
+    pendingInvitesCount: number;
+  };
+  contracts: Contract[];
+  contractors: User[];
+  milestones: any[];
+  payments: any[];
+  invites: any[];
+}
 import { useAuth } from "@/hooks/use-auth";
 
 const Contracts = () => {
@@ -22,10 +39,12 @@ const Contracts = () => {
   const { user } = useAuth();
   const isContractor = user?.role === 'contractor';
 
-  // Fetch contracts
-  const { data: contracts = [], isLoading: isLoadingContracts } = useQuery<Contract[]>({
-    queryKey: ['/api/contracts'],
+  // Use dashboard data for contracts
+  const { data: dashboardData, isLoading: isLoadingContracts } = useQuery<DashboardData>({
+    queryKey: ['/api/dashboard'],
   });
+  
+  const contracts = dashboardData?.contracts || [];
 
   // Fetch contractors
   const { data: contractors = [], isLoading: isLoadingContractors } = useQuery<User[]>({
