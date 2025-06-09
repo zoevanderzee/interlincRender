@@ -25,7 +25,10 @@ export function ProtectedRoute({ path, children }: ProtectedRouteProps) {
       ) : user ? (
         children
       ) : (
-        <Redirect to="/auth" />
+        <>
+          {console.log("Redirecting to /auth...")}
+          <Redirect to="/auth" />
+        </>
       )}
     </Route>
   );
