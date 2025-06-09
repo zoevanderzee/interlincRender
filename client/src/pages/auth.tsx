@@ -412,10 +412,9 @@ export default function AuthPage() {
       
       // Handle business invite link registration
       if (businessToken && businessId) {
-        // Include business token information - using 'token' as the parameter name
-        // to match what the server is expecting in auth.ts
-        registerData.token = businessToken; // Use 'token' instead of 'businessToken'
-        registerData.businessId = businessId;
+        // Include business token information
+        (registerData as any).token = businessToken;
+        (registerData as any).businessId = businessId;
         registerData.role = 'contractor'; // Always contractor for business invites
         
         // Set worker type from business invite data
@@ -507,7 +506,9 @@ export default function AuthPage() {
       <div className="w-full md:w-1/2 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           <div className="flex justify-center mb-8">
-            <img src={Logo} alt="Creativ Linc Logo" className="h-16" />
+            <div className="h-16 w-16 bg-white rounded-lg flex items-center justify-center">
+              <span className="text-black font-bold text-xl">CL</span>
+            </div>
           </div>
           
           <Tabs defaultValue="login" value={activeTab} onValueChange={setActiveTab}>
