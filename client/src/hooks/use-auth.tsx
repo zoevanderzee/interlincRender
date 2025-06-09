@@ -61,8 +61,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         if (!res.ok) {
           console.log("User not authenticated via API");
-          // Clear any stale localStorage data
-          localStorage.removeItem('creativlinc_user');
           return null;
         }
         
@@ -75,16 +73,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return userData;
       } catch (error) {
         console.error("Error fetching user data:", error);
-        // Clear localStorage on network errors
-        localStorage.removeItem('creativlinc_user');
         return null;
       }
     },
-    retry: false, // Don't retry failed authentication requests
-    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
-    refetchOnWindowFocus: true,
-    refetchOnMount: true,
-    initialData: null
+    retry: false,
+    staleTime: 5 * 60 * 1000,
   });
 
   // Login mutation
