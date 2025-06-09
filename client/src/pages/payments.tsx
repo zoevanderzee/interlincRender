@@ -45,17 +45,32 @@ export default function Payments() {
   
   const isContractor = user?.role === 'contractor';
 
-  // Use dashboard data for payments and contracts with proper authentication
+  // Use dashboard data for payments and contracts with fallback authentication
   const { data: dashboardData, isLoading: paymentsLoading } = useQuery<DashboardData>({
     queryKey: ['/api/dashboard'],
     queryFn: async () => {
+      const headers: HeadersInit = {
+        "Accept": "application/json",
+        "Cache-Control": "no-cache"
+      };
+      
+      // Add user ID from localStorage as fallback
+      const storedUser = localStorage.getItem('creativlinc_user');
+      if (storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          if (parsedUser && parsedUser.id) {
+            headers['X-User-ID'] = parsedUser.id.toString();
+          }
+        } catch (e) {
+          console.error("Error parsing stored user:", e);
+        }
+      }
+      
       const res = await fetch("/api/dashboard", {
         method: "GET",
         credentials: "include",
-        headers: {
-          "Accept": "application/json",
-          "Cache-Control": "no-cache"
-        }
+        headers
       });
       
       if (!res.ok) {
