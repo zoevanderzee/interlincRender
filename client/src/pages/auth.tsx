@@ -25,7 +25,7 @@ import {
 import { Loader2, ArrowLeft, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-// import Logo from "@assets/CD_icon_light@2x.png";
+import Logo from "@assets/CD_icon_light@2x.png";
 
 export default function AuthPage() {
   console.log("AuthPage component rendering");
@@ -506,9 +506,7 @@ export default function AuthPage() {
       <div className="w-full md:w-1/2 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           <div className="flex justify-center mb-8">
-            <div className="h-16 w-16 bg-white rounded-lg flex items-center justify-center">
-              <span className="text-black font-bold text-xl">CL</span>
-            </div>
+            <img src={Logo} alt="Creativ Linc Logo" className="h-16" />
           </div>
           
           <Tabs defaultValue="login" value={activeTab} onValueChange={setActiveTab}>
