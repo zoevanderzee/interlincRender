@@ -224,3 +224,16 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+// Clear all cached data and force fresh authentication check
+export function clearAuthCache() {
+  queryClient.clear();
+  localStorage.clear();
+  sessionStorage.clear();
+  // Clear all cookies
+  document.cookie.split(';').forEach(cookie => {
+    const [name] = cookie.trim().split('=');
+    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.replit.app`;
+    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
+  });
+}
