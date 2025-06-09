@@ -58,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         
         console.log("User data response status:", res.status);
+        console.log("Auth query - isLoading will be false after this");
         
         if (!res.ok) {
           console.log("User not authenticated via API");

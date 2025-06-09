@@ -11,11 +11,16 @@ type ProtectedRouteProps = {
 export function ProtectedRoute({ path, children }: ProtectedRouteProps) {
   const { user, isLoading } = useAuth();
 
+  console.log("ProtectedRoute:", { path, isLoading, hasUser: !!user });
+
   return (
     <Route path={path}>
       {isLoading ? (
         <div className="flex items-center justify-center min-h-screen bg-black">
-          <Loader2 className="h-8 w-8 animate-spin text-white" />
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-white mx-auto mb-4" />
+            <p className="text-white">Loading...</p>
+          </div>
         </div>
       ) : user ? (
         children
