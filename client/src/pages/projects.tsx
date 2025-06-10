@@ -1,146 +1,66 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
-import { Card } from "@/components/ui/card";
-import { Milestone, Contract, User, Payment } from "@shared/schema";
-import { useToast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Calendar, Clock, DollarSign, FileText, Search, Filter, X } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
-import { 
-  Search, 
-  Plus, 
-  Calendar, 
-  ArrowUpRight, 
-  CheckCircle, 
-  AlertCircle,
-  Clock,
-  FileText,
-  ChevronRight,
-  Upload,
-  X,
-  Briefcase
-} from "lucide-react";
-import MilestonesList from "@/components/dashboard/MilestonesList";
+import { useToast } from "@/hooks/use-toast";
 
-interface DashboardData {
-  stats: {
-    activeContractsCount: number;
-    pendingApprovalsCount: number;
-    paymentsProcessed: number;
-    totalPendingValue: number;
-    activeContractorsCount: number;
-    pendingInvitesCount: number;
-  };
-  contracts: Contract[];
-  contractors: User[];
-  milestones: Milestone[];
-  payments: Payment[];
-  invites: any[];
-}
+const submissionSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  description: z.string().min(1, "Description is required"),
+});
 
-const Projects = () => {
-  const [_, navigate] = useLocation();
-  const { toast } = useToast();
+export default function Projects() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const queryClient = useQueryClient();
-  const isContractor = user?.role === "contractor";
+  
+  // State for filters
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  
-  // Work submission form state
   const [showSubmissionModal, setShowSubmissionModal] = useState(false);
   const [selectedContractId, setSelectedContractId] = useState<number | null>(null);
-  const [submissionTitle, setSubmissionTitle] = useState("");
-  const [submissionDescription, setSubmissionDescription] = useState("");
+
+  // File upload state
   const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
 
-  // Use dashboard data as the single source of truth for all project information
-  const { data: dashboardData, isLoading: isLoadingDashboard } = useQuery<DashboardData>({
-    queryKey: ['/api/dashboard'],
-    queryFn: async () => {
-      const headers: HeadersInit = {
-        "Accept": "application/json",
-        "Cache-Control": "no-cache"
-      };
-      
-      // Add user ID from localStorage as fallback
-      const storedUser = localStorage.getItem('creativlinc_user');
-      if (storedUser) {
-        try {
-          const parsedUser = JSON.parse(storedUser);
-          if (parsedUser && parsedUser.id) {
-            headers['X-User-ID'] = parsedUser.id.toString();
-          }
-        } catch (e) {
-          console.error("Error parsing stored user:", e);
-        }
-      }
-      
-      const res = await fetch("/api/dashboard", {
-        method: "GET",
-        credentials: "include",
-        headers
-      });
-      
-      if (!res.ok) {
-        throw new Error("Could not load dashboard data");
-      }
-      
-      return await res.json();
+  // Form for work submission
+  const form = useForm<z.infer<typeof submissionSchema>>({
+    resolver: zodResolver(submissionSchema),
+    defaultValues: {
+      title: "",
+      description: "",
     },
-    enabled: !!user,
   });
 
-  // Extract all data from dashboard source
-  const contractsData = dashboardData?.contracts || [];
-  const contractorsData = dashboardData?.contractors || [];
+  // Fetch unified dashboard data
+  const { data: dashboardData, isLoading: isLoadingDashboard } = useQuery({
+    queryKey: ['/api/dashboard'],
+  });
 
   // Extract all data from unified dashboard source
-  const milestones = dashboardData?.milestones || [];
-  const contracts = contractsData;
-  const contractors = contractorsData;
+  const contracts = (dashboardData as any)?.contracts || [];
+  const contractors = (dashboardData as any)?.contractors || [];
+  const milestones = (dashboardData as any)?.milestones || [];
+  const payments = (dashboardData as any)?.payments || [];
   
   // Get financial stats
-  const totalPendingValue = dashboardData?.stats?.totalPendingValue || 0;
-  const paymentsProcessed = dashboardData?.stats?.paymentsProcessed || 0;
-
-  // All data comes from dashboard, so all loading states depend on dashboard loading
-  const isLoadingMilestones = isLoadingDashboard;
-  const isLoadingContracts = isLoadingDashboard;
-  const isLoadingContractors = isLoadingDashboard;
-  
-  // Get payments from dashboard data
-  const payments = dashboardData?.payments || [];
+  const totalPendingValue = (dashboardData as any)?.stats?.totalPendingValue || 0;
+  const paymentsProcessed = (dashboardData as any)?.stats?.paymentsProcessed || 0;
 
   // Filter milestones by search term and status
-  const filteredMilestones = milestones.filter((milestone) => {
+  const filteredMilestones = milestones.filter((milestone: any) => {
     const matchesSearch = searchTerm === "" || 
       milestone.name.toLowerCase().includes(searchTerm.toLowerCase());
     
@@ -157,63 +77,16 @@ const Projects = () => {
 
   // Handle view milestone
   const handleViewMilestone = (id: number) => {
-    toast({
-      title: "View Milestone",
-      description: `Viewing milestone details for ID: ${id}`,
-    });
+    console.log("View milestone:", id);
   };
 
-  // Handle approve milestone
-  const handleApproveMilestone = (id: number) => {
-    toast({
-      title: "Milestone Approved",
-      description: "The milestone has been approved and payment scheduled.",
-    });
-  };
-
-  // Handle request update
-  const handleRequestUpdate = (id: number) => {
-    toast({
-      title: "Update Requested",
-      description: "A request for update has been sent to the contractor.",
-    });
-  };
-
-  // Work submission mutation
-  const submitWorkMutation = useMutation({
-    mutationFn: async (submissionData: { contractId: number; title: string; description: string }) => {
-      return apiRequest(`/api/work-submissions`, {
-        method: 'POST',
-        body: JSON.stringify(submissionData),
-      });
-    },
-    onSuccess: () => {
-      toast({
-        title: "Work Submitted Successfully",
-        description: "Your work has been submitted for review.",
-      });
-      setShowSubmissionModal(false);
-      setSubmissionTitle("");
-      setSubmissionDescription("");
-      setSelectedContractId(null);
-      setAttachmentFiles([]);
-      queryClient.invalidateQueries({ queryKey: ['/api/work-submissions'] });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Submission Failed",
-        description: error.message || "Failed to submit work. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Handle submit work
+  // Handle work submission
   const handleSubmitWork = (contractId: number) => {
     setSelectedContractId(contractId);
     setShowSubmissionModal(true);
   };
 
+  // File upload handling
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     setAttachmentFiles(prev => [...prev, ...files]);
@@ -223,27 +96,55 @@ const Projects = () => {
     setAttachmentFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Handle form submission
-  const handleFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedContractId || !submissionTitle.trim()) {
+  // Submit work mutation
+  const submitWorkMutation = useMutation({
+    mutationFn: async (data: { contractId: number; title: string; description: string; files: File[] }) => {
+      const formData = new FormData();
+      formData.append('contractId', data.contractId.toString());
+      formData.append('title', data.title);
+      formData.append('description', data.description);
+      
+      data.files.forEach((file, index) => {
+        formData.append(`file_${index}`, file);
+      });
+
+      return apiRequest('/api/submissions', {
+        method: 'POST',
+        body: formData,
+      });
+    },
+    onSuccess: () => {
       toast({
-        title: "Missing Information",
-        description: "Please provide a title for your submission.",
+        title: "Work Submitted",
+        description: "Your work has been submitted successfully and is pending review.",
+      });
+      setShowSubmissionModal(false);
+      setAttachmentFiles([]);
+      form.reset();
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Submission Failed",
+        description: "There was an error submitting your work. Please try again.",
         variant: "destructive",
       });
-      return;
-    }
+    },
+  });
 
-    submitWorkMutation.mutate({
-      contractId: selectedContractId,
-      title: submissionTitle.trim(),
-      description: submissionDescription.trim(),
-    });
+  const onSubmit = (values: z.infer<typeof submissionSchema>) => {
+    if (selectedContractId) {
+      submitWorkMutation.mutate({
+        contractId: selectedContractId,
+        title: values.title,
+        description: values.description,
+        files: attachmentFiles,
+      });
+    }
   };
 
   // Show loading state
-  if (isLoadingMilestones || isLoadingContracts || isLoadingContractors || isLoadingWorkRequestsData) {
+  if (isLoadingDashboard) {
     return (
       <div className="animate-pulse space-y-6">
         <div className="h-12 bg-zinc-800 rounded w-1/3"></div>
@@ -253,248 +154,353 @@ const Projects = () => {
           <div className="h-32 bg-zinc-800 rounded"></div>
           <div className="h-32 bg-zinc-800 rounded"></div>
         </div>
-        <div className="h-64 bg-zinc-800 rounded"></div>
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-48 bg-zinc-800 rounded"></div>
+          ))}
+        </div>
       </div>
     );
   }
 
-  // If user is a contractor, show work submission interface
-  if (isContractor) {
-    return (
-      <>
-        {/* Contractor Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+  const isContractor = user?.role === 'contractor';
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-white">Projects</h1>
+          <p className="text-zinc-400 mt-1">
+            {isContractor ? "Manage your active assignments and deliverables" : "Monitor project progress and milestones"}
+          </p>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="border-zinc-800 bg-zinc-900">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-zinc-400">Active Projects</CardTitle>
+            <FileText className="h-4 w-4 text-zinc-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">{contracts.filter((c: any) => c.status === 'active').length}</div>
+            <p className="text-xs text-zinc-500">
+              {contracts.length} total contracts
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-zinc-800 bg-zinc-900">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-zinc-400">Pending Milestones</CardTitle>
+            <Clock className="h-4 w-4 text-zinc-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">{milestones.filter((m: any) => m.status === 'pending').length}</div>
+            <p className="text-xs text-zinc-500">
+              {milestones.length} total milestones
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-zinc-800 bg-zinc-900">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-zinc-400">
+              {isContractor ? "Earnings Pending" : "Pending Payments"}
+            </CardTitle>
+            <DollarSign className="h-4 w-4 text-zinc-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">${totalPendingValue}</div>
+            <p className="text-xs text-zinc-500">
+              ${paymentsProcessed} processed
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-zinc-400" />
+          <Input
+            placeholder="Search projects or milestones..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 bg-zinc-900 border-zinc-700 text-white placeholder-zinc-400"
+          />
+        </div>
+        
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-full sm:w-48 bg-zinc-900 border-zinc-700 text-white">
+            <Filter className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Filter by status" />
+          </SelectTrigger>
+          <SelectContent className="bg-zinc-900 border-zinc-700">
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="in_progress">In Progress</SelectItem>
+            <SelectItem value="completed">Completed</SelectItem>
+            <SelectItem value="approved">Approved</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {(searchTerm || statusFilter !== "all") && (
+          <Button 
+            variant="outline" 
+            onClick={clearFilters}
+            className="border-zinc-700 text-white hover:bg-zinc-800"
+          >
+            <X className="h-4 w-4 mr-2" />
+            Clear
+          </Button>
+        )}
+      </div>
+
+      {/* Projects Content */}
+      <div className="space-y-6">
+        {isContractor && (
           <div>
-            <h1 className="text-2xl md:text-3xl font-semibold text-white">My Work Assignments</h1>
-            <p className="text-zinc-400 mt-1">Submit completed work and track progress</p>
-          </div>
-        </div>
-
-        {/* Assignment Cards */}
-        <div className="space-y-4 mb-6">
-          {/* Show contracts */}
-          {contracts.map((contract) => (
-            <Card key={`contract-${contract.id}`} className="p-6 border border-zinc-800 bg-zinc-900">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-white">{contract.contractName}</h3>
-                  <p className="text-sm text-zinc-400">Assignment Code: {contract.contractCode}</p>
-                </div>
-                <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
-                  contract.status === 'active' ? 'bg-green-500/10 text-green-400' : 
-                  contract.status === 'pending' ? 'bg-yellow-500/10 text-yellow-400' : 
-                  'bg-blue-500/10 text-blue-400'
-                }`}>
-                  {contract.status}
-                </span>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <span className="text-zinc-400 text-sm">Your Earnings:</span>
-                  <div className="text-white font-semibold">${parseFloat(contract.value).toLocaleString()}</div>
-                </div>
-                <div>
-                  <span className="text-zinc-400 text-sm">Due Date:</span>
-                  <div className="text-white">{contract.endDate ? new Date(contract.endDate).toLocaleDateString() : 'Not set'}</div>
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <Button 
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                  size="sm"
-                  onClick={() => handleSubmitWork(contract.id)}
-                >
-                  Submit Work
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="border-zinc-700 text-white hover:bg-zinc-800"
-                  size="sm"
-                >
-                  View Details
-                </Button>
-              </div>
-            </Card>
-          ))}
-
-          {/* Show accepted work requests */}
-          {workRequestsData
-            .filter((request: any) => 
-              request.status === 'accepted' && 
-              user?.email && 
-              request.recipientEmail?.toLowerCase() === user.email.toLowerCase()
-            )
-            .map((request: any) => (
-            <Card key={`work-request-${request.id}`} className="p-6 border border-zinc-800 bg-zinc-900">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-white">{request.title}</h3>
-                  <p className="text-sm text-zinc-400">Work Request #{request.id}</p>
-                </div>
-                <span className="px-3 py-1 text-xs font-semibold rounded-full bg-green-500/10 text-green-400">
-                  Accepted
-                </span>
-              </div>
-              
-              <div className="mb-4">
-                <p className="text-zinc-300 text-sm">{request.description}</p>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <span className="text-zinc-400 text-sm">Payment Range:</span>
-                  <div className="text-white font-semibold">
-                    {request.budgetMin && request.budgetMax 
-                      ? `$${request.budgetMin} - $${request.budgetMax}`
-                      : 'To be discussed'
-                    }
-                  </div>
-                </div>
-                <div>
-                  <span className="text-zinc-400 text-sm">Due Date:</span>
-                  <div className="text-white">
-                    {request.dueDate ? new Date(request.dueDate).toLocaleDateString() : 'Not specified'}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <Button 
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                  size="sm"
-                  onClick={() => {
-                    if (request.contractId) {
-                      handleSubmitWork(request.contractId);
-                    }
-                  }}
-                >
-                  Submit Work
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="border-zinc-700 text-white hover:bg-zinc-800"
-                  size="sm"
-                >
-                  View Details
-                </Button>
-              </div>
-            </Card>
-          ))}
-
-          {/* Show empty state if no assignments */}
-          {contracts.length === 0 && workRequestsData.filter((request: any) => 
-            request.status === 'accepted' && 
-            user?.email && 
-            request.recipientEmail?.toLowerCase() === user.email.toLowerCase()
-          ).length === 0 && (
-            <Card className="p-8 border border-zinc-800 bg-zinc-900 text-center">
-              <div className="mx-auto h-16 w-16 rounded-full bg-zinc-800 flex items-center justify-center text-white mb-4">
-                <Briefcase size={32} />
-              </div>
-              <h3 className="text-lg font-medium text-white mb-2">No assignments yet</h3>
-              <p className="text-zinc-400">Your accepted work assignments will appear here</p>
-            </Card>
-          )}
-        </div>
-
-        {/* Work Submissions Section */}
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold text-white mb-4">Recent Submissions</h2>
-          <Card className="p-6 border border-zinc-800 bg-zinc-900">
-            <div className="text-center py-8">
-              <FileText className="mx-auto h-12 w-12 text-zinc-500 mb-4" />
-              <h3 className="text-lg font-medium text-white mb-2">No submissions yet</h3>
-              <p className="text-zinc-400">Your submitted work will appear here for approval tracking</p>
-            </div>
-          </Card>
-        </div>
-
-        {/* Submit Work Modal */}
-        <Dialog open={showSubmissionModal} onOpenChange={setShowSubmissionModal}>
-          <DialogContent className="bg-zinc-900 border-zinc-800 text-white">
-            <DialogHeader>
-              <DialogTitle>Submit Your Work</DialogTitle>
-              <DialogDescription className="text-zinc-400">
-                Submit your completed work for review and approval.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleFormSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="title" className="text-white">Work Title</Label>
-                <Input
-                  id="title"
-                  value={submissionTitle}
-                  onChange={(e) => setSubmissionTitle(e.target.value)}
-                  placeholder="Enter a title for your submission"
-                  className="bg-zinc-800 border-zinc-700 text-white"
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="description" className="text-white">Description</Label>
-                <Textarea
-                  id="description"
-                  value={submissionDescription}
-                  onChange={(e) => setSubmissionDescription(e.target.value)}
-                  placeholder="Describe what you've completed..."
-                  className="bg-zinc-800 border-zinc-700 text-white min-h-[100px]"
-                  rows={4}
-                />
-              </div>
-              
-              {/* File Upload Section */}
-              <div>
-                <Label className="text-white">Attach Files</Label>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-center w-full">
-                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-zinc-700 border-dashed rounded-lg cursor-pointer bg-zinc-800 hover:bg-zinc-750">
-                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                        <Upload className="w-8 h-8 mb-4 text-zinc-400" />
-                        <p className="mb-2 text-sm text-zinc-400">
-                          <span className="font-semibold">Click to upload</span> or drag and drop
-                        </p>
-                        <p className="text-xs text-zinc-500">PNG, JPG, PDF, DOC, TXT (MAX. 10MB)</p>
-                      </div>
-                      <input
-                        type="file"
-                        className="hidden"
-                        multiple
-                        accept=".png,.jpg,.jpeg,.pdf,.doc,.docx,.txt,.zip"
-                        onChange={handleFileUpload}
-                      />
-                    </label>
+            <h2 className="text-xl font-semibold text-white mb-4">Your Assignments</h2>
+            <div className="grid gap-4">
+              {contracts.map((contract: any) => (
+                <Card key={contract.id} className="p-6 border border-zinc-800 bg-zinc-900">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">{contract.title}</h3>
+                      <p className="text-sm text-zinc-400">Contract #{contract.id}</p>
+                    </div>
+                    <Badge 
+                      variant={contract.status === 'active' ? 'default' : 'secondary'}
+                      className="capitalize"
+                    >
+                      {contract.status}
+                    </Badge>
                   </div>
                   
-                  {/* Display uploaded files */}
-                  {attachmentFiles.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-sm text-zinc-400">Attached files:</p>
-                      {attachmentFiles.map((file, index) => (
-                        <div key={index} className="flex items-center justify-between bg-zinc-800 p-2 rounded">
-                          <div className="flex items-center space-x-2">
-                            <FileText className="w-4 h-4 text-zinc-400" />
-                            <span className="text-sm text-white">{file.name}</span>
-                            <span className="text-xs text-zinc-500">({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeFile(index)}
-                            className="text-zinc-400 hover:text-red-400"
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      ))}
+                  <p className="text-zinc-300 mb-4">{contract.description}</p>
+                  
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <span className="text-zinc-400 text-sm">Total Value:</span>
+                      <div className="text-white font-semibold">${contract.totalAmount}</div>
                     </div>
-                  )}
-                </div>
+                    <div>
+                      <span className="text-zinc-400 text-sm">End Date:</span>
+                      <div className="text-white">
+                        {contract.endDate ? new Date(contract.endDate).toLocaleDateString() : 'Not specified'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button 
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                      size="sm"
+                      onClick={() => handleSubmitWork(contract.id)}
+                    >
+                      Submit Work
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="border-zinc-700 text-white hover:bg-zinc-800"
+                      size="sm"
+                      onClick={() => handleViewMilestone(contract.id)}
+                    >
+                      View Details
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+
+              {contracts.length === 0 && (
+                <Card className="p-8 border border-zinc-800 bg-zinc-900 text-center">
+                  <FileText className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-white mb-2">No Active Assignments</h3>
+                  <p className="text-zinc-400">
+                    You don't have any active project assignments at the moment.
+                  </p>
+                </Card>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Milestones Section */}
+        <div>
+          <h2 className="text-xl font-semibold text-white mb-4">
+            {isContractor ? "Your Milestones" : "Project Milestones"}
+          </h2>
+          
+          <div className="grid gap-4">
+            {filteredMilestones.map((milestone: any) => {
+              const contract = contracts.find((c: any) => c.id === milestone.contractId);
+              
+              return (
+                <Card key={milestone.id} className="p-6 border border-zinc-800 bg-zinc-900">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">{milestone.name}</h3>
+                      <p className="text-sm text-zinc-400">
+                        {contract?.title} • Milestone #{milestone.id}
+                      </p>
+                    </div>
+                    <Badge 
+                      variant={
+                        milestone.status === 'completed' ? 'default' :
+                        milestone.status === 'in_progress' ? 'secondary' :
+                        'outline'
+                      }
+                      className="capitalize"
+                    >
+                      {milestone.status.replace('_', ' ')}
+                    </Badge>
+                  </div>
+                  
+                  <p className="text-zinc-300 mb-4">{milestone.description}</p>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                    <div>
+                      <span className="text-zinc-400 text-sm">Payment:</span>
+                      <div className="text-white font-semibold">${milestone.paymentAmount}</div>
+                    </div>
+                    <div>
+                      <span className="text-zinc-400 text-sm">Due Date:</span>
+                      <div className="text-white">
+                        {new Date(milestone.dueDate).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-zinc-400 text-sm">Progress:</span>
+                      <div className="text-white">{milestone.progress}%</div>
+                    </div>
+                    <div>
+                      <span className="text-zinc-400 text-sm">Auto-Pay:</span>
+                      <div className="text-white">
+                        {milestone.autoPayEnabled ? 'Enabled' : 'Disabled'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      className="border-zinc-700 text-white hover:bg-zinc-800"
+                      size="sm"
+                      onClick={() => handleViewMilestone(milestone.id)}
+                    >
+                      View Details
+                    </Button>
+                    {isContractor && milestone.status === 'pending' && (
+                      <Button 
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                        size="sm"
+                        onClick={() => handleSubmitWork(milestone.contractId)}
+                      >
+                        Submit Work
+                      </Button>
+                    )}
+                  </div>
+                </Card>
+              );
+            })}
+
+            {filteredMilestones.length === 0 && (
+              <Card className="p-8 border border-zinc-800 bg-zinc-900 text-center">
+                <Clock className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-white mb-2">No Milestones Found</h3>
+                <p className="text-zinc-400">
+                  {searchTerm || statusFilter !== "all" 
+                    ? "No milestones match your current filters."
+                    : "No milestones available at the moment."
+                  }
+                </p>
+              </Card>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Work Submission Modal */}
+      <Dialog open={showSubmissionModal} onOpenChange={setShowSubmissionModal}>
+        <DialogContent className="bg-zinc-900 border-zinc-700 text-white">
+          <DialogHeader>
+            <DialogTitle>Submit Work</DialogTitle>
+          </DialogHeader>
+          
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Submission Title</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Brief title for your submission"
+                        className="bg-zinc-800 border-zinc-700 text-white"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Describe your completed work and any relevant details"
+                        className="bg-zinc-800 border-zinc-700 text-white min-h-[100px]"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-2">
+                  Attachments (Optional)
+                </label>
+                <input
+                  type="file"
+                  multiple
+                  onChange={handleFileUpload}
+                  className="block w-full text-sm text-zinc-400 file:me-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-zinc-800 file:text-white hover:file:bg-zinc-700"
+                />
+                
+                {attachmentFiles.length > 0 && (
+                  <div className="mt-2 space-y-2">
+                    {attachmentFiles.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 bg-zinc-800 rounded">
+                        <span className="text-sm text-zinc-300">{file.name}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeFile(index)}
+                          className="text-zinc-400 hover:text-white"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div className="flex justify-end gap-3">
-                <Button
+
+              <div className="flex gap-2 pt-4">
+                <Button 
                   type="button"
                   variant="outline"
                   onClick={() => setShowSubmissionModal(false)}
@@ -502,250 +508,18 @@ const Projects = () => {
                 >
                   Cancel
                 </Button>
-                <Button
+                <Button 
                   type="submit"
-                  disabled={submitWorkMutation.isPending || !submissionTitle.trim()}
                   className="bg-green-600 hover:bg-green-700 text-white"
+                  disabled={submitWorkMutation.isPending}
                 >
-                  {submitWorkMutation.isPending ? "Submitting..." : "Submit Work"}
+                  {submitWorkMutation.isPending ? 'Submitting...' : 'Submit Work'}
                 </Button>
               </div>
             </form>
-          </DialogContent>
-        </Dialog>
-      </>
-    );
-  }
-
-  return (
-    <>
-      {/* Business Owner Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-semibold text-white">Projects</h1>
-          <p className="text-zinc-400 mt-1">Track project milestones and deliverables</p>
-        </div>
-        <div className="mt-4 md:mt-0">
-          <Button onClick={() => navigate("/contracts/new")}>
-            <Plus size={16} className="mr-2" />
-            Create New Project
-          </Button>
-        </div>
-      </div>
-
-      {/* Payment Stats - Using real data from API */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Card className="p-5 border border-zinc-800 bg-black">
-          <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-full bg-zinc-800 flex items-center justify-center text-amber-400">
-              <Clock size={24} />
-            </div>
-            <div>
-              <p className="text-zinc-400 text-sm">Pending Payments</p>
-              <h3 className="text-2xl font-semibold text-white">
-                ${totalPendingValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </h3>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-5 border border-zinc-800 bg-black">
-          <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-full bg-zinc-800 flex items-center justify-center text-blue-400">
-              <Calendar size={24} />
-            </div>
-            <div>
-              <p className="text-zinc-400 text-sm">Scheduled Payments</p>
-              <h3 className="text-2xl font-semibold text-white">
-                ${totalPendingValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </h3>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-5 border border-zinc-800 bg-black">
-          <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-full bg-zinc-800 flex items-center justify-center text-green-400">
-              <CheckCircle size={24} />
-            </div>
-            <div>
-              <p className="text-zinc-400 text-sm">Paid Amount</p>
-              <h3 className="text-2xl font-semibold text-white">
-                ${paymentsProcessed.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </h3>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* Filters */}
-      <div className="bg-black p-4 rounded-lg shadow-sm border border-zinc-800 mb-6">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" size={18} />
-            <Input
-              placeholder="Search projects..."
-              className="pl-9 bg-zinc-900 border-zinc-700 text-white"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <div className="w-full md:w-48">
-            <Select
-              value={statusFilter}
-              onValueChange={setStatusFilter}
-            >
-              <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent className="bg-zinc-900 border-zinc-700 text-white">
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="overdue">Overdue</SelectItem>
-                <SelectItem value="approved">Approved</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </div>
-
-      {/* Projects List */}
-      <div className="bg-black rounded-lg shadow-sm border border-zinc-800 overflow-hidden">
-        <div className="p-4 border-b border-zinc-800 flex justify-between items-center">
-          <h2 className="text-lg font-medium text-white">Projects</h2>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={clearFilters}
-            className="border-zinc-700 text-white hover:text-white hover:bg-zinc-800"
-          >
-            Clear Filters
-          </Button>
-        </div>
-
-        {contracts.length > 0 ? (
-          <>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader className="bg-zinc-800">
-                  <TableRow>
-                    <TableHead className="text-zinc-400">Project Name</TableHead>
-                    <TableHead className="text-zinc-400">Progress</TableHead>
-                    <TableHead className="text-zinc-400">End Date</TableHead>
-                    <TableHead className="text-right text-zinc-400">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {contracts
-                    .filter(c => statusFilter === 'all' || c.status === statusFilter)
-                    .filter(c => !searchTerm || c.contractName.toLowerCase().includes(searchTerm.toLowerCase()))
-                    .map(contract => {
-                      const projectMilestones = milestones.filter(m => m.contractId === contract.id);
-                      const completedMilestones = projectMilestones.filter(m => m.status === 'completed' || m.status === 'approved').length;
-                      const progress = projectMilestones.length > 0 
-                        ? Math.round((completedMilestones / projectMilestones.length) * 100) 
-                        : 0;
-                      
-                      // Count the number of contractors assigned to this project
-                      const projectContractors = Array.from(new Set(milestones
-                        .filter(m => m.contractId === contract.id)
-                        .map(m => m.contractorId)
-                      ));
-                      
-                      return (
-                        <TableRow key={contract.id} className="hover:bg-zinc-800 border-b border-zinc-800">
-                          <TableCell className="font-medium text-white">
-                            <div className="flex items-center">
-                              <div className="h-8 w-8 mr-3 bg-zinc-800 text-accent-500 rounded-md flex items-center justify-center">
-                                <FileText size={16} />
-                              </div>
-                              <div>
-                                {contract.contractName}
-                                <div className="text-xs text-zinc-400 mt-1">
-                                  {projectContractors.length} {projectContractors.length === 1 ? 'contractor' : 'contractors'} assigned
-                                </div>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="w-full bg-zinc-800 rounded-full h-2 max-w-[100px]">
-                              <div className="bg-accent-500 h-2 rounded-full" style={{ width: `${progress}%` }}></div>
-                            </div>
-                            <span className="text-xs text-zinc-400 mt-1">{progress}%</span>
-                          </TableCell>
-                          <TableCell className="text-white">
-                            {contract.endDate ? new Date(contract.endDate).toLocaleDateString() : 'Not set'}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-white hover:bg-zinc-700"
-                              onClick={() => navigate(`/contract/${contract.id}`)}
-                            >
-                              View 
-                              <ChevronRight size={16} />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                </TableBody>
-              </Table>
-            </div>
-            
-            {/* Milestones section below projects table */}
-            {filteredMilestones.length > 0 && (
-              <div className="border-t border-zinc-800">
-                <div className="p-4 border-b border-zinc-800">
-                  <h3 className="text-md font-medium text-white">Milestones</h3>
-                </div>
-                <MilestonesList
-                  milestones={filteredMilestones}
-                  contracts={contracts}
-                  contractors={contractors}
-                  onViewDetails={handleViewMilestone}
-                  onApprove={handleApproveMilestone}
-                  onRequestUpdate={handleRequestUpdate}
-                />
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="p-8 text-center">
-            <div className="mx-auto h-12 w-12 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 mb-4">
-              <FileText size={24} />
-            </div>
-            <h3 className="text-lg font-medium text-white mb-2">No projects found</h3>
-            <p className="text-zinc-400 mb-6">
-              {searchTerm || statusFilter !== "all" ? 
-                "No projects match your current filters." : 
-                "You don't have any projects at the moment."}
-            </p>
-            {searchTerm || statusFilter !== "all" ? (
-              <Button 
-                variant="outline" 
-                onClick={clearFilters}
-                className="border-zinc-700 text-white hover:bg-zinc-800"
-              >
-                Clear Filters
-              </Button>
-            ) : !isContractor ? (
-              <Button onClick={() => navigate("/contracts/new")}>
-                <Plus size={16} className="mr-2" />
-                Create New Project
-              </Button>
-            ) : (
-              <p className="text-zinc-500">
-                You'll see your assigned projects here
-              </p>
-            )}
-          </div>
-        )}
-      </div>
-    </>
+          </Form>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
-};
-
-export default Projects;
+}
