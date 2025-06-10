@@ -71,7 +71,19 @@ export async function apiRequest(
       defaultHeaders['X-CSRF-Token'] = csrfToken;
     }
     
-    // Remove X-User-ID header fallback to force proper session cookie authentication
+    // Add user ID from localStorage if available (for header-based authentication fallback)
+    const storedUser = localStorage.getItem('creativlinc_user');
+    if (storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        if (parsedUser && parsedUser.id) {
+          defaultHeaders['X-User-ID'] = parsedUser.id.toString();
+          console.log(`Adding X-User-ID header to ${normalizedMethod} request:`, parsedUser.id);
+        }
+      } catch (e) {
+        console.error(`Error parsing stored user for ${normalizedMethod} request headers:`, e);
+      }
+    }
     
     const headers: Record<string, string> = { ...defaultHeaders, ...(customHeaders || {}) };
     
@@ -136,11 +148,24 @@ export const getQueryFn: <T>(options: {
         cookieString: document.cookie
       });
       
-      // Use only session-based authentication, no header fallbacks
+      // Try to get user auth token from localStorage if available
+      const storedUser = localStorage.getItem('creativlinc_user');
       const headers: HeadersInit = {
         'Accept': 'application/json',
         'Cache-Control': 'no-cache'
       };
+      
+      // Add user ID as a header if available in localStorage
+      if (storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          if (parsedUser && parsedUser.id) {
+            headers['X-User-ID'] = parsedUser.id.toString();
+          }
+        } catch (e) {
+          console.error("Error parsing stored user for request headers:", e);
+        }
+      }
       
       const res = await fetch(endpoint, {
         method: 'GET',

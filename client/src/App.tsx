@@ -209,6 +209,12 @@ function Router() {
 }
 
 function App() {
+  // Force clear all authentication data on app initialization
+  useEffect(() => {
+    console.log("App initializing, clearing all auth caches");
+    clearAuthCache();
+  }, []);
+
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>

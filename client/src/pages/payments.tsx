@@ -11,24 +11,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Payment, Contract, User, Milestone } from "@shared/schema";
-
-// Define interface for dashboard data (matches server/routes.ts dashboard endpoint)
-interface DashboardData {
-  stats: {
-    activeContractsCount: number;
-    pendingApprovalsCount: number;
-    paymentsProcessed: number;
-    totalPendingValue: number;
-    activeContractorsCount: number;
-    pendingInvitesCount: number;
-  };
-  contracts: Contract[];
-  contractors: User[];
-  milestones: any[];
-  payments: any[];
-  invites: any[];
-}
+import { Payment, Contract } from "@shared/schema";
 import { 
   DollarSign, 
   Calendar, 
@@ -45,45 +28,17 @@ export default function Payments() {
   
   const isContractor = user?.role === 'contractor';
 
-  // Use dashboard data for payments and contracts with fallback authentication
-  const { data: dashboardData, isLoading: paymentsLoading } = useQuery<DashboardData>({
-    queryKey: ['/api/dashboard'],
-    queryFn: async () => {
-      const headers: HeadersInit = {
-        "Accept": "application/json",
-        "Cache-Control": "no-cache"
-      };
-      
-      // Add user ID from localStorage as fallback
-      const storedUser = localStorage.getItem('creativlinc_user');
-      if (storedUser) {
-        try {
-          const parsedUser = JSON.parse(storedUser);
-          if (parsedUser && parsedUser.id) {
-            headers['X-User-ID'] = parsedUser.id.toString();
-          }
-        } catch (e) {
-          console.error("Error parsing stored user:", e);
-        }
-      }
-      
-      const res = await fetch("/api/dashboard", {
-        method: "GET",
-        credentials: "include",
-        headers
-      });
-      
-      if (!res.ok) {
-        throw new Error("Could not load dashboard data");
-      }
-      
-      return await res.json();
-    },
+  // Fetch payments data
+  const { data: payments = [], isLoading: paymentsLoading } = useQuery({
+    queryKey: ['/api/payments'],
     enabled: !!user
   });
 
-  const payments = dashboardData?.payments || [];
-  const contracts = dashboardData?.contracts || [];
+  // Fetch contracts data for context
+  const { data: contracts = [] } = useQuery({
+    queryKey: ['/api/contracts'],
+    enabled: !!user
+  });
 
   if (paymentsLoading) {
     return (
@@ -321,7 +276,7 @@ export default function Payments() {
                 {payments.map((payment: Payment) => (
                   <TableRow key={payment.id} className="border-gray-800">
                     <TableCell className="text-white">
-                      {payment.contractId ? `Contract #${payment.contractId}` : 'Contract'}
+                      {payment.contractorId ? `Contractor #${payment.contractorId}` : 'Contractor'}
                     </TableCell>
                     <TableCell className="text-gray-300">
                       {getContractName(payment.contractId)}
@@ -330,7 +285,7 @@ export default function Payments() {
                       ${parseFloat(payment.amount).toLocaleString()}
                     </TableCell>
                     <TableCell className="text-gray-300">
-                      {payment.scheduledDate ? new Date(payment.scheduledDate).toLocaleDateString() : 'Not set'}
+                      {payment.dueDate ? new Date(payment.dueDate).toLocaleDateString() : 'Not set'}
                     </TableCell>
                     <TableCell>
                       <span className={`px-2 py-1 text-xs font-semibold rounded-full ${

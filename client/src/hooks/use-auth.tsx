@@ -47,13 +47,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryKey: ["/api/user"],
     queryFn: async () => {
       console.log("Fetching current user data...");
+      
+      // Clear any stale localStorage data before checking
+      localStorage.removeItem('creativlinc_user');
+      
       try {
         const res = await fetch("/api/user", {
           method: "GET",
           credentials: "include",
           headers: {
             "Accept": "application/json",
-            "Cache-Control": "no-cache"
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache"
           }
         });
         
@@ -62,23 +67,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         if (!res.ok) {
           console.log("User not authenticated via API");
+          // Clear any remaining auth state
+          localStorage.clear();
+          sessionStorage.clear();
           return null;
         }
         
         const userData = await res.json();
         console.log("User authenticated:", userData?.username);
         
-        // Update localStorage with fresh user data
-        localStorage.setItem('creativlinc_user', JSON.stringify(userData));
-        
         return userData;
       } catch (error) {
         console.error("Error fetching user data:", error);
+        // Clear any remaining auth state
+        localStorage.clear();
+        sessionStorage.clear();
         return null;
       }
     },
     retry: false,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0, // Don't cache auth state
+    gcTime: 0, // Don't keep in memory
   });
 
   // Login mutation

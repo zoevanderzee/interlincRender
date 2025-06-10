@@ -844,32 +844,33 @@ export default function AuthPage() {
             Creativ Linc
           </h1>
           <h2 className="text-2xl font-semibold text-white mb-4">
-            Connect. Create. Collaborate.
+            Connect, Create, Collaborate
           </h2>
           <p className="text-zinc-400 mb-6">
-            Outsourcing, Simplified.
-            Manage people, payments, and projects with clarity, control, and zero invoicing.
+            People, Payment and Project Management- Simplified through smart contracts.  
+            A seamless, automated payment solution that ensures clarity, security, and 
+            financial control at every stage to optimise growth for businesses.
           </p>
           <div className="space-y-4">
             <div className="flex items-start">
               <div className="bg-white rounded-full h-6 w-6 flex items-center justify-center text-black mr-4 mt-1">✓</div>
               <div>
-                <h3 className="text-white font-medium text-lg">No Invoices. No Hassle.</h3>
-                <p className="text-zinc-400">Streamline payments with built-in workflows and milestone approvals — no manual paperwork.</p>
+                <h3 className="text-white font-medium text-lg">Smart Contract Automation</h3>
+                <p className="text-zinc-400">Eliminate manual invoicing with automated payments based on pre-agreed milestones</p>
               </div>
             </div>
             <div className="flex items-start">
               <div className="bg-white rounded-full h-6 w-6 flex items-center justify-center text-black mr-4 mt-1">✓</div>
               <div>
-                <h3 className="text-white font-medium text-lg">Real-Time Financial Visibility</h3>
-                <p className="text-zinc-400">Track budgets, teams, and progress in one place with compliance-ready data capture.</p>
+                <h3 className="text-white font-medium text-lg">Financial Transparency</h3>
+                <p className="text-zinc-400">Real-time budget control and finance-compliant data storage</p>
               </div>
             </div>
             <div className="flex items-start">
               <div className="bg-white rounded-full h-6 w-6 flex items-center justify-center text-black mr-4 mt-1">✓</div>
               <div>
-                <h3 className="text-white font-medium text-lg">Smarter Payouts. Faster Turnarounds.</h3>
-                <p className="text-zinc-400">Trigger payments on your terms — once work is approved, your teams get paid seamlessly.</p>
+                <h3 className="text-white font-medium text-lg">Faster Payment Cycles</h3>
+                <p className="text-zinc-400">Guaranteed payments for outsourced workers with clear contract terms</p>
               </div>
             </div>
           </div>
