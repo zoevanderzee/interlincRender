@@ -50,7 +50,7 @@ const Dashboard = () => {
   const { user, isLoading: isAuthLoading } = useAuth();
   const { toast } = useToast();
 
-  // Dashboard data query with explicit fetch to ensure credentials are included
+  // Dashboard data query with fallback authentication
   const { 
     data: dashboardData, 
     isLoading: isDashboardLoading, 
@@ -58,123 +58,77 @@ const Dashboard = () => {
   } = useQuery<DashboardData>({
     queryKey: ['/api/dashboard'],
     queryFn: async () => {
-      console.log("Fetching dashboard data...");
+      const headers: HeadersInit = {
+        "Accept": "application/json",
+        "Cache-Control": "no-cache"
+      };
       
-      try {
-        // Get stored user data directly from localStorage
-        const storedUser = localStorage.getItem('creativlinc_user');
-        console.log("Dashboard - Stored user data in localStorage:", storedUser);
-        
-        // Build headers with user ID if available
-        const headers: HeadersInit = {
-          "Accept": "application/json",
-          "Cache-Control": "no-cache"
-        };
-        
-        // Add user ID from localStorage
-        if (storedUser) {
-          try {
-            const parsedUser = JSON.parse(storedUser);
-            if (parsedUser && parsedUser.id) {
-              headers['X-User-ID'] = parsedUser.id.toString();
-              console.log("Adding X-User-ID header:", parsedUser.id);
-            }
-          } catch (e) {
-            console.error("Error parsing stored user for dashboard request:", e);
+      // Add user ID from localStorage as fallback
+      const storedUser = localStorage.getItem('creativlinc_user');
+      if (storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          if (parsedUser && parsedUser.id) {
+            headers['X-User-ID'] = parsedUser.id.toString();
           }
-        } else if (user && user.id) {
-          // Fallback to auth context if localStorage fails
-          headers['X-User-ID'] = user.id.toString();
-          console.log("Adding X-User-ID header from auth context:", user.id);
+        } catch (e) {
+          console.error("Error parsing stored user:", e);
         }
-        
-        const res = await fetch("/api/dashboard", {
-          method: "GET",
-          credentials: "include", // Important: include cookies with every request
-          headers
-        });
-        
-        console.log("Dashboard response status:", res.status);
-        
-        if (!res.ok) {
-          console.error(`Dashboard fetch failed with status: ${res.status}`);
-          throw new Error("Could not load dashboard data");
-        }
-        
-        const data = await res.json();
-        console.log("Dashboard data loaded successfully", data);
-        return data as DashboardData;
-      } catch (error) {
-        console.error("Dashboard fetch error:", error);
-        toast({
-          title: "Error loading dashboard",
-          description: "Could not load your dashboard information. Please try again.",
-          variant: "destructive",
-        });
-        throw error;
       }
+      
+      const res = await fetch("/api/dashboard", {
+        method: "GET",
+        credentials: "include",
+        headers
+      });
+      
+      if (!res.ok) {
+        throw new Error("Could not load dashboard data");
+      }
+      
+      return await res.json();
     },
-    enabled: !!user, // Only run query when user is authenticated
+    enabled: !!user,
   });
 
-  // Budget data query with explicit fetch to ensure credentials are included
+  // Budget data query with fallback authentication
   const { 
     data: budgetData, 
     isLoading: isBudgetLoading 
   } = useQuery<BudgetData>({
     queryKey: ['/api/budget'],
     queryFn: async () => {
-      console.log("Fetching budget data...");
+      const headers: HeadersInit = {
+        "Accept": "application/json",
+        "Cache-Control": "no-cache"
+      };
       
-      try {
-        // Get stored user data directly from localStorage
-        const storedUser = localStorage.getItem('creativlinc_user');
-        
-        // Build headers with user ID if available
-        const headers: HeadersInit = {
-          "Accept": "application/json",
-          "Cache-Control": "no-cache"
-        };
-        
-        // Add user ID from localStorage
-        if (storedUser) {
-          try {
-            const parsedUser = JSON.parse(storedUser);
-            if (parsedUser && parsedUser.id) {
-              headers['X-User-ID'] = parsedUser.id.toString();
-              console.log("Adding X-User-ID header to budget request:", parsedUser.id);
-            }
-          } catch (e) {
-            console.error("Error parsing stored user for budget request:", e);
+      // Add user ID from localStorage as fallback
+      const storedUser = localStorage.getItem('creativlinc_user');
+      if (storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          if (parsedUser && parsedUser.id) {
+            headers['X-User-ID'] = parsedUser.id.toString();
           }
-        } else if (user && user.id) {
-          // Fallback to auth context if localStorage fails
-          headers['X-User-ID'] = user.id.toString();
-          console.log("Adding X-User-ID header to budget request from auth context:", user.id);
+        } catch (e) {
+          console.error("Error parsing stored user:", e);
         }
-        
-        const res = await fetch("/api/budget", {
-          method: "GET",
-          credentials: "include", // Important: include cookies with every request
-          headers
-        });
-        
-        console.log("Budget response status:", res.status);
-        
-        if (!res.ok) {
-          console.error(`Budget fetch failed with status: ${res.status}`);
-          throw new Error("Could not load budget data");
-        }
-        
-        const data = await res.json();
-        console.log("Budget data loaded successfully", data);
-        return data as BudgetData;
-      } catch (error) {
-        console.error("Budget fetch error:", error);
-        throw error;
       }
+      
+      const res = await fetch("/api/budget", {
+        method: "GET",
+        credentials: "include",
+        headers
+      });
+      
+      if (!res.ok) {
+        throw new Error("Could not load budget data");
+      }
+      
+      return await res.json();
     },
-    enabled: !!user, // Only run query when user is authenticated
+    enabled: !!user,
   });
 
   // Format the remaining budget as currency

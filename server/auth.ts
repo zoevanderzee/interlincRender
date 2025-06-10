@@ -48,7 +48,7 @@ export function setupAuth(app: Express) {
       secure: false, // Force disable secure for Replit deployment compatibility
       maxAge: 1000 * 60 * 60 * 24, // 24 hours instead of 1 week
       httpOnly: true,
-      sameSite: 'strict', // Critical: Prevent cross-site cookie sharing
+      sameSite: 'lax', // Allow cookie transmission for same-site requests
       path: '/',
       domain: undefined, // Let browser set domain automatically
     },
@@ -373,6 +373,15 @@ export function setupAuth(app: Express) {
             console.error("Session save error:", saveErr);
             return next(saveErr);
           }
+          
+          // Manually set the session cookie to ensure it's transmitted
+          res.cookie('creativlinc.sid', req.sessionID, {
+            httpOnly: true,
+            secure: false,
+            sameSite: 'lax',
+            maxAge: 1000 * 60 * 60 * 24,
+            path: '/'
+          });
           
           // Log response headers being sent back
           console.log("Login response - setting cookie:", {

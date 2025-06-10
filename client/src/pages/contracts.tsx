@@ -13,6 +13,23 @@ import {
 import ContractsTable from "@/components/dashboard/ContractsTable";
 import { Plus, Search, FilterX } from "lucide-react";
 import { Contract, User } from "@shared/schema";
+
+// Define interface for dashboard data (matches server/routes.ts dashboard endpoint)
+interface DashboardData {
+  stats: {
+    activeContractsCount: number;
+    pendingApprovalsCount: number;
+    paymentsProcessed: number;
+    totalPendingValue: number;
+    activeContractorsCount: number;
+    pendingInvitesCount: number;
+  };
+  contracts: Contract[];
+  contractors: User[];
+  milestones: any[];
+  payments: any[];
+  invites: any[];
+}
 import { useAuth } from "@/hooks/use-auth";
 
 const Contracts = () => {
@@ -22,10 +39,44 @@ const Contracts = () => {
   const { user } = useAuth();
   const isContractor = user?.role === 'contractor';
 
-  // Fetch contracts
-  const { data: contracts = [], isLoading: isLoadingContracts } = useQuery<Contract[]>({
-    queryKey: ['/api/contracts'],
+  // Use dashboard data for contracts with fallback authentication
+  const { data: dashboardData, isLoading: isLoadingContracts } = useQuery<DashboardData>({
+    queryKey: ['/api/dashboard'],
+    queryFn: async () => {
+      const headers: HeadersInit = {
+        "Accept": "application/json",
+        "Cache-Control": "no-cache"
+      };
+      
+      // Add user ID from localStorage as fallback
+      const storedUser = localStorage.getItem('creativlinc_user');
+      if (storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          if (parsedUser && parsedUser.id) {
+            headers['X-User-ID'] = parsedUser.id.toString();
+          }
+        } catch (e) {
+          console.error("Error parsing stored user:", e);
+        }
+      }
+      
+      const res = await fetch("/api/dashboard", {
+        method: "GET",
+        credentials: "include",
+        headers
+      });
+      
+      if (!res.ok) {
+        throw new Error("Could not load dashboard data");
+      }
+      
+      return await res.json();
+    },
+    enabled: !!user,
   });
+  
+  const contracts = dashboardData?.contracts || [];
 
   // Fetch contractors
   const { data: contractors = [], isLoading: isLoadingContractors } = useQuery<User[]>({
