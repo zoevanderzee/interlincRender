@@ -44,7 +44,7 @@ export default function Projects() {
   const isContractor = user?.role === 'contractor';
   const activeContracts = contracts.filter((contract: any) => contract.status === 'active');
   const completedContracts = contracts.filter((contract: any) => contract.status === 'completed');
-  const totalValue = contracts.reduce((sum: number, contract: any) => sum + parseFloat(contract.totalAmount || 0), 0);
+  const totalValue = contracts.reduce((sum: number, contract: any) => sum + parseFloat(contract.value || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -174,7 +174,7 @@ export default function Projects() {
                     <div className="flex items-center text-sm">
                       <DollarSign className="h-4 w-4 text-yellow-400 mr-2" />
                       <span className="text-gray-400">Value:</span>
-                      <span className="text-white ml-2 font-medium">${parseFloat(contract.totalAmount || 0).toLocaleString()}</span>
+                      <span className="text-white ml-2 font-medium">${parseFloat(contract.value || 0).toLocaleString()}</span>
                     </div>
                     <div className="flex items-center text-sm">
                       <Calendar className="h-4 w-4 text-blue-400 mr-2" />
