@@ -88,7 +88,7 @@ export async function apiRequest(
       method: normalizedMethod,
       headers,
       body: hasBody && data ? JSON.stringify(data) : undefined,
-      credentials: "include", // Restore to "include" for cross-origin cookies
+      credentials: "same-origin", // Use same-origin for better cookie handling
       cache: 'no-cache', // Disable caching to ensure fresh responses
     });
 
@@ -143,7 +143,7 @@ export const getQueryFn: <T>(options: {
       
       const res = await fetch(endpoint, {
         method: 'GET',
-        credentials: "include", // Restore to "include" for cross-origin cookies
+        credentials: "same-origin", // Use same-origin for better cookie handling
         headers,
         cache: 'no-cache' // Disable caching to ensure fresh responses
       });

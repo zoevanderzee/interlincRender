@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const res = await fetch("/api/user", {
           method: "GET",
-          credentials: "include",
+          credentials: "same-origin",
           headers: {
             "Accept": "application/json",
             "Cache-Control": "no-cache"
@@ -100,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(credentials),
-        credentials: "include", // Important: include cookies with the request
+        credentials: "same-origin", // Use same-origin for better cookie handling
       });
       
       console.log("Login response status:", res.status);
