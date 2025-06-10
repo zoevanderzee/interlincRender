@@ -195,6 +195,7 @@ export default function Projects() {
                       variant="outline" 
                       size="sm"
                       className="border-gray-700 text-white hover:bg-gray-800"
+                      onClick={() => navigate(`/contract/${contract.id}`)}
                     >
                       View Details
                     </Button>
