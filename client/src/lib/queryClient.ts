@@ -88,8 +88,7 @@ export async function apiRequest(
       method: normalizedMethod,
       headers,
       body: hasBody && data ? JSON.stringify(data) : undefined,
-      credentials: "include", // Always include credentials
-      mode: 'cors', // Enable CORS for cross-origin requests
+      credentials: "include", // Restore to "include" for cross-origin cookies
       cache: 'no-cache', // Disable caching to ensure fresh responses
     });
 
@@ -144,9 +143,8 @@ export const getQueryFn: <T>(options: {
       
       const res = await fetch(endpoint, {
         method: 'GET',
-        credentials: "include", // Important: include cookies with the request
+        credentials: "include", // Restore to "include" for cross-origin cookies
         headers,
-        mode: 'cors', // Enable CORS for cross-origin requests
         cache: 'no-cache' // Disable caching to ensure fresh responses
       });
 
