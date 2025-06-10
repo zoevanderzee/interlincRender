@@ -88,7 +88,8 @@ export async function apiRequest(
       method: normalizedMethod,
       headers,
       body: hasBody && data ? JSON.stringify(data) : undefined,
-      credentials: "same-origin", // Use same-origin for better cookie handling
+      credentials: "include", // Always include credentials
+      mode: 'cors', // Enable CORS for cross-origin requests
       cache: 'no-cache', // Disable caching to ensure fresh responses
     });
 
@@ -129,21 +130,29 @@ export const getQueryFn: <T>(options: {
       const endpoint = (queryKey[0] as string).toLowerCase();
       console.log(`Fetching data from ${endpoint}`);
       
+      // Add user ID header for authentication
+      const user = JSON.parse(localStorage.getItem('creativlinc_user') || 'null');
+      
       // Log the fetch request for debugging
       console.log(`Query Request: GET ${endpoint}`, { 
         hasCookies: document.cookie.length > 0,
-        cookieString: document.cookie
+        cookieString: document.cookie,
+        hasUserInStorage: !!user
       });
       
-      // Use only session-based authentication, no header fallbacks
+      // Use header-based authentication with localStorage fallback
       const headers: HeadersInit = {
         'Accept': 'application/json',
         'Cache-Control': 'no-cache'
       };
       
+      if (user?.id) {
+        headers['X-User-ID'] = user.id.toString();
+      }
+      
       const res = await fetch(endpoint, {
         method: 'GET',
-        credentials: "same-origin", // Use same-origin for better cookie handling
+        credentials: "include",
         headers,
         cache: 'no-cache' // Disable caching to ensure fresh responses
       });
