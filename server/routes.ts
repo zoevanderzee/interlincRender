@@ -1424,13 +1424,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return sum + parseFloat(contract.value.toString() || '0');
       }, 0);
       
-      // Get count of active contractors (for business users)
-      const activeContractorsCount = userRole === 'business' 
-        ? (await storage.getContractorsByBusinessId(userId || 0)).length 
-        : 0;
+      // Get contractors/businesses data based on user role
+      let allContractors = [];
+      let activeContractorsCount = 0;
       
-      // For development, fetch all contractors to populate the UI
-      const allContractors = await storage.getUsersByRole('contractor');
+      if (userRole === 'business') {
+        // For business users, get their contractors
+        allContractors = await storage.getContractorsByBusinessId(userId || 0);
+        activeContractorsCount = allContractors.length;
+      } else if (userRole === 'contractor') {
+        // For contractors, get businesses they work with
+        allContractors = await storage.getBusinessesByContractorId(userId || 0);
+        activeContractorsCount = 0; // Contractors don't have a contractor count
+      }
       
       // Skip invites in dashboard for now - they're causing the error
       let pendingInvites = [];
