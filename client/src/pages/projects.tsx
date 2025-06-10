@@ -8,17 +8,18 @@ import { useAuth } from "@/hooks/use-auth";
 export default function Projects() {
   const { user } = useAuth();
   
-  // Fetch contracts data
-  const { data: contracts = [], isLoading } = useQuery({
-    queryKey: ['/api/contracts'],
+  // Use dashboard data for consistency across all pages
+  const { data: dashboardData, isLoading } = useQuery<{
+    contracts: any[];
+    contractors: any[];
+    stats: any;
+  }>({
+    queryKey: ['/api/dashboard'],
     enabled: !!user
   });
 
-  // Fetch contractors data for business users
-  const { data: contractors = [] } = useQuery({
-    queryKey: ['/api/users', { role: 'contractor' }],
-    enabled: !!user && user.role === 'business'
-  });
+  const contracts = dashboardData?.contracts || [];
+  const contractors = dashboardData?.contractors || [];
 
   if (isLoading) {
     return (
