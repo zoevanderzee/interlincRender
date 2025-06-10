@@ -2023,6 +2023,9 @@ export class DatabaseStorage implements IStorage {
       baseName = user.username.toUpperCase();
     }
     
+    // Remove spaces and invalid characters, keep only letters, numbers, and hyphens
+    baseName = baseName.replace(/[^A-Z0-9-]/g, '');
+    
     // Add a random suffix (current year + random number)
     const currentYear = new Date().getFullYear();
     const suffix = Math.floor(Math.random() * 100).toString().padStart(2, '0');
