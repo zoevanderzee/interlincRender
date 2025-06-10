@@ -1031,7 +1031,7 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getContractorsByBusinessId(businessId: number): Promise<User[]> {
-    // Find all contractors who have ACTIVE contracts with this business
+    // Get contractors from active contracts
     const contractorsWithContracts = await db
       .select()
       .from(users)
@@ -1039,7 +1039,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(contracts.businessId, businessId),
-          eq(contracts.status, 'active'), // Only include contractors with active contracts
+          eq(contracts.status, 'active'),
           or(
             eq(users.role, 'contractor'),
             eq(users.role, 'freelancer')
@@ -1047,11 +1047,36 @@ export class DatabaseStorage implements IStorage {
         )
       );
     
-    // Extract unique contractors
+    // Get contractors from accepted connection requests
+    const contractorsWithConnections = await db
+      .select()
+      .from(users)
+      .innerJoin(connectionRequests, eq(users.id, connectionRequests.contractorId))
+      .where(
+        and(
+          eq(connectionRequests.businessId, businessId),
+          eq(connectionRequests.status, 'accepted'),
+          or(
+            eq(users.role, 'contractor'),
+            eq(users.role, 'freelancer')
+          )
+        )
+      );
+    
+    // Combine and deduplicate contractors
     const contractorIds = new Set();
     const uniqueContractors: User[] = [];
     
+    // Add contractors from active contracts
     contractorsWithContracts.forEach(row => {
+      if (!contractorIds.has(row.users.id)) {
+        contractorIds.add(row.users.id);
+        uniqueContractors.push(row.users);
+      }
+    });
+    
+    // Add contractors from accepted connections
+    contractorsWithConnections.forEach(row => {
       if (!contractorIds.has(row.users.id)) {
         contractorIds.add(row.users.id);
         uniqueContractors.push(row.users);
