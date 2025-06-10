@@ -81,52 +81,63 @@ const Projects = () => {
   const [submissionDescription, setSubmissionDescription] = useState("");
   const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
 
-  // Fetch dashboard data which includes financial information
+  // Use dashboard data as the single source of truth for all project information
   const { data: dashboardData, isLoading: isLoadingDashboard } = useQuery<DashboardData>({
     queryKey: ['/api/dashboard'],
+    queryFn: async () => {
+      const headers: HeadersInit = {
+        "Accept": "application/json",
+        "Cache-Control": "no-cache"
+      };
+      
+      // Add user ID from localStorage as fallback
+      const storedUser = localStorage.getItem('creativlinc_user');
+      if (storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          if (parsedUser && parsedUser.id) {
+            headers['X-User-ID'] = parsedUser.id.toString();
+          }
+        } catch (e) {
+          console.error("Error parsing stored user:", e);
+        }
+      }
+      
+      const res = await fetch("/api/dashboard", {
+        method: "GET",
+        credentials: "include",
+        headers
+      });
+      
+      if (!res.ok) {
+        throw new Error("Could not load dashboard data");
+      }
+      
+      return await res.json();
+    },
+    enabled: !!user,
   });
 
-  // Fetch projects/contracts directly to ensure we have the latest data
-  const { data: contractsData = [], isLoading: isLoadingContractsData } = useQuery<Contract[]>({
-    queryKey: ['/api/contracts'],
-  });
+  // Extract all data from dashboard source
+  const contractsData = dashboardData?.contracts || [];
+  const contractorsData = dashboardData?.contractors || [];
 
-  // Fetch contractors directly as well
-  const { data: contractorsData = [], isLoading: isLoadingContractorsData } = useQuery<User[]>({
-    queryKey: ['/api/users'],
-  });
-
-  // Fetch work requests for contractors
-  const { data: workRequestsData = [], isLoading: isLoadingWorkRequestsData } = useQuery<any[]>({
-    queryKey: ['/api/work-requests'],
-    enabled: isContractor,
-  });
-
-  // Fetch milestones for all contracts
-  const { data: milestonesData = [], isLoading: isLoadingMilestonesData } = useQuery<Milestone[]>({
-    queryKey: ['/api/milestones'],
-  });
-
-  // Extract the data from the dashboard API response
-  // Prioritize direct API data, but fall back to dashboard data if needed
-  const milestones = milestonesData.length > 0 ? milestonesData : (dashboardData?.milestones || []);
-  const contracts = contractsData.length > 0 ? contractsData : (dashboardData?.contracts || []);
-  const contractors = contractorsData.filter(u => u.role === 'contractor').length > 0 
-    ? contractorsData.filter(u => u.role === 'contractor') 
-    : (dashboardData?.contractors || []);
+  // Extract all data from unified dashboard source
+  const milestones = dashboardData?.milestones || [];
+  const contracts = contractsData;
+  const contractors = contractorsData;
   
   // Get financial stats
   const totalPendingValue = dashboardData?.stats?.totalPendingValue || 0;
   const paymentsProcessed = dashboardData?.stats?.paymentsProcessed || 0;
 
-  const isLoadingMilestones = isLoadingDashboard || isLoadingMilestonesData;
-  const isLoadingContracts = isLoadingDashboard || isLoadingContractsData;
-  const isLoadingContractors = isLoadingDashboard || isLoadingContractorsData;
+  // All data comes from dashboard, so all loading states depend on dashboard loading
+  const isLoadingMilestones = isLoadingDashboard;
+  const isLoadingContracts = isLoadingDashboard;
+  const isLoadingContractors = isLoadingDashboard;
   
-  // Fetch payments
-  const { data: payments = [], isLoading: isLoadingPayments } = useQuery<Payment[]>({
-    queryKey: ['/api/payments'],
-  });
+  // Get payments from dashboard data
+  const payments = dashboardData?.payments || [];
 
   // Filter milestones by search term and status
   const filteredMilestones = milestones.filter((milestone) => {
