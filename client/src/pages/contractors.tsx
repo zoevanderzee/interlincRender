@@ -51,11 +51,7 @@ const Contractors = () => {
   const [inviteData, setInviteData] = useState<{ id: number, token: string } | null>(null);
 
   // Use dashboard data for consistency across all pages
-  const { data: dashboardData, isLoading: isLoadingWorkers } = useQuery<{
-    contractors: User[];
-    businesses?: User[];
-    stats: any;
-  }>({
+  const { data: dashboardData, isLoading: isLoadingWorkers } = useQuery({
     queryKey: ['/api/dashboard'],
     enabled: !!user
   });
@@ -69,6 +65,7 @@ const Contractors = () => {
   // Get data from dashboard
   const externalWorkers = dashboardData?.contractors || [];
   const businessAccounts = dashboardData?.businesses || [];
+  const contracts = dashboardData?.contracts || [];
   const isLoadingBusinesses = isLoadingWorkers;
   
   // Get contractor IDs from accepted connection requests
@@ -107,9 +104,6 @@ const Contractors = () => {
   const freelancerInvites = allInvites.filter(invite => 
     invite.workerType === 'freelancer'
   );
-
-  // Use contracts from dashboard data for consistency
-  const contracts = dashboardData?.contracts || [];
 
   // Filter sub contractors by search term
   const filteredSubContractors = subContractors.filter((contractor: User) => {
@@ -276,7 +270,7 @@ const Contractors = () => {
     }
   };
 
-  const isLoading = isLoadingWorkers || isLoadingInvites || isLoadingContracts || (isContractor && isLoadingBusinesses);
+  const isLoading = isLoadingWorkers || isLoadingInvites || (isContractor && isLoadingBusinesses);
 
   // Function to get contractor's profile code
   const getProfileCode = async () => {
