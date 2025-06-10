@@ -73,7 +73,7 @@ const Contractors = () => {
   
   // Get contractor IDs from accepted connection requests
   const connectedContractorIds = new Set(
-    connectionRequests
+    (connectionRequests as any[])
       .filter((req: any) => req.status === 'accepted')
       .map((req: any) => req.contractorId)
   );
@@ -108,10 +108,8 @@ const Contractors = () => {
     invite.workerType === 'freelancer'
   );
 
-  // Fetch contracts to show count per contractor and for project dropdown
-  const { data: contracts = [], isLoading: isLoadingContracts } = useQuery({
-    queryKey: ['/api/contracts'],
-  });
+  // Use contracts from dashboard data for consistency
+  const contracts = dashboardData?.contracts || [];
 
   // Filter sub contractors by search term
   const filteredSubContractors = subContractors.filter((contractor: User) => {
