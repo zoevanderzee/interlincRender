@@ -13,10 +13,12 @@ const NewContract = () => {
   const [isEditMode, params] = useRoute('/contracts/:id/edit');
   const contractId = isEditMode && params?.id ? parseInt(params.id) : null;
   
-  // Fetch contractors for the select field
-  const { data: contractors = [], isLoading: isLoadingContractors } = useQuery<User[]>({
-    queryKey: ['/api/users', { role: 'contractor' }],
+  // Fetch contractors from dashboard data which includes connected contractors
+  const { data: dashboardData, isLoading: isLoadingContractors } = useQuery({
+    queryKey: ['/api/dashboard'],
   });
+  
+  const contractors = dashboardData?.contractors || [];
   
   // Fetch contract details if in edit mode
   const { 
