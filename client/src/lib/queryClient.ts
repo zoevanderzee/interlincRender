@@ -71,7 +71,11 @@ export async function apiRequest(
       defaultHeaders['X-CSRF-Token'] = csrfToken;
     }
     
-    // Remove X-User-ID header fallback to force proper session cookie authentication
+    // Add user ID header for authentication fallback
+    const user = JSON.parse(localStorage.getItem('creativlinc_user') || 'null');
+    if (user?.id) {
+      defaultHeaders['X-User-ID'] = user.id.toString();
+    }
     
     const headers: Record<string, string> = { ...defaultHeaders, ...(customHeaders || {}) };
     
