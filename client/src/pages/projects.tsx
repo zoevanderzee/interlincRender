@@ -4,9 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Calendar, DollarSign, Users, FileText, TrendingUp } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { useLocation } from "wouter";
 
 export default function Projects() {
   const { user } = useAuth();
+  const [, navigate] = useLocation();
   
   // Use dashboard data for consistency across all pages
   const { data: dashboardData, isLoading } = useQuery<{
@@ -55,7 +57,10 @@ export default function Projects() {
           </p>
         </div>
         {!isContractor && (
-          <Button className="bg-blue-600 hover:bg-blue-700">
+          <Button 
+            className="bg-blue-600 hover:bg-blue-700"
+            onClick={() => navigate('/contracts/new')}
+          >
             <Plus className="mr-2 h-4 w-4" />
             New Project
           </Button>
