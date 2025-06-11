@@ -3908,6 +3908,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get work request submissions for the authenticated business user
+  app.get('/api/work-request-submissions/business', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const user = req.user!;
+      console.log('Work request submissions endpoint - User:', { id: user.id, role: user.role });
+      
+      // Only allow business users to access this endpoint
+      if (user.role !== 'business') {
+        console.log('Access denied - user role is not business:', user.role);
+        return res.status(403).json({ message: 'Access denied - business role required' });
+      }
+
+      console.log('Fetching work request submissions for business ID:', user.id);
+      const submissions = await storage.getWorkRequestSubmissionsByBusinessId(user.id);
+      console.log('Found submissions:', submissions.length);
+      res.json(submissions);
+    } catch (error: any) {
+      console.error('Error fetching business work request submissions:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get('/api/work-request-submissions/business/:businessId', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const businessId = parseInt(req.params.businessId);
@@ -3921,6 +3943,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(submissions);
     } catch (error: any) {
       console.error('Error fetching business work request submissions:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Review work request submission
+  app.patch('/api/work-request-submissions/:id/review', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const submissionId = parseInt(req.params.id);
+      const { status, feedback } = req.body;
+      const user = req.user!;
+
+      console.log('Reviewing work request submission:', { submissionId, status, feedback, userId: user.id });
+
+      // Get the submission to verify access
+      const submission = await storage.getWorkRequestSubmission(submissionId);
+      if (!submission) {
+        return res.status(404).json({ message: 'Work submission not found' });
+      }
+
+      // Only allow business owners to review submissions for their business
+      if (user.role !== 'business' || submission.businessId !== user.id) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      // Update the submission with review
+      const updatedSubmission = await storage.updateWorkRequestSubmission(submissionId, {
+        status,
+        reviewNotes: feedback,
+        reviewedAt: new Date()
+      });
+
+      console.log('Work request submission reviewed successfully:', updatedSubmission);
+      res.json(updatedSubmission);
+    } catch (error: any) {
+      console.error('Error reviewing work request submission:', error);
       res.status(500).json({ message: error.message });
     }
   });

@@ -37,8 +37,7 @@ export function SubmittedWorkReview({ businessId }: SubmittedWorkReviewProps) {
   const [reviewFeedback, setReviewFeedback] = useState('');
 
   const { data: submissions = [], isLoading } = useQuery<WorkSubmission[]>({
-    queryKey: ['/api/work-request-submissions/business', businessId],
-    enabled: !!businessId,
+    queryKey: ['/api/work-request-submissions/business'],
   });
 
   const reviewMutation = useMutation({
