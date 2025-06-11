@@ -144,12 +144,14 @@ export default function ContractDetailPage() {
     enabled: contractId > 0 && !contractError,
   });
 
-  // Fetch all contractors - use the users endpoint
-  const { data: contractors = [], isLoading: isLoadingContractors } = useQuery<User[]>({
-    queryKey: ['/api/users'],
+  // Fetch contractors from dashboard data which includes connected contractors
+  const { data: dashboardData, isLoading: isLoadingContractors } = useQuery({
+    queryKey: ['/api/dashboard'],
     queryFn: getQueryFn({ on401: 'throw' }),
     enabled: !contractError,
   });
+  
+  const contractors = dashboardData?.contractors || [];
 
   // Fetch documents for this project
   const { data: documents = [], isLoading: isLoadingDocuments } = useQuery<any[]>({
