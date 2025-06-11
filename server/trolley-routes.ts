@@ -16,6 +16,63 @@ interface AuthenticatedRequest extends Request {
 export default function trolleyRoutes(app: Express, apiPath: string, authMiddleware: any) {
   const trolleyBasePath = `${apiPath}/trolley`;
 
+  // Setup company profile for business user
+  app.post(`${trolleyBasePath}/setup-company-profile`, authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: 'User not authenticated' });
+      }
+
+      // Get user details
+      const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!user.length) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      const userData = user[0];
+      
+      // Check if user is a business user
+      if (userData.role !== 'business') {
+        return res.status(403).json({ message: 'Only business users can setup company profiles' });
+      }
+
+      // Check if user already has a company profile
+      if (userData.trolleyCompanyProfileId) {
+        return res.status(400).json({ 
+          message: 'Company profile already exists',
+          companyId: userData.trolleyCompanyProfileId 
+        });
+      }
+
+      // Create company profile with Trolley
+      const companyProfile = await trolleyService.createCompanyProfile({
+        name: userData.companyName || `${userData.firstName} ${userData.lastName} Company`,
+        email: userData.email,
+        country: 'US', // Default to US, could be configurable
+        currency: 'USD'
+      });
+
+      // Update user with Trolley company ID
+      await db.update(users)
+        .set({ trolleyCompanyProfileId: companyProfile.id })
+        .where(eq(users.id, userId));
+
+      res.json({ 
+        success: true,
+        companyId: companyProfile.id,
+        message: 'Company profile created successfully'
+      });
+
+    } catch (error: any) {
+      console.error('Error setting up company profile:', error);
+      res.status(500).json({ 
+        message: 'Failed to setup company profile',
+        error: error.message 
+      });
+    }
+  });
+
   // Create Trolley recipient for contractor
   app.post(`${trolleyBasePath}/recipients`, authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
     try {

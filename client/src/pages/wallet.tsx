@@ -29,13 +29,36 @@ export default function WalletPage() {
   const { toast } = useToast();
 
   // Get wallet balance
-  const { data: walletData, isLoading: balanceLoading } = useQuery({
+  const { data: walletData, isLoading: balanceLoading, error: balanceError } = useQuery({
     queryKey: ['/api/trolley/wallet-balance'],
   });
 
   // Get funding history
   const { data: historyData, isLoading: historyLoading } = useQuery({
     queryKey: ['/api/trolley/funding-history'],
+  });
+
+  // Setup company profile mutation
+  const setupProfileMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/trolley/setup-company-profile");
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Profile Created",
+        description: "Trolley company profile created successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/trolley/wallet-balance'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/trolley/funding-history'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Setup Failed",
+        description: error.message || "Failed to create company profile",
+        variant: "destructive",
+      });
+    },
   });
 
   // Fund wallet mutation
@@ -92,43 +115,141 @@ export default function WalletPage() {
 
   if (balanceLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-4 border-white border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  // Check if user needs Trolley onboarding
+  const needsOnboarding = balanceError && balanceError.status === 400;
+
+  if (needsOnboarding) {
+    return (
+      <div className="min-h-screen bg-black text-white">
+        <div className="max-w-4xl mx-auto p-6">
+          <div className="mb-8">
+            <div className="flex items-center gap-3 mb-2">
+              <Wallet className="h-8 w-8 text-white" />
+              <h1 className="text-3xl font-bold text-white">Payment Wallet</h1>
+            </div>
+            <p className="text-zinc-400">
+              Set up your payment wallet to start funding contractor payments
+            </p>
+          </div>
+
+          <Card className="bg-zinc-900 border-zinc-800">
+            <CardHeader className="text-center">
+              <CardTitle className="flex items-center justify-center gap-2 text-white text-2xl">
+                <Building2 className="h-6 w-6" />
+                Setup Required
+              </CardTitle>
+              <CardDescription className="text-zinc-400 text-lg">
+                Create your company profile to enable wallet funding
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid md:grid-cols-3 gap-4 text-center">
+                <div className="p-4">
+                  <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center mx-auto mb-3">
+                    <span className="text-white font-bold">1</span>
+                  </div>
+                  <h3 className="font-medium text-white mb-2">Create Profile</h3>
+                  <p className="text-sm text-zinc-400">Set up your company profile with Trolley</p>
+                </div>
+                <div className="p-4">
+                  <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center mx-auto mb-3">
+                    <span className="text-white font-bold">2</span>
+                  </div>
+                  <h3 className="font-medium text-white mb-2">Fund Wallet</h3>
+                  <p className="text-sm text-zinc-400">Add money to your payment wallet</p>
+                </div>
+                <div className="p-4">
+                  <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center mx-auto mb-3">
+                    <span className="text-white font-bold">3</span>
+                  </div>
+                  <h3 className="font-medium text-white mb-2">Pay Contractors</h3>
+                  <p className="text-sm text-zinc-400">Process payments directly from your wallet</p>
+                </div>
+              </div>
+
+              <div className="bg-zinc-800 p-6 rounded-lg border border-zinc-700">
+                <h3 className="text-white font-medium mb-3">What you'll get:</h3>
+                <ul className="space-y-2 text-zinc-300">
+                  <li className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-green-400"></div>
+                    Secure payment processing through Trolley
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-green-400"></div>
+                    Direct bank transfers to contractors
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-green-400"></div>
+                    Automatic payment tracking and reporting
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-green-400"></div>
+                    Compliance with international payment regulations
+                  </li>
+                </ul>
+              </div>
+
+              <Button 
+                onClick={() => setupProfileMutation.mutate()}
+                disabled={setupProfileMutation.isPending}
+                className="w-full bg-white text-black hover:bg-zinc-200 py-3 text-lg"
+              >
+                {setupProfileMutation.isPending ? (
+                  <>
+                    <div className="animate-spin w-5 h-5 border-2 border-black border-t-transparent rounded-full mr-2" />
+                    Setting up...
+                  </>
+                ) : (
+                  <>
+                    <Building2 className="h-5 w-5 mr-2" />
+                    Create Company Profile
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-black text-white">
       <div className="max-w-6xl mx-auto p-6">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
-            <Wallet className="h-8 w-8 text-primary" />
-            <h1 className="text-3xl font-bold text-gray-900">Payment Wallet</h1>
+            <Wallet className="h-8 w-8 text-white" />
+            <h1 className="text-3xl font-bold text-white">Payment Wallet</h1>
           </div>
-          <p className="text-gray-600">
+          <p className="text-zinc-400">
             Manage your payment wallet to fund contractor payments
           </p>
         </div>
 
         {/* Balance Card */}
-        <Card className="mb-8">
+        <Card className="mb-8 bg-zinc-900 border-zinc-800">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-white">
               <DollarSign className="h-5 w-5" />
               Current Balance
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-zinc-400">
               Available funds for contractor payments
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-4xl font-bold text-primary">
+            <div className="text-4xl font-bold text-white">
               {walletData ? formatCurrency(walletData.balance || 0) : '$0.00'}
             </div>
             {walletData?.companyProfileId && (
-              <p className="text-sm text-gray-500 mt-2">
+              <p className="text-sm text-zinc-500 mt-2">
                 Profile ID: {walletData.companyProfileId}
               </p>
             )}
@@ -136,28 +257,28 @@ export default function WalletPage() {
         </Card>
 
         <Tabs defaultValue="fund" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="fund">Fund Wallet</TabsTrigger>
-            <TabsTrigger value="history">Transaction History</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 bg-zinc-900 border-zinc-700">
+            <TabsTrigger value="fund" className="data-[state=active]:bg-zinc-800 data-[state=active]:text-white text-zinc-400">Fund Wallet</TabsTrigger>
+            <TabsTrigger value="history" className="data-[state=active]:bg-zinc-800 data-[state=active]:text-white text-zinc-400">Transaction History</TabsTrigger>
           </TabsList>
 
           {/* Fund Wallet Tab */}
           <TabsContent value="fund">
             <div className="grid md:grid-cols-2 gap-6">
               {/* Quick Fund */}
-              <Card>
+              <Card className="bg-zinc-900 border-zinc-800">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-white">
                     <Plus className="h-5 w-5" />
                     Add Funds
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-zinc-400">
                     Add money to your wallet for contractor payments
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <Label htmlFor="amount">Amount (USD)</Label>
+                    <Label htmlFor="amount" className="text-zinc-300">Amount (USD)</Label>
                     <Input
                       id="amount"
                       type="number"
@@ -166,17 +287,18 @@ export default function WalletPage() {
                       onChange={(e) => setFundAmount(e.target.value)}
                       min="1"
                       step="0.01"
+                      className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500"
                     />
                   </div>
                   
                   <Button 
                     onClick={handleFundWallet}
                     disabled={fundWalletMutation.isPending || !fundAmount}
-                    className="w-full"
+                    className="w-full bg-white text-black hover:bg-zinc-200"
                   >
                     {fundWalletMutation.isPending ? (
                       <>
-                        <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2" />
+                        <div className="animate-spin w-4 h-4 border-2 border-black border-t-transparent rounded-full mr-2" />
                         Processing...
                       </>
                     ) : (
@@ -190,32 +312,32 @@ export default function WalletPage() {
               </Card>
 
               {/* Funding Methods */}
-              <Card>
+              <Card className="bg-zinc-900 border-zinc-800">
                 <CardHeader>
-                  <CardTitle>Funding Methods</CardTitle>
-                  <CardDescription>
+                  <CardTitle className="text-white">Funding Methods</CardTitle>
+                  <CardDescription className="text-zinc-400">
                     Available ways to add funds to your wallet
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex items-center gap-3 p-3 border rounded-lg">
-                    <Building2 className="h-5 w-5 text-blue-600" />
+                  <div className="flex items-center gap-3 p-3 border border-zinc-700 rounded-lg">
+                    <Building2 className="h-5 w-5 text-blue-400" />
                     <div>
-                      <p className="font-medium">Bank Transfer (ACH)</p>
-                      <p className="text-sm text-gray-500">2-3 business days</p>
+                      <p className="font-medium text-white">Bank Transfer (ACH)</p>
+                      <p className="text-sm text-zinc-500">2-3 business days</p>
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-3 p-3 border rounded-lg">
-                    <CreditCard className="h-5 w-5 text-green-600" />
+                  <div className="flex items-center gap-3 p-3 border border-zinc-700 rounded-lg">
+                    <CreditCard className="h-5 w-5 text-green-400" />
                     <div>
-                      <p className="font-medium">Wire Transfer</p>
-                      <p className="text-sm text-gray-500">Same day processing</p>
+                      <p className="font-medium text-white">Wire Transfer</p>
+                      <p className="text-sm text-zinc-500">Same day processing</p>
                     </div>
                   </div>
                   
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <p className="text-sm text-blue-800">
+                  <div className="bg-zinc-800 p-4 rounded-lg border border-zinc-700">
+                    <p className="text-sm text-zinc-300">
                       <strong>Note:</strong> Current funding is processed through Trolley's secure payment system. 
                       Contact support for setting up recurring funding or custom payment methods.
                     </p>
@@ -227,49 +349,49 @@ export default function WalletPage() {
 
           {/* Transaction History Tab */}
           <TabsContent value="history">
-            <Card>
+            <Card className="bg-zinc-900 border-zinc-800">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-white">
                   <History className="h-5 w-5" />
                   Funding History
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-zinc-400">
                   Track all wallet funding transactions
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {historyLoading ? (
                   <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
+                    <div className="animate-spin w-6 h-6 border-2 border-white border-t-transparent rounded-full" />
                   </div>
                 ) : historyData && historyData.length > 0 ? (
                   <div className="space-y-4">
                     {historyData.map((transaction: FundingTransaction) => (
-                      <div key={transaction.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div key={transaction.id} className="flex items-center justify-between p-4 border border-zinc-700 rounded-lg">
                         <div className="flex items-center gap-3">
                           <div className={`p-2 rounded-full ${
-                            transaction.status === 'completed' ? 'bg-green-100' : 
-                            transaction.status === 'pending' ? 'bg-yellow-100' : 'bg-red-100'
+                            transaction.status === 'completed' ? 'bg-green-900' : 
+                            transaction.status === 'pending' ? 'bg-yellow-900' : 'bg-red-900'
                           }`}>
                             <Plus className={`h-4 w-4 ${
-                              transaction.status === 'completed' ? 'text-green-600' : 
-                              transaction.status === 'pending' ? 'text-yellow-600' : 'text-red-600'
+                              transaction.status === 'completed' ? 'text-green-400' : 
+                              transaction.status === 'pending' ? 'text-yellow-400' : 'text-red-400'
                             }`} />
                           </div>
                           <div>
-                            <p className="font-medium">
+                            <p className="font-medium text-white">
                               {formatCurrency(transaction.amount)}
                             </p>
-                            <p className="text-sm text-gray-500">
+                            <p className="text-sm text-zinc-500">
                               {transaction.method} • {formatDate(transaction.createdAt)}
                             </p>
                           </div>
                         </div>
                         <div className="text-right">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            transaction.status === 'completed' ? 'bg-green-100 text-green-800' : 
-                            transaction.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
-                            'bg-red-100 text-red-800'
+                            transaction.status === 'completed' ? 'bg-green-900 text-green-300' : 
+                            transaction.status === 'pending' ? 'bg-yellow-900 text-yellow-300' : 
+                            'bg-red-900 text-red-300'
                           }`}>
                             {transaction.status}
                           </span>
@@ -279,9 +401,9 @@ export default function WalletPage() {
                   </div>
                 ) : (
                   <div className="text-center py-8">
-                    <Wallet className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500">No funding transactions yet</p>
-                    <p className="text-sm text-gray-400">Fund your wallet to start making payments</p>
+                    <Wallet className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
+                    <p className="text-zinc-400">No funding transactions yet</p>
+                    <p className="text-sm text-zinc-500">Fund your wallet to start making payments</p>
                   </div>
                 )}
               </CardContent>
