@@ -55,18 +55,14 @@ export default function trolleyRoutes(app: Express, apiPath: string, authMiddlew
           currency: 'USD'
         });
       } catch (trolleyError: any) {
-        console.log('Trolley API call failed, creating simulated profile for development:', trolleyError.message);
+        console.error('Trolley API call failed:', trolleyError.message);
+        console.error('Full error:', trolleyError);
         
-        // For development - create a simulated profile ID
-        const simulatedId = `sim_company_${Date.now()}_${userId}`;
-        companyProfile = {
-          id: simulatedId,
-          name: userData.companyName || `${userData.firstName} ${userData.lastName} Company`,
-          email: userData.email,
-          country: 'US',
-          currency: 'USD',
-          status: 'active'
-        };
+        // Return error to client instead of creating simulated profile
+        return res.status(400).json({ 
+          message: `Setup Failed: ${trolleyError.message}`,
+          error: trolleyError.message 
+        });
       }
 
       // Update user with Trolley company ID

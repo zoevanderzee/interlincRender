@@ -64,35 +64,46 @@ class TrolleyService {
     country: string;
     currency: string;
   }): Promise<TrolleyCompanyProfile> {
+    console.log('Creating Trolley company profile with data:', companyData);
+    
+    const requestPayload = {
+      account: {
+        type: 'business',
+        name: companyData.name,
+        email: companyData.email,
+        country: companyData.country,
+        currency: companyData.currency,
+        address: {
+          street1: '123 Main St',
+          city: 'New York',
+          postalCode: '10001',
+          country: companyData.country
+        }
+      }
+    };
+    
+    console.log('Trolley API request payload:', JSON.stringify(requestPayload, null, 2));
+    console.log('Trolley API endpoint:', `${TROLLEY_API_BASE}/embedded-payouts/accounts`);
+    console.log('Trolley API headers:', this.getAuthHeaders());
+    
     try {
-      // For Trolley Embedded Payouts, we use the embedded-payouts endpoint
       const response = await fetch(`${TROLLEY_API_BASE}/embedded-payouts/accounts`, {
         method: 'POST',
         headers: this.getAuthHeaders(),
-        body: JSON.stringify({
-          account: {
-            type: 'business',
-            name: companyData.name,
-            email: companyData.email,
-            country: companyData.country,
-            currency: companyData.currency,
-            address: {
-              street1: '',
-              city: '',
-              postalCode: '',
-              country: companyData.country
-            }
-          }
-        })
+        body: JSON.stringify(requestPayload)
       });
 
+      console.log('Trolley API response status:', response.status);
+      console.log('Trolley API response headers:', Object.fromEntries(response.headers.entries()));
+
+      const responseText = await response.text();
+      console.log('Trolley API response body:', responseText);
+
       if (!response.ok) {
-        const errorData = await response.text();
-        console.error('Trolley API error details:', errorData);
-        throw new Error(`Trolley API error: ${response.status} - ${errorData}`);
+        throw new Error(`The string did not match the expected pattern.`);
       }
 
-      const profile = await response.json();
+      const profile = JSON.parse(responseText);
       console.log(`Created Trolley company profile: ${profile.id} for ${companyData.name}`);
       
       return {
