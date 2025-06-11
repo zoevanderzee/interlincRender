@@ -7,6 +7,7 @@ import { Plus, Calendar, DollarSign, Users, FileText, TrendingUp } from "lucide-
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { SubmitWorkModal } from "@/components/SubmitWorkModal";
+import { SubmittedWorkReview } from "@/components/SubmittedWorkReview";
 
 export default function Projects() {
   const { user } = useAuth();
@@ -404,6 +405,13 @@ export default function Projects() {
           </div>
         )}
       </div>
+
+      {/* Submitted Work Review Section for Business Users */}
+      {!isContractor && (
+        <div className="mt-8">
+          <SubmittedWorkReview businessId={user.id} />
+        </div>
+      )}
     </div>
   );
 }
