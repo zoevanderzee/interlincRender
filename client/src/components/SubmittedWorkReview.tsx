@@ -39,13 +39,15 @@ export function SubmittedWorkReview({ businessId }: SubmittedWorkReviewProps) {
   const { data: submissions = [], isLoading, error } = useQuery<WorkSubmission[]>({
     queryKey: ['/api/work-request-submissions/business'],
     retry: 1,
+    enabled: !!businessId, // Only fetch when businessId is available
   });
 
   console.log('SubmittedWorkReview - Query state:', { 
     submissions: submissions?.length, 
     isLoading, 
     error: error?.message,
-    businessId 
+    businessId,
+    queryEnabled: !!businessId
   });
 
   const reviewMutation = useMutation({

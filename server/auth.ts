@@ -24,10 +24,26 @@ async function hashPassword(password: string) {
 
 // Function to compare passwords
 async function comparePasswords(supplied: string, stored: string) {
+  // Handle bcrypt hashes (start with $2b$)
+  if (stored.startsWith('$2b$')) {
+    const bcrypt = require('bcrypt');
+    return await bcrypt.compare(supplied, stored);
+  }
+  
+  // Handle legacy scrypt hashes
   const [hashed, salt] = stored.split(".");
-  const hashedBuf = Buffer.from(hashed, "hex");
-  const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
-  return timingSafeEqual(hashedBuf, suppliedBuf);
+  if (!hashed || !salt) {
+    return false;
+  }
+  
+  try {
+    const hashedBuf = Buffer.from(hashed, "hex");
+    const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
+    return timingSafeEqual(hashedBuf, suppliedBuf);
+  } catch (error) {
+    console.error('Password comparison error:', error);
+    return false;
+  }
 }
 
 // Configure passport and session
