@@ -42,12 +42,13 @@ export function SubmittedWorkReview({ businessId }: SubmittedWorkReviewProps) {
     enabled: !!businessId, // Only fetch when businessId is available
   });
 
-  console.log('SubmittedWorkReview - Query state:', { 
+  console.log('SubmittedWorkReview - Component rendered:', { 
     submissions: submissions?.length, 
     isLoading, 
     error: error?.message,
     businessId,
-    queryEnabled: !!businessId
+    queryEnabled: !!businessId,
+    submissionsData: submissions
   });
 
   const reviewMutation = useMutation({
