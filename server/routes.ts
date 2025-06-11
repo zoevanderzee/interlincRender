@@ -713,15 +713,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       const updateData = req.body;
       
+      // Get the existing contract first
+      const existingContract = await storage.getContract(id);
+      if (!existingContract) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+
       // If a contractor is being assigned and a contractor value is provided
       if (updateData.contractorId && updateData.contractorValue) {
         console.log(`Assigning contractor ${updateData.contractorId} to contract ${id} with value ${updateData.contractorValue}`);
-        
-        // Get the existing contract
-        const existingContract = await storage.getContract(id);
-        if (!existingContract) {
-          return res.status(404).json({ message: "Project not found" });
-        }
         
         // Get the business user who owns the contract
         const businessUser = await storage.getUser(existingContract.businessId);
@@ -763,6 +763,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // All checks passed, proceed with the update
         console.log("Budget validation passed, updating contract with contractor");
+      }
+
+      // Automatically activate any draft contract that has a contractor assigned
+      console.log("Current contract status:", existingContract.status);
+      console.log("Has contractor:", !!existingContract.contractorId, "or assigning contractor:", !!updateData.contractorId);
+      
+      if (existingContract.status.toLowerCase() === 'draft' && (existingContract.contractorId || updateData.contractorId)) {
+        updateData.status = 'active';
+        console.log("Contract status changed from draft to active - contractor is assigned");
       }
       
       const updatedContract = await storage.updateContract(id, updateData);
