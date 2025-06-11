@@ -138,6 +138,13 @@ export interface IStorage {
   updateWorkRequest(id: number, workRequest: Partial<InsertWorkRequest>): Promise<WorkRequest | undefined>;
   linkWorkRequestToContract(id: number, contractId: number): Promise<WorkRequest | undefined>;
 
+  // Work Request Submissions
+  getWorkRequestSubmission(id: number): Promise<WorkRequestSubmission | undefined>;
+  getWorkRequestSubmissionsByBusinessId(businessId: number): Promise<WorkRequestSubmission[]>;
+  getWorkRequestSubmissionsByContractorId(contractorId: number): Promise<WorkRequestSubmission[]>;
+  createWorkRequestSubmission(submission: InsertWorkRequestSubmission): Promise<WorkRequestSubmission>;
+  updateWorkRequestSubmission(id: number, submission: Partial<InsertWorkRequestSubmission>): Promise<WorkRequestSubmission | undefined>;
+
   // Profile Codes and Connection Requests (methods already declared above)
   // Removing duplicate declarations
   getConnectionRequestByProfileCode(businessId: number, profileCode: string): Promise<ConnectionRequest | undefined>;
@@ -2542,6 +2549,54 @@ export class DatabaseStorage implements IStorage {
         reviewedAt: new Date()
       })
       .where(eq(workSubmissions.id, id))
+      .returning();
+    
+    return updated;
+  }
+
+  // Work Request Submissions
+  async createWorkRequestSubmission(submission: InsertWorkRequestSubmission): Promise<WorkRequestSubmission> {
+    const [created] = await db
+      .insert(workRequestSubmissions)
+      .values({
+        ...submission,
+        submittedAt: new Date()
+      })
+      .returning();
+    
+    return created;
+  }
+
+  async getWorkRequestSubmission(id: number): Promise<WorkRequestSubmission | undefined> {
+    const [submission] = await db
+      .select()
+      .from(workRequestSubmissions)
+      .where(eq(workRequestSubmissions.id, id));
+    
+    return submission;
+  }
+
+  async getWorkRequestSubmissionsByBusinessId(businessId: number): Promise<WorkRequestSubmission[]> {
+    return await db
+      .select()
+      .from(workRequestSubmissions)
+      .where(eq(workRequestSubmissions.businessId, businessId))
+      .orderBy(desc(workRequestSubmissions.submittedAt));
+  }
+
+  async getWorkRequestSubmissionsByContractorId(contractorId: number): Promise<WorkRequestSubmission[]> {
+    return await db
+      .select()
+      .from(workRequestSubmissions)
+      .where(eq(workRequestSubmissions.contractorId, contractorId))
+      .orderBy(desc(workRequestSubmissions.submittedAt));
+  }
+
+  async updateWorkRequestSubmission(id: number, submission: Partial<InsertWorkRequestSubmission>): Promise<WorkRequestSubmission | undefined> {
+    const [updated] = await db
+      .update(workRequestSubmissions)
+      .set(submission)
+      .where(eq(workRequestSubmissions.id, id))
       .returning();
     
     return updated;

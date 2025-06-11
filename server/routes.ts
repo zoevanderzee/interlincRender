@@ -3866,6 +3866,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         submissionType: submissionType || 'digital'
       });
 
+      // Update work request status to 'submitted'
+      await storage.updateWorkRequest(workRequestId, {
+        status: 'submitted'
+      });
+
       res.json(submission);
     } catch (error: any) {
       console.error('Error creating work request submission:', error);
@@ -3989,6 +3994,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(updatedSubmission);
     } catch (error: any) {
       console.error('Error reviewing work submission:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Work request submission review endpoint
+  app.patch('/api/work-request-submissions/:id/review', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const submissionId = parseInt(req.params.id);
+      const { status, feedback } = req.body;
+      
+      // Only businesses can review submissions
+      if (req.user!.role !== 'business') {
+        return res.status(403).json({ message: 'Only businesses can review work submissions' });
+      }
+
+      // Validate status
+      if (!['approved', 'rejected', 'needs_revision'].includes(status)) {
+        return res.status(400).json({ message: 'Invalid status' });
+      }
+
+      // Get the submission to find the associated work request
+      const submission = await storage.getWorkRequestSubmission(submissionId);
+      if (!submission) {
+        return res.status(404).json({ message: 'Submission not found' });
+      }
+
+      // Verify business owns this submission
+      if (submission.businessId !== req.user!.id) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      // Update the submission
+      const updatedSubmission = await storage.updateWorkRequestSubmission(submissionId, {
+        status,
+        feedback,
+        reviewedAt: new Date()
+      });
+
+      // If approved, update the work request status to 'completed' and activate the contract
+      if (status === 'approved') {
+        await storage.updateWorkRequest(submission.workRequestId, {
+          status: 'completed'
+        });
+
+        // Find and activate the associated contract if it exists
+        const workRequest = await storage.getWorkRequest(submission.workRequestId);
+        if (workRequest && workRequest.contractId) {
+          await storage.updateContract(workRequest.contractId, {
+            status: 'active'
+          });
+        }
+      }
+
+      res.json(updatedSubmission);
+    } catch (error: any) {
+      console.error('Error reviewing work request submission:', error);
       res.status(500).json({ message: error.message });
     }
   });
