@@ -1547,6 +1547,15 @@ export class DatabaseStorage implements IStorage {
     return payment;
   }
 
+  // Get payment by Trolley payment ID for webhook processing
+  async getPaymentByTrolleyId(trolleyPaymentId: string): Promise<Payment | undefined> {
+    const [payment] = await db
+      .select()
+      .from(payments)
+      .where(eq(payments.trolleyPaymentId, trolleyPaymentId));
+    return payment;
+  }
+
   // Get approved milestones that don't have payments yet
   async getApprovedMilestonesWithoutPayments(): Promise<Milestone[]> {
     const approvedMilestones = await db
