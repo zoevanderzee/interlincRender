@@ -3855,7 +3855,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Verify the contractor has access to this work request (must be assigned to them)
-      if (workRequest.recipientEmail !== req.user!.email) {
+      // Check both email assignment and direct contractor ID assignment
+      const hasEmailAccess = workRequest.recipientEmail === req.user!.email;
+      const hasContractorAccess = workRequest.contractorId === contractorId;
+      
+      if (!hasEmailAccess && !hasContractorAccess) {
         return res.status(403).json({ message: 'Access denied to this work request' });
       }
 
