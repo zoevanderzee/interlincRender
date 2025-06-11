@@ -2,10 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Contract, Milestone, User } from '@shared/schema';
 import { format } from 'date-fns';
-import { CheckCircle, Circle, Clock, AlertCircle, ArrowRight, Award } from 'lucide-react';
+import { CheckCircle, Circle, Clock, AlertCircle, ArrowRight, Award, DollarSign } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
 
 interface ContractTimelineProps {
   contract: Contract | null;
@@ -24,6 +27,55 @@ const ContractTimeline = ({
 }: ContractTimelineProps) => {
   const [celebrating, setCelebrating] = useState<number | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [processingPayment, setProcessingPayment] = useState<number | null>(null);
+  
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  // Trolley payment mutation
+  const payMilestoneMutation = useMutation({
+    mutationFn: async ({ milestoneId, amount }: { milestoneId: number; amount: string }) => {
+      const response = await fetch('/api/trolley/pay-milestone', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          milestoneId,
+          amount: parseFloat(amount),
+          currency: 'GBP'
+        })
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Payment failed');
+      }
+      
+      return response.json();
+    },
+    onSuccess: (data, variables) => {
+      toast({
+        title: "Payment Processed",
+        description: `Payment of £${variables.amount} has been sent to the contractor via Trolley.`,
+      });
+      
+      // Refresh contract and milestone data
+      queryClient.invalidateQueries({ queryKey: ['/api/milestones'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/payments'] });
+      
+      setProcessingPayment(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Payment Failed",
+        description: error.message || "Failed to process payment through Trolley.",
+        variant: "destructive"
+      });
+      setProcessingPayment(null);
+    }
+  });
 
   // Sort milestones by due date
   const sortedMilestones = [...milestones]
@@ -66,6 +118,15 @@ const ContractTimeline = ({
       onMilestoneApprove(milestone.id);
       handleCelebration(milestone.id);
     }
+  };
+
+  // Handle Trolley payment processing
+  const handlePayMilestone = (milestone: Milestone) => {
+    setProcessingPayment(milestone.id);
+    payMilestoneMutation.mutate({
+      milestoneId: milestone.id,
+      amount: milestone.paymentAmount.toString()
+    });
   };
 
   // Get status icon based on milestone status
