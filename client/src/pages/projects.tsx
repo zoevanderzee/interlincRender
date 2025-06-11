@@ -42,6 +42,40 @@ export default function Projects() {
   }
 
   const isContractor = user?.role === 'contractor';
+  
+  // SECURITY: Contractors should not see contract details
+  if (isContractor) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-white">My Assignments</h1>
+            <p className="text-gray-400 mt-1">Your work assignments and tasks</p>
+          </div>
+        </div>
+        
+        <Card className="bg-zinc-900 border-zinc-800">
+          <CardContent className="pt-6 pb-6 text-center">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-zinc-800">
+              <FileText className="h-6 w-6 text-blue-500" />
+            </div>
+            <h3 className="mb-2 text-lg font-medium text-white">Work Assignments</h3>
+            <p className="text-sm text-gray-400 mb-4">
+              Your specific task assignments will appear here. You cannot view full project details for security reasons.
+            </p>
+            <Button 
+              variant="outline"
+              onClick={() => navigate('/work-requests')}
+              className="border-gray-700 text-white hover:bg-gray-800"
+            >
+              View Work Requests
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+  
   const activeContracts = contracts.filter((contract: any) => contract.status === 'active');
   const completedContracts = contracts.filter((contract: any) => contract.status === 'completed');
   const totalValue = contracts.reduce((sum: number, contract: any) => sum + parseFloat(contract.value || 0), 0);

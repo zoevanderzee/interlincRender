@@ -1341,11 +1341,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let userContracts = [];
       
-      // Filter contracts by user ID if available
+      // CRITICAL SECURITY: Block contractors from accessing contract data entirely
+      if (userRole === 'contractor') {
+        console.log(`SECURITY BLOCK: Contractor ${userId} attempted to access dashboard with contract data`);
+        // Return minimal dashboard data for contractors without any contract details
+        const dashboardData = {
+          stats: {
+            activeContractsCount: 0,
+            pendingApprovalsCount: 0,
+            paymentsProcessed: 0,
+            totalPendingValue: 0,
+            activeContractorsCount: 0,
+            pendingInvitesCount: 0
+          },
+          contracts: [], // Empty - contractors should not see contracts
+          contractors: [], // Empty - contractors don't need to see other contractors
+          milestones: [], // Empty - contractors should not see milestones
+          payments: [], // Empty - contractors should not see payment details
+          invites: [] // Empty - contractors don't manage invites
+        };
+        return res.json(dashboardData);
+      }
+      
+      // Filter contracts by user ID if available (only for business users)
       if (userId && userRole === 'business') {
         userContracts = await storage.getContractsByBusinessId(userId);
-      } else if (userId && userRole === 'contractor') {
-        userContracts = await storage.getContractsByContractorId(userId);
       } else {
         // For development/testing only when not logged in
         userContracts = await storage.getAllContracts();
