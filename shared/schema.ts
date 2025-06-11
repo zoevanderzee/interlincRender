@@ -169,6 +169,7 @@ export const workRequests = pgTable("work_requests", {
   description: text("description").notNull(),
   businessId: integer("business_id").notNull(), // Business that sent the request
   recipientEmail: text("recipient_email"), // Email of the recipient - optional for shareable links
+  contractorId: integer("contractor_id"), // Assigned contractor for this work request
   status: text("status").notNull().default("pending"), // pending, accepted, declined, expired
   budgetMin: decimal("budget_min", { precision: 10, scale: 2 }), // Minimum budget amount
   budgetMax: decimal("budget_max", { precision: 10, scale: 2 }), // Maximum budget amount
