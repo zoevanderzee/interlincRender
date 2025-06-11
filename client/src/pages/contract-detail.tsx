@@ -486,129 +486,54 @@ export default function ContractDetailPage() {
           </div>
         </div>
 
-        {/* Status banner - No red warning about no contractors */}
-        {getContractorCount() === 0 && (
-          <div className="p-4 rounded-lg mb-6 flex items-center bg-zinc-800 border border-zinc-700">
-            <div className="mr-3">
-              <Clock className="h-6 w-6 text-zinc-400" />
-            </div>
-            <div>
-              <h3 className="font-medium text-white">Project Setup In Progress</h3>
-              <p className="text-sm text-zinc-400">
-                This project is being set up. You can add freelancers or contractors using the "Add Worker" button below.
-              </p>
-            </div>
+        {/* Simple status indicator */}
+        <div className="mb-4">
+          <div className="flex items-center gap-2">
+            {contract.status === 'completed' ? (
+              <>
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                <span className="text-white text-sm">Completed</span>
+              </>
+            ) : contract.status === 'active' ? (
+              <>
+                <Clock className="h-4 w-4 text-blue-500" />
+                <span className="text-white text-sm">Active</span>
+              </>
+            ) : (
+              <>
+                <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                <span className="text-white text-sm">Setup</span>
+              </>
+            )}
           </div>
-        )}
-        
-        {/* Status banner - only show for projects with contractors or other statuses */}
-        {getContractorCount() > 0 && (
-          <div className="p-4 rounded-lg mb-6 flex items-center bg-zinc-800 border border-zinc-700">
-            <div className="mr-3">
-              {contract.status === 'active' ? (
-                <CheckCircle className="h-6 w-6 text-green-500" />
-              ) : contract.status === 'pending' ? (
-                <Clock className="h-6 w-6 text-yellow-500" />
-              ) : (
-                <AlertTriangle className="h-6 w-6 text-red-500" />
-              )}
-            </div>
-            <div>
-              <h3 className="font-medium text-white">
-                {contract.status === 'active' 
-                  ? 'Active Project' 
-                  : contract.status === 'pending' 
-                  ? 'Pending Project' 
-                  : contract.status === 'draft' 
-                  ? 'Draft Project'
-                  : 'Project Issue'}
-              </h3>
-              <p className="text-sm text-zinc-400">
-                {contract.status === 'active' 
-                  ? 'This project is currently active and in progress.' 
-                  : contract.status === 'pending' 
-                  ? 'This project is waiting for approval or activation.' 
-                  : contract.status === 'draft'
-                  ? 'This project is in draft mode and can be edited.'
-                  : 'This project has been cancelled or has issues that need attention.'}
-              </p>
-            </div>
-          </div>
-        )}
+        </div>
 
-        {/* Stats cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Value
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold flex items-center">
-                <DollarSign className="h-5 w-5 mr-1 text-primary-500" />
-                ${totalContractValue.toFixed(2)}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Project: {contract.contractCode}
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Progress
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {progress}%
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {completedMilestones} of {totalMilestones} milestones completed
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Amount Paid
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold flex items-center">
-                <DollarSign className="h-5 w-5 mr-1 text-green-500" />
-                ${totalPaid.toFixed(2)}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {payments.filter((p: any) => p.status === 'completed').length} payment(s) processed
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Remaining
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold flex items-center">
-                <DollarSign className="h-5 w-5 mr-1 text-accent-500" />
-                ${remainingAmount.toFixed(2)}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {totalMilestones - completedMilestones} milestone(s) remaining
-              </p>
-            </CardContent>
-          </Card>
+        {/* Simplified stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <div className="bg-zinc-900 p-3 rounded-lg">
+            <div className="text-lg font-semibold text-white">${totalContractValue.toFixed(0)}</div>
+            <div className="text-xs text-zinc-400">Total</div>
+          </div>
+          <div className="bg-zinc-900 p-3 rounded-lg">
+            <div className="text-lg font-semibold text-white">{progress}%</div>
+            <div className="text-xs text-zinc-400">Progress</div>
+          </div>
+          <div className="bg-zinc-900 p-3 rounded-lg">
+            <div className="text-lg font-semibold text-white">${totalPaid.toFixed(0)}</div>
+            <div className="text-xs text-zinc-400">Paid</div>
+          </div>
+          <div className="bg-zinc-900 p-3 rounded-lg">
+            <div className="text-lg font-semibold text-white">${remainingAmount.toFixed(0)}</div>
+            <div className="text-xs text-zinc-400">Remaining</div>
+          </div>
         </div>
 
         {/* Tabs */}
         <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab} className="mt-6">
           <TabsList className="mb-6">
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="submissions">Work Submitted</TabsTrigger>
             <TabsTrigger value="deliverables">Deliverables</TabsTrigger>
-            <TabsTrigger value="documents">Documents</TabsTrigger>
             <TabsTrigger value="payments">Payments</TabsTrigger>
           </TabsList>
           
