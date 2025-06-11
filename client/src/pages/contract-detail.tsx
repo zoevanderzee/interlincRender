@@ -74,10 +74,11 @@ export default function ContractDetailPage() {
   const queryClient = useQueryClient();
 
   // Data queries
-  const { data: contract, isLoading: isLoadingContract } = useQuery({
-    queryKey: ['/api/contracts', contractId],
-    enabled: !!contractId,
+  const { data: contracts = [], isLoading: isLoadingContracts } = useQuery({
+    queryKey: ['/api/contracts'],
   });
+
+  const contract = contracts.find((c: Contract) => c.id === parseInt(contractId || '0'));
 
   const { data: milestones = [], isLoading: isLoadingMilestones } = useQuery({
     queryKey: ['/api/milestones'],
@@ -87,9 +88,20 @@ export default function ContractDetailPage() {
     queryKey: ['/api/users'],
   });
 
-  const { data: contractors = [] } = useQuery({
-    queryKey: ['/api/contractors'],
+  const { data: contractors = [], error: contractorsError } = useQuery({
+    queryKey: ['/api/contractors', contract?.businessId],
+    queryFn: () => {
+      console.log('Contractors query executing with businessId:', contract?.businessId);
+      return contract?.businessId ? 
+        apiRequest(`/api/contractors?companyId=${contract.businessId}`) : 
+        Promise.resolve([]);
+    },
+    enabled: !!contract?.businessId,
   });
+
+  // Debug log contractors data
+  console.log('Available contractors before filtering:', contractors);
+  console.log('Contractors error:', contractorsError);
 
   const { data: payments = [] } = useQuery({
     queryKey: ['/api/payments'],
@@ -191,7 +203,7 @@ export default function ContractDetailPage() {
     deleteMutation.mutate();
   };
 
-  if (isLoadingContract) {
+  if (isLoadingContracts) {
     return (
       <Layout>
         <div className="animate-pulse space-y-4">
