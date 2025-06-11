@@ -4274,6 +4274,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Process Trolley payment for approved milestone
+  app.post(`${apiRouter}/trolley/pay-milestone`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user;
+      if (!user || user.role !== 'business') {
+        return res.status(403).json({ message: "Only business accounts can process payments" });
+      }
+
+      const { milestoneId, amount, currency = 'GBP' } = req.body;
+
+      if (!milestoneId || !amount) {
+        return res.status(400).json({ message: "Milestone ID and amount are required" });
+      }
+
+      // Get milestone details
+      const milestone = await storage.getMilestone(milestoneId);
+      if (!milestone) {
+        return res.status(404).json({ message: "Milestone not found" });
+      }
+
+      // Get contract to verify ownership and get contractor
+      const contract = await storage.getContract(milestone.contractId);
+      if (!contract || contract.businessId !== user.id) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Get contractor details
+      const contractor = await storage.getUser(contract.contractorId);
+      if (!contractor) {
+        return res.status(404).json({ message: "Contractor not found" });
+      }
+
+      if (!contractor.trolleyRecipientId) {
+        return res.status(400).json({ 
+          message: "Contractor must have a Trolley recipient profile to receive payments" 
+        });
+      }
+
+      // Create payment through Trolley
+      const paymentData = {
+        recipientId: contractor.trolleyRecipientId,
+        amount: amount.toString(),
+        currency,
+        description: `Payment for milestone: ${milestone.name} - ${contract.contractName}`,
+        externalId: `milestone_${milestoneId}_${Date.now()}`
+      };
+
+      const result = await trolleyApi.createPayment(paymentData);
+      
+      if (!result.success) {
+        return res.status(400).json({ message: result.error });
+      }
+
+      // Log payment in database
+      const paymentRecord = await storage.createPayment({
+        contractId: milestone.contractId,
+        milestoneId: milestoneId,
+        amount: amount.toString(),
+        status: 'processing',
+        scheduledDate: new Date(),
+        notes: `Trolley payment: ${result.paymentId}`,
+        trolleyPaymentId: result.paymentId,
+        paymentProcessor: 'trolley',
+        triggeredBy: 'manual',
+        triggeredAt: new Date()
+      });
+
+      // Update milestone status to indicate payment processed
+      await storage.updateMilestone(milestoneId, {
+        status: 'paid'
+      });
+
+      console.log(`Created Trolley payment ${result.paymentId} for milestone ${milestoneId}`);
+      
+      res.json({ 
+        success: true, 
+        paymentId: result.paymentId,
+        paymentRecord: paymentRecord,
+        message: 'Payment processed successfully through Trolley' 
+      });
+
+    } catch (error) {
+      console.error("Error processing Trolley milestone payment:", error);
+      res.status(500).json({ message: "Error processing payment" });
+    }
+  });
+
+  // Get Trolley payment status
+  app.get(`${apiRouter}/trolley/payment/:paymentId`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { paymentId } = req.params;
+      
+      const result = await trolleyApi.getPayment(paymentId);
+      
+      if (!result.success) {
+        return res.status(404).json({ message: result.error });
+      }
+
+      res.json(result.payment);
+    } catch (error) {
+      console.error("Error fetching Trolley payment:", error);
+      res.status(500).json({ message: "Error fetching payment details" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
