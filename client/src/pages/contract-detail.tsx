@@ -175,6 +175,14 @@ export default function ContractDetailPage() {
     enabled: contractId > 0 && !contractError,
   });
 
+  // Fetch work submissions for this project
+  const { data: workSubmissions = [], isLoading: isLoadingSubmissions } = useQuery<any[]>({
+    queryKey: ['/api/work-submissions'],
+    queryFn: getQueryFn({ on401: 'throw' }),
+    enabled: contractId > 0 && !contractError,
+    select: (data) => data.filter((submission: any) => submission.contractId === contractId),
+  });
+
   // Handle milestone completion
   const handleMilestoneComplete = async (milestoneId: number) => {
     try {
@@ -618,6 +626,91 @@ export default function ContractDetailPage() {
                 </Card>
               </div>
             </div>
+          </TabsContent>
+          
+          <TabsContent value="submissions">
+            {isLoadingSubmissions ? (
+              <div className="animate-pulse space-y-4">
+                <div className="h-6 w-48 bg-zinc-800 rounded"></div>
+                <div className="h-32 bg-zinc-800 rounded"></div>
+              </div>
+            ) : workSubmissions.length > 0 ? (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-white">Work Submitted by Contractors</h3>
+                {workSubmissions.map((submission: any) => (
+                  <Card key={submission.id} className="bg-zinc-900 border-zinc-800">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-3">
+                            <h4 className="text-white font-medium">{submission.title}</h4>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              submission.status === 'approved' ? 'bg-green-100 text-green-800' : 
+                              submission.status === 'rejected' ? 'bg-red-100 text-red-800' : 
+                              'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {submission.status === 'approved' ? '✓ Approved' : 
+                               submission.status === 'rejected' ? '✗ Rejected' : 
+                               '⏳ Pending Review'}
+                            </span>
+                          </div>
+                          
+                          <p className="text-zinc-400 mb-3">{submission.description}</p>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-zinc-400 mb-4">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-4 w-4" />
+                              <span>Submitted: {format(new Date(submission.submittedAt), 'MMM dd, yyyy')}</span>
+                            </div>
+                            {submission.reviewedAt && (
+                              <div className="flex items-center gap-2">
+                                <CheckCircle className="h-4 w-4" />
+                                <span>Reviewed: {format(new Date(submission.reviewedAt), 'MMM dd, yyyy')}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {submission.attachmentUrls && submission.attachmentUrls.length > 0 && (
+                            <div className="mb-4">
+                              <h5 className="text-sm font-medium text-white mb-2">Attachments:</h5>
+                              <div className="flex flex-wrap gap-2">
+                                {submission.attachmentUrls.map((url: string, index: number) => (
+                                  <a 
+                                    key={index}
+                                    href={url} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-1 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm"
+                                  >
+                                    <Download className="h-3 w-3" />
+                                    View File {index + 1}
+                                  </a>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {submission.reviewNotes && (
+                            <div className="mt-3 p-3 bg-zinc-800 rounded">
+                              <h5 className="text-sm font-medium text-white mb-1">Review Notes:</h5>
+                              <p className="text-zinc-300 text-sm">{submission.reviewNotes}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card className="bg-zinc-900 border-zinc-800">
+                <CardContent className="p-8 text-center">
+                  <FileText className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-white mb-2">No Work Submitted</h3>
+                  <p className="text-zinc-400">No work has been submitted for this project yet.</p>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
           
           <TabsContent value="deliverables">
