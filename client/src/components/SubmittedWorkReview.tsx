@@ -190,7 +190,7 @@ export function SubmittedWorkReview({ businessId }: SubmittedWorkReviewProps) {
                       )}
                     </div>
 
-                    {submission.status === 'submitted' && (
+                    {submission.status === 'pending' && (
                       <div className="ml-4">
                         <Button
                           size="sm"
