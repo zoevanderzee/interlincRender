@@ -643,70 +643,45 @@ export default function ContractDetailPage() {
               <div>
                 <Card>
                   <CardHeader>
-                    <CardTitle>Project Workers</CardTitle>
+                    <CardTitle>Project Budget</CardTitle>
                     <CardDescription>
-                      Information about assigned freelancers and contractors
+                      Budget allocation and spending overview
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {isLoadingContractors ? (
-                      <div className="animate-pulse space-y-2">
-                        <div className="h-12 w-12 rounded-full bg-primary-100"></div>
-                        <div className="h-4 w-full rounded bg-primary-100"></div>
-                        <div className="h-4 w-2/3 rounded bg-primary-100"></div>
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm font-medium">Total Budget</span>
+                          <span className="text-sm font-bold">${totalContractValue.toFixed(2)}</span>
+                        </div>
+                        <div className="w-full bg-zinc-200 rounded-full h-2">
+                          <div 
+                            className="bg-primary h-2 rounded-full transition-all duration-300" 
+                            style={{ width: `${Math.min((totalContractValue - remainingAmount) / totalContractValue * 100, 100)}%` }}
+                          ></div>
+                        </div>
+                        <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                          <span>Used: ${(totalContractValue - remainingAmount).toFixed(2)}</span>
+                          <span>Remaining: ${remainingAmount.toFixed(2)}</span>
+                        </div>
                       </div>
-                    ) : getAssociatedContractors().length > 0 ? (
-                      <div className="space-y-6">
-                        {getAssociatedContractors().map((contractor: User) => (
-                          <div key={contractor.id}>
-                            <div className="flex items-center mb-4">
-                              <div className="h-16 w-16 rounded-md bg-primary-100 flex items-center justify-center text-primary-500 overflow-hidden">
-                                {contractor.companyLogo ? (
-                                  <img 
-                                    src={contractor.companyLogo} 
-                                    alt={contractor.companyName || "Company logo"} 
-                                    className="h-full w-full object-cover"
-                                  />
-                                ) : (
-                                  <Building className="h-8 w-8" />
-                                )}
-                              </div>
-                              <div className="ml-3">
-                                <h3 className="font-medium">{contractor.companyName || "Company"}</h3>
-                                <p className="text-sm text-muted-foreground">{contractor.title || 'No title'}</p>
-                              </div>
-                            </div>
-                            
-                            <div className="space-y-2">
-                              <p className="text-sm"><span className="font-medium">Email:</span> {contractor.email}</p>
-                              {contractor.industry && (
-                                <p className="text-sm"><span className="font-medium">Industry:</span> {contractor.industry}</p>
-                              )}
-                              {contractor.website && (
-                                <p className="text-sm"><span className="font-medium">Website:</span> {contractor.website}</p>
-                              )}
-                              <p className="text-sm"><span className="font-medium">Worker Type:</span> {contractor.workerType || 'Sub Contractor'}</p>
-                            </div>
-                            
-                            {getAssociatedContractors().length > 1 && <Separator className="my-4" />}
-                          </div>
-                        ))}
+                      
+                      <Separator />
+                      
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-medium">Quick Actions</h4>
+                        <AddContractorModal 
+                          contractId={contractId} 
+                          contractors={contractors}
+                          onSuccess={() => {
+                            queryClient.invalidateQueries({ queryKey: ['/api/contracts'] });
+                            queryClient.invalidateQueries({ queryKey: ['/api/contracts', contractId] });
+                          }}
+                        />
                       </div>
-                    ) : (
-                      <p>No workers assigned to this project yet.</p>
-                    )}
+                    </div>
                   </CardContent>
-                  <CardFooter>
-                    <AddContractorModal 
-                      contractId={contractId} 
-                      contractors={contractors}
-                      onSuccess={() => {
-                        // Refresh all the queries when a contractor is added
-                        queryClient.invalidateQueries({ queryKey: ['/api/contracts'] });
-                        queryClient.invalidateQueries({ queryKey: ['/api/contracts', contractId] });
-                      }}
-                    />
-                  </CardFooter>
                 </Card>
               </div>
             </div>
@@ -992,6 +967,93 @@ export default function ContractDetailPage() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Worker Progress Bar - Fixed at bottom */}
+        {getAssociatedContractors().length > 0 && (
+          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-zinc-200 shadow-lg z-50">
+            <div className="max-w-7xl mx-auto px-4 py-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-semibold text-zinc-900">Active Workers</h3>
+                <span className="text-sm text-zinc-500">{getAssociatedContractors().length} assigned</span>
+              </div>
+              
+              <div className="space-y-3">
+                {getAssociatedContractors().map((contractor: User) => {
+                  // Find milestone for this contractor
+                  const contractorMilestone = milestones.find((m: any) => m.contractId === contractId);
+                  const deliverableName = contractorMilestone?.name || "Website redesign logo";
+                  const progress = contractorMilestone?.progress || 0;
+                  const amount = contractorMilestone?.paymentAmount || "20";
+                  const status = contractorMilestone?.status || "pending";
+                  
+                  return (
+                    <div key={contractor.id} className="bg-zinc-50 rounded-lg p-4 border border-zinc-200">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="h-10 w-10 rounded-full bg-zinc-200 flex items-center justify-center">
+                            <UserIcon size={20} className="text-zinc-600" />
+                          </div>
+                          <div>
+                            <div className="font-medium text-zinc-900">
+                              {contractor.firstName} {contractor.lastName}
+                            </div>
+                            <div className="text-sm text-zinc-500">{contractor.email}</div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-6">
+                          <div className="text-center">
+                            <div className="text-sm font-medium text-zinc-900">{deliverableName}</div>
+                            <div className="text-xs text-zinc-500">Assignment</div>
+                          </div>
+                          
+                          <div className="text-center">
+                            <div className="text-sm font-medium text-zinc-900">${amount}</div>
+                            <div className="text-xs text-zinc-500">Payment</div>
+                          </div>
+                          
+                          <div className="w-32">
+                            <div className="flex justify-between text-xs text-zinc-600 mb-1">
+                              <span>Progress</span>
+                              <span>{progress}%</span>
+                            </div>
+                            <div className="w-full bg-zinc-200 rounded-full h-2">
+                              <div 
+                                className="bg-blue-500 h-2 rounded-full transition-all duration-300" 
+                                style={{ width: `${progress}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                          
+                          <div className="flex space-x-2">
+                            {status === 'submitted' ? (
+                              <>
+                                <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50">
+                                  Reject
+                                </Button>
+                                <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
+                                  Accept & Pay
+                                </Button>
+                              </>
+                            ) : status === 'approved' ? (
+                              <Button size="sm" disabled className="bg-green-100 text-green-800">
+                                ✓ Completed
+                              </Button>
+                            ) : (
+                              <Button size="sm" variant="outline" disabled>
+                                Waiting for delivery
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </Layout>
   );
