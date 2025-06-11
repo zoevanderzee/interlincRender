@@ -35,7 +35,10 @@ import {
   Building,
   Home,
   ArrowLeft,
-  Layers
+  Layers,
+  Eye,
+  Settings,
+  BarChart3
 } from 'lucide-react';
 
 export default function ContractDetailPage() {
@@ -430,105 +433,280 @@ export default function ContractDetailPage() {
 
   return (
     <Layout>
-      <div className="container py-6">
-        {/* Project header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-primary-900">{contract.contractName}</h1>
-            <div className="flex items-center text-primary-500 mt-1">
-              <span className="inline-flex items-center mr-4">
-                <UserIcon className="h-4 w-4 mr-1" />
-                {isLoadingContractors ? 'Loading contractors...' : 
-                  `${getContractorCount()} contractors assigned`}
-              </span>
-              <span className="inline-flex items-center mr-4">
-                <Calendar className="h-4 w-4 mr-1" />
-                {startDate} to {endDate}
-              </span>
-              <span className="inline-flex items-center">
-                <FileText className="h-4 w-4 mr-1" />
-                Code: {contract.contractCode}
-              </span>
+      <div className="container mx-auto px-6 py-8 max-w-7xl">
+        {/* Clean Header Section */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => navigate('/contracts')}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Projects
+              </Button>
+            </div>
+            <div className="flex items-center space-x-3">
+              {user?.role === 'business' && (
+                <>
+                  <AddContractorModal 
+                    contractId={contractId} 
+                    isOpen={isAddContractorOpen} 
+                    onOpenChange={setIsAddContractorOpen} 
+                  />
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setIsDeleteDialogOpen(true)}
+                  >
+                    Delete Project
+                  </Button>
+                </>
+              )}
             </div>
           </div>
-          <div className="mt-4 md:mt-0 flex flex-wrap gap-2">
-            <Button variant="outline">
-              Export Project
-            </Button>
-            <Button variant="outline">
-              Edit Project
-            </Button>
-            
-            {getContractorCount() === 0 && (
-              <Button 
-                variant="destructive" 
-                onClick={() => setIsDeleteDialogOpen(true)}
-              >
-                Delete Project
-              </Button>
-            )}
-            
-            {/* Delete confirmation dialog */}
-            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-              <AlertDialogContent className="bg-zinc-900 border-zinc-700">
-                <AlertDialogHeader>
-                  <AlertDialogTitle className="text-white">Are you sure?</AlertDialogTitle>
-                  <AlertDialogDescription className="text-zinc-400">
-                    This action cannot be undone. This will permanently delete the project
-                    and remove all associated data.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel className="bg-zinc-800 text-white border-zinc-700 hover:bg-zinc-700">
-                    Cancel
-                  </AlertDialogCancel>
-                  <AlertDialogAction 
-                    className="bg-red-600 text-white hover:bg-red-700"
-                    onClick={handleDeleteContract}
-                  >
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+          
+          <div className="mt-6">
+            <h1 className="text-3xl font-bold text-foreground mb-2">{contract.contractName}</h1>
+            <p className="text-muted-foreground text-lg">{contract.contractCode}</p>
           </div>
         </div>
 
-        {/* Simple status indicator */}
-        <div className="mb-4">
-          <div className="flex items-center gap-2">
-            {contract.status === 'completed' ? (
-              <>
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                <span className="text-white text-sm">Completed</span>
-              </>
-            ) : contract.status === 'active' ? (
-              <>
-                <Clock className="h-4 w-4 text-blue-500" />
-                <span className="text-white text-sm">Active</span>
-              </>
-            ) : (
-              <>
-                <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                <span className="text-white text-sm">Setup</span>
-              </>
-            )}
-          </div>
+        {/* Key Metrics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Project Value</p>
+                  <p className="text-2xl font-bold">${totalContractValue.toLocaleString()}</p>
+                </div>
+                <DollarSign className="h-8 w-8 text-green-500" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Progress</p>
+                  <p className="text-2xl font-bold">{progress}%</p>
+                  <p className="text-xs text-muted-foreground">{completedMilestones} of {totalMilestones} milestones</p>
+                </div>
+                <BarChart3 className="h-8 w-8 text-blue-500" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Contractors</p>
+                  <p className="text-2xl font-bold">{getContractorCount()}</p>
+                  <p className="text-xs text-muted-foreground">assigned</p>
+                </div>
+                <UserIcon className="h-8 w-8 text-purple-500" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Status</p>
+                  <p className="text-2xl font-bold capitalize">{contract.status}</p>
+                </div>
+                <CheckCircle className="h-8 w-8 text-orange-500" />
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Simplified stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <div className="bg-zinc-900 p-3 rounded-lg">
-            <div className="text-lg font-semibold text-white">${totalContractValue.toFixed(0)}</div>
-            <div className="text-xs text-zinc-400">Total</div>
-          </div>
-          <div className="bg-zinc-900 p-3 rounded-lg">
-            <div className="text-lg font-semibold text-white">{progress}%</div>
-            <div className="text-xs text-zinc-400">Progress</div>
-          </div>
-          <div className="bg-zinc-900 p-3 rounded-lg">
-            <div className="text-lg font-semibold text-white">${totalPaid.toFixed(0)}</div>
-            <div className="text-xs text-zinc-400">Paid</div>
+        {/* Main Content Tabs */}
+        <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="milestones">Milestones</TabsTrigger>
+            <TabsTrigger value="documents">Documents</TabsTrigger>
+            <TabsTrigger value="payments">Payments</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="mt-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Project Details */}
+              <div className="lg:col-span-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <Building className="h-5 w-5 mr-2" />
+                      Project Details
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Project Name</label>
+                      <p className="text-lg font-semibold">{contract.contractName}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Project Code</label>
+                      <p className="font-mono text-sm">{contract.contractCode}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Description</label>
+                      <p className="text-sm">{contract.description || 'No description provided'}</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Start Date</label>
+                        <p className="text-sm">{startDate}</p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">End Date</label>
+                        <p className="text-sm">{endDate}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Assigned Contractors */}
+              <div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <span className="flex items-center">
+                        <UserIcon className="h-5 w-5 mr-2" />
+                        Contractors
+                      </span>
+                      {user?.role === 'business' && getContractorCount() === 0 && (
+                        <Button size="sm" variant="outline">
+                          Add Contractor
+                        </Button>
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {getContractorCount() > 0 ? (
+                      <div className="space-y-3">
+                        {getAssociatedContractors().map((contractor: User) => (
+                          <div key={contractor.id} className="flex items-center space-x-3 p-3 bg-muted rounded-lg">
+                            <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                              <UserIcon className="h-4 w-4 text-primary-foreground" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-medium">{contractor.firstName} {contractor.lastName}</p>
+                              <p className="text-xs text-muted-foreground">{contractor.email}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground text-sm">No contractors assigned</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="milestones" className="mt-6">
+            <ContractTimeline 
+              milestones={milestones}
+              onMilestoneComplete={handleMilestoneComplete}
+              onMilestoneApprove={handleMilestoneApprove}
+            />
+          </TabsContent>
+
+          <TabsContent value="documents" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Documents</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {documents.length > 0 ? (
+                  <div className="space-y-3">
+                    {documents.map((doc: any) => (
+                      <div key={doc.id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <FileText className="h-5 w-5 text-muted-foreground" />
+                          <span className="font-medium">{doc.fileName}</span>
+                        </div>
+                        <Button size="sm" variant="outline">
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">No documents uploaded</p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="payments" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Payment History</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {payments.length > 0 ? (
+                  <div className="space-y-3">
+                    {payments.map((payment: any) => {
+                      const milestone = milestones.find((m: Milestone) => m.id === payment.milestoneId);
+                      return (
+                        <div key={payment.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div>
+                            <p className="font-medium">${parseFloat(payment.amount).toFixed(2)}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {milestone ? milestone.name : 'Project Payment'}
+                            </p>
+                          </div>
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            payment.status === 'completed' ? 'bg-green-100 text-green-800' :
+                            payment.status === 'processing' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {payment.status}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">No payments recorded</p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        {/* Delete Dialog */}
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Project</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this project? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteContract} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </Layout>
+  );
+}
           </div>
           <div className="bg-zinc-900 p-3 rounded-lg">
             <div className="text-lg font-semibold text-white">${remainingAmount.toFixed(0)}</div>

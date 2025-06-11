@@ -763,6 +763,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // All checks passed, proceed with the update
         console.log("Budget validation passed, updating contract with contractor");
+        
+        // CRITICAL: Deduct budget from business user when contractor is assigned
+        // Only deduct if this is a new contractor assignment (not an update)
+        if (!existingContract.contractorId && updateData.contractorId) {
+          console.log(`Deducting budget for contractor assignment: $${contractorValue}`);
+          await storage.increaseBudgetUsed(existingContract.businessId, contractorValue);
+          console.log(`Budget deducted successfully from business user ${existingContract.businessId}`);
+        }
       }
 
       // Automatically activate any draft contract that has a contractor assigned
