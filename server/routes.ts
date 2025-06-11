@@ -633,33 +633,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Authentication required" });
       }
       
-      // Load the full user if not already loaded
-      let user = req.user;
-      
-      if (!user && userId) {
-        try {
-          user = await storage.getUser(userId);
-          if (user) {
-            console.log(`Using X-User-ID header fallback authentication for user ID: ${userId}`);
-            userRole = user.role || 'business';
-          }
-        } catch (error) {
-          console.error('Error loading user from X-User-ID header:', error);
-        }
-      } else if (user) {
-        userRole = user.role || 'business';
-      }
-      
-      console.log(`User ${userId} with role ${userRole} is accessing contract ${id}`);
-      
-      // Allow access if user is the business owner or the assigned contractor
-      const hasAccess =
-        (userRole === 'business' && contract.businessId === userId) || 
-        (userRole === 'contractor' && contract.contractorId === userId);
-        
-      if (!hasAccess) {
-        console.log(`User ${userId} with role ${userRole} tried to access contract ${id} without permission`);
-        return res.status(403).json({ message: "You don't have permission to view this project" });
+      // Only business users who own the contract can access it
+      if (userRole !== 'business' || contract.businessId !== userId) {
+        console.log(`Access denied for user ${userId} with role ${userRole} trying to access contract ${id} owned by business ${contract.businessId}`);
+        return res.status(403).json({ message: "Access denied" });
       }
       
       res.json(contract);
