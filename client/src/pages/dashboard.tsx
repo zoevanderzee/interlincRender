@@ -409,12 +409,12 @@ const Dashboard = () => {
         <Button 
           variant="outline"
           className="text-white border-zinc-700 hover:bg-zinc-800 hover:text-white h-auto py-3 justify-start"
-          onClick={() => navigate('/contracts')}
+          onClick={() => navigate('/projects')}
         >
           <FileText className="mr-3" size={18} />
           <div className="text-left">
             <div className="font-medium">Projects</div>
-            <div className="text-xs text-gray-400">Manage all contracts</div>
+            <div className="text-xs text-gray-400">Manage all projects</div>
           </div>
         </Button>
         
