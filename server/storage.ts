@@ -104,6 +104,7 @@ export interface IStorage {
   getPayment(id: number): Promise<Payment | undefined>;
   getPaymentsByContractId(contractId: number): Promise<Payment[]>;
   getPaymentByMilestoneId(milestoneId: number): Promise<Payment | undefined>;
+  getPaymentByTrolleyId(trolleyPaymentId: string): Promise<Payment | undefined>;
   getAllPayments(contractId: number | null): Promise<Payment[]>;
   getUpcomingPayments(limit: number): Promise<Payment[]>;
   getApprovedMilestonesWithoutPayments(): Promise<Milestone[]>;

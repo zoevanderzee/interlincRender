@@ -4379,6 +4379,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Trolley webhook endpoint for payment status updates
+  app.post(`${apiRouter}/trolley/webhook`, async (req: Request, res: Response) => {
+    try {
+      const { event, payment } = req.body;
+      
+      console.log(`Received Trolley webhook: ${event} for payment ${payment.id}`);
+      
+      // Find the payment record by Trolley payment ID
+      const paymentRecord = await storage.getPaymentByTrolleyId(payment.id);
+      
+      if (!paymentRecord) {
+        console.log(`No payment record found for Trolley payment ID: ${payment.id}`);
+        return res.status(404).json({ message: 'Payment not found' });
+      }
+
+      // Update payment status based on webhook event
+      let newStatus = paymentRecord.status;
+      let completedDate = null;
+
+      switch (event) {
+        case 'payment.completed':
+          newStatus = 'completed';
+          completedDate = new Date();
+          break;
+        case 'payment.failed':
+          newStatus = 'failed';
+          break;
+        case 'payment.cancelled':
+          newStatus = 'failed';
+          break;
+        case 'payment.processing':
+          newStatus = 'processing';
+          break;
+        default:
+          console.log(`Unknown webhook event: ${event}`);
+          break;
+      }
+
+      // Update the payment record
+      await storage.updatePayment(paymentRecord.id, {
+        status: newStatus,
+        completedDate: completedDate,
+        notes: `${paymentRecord.notes || ''} - Webhook update: ${event}`
+      });
+
+      // If payment completed, update milestone status to 'paid'
+      if (event === 'payment.completed' && paymentRecord.milestoneId) {
+        await storage.updateMilestone(paymentRecord.milestoneId, {
+          status: 'paid'
+        });
+        
+        console.log(`Updated milestone ${paymentRecord.milestoneId} to 'paid' status`);
+      }
+
+      console.log(`Updated payment ${paymentRecord.id} status to ${newStatus}`);
+      
+      res.json({ success: true, message: 'Webhook processed successfully' });
+    } catch (error) {
+      console.error('Error processing Trolley webhook:', error);
+      res.status(500).json({ message: 'Webhook processing failed' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
