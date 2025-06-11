@@ -1,6 +1,6 @@
 import { 
   users, invites, contracts, milestones, payments, paymentLogs, documents, bankAccounts, workRequests,
-  businessOnboardingLinks, businessOnboardingUsage, connectionRequests, notifications, workSubmissions,
+  businessOnboardingLinks, businessOnboardingUsage, connectionRequests, notifications, workSubmissions, workRequestSubmissions,
   type User, type InsertUser, 
   type Invite, type InsertInvite,
   type Contract, type InsertContract,
@@ -13,7 +13,8 @@ import {
   type BusinessOnboardingUsage, type InsertBusinessOnboardingUsage,
   type ConnectionRequest, type InsertConnectionRequest,
   type Notification, type InsertNotification,
-  type WorkSubmission, type InsertWorkSubmission
+  type WorkSubmission, type InsertWorkSubmission,
+  type WorkRequestSubmission, type InsertWorkRequestSubmission
 } from "@shared/schema";
 import { eq, and, desc, lte, gte, sql, or } from "drizzle-orm";
 import { db, pool } from "./db";
@@ -2457,6 +2458,31 @@ export class DatabaseStorage implements IStorage {
       status: 'pending'
     }).returning();
     return result;
+  }
+
+  async createWorkRequestSubmission(submission: InsertWorkRequestSubmission): Promise<WorkRequestSubmission> {
+    const [result] = await db.insert(workRequestSubmissions).values({
+      ...submission,
+      submittedAt: new Date(),
+      status: 'pending'
+    }).returning();
+    return result;
+  }
+
+  async getWorkRequestSubmissionsByContractorId(contractorId: number): Promise<WorkRequestSubmission[]> {
+    return await db
+      .select()
+      .from(workRequestSubmissions)
+      .where(eq(workRequestSubmissions.contractorId, contractorId))
+      .orderBy(desc(workRequestSubmissions.submittedAt));
+  }
+
+  async getWorkRequestSubmissionsByBusinessId(businessId: number): Promise<WorkRequestSubmission[]> {
+    return await db
+      .select()
+      .from(workRequestSubmissions)
+      .where(eq(workRequestSubmissions.businessId, businessId))
+      .orderBy(desc(workRequestSubmissions.submittedAt));
   }
 
   async getWorkSubmissionsByContractId(contractId: number): Promise<WorkSubmission[]> {

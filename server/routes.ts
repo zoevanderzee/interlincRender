@@ -3833,6 +3833,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Work Request Submissions Routes
+  app.post('/api/work-request-submissions', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { workRequestId, title, description, notes, attachmentUrls, submissionType } = req.body;
+      const contractorId = req.user!.id;
+
+      // Get the work request to verify access and get business ID
+      const workRequest = await storage.getWorkRequest(workRequestId);
+      if (!workRequest) {
+        return res.status(404).json({ message: 'Work request not found' });
+      }
+
+      // Verify the contractor has access to this work request (must be assigned to them)
+      if (workRequest.recipientEmail !== req.user!.email) {
+        return res.status(403).json({ message: 'Access denied to this work request' });
+      }
+
+      // Verify the work request is accepted
+      if (workRequest.status !== 'accepted') {
+        return res.status(400).json({ message: 'Work request must be accepted before submitting work' });
+      }
+
+      const submission = await storage.createWorkRequestSubmission({
+        workRequestId,
+        contractorId,
+        businessId: workRequest.businessId,
+        title,
+        description,
+        notes: notes || '',
+        attachmentUrls: attachmentUrls || [],
+        submissionType: submissionType || 'digital'
+      });
+
+      res.json(submission);
+    } catch (error: any) {
+      console.error('Error creating work request submission:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get('/api/work-request-submissions/contractor/:contractorId', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const contractorId = parseInt(req.params.contractorId);
+      
+      // Only allow contractors to see their own submissions
+      if (req.user!.role === 'contractor' && req.user!.id !== contractorId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      const submissions = await storage.getWorkRequestSubmissionsByContractorId(contractorId);
+      res.json(submissions);
+    } catch (error: any) {
+      console.error('Error fetching contractor work request submissions:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get('/api/work-request-submissions/business/:businessId', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const businessId = parseInt(req.params.businessId);
+      
+      // Only allow business owners to see submissions for their business
+      if (req.user!.role === 'business' && req.user!.id !== businessId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      const submissions = await storage.getWorkRequestSubmissionsByBusinessId(businessId);
+      res.json(submissions);
+    } catch (error: any) {
+      console.error('Error fetching business work request submissions:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Work Submissions Routes
   app.post('/api/work-submissions', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {

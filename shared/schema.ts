@@ -181,6 +181,23 @@ export const workRequests = pgTable("work_requests", {
   contractId: integer("contract_id") // If a contract was created from this request
 });
 
+// Work Request Submissions table
+export const workRequestSubmissions = pgTable("work_request_submissions", {
+  id: serial("id").primaryKey(),
+  workRequestId: integer("work_request_id").notNull().references(() => workRequests.id),
+  contractorId: integer("contractor_id").notNull().references(() => users.id),
+  businessId: integer("business_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  notes: text("notes"), // Additional notes from contractor
+  attachmentUrls: jsonb("attachment_urls"), // Array of file URLs
+  submissionType: text("submission_type").notNull().default("digital"), // "digital" or "physical"
+  status: text("status").notNull().default("pending"), // pending, approved, rejected, revision_requested
+  submittedAt: timestamp("submitted_at").notNull().defaultNow(),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNotes: text("review_notes"), // Feedback from business owner
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
 const baseInviteSchema = createInsertSchema(invites).omit({ id: true, createdAt: true });
@@ -347,6 +364,13 @@ export const insertWorkSubmissionSchema = createInsertSchema(workSubmissions).om
   reviewedAt: true 
 });
 
+// Create work request submission schema
+export const insertWorkRequestSubmissionSchema = createInsertSchema(workRequestSubmissions).omit({ 
+  id: true, 
+  submittedAt: true,
+  reviewedAt: true 
+});
+
 // Types for notifications
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type Notification = typeof notifications.$inferSelect;
@@ -354,6 +378,10 @@ export type Notification = typeof notifications.$inferSelect;
 // Types for work submissions
 export type InsertWorkSubmission = z.infer<typeof insertWorkSubmissionSchema>;
 export type WorkSubmission = typeof workSubmissions.$inferSelect;
+
+// Types for work request submissions
+export type InsertWorkRequestSubmission = z.infer<typeof insertWorkRequestSubmissionSchema>;
+export type WorkRequestSubmission = typeof workRequestSubmissions.$inferSelect;
 
 // Create types
 export type InsertBusinessOnboardingLink = z.infer<typeof insertBusinessOnboardingLinkSchema>;
