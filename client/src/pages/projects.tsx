@@ -350,7 +350,7 @@ export default function Projects() {
                 <CardContent className="p-6">
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-white mb-2">{contract.title}</h3>
+                      <h3 className="text-lg font-semibold text-white mb-2">{contract.contractName}</h3>
                       <p className="text-gray-300 mb-3">{contract.description}</p>
                     </div>
                     <Badge 
