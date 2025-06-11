@@ -88,20 +88,13 @@ export default function ContractDetailPage() {
     queryKey: ['/api/users'],
   });
 
-  const { data: contractors = [], error: contractorsError } = useQuery({
+  const { data: contractors = [] } = useQuery({
     queryKey: ['/api/contractors', contract?.businessId],
-    queryFn: () => {
-      console.log('Contractors query executing with businessId:', contract?.businessId);
-      return contract?.businessId ? 
-        apiRequest(`/api/contractors?companyId=${contract.businessId}`) : 
-        Promise.resolve([]);
-    },
+    queryFn: () => contract?.businessId ? 
+      apiRequest(`/api/contractors?companyId=${contract.businessId}`) : 
+      Promise.resolve([]),
     enabled: !!contract?.businessId,
   });
-
-  // Debug log contractors data
-  console.log('Available contractors before filtering:', contractors);
-  console.log('Contractors error:', contractorsError);
 
   const { data: payments = [] } = useQuery({
     queryKey: ['/api/payments'],
