@@ -546,84 +546,199 @@ export default function ContractDetailPage() {
           </TabsList>
           
           <TabsContent value="overview">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="md:col-span-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Project Details</CardTitle>
-                    <CardDescription>
-                      Summary of the project between your business and project workers
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div>
-                        <h4 className="text-sm font-medium text-muted-foreground mb-1">Description</h4>
-                        <p>{contract.description || 'No description provided.'}</p>
+            <div className="space-y-6">
+              {/* Clean Stats Cards - Dashboard Style */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <Card className="bg-zinc-900/50 border-zinc-800">
+                  <CardContent className="p-6">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-3 bg-green-500/20 rounded-xl">
+                        <DollarSign className="h-6 w-6 text-green-400" />
                       </div>
-                      
-                      <Separator />
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <h4 className="text-sm font-medium text-muted-foreground mb-1">Project Dates</h4>
-                          <p><span className="font-medium">Start:</span> {startDate}</p>
-                          <p><span className="font-medium">End:</span> {endDate}</p>
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-medium text-muted-foreground mb-1">Project Value</h4>
-                          <p><span className="font-medium">Total:</span> ${totalContractValue.toFixed(2)}</p>
-                          <p><span className="font-medium">Remaining:</span> ${remainingAmount.toFixed(2)}</p>
-                        </div>
+                      <div>
+                        <p className="text-zinc-400 text-sm">Contract Value</p>
+                        <p className="text-white text-2xl font-bold">${parseFloat(contract?.value || '0').toFixed(2)}</p>
+                        <p className="text-zinc-500 text-xs">Total project budget</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-zinc-900/50 border-zinc-800">
+                  <CardContent className="p-6">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-3 bg-blue-500/20 rounded-xl">
+                        <Users className="h-6 w-6 text-blue-400" />
+                      </div>
+                      <div>
+                        <p className="text-zinc-400 text-sm">Active Workers</p>
+                        <p className="text-white text-2xl font-bold">{getContractorCount()}</p>
+                        <p className="text-zinc-500 text-xs">Working professionals</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-zinc-900/50 border-zinc-800">
+                  <CardContent className="p-6">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-3 bg-purple-500/20 rounded-xl">
+                        <Briefcase className="h-6 w-6 text-purple-400" />
+                      </div>
+                      <div>
+                        <p className="text-zinc-400 text-sm">Project Status</p>
+                        <p className="text-white text-2xl font-bold capitalize">{contract?.status || 'Active'}</p>
+                        <p className="text-zinc-500 text-xs">Current phase</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-zinc-900/50 border-zinc-800">
+                  <CardContent className="p-6">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-3 bg-orange-500/20 rounded-xl">
+                        <Clock className="h-6 w-6 text-orange-400" />
+                      </div>
+                      <div>
+                        <p className="text-zinc-400 text-sm">Due Date</p>
+                        <p className="text-white text-2xl font-bold">
+                          {contract?.endDate ? format(new Date(contract.endDate), 'MMM d') : 'TBD'}
+                        </p>
+                        <p className="text-zinc-500 text-xs">Project deadline</p>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
               </div>
-              
-              <div>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Project Budget</CardTitle>
-                    <CardDescription>
-                      Budget allocation and spending overview
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
+
+              {/* Main Content */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 space-y-6">
+                  <Card className="bg-zinc-900/50 border-zinc-800">
+                    <CardHeader>
+                      <CardTitle className="text-white text-xl">{contract?.contractName}</CardTitle>
+                      <CardDescription className="text-zinc-400">
+                        {contract?.contractCode}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
                       <div>
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm font-medium">Total Budget</span>
-                          <span className="text-sm font-bold">${totalContractValue.toFixed(2)}</span>
+                        <h4 className="text-white font-semibold mb-3">Project Description</h4>
+                        <p className="text-zinc-300 leading-relaxed">{contract?.description}</p>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-6">
+                        <div>
+                          <h4 className="text-white font-semibold mb-2">Start Date</h4>
+                          <p className="text-zinc-300">
+                            {contract?.startDate ? format(new Date(contract.startDate), 'MMM dd, yyyy') : 'Not scheduled'}
+                          </p>
                         </div>
-                        <div className="w-full bg-zinc-200 rounded-full h-2">
+                        <div>
+                          <h4 className="text-white font-semibold mb-2">End Date</h4>
+                          <p className="text-zinc-300">
+                            {contract?.endDate ? format(new Date(contract.endDate), 'MMM dd, yyyy') : 'Not scheduled'}
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-zinc-900/50 border-zinc-800">
+                    <CardHeader>
+                      <CardTitle className="text-white">Team Members</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {getAssociatedContractors().length > 0 ? (
+                        <div className="space-y-4">
+                          {getAssociatedContractors().map((contractor) => (
+                            <div key={contractor.id} className="flex items-center justify-between p-4 bg-zinc-800/50 rounded-lg border border-zinc-700">
+                              <div className="flex items-center space-x-4">
+                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
+                                  {contractor.firstName?.[0]}{contractor.lastName?.[0]}
+                                </div>
+                                <div>
+                                  <p className="text-white font-semibold">{contractor.firstName} {contractor.lastName}</p>
+                                  <p className="text-zinc-400 text-sm">{contractor.email}</p>
+                                </div>
+                              </div>
+                              <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm font-medium">
+                                ✓ Active
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-12">
+                          <Users className="h-16 w-16 text-zinc-600 mx-auto mb-4" />
+                          <h3 className="text-white font-semibold mb-2">No Team Members</h3>
+                          <p className="text-zinc-400 mb-6">Add contractors to get started with this project</p>
+                          <AddContractorModal 
+                            contractId={contractId} 
+                            contractors={contractors}
+                            onSuccess={() => {
+                              queryClient.invalidateQueries({ queryKey: ['/api/contracts'] });
+                              queryClient.invalidateQueries({ queryKey: ['/api/contracts', contractId] });
+                            }}
+                          />
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="space-y-6">
+                  <Card className="bg-zinc-900/50 border-zinc-800">
+                    <CardHeader>
+                      <CardTitle className="text-white">Budget Overview</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div>
+                        <div className="flex justify-between items-center mb-3">
+                          <span className="text-zinc-400 font-medium">Budget Allocation</span>
+                          <span className="text-white font-bold">
+                            ${(totalContractValue - remainingAmount).toFixed(2)} / ${totalContractValue.toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="bg-zinc-800 rounded-full h-3">
                           <div 
-                            className="bg-primary h-2 rounded-full transition-all duration-300" 
+                            className="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full transition-all duration-500" 
                             style={{ width: `${Math.min((totalContractValue - remainingAmount) / totalContractValue * 100, 100)}%` }}
                           ></div>
                         </div>
-                        <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                          <span>Used: ${(totalContractValue - remainingAmount).toFixed(2)}</span>
-                          <span>Remaining: ${remainingAmount.toFixed(2)}</span>
+                        <div className="flex justify-between text-sm mt-2">
+                          <span className="text-green-400">Used: ${(totalContractValue - remainingAmount).toFixed(2)}</span>
+                          <span className="text-zinc-400">Available: ${remainingAmount.toFixed(2)}</span>
                         </div>
                       </div>
-                      
-                      <Separator />
-                      
-                      <div className="space-y-2">
-                        <h4 className="text-sm font-medium">Quick Actions</h4>
-                        <AddContractorModal 
-                          contractId={contractId} 
-                          contractors={contractors}
-                          onSuccess={() => {
-                            queryClient.invalidateQueries({ queryKey: ['/api/contracts'] });
-                            queryClient.invalidateQueries({ queryKey: ['/api/contracts', contractId] });
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-zinc-900/50 border-zinc-800">
+                    <CardHeader>
+                      <CardTitle className="text-white">Quick Actions</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <AddContractorModal 
+                        contractId={contractId} 
+                        contractors={contractors}
+                        onSuccess={() => {
+                          queryClient.invalidateQueries({ queryKey: ['/api/contracts'] });
+                          queryClient.invalidateQueries({ queryKey: ['/api/contracts', contractId] });
+                        }}
+                      />
+                      <Button variant="outline" className="w-full bg-zinc-800 border-zinc-700 text-white hover:bg-zinc-700">
+                        <FileText className="h-4 w-4 mr-2" />
+                        Generate Report
+                      </Button>
+                      <Button variant="outline" className="w-full bg-zinc-800 border-zinc-700 text-white hover:bg-zinc-700">
+                        <Download className="h-4 w-4 mr-2" />
+                        Export Contract
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
             </div>
           </TabsContent>
