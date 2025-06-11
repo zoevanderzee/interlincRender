@@ -968,16 +968,17 @@ export default function ContractDetailPage() {
           </TabsContent>
         </Tabs>
 
-        {/* Worker Progress Bar - Fixed at bottom */}
+        {/* Worker Progress Section - Inside project container */}
         {getAssociatedContractors().length > 0 && (
-          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-zinc-200 shadow-lg z-50">
-            <div className="max-w-7xl mx-auto px-4 py-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-lg font-semibold text-zinc-900">Active Workers</h3>
-                <span className="text-sm text-zinc-500">{getAssociatedContractors().length} assigned</span>
-              </div>
-              
-              <div className="space-y-3">
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Active Workers</CardTitle>
+              <CardDescription>
+                Track progress and manage deliverables from assigned workers
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
                 {getAssociatedContractors().map((contractor: User) => {
                   // Find milestone for this contractor
                   const contractorMilestone = milestones.find((m: any) => m.contractId === contractId);
@@ -987,39 +988,39 @@ export default function ContractDetailPage() {
                   const status = contractorMilestone?.status || "pending";
                   
                   return (
-                    <div key={contractor.id} className="bg-zinc-50 rounded-lg p-4 border border-zinc-200">
+                    <div key={contractor.id} className="bg-card border border-border rounded-lg p-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
-                          <div className="h-10 w-10 rounded-full bg-zinc-200 flex items-center justify-center">
-                            <UserIcon size={20} className="text-zinc-600" />
+                          <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                            <UserIcon size={20} className="text-muted-foreground" />
                           </div>
                           <div>
-                            <div className="font-medium text-zinc-900">
+                            <div className="font-medium">
                               {contractor.firstName} {contractor.lastName}
                             </div>
-                            <div className="text-sm text-zinc-500">{contractor.email}</div>
+                            <div className="text-sm text-muted-foreground">{contractor.email}</div>
                           </div>
                         </div>
                         
                         <div className="flex items-center space-x-6">
                           <div className="text-center">
-                            <div className="text-sm font-medium text-zinc-900">{deliverableName}</div>
-                            <div className="text-xs text-zinc-500">Assignment</div>
+                            <div className="text-sm font-medium">{deliverableName}</div>
+                            <div className="text-xs text-muted-foreground">Assignment</div>
                           </div>
                           
                           <div className="text-center">
-                            <div className="text-sm font-medium text-zinc-900">${amount}</div>
-                            <div className="text-xs text-zinc-500">Payment</div>
+                            <div className="text-sm font-medium">${amount}</div>
+                            <div className="text-xs text-muted-foreground">Payment</div>
                           </div>
                           
                           <div className="w-32">
-                            <div className="flex justify-between text-xs text-zinc-600 mb-1">
+                            <div className="flex justify-between text-xs text-muted-foreground mb-1">
                               <span>Progress</span>
                               <span>{progress}%</span>
                             </div>
-                            <div className="w-full bg-zinc-200 rounded-full h-2">
+                            <div className="w-full bg-secondary rounded-full h-2">
                               <div 
-                                className="bg-blue-500 h-2 rounded-full transition-all duration-300" 
+                                className="bg-primary h-2 rounded-full transition-all duration-300" 
                                 style={{ width: `${progress}%` }}
                               ></div>
                             </div>
@@ -1028,7 +1029,7 @@ export default function ContractDetailPage() {
                           <div className="flex space-x-2">
                             {status === 'submitted' ? (
                               <>
-                                <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50">
+                                <Button size="sm" variant="outline" className="text-destructive border-destructive/20 hover:bg-destructive/10">
                                   Reject
                                 </Button>
                                 <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
@@ -1051,8 +1052,8 @@ export default function ContractDetailPage() {
                   );
                 })}
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         )}
       </div>
     </Layout>
