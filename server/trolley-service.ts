@@ -27,6 +27,15 @@ interface TrolleyPayment {
   createdAt: string;
 }
 
+interface TrolleyCompanyProfile {
+  id: string;
+  name: string;
+  email: string;
+  country: string;
+  currency: string;
+  status: string;
+}
+
 class TrolleyService {
   private apiKey: string;
   private apiSecret: string;
@@ -47,6 +56,40 @@ class TrolleyService {
       'Content-Type': 'application/json',
       'Accept': 'application/json'
     };
+  }
+
+  async createCompanyProfile(companyData: {
+    name: string;
+    email: string;
+    country: string;
+    currency: string;
+  }): Promise<TrolleyCompanyProfile> {
+    try {
+      const response = await fetch(`${TROLLEY_API_BASE}/company-profiles`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({
+          name: companyData.name,
+          email: companyData.email,
+          country: companyData.country,
+          currency: companyData.currency,
+          type: 'business'
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Trolley API error: ${response.status} - ${errorData}`);
+      }
+
+      const profile = await response.json();
+      console.log(`Created Trolley company profile: ${profile.id} for ${companyData.name}`);
+      
+      return profile;
+    } catch (error) {
+      console.error('Error creating Trolley company profile:', error);
+      throw error;
+    }
   }
 
   async createRecipient(contractorData: {
