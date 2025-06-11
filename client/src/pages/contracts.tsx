@@ -39,6 +39,12 @@ const Contracts = () => {
   const { user } = useAuth();
   const isContractor = user?.role === 'contractor';
 
+  // Block contractors from accessing this page entirely
+  if (isContractor) {
+    navigate('/work-requests');
+    return null;
+  }
+
   // Use dashboard data for contracts with fallback authentication
   const { data: dashboardData, isLoading: isLoadingContracts } = useQuery<DashboardData>({
     queryKey: ['/api/dashboard'],

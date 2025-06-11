@@ -517,7 +517,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Contract routes
-  app.get(`${apiRouter}/contracts`, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/contracts`, requireAuth, async (req: Request, res: Response) => {
     try {
       const businessId = req.query.businessId ? parseInt(req.query.businessId as string) : null;
       const contractorId = req.query.contractorId ? parseInt(req.query.contractorId as string) : null;
@@ -535,6 +535,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           userRole = user.role;
           console.log(`Using X-User-ID header fallback authentication for user ID: ${userId} with role: ${userRole}`);
         }
+      }
+      
+      // CRITICAL SECURITY: Block contractors from accessing contract data entirely
+      if (userRole === 'contractor') {
+        console.log(`SECURITY BLOCK: Contractor ${userId} attempted to access contracts API`);
+        return res.status(403).json({ message: "Access denied: Contractors cannot view contract details" });
       }
       
       console.log(`Fetching contracts for user ID ${userId} with role ${userRole}`);
@@ -586,9 +592,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get(`${apiRouter}/contracts/:id`, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/contracts/:id`, requireAuth, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
+      
+      // Get user information
+      let userId = req.user?.id;
+      let userRole = req.user?.role || 'business';
+      
+      // Use X-User-ID header fallback if session auth failed
+      if (!userId && req.headers['x-user-id']) {
+        userId = parseInt(req.headers['x-user-id'] as string);
+        const user = await storage.getUser(userId);
+        if (user) {
+          userRole = user.role;
+        }
+      }
+      
+      // CRITICAL SECURITY: Block contractors from accessing contract details entirely
+      if (userRole === 'contractor') {
+        console.log(`SECURITY BLOCK: Contractor ${userId} attempted to access contract ${id}`);
+        return res.status(403).json({ message: "Access denied: Contractors cannot view contract details" });
+      }
+      
       const contract = await storage.getContract(id);
       
       // Detailed debugging for authentication
@@ -601,9 +627,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Contract not found" });
       }
       
-      // Get user ID from session or X-User-ID header
-      const userId = req.user?.id || (req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
-      
+      // Additional user verification for access control
       if (!userId) {
         console.log("No user ID found when accessing contract detail");
         return res.status(401).json({ message: "Authentication required" });
@@ -611,7 +635,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Load the full user if not already loaded
       let user = req.user;
-      let userRole = 'business';
       
       if (!user && userId) {
         try {

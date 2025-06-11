@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 import { getQueryFn, apiRequest, queryClient } from '@/lib/queryClient';
 import { Separator } from '@/components/ui/separator';
 import { 
@@ -42,6 +43,13 @@ export default function ContractDetailPage() {
   const [, navigate] = useLocation();
   const contractId = params?.id ? parseInt(params.id) : 0;
   const { toast } = useToast();
+  const { user } = useAuth();
+  
+  // Block contractors from accessing contract details entirely
+  if (user?.role === 'contractor') {
+    navigate('/work-requests');
+    return null;
+  }
   const [activeTab, setActiveTab] = useState('overview');
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   
