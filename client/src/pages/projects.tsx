@@ -406,12 +406,7 @@ export default function Projects() {
         )}
       </div>
 
-      {/* Submitted Work Review Section for Business Users */}
-      {!isContractor && (
-        <div className="mt-8">
-          <SubmittedWorkReview businessId={user.id} />
-        </div>
-      )}
+
     </div>
   );
 }
