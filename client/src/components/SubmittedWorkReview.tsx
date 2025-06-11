@@ -10,6 +10,22 @@ import { apiRequest } from '@/lib/queryClient';
 import { CheckCircle, XCircle, AlertCircle, FileText, Calendar, User, Download } from 'lucide-react';
 import { format } from 'date-fns';
 
+interface WorkSubmission {
+  id: number;
+  workRequestId: number;
+  contractorId: number;
+  businessId: number;
+  title: string;
+  description: string;
+  notes: string;
+  attachmentUrls: string[];
+  submissionType: string;
+  status: string;
+  submittedAt: string;
+  reviewedAt: string | null;
+  reviewNotes: string | null;
+}
+
 interface SubmittedWorkReviewProps {
   businessId: number;
 }
@@ -17,10 +33,10 @@ interface SubmittedWorkReviewProps {
 export function SubmittedWorkReview({ businessId }: SubmittedWorkReviewProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
+  const [selectedSubmission, setSelectedSubmission] = useState<WorkSubmission | null>(null);
   const [reviewFeedback, setReviewFeedback] = useState('');
 
-  const { data: submissions = [], isLoading } = useQuery({
+  const { data: submissions = [], isLoading } = useQuery<WorkSubmission[]>({
     queryKey: ['/api/work-request-submissions/business', businessId],
     enabled: !!businessId,
   });
@@ -52,7 +68,7 @@ export function SubmittedWorkReview({ businessId }: SubmittedWorkReviewProps) {
     },
   });
 
-  const handleReview = (status: 'approved' | 'rejected' | 'needs_revision') => {
+  const handleReview = (status: string) => {
     if (!selectedSubmission) return;
     
     reviewMutation.mutate({
@@ -64,14 +80,14 @@ export function SubmittedWorkReview({ businessId }: SubmittedWorkReviewProps) {
 
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
-      case 'submitted':
-        return 'bg-blue-600';
       case 'approved':
         return 'bg-green-600';
       case 'rejected':
         return 'bg-red-600';
       case 'needs_revision':
         return 'bg-yellow-600';
+      case 'pending':
+        return 'bg-blue-600';
       default:
         return 'bg-gray-600';
     }
@@ -124,7 +140,7 @@ export function SubmittedWorkReview({ businessId }: SubmittedWorkReviewProps) {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {submissions.map((submission: any) => (
+            {submissions.map((submission: WorkSubmission) => (
               <Card key={submission.id} className="bg-zinc-800 border-zinc-700">
                 <CardContent className="pt-6">
                   <div className="flex items-start justify-between">
@@ -144,7 +160,7 @@ export function SubmittedWorkReview({ businessId }: SubmittedWorkReviewProps) {
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-400 mb-4">
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4" />
-                          <span>Contractor: {submission.contractorName || 'Unknown'}</span>
+                          <span>Contractor ID: {submission.contractorId}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4" />
@@ -182,10 +198,10 @@ export function SubmittedWorkReview({ businessId }: SubmittedWorkReviewProps) {
                         </div>
                       )}
 
-                      {submission.feedback && (
+                      {submission.reviewNotes && (
                         <div className="mb-4">
                           <Label className="text-white text-sm mb-2 block">Review Feedback:</Label>
-                          <p className="text-gray-400 text-sm">{submission.feedback}</p>
+                          <p className="text-gray-400 text-sm">{submission.reviewNotes}</p>
                         </div>
                       )}
                     </div>
@@ -215,55 +231,56 @@ export function SubmittedWorkReview({ businessId }: SubmittedWorkReviewProps) {
           <CardHeader>
             <CardTitle className="text-white">Review Submission: {selectedSubmission.title}</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="feedback" className="text-white">Review Feedback</Label>
-                <Textarea
-                  id="feedback"
-                  value={reviewFeedback}
-                  onChange={(e) => setReviewFeedback(e.target.value)}
-                  placeholder="Provide feedback for the contractor..."
-                  className="bg-zinc-800 border-zinc-700 text-white mt-2"
-                />
-              </div>
-
-              <div className="flex gap-3">
-                <Button
-                  onClick={() => handleReview('approved')}
-                  disabled={reviewMutation.isPending}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Approve
-                </Button>
-                <Button
-                  onClick={() => handleReview('needs_revision')}
-                  disabled={reviewMutation.isPending}
-                  className="bg-yellow-600 hover:bg-yellow-700"
-                >
-                  <AlertCircle className="h-4 w-4 mr-2" />
-                  Request Revision
-                </Button>
-                <Button
-                  onClick={() => handleReview('rejected')}
-                  disabled={reviewMutation.isPending}
-                  variant="destructive"
-                >
-                  <XCircle className="h-4 w-4 mr-2" />
-                  Reject
-                </Button>
-                <Button
-                  onClick={() => {
-                    setSelectedSubmission(null);
-                    setReviewFeedback('');
-                  }}
-                  variant="outline"
-                  className="border-gray-700 text-white hover:bg-gray-800"
-                >
-                  Cancel
-                </Button>
-              </div>
+          <CardContent className="space-y-4">
+            <div>
+              <Label className="text-white text-sm mb-2 block">Review Feedback:</Label>
+              <Textarea
+                value={reviewFeedback}
+                onChange={(e) => setReviewFeedback(e.target.value)}
+                placeholder="Provide feedback on the submitted work..."
+                className="bg-zinc-800 border-zinc-700 text-white"
+                rows={4}
+              />
+            </div>
+            
+            <div className="flex gap-3">
+              <Button
+                onClick={() => handleReview('approved')}
+                disabled={reviewMutation.isPending}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Approve
+              </Button>
+              
+              <Button
+                onClick={() => handleReview('needs_revision')}
+                disabled={reviewMutation.isPending}
+                className="bg-yellow-600 hover:bg-yellow-700"
+              >
+                <AlertCircle className="h-4 w-4 mr-2" />
+                Request Revision
+              </Button>
+              
+              <Button
+                onClick={() => handleReview('rejected')}
+                disabled={reviewMutation.isPending}
+                variant="destructive"
+              >
+                <XCircle className="h-4 w-4 mr-2" />
+                Reject
+              </Button>
+              
+              <Button
+                onClick={() => {
+                  setSelectedSubmission(null);
+                  setReviewFeedback('');
+                }}
+                variant="outline"
+                className="border-gray-700 text-white hover:bg-gray-800"
+              >
+                Cancel
+              </Button>
             </div>
           </CardContent>
         </Card>
