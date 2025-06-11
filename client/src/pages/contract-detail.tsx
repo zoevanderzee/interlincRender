@@ -1009,7 +1009,7 @@ export default function ContractDetailPage() {
                               </span>
                               <span className={`px-2 py-1 rounded-full text-xs font-medium
                                 ${status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>
-                                {status === 'pending' ? 'Requested' : 'Active'}
+                                {status === 'pending' ? 'Pending' : 'Accepted'}
                               </span>
                             </div>
                             <div className="text-sm text-muted-foreground">{contractor.email}</div>
