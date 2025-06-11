@@ -312,6 +312,26 @@ const ContractTimeline = ({
                           Approve
                         </Button>
                       )}
+                      {milestone.status === 'approved' && (
+                        <Button 
+                          size="sm" 
+                          onClick={() => handlePayMilestone(milestone)}
+                          disabled={processingPayment === milestone.id || payMilestoneMutation.isPending}
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          {processingPayment === milestone.id ? (
+                            <>
+                              <Clock className="h-4 w-4 mr-1 animate-spin" />
+                              Processing...
+                            </>
+                          ) : (
+                            <>
+                              <DollarSign className="h-4 w-4 mr-1" />
+                              Pay via Trolley
+                            </>
+                          )}
+                        </Button>
+                      )}
                     </div>
                   </div>
                   
