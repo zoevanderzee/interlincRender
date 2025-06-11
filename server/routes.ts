@@ -4239,7 +4239,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Fund company wallet (for testing purposes)
+  // Get wallet balance
+  app.get(`${apiRouter}/trolley/wallet-balance`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user;
+      if (!user || user.role !== 'business') {
+        return res.status(403).json({ message: "Only business accounts can access wallet" });
+      }
+
+      if (!user.trolleyCompanyProfileId) {
+        return res.status(400).json({ message: "Company profile required. Please complete Trolley onboarding first." });
+      }
+
+      // For now, return mock balance - in production this would call Trolley API
+      res.json({
+        balance: 0.00,
+        currency: 'USD',
+        companyProfileId: user.trolleyCompanyProfileId,
+        hasBankingSetup: false
+      });
+
+    } catch (error) {
+      console.error("Error getting wallet balance:", error);
+      res.status(500).json({ message: "Error getting wallet balance" });
+    }
+  });
+
+  // Get funding history
+  app.get(`${apiRouter}/trolley/funding-history`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user;
+      if (!user || user.role !== 'business') {
+        return res.status(403).json({ message: "Only business accounts can access funding history" });
+      }
+
+      if (!user.trolleyCompanyProfileId) {
+        return res.status(400).json({ message: "Company profile required. Please complete Trolley onboarding first." });
+      }
+
+      // For now, return empty history - in production this would call Trolley API
+      res.json([]);
+
+    } catch (error) {
+      console.error("Error getting funding history:", error);
+      res.status(500).json({ message: "Error getting funding history" });
+    }
+  });
+
+  // Fund company wallet
   app.post(`${apiRouter}/trolley/fund-wallet`, requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user;

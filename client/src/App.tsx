@@ -32,6 +32,7 @@ import StripeTestSimple from "@/pages/stripe-test-simple";
 import StripeCheckout from "@/pages/stripe-checkout";
 import PaymentSimulator from "@/pages/payment-simulator";
 import PayContractor from "@/pages/pay-contractor";
+import Wallet from "@/pages/wallet";
 import Layout from "@/components/layout/Layout";
 import AuthPage from "@/pages/auth";
 import ResetPasswordPage from "@/pages/reset-password";
@@ -158,6 +159,12 @@ function Router() {
       <ProtectedRoute path="/payments">
         <Layout>
           <Payments />
+        </Layout>
+      </ProtectedRoute>
+      
+      <ProtectedRoute path="/wallet">
+        <Layout>
+          <Wallet />
         </Layout>
       </ProtectedRoute>
       
