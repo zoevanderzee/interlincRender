@@ -2373,19 +2373,23 @@ export class DatabaseStorage implements IStorage {
         return true;
       }
       
-      // Check invites
-      const invitesList = await db
-        .select()
-        .from(invites)
-        .where(and(
-          eq(invites.businessId, businessId),
-          eq(invites.contractorId, contractorId),
-          eq(invites.status, 'accepted')
-        ));
-      
-      if (invitesList && invitesList.length > 0) {
-        console.log(`Contractor ${contractorId} has accepted invite from business ${businessId}`);
-        return true;
+      // Check invites by matching contractor email
+      // First get contractor's email
+      const contractorUser = await this.getUser(contractorId);
+      if (contractorUser?.email) {
+        const invitesList = await db
+          .select()
+          .from(invites)
+          .where(and(
+            eq(invites.businessId, businessId),
+            eq(invites.email, contractorUser.email),
+            eq(invites.status, 'accepted')
+          ));
+        
+        if (invitesList && invitesList.length > 0) {
+          console.log(`Contractor ${contractorId} has accepted invite from business ${businessId}`);
+          return true;
+        }
       }
       
       // Check connection requests
