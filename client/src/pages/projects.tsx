@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -5,10 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Calendar, DollarSign, Users, FileText, TrendingUp } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
+import { SubmitWorkModal } from "@/components/SubmitWorkModal";
 
 export default function Projects() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
+  const [submitWorkModalOpen, setSubmitWorkModalOpen] = useState(false);
+  const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
   
   // Use dashboard data for consistency across all pages
   const { data: dashboardData, isLoading } = useQuery<{
@@ -174,6 +178,10 @@ export default function Projects() {
                       <Button 
                         size="sm"
                         className="bg-blue-600 hover:bg-blue-700"
+                        onClick={() => {
+                          setSelectedAssignment(assignment);
+                          setSubmitWorkModalOpen(true);
+                        }}
                       >
                         Submit Work
                       </Button>
@@ -210,6 +218,16 @@ export default function Projects() {
             </Card>
           )}
         </div>
+
+        {/* Submit Work Modal */}
+        <SubmitWorkModal
+          isOpen={submitWorkModalOpen}
+          onClose={() => {
+            setSubmitWorkModalOpen(false);
+            setSelectedAssignment(null);
+          }}
+          workRequest={selectedAssignment}
+        />
       </div>
     );
   }
