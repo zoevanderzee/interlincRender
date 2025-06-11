@@ -65,27 +65,44 @@ class TrolleyService {
     currency: string;
   }): Promise<TrolleyCompanyProfile> {
     try {
-      const response = await fetch(`${TROLLEY_API_BASE}/company-profiles`, {
+      // For Trolley Embedded Payouts, we use the embedded-payouts endpoint
+      const response = await fetch(`${TROLLEY_API_BASE}/embedded-payouts/accounts`, {
         method: 'POST',
         headers: this.getAuthHeaders(),
         body: JSON.stringify({
-          name: companyData.name,
-          email: companyData.email,
-          country: companyData.country,
-          currency: companyData.currency,
-          type: 'business'
+          account: {
+            type: 'business',
+            name: companyData.name,
+            email: companyData.email,
+            country: companyData.country,
+            currency: companyData.currency,
+            address: {
+              street1: '',
+              city: '',
+              postalCode: '',
+              country: companyData.country
+            }
+          }
         })
       });
 
       if (!response.ok) {
         const errorData = await response.text();
+        console.error('Trolley API error details:', errorData);
         throw new Error(`Trolley API error: ${response.status} - ${errorData}`);
       }
 
       const profile = await response.json();
       console.log(`Created Trolley company profile: ${profile.id} for ${companyData.name}`);
       
-      return profile;
+      return {
+        id: profile.id || profile.account?.id,
+        name: companyData.name,
+        email: companyData.email,
+        country: companyData.country,
+        currency: companyData.currency,
+        status: profile.status || 'active'
+      };
     } catch (error) {
       console.error('Error creating Trolley company profile:', error);
       throw error;
