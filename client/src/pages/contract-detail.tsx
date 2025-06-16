@@ -90,9 +90,11 @@ export default function ContractDetailPage() {
 
   const { data: contractors = [] } = useQuery({
     queryKey: ['/api/contractors', contract?.businessId],
-    queryFn: () => contract?.businessId ? 
-      apiRequest(`/api/contractors?companyId=${contract.businessId}`) : 
-      Promise.resolve([]),
+    queryFn: async () => {
+      if (!contract?.businessId) return [];
+      const response = await apiRequest('GET', `/api/contractors?companyId=${contract.businessId}`);
+      return response.json();
+    },
     enabled: !!contract?.businessId,
   });
 
