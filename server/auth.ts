@@ -48,7 +48,7 @@ export function setupAuth(app: Express) {
       secure: false, // Force disable secure for Replit deployment compatibility
       maxAge: 1000 * 60 * 60 * 24, // 24 hours instead of 1 week
       httpOnly: false, // Allow client-side access for debugging
-      sameSite: 'none', // Allow cross-site cookies for Replit
+      sameSite: 'lax', // Allow same-site cookies
       path: '/',
       domain: undefined, // Let browser set domain automatically
     },

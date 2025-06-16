@@ -11,7 +11,7 @@ import { trolleyService, type TrolleyRecipient, type CreateRecipientRequest } fr
  */
 
 interface AuthenticatedRequest extends Request {
-  user?: { id: number; role: string; };
+  user?: any;
 }
 
 export default function trolleyRoutes(app: Express, apiPath: string, authMiddleware: any) {
