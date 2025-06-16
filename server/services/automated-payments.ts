@@ -49,48 +49,48 @@ class AutomatedPaymentService {
         return { success: false, error: 'Payment already exists for this milestone' };
       }
 
+      // Check if contractor has Trolley recipient setup
+      if (!contractor.trolleyRecipientId) {
+        return { success: false, error: 'Contractor not set up for payments. Please onboard them first.' };
+      }
+
       // Calculate payment amounts
       const totalAmount = parseFloat(milestone.paymentAmount);
       const platformFeeRate = 0.0025; // 0.25% platform fee
       const applicationFee = totalAmount * platformFeeRate;
       const netAmount = totalAmount - applicationFee;
 
-      // Create payment record
+      // Create payment through Trolley API first
+      const paymentResult = await trolleyService.createAndProcessPayment({
+        recipientId: contractor.trolleyRecipientId,
+        amount: netAmount.toFixed(2),
+        currency: 'USD',
+        memo: `Payment for milestone: ${milestone.name}`,
+        externalId: `milestone_${milestoneId}`,
+        description: `Milestone payment for contract ${contract.contractName}`
+      });
+
+      if (!paymentResult) {
+        return { success: false, error: 'Failed to create Trolley payment' };
+      }
+
+      // Create payment record in database
       const paymentData = {
         contractId: milestone.contractId,
         milestoneId: milestoneId,
         amount: milestone.paymentAmount,
-        status: 'auto_triggered' as const,
+        status: 'processing' as const,
         scheduledDate: new Date(),
         triggeredBy: 'auto_approval' as const,
         triggeredAt: new Date(),
         applicationFee: applicationFee.toFixed(2),
+        paymentProcessor: 'trolley' as const,
+        trolleyBatchId: paymentResult.batch.id,
+        trolleyPaymentId: paymentResult.payment.id,
         notes: `Automatically triggered payment for approved milestone: ${milestone.name}`
       };
 
       const payment = await storage.createPayment(paymentData);
-
-      // Create payment through Trolley API
-      const paymentResult = await this.createTrolleyPayment(
-        payment.id,
-        netAmount,
-        applicationFee,
-        contractor,
-        milestone,
-        contract
-      );
-
-      if (!paymentResult.success) {
-        await storage.updatePayment(payment.id, { status: 'failed' });
-        return { success: false, error: paymentResult.error };
-      }
-
-      // Update payment with Trolley batch details
-      await storage.updatePayment(payment.id, {
-        status: 'processing_via_trolley',
-        trolleyBatchId: paymentResult.batchId,
-        trolleyPaymentId: paymentResult.paymentId
-      });
 
       // Create compliance log
       const logId = await this.createComplianceLog(
@@ -108,7 +108,8 @@ class AutomatedPaymentService {
         success: true,
         paymentId: payment.id,
         logId: logId,
-        transferId: paymentResult.batchId
+        batchId: paymentResult.batch.id,
+        trolleyPaymentId: paymentResult.payment.id
       };
 
     } catch (error) {

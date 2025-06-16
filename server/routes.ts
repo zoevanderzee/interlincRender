@@ -21,6 +21,7 @@ import automatedPaymentService from "./services/automated-payments";
 import { trolleyApi } from "./services/trolley-api";
 import { setupAuth } from "./auth";
 import plaidRoutes from "./plaid-routes";
+import trolleyRoutes from "./trolley-routes";
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
