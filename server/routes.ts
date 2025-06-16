@@ -323,15 +323,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
       
-      // In case we don't have any contractors yet, add the Test Contractor user for testing
+      // In case we don't have any contractors yet, add available contractor users for testing
       if (linkedContractors.length === 0) {
-        // Get all users in the system who aren't the current company
-        const allUsers = await storage.getAllUsers();
-        allUsers.forEach(user => {
+        // Get contractors by role
+        const contractorUsers = await storage.getUsersByRole('contractor');
+        contractorUsers.forEach(user => {
           if (user.id !== companyId && !contractorIds.has(user.id)) {
             contractorIds.add(user.id);
             linkedContractors.push(user);
-            console.log(`Adding available user as contractor: ${user.username} (ID: ${user.id})`);
+            console.log(`Adding available contractor: ${user.username} (ID: ${user.id})`);
           }
         });
       }
