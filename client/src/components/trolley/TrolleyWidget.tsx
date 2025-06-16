@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,18 +11,87 @@ interface TrolleyWidgetProps {
   contractorId: number;
   onSuccess?: () => void;
   onCancel?: () => void;
+  embedMode?: boolean; // Use iframe vs popup window
 }
 
-export function TrolleyWidget({ contractorEmail, contractorId, onSuccess, onCancel }: TrolleyWidgetProps) {
+export function TrolleyWidget({ contractorEmail, contractorId, onSuccess, onCancel, embedMode = true }: TrolleyWidgetProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [widgetUrl, setWidgetUrl] = useState<string | null>(null);
   const [recipientStatus, setRecipientStatus] = useState<'none' | 'creating' | 'active' | 'error'>('none');
+  const [widgetHeight, setWidgetHeight] = useState('600px');
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const { toast } = useToast();
 
   // Check if contractor already has a recipient
   useEffect(() => {
     checkRecipientStatus();
   }, [contractorId]);
+
+  // Setup widget event listeners for iframe communication
+  useEffect(() => {
+    if (!embedMode || !widgetUrl) return;
+
+    const handleWidgetEvents = (event: MessageEvent) => {
+      if (event.origin !== 'https://widget.trolley.com') return;
+
+      const widgetEvent = event.data;
+      console.log('Trolley Widget Event:', widgetEvent);
+
+      switch (widgetEvent.event) {
+        case 'document.height':
+          // Auto-adjust iframe height
+          if (iframeRef.current) {
+            const newHeight = `${widgetEvent.document.height}px`;
+            setWidgetHeight(newHeight);
+            iframeRef.current.style.height = newHeight;
+          }
+          break;
+
+        case 'document.loaded':
+          console.log('Trolley Widget loaded successfully');
+          break;
+
+        case 'document.failed':
+          console.error('Trolley Widget failed to load:', widgetEvent.document);
+          toast({
+            title: "Widget Error",
+            description: `Failed to load: ${widgetEvent.document.message}`,
+            variant: "destructive",
+          });
+          break;
+
+        case 'module.loaded':
+          console.log(`Trolley module loaded: ${widgetEvent.module[0]}`);
+          break;
+
+        case 'module.successful':
+          console.log(`Trolley module completed: ${widgetEvent.module[0]}`);
+          if (widgetEvent.module[0] === 'pay') {
+            toast({
+              title: "Setup Complete",
+              description: "Payment information configured successfully",
+            });
+            setTimeout(() => {
+              checkRecipientStatus();
+              onSuccess?.();
+            }, 1000);
+          }
+          break;
+
+        case 'module.failed':
+          console.error(`Trolley module failed: ${widgetEvent.module[0]}`);
+          toast({
+            title: "Setup Error",
+            description: `Failed to complete ${widgetEvent.module[0]} setup`,
+            variant: "destructive",
+          });
+          break;
+      }
+    };
+
+    window.addEventListener('message', handleWidgetEvents);
+    return () => window.removeEventListener('message', handleWidgetEvents);
+  }, [embedMode, widgetUrl, toast, onSuccess]);
 
   const checkRecipientStatus = async () => {
     try {
@@ -37,13 +106,19 @@ export function TrolleyWidget({ contractorEmail, contractorId, onSuccess, onCanc
     }
   };
 
-  const generateWidgetUrl = async () => {
+  const generateWidgetUrl = async (setupType: 'quick' | 'full' = 'full') => {
     setIsLoading(true);
     try {
       const response = await apiRequest('POST', '/api/trolley/widget-url', {
         contractorEmail,
-        theme: 'dark',
-        collectTaxInfo: true
+        contractorId,
+        products: setupType === 'quick' ? ['pay'] : ['pay', 'tax'],
+        colors: {
+          primary: 'hsl(var(--primary))',
+          background: 'hsl(var(--background))',
+          text: 'hsl(var(--foreground))',
+          border: 'hsl(var(--border))'
+        }
       });
 
       const data = await response.json();

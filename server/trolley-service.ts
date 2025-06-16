@@ -359,23 +359,62 @@ class TrolleyService {
 
   /**
    * Generates Trolley Widget URL for recipient onboarding
+   * Following official Trolley documentation for widget generation
    */
   generateWidgetUrl(recipientEmail: string, options: {
-    successUrl?: string;
-    cancelUrl?: string;
-    theme?: 'light' | 'dark';
-    collectTaxInfo?: boolean;
+    recipientReferenceId?: string;
+    hideEmail?: boolean;
+    roEmail?: boolean;
+    locale?: string;
+    products?: string[];
+    colors?: Record<string, string>;
+    address?: Record<string, string>;
   } = {}): string {
-    const params = new URLSearchParams({
-      recipientEmail,
+    const timestamp = Math.floor(Date.now() / 1000);
+    
+    // Build query parameters following Trolley documentation
+    const queryParams: Record<string, string> = {
+      ts: timestamp.toString(),
       key: this.apiKey,
-      successUrl: options.successUrl || window?.location?.origin + '/onboarding/success',
-      cancelUrl: options.cancelUrl || window?.location?.origin + '/onboarding/cancel',
-      theme: options.theme || 'light',
-      collectTaxInfo: options.collectTaxInfo ? 'true' : 'false'
-    });
+      email: recipientEmail,
+      hideEmail: options.hideEmail ? 'true' : 'false',
+      roEmail: options.roEmail ? 'true' : 'false',
+      locale: options.locale || 'en',
+      products: options.products?.join(',') || 'pay,tax'
+    };
 
-    return `https://widget.trolley.com?${params.toString()}`;
+    // Add reference ID if provided
+    if (options.recipientReferenceId) {
+      queryParams.refid = options.recipientReferenceId;
+    }
+
+    // Add color customizations if provided
+    if (options.colors) {
+      Object.entries(options.colors).forEach(([key, value]) => {
+        queryParams[`colors.${key}`] = value;
+      });
+    }
+
+    // Add address fields if provided
+    if (options.address) {
+      Object.entries(options.address).forEach(([key, value]) => {
+        queryParams[`addr.${key}`] = value;
+      });
+    }
+
+    // Create query string with proper encoding
+    const queryString = Object.entries(queryParams)
+      .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+      .join('&')
+      .replace(/\+/g, '%20');
+
+    // Generate HMAC signature
+    const hmac = createHmac('sha256', this.apiSecret);
+    hmac.update(queryString);
+    const signature = hmac.digest('hex');
+
+    // Return complete widget URL
+    return `https://widget.trolley.com?${queryString}&sign=${signature}`;
   }
 }
 
