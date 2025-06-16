@@ -97,12 +97,23 @@ class TrolleyService {
   private apiSecret: string;
 
   constructor() {
+    // Dynamic credential loading to handle environment updates
+    this.loadCredentials();
+  }
+
+  private loadCredentials() {
     this.apiKey = process.env.TROLLEY_API_KEY || '';
     this.apiSecret = process.env.TROLLEY_API_SECRET || '';
     
     if (!this.apiKey || !this.apiSecret) {
-      console.warn('Trolley API credentials not found. Set TROLLEY_API_KEY and TROLLEY_API_SECRET environment variables.');
+      console.warn('Trolley API credentials not configured');
     }
+  }
+
+  // Method to refresh credentials dynamically
+  public refreshCredentials() {
+    this.loadCredentials();
+    console.log('Trolley credentials refreshed');
   }
 
   private generateAuthHeader(method: string, path: string, body: string = ''): { authorization: string; timestamp: number } {
