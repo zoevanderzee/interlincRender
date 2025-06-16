@@ -6,8 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle, Clock, AlertCircle, CreditCard } from "lucide-react";
+import { CheckCircle, Clock, AlertCircle, CreditCard, User } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { TrolleyWidget } from "@/components/trolley/TrolleyWidget";
 
 interface Milestone {
   id: number;
