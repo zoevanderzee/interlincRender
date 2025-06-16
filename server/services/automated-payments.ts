@@ -1,4 +1,5 @@
 import { storage } from '../storage';
+import { trolleyService } from '../trolley-service';
 
 interface PaymentProcessingResult {
   success: boolean;
@@ -6,6 +7,8 @@ interface PaymentProcessingResult {
   logId?: number;
   error?: string;
   transferId?: string;
+  batchId?: string;
+  trolleyPaymentId?: string;
 }
 
 class AutomatedPaymentService {

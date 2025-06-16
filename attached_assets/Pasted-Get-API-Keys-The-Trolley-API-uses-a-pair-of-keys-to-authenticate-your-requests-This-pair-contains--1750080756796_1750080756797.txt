@@ -1,0 +1,4756 @@
+Get API Keys
+
+The Trolley API uses a pair of keys to authenticate your requests. This pair contains an API Access Key and a corresponding API Secret Key.
+
+To acquire the API Access Key and the API Secret Key, go to Trolley Dashboard > Settings > API Keys and generate the pair.
+
+Image 2: A screencast showing how to navigate to API Keys section within the Trolley settings interface
+
+Image 2: A screencast showing how to navigate to API Keys section within the Trolley settings interface.
+
+If you have created API Keys before, only the API Access Keys will be listed here.
+
+Click on the Create Key button on the top right to create a new API Access Key and API Secret Key. A dialog box will appear displaying the pair of keys.
+
+Image 3: A screenshot of the API Key Creation dialog box showing sample API Keys
+
+Image 3: A screenshot of the API Key Creation dialog box showing sample API Keys.
+
+Note: The API Secret will be visible only in this dialog box, so make sure you copy the pair and save it somewhere safe.
+
+You’ll need this API Key and API Secret pair to access the Trolley API, and with the Trolley SDKs.
+
+Live and Sandbox modes
+
+Your account includes access to a “sandbox” environment where you can test the API and other features without impacting your production environment or potentially transferring real funds. Consider this as a testing environment to test run your integrations.
+
+API Keys differ for sandbox and live environments. You can switch between them easily from your dashboard.
+
+To switch between Live and Sandbox environments, click your account avatar at the top right corner of the Trolley interface. In the dropdown, click on the account name with “sandbox” or “live” suffix.
+
+Image 4: A screencast demonstrating how to switch between live and sandbox environments in Trolley.
+
+Image 4: A screencast demonstrating how to switch between live and sandbox environments in Trolley.
+
+You can add teammates to either environment and give them different roles in each.
+
+Note that the developer role cannot create API keys in Live mode.
+
+Request URL and Content type
+
+The Request URL, the address where to send API requests, consists of two main parts: a base url and a version number.
+
+Base url: https://api.trolley.com API Version: v1
+
+The corresponding Request URL would be written: https://api.trolley.com/v1/…
+
+All resources that you need to access, will be appended to this request URL. Some examples: Some examples:
+
+https://api.trolley.com/v1/recipients
+
+https://api.trolley.com/v1/recipients/:id/accounts
+
+https://api.trolley.com/v1/batches?page=1&pageSize=10
+
+Request Content Type: Content-type: application/json All request types must provide the above header if they’re sending a JSON body in the request.
+
+Authentication
+
+The API Authentication model expects you to provide an Authorization header.
+
+Create the authorization header by sha256 encoding a combination of the current timestamp, request type, request path, and the body.
+
+Any requests older than 30 seconds will be rejected. A typical authentication header will look like the one displayed in the example.
+
+Along with the Authorization header, you should also send a custom header X-PR-Timestamp with the current timestamp as its value. An example of the X-PR-Timestamp is shown in the right pane.
+
+To learn how to compute the Authentication header, please read through our Authentication guide: https://developers.trolley.com/api/#authentication
+
+Sample Request
+
+With your API Access Key, API Secret Key, and Authentication processes in place, you’re ready to send requests to our APIs. You can use your preferred programming language to send HTTP requests to our APIs.
+
+A sample cURL request to get details about a single recipient is shown in the example.
+
+ 
+Use our SDKs
+
+Trolley maintains SDKs for multiple programming languages to make development easier and more compatible with your chosen programming language.
+
+See all Trolley SDKs here: https://developers.trolley.com/api#sdk
+
+
+
+  
+Trolley API's Postman collection
+
+We maintain a Postman collection that you can use to play with our APIs. The collection comes pre-setup with Authentication header generation, so all you need to do is put your keys and start using.
+
+ Button saying Run in Postman
+
+Step 2 - Add Recipient
+Before you can send payments to recipients, they need to be added to your Trolley merchant account. There are a few ways you can add recipients:
+
+You can use the Trolley APIs to add a recipient programmatically.
+Use the Trolley Widget to onboard new recipients and their tax information.
+Bulk upload recipients as a CSV file to import recipients from your previous system.
+1. Add Recipients with Create a Recipient API
+
+To add a recipient programmatically, you can use the Create a Recipient API, or the equivalent method/function in any of the available SDKs.
+
+Learn more about the Create a Recipient API here: https://developers.trolley.com/api/#create-a-recipient
+
+2. Onboard recipients with the Trolley Widget
+
+The Trolley Widget is a handy way for your recipients to self-onboard their payment and tax information to your merchant account. Using the Widget, recipients can add multiple payment methods such as bank account, PayPal, or check. Using the same widget, the recipients can upload tax-related information and forms.
+
+The Trolley Widget is integrated as an iframe and supports many configuration options. Supplying a recipient’s email address is the only requirement to initiate the recipient’s self-onboarding process.
+
+To display the widget to a recipient, you should:
+
+Build a Widget URL with required configuration options.
+Host it on a webpage you own and control.
+Share that webpage’s URL with your recipients.
+Once loaded, the iframe will look something like this:
+
+Image 5: Screenshot of the Trolley Widget for a user with no payment method on file.
+
+Image 5: Screenshot of the Trolley Widget for a user with no payment method on file.
+
+Once the recipient fills in their information, the Trolley Widget looks like the following:
+
+Image 6 Screenshot of the Trolley Widget for a user with payment methods on file.
+
+Image 6 Screenshot of the Trolley Widget for a user with payment methods on file.
+
+The Widget also emits multiple JS events when a payment method or a tax form is added. You can listen for these events to trigger any necessary actions (e.g. closing a mobile web browser window when a recipient is done adding payment details).
+
+Every recipient will be assigned a new recipientId, a unique indicator which will look something like this: R-XgtzXghfxx4E4Y3R.
+
+This recipientId is used across the Trolley API to recognize a recipient and take actions for them such as sending a payment, checking statuses, etc.
+
+To learn more about how to create, modify, and use the Trolley Widget, visit the Widget documentation: https://developers.trolley.com/widget/
+
+3. Import Recipients with a CSV file
+
+If you have existing recipient information in a system you already use and maintain, you can import that information directly to your Trolley merchant dashboard as a mass import. You’ll need to upload a properly formatted CSV file to import these recipients’ information.
+
+To do this, go to the Dashboard and click on the Recipients tab from the main menu. From the top right corner, click the drop-down arrow next to the “Add Recipient” button and select “Upload CSV File”.
+
+Image 7: Screencast of the Add Recipient button options, to show where to find “upload CSV” option
+
+Image 7: Screencast of the Add Recipient button options, to show where to find “upload CSV” option
+
+This will open a dialog box where you can upload the CSV file containing the recipient information. From here you can also download the template demonstrating the correct CSV format required by the Trolley system to format your CSV file accordingly:
+
+Image 8: Screenshot of the Upload CSV dialog box
+
+Image 8: Screenshot of the Upload CSV dialog box
+
+To learn more about how to add Recipients manually, either one by one or in bulk, check out the “How to Add a New Recipient” help article: https://support.trolley.com/s/article/Adding-a-New-Recipient
+
+You can also add recipients via the API, which is discussed here: https://developers.trolley.com/api/#create-a-recipient
+
+Managing Recipients
+
+Once recipients are added or uploaded, you can manage or edit individual recipient records via the dashboard or the API. To learn more about how to manage recipients via the API, refer to our API documentation about recipients: https://developers.trolley.com/api#retrieve-a-recipient
+
+Step 3 - Send Payment
+Once recipients have been added and are active, you can send them payments. An active recipient must have a valid address, valid payment method, and a tax form uploaded (if applicable).
+
+To send a payment to an active recipient, you use the Batches function.
+
+Here’s a quick rundown of the steps required to send a payment to a recipient:
+
+1. Create a Batch
+
+In the Trolley ecosystem, all payments are sent as a part of a Batch. A batch can have 0 or multiple payments in it. One batch can have payments meant for multiple recipients, so a batch is not unique to a recipient. A payment cannot exist without a batch.
+
+To create a Batch via the Trolley API, you’ll have to send a POST request to the https://api.trolley.com/v1/batches api endpoint.
+
+After successful creation of a Batch, you’ll receive a batchId which looks like this: B-1a2B3c4D5e67g8H90J1k This batchId will be used to access this batch for any future needs.
+
+For full details on how to create a batch, please refer to this document: https://developers.trolley.com/api/#create-a-batch
+
+2. Add Payments to the Batch
+
+You can add a payment to a batch while creating the batch itself. But if needed, payments can be added to an existing batch before sending it.
+
+To add a payment to an existing batch with a batchId, send a POST request to the https://api.trolley.com/v1/batches/:id/payments endpoint, where :id is the batchId of the batch you want to add this payment into.
+
+For full details on how to add a payment to a batch, please refer to this document: https://developers.trolley.com/api/#create-a-payment
+
+3. Send the batch to processing
+
+Once a batch is ready, with all the payments that need to be sent, you can send the batch for processing. Once the batch is sent for processing, you cannot edit or delete it.
+
+To send a batch for processing, you’ll have to send a POST request to the https://api.trolley.com/v1/batches/:batch-id/start-processing endpoint, with the appropriate batchId.
+
+The batch will run through the validations and will be marked as processed if all the validations and requirements are met—validations include things like checking if you have a sufficient account balance. Until the validations are complete, the batch remains in a processing state. Once the validation is complete and the transaction is triggered, the batch will be marked as processed. Note that processing a batch may take some time.
+
+You can see all potential statuses of batches and other objects here: https://developers.trolley.com/api/#list-of-statuses
+
+To learn more about how to send a payment through a batch, refer to this documentation: https://developers.trolley.com/api/#payments
+
+Invoices
+
+If you have multiple payments for a single recipient in a pay-run, you can use Invoices for better management and reporting of those payments. You can create an invoice, add line items to the invoice denoting the purpose of various payments, create an Invoice Payment, then send the associated batch to the created Payment for processing.
+
+To learn more about Invoices, please refer to the Invoices documentation: https://developers.trolley.com/api/#invoices
+
+Managing Payments
+
+Like recipients, you can manage batches and payments via the API and perform CRUD operations on them (depending on which state they are in).
+
+To learn more, you can explore different API endpoints pertaining to batches and payments further in our API documentation: https://developers.trolley.com/api#payments
+
+We can’t wait to see the payment experiences you build with the Trolley API. For more details and in-depth documentation of all features, visit the remaining sections of this API document. Refer to the further reading section below for more suggested reading as you start building with Trolley.
+
+Further Reading
+To get notified about updates to Payments, Recipients and more, subscribe to Webhooks
+
+See a definitive list of potential payments, recipients, and batches statuses in List of Statuses.
+
+Find answers to common questions, or contact us by visiting Support and FAQs.
+
+Concepts
+Trolley Authentication
+The Trolley API uses a custom Authentication Scheme to authenticate the API requests, where you have to generate and send a hashed signature in the request header.
+
+To understand how to generate the hashed signature for Authentication, refer to the Authentication section of this documentation.
+
+To learn more about how Trolley Authentication works, you can also check out this blog post: How Does Trolley’s API Authentication Work?
+
+Since our SDKs are based on the APIs, they also depend on this custom Authentication, but handle the hashing behind the scenes.
+
+API Components
+The Trolley API exposes different objects through multiple components that work together to provide the functionality that you can integrate with your system.
+
+The objects are:
+
+Recipient
+RecipientAccount
+Batch
+Payment
+Verification
+Invoice
+Invoice Payment
+Balance
+Recipients and Recipient Accounts
+An individual or business or more generally a user is a Recipient in Trolley.
+A Recipient can have many statuses, based on factors such as their profile information, payout information, tax forms, verifications results, and compliance status.
+
+Only an active Recipient can be sent a payment.
+
+A Recipient is a standalone object within the Trolley ecosystem.
+
+A RecipientAccount represents a payout method of a Recipient.
+It is another object within the Trolley ecosystem, but it is dependent on a Recipient object. A RecipientAccount can only exist within a Recipient object, but all CRUD operations can be performed on a RecipientAccount object.
+
+Check out more about Recipient and RecipientAccount in their respective sections.
+
+Batches and Payments
+In Trolley, A Batch is a logical group that holds Payments. The payments can only exist within a batch.
+
+To be able to create Payments, you have to create a Batch first.
+You can create a Batch and add payments to it in the same API call, or you can add payments to an existing Batch.
+
+Batch and Payment, both, are treated as individual objects within the Trolley ecosystem, with a conceptual relationship defined as above.
+
+To learn more about Batches and Payments, please refer to the Payments section.
+
+To learn more about the journey of Payments and Batches, have a look at our developer blog post explaining that: Understanding the Payment Journey at Trolley.
+
+Categorization with Tags
+Many of the objects in the Trolley ecosystem support tags, where you can assign attributes to these objects which are recognizable internally to you or to your business logic.
+
+These tags are not visible to the recipient, and can be used in search as well.
+
+You can assign one or many tags to an object.
+Whenever you update a set of tags, the old tags are deleted and new ones are added.
+To delete a tag, you update an object with an empty array as tag’s value.
+
+The objects that support Tags is as follows, along with the links to more details about them:
+
+Recipient
+Batch
+Payment
+Invoice
+InvoiceLine
+Using Tags, you can categorize different objects and can even search for them based on Tags.
+
+List and Search
+Many objects within the Trolley ecosystem support Indexing or “List All” operations, where you can fetch all the objects within the system.
+
+Most of these List All operations support providing search parameters and filtering capabilities, so you can narrow down the result-set of the Indexing operation.
+
+Look at the details in the relevant “List All” operation to learn more about how to use these search filters.
+
+Pagination
+Example Request
+All the Index or “List All” operations support pagination parameters.
+
+In the query parameters, you can provide page and pageSize parameters to specify pagination options:
+
+Query Parameters for specifying page information
+
+Parameter	Values	Description
+page	integer	Optional. Specifies which page you want to fetch. Defaults to 1.
+pageSize	integer	Optional. Specifies how many items you want each page to have. Defaults to 10, maximum 1000
+The code area shows a sample of a cURL request with pagination options.
+
+Example Response
+...
+{
+    "ok": true,
+    "payments": [
+        ...
+    ],
+    "meta": {
+        "page": 1,
+        "pages": 1,
+        "records": 2
+    }
+}
+...
+Index/List All operations that support pagination have a meta field that contains pagination information that you can use to go through pages.
+
+Definition of Response Parameters
+
+Parameter	Values	Description
+page	integer	Which page this response represents.
+pages	integer	Total number of pages in the result set.
+records	integer	Total number of items in the result set.
+Interacting with the API
+Making requests
+The Trolley API follows RESTful design principles. We use the following HTTP verbs:
+
+GET - Read resources
+POST - Create new resources
+PATCH - Update an existing resource
+DELETE - Remove resources
+When making requests, arguments can be passed as params or JSON with correct Content-Type header of application/json.
+
+Success Codes
+The Trolley API uses the following successful response codes:
+
+Success Code	Meaning
+200	Ok – Request processed successfully
+Error Codes
+Example API response for object not found
+{
+  "ok": false,
+  "errors": [
+    {
+      "code": "not_found",
+      "message": "Object not found"
+    }
+  ]
+}
+Example API Failure for validation
+{
+  "ok": false,
+  "errors": [
+    {
+      "code": "empty_field",
+      "field": "type",
+      "message": "Expected to have a non-null or non-empty value"
+    },
+    {
+      "code": "empty_field",
+      "field": "name",
+      "message": "Expected to have a non-null or non-empty value"
+    }
+  ]
+}
+The Trolley API uses the following error codes:
+
+Error Code	HTTP Code	Description
+invalid_status	400	Status of an object is invalid
+invalid_field	400	Field value is invalid
+empty_field	400	Field value is required but not provided
+expired_quote	400	Quote is expired
+invalid_api_key	401	API key is invalid
+not_authorized	403	Authentication not permitted to access resource
+not_found	404	Object not found
+rate_limit_exceeded	429	Rate limit exceeded
+partner_integration_error	500	Error occurred with one of our partners
+internal_server_error	500	Internal server error
+
+
+In the event that the API returns an error, the response body will contain the following information:
+
+Response
+
+Key	Meaning
+ok	Boolean false – The API call failed
+errors	Array of descriptions, more detail on the failures, this may be multiple values for validation failures or a single value for other failures.
+CORS
+Trolley API supports cross-origin HTTP requests which is commonly referred to as CORS. This means that you can call API resources using Javascript from any browser. While this allows many interesting use cases, it’s important to remember that you should never expose private API keys to 3rd parties. CORS is mainly useful with unauthenticated endpoints and OAuth2 client side applications.
+
+Fields
+Type	Description
+string	An arbitrary string value
+integer	Integer number
+float	Floating point number
+date	All dates are represented in in ISO 8601 format in the UTC (Z) timezone (e.g. “2015-07-01T00:55:47Z)
+country	All country codes are ISO ALPHA-2 country codes (e.g. “US”, “CA”, or “JP”)
+amount	All amounts are in string format in order to avoid rounding problems with floating point numbers. The only allowed formats are positive numeric values with either two decimal places or no decimal (e.g. “1.99” or “123”).
+currency	The type of currency is in ISO 4217 (e.g. “USD”, “CAD”, or “JPY”)
+
+
+Rate limiting
+The Trolley API is rate limited to prevent abuse that would degrade our ability to maintain consistent API performance for all users.
+
+The rate limits are as follows:
+
+200 requests per minute from any single IP address
+100 requests per minute for any regular merchant
+50 requests per minute for any sandbox merchant
+If your requests are being rate limited, HTTP response code 429 will be returned with an rate_limit_exceeded error. Contact us to discuss rate limits at api@trolley.com.
+
+Deprecation Policy
+Technology evolves quickly and we are always looking for better ways to serve our customers. From time to time we need to make room for innovation by removing sections of code that are no longer necessary. We understand this can be disruptive and consequently we have designed a Deprecation Policy that protects our customers’ investment and that allows us to take advantage of modern tools, frameworks and practices in developing software.
+
+Deprecation means that we discourage the use of a feature, design or practice because it has been superseded or is no longer considered efficient or safe but instead of removing it immediately, we mark it as Deprecated to provide backwards compatibility and time for you to update your projects. While the deprecated feature remains in the API and/or SDK for a period of time, we advise that you replace it with the recommended alternative which is explained in the relevant section of API documentation or the SDK code.
+
+We remove deprecated features after 3 months from the time of announcement.
+
+The security of our customers’ assets is of paramount importance to us and sometimes we have to deprecate features because they may pose a security threat or because new, more secure, ways are available. On such occasions we reserve the right to set a different deprecation period which may range from immediate removal to the standard 3 months.
+
+Once a feature has been marked as deprecated, we no longer develop the code or implement bug fixes. We only do security fixes.
+
+Authentication
+All calls to the Trolley API require authentication. You will need to get an access key and secret key from the dashboard via the settings page.
+
+Signing requests
+API Key authentication requires each request to be signed, this ensures that your secret key is not part of the transmission.
+
+Making a request
+Example of generating Authorization header and sending API requests
+import * as crypto from 'crypto';
+function getTrolleyAuthHeader(params){
+  const timestamp = Math.round(Date.now()/1000);
+  const message = `${timestamp}\n${params.method}\n${params.requestPath}\n${params.body}\n`; // if non-empty, body should be a valid JSON in string format
+  const signature = crypto.createHmac("sha256", params.SECRET_KEY).update(message).digest("hex");
+
+  var trolleyHeaders = {
+    Authorization: `prsign ${params.ACCESS_KEY}:${signature}`,
+    "X-PR-Timestamp": timestamp,
+    "Content-Type": "application/json"
+  }
+  
+  return trolleyHeaders;
+}
+
+...
+
+const ACCESS_KEY = '<YOUR_ACCESS_KEY>';
+const SECRET_KEY = '<YOUR_SECRET_KEY>';
+
+fetch("https://api.trolley.com/v1/recipients", {
+    method: 'get',
+    headers: getTrolleyAuthHeader({
+      method: 'get'.toUpperCase(),
+      requestPath: '/v1/recipients',
+      body: '', // if non-empty, body should be a valid JSON in string format
+      ACCESS_KEY: ACCESS_KEY,
+      SECRET_KEY: SECRET_KEY
+    }),
+  })
+    .then(result => console.log(result))
+    .catch(error => console.log('error', error));
+
+All REST requests must contain the following headers:
+
+Authorization Where your signed request information will be transmitted
+X-PR-Timestamp The timestamp of your request
+All request bodies should have a content type of application/json and be valid JSON.
+
+The Authorization header will have the format of Authorization: prsign ACCESS_KEY:REQUEST_SIGNATURE
+
+The REQUEST_SIGNATURE is computed by creating a sha256 HMAC using the secret key on the prehash string and timestamp + '\n' + method + '\n' + requestPath + '\n' + body + '\n'.
+
+timestamp This is the same value as transmitted in the X-PR-Timestamp header and is the seconds past 1970 (Unix Epoch) in UTC time.
+method The request method in all upper case.
+requestPath The full request path including all query parameters (e.g. /v1/recipients/?search=bob)
+body The JSON body of the request.
+ 
+Timestamp Within 30 Seconds of UTC
+
+Your timestamp must be within 30 seconds of the UTC time or your requests will be considered expired and rejected.
+Additional Security for API Keys
+For enhanced API Key security, we recommend that you whitelist IP addresses that are permitted to make requests. You can do this in ‘Settings’ section of the merchant dashboard under the ‘Security’ tab.
+
+ 
+JSON Requests
+
+All request bodies should have content type application/json and be valid JSON.
+Recipients
+A recipient is an individual or company that can receive payments, such as freelancers, contract workers, suppliers, marketplace sellers, employees, etc. Basically, anyone your business needs to pay.
+
+Recipients can receive payouts directly to their Bank Account or their PayPal account (with more payout options coming soon, such as Mobile Money, and Debit/Credit Cards).
+
+Recipients must be created prior to sending a payment to them. When you create a recipient, we automatically generate and assign a unique recipient Id. The format of all recipient IDs are “R-1a2B3c4D5e6F7g8H9i0J1k”, with the ‘R-’ prefix indicating Recipient.
+
+Recipient Attributes
+Example Recipient
+{
+  "id": "R-1a2B3c4D5e6F7g8H9i0J1k",
+  "referenceId": "U341553728",
+  "email": "richard@example.com",
+  "name": "",
+  "lastName": "Richard",
+  "firstName": "Hendricks",
+  "status": "active",
+  "complianceStatus": "review",
+  "gravatarUrl": "https://www.gravatar.com/avatar/205e460b479e2e5b48aec07710c08d50",
+  "language": "en",
+  "dob": "1991-12-23",
+  "passport": "HA24123423",
+  "ssn": "123-45-6789",
+  "governmentIds":[
+    {
+        "country": "US",
+        "type": "SSN",
+        "value": "********1234"
+    },
+    {
+        "country": "US",
+        "type": "passport",
+        "value": "********1234"
+    }
+  ],
+  "routeType": "eft",
+  "routeMinimum": 1,
+}
+Attribute	Description
+id
+string	A system generated ID number assigned to the recipient by Trolley.
+referenceId
+string	Recipient reference ID as assigned by your business (your internal user reference number, e.g. ‘U1234556678’)
+email
+required
+string	Email address of recipient (e.g. ‘john@email.com’)
+name
+required if type is Business
+string	Name of Business (e.g. ABC Company Ltd). Required if Type is Business. (Note: If type is Individual, we will automatically populate this field with firstname and lastname of individual).
+lastName
+required if type is Individual
+string	Recipient’s Last name (surname), (e.g. ‘Smith’). Required if Type is Individual. Optionally can provide contact persons last name if Type is Business.
+firstName
+required if Type is Individual
+string	Recipient’s First name (e.g. ‘John’). Required if Type is Individual. Optionally can provide contact persons first name if Type is Business.
+status
+string	Status of a recipient in the system
+complianceStatus
+string	AML watchlist compliance screening status for the Recipient. A Recipient’s compliance review can either be pending (default), or ongoing (review), has passed (verified), or has been flagged for further review (blocked).
+gravatarUrl
+string	The gravatar url of recipient
+language
+string	2-letter ISO 639-1 language code and optional 2-letter ISO-3166 country code. (eg. “en” and “en-CA” both are acceptable) Supported Languages
+dob
+date	Date of Birth (YYYY-MM-DD)
+passport
+string	Passport number
+governmentIds
+array	Government IDs or Tax ID numbers (e.g. 123456798910). Required for bank transfer payout method. Each object in this array represents one government Id. Refer to the example in the response sample above. Some countries require specific IDs: If Individual: Argentina (CUIT, 11 digits), Azerbaijan (TIN, 10 digits), Brazil (CPF, 11 digits), Chile (RUT/RUN, 9 digits), Colombia (NIT, 10 digits), Costa Rica (Cedula Juridica, 9-12 digits), Guatemala (NIT, 8-12 digits), Kazakhstan (IIN, 12 digits), Paraguay (6-11 digits). If Business: Argentina (CUIT, 11 digits), Brazil (CNPJ, 14 digits). For more details, check Country Requirements Reference Doc.
+address
+object	Address details of recipient
+routeType
+string	The route that recipient will receive payout with. Depends on Recipient’s country and active payment method. Sample values are eft, ach, fps, sepa, wire, transfer etc.
+routeMinimum
+number or null	Minimum amount that you can send to this recipient. A null value indicates a recipient’s profile is not complete
+accounts
+object	Recipient Account information
+tags
+array	A collection of keywords to help identify the recipient.
+contactEmails
+array	A list of secondary email addresses that will be CC’d in all recipient emails (excluding Portal login code/authentication emails).
+ 
+Create recipients prior to payment
+
+Recipients must be created prior to sending a payment to them.
+Address
+
+Example Address
+{
+  "street1": "123 Main St",
+  "street2": "",
+  "city": "San Francisco",
+  "region": "CA",
+  "postalCode": "94131",
+  "country": "US",
+  "phone": "18005551212"
+}
+Field	Description
+street1
+required
+string	Recipient’s Street 1 Address. Please do not provide PO Box Address. (E.g. 123 Sample Street). Required for bank transfer payout method. Otherwise it is optional.
+street2
+optional
+string	Recipient’s Street 2 Address (e.g. Apt 5).
+city
+required
+string	Recipient’s address City (e.g. Miami). Required for bank transfer payout method. Otherwise it is Optional.
+postalCode
+optional
+string	Recipient’s address Postal code or Zip code (e.g. 90210, M5X 2X1, 2000).
+country
+required
+string	Recipient Country. Required for bank transfer payout method.Otherwise it is Optional. We accept ISO 3166-1 alpha-2 (e.g. ‘US’, ‘DE’)
+region
+optional
+string	Region code Recipient’s address Region (state/ province / county). We accept both ISO 3166-2 code (e.g. FL), and full state/province name (e.g. Florida). ISO 3166-2 code is highly recommended.
+phone
+optional
+string	Recipient’s phone number (e.g. 415-123-0000 or +14151230000). Required for bank transfer payout method for these countries only: Argentina, Bangladesh, Brazil, Chile, China, Colombia, Costa Rica, Ethiopia, Fiji, Guatemala, Jordan, Kazakhstan, Kiribati, Korea (South), Mongolia, Russia, South Africa, Taiwan, Thailand, Tuvalu, Togo, Tonga. Otherwise it is optional.
+ 
+Valid street address required
+
+You will need a valid street address to send a payment to recipient with a bank-transfer type payout method.
+Payout Method
+
+For further information read about the Recipient account attributes
+
+Create a recipient
+Example request
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const recipient = await client.recipient.create(
+  {
+    type: "individual",
+    firstName: "John",
+    lastName: "Smith",
+    email: "jsmith@example.com",
+    address: {
+      city: "Montréal",
+      country: "CA",
+      phone: "+15141111111",
+      postalCode: "A1A 1A1",
+      region: "BC",
+      street1: "Toad Street",
+      street2: "Avenue Rock"
+    }
+  }
+);
+
+console.log(recipient.id);
+
+Example response (200 Ok)
+{
+  "ok": true,
+  "recipient": {
+    "id": "R-1a3B3c4D5e6F7g8H9i0J1k",
+    "referenceId": "jsmith11@example.com",
+    "email": "jsmith11@example.com",
+    "name": "John Smith",
+    "lastName": "John",
+    "firstName": "Smith",
+    "type": "individual",
+    "status": "incomplete",
+    "language": "en",
+    "complianceStatus": "verified",
+    "dob": null,
+    "updatedAt": "2017-03-20T19:06:40.937Z",
+    "createdAt": "2017-03-17T20:10:45.818Z",
+    "gravatarUrl": "https://s3.amazonaws.com/static.api.trolley.com/icon_user.svg",
+    "placeOfBirth": null,
+    "ssn": null,
+    "tags": [],
+    "passport": "",
+    "payoutMethod": "bank-transfer",
+    "compliance": {
+      "status": "verified",
+      "checkedAt": "2017-03-20T19:06:23.916Z"
+    },
+    "routeType": "ach",
+    "routeMinimum": "1",
+    "estimatedFees": "1.25",
+    "accounts": [],
+    "address": {
+      "street1": "",
+      "street2": null,
+      "city": "",
+      "postalCode": "",
+      "phone": "",
+      "country": null,
+      "region": null
+    },
+    "primaryCurrency": "CAD"
+  }
+}
+Example response of Recipient with address (200 Ok)
+{
+  "ok": true,
+  "recipient": {
+    "id": "R-1a3B3c4D5e6F7g8H9i0J1k",
+    "referenceId": "jsmith11@example.com",
+    "email": "jsmith11@example.com",
+    "name": "John Smith",
+    "lastName": "John",
+    "firstName": "Smith",
+    "type": "individual",
+    "status": "incomplete",
+    "language": "en",
+    "complianceStatus": "verified",
+    "dob": null,
+    "updatedAt": "2017-03-20T19:06:40.937Z",
+    "createdAt": "2017-03-17T20:10:45.818Z",
+    "gravatarUrl": "https://s3.amazonaws.com/static.api.trolley.com/icon_user.svg",
+    "placeOfBirth": null,
+    "ssn": null,
+    "tags": [],
+    "passport": "",
+    "payoutMethod": "bank-transfer",
+    "compliance": {
+      "status": "verified",
+      "checkedAt": "2017-03-20T19:06:23.916Z"
+    },
+    "routeType": "ach",
+    "routeMinimum": "1",
+    "estimatedFees": "1.25",
+    "accounts": [],
+    "address": {
+      "street1": "Apt# 14",
+      "street2": null,
+      "city": "",
+      "postalCode": "H3WXXX",
+      "phone": "",
+      "country": "CA",
+      "region": "QC"
+    },
+    "primaryCurrency": "CAD"
+  }
+}
+To create a Recipient, send a POST request to the /recipients endpoint and include the user details in JSON format in the request body. Each recipient will be assigned and represented by an auto-generated ID (recipientId) which can be used to retrieve or update recipient details at a later time.
+
+HTTP Request
+
+POST https://api.trolley.com/v1/recipients/
+
+Fields	Description
+referenceId
+optional
+string	Recipient reference ID as assigned by your business (your internal user reference number, e.g. U1234556678)
+type
+required
+string	Recipient type, either: business or individual
+name
+conditional
+string	Name of Business (e.g. ABC Company Ltd). Required if Type is business. (Note: If type is individual, we will automatically populate this field with firstName and lastName of individual).
+firstName
+conditional
+string	Recipient’s First name (e.g. John). Required if Type is individual. Optionally can provide contact persons first name if Type is business.
+lastName
+conditional
+string	Recipient’s Last name (surname), (e.g. Smith). Required if Type is individual. Optionally can provide contact persons last name if Type is business.
+email
+required
+string	Email address of recipient (e.g. john@email.com)
+address
+optional
+address	Address object. Please read the documentation
+passport
+optional
+string	Recipients valid passport number
+dob
+optional
+date	Recipient’s date of birth. The format should be YYYY-MM-DD, ie 1990-04-29
+phone
+optional
+string	Recipient’s phone number (e.g. 415-123-0000 or +14151230000). Required for bank transfer payout method for these countries only: Argentina, Bangladesh, Brazil, Chile, China, Colombia, Costa Rica, Ethiopia, Fiji, Guatemala, Jordan, Kazakhstan, Kiribati, Korea (South), Mongolia, Russia, South Africa, Taiwan, Thailand, Tuvalu, Togo, Tonga. Otherwise it is optional.
+HTTP Response codes
+
+HTTP Code	Description
+200	Recipient successfully created
+400	One or more fields failed validation, see errors[] in response body
+401	Invalid API key
+500	Internal error
+Errors
+
+This table lists the expected errors that this method could return. However, other errors can be returned in the case where the service is down or other unexpected factors affect processing. Callers should always check the value of the ok params in the response.
+
+Error Code	Description
+empty_field	A field is required
+invalid_field	A field failed a validation check
+invalid_api_key	Invalid API key
+internal_server_error	Internal server errors
+Errors Example
+
+If there is a validation error creating a recipients, the API will respond with an error. For example:
+
+Response (406 Not Acceptable)
+{
+  "ok": false,
+  "errors": [
+    {
+      "code": "invalid_field",
+      "field": "email",
+      "message": "Email is already exists"
+    },
+    {
+      "code": "empty_field",
+      "field": "name",
+      "message": "Expected to have a non-null or non-empty value"
+    }
+  ]
+}
+Retrieve a recipient
+Example Request
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.recipient.find(recipient.id);
+
+console.log(recipient.id);
+
+You can retrieve details of a recipient account by sending a GET request to the /recipients/:id endpoint.
+
+HTTP Request
+
+GET https://api.trolley.com/v1/recipients/:id
+
+Fields	Description
+id
+required
+string	Recipient ID
+Example Response (200 Ok)
+{
+  "ok": true,
+  "recipient": {
+    "id": "R-1a2B3c4D5e6F7g8H9i0J1k",
+    "referenceId": "jsmith11@example.com",
+    "email": "jsmith11@example.com",
+    "name": "Richard Hendricks",
+    "lastName": "Hendricks",
+    "firstName": "Richard",
+    "type": "individual",
+    "status": "active",
+    "language": "en",
+    "complianceStatus": "verified",
+    "dob": null,
+    "updatedAt": "2017-03-20T19:06:40.937Z",
+    "createdAt": "2017-03-17T20:10:45.818Z",
+    "gravatarUrl": "https://s3.amazonaws.com/static.api.trolley.com/icon_user.svg",
+    "placeOfBirth": null,
+    "ssn": null,
+    "tags": [],
+    "passport": "",
+    "payoutMethod": "bank-transfer",
+    "compliance": {
+      "status": "verified",
+      "checkedAt": "2017-03-20T19:06:23.916Z"
+    },
+    "routeType": "ach",
+    "routeMinimum": "1", 
+    "estimatedFees": "1.25",
+    "accounts": [
+      {
+        "accountHolderName": "Richard Hendricks",
+        "bankId": "123",
+        "currency": "CAD",
+        "country": "CA",
+        "bankName": "TD CANADA TRUST",
+        "branchId": "47261",
+        "accountNum": "*****47"
+      }
+    ],
+    "address": {
+      "street1": "Apt# 14",
+      "street2": null,
+      "city": "",
+      "postalCode": "H3WXXX",
+      "phone": "",
+      "country": "CA",
+      "region": "QC"
+    },
+    "primaryCurrency": "CAD"
+  }
+}
+HTTP Code	Description
+200	Recipient Object
+401	Invalid API key
+404	Recipient not found
+500	Internal error
+Errors
+
+This table lists the expected errors that this method could return. However, other errors can be returned in the case where the service is down or other unexpected factors affect processing. Callers should always check the value of the ok params in the response.
+
+Error Code	Description
+not_found	Object doesn’t exist
+invalid_api_key	Invalid API key
+internal_server_error	Internal server errors
+Errors Example
+
+If recipient doesn’t exist, the API will respond with an error. For example:
+
+Response (404 Not Found)
+{
+  "ok": false,
+  "errors": [
+    {
+      "code": "not_found",
+      "message": "Object not found"
+    }
+  ]
+}
+Update a recipient
+Example Request
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.recipient.update(
+  recipient.id,
+  { 
+    firstName: "John"
+  }
+);
+
+console.log(response);
+
+Response (200 Ok)
+{
+  "ok": true,
+  "recipient": {
+    "id": "R-1a3B3c4D5e6F7g8H9i0J1k",
+    "referenceId": "jsmith11@example.com",
+    "email": "jsmith11@example.com",
+    "name": "tom Smith",
+    "lastName": "Smith",
+    "firstName": "tom",
+    "type": "individual",
+    "status": "incomplete",
+    "language": "en",
+    "complianceStatus": "verified",
+    "dob": null,
+    "updatedAt": "2017-03-20T19:06:40.937Z",
+    "createdAt": "2017-03-17T20:10:45.818Z",
+    "gravatarUrl": "https://s3.amazonaws.com/static.api.trolley.com/icon_user.svg",
+    "placeOfBirth": null,
+    "ssn": null,
+    "tags": [],
+    "passport": "",
+    "payoutMethod": "bank-transfer",
+    "compliance": {
+      "status": "verified",
+      "checkedAt": "2017-03-20T19:06:23.916Z"
+    },
+    "routeType": "ach",
+    "routeMinimum": "1", 
+    "estimatedFees": "1.25",
+    "accounts": [],
+    "address": {
+      "street1": "Apt# 14",
+      "street2": null,
+      "city": "",
+      "postalCode": "H3WXXX",
+      "phone": "",
+      "country": "CA",
+      "region": "QC"
+    },
+    "primaryCurrency": "CAD"
+  }
+}
+You can update the information of an existing recipient by sending a PATCH request to the /recipients/:id endpoint.
+
+Examples of this would be: recipient has a new street address, new payout method, or new payout method details such as a different bank account number, etc. You can also change the status of a recipient such as to active or suspended.
+
+Note: Account cannot be updated via this interface. Refer to Recipient Account for more information
+
+HTTP Request
+
+PATCH https://api.trolley.com/v1/recipients/:id
+
+Fields	Description
+id
+required
+string	Recipient ID
+HTTP Response codes
+
+HTTP Code	Description
+200	Recipient successfully updated
+400	One or more fields failed validation, see errors[] in response body
+401	Invalid API key
+500	Internal error
+Errors
+
+This table lists the expected errors that this request could return. However, other errors can be returned in the case where the service is down or other unexpected factors affect processing. Callers should always check the value of the ok params in the response.
+
+Error Code	Description
+empty_field	A field is required
+invalid_field	A field failed a validation check
+invalid_api_key	Invalid API key
+not_found	Object doesn’t exist
+internal_server_error	Internal server errors
+Errors Example
+
+If there is a validation error updating a recipient, the API will respond with an error. For example:
+
+Response (406 Not Acceptable)
+{
+  "ok": false,
+  "errors": [
+    {
+      "code": "invalid_field",
+      "field": "type",
+      "message": "Expected to have a non-null or non-empty value"
+    }
+  ]
+}
+Delete a recipient
+Example Request
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.recipient.remove(recipient.id);
+
+console.log(response);
+
+To delete a Recipient, send a DELETE request to the /recipients endpoint with the recipientID. This places the recipient in archived state and can be un-archived.
+
+HTTP Request
+
+DELETE https://api.trolley.com/v1/recipients/:id
+
+Fields	Description
+id
+required
+string	Recipient ID
+Response (200 Ok)
+{
+  "ok": true,
+}
+HTTP Code	Description
+200	Recipient successfully deleted
+401	Invalid API key
+404	Recipient not found
+500	Internal error
+Errors
+
+This table lists the expected errors that this method could return. However, other errors can be returned in the case where the service is down or other unexpected factors affect processing. Callers should always check the value of the ok params in the response.
+
+Error Code	Description
+not_found	Object doesn’t exist
+invalid_api_key	Invalid API key
+internal_server_error	Internal server errors
+Errors Example
+
+If recipient does not exist, the API will respond with an error. For example:
+
+Response (404 Not Found)
+{
+  "ok": false,
+  "errors": [
+    {
+      "code": "not_found",
+      "message": "Object not found"
+    }
+  ]
+}
+Delete multiple recipients
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const recipient = await client.recipient.create(
+  [
+    recipient1.id, 
+    recipient2.id
+  ]);
+
+console.log(recipient.id);
+
+Response (200 Ok)
+{
+  "ok": true,
+}
+You can delete multiple recipients by sending a DELETE request to the /recipients endpoint.
+
+HTTP Request
+
+DELETE https://api.trolley.com/v1/recipients/
+
+Fields	Description
+ids
+required
+array of strings	Recipient IDs to delete
+HTTP Code	Description
+200	All recipients successfully deleted
+401	Invalid API key
+404	Recipient not found
+500	Internal error
+Errors
+
+This table lists the expected errors that this method could return. However, other errors can be returned in the case where the service is down or other unexpected factors affect processing. Callers should always check the value of the ok params in the response.
+
+Error Code	Description
+not_found	Object doesn’t exist
+invalid_api_key	Invalid API key
+internal_server_error	Internal server errors
+Errors Example
+
+If any of the recipients do not exist, the API will respond with an error.
+
+Response (404 Not Found)
+{
+  "ok": false,
+  "errors": [
+    {
+      "code": "not_found",
+      "message": "Object not found"
+    }
+  ]
+}
+List all recipients
+Example Request
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.recipient.search(1, 10, "John");
+
+console.log(response);
+
+Response (200 Ok)
+{
+  "ok": true,
+  "recipients": [
+    {
+      "id": "R-1a2B3c4D5e6F7g8H9i0J1k",
+      "referenceId": "rhendricks@example.com",
+      "email": "rhendricks@example.com",
+      "name": "Richard Hendricks",
+      "lastName": "Hendricks",
+      "firstName": "Richard",
+      "type": "individual",
+      "status": "active",
+      "language": "en",
+      "complianceStatus": "verified",
+      "dob": null,
+      "updatedAt": "2017-03-20T19:06:40.937Z",
+      "createdAt": "2017-03-17T20:10:45.818Z",
+      "gravatarUrl": "https://s3.amazonaws.com/static.api.trolley.com/icon_user.svg",
+      "placeOfBirth": null,
+      "ssn": null,
+      "tags": [],
+      "passport": "",
+      "payoutMethod": "bank-transfer",
+      "compliance": {
+        "status": "verified",
+        "checkedAt": "2017-03-20T19:06:23.916Z"
+      },
+      "routeType": "ach",
+      "routeMinimum": "1", 
+      "estimatedFees": "1.25",
+      "accounts": [
+        {
+          "accountHolderName": "Richard Hendricks",
+          "bankId": "123",
+          "currency": "CAD",
+          "country": "CA",
+          "bankName": "TD CANADA TRUST",
+          "branchId": "47261",
+          "accountNum": "*****47"
+        }
+      ],
+      "address": {
+        "street1": "Apt# 14",
+        "street2": null,
+        "city": "",
+        "postalCode": "H3WXXX",
+        "phone": "",
+        "country": "CA",
+        "region": "QC"
+      },
+      "primaryCurrency": "CAD"
+    },
+    {
+      "id": "R-1a3B3c4D5e6F7g8H9i0J1k",
+      "referenceId": "jsmith11@example.com",
+      "email": "jsmith11@example.com",
+      "name": "John Smith",
+      "lastName": "John",
+      "firstName": "Smith",
+      "type": "individual",
+      "status": "active",
+      "language": "en",
+      "complianceStatus": "verified",
+      "dob": null,
+      "updatedAt": "2017-03-20T19:06:40.937Z",
+      "createdAt": "2017-03-17T20:10:45.818Z",
+      "gravatarUrl": "https://s3.amazonaws.com/static.api.trolley.com/icon_user.svg",
+      "placeOfBirth": null,
+      "ssn": null,
+      "tags": [],
+      "passport": "",
+      "payoutMethod": "bank-transfer",
+      "compliance": {
+        "status": "verified",
+        "checkedAt": "2017-03-20T19:06:23.916Z"
+      },
+      "routeType": "ach",
+      "routeMinimum": "1", 
+      "estimatedFees": "1.25",
+      "accounts": [
+        {
+          "accountHolderName": "John Smith",
+          "bankId": "123",
+          "currency": "CAD",
+          "country": "CA",
+          "bankName": "TD CANADA TRUST",
+          "branchId": "47261",
+          "accountNum": "*****47"
+        }
+      ],
+      "address": {
+        "street1": "Apt# 14",
+        "street2": null,
+        "city": "",
+        "postalCode": "H3WXXX",
+        "phone": "",
+        "country": "CA",
+        "region": "QC"
+      },
+      "primaryCurrency": "CAD"
+    }
+  ],
+  "meta": {
+    "page": 1,
+    "pages": 1,
+    "records": 2
+  }
+}
+You can retrieve details of your recipients by sending a GET request to the /recipients endpoint. Query parameters can be used in the request to sort, filter or paginate the result set as intended.
+
+HTTP Request
+
+GET https://api.trolley.com/v1/recipients
+
+Query Param	Description
+page
+optional
+int	The page number (default: 1)
+pageSize
+optional
+int	Number of records in a page (default: 10)
+HTTP Code	Description
+200	List of Recipient
+401	Invalid API key
+500	Internal error
+Errors
+
+This table lists the expected errors that this method could return. However, other errors can be returned in the case where the service is down or other unexpected factors affect processing. Callers should always check the value of the ok params in the response.
+
+Error Code	Description
+not_found	Object doesn’t exist
+invalid_api_key	Invalid API key
+internal_server_error	Internal server errors
+Search & Filter Recipients
+Example Request
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.recipient.search(1, 10, "Leonardo");
+// Support for all the filters coming soon
+console.log(response);
+
+Response (200 Ok)
+{
+  "ok": true,
+  "recipients": [
+    {
+      "id": "R-1a2B3c4D5e6F7g8H9i0J1k",
+      "referenceId": "rhendricks@example.com",
+      "email": "rhendricks@example.com",
+      "name": "Richard Hendricks",
+      "lastName": "Hendricks",
+      "firstName": "Richard",
+      "type": "individual",
+      "status": "active",
+      "language": "en",
+      "complianceStatus": "verified",
+      "dob": null,
+      "updatedAt": "2017-03-20T19:06:40.937Z",
+      "createdAt": "2017-03-17T20:10:45.818Z",
+      "gravatarUrl": "https://s3.amazonaws.com/static.api.trolley.com/icon_user.svg",
+      "placeOfBirth": null,
+      "ssn": null,
+      "tags": [],
+      "passport": "",
+      "payoutMethod": "bank-transfer",
+      "compliance": {
+        "status": "verified",
+        "checkedAt": "2017-03-20T19:06:23.916Z"
+      },
+      "routeType": "ach",
+      "routeMinimum": "1", 
+      "estimatedFees": "1.25",
+      "accounts": [
+        {
+          "accountHolderName": "Richard Hendricks",
+          "bankId": "123",
+          "currency": "CAD",
+          "country": "CA",
+          "bankName": "TD CANADA TRUST",
+          "branchId": "47261",
+          "accountNum": "*****47"
+        }
+      ],
+      "address": {
+        "street1": "Apt# 14",
+        "street2": null,
+        "city": "",
+        "postalCode": "H3WXXX",
+        "phone": "",
+        "country": "CA",
+        "region": "QC"
+      },
+      "primaryCurrency": "CAD"
+    },
+    {
+      "id": "R-1a3B3c4D5e6F7g8H9i0J1k",
+      "referenceId": "jsmith11@example.com",
+      "email": "jsmith11@example.com",
+      "name": "John Smith",
+      "lastName": "John",
+      "firstName": "Smith",
+      "type": "individual",
+      "status": "active",
+      "language": "en",
+      "complianceStatus": "verified",
+      "dob": null,
+      "updatedAt": "2017-03-20T19:06:40.937Z",
+      "createdAt": "2017-03-17T20:10:45.818Z",
+      "gravatarUrl": "https://s3.amazonaws.com/static.api.trolley.com/icon_user.svg",
+      "placeOfBirth": null,
+      "ssn": null,
+      "tags": [],
+      "passport": "",
+      "payoutMethod": "bank-transfer",
+      "compliance": {
+        "status": "verified",
+        "checkedAt": "2017-03-20T19:06:23.916Z"
+      },
+      "routeType": "ach",
+      "routeMinimum": "1", 
+      "estimatedFees": "1.25",
+      "accounts": [
+        {
+          "accountHolderName": "John Smith",
+          "bankId": "123",
+          "currency": "CAD",
+          "country": "CA",
+          "bankName": "TD CANADA TRUST",
+          "branchId": "47261",
+          "accountNum": "*****47"
+        }
+      ],
+      "address": {
+        "street1": "Apt# 14",
+        "street2": null,
+        "city": "",
+        "postalCode": "H3WXXX",
+        "phone": "",
+        "country": "CA",
+        "region": "QC"
+      },
+      "primaryCurrency": "CAD"
+    }
+  ],
+  "meta": {
+    "page": 1,
+    "pages": 1,
+    "records": 2
+  }
+}
+While Listing all Recipients you can use various parameters to search and filter the results.
+
+These parameters are provided as query parameters to the GET request sent to the /recipients endpoint.
+
+This section goes details the parameters you can use to search and filter.
+
+HTTP Request
+
+GET https://api.trolley.com/v1/recipients
+
+Query Param	Description
+page
+optional
+int	The page number you want to fetch. (default: 1)
+pageSize
+optional
+int	Number of records you want in a page. (default: 10)
+search
+optional
+string	Keyword to perform an SQL LIKE% search in either of the name, email (username and domain-name) or referenceId fields.
+name
+optional
+string	Keyword to perform an SQL LIKE% search in either of the name, firstName or lastName fields.
+email
+optional
+string	Exact search of the email field.
+referenceId
+optional
+string	Exact search of the referenceId field.
+startDate
+optional
+date	Fetch records updated after this given date. (based on updatedAt field) Date should be in ISO 8601 format.
+endDate
+optional
+date	Fetch records updated before this given date. (based on updatedAt field) Date should be in ISO 8601 format.
+status
+optional
+string	Filter the results by recipient statuses.
+complianceStatus
+optional
+string	Filter the results by complianceStatus field. Allowed values are pending, verified, blocked.
+tags
+optional
+string	Performs an AND query based on all comma separated tags provided. Refer Tags in Recipients for details.
+country
+optional
+string	Filter by ISO2 country code (comma separated list if multiple).
+payoutMethod
+optional
+string	Filter by paypal, bank-transfer, check.
+currency
+optional
+string	Currency of recipient’s bank account, in ISO 4217 codes (e.g. EUR). Required for payout method bank-transfer, not for PayPal.
+orderBy
+optional
+string	Order results by fields name, email, referenceId, payoutMethod, createdAt, updatedAt.
+sortBy
+optional
+string	Sorting direction asc or desc (default: desc).
+Response Codes
+
+HTTP Code	Description
+200	List of Recipient
+401	Invalid API key
+500	Internal error
+Errors
+
+This table lists the expected errors that this method could return. However, other errors can be returned in the case where the service is down or other unexpected factors affect processing. Callers should always check the value of the ok params in the response.
+
+Error Code	Description
+not_found	Object doesn’t exist
+invalid_api_key	Invalid API key
+internal_server_error	Internal server errors
+Tags in Recipients
+Create a Recipient with Tags
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const recipient = await client.recipient.create(
+  {
+    type: "individual",
+    firstName: "John",
+    lastName: "Smith",
+    email: "jsmith@example.com",
+    tags: [
+        "tag1",
+        "tag2"
+    ]
+  }
+);
+
+console.log(recipient.id);
+
+Add Tags using “Update a Recipient”
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.recipient.update(
+  tags: [
+        "tag1",
+        "tag2"
+    ]
+);
+
+console.log(response);
+
+You can add and manage Tags with Recipients primarily with Create, List, and Update API calls.
+
+Following sections talk in detail about how to use tags with Recipient, with sample code.
+
+Add Tags to a Recipient
+
+You can add tags to a Recipient either while creating the Recipient or by Updating a Recipient.
+
+To do that, provide the key as tags, and a string array as the values, with the Create or Update request.
+
+Search Recipients Based on Tags
+
+You can use additional parameters in the List all Recipients operation to fetch Recipients based on tags.
+
+Using the tags query parameter, you can specify what tags you want to search for.
+
+The API performs an AND query based on all the query parameters you provide.
+
+Search Recipients who have all the provided tags
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.recipient.search(1, 10, "John");
+
+console.log(response);
+
+Update Tags of a Recipient
+
+To update the tags of a Recipient, use the Update a Recipient API to replace the existing tags with new tags.
+
+Please keep in mind that every time you update the tags, the old tags are deleted and new ones are added.
+
+If you wish to just add a new tag, you should copy all the existing tags, and send an ‘Update a Recipient’ request with existing and new tags.
+
+Update tags of a Recipient
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.recipient.update(
+  tags: [
+        "old-tag",
+        "new-tag"
+    ]
+);
+
+console.log(response);
+
+Delete Tags of a Recipient
+
+To delete Tags from a Recipient, use the ‘Update a Recipient’ API call with an empty tags parameter.
+
+Delete Tags of a Recipient
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.recipient.update(
+  tags: []
+);
+
+console.log(response);
+
+Retrieve all logs
+Example Request
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.recipient.findLogs(recipient.id);
+
+console.log(response);
+
+Response (200 Ok)
+{
+  "ok": true,
+  "activities": [
+    {
+      "ip": "::ffff:10.0.2.2",
+      "url": "/v1/recipients/R-91XNW81D85DMG/log",
+      "method": "GET",
+      "headers": {
+        "host": "api.local.dev:3000",
+        "connection": "keep-alive",
+        "postman-token": "47cad157-855e-49fe-45d6-d61a02ffa802",
+        "cache-control": "no-cache",
+        "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36",
+        "x-api-key": "pk_live_*********************************",
+        "content-type": "application/json",
+        "accept": "*/*",
+        "accept-encoding": "gzip, deflate, sdch",
+        "accept-language": "en-US,en;q=0.8"
+      },
+      "request": "",
+      "response": "{\"ok\":false,\"errors\":[{\"code\":\"not_found\",\"message\":\"Object not found\"}]}",
+      "code": 404,
+      "source": "api",
+      "testMode": false,
+      "createdAt": "2017-03-22T17:57:32.786Z"
+    }
+  ],
+  "meta": {
+    "page": 1,
+    "pages": 1,
+    "records": 2
+  }
+}
+You can retrieve a list of all activity related to a recipient by sending a GET request to the /recipients/:id/logs endpoint.
+
+HTTP Request
+
+GET https://api.trolley.com/v1/recipients/:id/logs
+
+Fields	Description
+id
+required
+string	Recipient ID
+HTTP Code	Description
+200	All recipients
+401	Invalid API key
+404	Recipient not found
+500	Internal error
+Errors
+
+This table lists the expected errors that this method could return. However, other errors can be returned in the case where the service is down or other unexpected factors affect processing. Callers should always check the value of the ok params in the response.
+
+Error Code	Description
+not_found	Object doesn’t exist
+invalid_api_key	Invalid API key
+internal_server_error	Internal server errors
+Errors Example
+
+If the recipient does not exist, the API will respond with an error. For example:
+
+Response (404 Not Found)
+{
+  "ok": false,
+  "errors": [
+    {
+      "code": "not_found",
+      "message": "Object not found"
+    }
+  ]
+}
+Retrieve all payments
+Example Request
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.payment.search(
+  {
+    recipientId: recipient.id
+  });
+
+console.log(response);
+
+Retrieve payments to this recipient
+
+HTTP Request
+
+GET https://api.trolley.com/v1/recipients/:id/payments
+
+Fields	Description
+id
+required
+string	Recipient ID
+Response (200 Ok)
+{
+  "ok": true,
+  "payments": [
+    {
+      "id": "P-1a2B3c4D5e6F7g8H9i0J1k",
+      "recipient": {
+        "id": "R-1a2B3c4D5e6F7g8H9i0J1k",
+        "referenceId": "jsmith11@example.com",
+        "email": "jsmith11@example.com",
+        "name": "Richard Hendricks",
+        "lastName": "Hendricks",
+        "firstName": "Richard",
+        "type": "individual",
+        "status": "active",
+        "language": "en",
+        "complianceStatus": "verified",
+        "dob": null,
+        "updatedAt": "2017-03-20T19:06:40.937Z",
+        "createdAt": "2017-03-17T20:10:45.818Z",
+        "gravatarUrl": "https://s3.amazonaws.com/static.api.trolley.com/icon_user.svg",
+        "placeOfBirth": null,
+        "ssn": null,
+        "tags": [],
+        "passport": "",
+        "payoutMethod": "bank-transfer",
+        "compliance": {
+          "status": "verified",
+          "checkedAt": "2017-03-20T19:06:23.916Z"
+        },
+        "accounts": [
+          {
+            "accountHolderName": "Richard Hendricks",
+            "bankId": "123",
+            "currency": "CAD",
+            "country": "CA",
+            "bankName": "TD CANADA TRUST",
+            "branchId": "47261",
+            "accountNum": "*****47"
+          }
+        ],
+        "address": {
+          "street1": "Apt# 14",
+          "street2": null,
+          "city": "",
+          "postalCode": "H3WXXX",
+          "phone": "",
+          "country": "CA",
+          "region": "QC"
+        },
+        "primaryCurrency": "CAD"
+      },
+      "status": "pending",
+      "sourceAmount": "100.10",
+      "exchangeRate": "1.0000",
+      "fees": "1.25",
+      "recipientFees": "1.25",
+      "targetAmount": "98.85",
+      "fxRate": "2.000000",
+      "memo": "memo",
+      "processedAt": null,
+      "createdAt": "2017-03-21T20:56:43.714Z",
+      "updatedAt": "2017-03-21T21:10:05.874Z",
+      "merchantFees": "0.00",
+      "compliance": {
+        "status": "pending",
+        "checkedAt": null
+      },
+      "sourceCurrency": "CAD",
+      "sourceCurrencyName": "Canadian Dollar",
+      "targetCurrency": "CAD",
+      "targetCurrencyName": "Canadian Dollar",
+      "batch": {
+        "id": "B-1a2B3c4D5e6F7g8H9i0J1k",
+        "createdAt": "2017-03-21T20:56:43.690Z",
+        "updatedAt": "2017-03-21T21:10:05.890Z",
+        "sentAt": null,
+        "completedAt": null
+      }
+    },
+    {
+      "id": "P-1a2B3c4D5e6F7g8H9i0J1k",
+      "recipient": {
+        "id": "R-1a2B3c4D5e6F7g8H9i0J1k",
+        "referenceId": "jsmith11@example.com",
+        "email": "jsmith11@example.com",
+        "name": "Richard Hendricks",
+        "lastName": "Hendricks",
+        "firstName": "Richard",
+        "type": "individual",
+        "status": "active",
+        "language": "en",
+        "complianceStatus": "verified",
+        "dob": null,
+        "updatedAt": "2017-03-20T19:06:40.937Z",
+        "createdAt": "2017-03-17T20:10:45.818Z",
+        "gravatarUrl": "https://s3.amazonaws.com/static.api.trolley.com/icon_user.svg",
+        "placeOfBirth": null,
+        "ssn": null,
+        "tags": [],
+        "passport": "",
+        "payoutMethod": "bank-transfer",
+        "compliance": {
+          "status": "verified",
+          "checkedAt": "2017-03-20T19:06:23.916Z"
+        },
+        "accounts": [
+          {
+            "accountHolderName": "Richard Hendricks",
+            "bankId": "123",
+            "currency": "CAD",
+            "country": "CA",
+            "bankName": "TD CANADA TRUST",
+            "branchId": "47261",
+            "accountNum": "*****47"
+          }
+        ],
+        "address": {
+          "street1": "Apt# 14",
+          "street2": null,
+          "city": "",
+          "postalCode": "H3WXXX",
+          "phone": "",
+          "country": "CA",
+          "region": "QC"
+        },
+        "primaryCurrency": "CAD"
+      },
+      "status": "pending",
+      "sourceAmount": "100.10",
+      "exchangeRate": "1.0000",
+      "fees": "1.25",
+      "recipientFees": "1.25",
+      "targetAmount": "0.00",
+      "fxRate": "2.000000",
+      "memo": "memo",
+      "processedAt": null,
+      "createdAt": "2017-03-20T15:11:18.517Z",
+      "updatedAt": "2017-03-20T15:11:18.517Z",
+      "merchantFees": "0.00",
+      "compliance": {
+        "status": "pending",
+        "checkedAt": null
+      },
+      "sourceCurrency": "CAD",
+      "sourceCurrencyName": "Canadian Dollar",
+      "targetCurrency": "CAD",
+      "targetCurrencyName": "Canadian Dollar",
+      "batch": {
+        "id": "B-1a2B3c4D5e6F7g8H9i0J1k",
+        "createdAt": "2017-03-20T15:11:18.486Z",
+        "updatedAt": "2017-03-20T15:11:18.582Z",
+        "sentAt": null,
+        "completedAt": null
+      }
+    }
+  ],
+  "meta": {
+    "page": 1,
+    "pages": 1,
+    "records": 2
+  }
+}
+HTTP Code	Description
+200	Recipient’s payments
+401	Invalid API key
+404	Recipient not found
+500	Internal error
+Errors
+
+This table lists the expected errors that this method could return. However, other errors can be returned in the case where the service is down or other unexpected factors affect processing. Callers should always check the value of the ok params in the response.
+
+Error Code	Description
+not_found	Object doesn’t exist
+invalid_api_key	Invalid API key
+internal_server_error	Internal server errors
+Errors Example
+
+If recipient doesn’t exist, the API will respond with an error. For example:
+
+Response (404 Not Found)
+{
+  "ok": false,
+  "errors": [
+    {
+      "code": "not_found",
+      "message": "Object not found"
+    }
+  ]
+}
+Retrieve recipient’s offline payments
+Example Request
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.offlinePayment.search(
+  {
+    recipientId: recipient.id
+  });
+
+console.log(response);
+
+Retrieve a recipient’s offline payments
+
+HTTP Request
+
+GET https://api.trolley.com/v1/recipients/:id/offlinePayments
+
+Fields	Description
+id
+required
+string	Recipient ID
+Response (200 Ok)
+{
+  "ok": true,
+  "offlinePayments": [
+    {
+      "amount": "100.00",
+      "category": "services",
+      "createdAt": "2019-10-31T20:24:29.954Z",
+      "currency": "USD",
+      "deletedAt": null,
+      "equivalentWithholdingAmount": "24.00",
+      "equivalentWithholdingCurrency": "USD",
+      "externalId": "id-123",
+      "id": "OP-3xghXMEcedrjPEo3KedqsR",
+      "memo": "A memo",
+      "processedAt": "2019-08-15T20:23:59.000Z",
+      "recipientId": "R-4321c356vrcerc54js",
+      "tags": [],
+      "taxReportable": true,
+      "updatedAt": "2019-10-31T20:24:29.954Z",
+      "withholdingAmount": "24.00",
+      "withholdingCurrency": "USD"
+    },
+    {
+      "amount": "100.00",
+      "category": "services",
+      "createdAt": "2019-10-31T20:24:29.954Z",
+      "currency": "USD",
+      "deletedAt": null,
+      "equivalentWithholdingAmount": "24.00",
+      "equivalentWithholdingCurrency": "USD",
+      "externalId": "id-123",
+      "id": "OP-4xghXMEcedrjPEo3KedqsR",
+      "memo": "A memo",
+      "processedAt": "2019-08-15T20:23:59.000Z",
+      "recipientId": "R-4321c356vrcerc54js",
+      "tags": [],
+      "taxReportable": true,
+      "updatedAt": "2019-10-31T20:24:29.954Z",
+      "withholdingAmount": "24.00",
+      "withholdingCurrency": "USD"
+    }
+  ]
+}
+HTTP Code	Description
+200	Recipient’s payments
+401	Invalid API key
+404	Recipient not found
+500	Internal error
+Errors
+
+This table lists the expected errors that this method could return. However, other errors can be returned in the case where the service is down or other unexpected factors affect processing. Callers should always check the value of the ok params in the response.
+
+Error Code	Description
+not_found	Object doesn’t exist
+invalid_api_key	Invalid API key
+internal_server_error	Internal server errors
+Errors Example
+
+If recipient doesn’t exist, the API will respond with an error. For example:
+
+Response (404 Not Found)
+{
+  "ok": false,
+  "errors": [
+    {
+      "code": "not_found",
+      "message": "Object not found"
+    }
+  ]
+}
+Recipient Account
+Our philosophy is to give more choice of payout methods to users. What works for someone in San Francisco, London or Melbourne, might not be the best option for someone else in Jakarta, Nairobi or Mumbai. PayPal doesn’t support all countries, in fact, 97.5% of the worldwide population don’t have a PayPal account, and over 2 billion people don’t have a bank account. So clearly multiple payment options are needed to support a global business. That is why we plan to support every major payout method, so your users have choice of what works best for them.
+
+Multiple Account Available
+
+By POST-ing an account method for a recipient, you are adding a new payment method (such as their bank account, their PayPal account, mobile money account, prepaid card, etc) to the recipient.
+
+A recipient can have multiple accounts with different payout methods assigned, however only one (1) account can be their selected (“primary”) account at any time.
+
+Account Attributes
+Below is a list of currently active (live) payout type, and those that are on our future roadmap.
+
+Payout Method Type	Status	Description Method
+bank-transfer	live	Bank Transfers to 210+ countries and territories (includes local bank transfers to 60+ countries, and bank wires to all other countries)
+paypal	live	PayPal account
+check	live	USD Checks printed and mailed to US based recipients
+venmo	live	Venmo transfers (for USA only)
+mobile-money	coming soon	Mobile Money
+debit-card	coming soon	Debit and Credit Cards (VISA and MasterCard branded)
+Sample Account Objects
+// Bank Account
+  {
+    "recipientAccountId": "A-UnukXDTbLtxtDLXVZGE9re",
+    "primary": true,
+    "currency": "CAD",
+    "country": "CA",
+    "iban": "",
+    "type": "bank-transfer",
+    "bankAccountType": "checking",
+    "accountNum": "*****2847",
+    "accountHolderName": "John Smith",
+    "bankId": "123",
+    "branchId": "47261",
+    "bankName": "TD bank",
+    "bankAddress": "123 Nice Street",
+    "bankCity": "Toronto",
+    "bankRegionCode": "ON",
+    "bankPostalCode": "M6A 0B1"
+  }
+
+// Check (US only)
+  {
+    "recipientAccountId": "A-UnukXDTbLtxtDLXVZGE9re",
+    "primary": true,
+    "currency": "USD",
+    "country": "US",
+    "type": "check",
+    "mailing": {
+        "name": "Leonardo Davinci",
+        "street1": "123 Some Street",
+        "street2": "",
+        "city": "NYC",
+        "region": "NY",
+        "country": "US",
+        "postal": "12345"
+    }
+  }
+
+// Paypal
+  {
+    "recipientAccountId": "A-UnukXDTbLtxtDLXVZGE9re",
+    "primary": true,
+    "currency": "CAD",
+    "type": "paypal",
+    "emailAddress": "leonardo@example.com"
+  }
+  
+// Venmo (US only)
+  {
+    "recipientAccountId": "A-UnukXDTbLtxtDLXVZGE9re",
+    "primary": true,
+    "currency": "USD",
+    "type": "venmo",
+    "phoneNumber": "+1 416 123 4567"
+  }
+Bank Account Fields
+
+Fields	Description
+Id
+string	An unique system generated Recipient identifier
+type
+string	Accepted types are: bank-transfer or paypal or check
+bankAccountType
+string	Required for certain countries - Argentina, Brazil, Bolivia, Chile, Ecuador, Peru, Paraguay, Uruguay, USA, and India.
+Accepted values are: checking or savings.
+Defaults to checking.
+currency
+string	ISO3 currency code (e.g. USD)
+primary
+boolean	Set recipient account(payout method) as primary (active)
+country
+string	ISO ALPHA-2 country code (e.g. US)
+accountHolderName
+string	Exact name of account owner/holder on their bank account, e.g. John S Sample
+accountNum
+string	Recipient bank account number, (e.g. 123456789). Required for bank transfer payout method. Also use this field for Mexico CLABE account number (e.g. 032180000118359719), and Argentina CBU account number (e.g. 1234567890123456789098). IBAN does not go in this field, use the IBAN field instead. It is also masked so only the last two digits are shown.
+bankId
+string	Bank ID number. Required for bank transfer payout method in: Canada (Institution Code, 3 digits, e.g. 003).
+branchId
+string	Bank branch number. Required for bank transfer payout method in: US (Routing Number, 9 digits, e.g. 123456789), Australia (BSB, 6 digits, e.g. 123456), UK/GB (Sort Code, 6 digits, e.g. 123456), Canada (Transit Number, 5 digits, e.g. 12345), New Zealand (Bank/Branch Number, 6 digits, e.g. 030001), India (IFSC Code, 11 digits, e.g. 12345678910)
+iban
+string	IBAN international bank account number (common in Europe and about 30 other countries). Required for bank transfer payout method if the country uses IBAN bank account number format. (E.g. DE893704004405320130006). It is also masked so only the last two digits are shown.
+swiftBic
+string	SWIFT-BIC bank code, must be either 8 or 11 characters (e.g. BNBOBOLXPOI). Required for bank transfer payout method, depending on country. Required for most countries we send by Swift Wire as well as some other countries
+bankName
+string	The bank name, auto-populated by Trolley based on bank info provided
+bankAddress
+string	Recipient’s bank branch address (can include branch name, Address line 1 and Address line 2 in this field. E.g. 123 Wellington Road, Suite 100). Required if adding a bank transfer payout method for countries requiring SWIFT-BIC
+bankCity
+string	Recipient’s bank branch address City. (E.g. London). Required if adding a bank transfer payout method for countries requiring SWIFT-BIC
+bankRegion
+string	Recipient’s bank branch address region /state /province/ county. Free text field. (e.g. Kent). Optional if adding a bank transfer payout method for countries requiring SWIFT-BIC
+PayPal fields
+
+In addition to some relevant fields shared with bank-transfer type (refer to the sample), PayPal type expects an emailAddress:
+
+Fields	Description
+emailAddress
+string	A valid email address associated with recipient’s PayPal account (e.g. johnsample@email.com)
+Venmo fields
+
+In addition to some relevant fields shared with bank-transfer type (refer to the sample), Venmo type expects a phoneNumber field:
+
+Fields	Description
+phone
+string	For Venmo, the phone number associated with the Venmo account.
+Mailing Field (for Checks)
+
+Example Mailing attributes
+{
+    "name": "Leonardo Davinci",
+    "street1": "123 Some Street",
+    "street2": "",
+    "city": "NYC",
+    "region": "NY",
+    "country": "US",
+    "postal": "12345"
+}
+Field	Description
+name
+required
+string	Name of individual or business to be written on the check (Pay to the order of).
+street1
+required
+string	Mailing Street 1 Address. PO Box addresses are acceptable.
+street2
+optional
+string	Mailing Street 2 Address (e.g. Apt 5).
+city
+required
+string	Mailing address City (e.g. Miami).
+region
+required
+string	Region code Mailing address State / County. We accept both ISO 3166-2 code (e.g. FL), and full state/province name (e.g. Florida). ISO 3166-2 code is highly recommended.
+country
+required
+string	Mailing Country. Must be US
+postal
+required
+string	Mailing address Zip code (e.g. 90210 or 90210-1234).
+Create Account
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.recipientAccount.create(
+  recipient.id,
+  {
+    type: "bank-transfer",
+    primary: "true",
+    country: "CA",
+    currency: "CAD",
+    accountNum: "012345678",
+    bankId: "004",
+    branchId: "47261",
+    accountHolderName: "John Smith"
+  }
+);
+
+console.log(response);
+
+Example response (200 Ok)
+{
+  "ok": true
+  "account": {
+       "recipientAccountId": "A-UnukXDTbLtxtDLXVZGE9re",
+       "primary": true,
+       "currency": "CAD",
+       "country": "CA",
+       "type": "bank-transfer",
+       "accountNum": "*****2847",
+       "accountHolderName": "John Smith",
+       "bankId": "123",
+       "branchId": "47261",
+       "bankName": "TD bank"
+   }
+}
+
+
+// response for `paypal` account
+{
+  "ok": true,
+  "account": {
+    "type": "paypal",
+    "emailAddress": "jsmithpaypal@example.com",
+    "recipientAccountId": "A-7ccjKkGNyQRXRnEAfqTd7d",
+    "primary": true,
+    "currency": "CAD"
+  }
+}
+To add a Recipient Account (ie payout method) such as a bank account or a PayPal account, to a Recipient, POST the following HTTP Request relevant to the Recipient’s payout method type.
+
+A recipient can have multiple accounts with different payout methods assigned, however, only one (1) payout method can be their selected “primary” (active) account at any time. If you add the Recipient Account (payout method) when creating the Recipient, you do not need to add it again. The first account that is added to a recipient will be considered primary.
+
+HTTP Request
+
+POST https://api.trolley.com/v1/recipients/:id/accounts
+
+Trolley currently supports two types of payout methods: paypal (PayPal) and bank-transfer (Bank Transfers).
+
+Based on the payout method type (ie: paypal or bank-transfer), apply the appropriate fields below.
+
+Bank Transfer
+
+Fields	Description
+id
+required
+string	Recipient ID
+type
+required
+string	Payout method, bank-transfer
+currency
+required
+string	ISO3 currency code (ie: ‘USD’)
+primary
+optional
+boolean	Set recipient account(payout method) as primary (active)
+country
+required
+string	ISO ALPHA-2 country codes (ie: ‘US’)
+accountHolderName
+required
+string	Exact name of account owner/holder on their bank account.
+accountNum
+required
+string	Bank account number, includes Mexico CLABE, Argentina CBU. Does not include IBAN.
+bankId
+conditional
+string	Bank ID, only required in Canada (Institution Code).
+branchId
+conditional
+string	Bank’s branch number, only required in US (Routing Number), Australia (BSB), UK (Sort Code), Canada (Transit Number), India (IFSC Code)
+iban
+conditional
+string	IBAN international bank account number, required for IBAN countries
+swiftBic
+conditional
+string	SWIFT-BIC bank code, required for SWIFT countries (8 or 11 characters)
+
+
+PayPal
+
+Fields	Description
+id
+required
+string	Recipient ID
+type
+required
+string	Payout method, paypal
+primary
+optional
+boolean	Set recipient account(payout method) as primary (active)
+emailAddress
+required
+string	Recipients PayPal account email address
+
+
+HTTP Code	Description
+200	Payment successfully updated
+401	Invalid API key
+404	Object not found
+406	One or more fields failed validation, see errors[] in response body
+500	Internal error
+Errors
+
+This table lists the expected errors that this method could return. However, other errors can be returned in the case where the service is down or other unexpected factors affect processing. Callers should always check the value of the ok params in the response.
+
+Error Code	Description
+empty_field	A field is required
+invalid_field	A field failed a validation check
+not_found	Object doesn’t exist
+invalid_api_key	Invalid API key
+internal_server_error	Internal server errors
+Delete Account
+Delete a recipient’s payout method
+
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.recipientAccount.remove(
+  recipient.id, 
+  account.id
+);
+
+console.log(response);
+
+Example response (200 Ok)
+{
+  "ok": true,
+  "object": "deleted"
+}
+HTTP Request
+
+DELETE https://api.trolley.com/v1/recipients/:id/accounts/:recipientAccountId
+
+Fields	Description
+id
+required
+string	recipientId
+recipientAccountId
+required
+string	recipientAccountId
+HTTP Code	Description
+200	Payment successfully updated
+401	Invalid API key
+404	Object not found
+500	Internal error
+Errors
+
+This table lists the expected errors that this method could return. However, other errors can be returned in the case where the service is down or other unexpected factors affect processing. Callers should always check the value of the ok params in the response.
+
+Error Code	Description
+not_found	Object doesn’t exist
+invalid_api_key	Invalid API key
+internal_server_error	Internal server errors
+Retrieve Account
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.recipientAccount.find(
+  recipient.id, 
+  account.id
+);
+
+console.log(response);
+
+Example response (200 Ok)
+{
+  "ok": true,
+  "account": {
+    "type": "paypal",
+    "emailAddress": "rain123@gmail.com",
+    "recipientAccountId": "A-7ccjKkGNyQRXRnEAfqTd7d",
+    "primary": false,
+    "currency": "CAD"
+  }
+}
+Retrieve a recipient’s payout method
+
+HTTP Request
+
+GET https://api.trolley.com/v1/recipients/:id/accounts/:recipientAccountId
+
+Fields	Description
+id
+required
+string	recipientId
+recipientAccountId
+required
+string	recipientAccountId
+HTTP Code	Description
+200	Payment successfully updated
+401	Invalid API key
+404	Object not found
+500	Internal error
+Errors
+
+This table lists the expected errors that this method could return. However, other errors can be returned in the case where the service is down or other unexpected factors affect processing. Callers should always check the value of the ok params in the response.
+
+Error Code	Description
+not_found	Object doesn’t exist
+invalid_api_key	Invalid API key
+internal_server_error	Internal server errors
+Update Account
+Update Recipient Account
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.recipientAccount.update(
+  recipient.id, 
+  account.id, 
+  {
+      primary: "false"
+  }
+);
+
+console.log(response);
+
+Example responses (200 Ok)
+Bank Account
+// Bank Account
+{
+  "ok": true,
+  "account": {
+    "recipientAccountId": "A-UnukXDTbLtxtDLXVZGE9re",
+    "primary": true,
+    "currency": "CAD",
+    "country": "CA",
+    "iban": "",
+    "type": "bank-transfer",
+    "accountNum": "*****2847",
+    "accountHolderName": "John Smith",
+    "bankId": "123",
+    "branchId": "47261",
+    "bankName": "TD bank",
+    "bankAddress": "123 Nice Street",
+    "bankCity": "Toronto",
+    "bankRegionCode": "ON",
+    "bankPostalCode": "M6A 0B1"
+  }
+}
+
+// Check (US only)
+{
+  "ok": true,
+  "account": {
+    "recipientAccountId": "A-UnukXDTbLtxtDLXVZGE9re",
+    "primary": true,
+    "currency": "USD",
+    "country": "US",
+    "type": "check",
+    "mailing": {
+        "name": "Leonardo Davinci",
+        "street1": "123 Some Street",
+        "street2": "",
+        "city": "NYC",
+        "region": "NY",
+        "country": "US",
+        "postal": "12345"
+    }
+  }
+}
+
+// Paypal  
+{
+  "ok": true,
+  "account": {
+    "recipientAccountId": "A-UnukXDTbLtxtDLXVZGE9re",
+    "primary": true,
+    "currency": "CAD",
+    "type": "paypal",
+    "emailAddress": "leonardo@example.com"
+  }
+}
+
+// Venmo (US only)
+{
+  "ok": true,
+  "account": {
+    "recipientAccountId": "A-UnukXDTbLtxtDLXVZGE9re",
+    "primary": true,
+    "currency": "USD",
+    "type": "venmo",
+    "phoneNumber": "+1 416 123 4567"
+  }
+}
+Update a payout method for a recipient. You can update existing primary method. When an account is updated, a new account id is generated.
+
+HTTP Request
+
+PATCH https://api.trolley.com/v1/recipients/:id/accounts/:recipientAccountId
+
+Fields	Description
+id
+required
+string	recipientId
+recipientAccountId
+required
+string	recipientAccountId
+HTTP Code	Description
+200	Payment successfully updated
+401	Invalid API key
+404	Object not found
+406	One or more fields failed validation, see errors[] in response body
+500	Internal error
+Errors
+
+This table lists the expected errors that this method could return. However, other errors can be returned in the case where the service is down or other unexpected factors affect processing. Callers should always check the value of the ok params in the response.
+
+Error Code	Description
+empty_field	A field is required
+invalid_field	A field failed a validation check
+not_found	Object doesn’t exist
+invalid_api_key	Invalid API key
+internal_server_error	Internal server errors
+Payments
+The payment object describes a payment. Payments are sent to a recipient via the recipient’s chosen payout method, such as: bank account, PayPal, mobile money, or credit/debit card. If no payment method is setup, the payment will not be processed.
+
+A Batch is a group of Payments. Payments are added to a batch prior to being processed. If your business does regularly scheduled payouts, such as once per day, once per week, every 2 weeks, or even monthly, then using batches will be great for you.
+
+A batch can be made up of just 1 payment, or 100 payments, or hundreds of thousands of payments (there are no upper limits).
+
+Batches also allow you to manually review and approve your payments before processing, if you prefer. This is handy if you conduct some additional fraud reviews on your payouts before processing, or if your company CFO or a senior manager is responsible for approving payouts before they go out.
+
+There are 4 main steps for handling a batch:
+
+Step 1: Create a batch
+
+Firstly, when you Create a batch, the system will automatically open a new batch and assign a unique batchId which is generated by our system. The format of all Batch IDs are “B-1a2B3c4D5e6F7g8H9i0J1k”, with the ‘B-’ prefix indicating Batch, followed by 22 alphanumeric digits.
+
+When you create a batch, you will also send us the details for your payments. This includes at a minimum the recipientId, amount and currency for all the payments for that batch.
+
+Note: You can also use our online Dashboard portal to manually create a batch of payments by uploading a file of payments in .csv file format, or manually adding payments into a batch.
+
+Payment Minimums
+
+While adding payments to a batch, keep in mind there are limits to the minimum amount within a payment you can send through a bank transfer.
+If you add payment amounts to a batch which are below the minimum amount allowed, the batch will not be processed. To avoid this, you should query /recipients/:recipientId API to find out the payment minimum for a recipient, before adding the payments to the batch.
+
+For more information on how to work with Payment Minimums, and a suggested flow of this operation, have a look at this article: How to get ready for using Bank Transfer Minimums
+
+Step 2: Generate Quote of FX rates
+
+After creating the batch, you will need to send a POST request to the /batches/:id/generate-quote API to get the live exchange rates for payments that involve a currency conversion.
+
+The system will update the exchange rate for all payments with bank-transfer type payout method. (Note that PayPal payments will not be updated, as PayPal handles the FX rates). You can generate a quote multiple times to get the latest live exchange rates, up until the batch has started processing.
+
+Step 3: Check account balance
+
+When the batch is created, the system will automatically check the balance of your account to see if it is sufficient to cover the costs of the payouts plus any transaction fees. If your account balance is not sufficient, the batch will remain pending (open) until your account is funded. You can see your account balance in the Dashboard under the ‘Transfers’ tab, which is updated in real time. You can also get your account balance by sending a GET request to the /balance endpoint.
+
+Step 4: Process the batch
+
+Once the batch is created, and there is sufficient funds in your account balance to cover the batch, then the batch can be processed. You will need to send a POST request to the /batches/:id/start-processing API to commence processing of the batch of payments.
+
+Step 5: Summary of the batch
+
+You can retrieve a summary of the batch, including the status and details of all the payments in the batch, by sending a GET request to the /batch/:id/summary endpoint.
+
+If you wish to get the details of a specific payment within the batch, you can send a GET request to the /payments/:id endpoint.
+
+ 
+Rate expiration time limit
+
+From the time a Quote is generated (step 2 above), to the time you process a Batch (Step 4 above), you will have a maximum 90 minutes until the FX rate quote expires. If you do not process the batch within that time, you will need to generate a quote again.
+Create a batch
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.batch.create(
+{
+  payments: [
+    {
+      recipient: {
+        id: recipient.id
+      },
+      amount: "65",
+      currency: "CAD"
+    }
+  ]
+});
+
+console.log(response.batch.id);
+
+Example response (200 Ok)
+{
+  "ok": true,
+  "batch": {
+    "id": "B-1a2B3c4D5e6F7g8H9i0J1k",
+    "status": "open",
+    "tags": [],
+    "amount": "8.75",
+    "totalPayments": 2,
+    "currency": "CAD",
+    "description": "Weekly Payouts on 2017-2-27",
+    "sentAt": null,
+    "completedAt": null,
+    "createdAt": "2017-03-27T20:19:47.378Z",
+    "updatedAt": "2017-03-27T20:19:47.518Z",
+    "quoteExpiredAt": "2017-03-28T04:08:52.634Z"
+  }
+}
+To create a Batch send a POST request to the /batches endpoint and include the payments details in the request body. The Batch and each Payment within the batch will be assigned and represented by an auto-generated ID (batchId and paymentId) which can be used to retrieve or update payment or batch details at a later time.
+
+HTTP Request
+
+POST https://api.trolley.com/v1/batches
+
+Fields	Description
+currency
+optional
+string	ISO3 currency code (ie: ‘USD’). The currency will default to your merchant accounts default currency. Or the sourceCurrency of the first payment.
+description
+optional
+string	A description of the batch that you would like to add for internal reference
+payments
+optional
+array	Array of payments
+payments[].recipient
+required
+object	Specific Recipient within the Payment. One of id, email or referenceId must be provided
+payments[].recipient.id
+conditional
+string	Recipient ID, only required if no other recipient identifier is provided
+payments[].recipient.email
+conditional
+string	Valid Email associated with the Recipient, only required if no other recipient identifier is provided
+payments[].amount
+required
+string	The amount in the specified currency
+payments[].currency
+required
+string	The amount’s ISO3 currency code (ie: ‘USD’)
+payments[].memo optional
+_string_
+Description of payment visible to the recipient. Max 1024 characters.
+ 
+Minimum Payment Amounts on Bank Transfers
+
+There are limits on the minimum amounts within a payment that you can send through a bank transfer.
+
+We call this Payment Minimums
+
+If you send an amount value in a payment which is below the minimum limit, the batch will not be processed and you'll receive HTTP 400 error in the response
+
+Learn more about Payment Minimums:
+
+What are Payment Minimums - our Support Center article.
+
+Finding out the Payment Minimum for a recipient - Querying a recipient via the Retrieve Recipient API.
+
+Read about our suggested flow for adding payments to a batch.
+
+  
+Amounts in string format
+
+All amounts are in string format in order to avoid rounding problems with floating point numbers. The only allowed formats are positive numeric values with either two decimal places or no decimal (e.g. "1.99" or "123").
+ 
+Amount and Currency
+
+In most cases, you will specify an amount and a currency when you send a payment. For example, you need to send a payout to a freelancer for 100 USD, and your Trolley funding currency is USD. So the payment's amount is 100.00 and it's currency is USD.
+
+In some cases, such as when paying a supplier invoice, you might owe the supplier a specific amount, after any fees, such as 200 EUR. Here, you simply need to set the payment's amount to 200, and it's currency to EUR, and additionally set it's "coverFees" to TRUE. You would pay the fees in this case so the Recipient doesn't have to.
+
+  
+Batch Statuses
+
+During different states of the Batch, the "status" object in the response will contain different values depicting the current state the Batch is in.
+
+Along with that any associated Webhooks will also be sent out, as per your configuration.
+
+Check out the following documentation to learn more:
+
+Batch Statuses
+Webhooks
+HTTP Code	Description
+200	Batch successfully updated
+400	One or more fields failed validation, see errors[] in response body
+401	Invalid API key
+500	Internal error
+Errors
+
+This table lists the expected errors that this method could return. However, other errors can be returned in the case where the service is down or other unexpected factors affect processing. Callers should always check the value of the ok params in the response.
+
+Error Code	Description
+empty_field	A field is required
+invalid_field	A field failed a validation check
+invalid_status	Invalid Status
+invalid_api_key	Invalid API key
+internal_server_error	Internal server errors
+More details about what kind of errors you can encounter while creating or processing a payment can be found in the reference document for Payment and Batch Errors.
+
+Retrieve a batch
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.batch.find(batch.id);
+
+console.log(response.batch.id);
+
+Example response (200 Ok)
+{
+  "ok": true,
+  "batch": {
+    "id": "B-1a2B3c4D5e6F7g8H9i0J1k",
+    "status": "open",
+    "tags": [],
+    "amount": "98.75",
+    "totalPayments": 2,
+    "currency": "CAD",
+    "description": "Weekly Payouts on 2017-2-23",
+    "sentAt": null,
+    "completedAt": null,
+    "createdAt": "2017-03-23T15:21:51.171Z",
+    "updatedAt": "2017-03-23T15:21:51.254Z",
+    "quoteExpiredAt": "2017-03-29T04:08:52.634Z",
+    "payments": {
+      "payments": [
+        {
+          "id": "P-1a2B3c4D5e6F7g8H9i0J1k",
+          "recipient": {
+            "id": "R-1a2B3c4D5e6F7g8H9i0J1k",
+            "referenceId": "jsmith11@example.com",
+            "email": "jsmith11@example.com",
+            "name": "John Smith",
+            "status": "active",
+            "country": "Canada"
+          },
+          "method": "bank",
+          "methodDisplay": "Bank Transfer",
+          "status": "pending",
+          "sourceAmount": "0.00",
+          "targetAmount": "100.00",
+          "isSupplyPayment": true,
+          "memo": "memo",
+          "fees": "1.25",
+          "recipientFees": "0.00",
+          "exchangeRate": "1.0000",
+          "processedAt": null,
+          "merchantFees": "1.25",
+          "sourceCurrency": "CAD",
+          "sourceCurrencyName": "Canadian Dollar",
+          "targetCurrency": "CAD",
+          "targetCurrencyName": "Canadian Dollar",
+          "compliance": {
+            "status": "pending",
+            "checkedAt": null
+          }
+        },
+        {
+          "id": "P-1a2B3c4D5e6F7g8H9i0J1k",
+          "recipient": {
+            "id": "R-1a2B3c4D5e6F7g8H9i0J1k",
+            "referenceId": "jsmith11@example.com",
+            "email": "jsmith11@example.com",
+            "name": "Richard Hendricks",
+            "status": "active",
+            "country": "Canada"
+          },
+          "method": "bank",
+          "methodDisplay": "Bank Transfer",
+          "status": "pending",
+          "sourceAmount": "100.00",
+          "targetAmount": "0.00",
+          "isSupplyPayment": false,
+          "memo": "memo",
+          "fees": "1.25",
+          "recipientFees": "1.25",
+          "exchangeRate": "1.0000",
+          "processedAt": null,
+          "merchantFees": "0.00",
+          "sourceCurrency": "CAD",
+          "sourceCurrencyName": "Canadian Dollar",
+          "targetCurrency": "CAD",
+          "targetCurrencyName": "Canadian Dollar",
+          "compliance": {
+            "status": "pending",
+            "checkedAt": null
+          }
+        }
+      ],
+      "meta": {
+        "page": 1,
+        "pages": 1,
+        "records": 2
+      }
+    }
+  }
+}
+You can retrieve details of a Batch of payments by sending a GET request to the /batches/:id endpoint.
+
+HTTP Request
+
+GET https://api.trolley.com/v1/batches/:id
+
+Fields	Description
+id
+required
+string	Batch ID
+HTTP Code	Description
+200	Batch object
+401	Invalid API key
+404	Object not found
+500	Internal error
+Errors
+
+This table lists the expected errors that this method could return. However, other errors can be returned in the case where the service is down or other unexpected factors affect processing. Callers should always check the value of the ok params in the response.
+
+Error Code	Description
+not_found	Object doesn’t exist
+invalid_api_key	Invalid API key
+internal_server_error	Internal server errors
+Delete a batch
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.batch.remove(batch.id);
+
+console.log(response);
+
+Expected Response (204 No Content)
+You can delete an existing batch by sending a DELETE request to the /batches/:id endpoint.
+
+Note that you can only delete a batch that is in a pending status and has not yet been processed. Once a batch is processed, you are unable to delete the batch. If you processed a batch in error and wish to stop it, please contact support immediately and we will assist as best we can.
+
+HTTP Request
+
+DELETE https://api.trolley.com/v1/batches/:id
+
+{
+  "ok": true
+}
+Fields	Description
+id
+required
+string	Batch ID
+HTTP Code	Description
+200	Batch successfully deleted
+400	Invalid status
+401	Invalid API key
+404	Object not found
+500	Internal error
+Errors
+
+This table lists the expected errors that this method could return. However, other errors can be returned in the case where the service is down or other unexpected factors affect processing. Callers should always check the value of the ok params in the response.
+
+Error Code	Description
+not_found	Object doesn’t exist
+invalid_status	Invalid Status
+invalid_api_key	Invalid API key
+internal_server_error	Internal server errors
+Delete multiple batches
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.batch.remove(
+  [
+    batch1.id,
+    batch2.id
+  ]);
+
+console.log(response);
+
+Expected Response (204 No Content)
+You can delete multiple batches by sending a DELETE request to the /batches endpoint with a list of batch ids in the request body.
+
+Note that you can only delete batches those are in pending status and has not yet been processed. Once a batch is processed, you are unable to delete the batch. If you processed a batch in error and wish to stop it, please contact support immediately and we will assist as best we can.
+
+HTTP Request
+
+DELETE https://api.trolley.com/v1/batches
+
+{
+  "ok": true
+}
+Fields	Description
+ids
+required
+array	Batch IDs
+HTTP Code	Description
+200	Batch successfully deleted
+400	Invalid status
+401	Invalid API key
+404	Object not found
+500	Internal error
+Errors
+
+This table lists the expected errors that this method could return. However, other errors can be returned in the case where the service is down or other unexpected factors affect processing. Callers should always check the value of the ok params in the response.
+
+Error Code	Description
+not_found	Object doesn’t exist
+invalid_status	Invalid Status
+invalid_api_key	Invalid API key
+internal_server_error	Internal server errors
+List all batches
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.batch.search(1, 10, "John");
+
+console.log(response);
+
+Expected response (200 Ok)
+{
+  "ok": true,
+  "batches": [
+    {
+      "id": "B-1a2B3c4D5e6F7g8H9i0J1k",
+      "status": "accepted",
+      "tags": [],
+      "amount": "109.75",
+      "totalPayments": 1,
+      "currency": "CAD",
+      "description": "Weekly Payouts on 2017-0-11",
+      "sentAt": null,
+      "completedAt": null,
+      "createdAt": "2017-01-11T23:30:52.974Z",
+      "updatedAt": "2017-01-11T23:31:38.954Z",
+      "quoteExpiredAt": "2017-01-12T04:08:52.634Z"
+    },
+    {
+      "id": "B-1a2B3c4D5e6F7g8H9i0J1k",
+      "status": "complete",
+      "tags": [],
+      "amount": "109.75",
+      "totalPayments": 1,
+      "currency": "CAD",
+      "description": "Weekly Payouts on 2017-0-11",
+      "sentAt": "2017-01-11T23:18:48.091Z",
+      "completedAt": "2017-01-11T23:18:49.222Z",
+      "createdAt": "2017-01-11T23:18:37.976Z",
+      "updatedAt": "2017-01-11T23:18:49.222Z",
+      "quoteExpiredAt": "2017-01-12T04:08:52.634Z"
+    }
+  ]
+}
+You can retrieve all batches by sending a GET request to the /batches endpoint.
+
+HTTP Request
+
+GET https://api.trolley.com/v1/batches?page=1&pageSize=10
+
+Query Param	Description
+page
+required
+int	The page number (default: 1)
+pageSize
+required
+int	Number of records in a page (default: 10)
+search
+optional
+string	Wildcard search across batches
+HTTP Code	Description
+200	List of batches
+401	Invalid API key
+500	Internal error
+Error Code	Description
+invalid_api_key	Invalid API key
+internal_server_error	Internal server errors
+Search & Filter Batches
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+// Support for all the filters coming soon
+const response = await client.batch.search(1, 10, "tag1");
+
+console.log(response);
+
+Expected response (200 Ok)
+{
+  "ok": true,
+  "batches": [
+    {
+      "id": "B-1a2B3c4D5e6F7g8H9i0J1k",
+      "status": "accepted",
+      "tags": [],
+      "amount": "109.75",
+      "totalPayments": 1,
+      "currency": "CAD",
+      "description": "Weekly Payouts on 2017-0-11",
+      "sentAt": null,
+      "completedAt": null,
+      "createdAt": "2017-01-11T23:30:52.974Z",
+      "updatedAt": "2017-01-11T23:31:38.954Z",
+      "quoteExpiredAt": "2017-01-12T04:08:52.634Z"
+    },
+    {
+      "id": "B-1a2B3c4D5e6F7g8H9i0J1k",
+      "status": "complete",
+      "tags": [],
+      "amount": "109.75",
+      "totalPayments": 1,
+      "currency": "CAD",
+      "description": "Weekly Payouts on 2017-0-11",
+      "sentAt": "2017-01-11T23:18:48.091Z",
+      "completedAt": "2017-01-11T23:18:49.222Z",
+      "createdAt": "2017-01-11T23:18:37.976Z",
+      "updatedAt": "2017-01-11T23:18:49.222Z",
+      "quoteExpiredAt": "2017-01-12T04:08:52.634Z"
+    }
+  ]
+}
+While fetching all Batches you can use various parameters to search and filter the results.
+
+These parameters are provided as query parameters to the GET request sent to the /batches endpoint.
+
+This section goes details the parameters you can use to search and filter.
+
+HTTP Request
+
+GET https://api.trolley.com/v1/batches/
+
+Query Param	Description
+search
+optional
+string	Keyword to perform an SQL LIKE% search in batch’s id field, or an exact search in the tags field.
+referenceId
+optional
+string	Search through the IDs of the batches.
+startDate
+optional
+date	Fetch records updated after this given date. (based on updatedAt field) Date should be in ISO 8601 format.
+endDate
+optional
+date	Fetch records updated before this given date. (based on updatedAt field) Date should be in ISO 8601 format.
+status
+optional
+string	Filter the results by Batch statuses.
+tags
+optional
+string	Performs an AND query based on all comma separated tags provided. Refer Tags in a Batch for details.
+currency
+optional
+string	Filter by the currency of Batch, in ISO 4217 codes (e.g. EUR).
+orderBy
+optional
+string	Order results by fields amount, status, id, totalPayments, createdAt, updatedAt.
+sortBy
+optional
+string	Sort results either in asc order or desc order. (default: desc).
+page
+optional
+int	The page number you want to fetch. (default: 1)
+pageSize
+optional
+int	Number of records you want in a page. (default: 10)
+Response Codes
+
+HTTP Code	Description
+200	List of batches
+401	Invalid API key
+500	Internal error
+Errors
+
+This table lists the expected errors that this method could return. However, other errors can be returned in the case where the service is down or other unexpected factors affect processing. Callers should always check the value of the ok params in the response.
+
+Error Code	Description
+invalid_api_key	Invalid API key
+internal_server_error	Internal server errors
+Tags in a Batch
+Create a Batch with Tags
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.batch.create(
+{
+  currency: "USD",
+  description: "Month end payout",
+  tags: [
+    "tag1",
+    "tag2"
+  ],
+  payments: [...]
+});
+
+console.log(response.batch.id);
+
+Get Batches which have all the provided tags
+// Coming soon to the Javascript SDK
+
+You can add and use Tags with Batches with Create and List API calls.
+
+Following sections talk in detail about how to use tags with Batches, with sample code.
+
+Add Tags to a Batch
+
+You can add tags to a Batch either while creating it.
+
+To do that, provide the key as tags, and a string array as the values, with the Create request.
+
+Search Batches Based on Tags
+
+You can use additional parameters in the List all Batches request to fetch Batches based on tags.
+
+Using the tags query parameter, you can specify what tags you want to search for.
+
+The API performs an AND query based on all the query parameters you provide.
+
+Create a payment
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.payment.create(
+  batch.id,
+  {
+  recipient: {
+    id: recipient.id
+  },
+  sourceAmount: "100.10",
+  sourceCurrency: "CAD",
+  memo: "Freelance payment"
+});
+
+console.log(response.batch.id);
+
+To create a payment under a batch send a POST request to the /batches/:id/payments endpoint and include the payments details in the request body. A payment will be created and added to the batch. An auto-generated ID (paymentId) will be generated which can be used to retrieve or update payment or batch details at a later time.
+
+Example response (200 Ok)
+{
+  "ok": true,
+  "payment": {
+    "id": "	P-1a2B3c4D5e6F7g8H9i0J1k",
+    "recipient": {
+      "id": "R-1a3B3c4D5e6F7g8H9i0J1k",
+      "referenceId": "jsmith11@example.com",
+      "email": "jsmith11@example.com",
+      "name": "John Smith",
+      "lastName": "John",
+      "firstName": "Smith",
+      "type": "individual",
+      "status": "active",
+      "language": "en",
+      "complianceStatus": "verified",
+      "dob": null,
+      "updatedAt": "2017-03-20T19:06:40.937Z",
+      "createdAt": "2017-03-17T20:10:45.818Z",
+      "gravatarUrl": "https://s3.amazonaws.com/static.api.trolley.com/icon_user.svg",
+      "placeOfBirth": null,
+      "ssn": null,
+      "tags": [],
+      "passport": "",
+      "payoutMethod": "bank-transfer",
+      "compliance": {
+        "status": "verified",
+        "checkedAt": "2017-03-20T19:06:23.916Z"
+      },
+      "accounts": [
+        {
+          "accountHolderName": "John Smith",
+          "bankId": "123",
+          "currency": "CAD",
+          "country": "CA",
+          "bankName": "TD CANADA TRUST",
+          "branchId": "47261",
+          "accountNum": "*****47"
+        }
+      ],
+      "address": {
+        "street1": "Apt# 14",
+        "street2": null,
+        "city": "",
+        "postalCode": "H3WXXX",
+        "phone": "",
+        "country": "CA",
+        "region": "QC"
+      },
+      "primaryCurrency": "CAD"
+    },
+    "status": "pending",
+    "sourceAmount": "100.10",
+    "exchangeRate": "1.0000",
+    "fees": "1.25",
+    "recipientFees": "1.25",
+    "targetAmount": "0.00",
+    "fxRate": "2.000000",
+    "memo": "memo",
+    "processedAt": null,
+    "createdAt": "2017-03-27T20:51:39.567Z",
+    "updatedAt": "2017-03-27T20:51:39.567Z",
+    "merchantFees": "0.00",
+    "compliance": {
+      "status": "pending",
+      "checkedAt": null
+    },
+    "batch": {
+      "id": "B-1a2B3c4D5e6F7g8H9i0J1k",
+      "createdAt": "2017-03-21T20:56:43.690Z",
+      "updatedAt": "2017-03-28T04:09:02.966Z",
+      "sentAt": "2017-03-28T04:08:52.634Z",
+      "completedAt": "2017-03-28T04:08:54.353Z"
+    },
+    "sourceCurrency": "CAD",
+    "sourceCurrencyName": "Canadian Dollar",
+    "targetCurrency": "CAD",
+    "targetCurrencyName": "Canadian Dollar",
+    "category": "services",
+    "coverFees": false,
+    "currency": "CAD",
+    "equivalentWithholdingAmount": "0.00",
+    "equivalentWithholdingCurrency": "CAD",
+    "estimatedDeliveryAt": null,
+    "externalId": "",
+    "failureMessage": null,
+    "initiatedAt": null,
+    "isSupplyPayment": false,
+    "merchantId": "M-Osg3dh2b0m1cRg9b8Shd2d",
+    "methodDisplay": "Bank Transfer",
+    "returnedAmount": "0.00",
+    "returnedAt": null,
+    "returnedNote": null,
+    "returnedReason": [],
+    "settledAt": null,
+    "tags": [],
+    "taxBasisAmount": "0.00",
+    "taxBasisCurrency": "CAD",
+    "taxReportable": true,
+    "withholdingAmount": "0.00",
+    "withholdingCurrency": "CAD"
+  }
+}
+HTTP Request
+
+POST https://api.trolley.com/v1/batches/:id/payments
+
+Fields	Description
+recipient
+required
+object	Information about the recipient of the payment. One identifier must be provided.
+recipient.id
+conditional
+string	Recipient ID assigned by Trolley, e.g. R-12Ga2s31aH2233sa993HgsGs. Used to identify the correct recipient to pay. You must provide at least one of: Email, Reference ID, or Recipient ID.
+recipient.email
+conditional
+string	Recipient’s email address (e.g. john@email.com). Used to identify the correct recipient to pay. You must provide at least one of: Email, Reference ID, or Recipient ID.
+recipient.referenceId
+conditional
+string	Recipient reference ID as assigned by your business (your internal user reference number, e.g. ‘U1234556678’). Used to identify the correct recipient to pay. You must provide at least one of: Email, Reference ID, or Recipient ID).
+amount
+conditional
+string	Amount you wish to send, e.g. 100.00 USD, in your own currency.
+currency
+conditional
+string	Currency of the amount you wish to send, e.g. 100.00 USD.
+coverFees
+optional
+boolean	If the merchant should cover the network fees for this payment (default: false).
+sourceAmount
+conditional
+string
+deprecated	Amount you wish to send, e.g. 100.00 USD, in your own currency. Required only if sending a “sourceAmount”.
+sourceCurrency
+conditional
+string
+deprecated	Currency of the amount you wish to send, e.g. 100.00 USD. Required only if sending a “sourceAmount”.
+targetAmount
+conditional
+string
+deprecated	Amount you wish the recipient to receive, e.g. 85.00 EUR, in the recipient’s currency. Required only if sending a “Receive Amount”.
+targetCurrency
+conditional
+string
+deprecated	Currency of the amount you wish the recipient to receive, e.g. 85.00 EUR, in the recipient’s currency. Required only if sending a “Receive Amount”.
+memo
+optional
+string	A short note which will be sent along with the payment to the recipient’s bank, as well as on the payment confirmation email if enabled. This memo will be displayed on the recipient’s bank statement descriptor to help them identify who the payment is from. Our APIs limit memo to 1024 characters. The number of characters ultimately displayed depends on the recipient’s bank, so it’s best to keep it short to under 30 characters, otherwise, the end may get cut off. Special characters are not supported on bank statements so they will be stripped out by the bank. The memo field is good for referring to an invoice or reference number. We also strongly suggest including your (short) business name at the start, as some banks globally don’t support displaying your business as the sender name. A good sample memo for an invoice payment from Airbnb would be: “AIRBNB INV 12345678”.
+externalId
+optional
+string/null	Storage for your internal reference ID for this payment, if present it must be unique.
+taxReportable
+optional
+boolean	If the merchant should apply tax withholding on the payment, and in turn adding it to the tax reporting (default: true).
+forceUsTaxActivity
+optional
+boolean	Set this to true ONLY when the tax reporting system is enabled AND the payment is taxReportable AND you intend to override the recipient’s W8’s “certify no us activities” to assert that the payment definitely DOES involve US activities. (default: false).
+category
+conditional
+string	Income type if the payment is Tax Reportable, either services, royalties, rent, royalties_film or prizes, otherwise education and refunds are supported for non Tax Reportable payments.
+ 
+Minimum Payment Amounts on Bank Transfers
+
+There are limits on the minimum amounts within a payment that you can send through a bank transfer.
+
+We call this Payment Minimums
+
+If you send an amount value in a payment which is below the minimum limit, the batch will not be processed and you'll receive HTTP 400 error in the response
+
+Learn more about Payment Minimums:
+
+What are Payment Minimums - our Support Center article.
+
+Finding out the Payment Minimum for a recipient - Querying a recipient via the Retrieve Recipient API.
+
+Read about our suggested flow for adding payments to a batch.
+
+HTTP Code	Description
+200	Batch successfully deleted
+401	Invalid API key
+404	Object not found
+406	Validation error
+500	Internal error
+Errors
+
+This table lists the expected errors that this method could return. However, other errors can be returned in the case where the service is down or other unexpected factors affect processing. Callers should always check the value of the ok params in the response.
+
+Error Code	Description
+not_found	Object doesn’t exist
+invalid_api_key	Invalid API key
+internal_server_error	Internal server errors
+Retrieve a payment
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.payment.find(payment.id);
+
+console.log(response.payment.id);
+
+Expected response (200 Ok)
+{
+  "ok": true,
+  "payment": {
+    "id": "P-1a2B3c4D5e6F7g8H9i0J1k",
+    "recipient": {
+      "id": "R-1a2B3c4D5e6F7g8H9i0J1k",
+      "referenceId": "jsmith11@example.com",
+      "email": "jsmith11@example.com",
+      "name": "Richard Hendricks",
+      "lastName": "Hendricks",
+      "firstName": "Richard",
+      "type": "individual",
+      "status": "active",
+      "language": "en",
+      "complianceStatus": "verified",
+      "dob": null,
+      "updatedAt": "2017-03-20T19:06:40.937Z",
+      "createdAt": "2017-03-17T20:10:45.818Z",
+      "gravatarUrl": "https://s3.amazonaws.com/static.api.trolley.com/icon_user.svg",
+      "placeOfBirth": null,
+      "ssn": null,
+      "tags": [],
+      "passport": "",
+      "payoutMethod": "bank-transfer",
+      "compliance": {
+        "status": "verified",
+        "checkedAt": "2017-03-20T19:06:23.916Z"
+      },
+      "routeType": "ach",
+      "routeMinimum": "1", 
+      "estimatedFees": "1.25",
+      "accounts": [
+        {
+          "accountHolderName": "Richard Hendricks",
+          "bankId": "123",
+          "currency": "CAD",
+          "country": "CA",
+          "bankName": "TD CANADA TRUST",
+          "branchId": "47261",
+          "accountNum": "*****47"
+        }
+      ],
+      "address": {
+        "street1": "Apt# 14",
+        "street2": null,
+        "city": "",
+        "postalCode": "H3WXXX",
+        "phone": "",
+        "country": "CA",
+        "region": "QC"
+      },
+      "primaryCurrency": "CAD"
+    },
+    "status": "processed",
+    "sourceAmount": "100.10",
+    "exchangeRate": "1.0000",
+    "fees": "1.25",
+    "recipientFees": "1.25",
+    "targetAmount": "98.85",
+    "fxRate": "2.000000",
+    "memo": "memo",
+    "processedAt": "2017-03-28T04:09:02.955Z",
+    "createdAt": "2017-03-21T20:56:43.714Z",
+    "updatedAt": "2017-03-28T04:09:02.955Z",
+    "merchantFees": "0.00",
+    "compliance": {
+      "status": "verified",
+      "checkedAt": "2017-03-28T04:08:53.297Z"
+    },
+    "sourceCurrency": "CAD",
+    "sourceCurrencyName": "Canadian Dollar",
+    "targetCurrency": "CAD",
+    "targetCurrencyName": "Canadian Dollar",
+    "batch": {
+      "id": "B-1a2B3c4D5e6F7g8H9i0J1k",
+      "createdAt": "2017-03-21T20:56:43.690Z",
+      "updatedAt": "2017-03-28T04:09:02.966Z",
+      "sentAt": "2017-03-28T04:08:52.634Z",
+      "completedAt": "2017-03-28T04:08:54.353Z"
+    },
+    "checkNumber": "ABC123", // Only populated in case of Check payment (US Only)
+    "category": "services",
+    "coverFees": false,
+    "currency": "CAD",
+    "equivalentWithholdingAmount": "0.00",
+    "equivalentWithholdingCurrency": "CAD",
+    "estimatedDeliveryAt": null,
+    "externalId": "",
+    "failureMessage": null,
+    "initiatedAt": null,
+    "isSupplyPayment": false,
+    "merchantId": "M-Osg3dh2b0m1cRg9b8Shd2d",
+    "methodDisplay": "Bank Transfer",
+    "returnedAmount": "0.00",
+    "returnedAt": null,
+    "returnedNote": null,
+    "returnedReason": [],
+    "settledAt": null,
+    "tags": [],
+    "taxBasisAmount": "0.00",
+    "taxBasisCurrency": "CAD",
+    "taxReportable": true,
+    "withholdingAmount": "0.00",
+    "withholdingCurrency": "CAD"
+  }
+}
+You can retrieve a single payment by sending a GET request to the batches/:batch-id/payments/:id endpoint. It will return the details of that payment under a batch.
+
+HTTP Request
+
+GET https://api.trolley.com/v1/batches/:batch-id/payments/:payment-id
+
+Fields	Description
+batch-id
+required
+string	Batch ID
+payment-id
+required
+string	Payment ID
+ 
+Using `GET` Endpoint
+
+You can also use endpoint `GET https://api.trolley.com/v1/payments/:payment-id` to retrieve a payment.
+
+HTTP Code	Description
+200	Payment object
+401	Invalid API key
+404	Object not found
+500	Internal error
+Errors
+
+This table lists the expected errors that this method could return. However, other errors can be returned in the case where the service is down or other unexpected factors affect processing. Callers should always check the value of the ok params in the response.
+
+Error Code	Description
+not_found	Object doesn’t exist
+invalid_api_key	Invalid API key
+internal_server_error	Internal server errors
+Update a payment
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.payment.update(
+  payment.id,
+  batch.id,
+  { 
+    sourceAmount: "900.90"
+  }
+);
+
+console.log(response);
+
+Response (200 Ok)
+{
+  "ok": true,
+  "payment": {
+    "id": "P-1a2B3c4D5e6F7g8H9i0J1k",
+    "recipient": {
+      "id": "R-1a3B3c4D5e6F7g8H9i0J1k",
+      "referenceId": "jsmith11@example.com",
+      "email": "jsmith11@example.com",
+      "name": "John Smith",
+      "lastName": "John",
+      "firstName": "Smith",
+      "type": "individual",
+      "status": "active",
+      "language": "en",
+      "complianceStatus": "verified",
+      "dob": null,
+      "updatedAt": "2017-03-20T19:06:40.937Z",
+      "createdAt": "2017-03-17T20:10:45.818Z",
+      "gravatarUrl": "https://s3.amazonaws.com/static.api.trolley.com/icon_user.svg",
+      "placeOfBirth": null,
+      "ssn": null,
+      "tags": [],
+      "passport": "",
+      "payoutMethod": "bank-transfer",
+      "compliance": {
+        "status": "verified",
+        "checkedAt": "2017-03-20T19:06:23.916Z"
+      },
+      "accounts": [
+        {
+          "accountHolderName": "John Smith",
+          "bankId": "123",
+          "currency": "CAD",
+          "country": "CA",
+          "bankName": "TD CANADA TRUST",
+          "branchId": "47261",
+          "accountNum": "*****47"
+        }
+      ],
+      "address": {
+        "street1": "Apt# 14",
+        "street2": null,
+        "city": "",
+        "postalCode": "H3WXXX",
+        "phone": "",
+        "country": "CA",
+        "region": "QC"
+      },
+      "primaryCurrency": "CAD"
+    },
+    "status": "pending",
+    "sourceAmount": "100.10",
+    "exchangeRate": "1.0000",
+    "fees": "1.25",
+    "recipientFees": "1.25",
+    "targetAmount": "0.00",
+    "fxRate": "2.000000",
+    "memo": "memo",
+    "processedAt": null,
+    "createdAt": "2017-03-27T20:51:39.567Z",
+    "updatedAt": "2017-03-27T20:51:39.567Z",
+    "merchantFees": "0.00",
+    "compliance": {
+      "status": "pending",
+      "checkedAt": null
+    },
+    "batch": {
+      "id": "B-1a2B3c4D5e6F7g8H9i0J1k",
+      "createdAt": "2017-03-21T20:56:43.690Z",
+      "updatedAt": "2017-03-28T04:09:02.966Z",
+      "sentAt": "2017-03-28T04:08:52.634Z",
+      "completedAt": "2017-03-28T04:08:54.353Z"
+    },
+    "sourceCurrency": "CAD",
+    "sourceCurrencyName": "Canadian Dollar",
+    "targetCurrency": "CAD",
+    "targetCurrencyName": "Canadian Dollar",
+    "category": "services",
+    "coverFees": false,
+    "currency": "CAD",
+    "equivalentWithholdingAmount": "0.00",
+    "equivalentWithholdingCurrency": "CAD",
+    "estimatedDeliveryAt": null,
+    "externalId": "",
+    "failureMessage": null,
+    "initiatedAt": null,
+    "isSupplyPayment": false,
+    "merchantId": "M-Osg3dh2b0m1cRg9b8Shd2d",
+    "methodDisplay": "Bank Transfer",
+    "returnedAmount": "0.00",
+    "returnedAt": null,
+    "returnedNote": null,
+    "returnedReason": [],
+    "settledAt": null,
+    "tags": [],
+    "taxBasisAmount": "0.00",
+    "taxBasisCurrency": "CAD",
+    "taxReportable": true,
+    "withholdingAmount": "0.00",
+    "withholdingCurrency": "CAD"
+  }
+}
+To update a payment under a batch send a PATCH request to the /batches/:id/payments/:payment-id endpoint and include the payments details in the request body.
+
+HTTP Request
+
+PATCH https://api.trolley.com/v1/batches/:batch-id/payments/:payment-id
+
+Fields	Description
+batch-id
+required
+string	Batch ID
+payment-id
+required
+string	Payment ID
+amount
+conditional
+string	Amount you wish to send, e.g. 100.00 USD, in your own currency.
+currency
+conditional
+string	Currency of the amount you wish to send, e.g. 100.00 USD.
+coverFees
+optional
+boolean	If the merchant should cover the network fees for this payment (default: false).
+sourceAmount
+conditional
+string
+deprecated	Amount you wish to send, e.g. 100.00 USD, in your own currency. Required only if sending a “sourceAmount”.
+sourceCurrency
+conditional
+string
+deprecated	Currency of the amount you wish to send, e.g. 100.00 USD. Required only if sending a “sourceAmount”.
+targetAmount
+conditional
+string
+deprecated	Amount you wish the recipient to receive, e.g. 85.00 EUR, in the recipient’s currency. Required only if sending a “Receive Amount”.
+targetCurrency
+conditional
+string
+deprecated	Currency of the amount you wish the recipient to receive, e.g. 85.00 EUR, in the recipient’s currency. Required only if sending a “Receive Amount”.
+memo
+optional
+string	A short note which will be sent along with the payment to the recipient’s bank, as well as on the payment confirmation email if enabled. This memo will be displayed on the recipient’s bank statement descriptor to help them identify who the payment is from. Our APIs limit memo to 1024 characters. The number of characters ultimately displayed depends on the recipient’s bank, so it’s best to keep it short to under 30 characters, otherwise, the end may get cut off. Special characters are not supported on bank statements so they will be stripped out by the bank. The memo field is good for referring to an invoice or reference number. We also strongly suggest including your (short) business name at the start, as some banks globally don’t support displaying your business as the sender name. A good sample memo for an invoice payment from Airbnb would be: “AIRBNB INV 12345678”.
+externalId
+optional
+string/null	Storage for your internal reference ID for this payment, if present it must be unique.
+taxReportable
+optional
+boolean	If the merchant should apply tax withholding on the payment, and in turn adding it to the tax reporting (default: true).
+category
+conditional
+string	Income type if the payment is Tax Reportable, either services, royalties, rent or goods.
+HTTP Code	Description
+200	Payment successfully updated
+401	Invalid API key
+404	Object not found
+500	Internal error
+Errors
+
+This table lists the expected errors that this method could return. However, other errors can be returned in the case where the service is down or other unexpected factors affect processing. Callers should always check the value of the ok params in the response.
+
+Error Code	Description
+not_found	Object doesn’t exist
+invalid_status	Invalid Status
+invalid_api_key	Invalid API key
+internal_server_error	Internal server errors
+Delete a payment
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.payment.remove(
+    payment.id,
+    batch.id
+  );
+
+console.log(response);
+
+Response (200 Ok)
+{
+  "ok": true
+}
+To delete a payment under a batch send a DELETE request to the /batches/:batch-id/payments/:payment-id endpoint.
+
+HTTP Request
+
+DELETE https://api.trolley.com/v1/batches/:batch-id/payments/:payment-id
+
+Fields	Description
+batch-id
+required
+string	Batch ID
+payment-id
+required
+string	Payment ID
+HTTP Code	Description
+200	Payment successfully deleted
+401	Invalid API key
+404	Object not found
+406	invalid status
+500	Internal error
+Errors
+
+This table lists the expected errors that this method could return. However, other errors can be returned in the case where the service is down or other unexpected factors affect processing. Callers should always check the value of the ok params in the response.
+
+Error Code	Description
+not_found	Object doesn’t exist
+invalid_status	Invalid Status
+invalid_api_key	Invalid API key
+internal_server_error	Internal server errors
+List all Payments in Batch
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.payment.search(1, 10, "John");
+
+console.log(response);
+
+Expected response (200 Ok)
+{
+   "ok":true,
+   "payments":[
+      {
+         "id": "P-1a2B3c4D5e6F7g8H9i0J1k",
+         "recipient": {
+            "id": "R-1a2B3c4D5e6F7g8H9i0J1k",
+            "referenceId": "jsmith11@example.com",
+            "email": "jsmith11@example.com",
+            "name": "Richard Hendricks",
+            "lastName": "Hendricks",
+            "firstName": "Richard",
+            "type": "individual",
+            "status": "active",
+            "language": "en",
+            "complianceStatus": "verified",
+            "dob": null,
+            "updatedAt": "2017-03-20T19:06:40.937Z",
+            "createdAt": "2017-03-17T20:10:45.818Z",
+            "gravatarUrl": "https://s3.amazonaws.com/static.api.trolley.com/icon_user.svg",
+            "placeOfBirth": null,
+            "ssn": null,
+            "tags": [],
+            "passport": "",
+            "payoutMethod": "bank-transfer",
+            "compliance": {
+            "status": "verified",
+            "checkedAt": "2017-03-20T19:06:23.916Z"
+            },
+            "accounts": [
+            {
+               "accountHolderName": "Richard Hendricks",
+               "bankId": "123",
+               "currency": "CAD",
+               "country": "CA",
+               "bankName": "TD CANADA TRUST",
+               "branchId": "47261",
+               "accountNum": "*****47"
+            }
+            ],
+            "address": {
+            "street1": "Apt# 14",
+            "street2": null,
+            "city": "",
+            "postalCode": "H3WXXX",
+            "phone": "",
+            "country": "CA",
+            "region": "QC"
+            },
+            "primaryCurrency": "CAD"
+         },
+         "status": "processed",
+         "sourceAmount": "100.10",
+         "exchangeRate": "1.0000",
+         "fees": "1.25",
+         "recipientFees": "1.25",
+         "targetAmount": "98.85",
+         "fxRate": "2.000000",
+         "memo": "memo",
+         "processedAt": "2017-03-28T04:09:02.955Z",
+         "createdAt": "2017-03-21T20:56:43.714Z",
+         "updatedAt": "2017-03-28T04:09:02.955Z",
+         "merchantFees": "0.00",
+         "compliance": {
+            "status": "verified",
+            "checkedAt": "2017-03-28T04:08:53.297Z"
+         },
+         "sourceCurrency": "CAD",
+         "sourceCurrencyName": "Canadian Dollar",
+         "targetCurrency": "CAD",
+         "targetCurrencyName": "Canadian Dollar",
+         "batch": {
+            "id": "B-1a2B3c4D5e6F7g8H9i0J1k",
+            "createdAt": "2017-03-21T20:56:43.690Z",
+            "updatedAt": "2017-03-28T04:09:02.966Z",
+            "sentAt": "2017-03-28T04:08:52.634Z",
+            "completedAt": "2017-03-28T04:08:54.353Z"
+         },
+         "category": "services",
+         "coverFees": false,
+         "currency": "CAD",
+         "equivalentWithholdingAmount": "0.00",
+         "equivalentWithholdingCurrency": "CAD",
+         "estimatedDeliveryAt": null,
+         "externalId": "",
+         "failureMessage": null,
+         "initiatedAt": null,
+         "isSupplyPayment": false,
+         "merchantId": "M-Osg3dh2b0m1cRg9b8Shd2d",
+         "methodDisplay": "Bank Transfer",
+         "returnedAmount": "0.00",
+         "returnedAt": null,
+         "returnedNote": null,
+         "returnedReason": [],
+         "settledAt": null,
+         "tags": [],
+         "taxBasisAmount": "0.00",
+         "taxBasisCurrency": "CAD",
+         "taxReportable": true,
+         "withholdingAmount": "0.00",
+         "withholdingCurrency": "CAD"
+      },
+      {
+         "id": "P-1a2B3c4D5e6F7g8H9i0J1k",
+         "recipient": {
+            "id": "R-1a2B3c4D5e6F7g8H9i0J1k",
+            "referenceId": "jsmith11@example.com",
+            "email": "jsmith11@example.com",
+            "name": "Richard Hendricks",
+            "lastName": "Hendricks",
+            "firstName": "Richard",
+            "type": "individual",
+            "status": "active",
+            "language": "en",
+            "complianceStatus": "verified",
+            "dob": null,
+            "updatedAt": "2017-03-20T19:06:40.937Z",
+            "createdAt": "2017-03-17T20:10:45.818Z",
+            "gravatarUrl": "https://s3.amazonaws.com/static.api.trolley.com/icon_user.svg",
+            "placeOfBirth": null,
+            "ssn": null,
+            "tags": [],
+            "passport": "",
+            "payoutMethod": "bank-transfer",
+            "compliance": {
+            "status": "verified",
+            "checkedAt": "2017-03-20T19:06:23.916Z"
+            },
+            "accounts": [
+            {
+               "accountHolderName": "Richard Hendricks",
+               "bankId": "123",
+               "currency": "CAD",
+               "country": "CA",
+               "bankName": "TD CANADA TRUST",
+               "branchId": "47261",
+               "accountNum": "*****47"
+            }
+            ],
+            "address": {
+            "street1": "Apt# 14",
+            "street2": null,
+            "city": "",
+            "postalCode": "H3WXXX",
+            "phone": "",
+            "country": "CA",
+            "region": "QC"
+            },
+            "primaryCurrency": "CAD"
+         },
+         "status": "processed",
+         "sourceAmount": "100.10",
+         "exchangeRate": "1.0000",
+         "fees": "1.25",
+         "recipientFees": "1.25",
+         "targetAmount": "98.85",
+         "fxRate": "2.000000",
+         "memo": "memo",
+         "processedAt": "2017-03-28T04:09:02.955Z",
+         "createdAt": "2017-03-21T20:56:43.714Z",
+         "updatedAt": "2017-03-28T04:09:02.955Z",
+         "merchantFees": "0.00",
+         "compliance": {
+            "status": "verified",
+            "checkedAt": "2017-03-28T04:08:53.297Z"
+         },
+         "sourceCurrency": "CAD",
+         "sourceCurrencyName": "Canadian Dollar",
+         "targetCurrency": "CAD",
+         "targetCurrencyName": "Canadian Dollar",
+         "batch": {
+            "id": "B-1a2B3c4D5e6F7g8H9i0J1k",
+            "createdAt": "2017-03-21T20:56:43.690Z",
+            "updatedAt": "2017-03-28T04:09:02.966Z",
+            "sentAt": "2017-03-28T04:08:52.634Z",
+            "completedAt": "2017-03-28T04:08:54.353Z"
+         },
+         "category": "services",
+         "coverFees": false,
+         "currency": "CAD",
+         "equivalentWithholdingAmount": "0.00",
+         "equivalentWithholdingCurrency": "CAD",
+         "estimatedDeliveryAt": null,
+         "externalId": "",
+         "failureMessage": null,
+         "initiatedAt": null,
+         "isSupplyPayment": false,
+         "merchantId": "M-Osg3dh2b0m1cRg9b8Shd2d",
+         "methodDisplay": "Bank Transfer",
+         "returnedAmount": "0.00",
+         "returnedAt": null,
+         "returnedNote": null,
+         "returnedReason": [],
+         "settledAt": null,
+         "tags": [],
+         "taxBasisAmount": "0.00",
+         "taxBasisCurrency": "CAD",
+         "taxReportable": true,
+         "withholdingAmount": "0.00",
+         "withholdingCurrency": "CAD"
+      }
+   ],
+   "meta":{
+      "page":1,
+      "pages":1,
+      "records":2
+   }
+}
+You can retrieve all payments from an existing batch by sending a GET request to the /batches/:batch-id/payments endpoint.
+
+HTTP Request
+
+GET https://api.trolley.com/v1/batches/:batch-id/payments?page=1&pageSize=10
+
+Fields	Description
+batch-id
+required
+string	Batch ID
+Query Param	Description
+page
+required
+int	The page number (default: 1)
+pageSize
+required
+int	Number of records in a page (default: 10)
+search
+optional
+string	Wildcard search across payments
+status
+optional
+string	Filter by payment statuses. Comma separate list if multiple.
+HTTP Code	Description
+200	List of payments
+401	Invalid API key
+404	Object not found
+500	Internal error
+Errors
+
+This table lists the expected errors that this method could return. However, other errors can be returned in the case where the service is down or other unexpected factors affect processing. Callers should always check the value of the ok params in the response.
+
+Error Code	Description
+not_found	Object doesn’t exist
+invalid_api_key	Invalid API key
+internal_server_error	Internal server errors
+Tags in a Payment
+Add a new Payment with Tags to a Batch
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.payment.create(
+  batch.id,
+  {
+    sourceAmount: "150.10",
+    currency: "USD",
+    recipient:{
+        id: recipient.id
+    },
+    tags: ["tag1", "tag2"]
+});
+
+console.log(response.batch.id);
+
+Add Tags to a Payment while creating a new Batch
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.batch.create(
+{
+  currency: "USD",
+  description: "Month end payout",
+  payments: [
+    {
+        sourceAmount: "150.10",
+        currency: "USD",
+        recipient:{
+            id: recipient.id
+        },
+        tags: ["tag1", "tag2"]
+    }
+  ]
+});
+
+console.log(response.batch.id);
+
+Add Tags to a Payment by Updating it
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.payment.update(
+  payment.id,
+  batch.id,
+  { 
+    tags:[
+        "tag1",
+        "tag2"
+    ]
+  }
+);
+
+console.log(response);
+
+You can add and manage Tags with Payments with Add, List, and Update Payment API calls.
+
+Following sections talk in detail about how to use tags with Payments, with sample code.
+
+Add Tags to a Payment
+
+You can add tags to a Payment either while creating it or by Updating a Payment.
+
+Provide the key as tags, and a string array as the values, with the Add or Update request.
+
+You can also add tags to a Payment the same way when it is being created with a ‘Create a Batch’ API call.
+
+Payment Tags through InvoicePayment
+
+You can also add tags to payments while working with InvoicePayments API as well.
+
+For more details, refer to the InvoicePayment API section.
+
+Search Payments Based on Tags
+
+You can use additional parameters in the List all Payments operation to fetch Payments based on tags.
+
+Using the tags query parameter, you can specify what tags you want to search for.
+
+The API performs an AND query based on all the query parameters you provide.
+
+Search Payments which have all the provided Tags
+// Coming soon to the Javascript SDK
+
+Update Tags of a Payment
+
+To update the tags of a Payment, use the Update a Payment API to replace the existing tags with new tags.
+
+Please keep in mind that every time you update the tags, the old tags are deleted and new ones are added.
+
+If you wish to append a new tag, you should copy all the existing tags, and send an ‘Update a Payment’ request with existing and new tags.
+
+Update tags of a Payment
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.payment.update(
+  payment.id,
+  batch.id,
+  { 
+    tags:[
+        "old-tag",
+        "new-tag"
+    ]
+  }
+);
+
+console.log(response);
+
+Delete Tags of a Payment
+
+To delete Tags from a Payment, use the ‘Update a Payment’ API call with an empty tags parameter.
+
+Delete Tags of a Payment
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.payment.update(
+  payment.id,
+  batch.id,
+  { 
+    tags:[]
+  }
+);
+
+console.log(response);
+
+Generate quote
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.batch.generateQuote(batch.id);
+
+console.log(response);
+
+Example response (200 Ok)
+{
+  "ok": true,
+  "batch": {
+    "id": "B-1a2B3c4D5e6F7g8H9i0J1k",
+    "status": "open",
+    "tags": [],
+    "amount": "8.75",
+    "totalPayments": 2,
+    "currency": "CAD",
+    "description": "Weekly Payouts on 2017-2-27",
+    "sentAt": null,
+    "completedAt": null,
+    "createdAt": "2017-03-27T20:19:47.378Z",
+    "updatedAt": "2017-03-27T20:19:47.518Z",
+    "quoteExpiredAt": "2017-03-28T04:08:52.634Z"
+  }
+}
+To generate a quote of a Batch send a POST request to the /batches/:id/generate-quote endpoint. It will update all the exchangeRate and amounts in all the payments which incur a currency conversion, i.e. you are sending to a different currency.
+
+HTTP Request
+
+POST https://api.trolley.com/v1/batches/:batch-id/generate-quote
+
+Fields	Description
+batch-id
+required
+string	Batch ID
+HTTP Code	Description
+200	Batch successfully updated
+401	Invalid API key
+404	Object not found
+406	Quote is expired or batch’s status is incorrect, see errors[] in response body
+500	Internal error
+Errors
+
+This table lists the expected errors that this method could return. However, other errors can be returned in the case where the service is down or other unexpected factors affect processing. Callers should always check the value of the ok params in the response.
+
+Error Code	Description
+not_found	Object not found
+expired_quote	Quote is expired
+invalid_status	Invalid Status
+invalid_api_key	Invalid API key
+internal_server_error	Internal server errors
+Batch summary
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.batch.summary(batch.id);
+
+console.log(response);
+
+Example response (200 Ok)
+{
+  "ok": true,
+  "batchSummary": {
+    "detail": {
+      "bank-transfer": {
+        "count": 1,
+        "totalFees": "1.00",
+        "merchantFees": "1.00",
+        "debitAmount": "11.00",
+        "sendingAmount": "10.00",
+        "totalWithheld": "0.00"
+      },
+      "paypal": {
+        "count": 1,
+        "totalFees": "1.00",
+        "merchantFees": "1.00",
+        "debitAmount": "11.00",
+        "sendingAmount": "10.00",
+        "totalWithheld": "0.00"
+      }
+    },
+    "total": {
+      "count": 1,
+      "totalFees": "2.00",
+      "merchantFees": "2",
+      "debitAmount": "22.00",
+      "sendingAmount": "20.00",
+      "totalWithheld": "0.00"
+    }
+  }
+}
+You can retrieve a summary of a batch, including the details of all the payments in the batch, by sending a GET request to the /batch/:batch-id/summary endpoint.
+
+HTTP Request
+
+GET https://api.trolley.com/v1/batches/:batch-id/summary
+
+Fields	Description
+batch-id
+required
+string	Batch ID
+HTTP Code	Description
+200	Batch successfully updated
+401	Invalid API key
+404	Object not found
+406	One or more fields failed validation, see errors[] in response body
+500	Internal error
+Errors
+
+This table lists the expected errors that this method could return. However, other errors can be returned in the case where the service is down or other unexpected factors affect processing. Callers should always check the value of the ok params in the response.
+
+Error Code	Description
+not_found	Object not found
+expired_quote	Quote is expired
+invalid_status	Invalid Status
+Process a batch
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.batch.startProcessing(batch.id);
+
+console.log(response);
+
+Example response (200 Ok)
+{
+  "ok": true,
+  "batch": {
+    "id": "B-1a2B3c4D5e6F7g8H9i0J1k",
+    "status": "processing",
+    "tags": [],
+    "amount": "8.75",
+    "totalPayments": 2,
+    "currency": "CAD",
+    "description": "Weekly Payouts on 2017-2-27",
+    "sentAt": "2017-03-28T04:08:52.634Z",
+    "completedAt": null,
+    "createdAt": "2017-03-27T20:19:47.378Z",
+    "updatedAt": "2017-03-28T04:08:52.634Z",
+    "quoteExpiredAt": "2017-03-29T04:08:52.634Z"
+  }
+}
+To start processing a specific batch, send a POST request to the /batches/:batch-id/start-processing endpoint.
+
+HTTP Request
+
+POST https://api.trolley.com/v1/batches/:batch-id/start-processing
+
+Fields	Description
+batch-id
+required
+string	Batch ID
+HTTP Code	Description
+200	Batch successfully processed
+401	Invalid API key
+404	Object not found
+500	Internal error
+Errors
+
+This table lists the expected errors that this method could return. However, other errors can be returned in the case where the service is down or other unexpected factors affect processing. Callers should always check the value of the ok params in the response.
+
+Error Code	Description
+not_found	Object not found
+invalid_status	Invalid Status
+invalid_api_key	Invalid API key
+internal_server_error	Internal server errors
+non_sufficient_funds	Insufficient funds
+Offline Payments
+An Offline Payment represents a payment that was made outside of the Trolley platform, such as a manual check payment or made with another payouts provider. There are two primary reason you would want to pass this information to us: 1.) to allow those payments to be included in your end of year US tax reporting statements (Forms 1099-MISC, 1099-NEC, 1042-S) and E-filing return, and 2.) to display those payments to your recipients in the Payments History page on the Recipient Widget or Portal, so recipients can see all their payments, even those that weren’t processed with Trolley or were processed before your migrated to Trolley.
+
+Create an offline payment
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.offlinePayment.create(
+  recipient.id,
+  {
+    amount: "100.00",
+    category: "services",
+    currency: "USD",
+    externalId: "id-123",
+    memo: "A memo",
+    processedAt: "2019-08-15T20:23:59.000Z",
+    tags: [],
+    payoutMethod: "paypal",
+    taxReportable: true,
+    withholdingAmount: "24.00",
+    withholdingCurrency: "USD"
+  });
+
+console.log(response.offlinePayment);
+
+To create an offline payment for a recipient send a POST request to the /recipients/:id/offlinePayments endpoint and include the offline payments details in the request body. An auto-generated ID (id) will be generated which can be used to retrieve or update the offline payment details at a later time.
+
+HTTP Request
+
+POST https://api.trolley.com/v1/recipients/:id/offlinePayments
+
+Fields	Description
+externalId
+optional
+string	The payment identifier used on your external platform.
+memo
+optional
+string	A short note which may help in identifying or detailing the payment. Max 1024 characters.
+taxReportable
+conditional
+boolean	Should be true if the payment needs to be included in end of year tax reporting of earnings, and false if it should not be reportable as earnings for tax purposes.
+category
+conditional
+string	Income type if the payment is Tax Reportable, either services, royalties, royalties_film, rent or prizes.
+processedAt
+optional
+string	The date that the payment was made to the recipient - used to report in the correct tax year, and also to convert amounts in another currency to USD equivalent, based on the mid-market FX rate of this date.
+amount
+required
+string	The payment amount.
+currency
+optional
+boolean	The payment’s currency. (If it is not in USD, and it is Tax Reportable, we will convert the amount to USD equivalent based on the mid-market FX rate of the date of the payment).
+tags
+optional
+string	Tags or keywords which may help identifying the payment.
+payoutMethod
+optional
+string	The payout method used off platform for this payment, either bank-transfer, paypal, interac, check, bitcoin, mobile-money or other.
+withholdingAmount
+required
+string
+The amount withheld from the payment for tax purposes.
+withholdingCurrency
+optional
+string
+The currency associated to the withholdingAmount.
+Example response (200 Ok)
+{
+  "ok": true,
+  "offlinePayments": {
+    "amount": "100.00",
+    "category": "services",
+    "createdAt": "2019-10-31T20:24:29.954Z",
+    "currency": "USD",
+    "deletedAt": null,
+    "equivalentWithholdingAmount": "24.00",
+    "equivalentWithholdingCurrency": "USD",
+    "externalId": "id-123",
+    "id": "OP-3xghXMEcedrjPEo3KedqsR",
+    "memo": "A memo",
+    "processedAt": "2019-08-15T20:23:59.000Z",
+    "recipientId": "R-4321c356vrcerc54js",
+    "tags": [],
+    "taxReportable": true,
+    "updatedAt": "2019-10-31T20:24:29.954Z",
+    "withholdingAmount": "24.00",
+    "withholdingCurrency": "USD"
+  }
+}
+HTTP Code	Description
+200	Offline payment successfully added
+401	Invalid API key
+404	Object not found
+400	Validation error
+500	Internal error
+Errors
+
+This table lists the expected errors that this method could return. However, other errors can be returned in the case where the service is down or other unexpected factors affect processing. Callers should always check the value of the ok params in the response.
+
+Error Code	Description
+not_found	Object doesn’t exist
+invalid_api_key	Invalid API key
+internal_server_error	Internal server errors
+List all offline payments
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.offlinePayments.search();
+
+console.log(response);
+
+Expected response (200 Ok)
+{
+  "ok": true,
+  "offlinePayments": [
+    {
+      "amount": "100.00",
+      "category": "services",
+      "createdAt": "2019-10-31T20:24:29.954Z",
+      "currency": "USD",
+      "deletedAt": null,
+      "equivalentWithholdingAmount": "24.00",
+      "equivalentWithholdingCurrency": "USD",
+      "externalId": "id-123",
+      "id": "OP-3xghXMEcedrjPEo3KedqsR",
+      "memo": "A memo",
+      "processedAt": "2019-08-15T20:23:59.000Z",
+      "recipientId": "R-4321c356vrcerc54js",
+      "tags": [],
+      "taxReportable": true,
+      "updatedAt": "2019-10-31T20:24:29.954Z",
+      "withholdingAmount": "24.00",
+      "withholdingCurrency": "USD"
+    },
+    {
+      "amount": "100.00",
+      "category": "services",
+      "createdAt": "2019-10-31T20:24:29.954Z",
+      "currency": "USD",
+      "deletedAt": null,
+      "equivalentWithholdingAmount": "24.00",
+      "equivalentWithholdingCurrency": "USD",
+      "externalId": "id-123",
+      "id": "OP-4xghXMEcedrjPEo3KedqsR",
+      "memo": "A memo",
+      "processedAt": "2019-08-15T20:23:59.000Z",
+      "recipientId": "R-4321c356vrcerc54js",
+      "tags": [],
+      "taxReportable": true,
+      "updatedAt": "2019-10-31T20:24:29.954Z",
+      "withholdingAmount": "24.00",
+      "withholdingCurrency": "USD"
+    }
+  ],
+  "meta": {
+        "page": 1,
+        "pages": 0,
+        "records": 0
+    }
+}
+You can retrieve all offline payments by sending a GET request to the /offline-payments endpoint.
+
+HTTP Request
+
+GET https://api.trolley.com/v1/offline-payments?page=1&pageSize=10
+
+Query Param	Description
+page
+required
+int	The page number (default: 1)
+pageSize
+required
+int	Number of records in a page (default: 10)
+search
+required
+string	Wildcard search of the batch-id
+HTTP Code	Description
+200	List of batches
+401	Invalid API key
+500	Internal error
+Error Code	Description
+invalid_api_key	Invalid API key
+internal_server_error	Internal server errors
+Update an offline payment
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.offlinePayment.update(
+  recipient.id,
+  offlinePayment.id,
+  {
+    amount: "100.00",
+    category: "services",
+    currency: "USD",
+    externalId: "id-123",
+    memo: "A memo",
+    processedAt: "2019-08-15T20:23:59.000Z",
+    tags: [],
+    payoutMethod: "check",
+    taxReportable: true,
+    withholdingAmount: "24.00",
+    withholdingCurrency: "USD"
+  });
+  
+console.log(response.offlinePayment);
+
+To update an offline payment for a recipient send a PATCH request to the /recipients/:recipientId/offlinePayments/:offlinePaymentId endpoint and include the offline payments details in the request body.
+
+HTTP Request
+
+PATCH https://api.trolley.com/v1/recipients/:recipientId/offlinePayments/:offlinePaymentId
+
+Fields	Description
+externalId
+optional
+string	The payment identifier used on your external platform.
+memo
+optional
+string	A short note which may help in identifying or detailing the payment. Max 1024 characters.
+taxReportable
+conditional
+boolean	Should be true if the an amount has been withheld from the payment for tax withholding purposes, in other words if withholdingAmount is greater than 0.00.
+category
+conditional
+string	Either services, royalties, royalties_film, rent or prizes, to help contextualize the withholdingAmount if it is greater than 0.00.
+processedAt
+optional
+string	The date that the payment was made to the recipient.
+amount
+required
+string	The payment amount.
+currency
+optional
+boolean	The payment’s currency.
+tags
+optional
+string	Keywords which may help identifying or detailing the payment.
+payoutMethod
+optional
+string	The payout method used off platform for this payment, either bank-transfer, paypal, interac, check, bitcoin, mobile-money or other.
+withholdingAmount
+required
+string
+The amount withheld from the payment for tax purposes.
+withholdingCurrency
+optional
+string
+The currency associated to the withholdingAmount.
+Example response (200 Ok)
+{
+  "ok": true,
+  "offlinePayments": {
+    "amount": "100.00",
+    "category": "services",
+    "createdAt": "2019-10-31T20:24:29.954Z",
+    "currency": "USD",
+    "deletedAt": null,
+    "equivalentWithholdingAmount": "24.00",
+    "equivalentWithholdingCurrency": "USD",
+    "externalId": "id-123",
+    "id": "OP-3xghXMEcedrjPEo3KedqsR",
+    "memo": "A memo",
+    "processedAt": "2019-08-15T20:23:59.000Z",
+    "recipientId": "R-4321c356vrcerc54js",
+    "tags": [],
+    "taxReportable": true,
+    "updatedAt": "2019-10-31T20:24:29.954Z",
+    "withholdingAmount": "24.00",
+    "withholdingCurrency": "USD"
+  }
+}
+HTTP Code	Description
+200	Offline payment successfully added
+401	Invalid API key
+404	Object not found
+400	Validation error
+500	Internal error
+Errors
+
+This table lists the expected errors that this method could return. However, other errors can be returned in the case where the service is down or other unexpected factors affect processing. Callers should always check the value of the ok params in the response.
+
+Error Code	Description
+not_found	Object doesn’t exist
+invalid_api_key	Invalid API key
+internal_server_error	Internal server errors
+Delete an offline payment
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.offlinePayment.remove(
+  recipient.id,
+  offlinePayment.id
+);
+
+console.log(response);
+
+Example response (200 Ok)
+{
+  "ok": true
+}
+Delete a recipient’s offline payment
+
+HTTP Request
+
+DELETE https://api.trolley.com/v1/recipients/:recipientId/offlinePayments/:offlinePaymentId
+
+Fields	Description
+recipientId
+required
+string	The recipient’s id.
+offlinePaymentId
+required
+string	The offlinePayment’s id.
+HTTP Code	Description
+200	Payment successfully updated
+401	Invalid API key
+404	Object not found
+500	Internal error
+Errors
+
+This table lists the expected errors that this method could return. However, other errors can be returned in the case where the service is down or other unexpected factors affect processing. Callers should always check the value of the ok params in the response.
+
+Error Code	Description
+not_found	Object doesn’t exist
+invalid_api_key	Invalid API key
+internal_server_error	Internal server errors
+Invoices
+The invoices object is designed to handle an accounts payable bill. Invoices are a collection of header information about who the bill is from and when it’s due along with some total information about the individual lines on the bill.
+
+Invoices will have one or more line items with a maximum of 500 lines per invoice. Each line item can have distinct tax treatments but must all be in the same currency.
+
+Payments can be associated with the Invoice / Invoice Line to indicate that payments have been made against this invoice. This will cause the appropriate tax handling to be updated for these payments for accounting purposes. In the event that you’re modifying invoice payments after the payment has been processed the underlying payment will not be updated, since it’s money movement, but the tax handling will be updated.
+
+Create an invoice
+Sample Request
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.invoice.create(
+    {
+        recipientId: recipient.id, 
+        description: "New invoice from Javascript SDK",
+        externalId: "invoice-101",
+        invoiceDate: "2023-01-01",
+        invoiceNumber: "inv-number-1001",
+        dueDate: "2023-02-01"
+    });
+
+console.log(response);
+
+To create an invoice for a recipient send a POST request to the /invoices/create endpoint and include the recipientId for the given recipient. You can also add additional details and the invoice lines when you create the invoice.
+
+Note: Invoices are limited to 500 instances of lines.
+
+HTTP Request
+
+POST https://api.trolley.com/v1/invoices/create
+
+Fields	Description
+recipientId
+required
+string	The ID of the recipient which this invoice is for.
+description
+optional
+string	A description of the invoice that you would like to add for internal reference.
+externalId
+optional
+string	The invoice identifier used on your external platform.

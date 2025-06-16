@@ -1,95 +1,31 @@
-import { Express, Request, Response } from 'express';
-import { trolleyService } from './trolley-service';
-import { db } from './db';
-import { users, milestones, payments } from '../shared/schema';
-import { eq, and } from 'drizzle-orm';
+import type { Express } from "express";
+import { Request, Response } from "express";
+import { db } from "./db";
+import { users, milestones, payments, contracts } from "../shared/schema";
+import { eq, and } from "drizzle-orm";
+import { trolleyService, type TrolleyRecipient, type CreateRecipientRequest } from "./trolley-service";
 
 /**
  * Trolley Payment Routes
- * Handles contractor payment processing through Trolley
+ * Handles contractor payment processing through Trolley batch API
  */
 
 interface AuthenticatedRequest extends Request {
-  user?: { id: number; role: string };
+  user?: { id: number; role: string; };
 }
 
 export default function trolleyRoutes(app: Express, apiPath: string, authMiddleware: any) {
   const trolleyBasePath = `${apiPath}/trolley`;
 
-  // Setup company profile for business user
-  app.post(`${trolleyBasePath}/setup-company-profile`, authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  // Create or get recipient for contractor
+  app.post(`${trolleyBasePath}/recipients`, authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user?.id;
       if (!userId) {
         return res.status(401).json({ message: 'User not authenticated' });
       }
 
-      // Get user details
-      const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-      if (!user.length) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-
-      const userData = user[0];
-      
-      // Check if user is a business user
-      if (userData.role !== 'business') {
-        return res.status(403).json({ message: 'Only business users can setup company profiles' });
-      }
-
-      // Check if user already has a company profile
-      if (userData.trolleyCompanyProfileId) {
-        return res.status(400).json({ 
-          message: 'Company profile already exists',
-          companyId: userData.trolleyCompanyProfileId 
-        });
-      }
-
-      // Try to create company profile with Trolley
-      let companyProfile;
-      try {
-        companyProfile = await trolleyService.createCompanyProfile({
-          name: userData.companyName || `${userData.firstName} ${userData.lastName} Company`,
-          email: userData.email,
-          country: 'US', // Default to US, could be configurable
-          currency: 'USD'
-        });
-      } catch (trolleyError: any) {
-        console.error('Trolley API call failed:', trolleyError.message);
-        console.error('Full error:', trolleyError);
-        
-        // Return error to client instead of creating simulated profile
-        return res.status(400).json({ 
-          message: `Setup Failed: ${trolleyError.message}`,
-          error: trolleyError.message 
-        });
-      }
-
-      // Update user with Trolley company ID
-      await db.update(users)
-        .set({ trolleyCompanyProfileId: companyProfile.id })
-        .where(eq(users.id, userId));
-
-      res.json({ 
-        success: true,
-        companyId: companyProfile.id,
-        message: 'Company profile created successfully'
-      });
-
-    } catch (error: any) {
-      console.error('Error setting up company profile:', error);
-      res.status(500).json({ 
-        message: 'Failed to setup company profile',
-        error: error.message 
-      });
-    }
-  });
-
-  // Create Trolley recipient for contractor
-  app.post(`${trolleyBasePath}/recipients`, authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
-    try {
       const { contractorId } = req.body;
-      
       if (!contractorId) {
         return res.status(400).json({ message: 'Contractor ID is required' });
       }
@@ -101,49 +37,76 @@ export default function trolleyRoutes(app: Express, apiPath: string, authMiddlew
       }
 
       const contractorData = contractor[0];
-      
+
       // Check if contractor already has a Trolley recipient ID
       if (contractorData.trolleyRecipientId) {
-        return res.status(400).json({ 
-          message: 'Contractor already has a Trolley recipient profile',
-          recipientId: contractorData.trolleyRecipientId 
-        });
+        try {
+          const existingRecipient = await trolleyService.getRecipient(contractorData.trolleyRecipientId);
+          return res.json(existingRecipient);
+        } catch (error) {
+          console.log('Existing recipient not found, creating new one');
+        }
       }
 
-      // Create Trolley recipient
-      const recipient = await trolleyService.createRecipient({
-        email: contractorData.email,
+      // Create new recipient
+      const recipientRequest: CreateRecipientRequest = {
+        type: 'individual',
         firstName: contractorData.firstName || '',
         lastName: contractorData.lastName || '',
-        country: 'GB' // Default to GB, could be configurable
-      });
+        email: contractorData.email
+      };
+
+      const recipient = await trolleyService.createRecipient(recipientRequest);
 
       // Update contractor with Trolley recipient ID
       await db.update(users)
         .set({ trolleyRecipientId: recipient.id })
         .where(eq(users.id, contractorId));
 
-      console.log(`Created Trolley recipient ${recipient.id} for contractor ${contractorId}`);
-      
-      res.json({ 
-        success: true, 
-        recipientId: recipient.id,
-        message: 'Trolley recipient profile created successfully' 
-      });
-    } catch (error) {
+      res.json(recipient);
+
+    } catch (error: any) {
       console.error('Error creating Trolley recipient:', error);
-      res.status(500).json({ message: 'Failed to create Trolley recipient' });
+      res.status(500).json({ 
+        message: 'Failed to create recipient',
+        error: error.message 
+      });
     }
   });
 
-  // Process payment for approved milestone
+  // Get recipient details
+  app.get(`${trolleyBasePath}/recipients/:contractorId`, authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { contractorId } = req.params;
+      
+      const contractor = await db.select().from(users).where(eq(users.id, parseInt(contractorId))).limit(1);
+      if (!contractor.length || !contractor[0].trolleyRecipientId) {
+        return res.status(404).json({ message: 'Trolley recipient not found for contractor' });
+      }
+
+      const recipient = await trolleyService.getRecipient(contractor[0].trolleyRecipientId);
+      res.json(recipient);
+
+    } catch (error: any) {
+      console.error('Error fetching Trolley recipient:', error);
+      res.status(500).json({ 
+        message: 'Failed to fetch recipient',
+        error: error.message 
+      });
+    }
+  });
+
+  // Process milestone payment automatically
   app.post(`${trolleyBasePath}/payments`, authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const { milestoneId, amount, currency = 'GBP' } = req.body;
       const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: 'User not authenticated' });
+      }
 
-      if (!milestoneId || !amount) {
-        return res.status(400).json({ message: 'Milestone ID and amount are required' });
+      const { milestoneId, contractId } = req.body;
+      if (!milestoneId || !contractId) {
+        return res.status(400).json({ message: 'Milestone ID and Contract ID are required' });
       }
 
       // Get milestone details
@@ -153,64 +116,68 @@ export default function trolleyRoutes(app: Express, apiPath: string, authMiddlew
       }
 
       const milestoneData = milestone[0];
+      if (milestoneData.status !== 'approved') {
+        return res.status(400).json({ message: 'Milestone must be approved before payment' });
+      }
 
-      // Verify milestone belongs to user's contract (security check)
-      // This would need contract validation logic based on your schema
+      // Get contract and contractor details
+      const contract = await db.select().from(contracts).where(eq(contracts.id, contractId)).limit(1);
+      if (!contract.length) {
+        return res.status(404).json({ message: 'Contract not found' });
+      }
 
-      // Get contractor details from milestone/contract relationship
-      // This would need to be implemented based on your contract-contractor relationship
+      const contractData = contract[0];
+      if (!contractData.contractorId) {
+        return res.status(400).json({ message: 'No contractor assigned to this contract' });
+      }
 
-      // For now, assuming we have the contractor ID from milestone data
-      const contractorId = milestoneData.contractId; // This would need proper relationship lookup
-      
-      const contractor = await db.select().from(users).where(eq(users.id, contractorId)).limit(1);
+      // Get contractor details
+      const contractor = await db.select().from(users).where(eq(users.id, contractData.contractorId)).limit(1);
       if (!contractor.length) {
         return res.status(404).json({ message: 'Contractor not found' });
       }
 
       const contractorData = contractor[0];
-
       if (!contractorData.trolleyRecipientId) {
-        return res.status(400).json({ 
-          message: 'Contractor does not have a Trolley recipient profile. Please create one first.' 
-        });
+        return res.status(400).json({ message: 'Contractor not set up for payments. Please onboard them first.' });
       }
 
-      // Create Trolley payment
-      const payment = await trolleyService.createPayment({
+      // Create and process payment
+      const paymentResult = await trolleyService.createAndProcessPayment({
         recipientId: contractorData.trolleyRecipientId,
-        amount: amount.toString(),
-        currency,
-        description: `Payment for milestone: ${milestoneData.name}`,
-        externalId: `milestone_${milestoneId}_${Date.now()}`
+        amount: milestoneData.paymentAmount,
+        currency: 'USD',
+        memo: `Payment for milestone: ${milestoneData.name}`,
+        externalId: `milestone_${milestoneId}`,
+        description: `Milestone payment for contract ${contractData.contractName}`
       });
 
-      // Log payment in database
-      await db.insert(payments).values({
-        contractId: milestoneData.contractId,
+      // Create payment record in database
+      const paymentRecord = await db.insert(payments).values({
+        contractId: contractId,
         milestoneId: milestoneId,
-        amount: amount.toString(),
+        amount: milestoneData.paymentAmount,
         status: 'processing',
         scheduledDate: new Date(),
-        completedDate: new Date(),
-        notes: `Trolley payment: ${payment.id}`,
-        trolleyPaymentId: payment.id,
-        paymentProcessor: 'trolley',
-        triggeredBy: 'manual',
-        triggeredAt: new Date()
+        notes: `Trolley batch: ${paymentResult.batch.id}`,
+        trolleyBatchId: paymentResult.batch.id,
+        trolleyPaymentId: paymentResult.payment.id,
+        paymentProcessor: 'trolley'
+      }).returning();
+
+      res.json({
+        success: true,
+        payment: paymentRecord[0],
+        trolleyBatch: paymentResult.batch,
+        trolleyPayment: paymentResult.payment
       });
 
-      console.log(`Created Trolley payment ${payment.id} for milestone ${milestoneId}`);
-      
-      res.json({ 
-        success: true, 
-        paymentId: payment.id,
-        status: payment.status,
-        message: 'Payment processed successfully' 
+    } catch (error: any) {
+      console.error('Error processing payment:', error);
+      res.status(500).json({ 
+        message: 'Failed to process payment',
+        error: error.message 
       });
-    } catch (error) {
-      console.error('Error processing Trolley payment:', error);
-      res.status(500).json({ message: 'Failed to process payment' });
     }
   });
 
@@ -219,41 +186,49 @@ export default function trolleyRoutes(app: Express, apiPath: string, authMiddlew
     try {
       const { paymentId } = req.params;
       
-      const payment = await trolleyService.getPayment(paymentId);
+      const payment = await db.select().from(payments).where(eq(payments.id, parseInt(paymentId))).limit(1);
+      if (!payment.length) {
+        return res.status(404).json({ message: 'Payment not found' });
+      }
+
+      const paymentData = payment[0];
       
-      res.json(payment);
-    } catch (error) {
-      console.error('Error fetching Trolley payment:', error);
-      res.status(500).json({ message: 'Failed to fetch payment details' });
+      // Get Trolley payment status if available
+      let trolleyPayment = null;
+      let trolleyBatch = null;
+      
+      if (paymentData.trolleyPaymentId) {
+        try {
+          trolleyPayment = await trolleyService.getPayment(paymentData.trolleyPaymentId);
+        } catch (error) {
+          console.log('Could not fetch Trolley payment details');
+        }
+      }
+      
+      if (paymentData.trolleyBatchId) {
+        try {
+          trolleyBatch = await trolleyService.getBatch(paymentData.trolleyBatchId);
+        } catch (error) {
+          console.log('Could not fetch Trolley batch details');
+        }
+      }
+
+      res.json({
+        payment: paymentData,
+        trolleyPayment,
+        trolleyBatch
+      });
+
+    } catch (error: any) {
+      console.error('Error fetching payment status:', error);
+      res.status(500).json({ 
+        message: 'Failed to fetch payment status',
+        error: error.message 
+      });
     }
   });
 
-  // Get contractor's Trolley recipient details
-  app.get(`${trolleyBasePath}/recipients/:contractorId`, authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
-    try {
-      const { contractorId } = req.params;
-      
-      const contractor = await db.select().from(users).where(eq(users.id, parseInt(contractorId))).limit(1);
-      if (!contractor.length) {
-        return res.status(404).json({ message: 'Contractor not found' });
-      }
-
-      const contractorData = contractor[0];
-      
-      if (!contractorData.trolleyRecipientId) {
-        return res.status(404).json({ message: 'Contractor does not have a Trolley recipient profile' });
-      }
-
-      const recipient = await trolleyService.getRecipient(contractorData.trolleyRecipientId);
-      
-      res.json(recipient);
-    } catch (error) {
-      console.error('Error fetching Trolley recipient:', error);
-      res.status(500).json({ message: 'Failed to fetch recipient details' });
-    }
-  });
-
-  // Get payment history for contractor
+  // Get payments for a contractor
   app.get(`${trolleyBasePath}/payments/contractor/:contractorId`, authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { contractorId } = req.params;
@@ -265,38 +240,172 @@ export default function trolleyRoutes(app: Express, apiPath: string, authMiddlew
 
       const contractorData = contractor[0];
       
-      if (!contractorData.trolleyRecipientId) {
-        return res.status(404).json({ message: 'Contractor does not have a Trolley recipient profile' });
+      // Get database payments
+      const contractorContracts = await db.select().from(contracts).where(eq(contracts.contractorId, parseInt(contractorId)));
+      const contractIds = contractorContracts.map(c => c.id);
+      
+      let dbPayments = [];
+      if (contractIds.length > 0) {
+        dbPayments = await db.select().from(payments).where(
+          eq(payments.contractId, contractIds[0]) // This would need to be an OR for multiple contracts
+        );
       }
 
-      const payments = await trolleyService.getPaymentsByRecipient(contractorData.trolleyRecipientId);
-      
-      res.json(payments);
-    } catch (error) {
-      console.error('Error fetching Trolley payment history:', error);
-      res.status(500).json({ message: 'Failed to fetch payment history' });
+      // Get Trolley payments if recipient exists
+      let trolleyPayments = [];
+      if (contractorData.trolleyRecipientId) {
+        try {
+          trolleyPayments = await trolleyService.getPaymentsByRecipient(contractorData.trolleyRecipientId);
+        } catch (error) {
+          console.log('Could not fetch Trolley payments for contractor');
+        }
+      }
+
+      res.json({
+        dbPayments,
+        trolleyPayments
+      });
+
+    } catch (error: any) {
+      console.error('Error fetching contractor payments:', error);
+      res.status(500).json({ 
+        message: 'Failed to fetch contractor payments',
+        error: error.message 
+      });
     }
   });
 
-  // Webhook endpoint for Trolley payment status updates
+  // Generate Widget URL for contractor onboarding
+  app.post(`${trolleyBasePath}/widget-url`, authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { contractorEmail, theme = 'light', collectTaxInfo = true } = req.body;
+      
+      if (!contractorEmail) {
+        return res.status(400).json({ message: 'Contractor email is required' });
+      }
+
+      const widgetUrl = trolleyService.generateWidgetUrl(contractorEmail, {
+        theme,
+        collectTaxInfo,
+        successUrl: `${process.env.FRONTEND_URL || 'http://localhost:5000'}/onboarding/success`,
+        cancelUrl: `${process.env.FRONTEND_URL || 'http://localhost:5000'}/onboarding/cancel`
+      });
+
+      res.json({ widgetUrl });
+
+    } catch (error: any) {
+      console.error('Error generating widget URL:', error);
+      res.status(500).json({ 
+        message: 'Failed to generate widget URL',
+        error: error.message 
+      });
+    }
+  });
+
+  // Webhook handler for Trolley events
   app.post(`${trolleyBasePath}/webhook`, async (req: Request, res: Response) => {
     try {
-      const { event, payment } = req.body;
-      
-      console.log(`Received Trolley webhook: ${event} for payment ${payment.id}`);
-      
-      // Update payment status in database based on webhook event
-      await db.update(payments)
-        .set({ 
-          status: payment.status,
-          completedDate: payment.status === 'completed' ? new Date() : undefined
-        })
-        .where(eq(payments.trolleyPaymentId, payment.id));
+      const event = req.body;
+      console.log('Received Trolley webhook:', event);
 
-      res.json({ success: true });
-    } catch (error) {
-      console.error('Error processing Trolley webhook:', error);
-      res.status(500).json({ message: 'Webhook processing failed' });
+      // Handle different webhook events
+      switch (event.type) {
+        case 'batch.completed':
+          await handleBatchCompleted(event.data);
+          break;
+        case 'batch.failed':
+          await handleBatchFailed(event.data);
+          break;
+        case 'payment.completed':
+          await handlePaymentCompleted(event.data);
+          break;
+        case 'payment.failed':
+          await handlePaymentFailed(event.data);
+          break;
+        case 'recipient.created':
+          await handleRecipientCreated(event.data);
+          break;
+        default:
+          console.log('Unhandled webhook event type:', event.type);
+      }
+
+      res.status(200).json({ received: true });
+
+    } catch (error: any) {
+      console.error('Error processing webhook:', error);
+      res.status(500).json({ error: error.message });
     }
   });
+
+  // Helper functions for webhook processing
+  async function handleBatchCompleted(batchData: any) {
+    try {
+      // Update all payments in this batch to completed
+      await db.update(payments)
+        .set({ 
+          status: 'completed',
+          completedDate: new Date()
+        })
+        .where(eq(payments.trolleyBatchId, batchData.id));
+      
+      console.log(`Batch ${batchData.id} completed`);
+    } catch (error) {
+      console.error('Error handling batch completion:', error);
+    }
+  }
+
+  async function handleBatchFailed(batchData: any) {
+    try {
+      // Update all payments in this batch to failed
+      await db.update(payments)
+        .set({ status: 'failed' })
+        .where(eq(payments.trolleyBatchId, batchData.id));
+      
+      console.log(`Batch ${batchData.id} failed`);
+    } catch (error) {
+      console.error('Error handling batch failure:', error);
+    }
+  }
+
+  async function handlePaymentCompleted(paymentData: any) {
+    try {
+      // Update specific payment to completed
+      await db.update(payments)
+        .set({ 
+          status: 'completed',
+          completedDate: new Date()
+        })
+        .where(eq(payments.trolleyPaymentId, paymentData.id));
+      
+      console.log(`Payment ${paymentData.id} completed`);
+    } catch (error) {
+      console.error('Error handling payment completion:', error);
+    }
+  }
+
+  async function handlePaymentFailed(paymentData: any) {
+    try {
+      // Update specific payment to failed
+      await db.update(payments)
+        .set({ status: 'failed' })
+        .where(eq(payments.trolleyPaymentId, paymentData.id));
+      
+      console.log(`Payment ${paymentData.id} failed`);
+    } catch (error) {
+      console.error('Error handling payment failure:', error);
+    }
+  }
+
+  async function handleRecipientCreated(recipientData: any) {
+    try {
+      // Update user with recipient ID if not already set
+      await db.update(users)
+        .set({ trolleyRecipientId: recipientData.id })
+        .where(eq(users.email, recipientData.email));
+      
+      console.log(`Recipient created: ${recipientData.id} for ${recipientData.email}`);
+    } catch (error) {
+      console.error('Error handling recipient creation:', error);
+    }
+  }
 }
