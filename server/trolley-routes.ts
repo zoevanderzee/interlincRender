@@ -17,6 +17,154 @@ interface AuthenticatedRequest extends Request {
 export default function trolleyRoutes(app: Express, apiPath: string, authMiddleware: any) {
   const trolleyBasePath = `${apiPath}/trolley`;
 
+  // Generate unique onboarding link for business verification
+  app.post(`${trolleyBasePath}/business-onboarding-link`, authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: 'User not authenticated' });
+      }
+
+      const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!user.length) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      const userData = user[0];
+      if (userData.role !== 'business') {
+        return res.status(403).json({ message: 'Only business users can access onboarding' });
+      }
+
+      // Generate unique verification token
+      const verificationToken = `biz_${userId}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+      
+      // Store token in database for later verification
+      await db.update(users).set({
+        trolleyVerificationToken: verificationToken,
+        trolleyVerificationStarted: new Date()
+      }).where(eq(users.id, userId));
+
+      // Create Trolley onboarding URL with return parameters
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const returnUrl = `${baseUrl}/api/trolley/business-verification-callback?token=${verificationToken}`;
+      const cancelUrl = `${baseUrl}/business-setup?status=cancelled`;
+
+      const onboardingUrl = `https://trolley.link/business-onboarding?` + 
+        `return_url=${encodeURIComponent(returnUrl)}&` +
+        `cancel_url=${encodeURIComponent(cancelUrl)}&` +
+        `email=${encodeURIComponent(userData.email)}&` +
+        `company_name=${encodeURIComponent(userData.companyName || '')}&` +
+        `reference_id=${verificationToken}`;
+
+      res.json({
+        onboardingUrl,
+        verificationToken,
+        message: 'Complete verification on Trolley and you will be redirected back automatically'
+      });
+
+    } catch (error) {
+      console.error('Error generating business onboarding link:', error);
+      res.status(500).json({ message: 'Failed to generate onboarding link' });
+    }
+  });
+
+  // Handle verification callback from Trolley
+  app.get(`${trolleyBasePath}/business-verification-callback`, async (req: Request, res: Response) => {
+    try {
+      const { token, company_id, status } = req.query;
+
+      if (!token) {
+        return res.redirect('/business-setup?error=missing_token');
+      }
+
+      // Find user by verification token
+      const user = await db.select().from(users).where(eq(users.trolleyVerificationToken, token as string)).limit(1);
+      if (!user.length) {
+        return res.redirect('/business-setup?error=invalid_token');
+      }
+
+      const userData = user[0];
+
+      if (status === 'approved' && company_id) {
+        // Update user with approved Trolley company profile
+        await db.update(users).set({
+          trolleyCompanyProfileId: company_id as string,
+          trolleyVerificationStatus: 'approved',
+          trolleyVerificationCompletedAt: new Date(),
+          trolleyVerificationToken: null // Clear token after use
+        }).where(eq(users.id, userData.id));
+
+        // Redirect to success page
+        res.redirect('/business-setup?status=approved');
+      } else if (status === 'pending') {
+        // Update status to pending
+        await db.update(users).set({
+          trolleyVerificationStatus: 'pending',
+          trolleyVerificationToken: null
+        }).where(eq(users.id, userData.id));
+
+        res.redirect('/business-setup?status=pending');
+      } else {
+        // Verification failed or cancelled
+        await db.update(users).set({
+          trolleyVerificationStatus: 'failed',
+          trolleyVerificationToken: null
+        }).where(eq(users.id, userData.id));
+
+        res.redirect('/business-setup?status=failed');
+      }
+
+    } catch (error) {
+      console.error('Error handling verification callback:', error);
+      res.redirect('/business-setup?error=callback_error');
+    }
+  });
+
+  // Webhook endpoint for Trolley verification updates
+  app.post(`${trolleyBasePath}/webhook`, async (req: Request, res: Response) => {
+    try {
+      const { event, data } = req.body;
+
+      // Verify webhook signature (implement based on Trolley's docs)
+      // const signature = req.headers['x-trolley-signature'];
+      // if (!verifyWebhookSignature(req.body, signature)) {
+      //   return res.status(401).json({ message: 'Invalid signature' });
+      // }
+
+      switch (event) {
+        case 'company.verification.approved':
+          const { company_id, reference_id } = data;
+          
+          // Find user by reference ID (verification token)
+          const approvedUser = await db.select().from(users).where(eq(users.trolleyVerificationToken, reference_id)).limit(1);
+          if (approvedUser.length) {
+            await db.update(users).set({
+              trolleyCompanyProfileId: company_id,
+              trolleyVerificationStatus: 'approved',
+              trolleyVerificationCompletedAt: new Date(),
+              trolleyVerificationToken: null
+            }).where(eq(users.id, approvedUser[0].id));
+          }
+          break;
+
+        case 'company.verification.rejected':
+          const rejectedUser = await db.select().from(users).where(eq(users.trolleyVerificationToken, data.reference_id)).limit(1);
+          if (rejectedUser.length) {
+            await db.update(users).set({
+              trolleyVerificationStatus: 'rejected',
+              trolleyVerificationToken: null
+            }).where(eq(users.id, rejectedUser[0].id));
+          }
+          break;
+      }
+
+      res.json({ received: true });
+    } catch (error) {
+      console.error('Error handling webhook:', error);
+      res.status(500).json({ message: 'Webhook processing failed' });
+    }
+  });
+
   // Create or get recipient for contractor
   app.post(`${trolleyBasePath}/recipients`, authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
     try {

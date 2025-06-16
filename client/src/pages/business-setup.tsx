@@ -19,6 +19,7 @@ export default function BusinessSetup() {
     website: '',
     description: ''
   });
+  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -55,6 +56,32 @@ export default function BusinessSetup() {
       });
     },
   });
+
+  const handleStartVerification = async () => {
+    setIsGeneratingLink(true);
+    try {
+      const response = await apiRequest("POST", "/api/trolley/business-onboarding-link", {});
+      const data = await response.json();
+      
+      if (data.onboardingUrl) {
+        window.open(data.onboardingUrl, '_blank');
+        toast({
+          title: "Verification Started",
+          description: "Complete your verification on Trolley. You'll be redirected back automatically when approved.",
+        });
+      } else {
+        throw new Error('Failed to generate verification link');
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error", 
+        description: error.message || "Failed to start verification process",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingLink(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -196,11 +223,12 @@ export default function BusinessSetup() {
                 </div>
 
                 <Button
-                  onClick={() => window.open('https://trolley.com/business-onboarding', '_blank')}
+                  onClick={handleStartVerification}
+                  disabled={isGeneratingLink}
                   className="w-full"
                   size="lg"
                 >
-                  Start Business Verification with Trolley
+                  {isGeneratingLink ? 'Generating Verification Link...' : 'Start Business Verification with Trolley'}
                 </Button>
 
                 <div className="text-center">
