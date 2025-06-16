@@ -54,13 +54,9 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
     enabled: isOpen, // Only fetch when modal is open
   });
 
-  console.log("Available contractors before filtering:", contractors);
-  
   // Use all contractors from the dashboard data without additional filtering
   // The backend already handles the proper filtering for connected contractors
   const availableContractors = contractors.filter(c => c.role === 'contractor');
-  
-  console.log("Available contractors after filtering:", availableContractors);
 
   // Check if adding this contractor would exceed the project budget
   useEffect(() => {
@@ -68,8 +64,8 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
       const contractorValueNum = parseFloat(contractorValue);
       const contractValueNum = parseFloat(contract.value || '0');
       
-      // If contractor value would exceed contract value
-      if (contractorValueNum > contractValueNum) {
+      // Only show warning if contract value is greater than 0 and contractor value exceeds it
+      if (contractValueNum > 0 && contractorValueNum > contractValueNum) {
         setBudgetWarning(`Warning: The contractor value ($${contractorValueNum}) exceeds the total project budget ($${contractValueNum}).`);
       } else {
         setBudgetWarning(null);
