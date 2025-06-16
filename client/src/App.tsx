@@ -40,6 +40,8 @@ import ContractorInvitePage from "@/pages/contractor-invite";
 import { ConnectionRequestsNotification } from "@/components/notifications/ConnectionRequestsNotification";
 // Use correct import path to match the file location
 import WorkRequestRespond from "./pages/work-request-respond";
+import ContractorOnboarding from "@/pages/contractor-onboarding";
+import BusinessSetup from "@/pages/business-setup";
 
 function Router() {
   console.log("Router rendering, current path:", window.location.pathname + window.location.search);
@@ -196,6 +198,14 @@ function Router() {
         <Layout>
           <Settings />
         </Layout>
+      </ProtectedRoute>
+      
+      <ProtectedRoute path="/contractor-onboarding">
+        <ContractorOnboarding />
+      </ProtectedRoute>
+      
+      <ProtectedRoute path="/business-setup">
+        <BusinessSetup />
       </ProtectedRoute>
       
       <ProtectedRoute path="/subscribe">
