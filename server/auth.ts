@@ -234,31 +234,8 @@ export function setupAuth(app: Express) {
       
       const user = await storage.createUser(userData);
 
-      // Auto-create Trolley company profile for business users
-      if (role === 'business') {
-        try {
-          const { trolleyService } = await import('./trolley-service');
-          const companyData = {
-            name: req.body.companyName || `${req.body.firstName} ${req.body.lastName}`,
-            address: req.body.address || '',
-            phone: req.body.phone || '',
-            website: req.body.website || '',
-            description: `Business account for ${req.body.companyName || req.body.firstName}`
-          };
-          
-          const companyProfile = await trolleyService.createCompany(companyData);
-          
-          // Update user with Trolley company profile ID
-          await storage.updateUser(user.id, {
-            trolleyCompanyProfileId: companyProfile.id
-          });
-          
-          console.log(`Auto-created Trolley company profile ${companyProfile.id} for business user ${user.id}`);
-        } catch (trolleyError) {
-          console.error('Failed to auto-create Trolley company profile:', trolleyError);
-          // Continue with user creation even if Trolley setup fails
-        }
-      }
+      // Business users need to complete Trolley onboarding separately
+      // This will be handled via redirect to business-setup page after login
 
       // Handle project-specific invitation
       if (invite) {

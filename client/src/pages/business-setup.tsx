@@ -164,74 +164,51 @@ export default function BusinessSetup() {
         {!user.trolleyCompanyProfileId && (
           <Card>
             <CardHeader>
-              <CardTitle>Create Company Profile</CardTitle>
+              <CardTitle>Complete Trolley Business Verification</CardTitle>
               <CardDescription>
-                Set up your business profile to start sending payments
+                To send payments to contractors, you must complete business verification with Trolley
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Company Name *</Label>
-                    <Input
-                      id="name"
-                      value={companyDetails.name}
-                      onChange={(e) => setCompanyDetails(prev => ({ ...prev, name: e.target.value }))}
-                      placeholder="Your Company Name"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <Input
-                      id="phone"
-                      value={companyDetails.phone}
-                      onChange={(e) => setCompanyDetails(prev => ({ ...prev, phone: e.target.value }))}
-                      placeholder="+1 (555) 123-4567"
-                    />
-                  </div>
-                </div>
+            <CardContent className="space-y-6">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <h4 className="font-semibold text-amber-800 mb-2">Required Documents for Business Onboarding:</h4>
+                <ul className="text-sm text-amber-700 space-y-1">
+                  <li>• Proof of ID for Signing Officer (front and back, all corners visible)</li>
+                  <li>• Proof of Residence for Signing Officer (utility/credit card bill, dated within 60 days)</li>
+                  <li>• Share Registry of the company or Cap Table</li>
+                  <li>• Corporate Bank Statement (3 months of transactions, non-redacted)</li>
+                  <li>• Articles of Incorporation</li>
+                  <li>• Volumes table filled out by country</li>
+                </ul>
+              </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="address">Business Address *</Label>
-                  <Textarea
-                    id="address"
-                    value={companyDetails.address}
-                    onChange={(e) => setCompanyDetails(prev => ({ ...prev, address: e.target.value }))}
-                    placeholder="123 Business St, City, State, ZIP"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="website">Website</Label>
-                  <Input
-                    id="website"
-                    value={companyDetails.website}
-                    onChange={(e) => setCompanyDetails(prev => ({ ...prev, website: e.target.value }))}
-                    placeholder="https://yourcompany.com"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="description">Business Description</Label>
-                  <Textarea
-                    id="description"
-                    value={companyDetails.description}
-                    onChange={(e) => setCompanyDetails(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder="Brief description of your business"
-                  />
+              <div className="space-y-4">
+                <div className="bg-zinc-900 p-4 rounded-lg">
+                  <p className="text-sm text-zinc-300 mb-3">
+                    <strong>Important:</strong> Business verification must be completed through Trolley's secure platform to ensure compliance with financial regulations.
+                  </p>
+                  <ol className="text-sm text-zinc-400 space-y-2 list-decimal list-inside">
+                    <li>Prepare all required documents listed above</li>
+                    <li>Visit Trolley's business onboarding portal</li>
+                    <li>Complete the verification process with your documents</li>
+                    <li>Return here once approved to link your account</li>
+                  </ol>
                 </div>
 
                 <Button
-                  type="submit"
-                  disabled={createCompanyProfileMutation.isPending}
+                  onClick={() => window.open('https://trolley.com/business-onboarding', '_blank')}
                   className="w-full"
+                  size="lg"
                 >
-                  {createCompanyProfileMutation.isPending ? 'Creating Profile...' : 'Create Company Profile'}
+                  Start Business Verification with Trolley
                 </Button>
-              </form>
+
+                <div className="text-center">
+                  <p className="text-xs text-zinc-500">
+                    Already completed verification? Contact support to link your account.
+                  </p>
+                </div>
+              </div>
             </CardContent>
           </Card>
         )}

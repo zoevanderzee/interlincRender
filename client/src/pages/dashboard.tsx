@@ -48,6 +48,12 @@ interface BudgetData {
 const Dashboard = () => {
   const [_, navigate] = useLocation();
   const { user, isLoading: isAuthLoading } = useAuth();
+
+  // Redirect business users without Trolley profile to complete setup
+  if (user && user.role === 'business' && !user.trolleyCompanyProfileId) {
+    navigate('/business-setup');
+    return null;
+  }
   const { toast } = useToast();
 
   // Dashboard data query with fallback authentication
