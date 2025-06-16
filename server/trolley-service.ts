@@ -105,26 +105,23 @@ class TrolleyService {
     }
   }
 
-  private generateAuthHeader(method: string, path: string, body: string = ''): { timestamp: string; authorization: string } {
-    const timestamp = Math.floor(Date.now() / 1000).toString();
-    const message = `${timestamp}${method.toUpperCase()}${path}${body}`;
-    const signature = createHmac('sha256', this.apiSecret)
-      .update(message)
-      .digest('hex');
+  private generateAuthHeader(method: string, path: string, body: string = ''): string {
+    const timestamp = Math.floor(Date.now() / 1000);
+    const nonce = Math.random().toString(36).substring(2, 15);
     
-    return {
-      timestamp,
-      authorization: `prsign ${this.apiKey}:${signature}`
-    };
+    // Create message string exactly as Trolley expects
+    const message = `${method.toUpperCase()}\n${path}\n\n${timestamp}\n${nonce}`;
+    const signature = createHmac('sha256', this.apiSecret).update(message).digest('hex');
+    
+    // Format as per Trolley documentation
+    return `prsign accessKey="${this.apiKey}"; timestamp="${timestamp}"; nonce="${nonce}"; version="1"; signature="${signature}"`;
   }
 
   private getAuthHeaders(method: string, path: string, body: string = '') {
-    const { timestamp, authorization } = this.generateAuthHeader(method, path, body);
-    
     return {
       'Content-Type': 'application/json',
-      'Authorization': authorization,
-      'X-PR-Timestamp': timestamp,
+      'Authorization': this.generateAuthHeader(method, path, body),
+      'X-PR-Version': '1',
       'Accept': 'application/json'
     };
   }
