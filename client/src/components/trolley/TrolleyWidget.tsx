@@ -269,29 +269,87 @@ export function TrolleyWidget({ contractorEmail, contractorId, onSuccess, onCanc
               Complete profile with payment methods and tax information
             </p>
             {!widgetUrl ? (
-              <Button 
-                onClick={generateWidgetUrl} 
-                disabled={isLoading}
-                variant="outline"
-                className="w-full"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  'Generate Onboarding Link'
-                )}
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    generateWidgetUrl('quick');
+                  }}
+                  disabled={isLoading}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    'Quick Setup'
+                  )}
+                </Button>
+                <Button 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    generateWidgetUrl('full');
+                  }}
+                  disabled={isLoading}
+                  className="flex-1"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    'Full Setup'
+                  )}
+                </Button>
+              </div>
+            ) : embedMode ? (
+              <div className="space-y-3">
+                <div className="border border-border rounded-lg overflow-hidden bg-background">
+                  <iframe
+                    ref={iframeRef}
+                    id="trolley-widget"
+                    src={widgetUrl}
+                    width="100%"
+                    height={widgetHeight}
+                    frameBorder="0"
+                    style={{ 
+                      minHeight: '400px',
+                      backgroundColor: 'hsl(var(--background))' 
+                    }}
+                    title="Trolley Payment Setup"
+                  />
+                </div>
+                <Button 
+                  onClick={() => setWidgetUrl(null)}
+                  variant="ghost"
+                  size="sm"
+                  className="w-full text-xs"
+                >
+                  Generate New Link
+                </Button>
+              </div>
             ) : (
-              <Button 
-                onClick={openWidget}
-                className="w-full"
-              >
-                <ExternalLink className="w-4 h-4 mr-2" />
-                Open Onboarding Widget
-              </Button>
+              <div className="space-y-2">
+                <Button 
+                  onClick={openWidget}
+                  className="w-full"
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Open Onboarding Widget
+                </Button>
+                <Button 
+                  onClick={() => setWidgetUrl(null)}
+                  variant="ghost"
+                  size="sm"
+                  className="w-full text-xs"
+                >
+                  Generate New Link
+                </Button>
+              </div>
             )}
           </div>
         </div>
