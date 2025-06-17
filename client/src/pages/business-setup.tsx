@@ -64,11 +64,8 @@ export default function BusinessSetup() {
       const data = await response.json();
       
       if (data.onboardingUrl) {
-        window.open(data.onboardingUrl, '_blank');
-        toast({
-          title: "Verification Started",
-          description: "Complete your verification on Trolley. You'll be redirected back automatically when approved.",
-        });
+        // Use direct navigation instead of popup to avoid popup blockers
+        window.location.href = data.onboardingUrl;
       } else {
         throw new Error('Failed to generate verification link');
       }
