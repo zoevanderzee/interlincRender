@@ -1,11 +1,9 @@
-import { createHmac } from 'crypto';
+import * as trolley from 'trolleyhq';
 
 /**
  * Trolley Payment Service
- * Handles contractor payments through Trolley API using batch-based payments
+ * Handles contractor payments through Trolley SDK using batch-based payments
  */
-
-const TROLLEY_API_BASE = 'https://api.trolley.com/v1';
 
 interface TrolleyRecipient {
   id: string;
@@ -93,71 +91,46 @@ interface CreateRecipientRequest {
 }
 
 class TrolleyService {
-  private apiKey: string;
-  private apiSecret: string;
+  private client: any;
 
   constructor() {
-    // Dynamic credential loading to handle environment updates
-    this.loadCredentials();
+    this.initializeClient();
   }
 
-  private loadCredentials() {
-    this.apiKey = process.env.TROLLEY_API_KEY || '';
-    this.apiSecret = process.env.TROLLEY_API_SECRET || '';
+  private initializeClient() {
+    const apiKey = process.env.TROLLEY_API_KEY;
+    const apiSecret = process.env.TROLLEY_API_SECRET;
     
-    if (!this.apiKey || !this.apiSecret) {
+    if (!apiKey || !apiSecret) {
       console.warn('Trolley API credentials not configured');
+      return;
     }
+
+    this.client = (trolley as any).connect({
+      key: apiKey,
+      secret: apiSecret
+    });
+    
+    console.log('Trolley SDK client initialized');
   }
 
   // Method to refresh credentials dynamically
   public refreshCredentials() {
-    this.loadCredentials();
+    this.initializeClient();
     console.log('Trolley credentials refreshed');
   }
 
-  private generateAuthHeader(method: string, path: string, body: string = ''): { authorization: string; timestamp: number } {
-    const timestamp = Math.floor(Date.now() / 1000);
-    
-    // Create the message string as per Trolley API documentation
-    const message = `${timestamp}${method.toUpperCase()}${path}${body}`;
-    const signature = createHmac('sha256', this.apiSecret).update(message).digest('hex');
-    
-    // Authorization format for API calls
-    const authorization = `prsign ${this.apiKey}:${signature}`;
-    
-    return { authorization, timestamp };
-  }
-
-  private getAuthHeaders(method: string, path: string, body: string = '') {
-    const { authorization, timestamp } = this.generateAuthHeader(method, path, body);
-    
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': authorization,
-      'X-PR-Timestamp': timestamp.toString(),
-      'Accept': 'application/json'
-    };
+  private ensureClient() {
+    if (!this.client) {
+      throw new Error('Trolley client not initialized - check API credentials');
+    }
   }
 
   async createRecipient(recipientData: CreateRecipientRequest): Promise<TrolleyRecipient> {
-    const path = '/recipients';
-    const body = JSON.stringify(recipientData);
+    this.ensureClient();
     
     try {
-      const response = await fetch(`${TROLLEY_API_BASE}${path}`, {
-        method: 'POST',
-        headers: this.getAuthHeaders('POST', path, body),
-        body
-      });
-
-      if (!response.ok) {
-        const errorData = await response.text();
-        console.error('Trolley API error creating recipient:', errorData);
-        throw new Error(`Trolley API error: ${response.status} - ${errorData}`);
-      }
-
-      const recipient = await response.json();
+      const recipient = await this.client.recipient.create(recipientData);
       console.log(`Created Trolley recipient: ${recipient.id} for ${recipientData.email}`);
       
       return recipient;
@@ -168,20 +141,10 @@ class TrolleyService {
   }
 
   async getRecipient(recipientId: string): Promise<TrolleyRecipient> {
-    const path = `/recipients/${recipientId}`;
+    this.ensureClient();
     
     try {
-      const response = await fetch(`${TROLLEY_API_BASE}${path}`, {
-        method: 'GET',
-        headers: this.getAuthHeaders('GET', path)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(`Trolley API error: ${response.status} - ${errorData}`);
-      }
-
-      return await response.json();
+      return await this.client.recipient.find(recipientId);
     } catch (error) {
       console.error('Error fetching Trolley recipient:', error);
       throw error;
