@@ -213,10 +213,19 @@ class TrolleySdkService {
     this.ensureClient();
     
     try {
-      const payment = await this.client.batch.createPayment(batchId, paymentData);
-      console.log(`Added payment ${payment.id} to batch ${batchId}`);
+      // Use batch.update to add payments to existing batch
+      const updatedBatch = await this.client.batch.update(batchId, {
+        payments: [paymentData]
+      });
       
-      return payment;
+      console.log(`Added payment to batch ${batchId}`);
+      
+      // Return the first payment from the updated batch
+      if (updatedBatch.payments && updatedBatch.payments.length > 0) {
+        return updatedBatch.payments[0];
+      }
+      
+      throw new Error('Payment was not added to batch');
     } catch (error) {
       console.error('Error adding payment to batch:', error);
       throw error;
