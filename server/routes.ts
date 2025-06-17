@@ -18,7 +18,7 @@ import Stripe from "stripe";
 import stripeService from "./services/stripe";
 import notificationService from "./services/notifications";
 import automatedPaymentService from "./services/automated-payments";
-import { trolleyApi } from "./services/trolley-api";
+import { trolleySdk } from "./trolley-sdk-service";
 import { setupAuth } from "./auth";
 import plaidRoutes from "./plaid-routes";
 import trolleyRoutes from "./trolley-routes";
@@ -64,7 +64,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Trolley API diagnostic endpoint - no auth required
+  // Trolley SDK diagnostic endpoint - no auth required
   app.get(`${apiRouter}/trolley/status`, async (req: Request, res: Response) => {
     try {
       const apiKey = process.env.TROLLEY_API_KEY;
@@ -76,59 +76,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         secretLength: apiSecret?.length || 0,
         lastTest: null as any,
         connectionStatus: 'unknown',
-        troubleshooting: {
-          possibleIssues: [
-            'API keys are from sandbox environment (switch to live)',
-            'Keys need activation in Trolley dashboard',
-            'Account verification incomplete',
-            'Insufficient account permissions'
-          ]
-        }
+        sdkVersion: 'Official Trolley SDK'
       };
 
       if (status.configured) {
-        // Test connection with balances endpoint
-        const method = 'GET';
-        const path = '/v1/balances';
-        const timestamp = Math.floor(Date.now() / 1000);
-        
-        const message = `${timestamp}${method.toUpperCase()}${path}`;
-        const signature = nodeCrypto.createHmac('sha256', apiSecret).update(message).digest('hex');
-        const authorization = `prsign ${apiKey}:${signature}`;
-
         try {
-          const response = await fetch('https://api.trolley.com/v1/balances', {
-            method: 'GET',
-            headers: {
-              'Authorization': authorization,
-              'Content-Type': 'application/json',
-              'X-PR-Timestamp': timestamp.toString(),
-              'Accept': 'application/json'
-            }
-          });
-
-          const data = await response.json();
+          const testResult = await trolleySdk.testConnection();
           
           status.lastTest = {
             timestamp: new Date().toISOString(),
-            status: response.status,
-            success: response.status === 200
+            success: testResult.success,
+            message: testResult.message
           };
 
-          if (response.status === 200) {
+          if (testResult.success) {
             status.connectionStatus = 'connected';
-            status.troubleshooting = { message: 'Trolley API working correctly' };
           } else {
             status.connectionStatus = 'authentication_failed';
-            status.lastTest.error = data.errors?.[0]?.message || 'Unknown error';
+            status.lastTest.error = testResult.message;
           }
         } catch (error) {
-          status.connectionStatus = 'network_error';
+          status.connectionStatus = 'sdk_error';
           status.lastTest = {
             timestamp: new Date().toISOString(),
-            status: 0,
             success: false,
-            error: error instanceof Error ? error.message : 'Network error'
+            error: error instanceof Error ? error.message : 'SDK connection failed'
           };
         }
       }
@@ -4296,7 +4268,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         type: 'individual' as const
       };
 
-      const result = await trolleyApi.createRecipient(recipientData);
+      const result = await trolleySdk.createRecipient(recipientData);
       
       if (!result.success) {
         return res.status(400).json({ message: result.error });
