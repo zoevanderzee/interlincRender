@@ -4492,78 +4492,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Trolley credential test endpoints
-  app.get(`${apiRouter}/trolley-test/credential-status`, async (req: Request, res: Response) => {
+  // Trolley API test and status endpoints
+  app.get(`${apiRouter}/trolley/status`, async (req: Request, res: Response) => {
     try {
       const apiKey = process.env.TROLLEY_API_KEY;
       const apiSecret = process.env.TROLLEY_API_SECRET;
       
-      res.json({
+      const status = {
         configured: !!(apiKey && apiSecret),
-        keyPrefix: apiKey?.substring(0, 15) + '...' || 'Not set',
+        keyPrefix: apiKey?.substring(0, 15) + '...' || 'Not configured',
         secretLength: apiSecret?.length || 0,
-        timestamp: new Date().toISOString()
-      });
-    } catch (error) {
-      res.status(500).json({
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  });
+        lastTest: null as any,
+        connectionStatus: 'unknown'
+      };
 
-  app.get(`${apiRouter}/trolley-test/connection`, async (req: Request, res: Response) => {
-    try {
-      const apiKey = process.env.TROLLEY_API_KEY;
-      const apiSecret = process.env.TROLLEY_API_SECRET;
-      
-      if (!apiKey || !apiSecret) {
-        return res.status(400).json({
-          success: false,
-          error: 'Trolley credentials not configured'
-        });
-      }
+      if (status.configured) {
+        // Test connection
+        const method = 'GET';
+        const path = '/v1/balances';
+        const timestamp = Math.floor(Date.now() / 1000);
+        
+        const message = `${timestamp}${method.toUpperCase()}${path}`;
+        const signature = nodeCrypto.createHmac('sha256', apiSecret).update(message).digest('hex');
+        const authorization = `prsign ${apiKey}:${signature}`;
 
-      // Test API connection
-      const method = 'GET';
-      const path = '/v1/recipients';
-      const timestamp = Math.floor(Date.now() / 1000);
-      
-      const message = `${timestamp}${method.toUpperCase()}${path}`;
-      const signature = nodeCrypto.createHmac('sha256', apiSecret).update(message).digest('hex');
-      const authorization = `prsign ${apiKey}:${signature}`;
+        try {
+          const response = await fetch('https://api.trolley.com/v1/balances', {
+            method: 'GET',
+            headers: {
+              'Authorization': authorization,
+              'Content-Type': 'application/json',
+              'X-PR-Timestamp': timestamp.toString(),
+              'Accept': 'application/json'
+            }
+          });
 
-      const response = await fetch('https://api.trolley.com/v1/recipients', {
-        method: 'GET',
-        headers: {
-          'Authorization': authorization,
-          'Content-Type': 'application/json',
-          'X-PR-Timestamp': timestamp.toString(),
-          'Accept': 'application/json'
+          const data = await response.json();
+          
+          status.lastTest = {
+            timestamp: new Date().toISOString(),
+            status: response.status,
+            success: response.status === 200
+          };
+
+          if (response.status === 200) {
+            status.connectionStatus = 'connected';
+          } else {
+            status.connectionStatus = 'authentication_failed';
+            status.lastTest.error = data.errors?.[0]?.message || 'Unknown error';
+          }
+        } catch (error) {
+          status.connectionStatus = 'network_error';
+          status.lastTest = {
+            timestamp: new Date().toISOString(),
+            status: 0,
+            success: false,
+            error: error instanceof Error ? error.message : 'Network error'
+          };
         }
-      });
-
-      const data = await response.json();
-      
-      if (response.status === 200) {
-        res.json({
-          success: true,
-          message: 'Trolley API connection successful',
-          recipientCount: data.recipients?.length || 0,
-          timestamp: new Date().toISOString()
-        });
-      } else {
-        res.status(400).json({
-          success: false,
-          error: data.errors?.[0]?.message || 'API connection failed',
-          statusCode: response.status,
-          timestamp: new Date().toISOString()
-        });
       }
+
+      res.json(status);
     } catch (error) {
       res.status(500).json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Connection test failed',
-        timestamp: new Date().toISOString()
+        error: error instanceof Error ? error.message : 'Status check failed'
       });
     }
   });
