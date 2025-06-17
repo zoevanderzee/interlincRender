@@ -257,25 +257,24 @@ class TrolleySdkService {
   // Generate widget URL for contractor onboarding
   generateWidgetUrl(recipientEmail: string, recipientReferenceId: string): string {
     const apiKey = process.env.TROLLEY_API_KEY;
-    const apiSecret = process.env.TROLLEY_API_SECRET;
     
-    if (!apiKey || !apiSecret) {
-      throw new Error('Trolley credentials not configured');
+    if (!apiKey) {
+      throw new Error('Trolley API key not configured');
     }
 
-    try {
-      return this.client.widget.url({
-        email: recipientEmail,
-        refid: recipientReferenceId,
-        hideEmail: false,
-        roEmail: false,
-        locale: 'en',
-        products: 'pay,tax'
-      });
-    } catch (error) {
-      console.error('Error generating widget URL:', error);
-      throw error;
-    }
+    // Generate Trolley widget URL based on official documentation
+    const baseUrl = 'https://trolley.link/onboard';
+    const params = new URLSearchParams({
+      publicKey: apiKey,
+      email: recipientEmail,
+      refid: recipientReferenceId,
+      hideEmail: 'false',
+      roEmail: 'false',
+      locale: 'en',
+      products: 'pay,tax'
+    });
+
+    return `${baseUrl}?${params.toString()}`;
   }
 }
 

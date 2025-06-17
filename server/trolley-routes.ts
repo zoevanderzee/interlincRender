@@ -4,6 +4,7 @@ import { db } from "./db";
 import { users, milestones, payments, contracts } from "../shared/schema";
 import { eq, and } from "drizzle-orm";
 import { trolleyService, type TrolleyRecipient, type CreateRecipientRequest } from "./trolley-service";
+import { trolleySdk } from "./trolley-sdk-service";
 
 /**
  * Trolley Payment Routes
