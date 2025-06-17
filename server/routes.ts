@@ -64,6 +64,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Trolley API diagnostic endpoint - no auth required
+  app.get(`${apiRouter}/trolley/status`, async (req: Request, res: Response) => {
+    try {
+      const apiKey = process.env.TROLLEY_API_KEY;
+      const apiSecret = process.env.TROLLEY_API_SECRET;
+      
+      const status = {
+        configured: !!(apiKey && apiSecret),
+        keyPrefix: apiKey?.substring(0, 15) + '...' || 'Not configured',
+        secretLength: apiSecret?.length || 0,
+        lastTest: null as any,
+        connectionStatus: 'unknown',
+        troubleshooting: {
+          possibleIssues: [
+            'API keys are from sandbox environment (switch to live)',
+            'Keys need activation in Trolley dashboard',
+            'Account verification incomplete',
+            'Insufficient account permissions'
+          ]
+        }
+      };
+
+      if (status.configured) {
+        // Test connection with balances endpoint
+        const method = 'GET';
+        const path = '/v1/balances';
+        const timestamp = Math.floor(Date.now() / 1000);
+        
+        const message = `${timestamp}${method.toUpperCase()}${path}`;
+        const signature = nodeCrypto.createHmac('sha256', apiSecret).update(message).digest('hex');
+        const authorization = `prsign ${apiKey}:${signature}`;
+
+        try {
+          const response = await fetch('https://api.trolley.com/v1/balances', {
+            method: 'GET',
+            headers: {
+              'Authorization': authorization,
+              'Content-Type': 'application/json',
+              'X-PR-Timestamp': timestamp.toString(),
+              'Accept': 'application/json'
+            }
+          });
+
+          const data = await response.json();
+          
+          status.lastTest = {
+            timestamp: new Date().toISOString(),
+            status: response.status,
+            success: response.status === 200
+          };
+
+          if (response.status === 200) {
+            status.connectionStatus = 'connected';
+            status.troubleshooting = { message: 'Trolley API working correctly' };
+          } else {
+            status.connectionStatus = 'authentication_failed';
+            status.lastTest.error = data.errors?.[0]?.message || 'Unknown error';
+          }
+        } catch (error) {
+          status.connectionStatus = 'network_error';
+          status.lastTest = {
+            timestamp: new Date().toISOString(),
+            status: 0,
+            success: false,
+            error: error instanceof Error ? error.message : 'Network error'
+          };
+        }
+      }
+
+      res.json(status);
+    } catch (error) {
+      res.status(500).json({
+        error: error instanceof Error ? error.message : 'Status check failed'
+      });
+    }
+  });
+
   // Public routes are defined above (login, register) in the auth.ts file
   
   // Protected routes - require authentication
@@ -4492,73 +4569,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Trolley API test and status endpoints
-  app.get(`${apiRouter}/trolley/status`, async (req: Request, res: Response) => {
-    try {
-      const apiKey = process.env.TROLLEY_API_KEY;
-      const apiSecret = process.env.TROLLEY_API_SECRET;
-      
-      const status = {
-        configured: !!(apiKey && apiSecret),
-        keyPrefix: apiKey?.substring(0, 15) + '...' || 'Not configured',
-        secretLength: apiSecret?.length || 0,
-        lastTest: null as any,
-        connectionStatus: 'unknown'
-      };
 
-      if (status.configured) {
-        // Test connection
-        const method = 'GET';
-        const path = '/v1/balances';
-        const timestamp = Math.floor(Date.now() / 1000);
-        
-        const message = `${timestamp}${method.toUpperCase()}${path}`;
-        const signature = nodeCrypto.createHmac('sha256', apiSecret).update(message).digest('hex');
-        const authorization = `prsign ${apiKey}:${signature}`;
-
-        try {
-          const response = await fetch('https://api.trolley.com/v1/balances', {
-            method: 'GET',
-            headers: {
-              'Authorization': authorization,
-              'Content-Type': 'application/json',
-              'X-PR-Timestamp': timestamp.toString(),
-              'Accept': 'application/json'
-            }
-          });
-
-          const data = await response.json();
-          
-          status.lastTest = {
-            timestamp: new Date().toISOString(),
-            status: response.status,
-            success: response.status === 200
-          };
-
-          if (response.status === 200) {
-            status.connectionStatus = 'connected';
-          } else {
-            status.connectionStatus = 'authentication_failed';
-            status.lastTest.error = data.errors?.[0]?.message || 'Unknown error';
-          }
-        } catch (error) {
-          status.connectionStatus = 'network_error';
-          status.lastTest = {
-            timestamp: new Date().toISOString(),
-            status: 0,
-            success: false,
-            error: error instanceof Error ? error.message : 'Network error'
-          };
-        }
-      }
-
-      res.json(status);
-    } catch (error) {
-      res.status(500).json({
-        error: error instanceof Error ? error.message : 'Status check failed'
-      });
-    }
-  });
 
   const httpServer = createServer(app);
   return httpServer;
