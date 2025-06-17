@@ -35,30 +35,15 @@ export default function trolleyRoutes(app: Express, apiPath: string, authMiddlew
         return res.status(403).json({ message: 'Only business users can access onboarding' });
       }
 
-      // Generate unique verification token
-      const verificationToken = `biz_${userId}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+      // Generate simple reference ID for tracking
+      const referenceId = `business_${userId}_${Date.now()}`;
       
-      // Store token in database for later verification
-      await db.update(users).set({
-        trolleyVerificationToken: verificationToken,
-        trolleyVerificationStarted: new Date()
-      }).where(eq(users.id, userId));
-
-      // Create Trolley onboarding URL with return parameters
-      const baseUrl = `${req.protocol}://${req.get('host')}`;
-      const returnUrl = `${baseUrl}/api/trolley/business-verification-callback?token=${verificationToken}`;
-      const cancelUrl = `${baseUrl}/business-setup?status=cancelled`;
-
-      const onboardingUrl = `https://trolley.link/business-onboarding?` + 
-        `return_url=${encodeURIComponent(returnUrl)}&` +
-        `cancel_url=${encodeURIComponent(cancelUrl)}&` +
-        `email=${encodeURIComponent(userData.email)}&` +
-        `company_name=${encodeURIComponent(userData.companyName || '')}&` +
-        `reference_id=${verificationToken}`;
+      // Use the Trolley SDK to generate the widget URL
+      const onboardingUrl = trolleySdk.generateWidgetUrl(userData.email, referenceId);
 
       res.json({
         onboardingUrl,
-        verificationToken,
+        referenceId,
         message: 'Complete verification on Trolley and you will be redirected back automatically'
       });
 
