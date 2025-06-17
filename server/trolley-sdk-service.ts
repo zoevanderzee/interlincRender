@@ -133,26 +133,17 @@ class TrolleySdkService {
     this.ensureClient();
     
     try {
-      // Test with a simple list call without parameters
-      const recipients = await this.client.recipient.all();
+      // Test with recipient search (confirmed working method)
+      const result = await this.client.recipient.search();
       return {
         success: true,
-        message: `Connection successful. Found ${recipients.length || 0} recipients.`
+        message: `Connection successful. Found ${result.recipients?.length || 0} recipients. Total records: ${result.meta?.records || 0}.`
       };
     } catch (error) {
-      // Try alternative test with balances endpoint
-      try {
-        const balances = await this.client.balance.all();
-        return {
-          success: true,
-          message: `Connection successful via balances endpoint. Found ${balances.length || 0} balances.`
-        };
-      } catch (balanceError) {
-        return {
-          success: false,
-          message: error instanceof Error ? error.message : 'Connection test failed'
-        };
-      }
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Connection test failed'
+      };
     }
   }
 
