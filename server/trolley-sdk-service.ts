@@ -1,4 +1,5 @@
 import * as trolley from 'trolleyhq';
+import * as crypto from 'crypto';
 
 /**
  * Trolley Payment Service using Official SDK
@@ -257,15 +258,18 @@ class TrolleySdkService {
   // Generate widget URL for contractor onboarding
   generateWidgetUrl(recipientEmail: string, recipientReferenceId: string): string {
     const apiKey = process.env.TROLLEY_API_KEY;
+    const apiSecret = process.env.TROLLEY_API_SECRET;
     
-    if (!apiKey) {
-      throw new Error('Trolley API key not configured');
+    if (!apiKey || !apiSecret) {
+      throw new Error('Trolley API credentials not configured');
     }
 
     // Generate Trolley widget URL based on official documentation
-    const baseUrl = 'https://trolley.link/onboard';
-    const params = new URLSearchParams({
-      publicKey: apiKey,
+    const widgetBaseUrl = new URL('https://widget.trolley.com');
+    
+    const queryParams = new URLSearchParams({
+      ts: Math.floor(new Date().getTime() / 1000).toString(),
+      key: apiKey,
       email: recipientEmail,
       refid: recipientReferenceId,
       hideEmail: 'false',
@@ -274,7 +278,17 @@ class TrolleySdkService {
       products: 'pay,tax'
     });
 
-    return `${baseUrl}?${params.toString()}`;
+    const querystring = queryParams.toString().replace(/\+/g, '%20');
+    
+    // Create HMAC signature using built-in crypto
+    const hmac = crypto.createHmac('sha256', apiSecret);
+    hmac.update(querystring);
+    const signature = hmac.digest('hex');
+    
+    // Build final URL with signature
+    widgetBaseUrl.search = querystring + '&sign=' + signature;
+    
+    return widgetBaseUrl.toString();
   }
 }
 
