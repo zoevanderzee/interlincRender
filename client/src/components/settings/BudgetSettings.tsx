@@ -231,7 +231,7 @@ export function BudgetSettings() {
                 />
               </div>
               <p className="text-sm text-muted-foreground">
-                Set the total budget for your company account. Individual projects will draw from this amount.
+                Set the total budget for your company account. Individual projects will draw from this amount. Once you hit this cap, you cannot create more projects until you increase your budget or complete existing ones.
               </p>
             </div>
 

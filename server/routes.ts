@@ -728,21 +728,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // If creating a business contract, check budget availability
       if (req.user?.role === 'business' && userId) {
-        // Parse contract value to a number, it's stored as a string in Decimal format
-        const contractValue = parseFloat(contractInput.value.toString());
-        
-        // Check if this contract would exceed the budget limit
-        const isBudgetAvailable = await storage.checkBudgetAvailable(userId, contractValue);
-        
-        if (!isBudgetAvailable) {
-          return res.status(400).json({
-            message: "Budget exceeded",
-            error: "This contract would exceed your allocated budget. Please adjust your budget cap or contract value."
-          });
+        const user = await storage.getUser(userId);
+        if (user?.budgetCap) {
+          // Get existing project allocations
+          const allContracts = await storage.getAllContracts();
+          const userContracts = allContracts.filter(contract => 
+            contract.businessId === userId
+          );
+          const totalProjectAllocations = userContracts.reduce((sum, contract) => {
+            return sum + parseFloat(contract.value.toString() || '0');
+          }, 0);
+          
+          const newContractValue = parseFloat(contractInput.value.toString());
+          const totalAfterNewContract = totalProjectAllocations + newContractValue;
+          const budgetLimit = parseFloat(user.budgetCap.toString());
+          
+          if (totalAfterNewContract > budgetLimit) {
+            return res.status(400).json({
+              message: `Budget exceeded. Available: $${(budgetLimit - totalProjectAllocations).toFixed(2)}, Required: $${newContractValue.toFixed(2)}`,
+              budgetExceeded: true,
+              availableBudget: (budgetLimit - totalProjectAllocations).toFixed(2),
+              requestedAmount: newContractValue.toFixed(2)
+            });
+          }
         }
-        
-        // If budget is available, increase the budget used amount
-        await storage.increaseBudgetUsed(userId, contractValue);
       }
       
       console.log("[Contract Creation] Validated input:", JSON.stringify(contractInput));

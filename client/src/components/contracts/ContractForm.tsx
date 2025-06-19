@@ -137,11 +137,21 @@ const ContractForm = ({
     },
     onError: (error: any) => {
       console.error('Contract creation error:', error);
-      toast({
-        title: "Error",
-        description: error?.data?.message || `Failed to ${isEditMode ? 'update' : 'create'} project. Please try again.`,
-        variant: "destructive",
-      });
+      
+      // Show specific budget error message if budget exceeded
+      if (error?.data?.budgetExceeded) {
+        toast({
+          title: "Budget Exceeded",
+          description: `Available budget: ${error.data.availableBudget}, but you need ${error.data.requestedAmount}. Please increase your budget or reduce the project value.`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: error?.data?.message || `Failed to ${isEditMode ? 'update' : 'create'} project. Please try again.`,
+          variant: "destructive",
+        });
+      }
     },
   });
 
