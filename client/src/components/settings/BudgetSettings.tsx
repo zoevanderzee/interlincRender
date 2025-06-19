@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, AlertTriangle, Check, CreditCard, Wallet, BarChart3 } from "lucide-react";
+import { Loader2, AlertTriangle, Check, CreditCard, Wallet, BarChart3, FolderOpen } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { format, parse, parseISO } from "date-fns";
 import { isValid } from "date-fns";
@@ -83,7 +83,7 @@ export function BudgetSettings() {
 
   const calculateUsage = (): number => {
     if (!budgetInfo?.budgetCap || parseFloat(budgetInfo.budgetCap) === 0) return 0;
-    return Math.min(100, (parseFloat(budgetInfo.budgetUsed) / parseFloat(budgetInfo.budgetCap)) * 100);
+    return Math.min(100, (parseFloat(budgetInfo.totalProjectAllocations || '0') / parseFloat(budgetInfo.budgetCap)) * 100);
   };
 
   if (isLoading) {
@@ -149,11 +149,11 @@ export function BudgetSettings() {
                   <CardContent className="p-4">
                     <div className="flex items-center space-x-4">
                       <div className="p-2 rounded-full bg-primary/10">
-                        <CreditCard className="h-5 w-5 text-primary" />
+                        <FolderOpen className="h-5 w-5 text-primary" />
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">Spent</p>
-                        <p className="text-2xl font-bold">{formatCurrency(budgetInfo.budgetUsed)}</p>
+                        <p className="text-sm text-muted-foreground">Project Allocations</p>
+                        <p className="text-2xl font-bold">{formatCurrency(budgetInfo.totalProjectAllocations)}</p>
                       </div>
                     </div>
                   </CardContent>
@@ -218,20 +218,20 @@ export function BudgetSettings() {
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="budgetCap">Budget Allocation</Label>
+              <Label htmlFor="budgetCap">Company Budget Allocation</Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
                 <Input
                   id="budgetCap"
                   type="number"
-                  placeholder="Enter budget amount"
+                  placeholder="Enter total company budget (e.g. 60000)"
                   className="pl-7"
                   value={budgetCap}
                   onChange={(e) => setBudgetCap(e.target.value)}
                 />
               </div>
               <p className="text-sm text-muted-foreground">
-                Set the maximum amount for your outsourcing budget.
+                Set the total budget for your company account. Individual projects will draw from this amount.
               </p>
             </div>
 

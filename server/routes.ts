@@ -2692,6 +2692,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
       
+      // Calculate project allocations from contracts
+      const userContracts = await storage.getContracts(userId);
+      const totalProjectAllocations = userContracts.reduce((sum, contract) => {
+        return sum + parseFloat(contract.value.toString() || '0');
+      }, 0);
+      
       // Return budget-related information
       res.json({
         budgetCap: user.budgetCap || null,
@@ -2700,8 +2706,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         budgetStartDate: user.budgetStartDate || null,
         budgetEndDate: user.budgetEndDate || null,
         budgetResetEnabled: user.budgetResetEnabled || false,
+        totalProjectAllocations: totalProjectAllocations.toFixed(2),
         remainingBudget: user.budgetCap 
-          ? (parseFloat(user.budgetCap.toString()) - parseFloat(user.budgetUsed?.toString() || '0')).toFixed(2)
+          ? (parseFloat(user.budgetCap.toString()) - totalProjectAllocations).toFixed(2)
           : null
       });
     } catch (error) {

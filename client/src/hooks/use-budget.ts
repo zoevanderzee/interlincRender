@@ -9,6 +9,7 @@ export type BudgetInfo = {
   budgetStartDate: string | null;
   budgetEndDate: string | null;
   budgetResetEnabled: boolean;
+  totalProjectAllocations: string;
   remainingBudget: string | null;
 };
 
