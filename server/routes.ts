@@ -2692,8 +2692,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
       
-      // Calculate project allocations from contracts
-      const userContracts = await storage.getContracts(userId);
+      // Calculate project allocations from contracts  
+      const allContracts = await storage.getAllContracts();
+      const userContracts = allContracts.filter(contract => 
+        contract.businessId === userId || contract.contractorId === userId
+      );
       const totalProjectAllocations = userContracts.reduce((sum, contract) => {
         return sum + parseFloat(contract.value.toString() || '0');
       }, 0);
