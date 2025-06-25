@@ -26,6 +26,7 @@ import { Loader2, ArrowLeft, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
+import { EmailVerificationForm } from "@/components/auth/EmailVerificationForm";
 import Logo from "@assets/CD_icon_light@2x.png";
 
 export default function AuthPage() {
@@ -34,6 +35,12 @@ export default function AuthPage() {
   const [location] = useLocation();
   const [activeTab, setActiveTab] = useState("login");
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showEmailVerification, setShowEmailVerification] = useState(false);
+  const [verificationData, setVerificationData] = useState<{
+    email: string;
+    userId: number;
+    verificationToken?: string;
+  } | null>(null);
   const [inviteId, setInviteId] = useState<number | null>(null);
   const [inviteEmail, setInviteEmail] = useState<string | null>(null);
   const [businessToken, setBusinessToken] = useState<string | null>(null);
@@ -463,7 +470,20 @@ export default function AuthPage() {
         return;
       }
       
-      registerMutation.mutate(registerData);
+      // Register user with email verification required
+      registerMutation.mutate(registerData, {
+        onSuccess: (data) => {
+          if (data.requiresEmailVerification) {
+            // Show email verification form
+            setVerificationData({
+              email: registerData.email,
+              userId: data.user.id,
+              verificationToken: data.verificationToken
+            });
+            setShowEmailVerification(true);
+          }
+        }
+      });
     }
   };
   
@@ -507,6 +527,32 @@ export default function AuthPage() {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center p-8">
         <ForgotPasswordForm onBack={() => setShowForgotPassword(false)} />
+      </div>
+    );
+  }
+
+  // Show email verification form if requested
+  if (showEmailVerification && verificationData) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center p-8">
+        <EmailVerificationForm 
+          email={verificationData.email}
+          userId={verificationData.userId}
+          verificationToken={verificationData.verificationToken}
+          onBack={() => {
+            setShowEmailVerification(false);
+            setVerificationData(null);
+          }}
+          onVerified={() => {
+            setShowEmailVerification(false);
+            setVerificationData(null);
+            setActiveTab("login");
+            toast({
+              title: "Email Verified",
+              description: "You can now log in with your account.",
+            });
+          }}
+        />
       </div>
     );
   }
