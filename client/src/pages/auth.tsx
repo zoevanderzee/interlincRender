@@ -25,6 +25,7 @@ import {
 import { Loader2, ArrowLeft, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
 import Logo from "@assets/CD_icon_light@2x.png";
 
 export default function AuthPage() {
@@ -32,6 +33,7 @@ export default function AuthPage() {
   const { user, isLoading, loginMutation, registerMutation } = useAuth();
   const [location] = useLocation();
   const [activeTab, setActiveTab] = useState("login");
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [inviteId, setInviteId] = useState<number | null>(null);
   const [inviteEmail, setInviteEmail] = useState<string | null>(null);
   const [businessToken, setBusinessToken] = useState<string | null>(null);
@@ -500,6 +502,15 @@ export default function AuthPage() {
     return <Redirect to="/" />;
   }
 
+  // Show forgot password form if requested
+  if (showForgotPassword) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center p-8">
+        <ForgotPasswordForm onBack={() => setShowForgotPassword(false)} />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-black flex flex-col md:flex-row">
       {/* Auth Forms Section */}
@@ -557,7 +568,7 @@ export default function AuthPage() {
                       <div className="mt-2 text-right">
                         <button 
                           type="button" 
-                          onClick={() => setActiveTab("forgot-password")}
+                          onClick={() => setShowForgotPassword(true)}
                           className="text-sm text-zinc-400 hover:text-white"
                         >
                           Forgot password?

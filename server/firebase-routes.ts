@@ -18,7 +18,7 @@ export function registerFirebaseRoutes(app: Express) {
       }
 
       // Generate password reset token
-      const resetToken = crypto.randomUUID();
+      const resetToken = require('crypto').randomUUID();
       const resetExpires = new Date(Date.now() + 3600000); // 1 hour from now
 
       // Save reset token to database
