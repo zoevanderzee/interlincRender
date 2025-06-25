@@ -96,6 +96,15 @@ export function setupAuth(app: Express) {
         if (!isValid) {
           return done(null, false, { message: "Invalid username or password" });
         }
+
+        // Check if email is verified (allow login for existing users without verification for backward compatibility)
+        if (user.emailVerified === false && user.emailVerificationToken) {
+          return done(null, false, { 
+            message: "Please verify your email address before logging in",
+            requiresEmailVerification: true,
+            email: user.email
+          });
+        }
         
         return done(null, user);
       } catch (error) {
@@ -388,7 +397,10 @@ export function setupAuth(app: Express) {
             sessionID: req.sessionID
           });
           
-          return res.status(200).json(userInfo);
+          return res.status(200).json({
+            ...userInfo,
+            emailVerified: userInfo.emailVerified
+          });
         });
       });
     })(req, res, next);

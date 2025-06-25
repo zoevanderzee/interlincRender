@@ -35,6 +35,7 @@ import PayContractor from "@/pages/pay-contractor";
 import Wallet from "@/pages/wallet";
 import Layout from "@/components/layout/Layout";
 import AuthPage from "@/pages/auth";
+import VerifyEmailPage from "@/pages/verify-email";
 import ResetPasswordPage from "@/pages/reset-password";
 import ContractorInvitePage from "@/pages/contractor-invite";
 import { ConnectionRequestsNotification } from "@/components/notifications/ConnectionRequestsNotification";
@@ -51,6 +52,10 @@ function Router() {
       {/* Public Routes */}
       <Route path="/auth">
         <AuthPage />
+      </Route>
+      
+      <Route path="/verify-email">
+        <VerifyEmailPage />
       </Route>
       
       <Route path="/reset-password">
