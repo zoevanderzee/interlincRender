@@ -18,7 +18,8 @@ export function registerFirebaseRoutes(app: Express) {
       }
 
       // Generate email verification token
-      const verificationToken = require('crypto').randomUUID();
+      const crypto = await import('crypto');
+      const verificationToken = crypto.randomUUID();
       const verificationExpires = new Date(Date.now() + 86400000); // 24 hours from now
 
       // Save verification token to database
@@ -74,23 +75,15 @@ export function registerFirebaseRoutes(app: Express) {
         return res.status(400).json({ error: "Email is required" });
       }
 
-      // Check if user exists in our database (handle missing columns gracefully)
-      try {
-        const user = await storage.getUserByEmail(email);
-        if (!user) {
-          return res.status(404).json({ error: "No user found with this email address" });
-        }
-      } catch (dbError: any) {
-        console.error("Database error during forgot password:", dbError);
-        // If it's a missing column error, return a generic response
-        if (dbError.code === '42703') {
-          return res.status(500).json({ error: "Service temporarily unavailable. Please try again later." });
-        }
-        throw dbError;
+      // Check if user exists in our database
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(404).json({ error: "No user found with this email address" });
       }
 
       // Generate password reset token
-      const resetToken = require('crypto').randomUUID();
+      const crypto = await import('crypto');
+      const resetToken = crypto.randomUUID();
       const resetExpires = new Date(Date.now() + 3600000); // 1 hour from now
 
       // Save reset token to database
