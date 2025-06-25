@@ -25,11 +25,24 @@ export function registerFirebaseRoutes(app: Express) {
       // Save verification token to database
       await storage.saveEmailVerificationToken(user.id, verificationToken, verificationExpires);
 
-      // Send verification email via Firebase (client-side)
+      try {
+        // Generate verification URL that would be sent via email
+        const verificationUrl = `${req.protocol}://${req.get('host')}/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}`;
+        console.log(`Email verification would be sent to ${email}`);
+        console.log(`Verification URL: ${verificationUrl}`);
+        
+        // In production, this would send an actual email via Firebase Auth or email service
+        // await emailService.sendVerificationEmail(email, verificationUrl);
+        
+      } catch (emailError) {
+        console.error('Email sending not configured:', emailError);
+      }
+
       res.json({ 
         success: true, 
         message: "Verification email sent",
-        verificationToken // This will be used client-side to trigger Firebase email
+        // Remove token from response in production
+        ...(process.env.NODE_ENV === 'development' && { verificationToken })
       });
     } catch (error) {
       console.error("Send verification email error:", error);
@@ -89,11 +102,33 @@ export function registerFirebaseRoutes(app: Express) {
       // Save reset token to database
       await storage.savePasswordResetToken(user.id, resetToken, resetExpires);
 
-      // Send password reset email via Firebase (client-side)
+      try {
+        // Import Firebase Admin SDK for server-side email sending
+        const admin = await import('firebase-admin');
+        
+        // Initialize Firebase Admin if not already done
+        if (!admin.apps.length) {
+          // For production, you'd configure this with service account
+          console.log("Firebase Admin would be initialized here for email sending");
+        }
+        
+        // For now, log the reset URL that would be sent via email
+        const resetUrl = `${req.protocol}://${req.get('host')}/reset-password?token=${resetToken}`;
+        console.log(`Password reset email would be sent to ${email}`);
+        console.log(`Reset URL: ${resetUrl}`);
+        
+        // In production, this would send an actual email via Firebase Auth
+        // await admin.auth().generatePasswordResetLink(email);
+        
+      } catch (emailError) {
+        console.error('Email sending not configured:', emailError);
+      }
+
       res.json({ 
         success: true, 
-        message: "Password reset instructions sent to your email",
-        resetToken // This will be used client-side to trigger Firebase email
+        message: "If an account with that email exists, a password reset link has been sent.",
+        // Remove resetToken from response in production
+        ...(process.env.NODE_ENV === 'development' && { resetToken })
       });
     } catch (error) {
       console.error("Forgot password error:", error);

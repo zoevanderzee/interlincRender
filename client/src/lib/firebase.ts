@@ -38,26 +38,24 @@ export const sendEmailVerificationLink = async (email: string) => {
 
 export async function sendEmailVerification(email: string, verificationToken: string): Promise<void> {
   try {
-    // Create a custom email verification link
-    const verificationUrl = `${window.location.origin}/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}`;
-    
-    // Create custom action code settings for email verification
-    const actionCodeSettings = {
-      url: verificationUrl,
-      handleCodeInApp: false,
-    };
+    // Send verification email request to backend
+    const response = await fetch('/api/auth/send-verification-email', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        email, 
+        verificationToken 
+      }),
+    });
 
-    // Send verification email using Firebase Auth
-    const user = { email }; // Mock user object for email sending
-    
-    // Use Firebase's sendEmailVerification with custom settings
-    // Note: This is a simplified version - in production you'd use Firebase Admin SDK
-    console.log("Sending email verification to:", email);
-    console.log("Verification URL:", verificationUrl);
-    
-    // For now, we'll simulate the email being sent
-    // In production, you'd integrate with Firebase Admin SDK on the backend
-    await Promise.resolve();
+    if (!response.ok) {
+      throw new Error('Failed to send verification email');
+    }
+
+    const result = await response.json();
+    console.log("Email verification initiated:", result.message);
     
   } catch (error) {
     console.error("Error sending email verification:", error);
