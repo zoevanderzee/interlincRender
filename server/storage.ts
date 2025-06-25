@@ -42,6 +42,10 @@ export interface IStorage {
   updateUserConnectAccount(id: number, connectAccountId: string, payoutEnabled?: boolean): Promise<User | undefined>;
   getUserByResetToken(token: string): Promise<User | undefined>;
   setPasswordResetToken(email: string, token: string, expires: Date): Promise<User | undefined>;
+  savePasswordResetToken(userId: number, token: string, expires: Date): Promise<User | undefined>;
+  clearPasswordResetToken(userId: number): Promise<User | undefined>;
+  updatePassword(userId: number, newPassword: string): Promise<User | undefined>;
+  verifyUserEmail(email: string): Promise<User | undefined>;
   
   // Budget Management
   setBudgetCap(userId: number, budgetCap: number, period?: string, startDate?: Date, endDate?: Date): Promise<User | undefined>;
@@ -1009,6 +1013,66 @@ export class DatabaseStorage implements IStorage {
         )
       );
     return user;
+  }
+
+  async savePasswordResetToken(userId: number, token: string, expires: Date): Promise<User | undefined> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({
+        resetPasswordToken: token,
+        resetPasswordExpires: expires
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    
+    return updatedUser;
+  }
+
+  async clearPasswordResetToken(userId: number): Promise<User | undefined> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({
+        resetPasswordToken: null,
+        resetPasswordExpires: null
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    
+    return updatedUser;
+  }
+
+  async updatePassword(userId: number, newPassword: string): Promise<User | undefined> {
+    const crypto = await import('crypto');
+    
+    const salt = crypto.randomBytes(16).toString('hex');
+    const hashedPassword = await new Promise<string>((resolve, reject) => {
+      crypto.scrypt(newPassword, salt, 64, (err, derivedKey) => {
+        if (err) reject(err);
+        resolve(salt + ':' + derivedKey.toString('hex'));
+      });
+    });
+
+    const [updatedUser] = await db
+      .update(users)
+      .set({
+        password: hashedPassword
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    
+    return updatedUser;
+  }
+
+  async verifyUserEmail(email: string): Promise<User | undefined> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({
+        emailVerified: true
+      })
+      .where(eq(users.email, email))
+      .returning();
+    
+    return updatedUser;
   }
   
   async setPasswordResetToken(email: string, token: string, expires: Date): Promise<User | undefined> {
