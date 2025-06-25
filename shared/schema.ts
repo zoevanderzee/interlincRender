@@ -38,6 +38,8 @@ export const users = pgTable("users", {
   resetPasswordToken: text("reset_password_token"), // Token for password reset
   resetPasswordExpires: timestamp("reset_password_expires"), // Expiration time for password reset token
   emailVerified: boolean("email_verified").default(false), // Whether user's email is verified
+  emailVerificationToken: text("email_verification_token"), // Token for email verification
+  emailVerificationExpires: timestamp("email_verification_expires"), // Expiration time for email verification token
   firebaseUid: text("firebase_uid") // Firebase user ID for linking accounts
 });
 

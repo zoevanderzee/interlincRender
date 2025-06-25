@@ -270,6 +270,42 @@ export class MemStorage implements IStorage {
     this.users.set(user.id, updatedUser);
     return updatedUser;
   }
+
+  async saveEmailVerificationToken(userId: number, token: string, expires: Date): Promise<void> {
+    const user = this.users.get(userId);
+    if (!user) return;
+    
+    const updatedUser = {
+      ...user,
+      emailVerificationToken: token,
+      emailVerificationExpires: expires
+    };
+    
+    this.users.set(userId, updatedUser);
+  }
+
+  async verifyEmailToken(token: string): Promise<User | null> {
+    const user = Array.from(this.users.values()).find(
+      (user) => user.emailVerificationToken === token && 
+                user.emailVerificationExpires && 
+                new Date(user.emailVerificationExpires) > new Date()
+    );
+
+    if (!user) {
+      return null;
+    }
+
+    // Mark email as verified and clear the token
+    const updatedUser = {
+      ...user,
+      emailVerified: true,
+      emailVerificationToken: undefined,
+      emailVerificationExpires: undefined
+    };
+
+    this.users.set(user.id, updatedUser);
+    return updatedUser;
+  }
   
   async getUsersByRole(role: string): Promise<User[]> {
     return Array.from(this.users.values()).filter(
