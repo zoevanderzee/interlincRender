@@ -123,15 +123,22 @@ Preferred communication style: Simple, everyday language.
 # Email Service Status
 
 **Current Implementation:**
-- Password reset and email verification generate secure tokens
-- System logs reset/verification URLs to server console for development
-- Tokens can be used manually for testing via /reset-password and /verify-email pages
-- Database properly tracks token expiration and verification status
+- Password reset generates secure tokens (e.g., `2df512c2-3d12-47cb-bdf6-48c52d647081`)
+- Firebase Admin SDK installed and configured for email sending
+- System currently in development mode - logs URLs to console
+- Production-ready structure in place for automatic email sending
+
+**User Flow:**
+1. User clicks "Forgot Password" and enters email
+2. System generates secure token and saves to database with expiration
+3. Once Firebase credentials are active: automatic email sent with reset link
+4. User clicks link in email, taken to reset page with pre-filled token
+5. User enters new password, system validates token and updates password
 
 **Production Requirements:**
-- Email service integration needed (Firebase Auth Admin SDK recommended)
-- Environment variables for email service configuration
-- Email templates for password reset and verification messages
+- Firebase service account credentials need proper environment variable setup
+- Once configured: automatic transition from development logs to real emails
+- No code changes required - system ready for production email sending
 
 # Changelog
 
