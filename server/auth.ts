@@ -496,7 +496,7 @@ export function setupAuth(app: Express) {
       await storage.setPasswordResetToken(email, token, expires);
       
       try {
-        // Send password reset email
+        // Send password reset email using our email service
         const { sendPasswordResetEmail } = await import('./services/email');
         const appUrl = `${req.protocol}://${req.get('host')}`;
         await sendPasswordResetEmail(email, token, appUrl);

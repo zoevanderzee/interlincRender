@@ -13,7 +13,7 @@ import {
   insertWorkRequestSchema,
   updateWorkRequestSchema
 } from "@shared/schema";
-import { generateWorkRequestToken } from "./services/email";
+// import { generateWorkRequestToken } from "./services/email"; // Not needed for now
 import Stripe from "stripe";
 import stripeService from "./services/stripe";
 import notificationService from "./services/notifications";
