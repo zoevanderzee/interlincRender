@@ -1,4 +1,4 @@
-import * as admin from 'firebase-admin';
+import admin from 'firebase-admin';
 
 // Initialize Firebase Admin SDK
 let app: admin.app.App;
@@ -32,19 +32,14 @@ function initializeFirebaseAdmin() {
     console.log('🚀 Attempting to initialize Firebase Admin SDK...');
     console.log('📋 Service account project:', serviceAccount.project_id);
       
-      app = admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-        projectId: serviceAccount.project_id || 'creativ-linc',
-      });
-      
-      console.log('✅ Firebase Admin SDK initialized successfully!');
-      console.log('📧 Email sending is now ACTIVE');
-      return true;
-    } else {
-      console.log('❌ No Firebase service account key found');
-      console.log('📝 Running in development mode - emails will be logged to console');
-      return false;
-    }
+    app = admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount as any),
+      projectId: serviceAccount.project_id || 'creativ-linc',
+    });
+    
+    console.log('✅ Firebase Admin SDK initialized successfully!');
+    console.log('📧 EMAIL SENDING IS NOW LIVE - PRODUCTION MODE ACTIVE');
+    return true;
   } catch (error) {
     console.error('❌ Failed to initialize Firebase Admin SDK:', error);
     console.error('Error details:', error.message);
