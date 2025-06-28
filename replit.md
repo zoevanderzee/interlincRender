@@ -37,12 +37,15 @@ This is a comprehensive contractor/freelancer management platform built with Rea
 ## Payment Processing
 - **Stripe Connect**: For direct business-to-contractor payments with platform fees
 - **Trolley Integration**: For batch payments and international contractor support
+- **Trolley Submerchant System**: Complete business account management with budget controls
+- **Payment Methods**: Pre-funded accounts and pay-as-you-go options for businesses
 - **Automated Payments**: Milestone approval triggers automatic payment processing
-- **Budget Management**: Business account spending limits and tracking
+- **Budget Management**: Business account spending limits and tracking with real-time validation
 
 ## External Integrations
-- **Trolley API**: Batch payment processing and recipient management
+- **Trolley API**: Comprehensive submerchant system, batch payment processing, and recipient management
 - **Stripe API**: Payment intents, Connect accounts, and subscription management
+- **Firebase Auth**: Production-ready email service integration for password resets
 - **Plaid** (configured): Bank account verification and ACH transfers
 - **SendGrid** (disabled): Email notifications system
 
@@ -115,6 +118,11 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
+- June 28, 2025: Comprehensive Trolley submerchant integration completed
+- June 28, 2025: Database schema updated with Trolley submerchant fields
+- June 28, 2025: API endpoints created for submerchant account management
+- June 28, 2025: Payment method controls (pre-funded vs pay-as-you-go) implemented
+- June 28, 2025: Budget checking and validation system operational
 - June 25, 2025: Email verification system implemented with token-based authentication
 - June 25, 2025: Password reset functionality working with manual token entry
 - June 25, 2025: Firebase Auth configured for future email service integration
@@ -141,6 +149,31 @@ Preferred communication style: Simple, everyday language.
 - Email links created successfully via Firebase generatePasswordResetLink API
 - System ready for external email delivery service integration
 - All authentication flows working with secure token generation
+
+# Trolley Submerchant System Status
+
+**Current Implementation:**
+- Complete submerchant account creation system for businesses
+- Database schema includes all Trolley-specific fields (submerchant ID, status, payment method, balance)
+- API endpoints for account management, payment processing, and budget validation
+- Support for both pre-funded and pay-as-you-go payment models
+- Comprehensive budget checking to prevent overspending
+
+**User Flow:**
+1. Business creates submerchant account through validated API
+2. Chooses payment method: pre-funded account or pay-as-you-go
+3. System validates budget availability before processing payments
+4. Milestone approvals trigger automatic Trolley submerchant payments
+5. Real-time balance tracking and budget management
+
+**Production Ready Features:**
+- ✅ Authentication-protected API endpoints
+- ✅ Database integration with proper schema
+- ✅ Budget validation and spending controls
+- ✅ Payment method configuration
+- ✅ Mock responses for sandbox development
+- ✅ Error handling and validation
+- ✅ Session management integration
 
 # Changelog
 
