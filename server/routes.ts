@@ -19,6 +19,7 @@ import stripeService from "./services/stripe";
 import notificationService from "./services/notifications";
 import automatedPaymentService from "./services/automated-payments";
 import { trolleySdk } from "./trolley-sdk-service";
+import { trolleySubmerchantService, type TrolleySubmerchantData } from "./services/trolley-submerchant";
 import { setupAuth } from "./auth";
 import plaidRoutes from "./plaid-routes";
 import trolleyRoutes from "./trolley-routes";
@@ -4566,6 +4567,231 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
 
+  // Register Trolley submerchant routes
+  registerTrolleySubmerchantRoutes(app, requireAuth);
+
   const httpServer = createServer(app);
   return httpServer;
+}
+
+// Trolley Submerchant Routes
+function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void {
+  const basePath = '/api/trolley-submerchant';
+
+  /**
+   * Create Trolley submerchant account for business
+   */
+  app.post(`${basePath}/create`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || user.role !== 'business') {
+        return res.status(403).json({ message: 'Only business accounts can create submerchant accounts' });
+      }
+
+      // Check if user already has a submerchant account
+      if (user.trolleySubmerchantId) {
+        return res.status(400).json({ 
+          message: 'Submerchant account already exists',
+          submerchantId: user.trolleySubmerchantId,
+          status: user.trolleySubmerchantStatus
+        });
+      }
+
+      const submerchantData: TrolleySubmerchantData = req.body;
+
+      // Validate the submerchant data
+      const validation = trolleySubmerchantService.validateSubmerchantData(submerchantData);
+      if (!validation.valid) {
+        return res.status(400).json({ 
+          message: 'Invalid submerchant data',
+          errors: validation.errors
+        });
+      }
+
+      // Create the submerchant account
+      const result = await trolleySubmerchantService.createSubmerchantAccount(submerchantData);
+
+      if (!result.success) {
+        return res.status(500).json({ 
+          message: 'Failed to create submerchant account',
+          error: result.error
+        });
+      }
+
+      // Update user record with submerchant info
+      await storage.updateTrolleySubmerchantInfo(user.id, result.submerchantId!, result.status!);
+
+      res.json({
+        success: true,
+        message: 'Submerchant account created successfully',
+        submerchantId: result.submerchantId,
+        status: result.status
+      });
+
+    } catch (error) {
+      console.error('Error creating Trolley submerchant:', error);
+      res.status(500).json({ 
+        message: 'Internal server error',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  /**
+   * Set payment method (pre_funded or pay_as_you_go)
+   */
+  app.post(`${basePath}/payment-method`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || user.role !== 'business') {
+        return res.status(403).json({ message: 'Only business accounts can set payment method' });
+      }
+
+      const { paymentMethod } = req.body;
+      if (!paymentMethod || !['pre_funded', 'pay_as_you_go'].includes(paymentMethod)) {
+        return res.status(400).json({ message: 'Invalid payment method. Must be "pre_funded" or "pay_as_you_go"' });
+      }
+
+      await storage.setPaymentMethod(user.id, paymentMethod);
+
+      res.json({
+        success: true,
+        message: `Payment method set to ${paymentMethod}`,
+        paymentMethod
+      });
+
+    } catch (error) {
+      console.error('Error setting payment method:', error);
+      res.status(500).json({ 
+        message: 'Failed to set payment method',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  /**
+   * Check budget availability for payment
+   */
+  app.post(`${basePath}/check-budget`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || user.role !== 'business') {
+        return res.status(403).json({ message: 'Only business accounts can check budget' });
+      }
+
+      const { amount } = req.body;
+      if (!amount || amount <= 0) {
+        return res.status(400).json({ message: 'Amount must be greater than 0' });
+      }
+
+      const budgetCap = parseFloat(user.budgetCap || '0');
+      const budgetUsed = parseFloat(user.budgetUsed || '0');
+      const available = trolleySubmerchantService.checkBudgetAvailability(budgetCap, budgetUsed, amount);
+
+      res.json({
+        budgetCap,
+        budgetUsed,
+        budgetAvailable: budgetCap - budgetUsed,
+        requestedAmount: amount,
+        canAfford: available,
+        paymentMethod: user.paymentMethod || 'pay_as_you_go'
+      });
+
+    } catch (error) {
+      console.error('Error checking budget availability:', error);
+      res.status(500).json({ 
+        message: 'Failed to check budget',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  /**
+   * Process milestone payment through submerchant
+   */
+  app.post(`${basePath}/process-payment`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || user.role !== 'business') {
+        return res.status(403).json({ message: 'Only business accounts can process payments' });
+      }
+
+      if (!user.trolleySubmerchantId) {
+        return res.status(404).json({ message: 'No submerchant account found. Please create one first.' });
+      }
+
+      const { milestoneId, contractorId, amount, currency = 'USD', memo } = req.body;
+
+      if (!milestoneId || !contractorId || !amount || amount <= 0) {
+        return res.status(400).json({ message: 'Missing required payment details' });
+      }
+
+      // Check budget availability
+      const budgetCap = parseFloat(user.budgetCap || '0');
+      const budgetUsed = parseFloat(user.budgetUsed || '0');
+      const canAfford = trolleySubmerchantService.checkBudgetAvailability(budgetCap, budgetUsed, amount);
+
+      if (!canAfford) {
+        return res.status(400).json({ 
+          message: 'Insufficient budget',
+          budgetCap,
+          budgetUsed,
+          budgetAvailable: budgetCap - budgetUsed,
+          requestedAmount: amount
+        });
+      }
+
+      // Get contractor's Trolley recipient ID
+      const contractor = await storage.getUser(contractorId);
+      if (!contractor || !contractor.trolleyRecipientId) {
+        return res.status(400).json({ message: 'Contractor not found or not set up for Trolley payments' });
+      }
+
+      // Process payment through Trolley
+      const paymentResult = await trolleySubmerchantService.createSubmerchantPayment({
+        submerchantId: user.trolleySubmerchantId,
+        recipientId: contractor.trolleyRecipientId,
+        amount,
+        currency,
+        memo: memo || `Milestone ${milestoneId} payment`,
+        reference: `milestone_${milestoneId}_contract_${user.id}_${contractorId}`
+      });
+
+      if (!paymentResult.success) {
+        return res.status(500).json({ 
+          message: 'Payment processing failed',
+          error: paymentResult.error
+        });
+      }
+
+      // Update budget used
+      await storage.increaseBudgetUsed(user.id, amount);
+
+      // If using pre-funded account, deduct from balance
+      if (user.paymentMethod === 'pre_funded') {
+        const currentBalance = parseFloat(user.trolleyAccountBalance || '0');
+        const newBalance = Math.max(0, currentBalance - amount);
+        await storage.updateTrolleyAccountBalance(user.id, newBalance);
+      }
+
+      res.json({
+        success: true,
+        message: 'Payment processed successfully',
+        paymentId: paymentResult.paymentId,
+        batchId: paymentResult.batchId,
+        status: paymentResult.status,
+        amount,
+        currency,
+        contractorId,
+        milestoneId
+      });
+
+    } catch (error) {
+      console.error('Error processing submerchant payment:', error);
+      res.status(500).json({ 
+        message: 'Failed to process payment',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
 }

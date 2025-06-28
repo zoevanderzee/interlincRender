@@ -2716,6 +2716,40 @@ export class DatabaseStorage implements IStorage {
     
     return updated;
   }
+
+  // Trolley Submerchant Management
+  async updateTrolleySubmerchantInfo(userId: number, submerchantId: string, status: string): Promise<User | undefined> {
+    const [updated] = await db
+      .update(users)
+      .set({ 
+        trolleySubmerchantId: submerchantId,
+        trolleySubmerchantStatus: status
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    
+    return updated;
+  }
+
+  async setPaymentMethod(userId: number, method: 'pre_funded' | 'pay_as_you_go'): Promise<User | undefined> {
+    const [updated] = await db
+      .update(users)
+      .set({ paymentMethod: method })
+      .where(eq(users.id, userId))
+      .returning();
+    
+    return updated;
+  }
+
+  async updateTrolleyAccountBalance(userId: number, balance: number): Promise<User | undefined> {
+    const [updated] = await db
+      .update(users)
+      .set({ trolleyAccountBalance: balance.toString() })
+      .where(eq(users.id, userId))
+      .returning();
+    
+    return updated;
+  }
 }
 
 // Use DatabaseStorage instead of MemStorage

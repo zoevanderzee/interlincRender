@@ -1,4 +1,4 @@
-import { trolleySdk } from './trolley-sdk-service';
+import { trolleySdk } from '../trolley-sdk-service';
 
 export interface TrolleySubmerchantData {
   merchant: {
