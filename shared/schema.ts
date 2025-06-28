@@ -26,6 +26,8 @@ export const users = pgTable("users", {
   stripeConnectAccountId: text("stripe_connect_account_id"), // Stripe Connect account ID for contractors
   trolleyCompanyProfileId: text("trolley_company_profile_id"), // Trolley company profile ID for Embedded Payouts
   trolleyRecipientId: text("trolley_recipient_id"), // Trolley recipient ID for contractors
+  trolleySubmerchantId: text("trolley_submerchant_id"), // Trolley submerchant account ID for businesses
+  trolleySubmerchantStatus: text("trolley_submerchant_status"), // Status of submerchant onboarding
   trolleyVerificationToken: text("trolley_verification_token"), // Token for Trolley business verification
   trolleyVerificationStarted: timestamp("trolley_verification_started"), // When verification was initiated
   payoutEnabled: boolean("payout_enabled").default(false), // Whether the contractor is ready to receive payments
@@ -35,6 +37,8 @@ export const users = pgTable("users", {
   budgetStartDate: timestamp("budget_start_date"), // When the current budget period began
   budgetEndDate: timestamp("budget_end_date"), // When the current budget period ends
   budgetResetEnabled: boolean("budget_reset_enabled").default(false), // Whether budget should automatically reset at the end of period
+  paymentMethod: text("payment_method").default("pay_as_you_go"), // "pre_funded" or "pay_as_you_go"
+  trolleyAccountBalance: decimal("trolley_account_balance", { precision: 15, scale: 2 }).default("0"), // Balance for pre-funded accounts
   resetPasswordToken: text("reset_password_token"), // Token for password reset
   resetPasswordExpires: timestamp("reset_password_expires"), // Expiration time for password reset token
   emailVerified: boolean("email_verified").default(false), // Whether user's email is verified

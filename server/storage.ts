@@ -54,6 +54,11 @@ export interface IStorage {
   resetBudgetUsed(userId: number): Promise<User | undefined>;
   checkBudgetAvailable(userId: number, amount: number): Promise<boolean>;
   
+  // Trolley Submerchant Management
+  updateTrolleySubmerchantInfo(userId: number, submerchantId: string, status: string): Promise<User | undefined>;
+  setPaymentMethod(userId: number, method: 'pre_funded' | 'pay_as_you_go'): Promise<User | undefined>;
+  updateTrolleyAccountBalance(userId: number, balance: number): Promise<User | undefined>;
+  
   // Profile Code
   generateProfileCode(userId: number): Promise<string>;
   regenerateProfileCode(userId: number): Promise<string>;
