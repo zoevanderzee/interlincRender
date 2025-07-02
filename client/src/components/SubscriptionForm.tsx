@@ -87,6 +87,8 @@ const CheckoutForm = ({
     setIsProcessing(true);
 
     try {
+      console.log('Starting payment confirmation for subscription:', subscriptionId);
+      
       const { error } = await stripe.confirmPayment({
         elements,
         confirmParams: {
@@ -96,29 +98,43 @@ const CheckoutForm = ({
       });
 
       if (error) {
+        console.error('Stripe payment confirmation error:', error);
         toast({
           title: "Payment Failed",
           description: error.message,
           variant: "destructive",
         });
-      } else {
-        // Complete subscription on backend
-        await apiRequest("POST", "/api/complete-subscription", {
-          subscriptionId,
-          userId
-        });
-
-        toast({
-          title: "Subscription Activated",
-          description: "Welcome! Your subscription is now active.",
-        });
-
-        onComplete();
+        return;
       }
-    } catch (error) {
+
+      console.log('Payment confirmed successfully, completing subscription...');
+      
+      // Complete subscription on backend
+      const completeResponse = await apiRequest("POST", "/api/complete-subscription", {
+        subscriptionId,
+        userId
+      });
+      
+      if (!completeResponse.ok) {
+        const errorData = await completeResponse.json();
+        console.error('Complete subscription error:', errorData);
+        throw new Error(errorData.message || 'Failed to complete subscription');
+      }
+
+      console.log('Subscription completed successfully');
+      
       toast({
-        title: "Subscription Error",
-        description: "Failed to activate subscription. Please try again.",
+        title: "Subscription Activated",
+        description: "Welcome! Your subscription is now active.",
+      });
+
+      onComplete();
+      
+    } catch (error: any) {
+      console.error('Subscription activation error:', error);
+      toast({
+        title: "Subscription Error", 
+        description: error.message || "Failed to activate subscription. Please try again.",
         variant: "destructive",
       });
     } finally {

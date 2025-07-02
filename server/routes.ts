@@ -4839,6 +4839,9 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
         payment_behavior: 'default_incomplete',
         payment_settings: { save_default_payment_method: 'on_subscription' },
         expand: ['latest_invoice.payment_intent'],
+        metadata: {
+          planType: planType
+        }
       });
 
       res.json({
@@ -4870,10 +4873,18 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
 
       // Get subscription details from Stripe
       const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+      console.log('Subscription status:', subscription.status);
+      console.log('Subscription details:', {
+        id: subscription.id,
+        status: subscription.status,
+        metadata: subscription.metadata
+      });
       
-      if (subscription.status !== 'active' && subscription.status !== 'trialing') {
+      // Allow incomplete_expired, incomplete, active, trialing statuses
+      const validStatuses = ['active', 'trialing', 'incomplete', 'incomplete_expired'];
+      if (!validStatuses.includes(subscription.status)) {
         return res.status(400).json({ 
-          message: 'Subscription is not active' 
+          message: `Subscription status is ${subscription.status}, expected one of: ${validStatuses.join(', ')}` 
         });
       }
 
