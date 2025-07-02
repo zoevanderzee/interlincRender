@@ -24,6 +24,11 @@ export const users = pgTable("users", {
   stripeCustomerId: text("stripe_customer_id"), // Stripe customer ID for payment processing
   stripeSubscriptionId: text("stripe_subscription_id"), // Stripe subscription ID for companies
   stripeConnectAccountId: text("stripe_connect_account_id"), // Stripe Connect account ID for contractors
+  subscriptionStatus: text("subscription_status").default("inactive"), // inactive, active, past_due, canceled, trialing
+  subscriptionPlan: text("subscription_plan"), // business_plan, contractor_plan, etc.
+  subscriptionStartDate: timestamp("subscription_start_date"), // When subscription started
+  subscriptionEndDate: timestamp("subscription_end_date"), // When subscription ends (for fixed term subscriptions)
+  subscriptionTrialEnd: timestamp("subscription_trial_end"), // Trial period end date
   trolleyCompanyProfileId: text("trolley_company_profile_id"), // Trolley company profile ID for Embedded Payouts
   trolleyRecipientId: text("trolley_recipient_id"), // Trolley recipient ID for contractors
   trolleySubmerchantId: text("trolley_submerchant_id"), // Trolley submerchant account ID for businesses

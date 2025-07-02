@@ -4794,4 +4794,219 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
       });
     }
   });
+
+  // Subscription management routes
+  app.post("/api/create-subscription", async (req: Request, res: Response) => {
+    try {
+      const { planType, email, customerName } = req.body;
+      
+      if (!planType || !email) {
+        return res.status(400).json({ 
+          message: 'Plan type and email are required' 
+        });
+      }
+
+      // Create Stripe customer
+      const customer = await stripe.customers.create({
+        email: email,
+        name: customerName || email,
+      });
+
+      // Get the price ID based on plan type
+      let priceId;
+      if (planType === 'business') {
+        priceId = process.env.STRIPE_BUSINESS_PRICE_ID;
+      } else if (planType === 'contractor') {
+        priceId = process.env.STRIPE_CONTRACTOR_PRICE_ID;
+      } else {
+        return res.status(400).json({ 
+          message: 'Invalid plan type. Must be "business" or "contractor"' 
+        });
+      }
+
+      if (!priceId) {
+        return res.status(500).json({ 
+          message: 'Subscription plan not configured. Please contact support.' 
+        });
+      }
+
+      // Create subscription
+      const subscription = await stripe.subscriptions.create({
+        customer: customer.id,
+        items: [{ price: priceId }],
+        payment_behavior: 'default_incomplete',
+        payment_settings: { save_default_payment_method: 'on_subscription' },
+        expand: ['latest_invoice.payment_intent'],
+      });
+
+      res.json({
+        subscriptionId: subscription.id,
+        clientSecret: subscription.latest_invoice?.payment_intent?.client_secret,
+        customerId: customer.id,
+        planType: planType
+      });
+
+    } catch (error) {
+      console.error('Error creating subscription:', error);
+      res.status(500).json({ 
+        message: 'Failed to create subscription',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Complete subscription after successful payment
+  app.post("/api/complete-subscription", async (req: Request, res: Response) => {
+    try {
+      const { subscriptionId, userId } = req.body;
+      
+      if (!subscriptionId || !userId) {
+        return res.status(400).json({ 
+          message: 'Subscription ID and user ID are required' 
+        });
+      }
+
+      // Get subscription details from Stripe
+      const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+      
+      if (subscription.status !== 'active' && subscription.status !== 'trialing') {
+        return res.status(400).json({ 
+          message: 'Subscription is not active' 
+        });
+      }
+
+      // Update user with subscription details
+      const user = await storage.updateUserSubscription(userId, {
+        stripeCustomerId: subscription.customer as string,
+        stripeSubscriptionId: subscription.id,
+        subscriptionStatus: subscription.status,
+        subscriptionPlan: subscription.metadata.planType || 'business',
+        subscriptionStartDate: new Date(subscription.current_period_start * 1000),
+        subscriptionEndDate: new Date(subscription.current_period_end * 1000),
+        subscriptionTrialEnd: subscription.trial_end ? new Date(subscription.trial_end * 1000) : null
+      });
+
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      res.json({
+        success: true,
+        message: 'Subscription activated successfully',
+        subscriptionStatus: subscription.status,
+        user: {
+          id: user.id,
+          subscriptionStatus: user.subscriptionStatus,
+          subscriptionPlan: user.subscriptionPlan
+        }
+      });
+
+    } catch (error) {
+      console.error('Error completing subscription:', error);
+      res.status(500).json({ 
+        message: 'Failed to complete subscription',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Check subscription status
+  app.get("/api/subscription-status", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      
+      if (!userId) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // If user has a Stripe subscription, sync the status
+      if (user.stripeSubscriptionId) {
+        try {
+          const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+          
+          // Update user subscription status if it changed
+          if (subscription.status !== user.subscriptionStatus) {
+            await storage.updateUserSubscription(userId, {
+              subscriptionStatus: subscription.status,
+              subscriptionStartDate: new Date(subscription.current_period_start * 1000),
+              subscriptionEndDate: new Date(subscription.current_period_end * 1000)
+            });
+          }
+
+          res.json({
+            subscriptionStatus: subscription.status,
+            subscriptionPlan: user.subscriptionPlan,
+            currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+            cancelAtPeriodEnd: subscription.cancel_at_period_end,
+            trialEnd: subscription.trial_end ? new Date(subscription.trial_end * 1000) : null
+          });
+        } catch (stripeError) {
+          console.error('Error fetching Stripe subscription:', stripeError);
+          res.json({
+            subscriptionStatus: user.subscriptionStatus || 'inactive',
+            subscriptionPlan: user.subscriptionPlan,
+            error: 'Could not sync with payment provider'
+          });
+        }
+      } else {
+        res.json({
+          subscriptionStatus: 'inactive',
+          subscriptionPlan: null,
+          message: 'No active subscription'
+        });
+      }
+
+    } catch (error) {
+      console.error('Error checking subscription status:', error);
+      res.status(500).json({ 
+        message: 'Failed to check subscription status',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Subscription requirement middleware
+  const requireActiveSubscription = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user?.id;
+      
+      if (!userId) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Check if user has active subscription
+      if (!user.subscriptionStatus || 
+          !['active', 'trialing'].includes(user.subscriptionStatus)) {
+        return res.status(402).json({ 
+          message: 'Active subscription required',
+          subscriptionStatus: user.subscriptionStatus || 'inactive',
+          code: 'SUBSCRIPTION_REQUIRED'
+        });
+      }
+
+      next();
+    } catch (error) {
+      console.error('Error checking subscription requirement:', error);
+      res.status(500).json({ message: 'Error validating subscription' });
+    }
+  };
+
+  // Apply subscription requirement to protected routes (add this to existing routes that need subscription)
+  // For now, we'll just export the middleware for later use
+  (app as any).requireActiveSubscription = requireActiveSubscription;
+
+  const httpServer = createServer(app);
+  return httpServer;
 }
