@@ -4829,8 +4829,8 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
       if (planType === 'business') {
         priceId = process.env.STRIPE_BUSINESS_PRICE_ID;
       } else if (planType === 'contractor') {
-        // Use hardcoded price ID for contractor since env var isn't loading
-        priceId = 'price_1RgRm6F4bfRUGDn9TmmWXkkh';
+        // Use the correct contractor price ID created in Stripe test mode
+        priceId = 'price_1RgSmQ2VZ9lMI7tFePh2AV2g';
       } else {
         return res.status(400).json({ 
           message: 'Invalid plan type. Must be "business" or "contractor"' 
