@@ -184,18 +184,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const contractorIds = new Set();
           const uniqueContractors: any[] = [];
           
-          // CRITICAL FIX: Force add the Test Contractor with ID 30
-          if (currentUser?.id === 21) {
-            const testContractor = await storage.getUser(30);
-            if (testContractor) {
-              console.log("Adding Test Contractor directly to the results:", JSON.stringify(testContractor));
-              uniqueContractors.push({
-                ...testContractor,
-                workerType: null // Set to null to appear in the Contractors tab
-              });
-              contractorIds.add(30);
-            }
-          }
+          // Removed hardcoded contractor addition for proper data isolation
           
           [...contractorsWithContracts, ...contractorsByInvites, ...contractorsByConnections].forEach(contractor => {
             // Add all users with the contractor role
@@ -351,18 +340,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const contractorIds = new Set();
       const linkedContractors: any[] = [];
       
-      // Always add the test contractor
-      const testContractor = await storage.getUser(30);
-      if (testContractor) {
-        console.log("Adding Test Contractor to linked contractors list");
-        linkedContractors.push(testContractor);
-        contractorIds.add(30);
-        
-        // Add a debug log to check what we're adding
-        console.log("Test contractor details:", JSON.stringify(testContractor));
-      } else {
-        console.log("Could not find test contractor with ID 30");
-      }
+      // Removed hardcoded test contractor addition for proper data isolation
       
       // Combine all contractor sources - include any user who can be a worker
       [...contractorsWithContracts, ...contractorsByInvites, ...contractorsByConnections].forEach(contractor => {
@@ -375,18 +353,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
       
-      // In case we don't have any contractors yet, add available contractor users for testing
-      if (linkedContractors.length === 0) {
-        // Get contractors by role
-        const contractorUsers = await storage.getUsersByRole('contractor');
-        contractorUsers.forEach(user => {
-          if (user.id !== companyId && !contractorIds.has(user.id)) {
-            contractorIds.add(user.id);
-            linkedContractors.push(user);
-            console.log(`Adding available contractor: ${user.username} (ID: ${user.id})`);
-          }
-        });
-      }
+      // Removed automatic contractor addition - users must be explicitly connected through invites or contracts
       
       console.log(`Returning ${linkedContractors.length} contractors linked to company ID ${companyId}`);
       
@@ -600,35 +567,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let contracts = [];
       
-      // First, for debugging, get all contracts to see what's in the system
-      const allContracts = await storage.getAllContracts();
-      console.log(`DEBUG: All contracts in system: ${JSON.stringify(allContracts.map(c => ({ id: c.id, name: c.contractName, businessId: c.businessId })))}`);
-      
-      if (businessId) {
-        // Filter by specific business ID from query param
-        console.log(`Filtering by specific business ID from query param: ${businessId}`);
-        contracts = await storage.getContractsByBusinessId(businessId);
-      } else if (contractorId) {
-        // Filter by specific contractor ID from query param
-        console.log(`Filtering by specific contractor ID from query param: ${contractorId}`);
-        contracts = await storage.getContractsByContractorId(contractorId);
-      } else if (userId) {
-        if (userRole === 'business') {
-          // For business users, only show their own contracts
-          console.log(`Getting contracts for business user ID: ${userId}`);
-          contracts = await storage.getContractsByBusinessId(userId);
-        } else if (userRole === 'contractor') {
-          // For contractors, only show contracts they're assigned to
-          console.log(`Getting contracts for contractor user ID: ${userId}`);
-          contracts = await storage.getContractsByContractorId(userId);
-        } else {
-          // For unknown roles with valid user IDs, still filter by their ID as a business
-          console.log(`Getting contracts for user with unknown role. User ID: ${userId}`);
-          contracts = await storage.getContractsByBusinessId(userId);
-        }
-      } else {
-        // If somehow no authentication exists, return empty array for security
+      // SECURITY: Only allow authenticated users with valid permissions
+      if (!userId) {
         console.log("No authenticated user found, returning empty contracts array");
+        return res.json([]);
+      }
+
+      if (businessId && businessId !== userId) {
+        // Users can only access their own business data
+        console.log(`SECURITY BLOCK: User ${userId} attempted to access business ${businessId} data`);
+        return res.status(403).json({ message: "Access denied: Cannot access other business data" });
+      }
+
+      if (contractorId && contractorId !== userId) {
+        // Users can only access their own contractor data
+        console.log(`SECURITY BLOCK: User ${userId} attempted to access contractor ${contractorId} data`);
+        return res.status(403).json({ message: "Access denied: Cannot access other contractor data" });
+      }
+      
+      if (businessId && businessId === userId) {
+        // Filter by specific business ID from query param (only if it's the authenticated user)
+        console.log(`Getting contracts for authenticated business user: ${businessId}`);
+        contracts = await storage.getContractsByBusinessId(businessId);
+      } else if (contractorId && contractorId === userId) {
+        // Filter by specific contractor ID from query param (only if it's the authenticated user)
+        console.log(`Getting contracts for authenticated contractor user: ${contractorId}`);
+        contracts = await storage.getContractsByContractorId(contractorId);
+      } else if (userRole === 'business') {
+        // For business users, only show their own contracts
+        console.log(`Getting contracts for business user ID: ${userId}`);
+        contracts = await storage.getContractsByBusinessId(userId);
+      } else {
+        // For all other cases, return empty array for security
+        console.log(`No valid access pattern for user ${userId}, returning empty array`);
         contracts = [];
       }
       
@@ -2854,17 +2825,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "You don't have permission to modify this project" });
       }
       
-      // Special case: Allow test contractor (ID 30) to be assigned to any project
+      // Check if contractor is linked to this business
       const contractorIdNum = parseInt(contractorId);
-      if (contractorIdNum !== 30) {
-        // Check if contractor is linked to this business
-        let isLinked = false;
-        
-        // Check existing contracts
-        const contracts = await storage.getContractsByBusinessId(userId);
-        if (contracts.some(c => c.contractorId === contractorIdNum)) {
-          isLinked = true;
-        }
+      let isLinked = false;
+      
+      // Check existing contracts
+      const contracts = await storage.getContractsByBusinessId(userId);
+      if (contracts.some(c => c.contractorId === contractorIdNum)) {
+        isLinked = true;
+      }
         
         // Check pending invites
         if (!isLinked) {
@@ -2890,7 +2859,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             message: "This worker is not linked to your company. Connect with them first."
           });
         }
-      }
       
       // Validate budget does not exceed project budget
       const contractValue = parseFloat(contract.value);
