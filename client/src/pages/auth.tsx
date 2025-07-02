@@ -495,6 +495,7 @@ export default function AuthPage() {
             setShowEmailVerification(true);
           } else if (data.requiresSubscription) {
             // Registration successful, show subscription form
+            // Don't update user cache - user isn't logged in yet
             setRegisteredUser({
               id: data.id,
               email: data.email,
@@ -502,6 +503,8 @@ export default function AuthPage() {
               role: data.role
             });
             setShowSubscription(true);
+            // Prevent cache update by not setting user data
+            return;
           } else {
             // User already has subscription or is from invite - redirect to dashboard
             toast({

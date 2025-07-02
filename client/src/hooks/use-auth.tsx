@@ -165,18 +165,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       return await res.json();
     },
-    onSuccess: (data: User) => {
-      console.log("Registration successful, saving user data to query cache");
-      queryClient.setQueryData(["/api/user"], data);
+    onSuccess: (data: any) => {
+      console.log("Registration successful, checking subscription requirements");
       
-      // After registration, explicitly invalidate dashboard and other dependent queries
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/budget"] });
-      
-      toast({
-        title: "Registration successful",
-        description: `Welcome to Creativ Linc, ${data.firstName}!`,
-      });
+      // Only update cache if subscription is not required
+      if (!data.requiresSubscription && !data.requiresEmailVerification) {
+        console.log("No subscription required, saving user data to query cache");
+        queryClient.setQueryData(["/api/user"], data);
+        
+        // After registration, explicitly invalidate dashboard and other dependent queries
+        queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/budget"] });
+        
+        toast({
+          title: "Registration successful",
+          description: `Welcome to Creativ Linc, ${data.firstName}!`,
+        });
+      } else {
+        console.log("Subscription or email verification required, not updating cache");
+      }
     },
     onError: (error: Error) => {
       console.error("Registration error:", error);
