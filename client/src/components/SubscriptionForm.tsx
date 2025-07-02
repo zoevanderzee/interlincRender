@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { Button } from "@/components/ui/button";
@@ -76,11 +76,41 @@ const CheckoutForm = ({
   const elements = useElements();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isElementReady, setIsElementReady] = useState(false);
+
+  useEffect(() => {
+    if (!elements) return;
+    
+    // Listen for the payment element to be ready
+    const paymentElement = elements.getElement('payment');
+    if (paymentElement) {
+      paymentElement.on('ready', () => {
+        console.log('PaymentElement is ready');
+        setIsElementReady(true);
+      });
+    }
+  }, [elements]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!stripe || !elements) {
+      toast({
+        title: "Payment System Error",
+        description: "Payment system not ready. Please refresh and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if payment element is complete and valid
+    const { error: submitError } = await elements.submit();
+    if (submitError) {
+      toast({
+        title: "Payment Information Required",
+        description: submitError.message || "Please complete the payment information.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -147,10 +177,12 @@ const CheckoutForm = ({
       <PaymentElement />
       <Button 
         type="submit" 
-        disabled={!stripe || isProcessing} 
+        disabled={!stripe || !isElementReady || isProcessing} 
         className="w-full"
       >
-        {isProcessing ? "Processing..." : "Complete Subscription"}
+        {isProcessing ? "Processing..." : 
+         !isElementReady ? "Loading..." : 
+         "Complete Subscription"}
       </Button>
     </form>
   );
