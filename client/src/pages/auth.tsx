@@ -27,6 +27,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
 import { EmailVerificationForm } from "@/components/auth/EmailVerificationForm";
+import SubscriptionForm from "@/components/SubscriptionForm";
 import Logo from "@assets/CD_icon_light@2x.png";
 
 export default function AuthPage() {

@@ -4841,7 +4841,7 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
 
       res.json({
         subscriptionId: subscription.id,
-        clientSecret: subscription.latest_invoice?.payment_intent?.client_secret,
+        clientSecret: (subscription.latest_invoice as any)?.payment_intent?.client_secret,
         customerId: customer.id,
         planType: planType
       });

@@ -175,6 +175,17 @@ export interface IStorage {
   getWorkSubmission(id: number): Promise<WorkSubmission | undefined>;
   updateWorkSubmission(id: number, submission: Partial<InsertWorkSubmission>): Promise<WorkSubmission | undefined>;
   reviewWorkSubmission(id: number, status: string, reviewNotes?: string): Promise<WorkSubmission | undefined>;
+
+  // Subscription Management
+  updateUserSubscription(userId: number, subscription: Partial<{
+    stripeCustomerId: string;
+    stripeSubscriptionId: string;
+    subscriptionStatus: string;
+    subscriptionPlan: string;
+    subscriptionStartDate: Date;
+    subscriptionEndDate: Date;
+    subscriptionTrialEnd: Date | null;
+  }>): Promise<User | undefined>;
 }
 
 // In-memory storage implementation
@@ -2745,6 +2756,25 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(users)
       .set({ trolleyAccountBalance: balance.toString() })
+      .where(eq(users.id, userId))
+      .returning();
+    
+    return updated;
+  }
+
+  // Subscription Management
+  async updateUserSubscription(userId: number, subscription: Partial<{
+    stripeCustomerId: string;
+    stripeSubscriptionId: string;
+    subscriptionStatus: string;
+    subscriptionPlan: string;
+    subscriptionStartDate: Date;
+    subscriptionEndDate: Date;
+    subscriptionTrialEnd: Date | null;
+  }>): Promise<User | undefined> {
+    const [updated] = await db
+      .update(users)
+      .set(subscription)
       .where(eq(users.id, userId))
       .returning();
     
