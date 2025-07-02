@@ -329,7 +329,19 @@ export function setupAuth(app: Express) {
       const isDirectRegistration = !invite && !businessInfo;
       const needsSubscription = isNewUser && isDirectRegistration && (user.role === 'business' || user.role === 'contractor');
       
+      console.log('Subscription check for user:', {
+        userId: user.id,
+        subscriptionStatus: user.subscriptionStatus,
+        role: user.role,
+        isNewUser,
+        isDirectRegistration,
+        needsSubscription,
+        hasInvite: !!invite,
+        hasBusinessInfo: !!businessInfo
+      });
+      
       if (needsSubscription) {
+        console.log('User needs subscription, returning requiresSubscription=true');
         // Don't log in the user - return subscription required
         const { password, ...userInfo } = user;
         return res.status(201).json({

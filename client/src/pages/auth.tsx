@@ -480,7 +480,11 @@ export default function AuthPage() {
       
       // Register user with email verification required
       registerMutation.mutate(registerData, {
-        onSuccess: (data) => {
+        onSuccess: (data: any) => {
+          console.log('Registration response:', data);
+          console.log('requiresSubscription:', data.requiresSubscription);
+          console.log('requiresEmailVerification:', data.requiresEmailVerification);
+          
           if (data.requiresEmailVerification) {
             // Show email verification form
             setVerificationData({
