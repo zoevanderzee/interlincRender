@@ -48,6 +48,13 @@ export default function AuthPage() {
   const [businessId, setBusinessId] = useState<number | null>(null);
   const [isWorker, setIsWorker] = useState<boolean>(false);
   const [isInviteLoading, setIsInviteLoading] = useState(false);
+  const [showSubscription, setShowSubscription] = useState(false);
+  const [registeredUser, setRegisteredUser] = useState<{
+    id: number;
+    email: string;
+    username: string;
+    role: string;
+  } | null>(null);
   const { toast } = useToast();
   
   // Forgot password form state
@@ -479,9 +486,18 @@ export default function AuthPage() {
             setVerificationData({
               email: registerData.email,
               userId: data.user.id,
-              verificationToken: data.verificationToken
+              verificationToken: data.emailVerificationToken
             });
             setShowEmailVerification(true);
+          } else {
+            // Registration successful, show subscription form
+            setRegisteredUser({
+              id: data.user.id,
+              email: data.user.email,
+              username: data.user.username,
+              role: data.user.role
+            });
+            setShowSubscription(true);
           }
         }
       });
@@ -547,11 +563,31 @@ export default function AuthPage() {
           onVerified={() => {
             setShowEmailVerification(false);
             setVerificationData(null);
-            setActiveTab("login");
+            // After verification, show subscription form
+            setShowSubscription(true);
+          }}
+        />
+      </div>
+    );
+  }
+
+  // Show subscription form after successful registration
+  if (showSubscription && registeredUser) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center p-8">
+        <SubscriptionForm
+          userRole={registeredUser.role as 'business' | 'contractor'}
+          userEmail={registeredUser.email}
+          userName={registeredUser.username}
+          userId={registeredUser.id}
+          onSubscriptionComplete={() => {
+            setShowSubscription(false);
+            setRegisteredUser(null);
             toast({
-              title: "Email Verified",
-              description: "You can now log in with your account.",
+              title: "Welcome to Creativ Linc!",
+              description: "Your account is ready. Please log in to continue.",
             });
+            setActiveTab("login");
           }}
         />
       </div>
