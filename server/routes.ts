@@ -4798,49 +4798,35 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
   // Subscription management routes
   app.post("/api/create-subscription", async (req: Request, res: Response) => {
     try {
-      console.log('Subscription creation started:', req.body);
-      
       const { planType, email, customerName } = req.body;
       
       if (!planType || !email) {
-        console.log('Missing required fields:', { planType, email });
         return res.status(400).json({ 
           message: 'Plan type and email are required' 
         });
       }
 
       // Create Stripe customer
-      console.log('Creating Stripe customer...');
       const customer = await stripe.customers.create({
         email: email,
         name: customerName || email,
       });
-      console.log('Stripe customer created:', customer.id);
 
       // Get the price ID based on plan type
       let priceId;
-      console.log('Environment check:', {
-        planType,
-        STRIPE_CONTRACTOR_PRICE_ID: process.env.STRIPE_CONTRACTOR_PRICE_ID,
-        STRIPE_BUSINESS_PRICE_ID: process.env.STRIPE_BUSINESS_PRICE_ID,
-        NODE_ENV: process.env.NODE_ENV
-      });
       
       if (planType === 'business') {
         priceId = process.env.STRIPE_BUSINESS_PRICE_ID;
       } else if (planType === 'contractor') {
-        // Use the correct contractor price ID created in Stripe test mode
+        // Use the contractor price ID (£5/month)
         priceId = 'price_1RgSmQ2VZ9lMI7tFePh2AV2g';
       } else {
         return res.status(400).json({ 
           message: 'Invalid plan type. Must be "business" or "contractor"' 
         });
       }
-
-      console.log('Selected price ID:', priceId);
       
       if (!priceId) {
-        console.log('No price ID available for plan type:', planType);
         return res.status(500).json({ 
           message: 'Subscription plan not configured. Please contact support.' 
         });
