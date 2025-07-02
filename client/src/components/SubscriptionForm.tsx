@@ -26,7 +26,7 @@ const subscriptionPlans: SubscriptionPlan[] = [
   {
     id: "business",
     name: "Business Plan",
-    price: "$49/month",
+    price: "£49/month",
     description: "Perfect for businesses managing contractors and projects",
     features: [
       "Unlimited contractor management",
@@ -42,7 +42,7 @@ const subscriptionPlans: SubscriptionPlan[] = [
   {
     id: "contractor",
     name: "Contractor Plan",
-    price: "$19/month",
+    price: "£5/month",
     description: "Essential tools for independent contractors",
     features: [
       "Profile management",
@@ -210,17 +210,20 @@ export default function SubscriptionForm({
     );
   }
 
+  // Filter plans based on user role
+  const availablePlans = subscriptionPlans.filter(plan => plan.id === userRole);
+
   return (
     <div className="max-w-4xl mx-auto p-6">
       <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold mb-4">Choose Your Plan</h2>
+        <h2 className="text-3xl font-bold mb-4">Complete Your Subscription</h2>
         <p className="text-gray-600">
-          Select a subscription plan to start using Creativ Linc
+          {userRole === 'contractor' ? 'Contractor Plan' : 'Business Plan'} subscription required to continue
         </p>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        {subscriptionPlans.map((plan) => (
+      <div className="grid md:grid-cols-2 gap-6 max-w-md mx-auto">
+        {availablePlans.map((plan) => (
           <Card 
             key={plan.id} 
             className={`relative cursor-pointer transition-all hover:shadow-lg ${
