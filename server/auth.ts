@@ -236,7 +236,9 @@ export function setupAuth(app: Express) {
         role: role,
         workerType: workerType,
         // If this was a business invite registration, record the referring business
-        referredByBusinessId: businessId
+        referredByBusinessId: businessId,
+        // Ensure subscription status is set for new users
+        subscriptionStatus: invite || businessInfo ? 'active' : 'inactive'
       };
       
       const user = await storage.createUser(userData);
@@ -322,10 +324,12 @@ export function setupAuth(app: Express) {
       }
 
       // Check if user needs subscription before logging in
-      const needsSubscription = !user.subscriptionStatus || 
-                               !['active', 'trialing'].includes(user.subscriptionStatus);
+      // New users who registered directly (not from invites) need subscriptions
+      const isNewUser = !user.subscriptionStatus || user.subscriptionStatus === 'inactive';
+      const isDirectRegistration = !invite && !businessInfo;
+      const needsSubscription = isNewUser && isDirectRegistration && (user.role === 'business' || user.role === 'contractor');
       
-      if (needsSubscription && !invite && !businessInfo) {
+      if (needsSubscription) {
         // Don't log in the user - return subscription required
         const { password, ...userInfo } = user;
         return res.status(201).json({
