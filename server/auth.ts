@@ -321,7 +321,22 @@ export function setupAuth(app: Express) {
         }
       }
 
-      // Log the user in automatically after registration
+      // Check if user needs subscription before logging in
+      const needsSubscription = !user.subscriptionStatus || 
+                               !['active', 'trialing'].includes(user.subscriptionStatus);
+      
+      if (needsSubscription && !invite && !businessInfo) {
+        // Don't log in the user - return subscription required
+        const { password, ...userInfo } = user;
+        return res.status(201).json({
+          ...userInfo,
+          requiresSubscription: true,
+          fromInvite: false,
+          fromBusinessInvite: false
+        });
+      }
+
+      // Log the user in automatically after registration (for invites or existing subscribers)
       req.login(user, (err) => {
         if (err) return next(err);
         // Return user info without the password

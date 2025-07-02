@@ -4890,15 +4890,23 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
         return res.status(404).json({ message: 'User not found' });
       }
 
-      res.json({
-        success: true,
-        message: 'Subscription activated successfully',
-        subscriptionStatus: subscription.status,
-        user: {
-          id: user.id,
-          subscriptionStatus: user.subscriptionStatus,
-          subscriptionPlan: user.subscriptionPlan
+      // Log the user in after successful subscription
+      req.login(user, (err) => {
+        if (err) {
+          console.error('Error logging in user after subscription:', err);
+          return res.status(500).json({ message: 'Subscription activated but login failed' });
         }
+        
+        res.json({
+          success: true,
+          message: 'Subscription activated successfully',
+          subscriptionStatus: subscription.status,
+          user: {
+            id: user.id,
+            subscriptionStatus: user.subscriptionStatus,
+            subscriptionPlan: user.subscriptionPlan
+          }
+        });
       });
 
     } catch (error) {

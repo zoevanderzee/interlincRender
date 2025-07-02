@@ -489,7 +489,7 @@ export default function AuthPage() {
               verificationToken: data.emailVerificationToken
             });
             setShowEmailVerification(true);
-          } else {
+          } else if (data.requiresSubscription) {
             // Registration successful, show subscription form
             setRegisteredUser({
               id: data.id,
@@ -498,6 +498,14 @@ export default function AuthPage() {
               role: data.role
             });
             setShowSubscription(true);
+          } else {
+            // User already has subscription or is from invite - redirect to dashboard
+            toast({
+              title: "Welcome to Creativ Linc!",
+              description: "Your account is ready.",
+            });
+            // The user is already logged in via the registration process
+            window.location.href = "/";
           }
         }
       });
@@ -585,9 +593,10 @@ export default function AuthPage() {
             setRegisteredUser(null);
             toast({
               title: "Welcome to Creativ Linc!",
-              description: "Your account is ready. Please log in to continue.",
+              description: "Your account is ready.",
             });
-            setActiveTab("login");
+            // User is now logged in via the subscription completion, redirect to dashboard
+            window.location.href = "/";
           }}
         />
       </div>
