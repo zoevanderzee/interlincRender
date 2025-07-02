@@ -485,17 +485,17 @@ export default function AuthPage() {
             // Show email verification form
             setVerificationData({
               email: registerData.email,
-              userId: data.user.id,
+              userId: data.id,
               verificationToken: data.emailVerificationToken
             });
             setShowEmailVerification(true);
           } else {
             // Registration successful, show subscription form
             setRegisteredUser({
-              id: data.user.id,
-              email: data.user.email,
-              username: data.user.username,
-              role: data.user.role
+              id: data.id,
+              email: data.email,
+              username: data.username,
+              role: data.role
             });
             setShowSubscription(true);
           }
