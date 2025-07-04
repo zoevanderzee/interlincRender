@@ -118,6 +118,12 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
+- July 4, 2025: Complete subscription system implemented for live mode
+- July 4, 2025: Fixed major data isolation bugs preventing cross-account data leaks
+- July 4, 2025: Subscription-gated registration flow fully functional
+- July 4, 2025: Live Stripe integration with business (£49/month) and contractor (£5/month) plans
+- July 4, 2025: Removed hardcoded test data that caused contractor data leaks
+- July 4, 2025: Enhanced security with proper user filtering and authentication checks
 - June 28, 2025: Comprehensive Trolley submerchant integration completed
 - June 28, 2025: Database schema updated with Trolley submerchant fields
 - June 28, 2025: API endpoints created for submerchant account management
@@ -175,7 +181,35 @@ Preferred communication style: Simple, everyday language.
 - ✅ Error handling and validation
 - ✅ Session management integration
 
+# Subscription System Status
+
+**Current Implementation:**
+- Complete live-mode subscription system for both business and contractor accounts
+- Subscription requirement enforced during registration for direct signups
+- Business Plan: £49/month (Stripe Price ID: price_1RgSn32VZ9lMI7tFqCOE4xGB)
+- Contractor Plan: £5/month (Stripe Price ID: price_1RgSmQ2VZ9lMI7tFePh2AV2g)
+- Full payment processing with Stripe Elements integration
+- Automatic user login after successful subscription completion
+
+**User Flow:**
+1. User registers for new account (business or contractor role)
+2. System checks if subscription is required (non-invited direct registrations)
+3. User taken to subscription selection page matching their role
+4. Stripe payment processing with live mode integration
+5. Successful payment activates subscription and logs user in
+6. User redirected to main dashboard with full access
+
+**Production Ready Features:**
+- ✅ Live Stripe integration with approved account
+- ✅ Subscription requirement middleware for protected routes
+- ✅ Automatic subscription status synchronization
+- ✅ Database storage of subscription details and status
+- ✅ Complete user authentication flow with subscription gates
+- ✅ Error handling and payment failure management
+- ✅ Role-based subscription plan presentation
+
 # Changelog
 
 Changelog:
-- June 25, 2025. Initial setup with comprehensive authentication system
+- July 4, 2025: Comprehensive subscription system implemented with live Stripe integration
+- June 25, 2025: Initial setup with comprehensive authentication system

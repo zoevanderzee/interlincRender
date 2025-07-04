@@ -4784,9 +4784,10 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
       let priceId;
       
       if (planType === 'business') {
+        // Business plan - £49/month (live mode)
         priceId = process.env.STRIPE_BUSINESS_PRICE_ID;
       } else if (planType === 'contractor') {
-        // Use the contractor price ID (£5/month)
+        // Contractor plan - £5/month (live mode)
         priceId = 'price_1RgSmQ2VZ9lMI7tFePh2AV2g';
       } else {
         return res.status(400).json({ 
