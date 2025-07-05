@@ -4788,7 +4788,7 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
         priceId = process.env.STRIPE_BUSINESS_PRICE_ID;
       } else if (planType === 'contractor') {
         // Contractor plan - £5/month (live mode)
-        priceId = 'price_1RgSmQ2VZ9lMI7tFePh2AV2g';
+        priceId = process.env.STRIPE_CONTRACTOR_PRICE_ID;
       } else {
         return res.status(400).json({ 
           message: 'Invalid plan type. Must be "business" or "contractor"' 
