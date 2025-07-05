@@ -26,7 +26,7 @@ const subscriptionPlans: SubscriptionPlan[] = [
   {
     id: "business",
     name: "Business Plan",
-    price: "£49/month",
+    price: "£49.99/month",
     description: "Perfect for businesses managing contractors and projects",
     features: [
       "Unlimited contractor management",

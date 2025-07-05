@@ -186,7 +186,7 @@ Preferred communication style: Simple, everyday language.
 **Current Implementation:**
 - Complete live-mode subscription system for both business and contractor accounts
 - Subscription requirement enforced during registration for direct signups
-- Business Plan: £49/month (Stripe Price ID: price_1RgSn32VZ9lMI7tFqCOE4xGB)
+- Business Plan: £49.99/month (Stripe Price ID: price_1RgRilF4bfRUGDn9jMnjAo96)
 - Contractor Plan: £5/month (Stripe Price ID: price_1RgSmQ2VZ9lMI7tFePh2AV2g)
 - Full payment processing with Stripe Elements integration
 - Automatic user login after successful subscription completion
