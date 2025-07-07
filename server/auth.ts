@@ -351,15 +351,16 @@ export function setupAuth(app: Express) {
         // Save verification token to database
         await storage.saveEmailVerificationToken(user.id, verificationToken, verificationExpires);
         
-        // Send verification email (commented out for now - no email service configured)
-        // try {
-        //   const { sendEmailVerification } = await import('./services/email');
-        //   const appUrl = `${req.protocol}://${req.get('host')}`;
-        //   await sendEmailVerification(user.email, verificationToken, appUrl);
-        // } catch (emailError) {
-        //   console.error('Error sending verification email:', emailError);
-        //   // Continue - user can request another verification email
-        // }
+        // Send verification email
+        try {
+          const { sendEmailVerificationEmail } = await import('./services/email');
+          const appUrl = `${req.protocol}://${req.get('host')}`;
+          await sendEmailVerificationEmail(user.email, verificationToken, appUrl);
+          console.log(`Email verification sent for ${user.email}`);
+        } catch (emailError) {
+          console.error('Error sending verification email:', emailError);
+          // Continue - user can request another verification email
+        }
         console.log(`Email verification token for ${user.email}: ${verificationToken}`);
         
         // Return user info with email verification required
@@ -668,7 +669,16 @@ export function setupAuth(app: Express) {
         emailVerificationExpires: expires
       });
       
-      // Log verification token for now (no email service configured)
+      try {
+        // Send verification email using our email service
+        const { sendEmailVerificationEmail } = await import('./services/email');
+        const appUrl = `${req.protocol}://${req.get('host')}`;
+        await sendEmailVerificationEmail(email, verificationToken, appUrl);
+        console.log(`Verification email sent for ${email}`);
+      } catch (emailError) {
+        console.error('Error sending verification email:', emailError);
+        // Continue the process even if email fails - user can request again
+      }
       console.log(`Email verification token for ${email}: ${verificationToken}`);
       
       res.status(200).json({ 
