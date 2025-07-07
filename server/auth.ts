@@ -323,11 +323,11 @@ export function setupAuth(app: Express) {
         }
       }
 
-      // Check if user needs subscription before logging in
-      // New users who registered directly (not from invites) need subscriptions
+      // Check if user needs email verification and/or subscription before logging in
       const isNewUser = !user.subscriptionStatus || user.subscriptionStatus === 'inactive';
       const isDirectRegistration = !invite && !businessInfo;
       const needsSubscription = isNewUser && isDirectRegistration && (user.role === 'business' || user.role === 'contractor');
+      const needsEmailVerification = isDirectRegistration && !user.emailVerified;
       
       console.log('Subscription check for user:', {
         userId: user.id,
@@ -336,9 +336,42 @@ export function setupAuth(app: Express) {
         isNewUser,
         isDirectRegistration,
         needsSubscription,
+        needsEmailVerification,
         hasInvite: !!invite,
         hasBusinessInfo: !!businessInfo
       });
+      
+      // Email verification is required for all direct registrations
+      if (needsEmailVerification) {
+        console.log('User needs email verification, generating token');
+        // Generate email verification token
+        const crypto = await import('crypto');
+        const verificationToken = crypto.randomUUID();
+        const verificationExpires = new Date(Date.now() + 86400000); // 24 hours from now
+        
+        // Save verification token to database
+        await storage.saveEmailVerificationToken(user.id, verificationToken, verificationExpires);
+        
+        // Send verification email
+        try {
+          const { sendEmailVerification } = await import('./services/email');
+          const appUrl = `${req.protocol}://${req.get('host')}`;
+          await sendEmailVerification(user.email, verificationToken, appUrl);
+        } catch (emailError) {
+          console.error('Error sending verification email:', emailError);
+          // Continue - user can request another verification email
+        }
+        
+        // Return user info with email verification required
+        const { password, ...userInfo } = user;
+        return res.status(201).json({
+          ...userInfo,
+          requiresEmailVerification: true,
+          emailVerificationSent: true,
+          fromInvite: false,
+          fromBusinessInvite: false
+        });
+      }
       
       if (needsSubscription) {
         console.log('User needs subscription, returning requiresSubscription=true');

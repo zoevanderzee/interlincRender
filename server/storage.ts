@@ -46,6 +46,8 @@ export interface IStorage {
   clearPasswordResetToken(userId: number): Promise<User | undefined>;
   updatePassword(userId: number, newPassword: string): Promise<User | undefined>;
   verifyUserEmail(email: string): Promise<User | undefined>;
+  saveEmailVerificationToken(userId: number, token: string, expires: Date): Promise<User | undefined>;
+  verifyEmailToken(token: string): Promise<User | undefined>;
   
   // Budget Management
   setBudgetCap(userId: number, budgetCap: number, period?: string, startDate?: Date, endDate?: Date): Promise<User | undefined>;
@@ -1124,6 +1126,48 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.email, email))
       .returning();
     
+    return updatedUser;
+  }
+
+  async saveEmailVerificationToken(userId: number, token: string, expires: Date): Promise<User | undefined> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({
+        emailVerificationToken: token,
+        emailVerificationExpires: expires
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    
+    return updatedUser;
+  }
+
+  async verifyEmailToken(token: string): Promise<User | undefined> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(
+        and(
+          eq(users.emailVerificationToken, token),
+          gte(users.emailVerificationExpires, new Date())
+        )
+      );
+
+    if (!user) {
+      return undefined;
+    }
+
+    // Mark email as verified and clear the token
+    const [updatedUser] = await db
+      .update(users)
+      .set({
+        emailVerified: true,
+        emailVerificationToken: null,
+        emailVerificationExpires: null
+      })
+      .where(eq(users.id, user.id))
+      .returning();
+
     return updatedUser;
   }
   
