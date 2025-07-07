@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2, ArrowLeft, CheckCircle2, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { sendEmailVerification } from "@/lib/firebase";
+// Firebase email sending removed - handled by server-side API
 
 interface EmailVerificationFormProps {
   email: string;
@@ -42,8 +42,7 @@ export function EmailVerificationForm({
       const tokenToUse = token || await requestNewVerificationToken();
       
       if (tokenToUse) {
-        // Send email via Firebase
-        await sendEmailVerification(email, tokenToUse);
+        // Email is sent by server-side API
         setEmailSent(true);
         toast({
           title: "Verification Email Sent",
