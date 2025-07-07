@@ -12,8 +12,8 @@ function initializeFirebaseAdmin(): boolean {
       return true;
     }
 
-    // Use hardcoded service account for immediate production deployment
-    console.log('🔍 Initializing Firebase with service account...');
+    // Use the original working Firebase service account credentials
+    console.log('🔍 Initializing Firebase with original service account...');
     
     const serviceAccount = {
       "type": "service_account",
