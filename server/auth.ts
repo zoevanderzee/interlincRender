@@ -345,22 +345,22 @@ export function setupAuth(app: Express) {
       if (needsEmailVerification) {
         console.log('User needs email verification, generating token');
         // Generate email verification token
-        const crypto = await import('crypto');
-        const verificationToken = crypto.randomUUID();
+        const verificationToken = randomBytes(16).toString('hex');
         const verificationExpires = new Date(Date.now() + 86400000); // 24 hours from now
         
         // Save verification token to database
         await storage.saveEmailVerificationToken(user.id, verificationToken, verificationExpires);
         
-        // Send verification email
-        try {
-          const { sendEmailVerification } = await import('./services/email');
-          const appUrl = `${req.protocol}://${req.get('host')}`;
-          await sendEmailVerification(user.email, verificationToken, appUrl);
-        } catch (emailError) {
-          console.error('Error sending verification email:', emailError);
-          // Continue - user can request another verification email
-        }
+        // Send verification email (commented out for now - no email service configured)
+        // try {
+        //   const { sendEmailVerification } = await import('./services/email');
+        //   const appUrl = `${req.protocol}://${req.get('host')}`;
+        //   await sendEmailVerification(user.email, verificationToken, appUrl);
+        // } catch (emailError) {
+        //   console.error('Error sending verification email:', emailError);
+        //   // Continue - user can request another verification email
+        // }
+        console.log(`Email verification token for ${user.email}: ${verificationToken}`);
         
         // Return user info with email verification required
         const { password, ...userInfo } = user;
@@ -656,7 +656,7 @@ export function setupAuth(app: Express) {
       }
       
       // Generate new verification token
-      const verificationToken = randomUUID();
+      const verificationToken = randomBytes(16).toString('hex');
       
       // Set token expiration (24 hours from now)
       const expires = new Date();
@@ -668,16 +668,8 @@ export function setupAuth(app: Express) {
         emailVerificationExpires: expires
       });
       
-      try {
-        // Send verification email using our email service
-        const { sendEmailVerification } = await import('./services/email');
-        const appUrl = `${req.protocol}://${req.get('host')}`;
-        await sendEmailVerification(email, verificationToken, appUrl);
-        console.log(`Verification email sent for ${email}`);
-      } catch (emailError) {
-        console.error('Error sending verification email:', emailError);
-        // Continue the process even if email fails - user can request again
-      }
+      // Log verification token for now (no email service configured)
+      console.log(`Email verification token for ${email}: ${verificationToken}`);
       
       res.status(200).json({ 
         message: "Verification email sent successfully",
