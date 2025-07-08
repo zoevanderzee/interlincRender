@@ -4,43 +4,83 @@ import { insertUserSchema } from "../../shared/schema";
 import { z } from "zod";
 
 const syncUserSchema = z.object({
-  uid: z.string(),
-  email: z.string().email()
+  firebaseUid: z.string(),
+  email: z.string().email(),
+  emailVerified: z.boolean().optional(),
+  username: z.string().optional(),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  role: z.enum(['business', 'contractor']).optional()
 });
 
 export function registerSyncUserRoutes(app: Express) {
   // Endpoint to sync Firebase user to PostgreSQL
   app.post("/api/sync-user", async (req, res) => {
     try {
-      const { uid, email } = syncUserSchema.parse(req.body);
+      const { firebaseUid, email, emailVerified, username, firstName, lastName, role } = syncUserSchema.parse(req.body);
       
-      // Check if user already exists
-      const existingUser = await storage.getUserByEmail(email);
+      // Check if user already exists by email
+      let existingUser = await storage.getUserByEmail(email);
+      
       if (existingUser) {
-        return res.json({ 
-          success: true, 
-          message: "User already exists in database",
-          userId: existingUser.id 
+        // Update existing user with Firebase UID and verification status
+        if (emailVerified) {
+          await storage.updateUserEmailVerification(existingUser.id, true);
+        }
+        
+        // Log the user in by creating a session
+        req.login(existingUser, (err) => {
+          if (err) {
+            console.error('Error creating session:', err);
+            return res.status(500).json({ 
+              success: false, 
+              error: 'Failed to create session' 
+            });
+          }
+          
+          return res.json({ 
+            success: true, 
+            message: "User synced and logged in",
+            userId: existingUser.id,
+            user: existingUser,
+            authenticated: true
+          });
         });
+        return;
       }
 
-      // Create user in PostgreSQL with Firebase UID
+      // Create new user in PostgreSQL with Firebase UID
       const userData = {
         email,
-        username: email.split('@')[0], // Use email prefix as username
-        passwordHash: 'firebase', // Placeholder since Firebase handles authentication
-        role: 'contractor' as const, // Default role, can be updated later
-        firebaseUid: uid,
-        emailVerified: false, // Will be updated when Firebase email is verified
+        username: username || email.split('@')[0],
+        firstName: firstName || '',
+        lastName: lastName || '',
+        passwordHash: 'firebase',
+        role: role || 'contractor' as const,
+        firebaseUid: firebaseUid,
+        emailVerified: emailVerified || false,
         subscriptionStatus: 'pending' as const
       };
 
       const newUser = await storage.createUser(userData);
       
-      res.json({ 
-        success: true, 
-        message: "User synced to database",
-        userId: newUser.id 
+      // Log the new user in
+      req.login(newUser, (err) => {
+        if (err) {
+          console.error('Error creating session for new user:', err);
+          return res.status(500).json({ 
+            success: false, 
+            error: 'Failed to create session' 
+          });
+        }
+        
+        return res.json({ 
+          success: true, 
+          message: "User created and logged in",
+          userId: newUser.id,
+          user: newUser,
+          authenticated: true
+        });
       });
 
     } catch (error) {

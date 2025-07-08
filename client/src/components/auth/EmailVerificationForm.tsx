@@ -120,13 +120,14 @@ export function EmailVerificationForm({
               title: "Email Verified",
               description: "Your email has been successfully verified!",
             });
-            onVerified(syncData.user);
-          } else {
-            toast({
-              title: "Error",
-              description: "Failed to sync user data. Please try again.",
-              variant: "destructive",
+            // Pass user data with authentication status
+            onVerified({
+              ...syncData.user,
+              authenticated: syncData.authenticated || true
             });
+          } else {
+            const errorData = await syncResponse.json();
+            throw new Error(errorData.error || 'Failed to sync user data');
           }
         } else {
           toast({
@@ -136,11 +137,11 @@ export function EmailVerificationForm({
           });
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error checking verification:", error);
       toast({
         title: "Error",
-        description: "Failed to check verification status. Please try again.",
+        description: error.message || "Failed to check verification status. Please try again.",
         variant: "destructive",
       });
     } finally {
