@@ -194,7 +194,7 @@ Preferred communication style: Simple, everyday language.
 - Subscription requirement enforced during registration for direct signups
 - Business Starter: £29.99/month (Stripe Price ID: price_1RiEGMF4bfRUGDn9UErjyXjX)
 - Business Plan: £49.99/month (Stripe Price ID: price_1RgRilF4bfRUGDn9jMnjAo96)
-- Business Enterprise: £99.99/month (Stripe Price ID: price_1RgRilF4bfRUGDn9LWUhoJ6F)
+- Business Enterprise: Monthly (Stripe Price ID: price_1Ricn6F4bfRUGDn91XzkPq5F)
 - Contractor Plan: £5/month (Stripe Price ID: price_1RgSmQ2VZ9lMI7tFePh2AV2g)
 - Full payment processing with Stripe Elements integration
 - Automatic user login after successful subscription completion

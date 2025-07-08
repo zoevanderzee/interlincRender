@@ -55,7 +55,7 @@ const subscriptionPlans: SubscriptionPlan[] = [
   {
     id: "business-enterprise",
     name: "Business Enterprise",
-    price: "£99.99/month",
+    price: "Contact Sales",
     description: "Advanced features for large businesses with complex needs",
     features: [
       "Everything in Business Plan",
@@ -65,6 +65,19 @@ const subscriptionPlans: SubscriptionPlan[] = [
       "Advanced analytics",
       "SLA guarantees",
       "24/7 phone support"
+    ]
+  },
+  {
+    id: "business-annual",
+    name: "Business Annual",
+    price: "Save 20%",
+    description: "Get the full Business Plan features with annual billing",
+    features: [
+      "Everything in Business Plan",
+      "Annual billing discount",
+      "Priority support",
+      "Extended data retention",
+      "Advanced reporting"
     ]
   },
   {
