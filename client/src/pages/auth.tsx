@@ -29,6 +29,7 @@ import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
 import { EmailVerificationForm } from "@/components/auth/EmailVerificationForm";
 import SubscriptionForm from "@/components/SubscriptionForm";
 import Logo from "@assets/CD_icon_light@2x.png";
+import { signUpUser } from "@/lib/firebase-auth";
 
 export default function AuthPage() {
   console.log("AuthPage component rendering");
@@ -419,6 +420,44 @@ export default function AuthPage() {
     }
   };
 
+  // Handle Firebase registration
+  const handleFirebaseRegistration = async (registerData: any) => {
+    try {
+      // Create user with Firebase Auth
+      const result = await signUpUser(registerData.email, registerData.password);
+      
+      if (result.success && result.user) {
+        // Firebase user created successfully - email verification sent
+        toast({
+          title: "Account Created!",
+          description: "Please check your email to verify your address.",
+        });
+        
+        // Show email verification form
+        setVerificationData({
+          email: registerData.email,
+          userId: -1, // We'll get this from server after sync
+          verificationToken: undefined
+        });
+        setShowEmailVerification(true);
+      } else {
+        // Firebase registration failed
+        toast({
+          title: "Registration Failed",
+          description: result.error || "Failed to create account. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Firebase registration error:', error);
+      toast({
+        title: "Registration Failed",
+        description: "An error occurred during registration. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Handle register form submission
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
@@ -478,44 +517,8 @@ export default function AuthPage() {
         return;
       }
       
-      // Register user with email verification required
-      registerMutation.mutate(registerData, {
-        onSuccess: (data: any) => {
-          console.log('Registration response:', data);
-          console.log('requiresSubscription:', data.requiresSubscription);
-          console.log('requiresEmailVerification:', data.requiresEmailVerification);
-          
-          if (data.requiresEmailVerification) {
-            // Show email verification form
-            setVerificationData({
-              email: registerData.email,
-              userId: data.id,
-              verificationToken: data.emailVerificationToken
-            });
-            setShowEmailVerification(true);
-          } else if (data.requiresSubscription) {
-            // Registration successful, show subscription form
-            // Don't update user cache - user isn't logged in yet
-            setRegisteredUser({
-              id: data.id,
-              email: data.email,
-              username: data.username,
-              role: data.role
-            });
-            setShowSubscription(true);
-            // Prevent cache update by not setting user data
-            return;
-          } else {
-            // User already has subscription or is from invite - redirect to dashboard
-            toast({
-              title: "Welcome to Creativ Linc!",
-              description: "Your account is ready.",
-            });
-            // The user is already logged in via the registration process
-            window.location.href = "/";
-          }
-        }
-      });
+      // Register user with Firebase authentication
+      handleFirebaseRegistration(registerData);
     }
   };
   

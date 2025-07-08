@@ -4,7 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { sendPasswordReset } from "@/lib/firebase";
+import { sendPasswordResetEmail } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 import { apiRequest } from "@/lib/queryClient";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 
@@ -33,15 +34,10 @@ export function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
       }
 
       // Send Firebase password reset email
-      const firebaseResult = await sendPasswordReset(email);
+      await sendPasswordResetEmail(auth, email);
       
-      if (firebaseResult.success) {
-        setMessage("Password reset email sent! Check your inbox for instructions.");
-        setIsSuccess(true);
-      } else {
-        setMessage(firebaseResult.message || "Failed to send reset email");
-        setIsSuccess(false);
-      }
+      setMessage("Password reset email sent! Check your inbox for instructions.");
+      setIsSuccess(true);
     } catch (error) {
       setMessage("Connection error. Please try again.");
       setIsSuccess(false);

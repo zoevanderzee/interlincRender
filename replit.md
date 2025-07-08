@@ -118,6 +118,11 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
+- July 8, 2025: **Firebase Web SDK Integration Complete** - Replaced server-side registration with client-side Firebase authentication
+- July 8, 2025: Updated email verification flow to use Firebase's built-in email verification system
+- July 8, 2025: Created hybrid authentication flow: Firebase handles signup+verification, Passport.js handles post-verification sessions
+- July 8, 2025: Added `/api/sync-user` endpoint to sync Firebase users with PostgreSQL database
+- July 8, 2025: Firebase configuration updated to use verified `creativ-linc.firebaseapp.com` domain
 - July 4, 2025: Complete subscription system implemented for live mode
 - July 4, 2025: Fixed major data isolation bugs preventing cross-account data leaks
 - July 4, 2025: Subscription-gated registration flow fully functional

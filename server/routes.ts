@@ -25,6 +25,7 @@ import plaidRoutes from "./plaid-routes";
 import trolleyRoutes from "./trolley-routes";
 import trolleyTestRoutes from "./trolley-test-routes";
 import { registerFirebaseRoutes } from "./firebase-routes";
+import { registerSyncUserRoutes } from "./routes/sync-user";
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
@@ -2660,6 +2661,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Firebase auth routes
   registerFirebaseRoutes(app);
+  
+  // Register sync-user routes for Firebase integration
+  registerSyncUserRoutes(app);
   
   // Budget Management Routes
   

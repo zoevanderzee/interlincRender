@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,7 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Loader2, ArrowLeft, CheckCircle2, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-// Firebase email sending removed - handled by server-side API
+import { resendEmailVerification } from "@/lib/firebase-auth";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 interface EmailVerificationFormProps {
   email: string;
@@ -26,27 +28,37 @@ export function EmailVerificationForm({
   const [verificationCode, setVerificationCode] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
   const [isResending, setIsResending] = useState(false);
-  const [emailSent, setEmailSent] = useState(!!verificationToken);
+  const [emailSent, setEmailSent] = useState(true); // Firebase already sent email
   const { toast } = useToast();
 
-  // Send verification email on component mount if token provided
-  useState(() => {
-    if (verificationToken && !emailSent) {
-      handleSendVerificationEmail(verificationToken);
-    }
-  });
+  // Check Firebase email verification status
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user && user.emailVerified) {
+        // Email is verified, proceed with authentication
+        onVerified();
+      }
+    });
 
-  const handleSendVerificationEmail = async (token?: string) => {
+    return () => unsubscribe();
+  }, [onVerified]);
+
+  const handleSendVerificationEmail = async () => {
     setIsResending(true);
     try {
-      const tokenToUse = token || await requestNewVerificationToken();
+      const success = await resendEmailVerification();
       
-      if (tokenToUse) {
-        // Email is sent by server-side API
+      if (success) {
         setEmailSent(true);
         toast({
           title: "Verification Email Sent",
           description: "Please check your inbox and click the verification link.",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to send verification email. Please try again.",
+          variant: "destructive",
         });
       }
     } catch (error) {
@@ -61,60 +73,32 @@ export function EmailVerificationForm({
     }
   };
 
-  const requestNewVerificationToken = async (): Promise<string | null> => {
-    try {
-      const response = await apiRequest("POST", "/api/auth/send-verification-email", {
-        email,
-        userId
-      });
-      
-      const data = await response.json();
-      return data.verificationToken || null;
-    } catch (error) {
-      console.error("Error requesting new verification token:", error);
-      return null;
-    }
-  };
-
-  const handleVerifyEmail = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!verificationCode.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter the verification code.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  const handleCheckVerification = async () => {
     setIsVerifying(true);
-
+    
     try {
-      const response = await apiRequest("POST", "/api/auth/verify-email", {
-        token: verificationCode
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        toast({
-          title: "Email Verified",
-          description: "Your email has been successfully verified. You can now log in.",
-        });
-        onVerified();
-      } else {
-        const errorData = await response.json();
-        toast({
-          title: "Verification Failed",
-          description: errorData.error || "Invalid or expired verification code.",
-          variant: "destructive",  
-        });
+      // Force refresh the current user to check if email is verified
+      if (auth.currentUser) {
+        await auth.currentUser.reload();
+        if (auth.currentUser.emailVerified) {
+          toast({
+            title: "Email Verified",
+            description: "Your email has been successfully verified!",
+          });
+          onVerified();
+        } else {
+          toast({
+            title: "Not Verified Yet",
+            description: "Please check your email and click the verification link first.",
+            variant: "destructive",
+          });
+        }
       }
     } catch (error) {
-      console.error("Email verification error:", error);
+      console.error("Error checking verification:", error);
       toast({
         title: "Error",
-        description: "Failed to verify email. Please try again.",
+        description: "Failed to check verification status. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -150,34 +134,25 @@ export function EmailVerificationForm({
                 We've sent a verification link to your email address. Click the link in the email to verify your account.
               </p>
               
-              <div className="w-full space-y-2 pt-4">
-                <Label htmlFor="verificationCode" className="text-white">
-                  Or enter verification code manually:
-                </Label>
-                <form onSubmit={handleVerifyEmail} className="space-y-3">
-                  <Input
-                    id="verificationCode"
-                    type="text"
-                    placeholder="Enter verification code"
-                    value={verificationCode}
-                    onChange={(e) => setVerificationCode(e.target.value)}
-                    className="bg-zinc-800 border-zinc-700 text-white"
-                  />
-                  <Button 
-                    type="submit" 
-                    className="w-full bg-white text-black hover:bg-zinc-200"
-                    disabled={isVerifying}
-                  >
-                    {isVerifying ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Verifying...
-                      </>
-                    ) : (
-                      "Verify Email"
-                    )}
-                  </Button>
-                </form>
+              <div className="w-full space-y-3 pt-4">
+                <p className="text-zinc-400 text-sm">
+                  Check your email inbox and click the verification link, then click the button below.
+                </p>
+                <Button 
+                  type="button"
+                  onClick={handleCheckVerification}
+                  className="w-full bg-white text-black hover:bg-zinc-200"
+                  disabled={isVerifying}
+                >
+                  {isVerifying ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Checking...
+                    </>
+                  ) : (
+                    "I've Verified My Email"
+                  )}
+                </Button>
               </div>
 
               <div className="pt-4 border-t border-zinc-700 w-full">
