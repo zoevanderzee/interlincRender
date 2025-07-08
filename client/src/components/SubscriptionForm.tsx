@@ -26,7 +26,7 @@ const subscriptionPlans: SubscriptionPlan[] = [
   {
     id: "business-starter",
     name: "Business Starter",
-    price: "£29.99/month",
+    price: "Loading...",
     description: "Essential tools for small businesses starting with contractors",
     features: [
       "Up to 5 contractor management",
@@ -39,7 +39,7 @@ const subscriptionPlans: SubscriptionPlan[] = [
   {
     id: "business",
     name: "Business Plan",
-    price: "£49.99/month",
+    price: "Loading...",
     description: "Perfect for businesses managing contractors and projects",
     features: [
       "Unlimited contractor management",
@@ -55,7 +55,7 @@ const subscriptionPlans: SubscriptionPlan[] = [
   {
     id: "business-enterprise",
     name: "Business Enterprise",
-    price: "Contact Sales",
+    price: "Loading...",
     description: "Advanced features for large businesses with complex needs",
     features: [
       "Everything in Business Plan",
@@ -70,7 +70,7 @@ const subscriptionPlans: SubscriptionPlan[] = [
   {
     id: "business-annual",
     name: "Business Annual",
-    price: "Save 20%",
+    price: "Loading...",
     description: "Get the full Business Plan features with annual billing",
     features: [
       "Everything in Business Plan",
@@ -83,7 +83,7 @@ const subscriptionPlans: SubscriptionPlan[] = [
   {
     id: "contractor",
     name: "Contractor Plan",
-    price: "£5/month",
+    price: "Loading...",
     description: "Essential tools for independent contractors",
     features: [
       "Profile management",
@@ -240,7 +240,31 @@ export default function SubscriptionForm({
   const [clientSecret, setClientSecret] = useState<string>("");
   const [subscriptionId, setSubscriptionId] = useState<string>("");
   const [showPayment, setShowPayment] = useState(false);
+  const [prices, setPrices] = useState<Record<string, any>>({});
+  const [loadingPrices, setLoadingPrices] = useState(true);
   const { toast } = useToast();
+
+  // Fetch real prices from Stripe
+  useEffect(() => {
+    const fetchPrices = async () => {
+      try {
+        const response = await fetch('/api/subscription-prices');
+        const priceData = await response.json();
+        setPrices(priceData);
+      } catch (error) {
+        console.error('Error fetching prices:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load subscription prices",
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingPrices(false);
+      }
+    };
+
+    fetchPrices();
+  }, [toast]);
 
   const handlePlanSelect = async (planId: string) => {
     try {
@@ -299,10 +323,35 @@ export default function SubscriptionForm({
     );
   }
 
-  // Filter plans based on user role
-  const availablePlans = userRole === 'business' 
+  // Helper function to format price
+  const formatPrice = (planId: string) => {
+    if (loadingPrices) return "Loading...";
+    
+    const priceData = prices[planId];
+    if (!priceData) return "Price unavailable";
+    
+    const amount = priceData.amount / 100; // Convert cents to pounds
+    const currency = priceData.currency.toUpperCase();
+    const interval = priceData.interval;
+    const intervalCount = priceData.interval_count || 1;
+    
+    if (interval === 'month') {
+      return `${currency === 'GBP' ? '£' : '$'}${amount.toFixed(2)}${intervalCount === 1 ? '/month' : `/${intervalCount} months`}`;
+    } else if (interval === 'year') {
+      return `${currency === 'GBP' ? '£' : '$'}${amount.toFixed(2)}${intervalCount === 1 ? '/year' : `/${intervalCount} years`}`;
+    }
+    
+    return `${currency === 'GBP' ? '£' : '$'}${amount.toFixed(2)}`;
+  };
+
+  // Filter plans based on user role and update prices
+  const availablePlans = (userRole === 'business' 
     ? subscriptionPlans.filter(plan => plan.id.startsWith('business'))
-    : subscriptionPlans.filter(plan => plan.id === userRole);
+    : subscriptionPlans.filter(plan => plan.id === userRole)
+  ).map(plan => ({
+    ...plan,
+    price: formatPrice(plan.id)
+  }));
 
   return (
     <div className="max-w-4xl mx-auto p-6">

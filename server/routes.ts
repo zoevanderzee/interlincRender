@@ -4768,6 +4768,51 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
   });
 
   // Subscription management routes
+  // Get subscription prices endpoint
+  app.get('/api/subscription-prices', async (req: Request, res: Response) => {
+    try {
+      const priceIds = [
+        'price_1RiEGMF4bfRUGDn9UErjyXjX', // business-starter
+        process.env.STRIPE_BUSINESS_PRICE_ID, // business
+        'price_1Ricn6F4bfRUGDn91XzkPq5F', // business-enterprise
+        'price_1RgRilF4bfRUGDn9LWUhoJ6F', // business-annual
+        process.env.STRIPE_CONTRACTOR_PRICE_ID, // contractor
+      ];
+
+      const prices = await Promise.all(
+        priceIds.map(async (priceId) => {
+          if (!priceId) return null;
+          try {
+            const price = await stripe.prices.retrieve(priceId);
+            return {
+              id: priceId,
+              amount: price.unit_amount,
+              currency: price.currency,
+              interval: price.recurring?.interval,
+              interval_count: price.recurring?.interval_count,
+            };
+          } catch (error) {
+            console.error(`Error fetching price ${priceId}:`, error);
+            return null;
+          }
+        })
+      );
+
+      const priceMap = {
+        'business-starter': prices[0],
+        'business': prices[1],
+        'business-enterprise': prices[2],
+        'business-annual': prices[3],
+        'contractor': prices[4],
+      };
+
+      res.json(priceMap);
+    } catch (error) {
+      console.error('Error fetching subscription prices:', error);
+      res.status(500).json({ error: 'Failed to fetch subscription prices' });
+    }
+  });
+
   app.post("/api/create-subscription", async (req: Request, res: Response) => {
     try {
       const { planType, email, customerName } = req.body;
