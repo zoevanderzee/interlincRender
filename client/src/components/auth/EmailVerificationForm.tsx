@@ -14,14 +14,16 @@ interface EmailVerificationFormProps {
   email: string;
   userId: number;
   verificationToken?: string;
+  registrationData?: any;
   onBack: () => void;
-  onVerified: () => void;
+  onVerified: (userData: any) => void;
 }
 
 export function EmailVerificationForm({ 
   email, 
   userId, 
   verificationToken, 
+  registrationData,
   onBack, 
   onVerified 
 }: EmailVerificationFormProps) {
@@ -33,15 +35,36 @@ export function EmailVerificationForm({
 
   // Check Firebase email verification status
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user && user.emailVerified) {
-        // Email is verified, proceed with authentication
-        onVerified();
+        // Email is verified, sync with database
+        try {
+          const syncPayload = {
+            firebaseUid: user.uid,
+            email: user.email,
+            emailVerified: true,
+            ...registrationData
+          };
+          
+          const syncResponse = await apiRequest('POST', '/api/sync-user', syncPayload);
+          
+          if (syncResponse.ok) {
+            const syncData = await syncResponse.json();
+            toast({
+              title: "Email Automatically Verified",
+              description: "Your email has been successfully verified!",
+            });
+            onVerified(syncData.user);
+          }
+        } catch (error) {
+          console.error("Error in automatic verification:", error);
+          // Don't show error toast here, user can still click the button
+        }
       }
     });
 
     return () => unsubscribe();
-  }, [onVerified]);
+  }, [onVerified, registrationData, apiRequest, toast]);
 
   const handleSendVerificationEmail = async () => {
     setIsResending(true);
@@ -81,11 +104,30 @@ export function EmailVerificationForm({
       if (auth.currentUser) {
         await auth.currentUser.reload();
         if (auth.currentUser.emailVerified) {
-          toast({
-            title: "Email Verified",
-            description: "Your email has been successfully verified!",
-          });
-          onVerified();
+          // Now sync the user with the database
+          const syncPayload = {
+            firebaseUid: auth.currentUser.uid,
+            email: auth.currentUser.email,
+            emailVerified: true,
+            ...registrationData
+          };
+          
+          const syncResponse = await apiRequest('POST', '/api/sync-user', syncPayload);
+          
+          if (syncResponse.ok) {
+            const syncData = await syncResponse.json();
+            toast({
+              title: "Email Verified",
+              description: "Your email has been successfully verified!",
+            });
+            onVerified(syncData.user);
+          } else {
+            toast({
+              title: "Error",
+              description: "Failed to sync user data. Please try again.",
+              variant: "destructive",
+            });
+          }
         } else {
           toast({
             title: "Not Verified Yet",

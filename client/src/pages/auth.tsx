@@ -42,6 +42,7 @@ export default function AuthPage() {
     email: string;
     userId: number;
     verificationToken?: string;
+    registrationData?: any;
   } | null>(null);
   const [inviteId, setInviteId] = useState<number | null>(null);
   const [inviteEmail, setInviteEmail] = useState<string | null>(null);
@@ -437,7 +438,8 @@ export default function AuthPage() {
         setVerificationData({
           email: registerData.email,
           userId: -1, // We'll get this from server after sync
-          verificationToken: undefined
+          verificationToken: undefined,
+          registrationData: registerData
         });
         setShowEmailVerification(true);
       } else {
@@ -574,13 +576,16 @@ export default function AuthPage() {
           email={verificationData.email}
           userId={verificationData.userId}
           verificationToken={verificationData.verificationToken}
+          registrationData={verificationData.registrationData}
           onBack={() => {
             setShowEmailVerification(false);
             setVerificationData(null);
           }}
-          onVerified={() => {
+          onVerified={(userData) => {
             setShowEmailVerification(false);
             setVerificationData(null);
+            // Set the registered user data from the sync response
+            setRegisteredUser(userData);
             // After verification, show subscription form
             setShowSubscription(true);
           }}
