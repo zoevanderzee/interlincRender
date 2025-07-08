@@ -4790,12 +4790,18 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
       if (planType === 'business') {
         // Business plan - £49/month (live mode)
         priceId = process.env.STRIPE_BUSINESS_PRICE_ID;
+      } else if (planType === 'business-starter') {
+        // Business Starter plan - £29.99/month (live mode)
+        priceId = process.env.STRIPE_BUSINESS_STARTER_PRICE_ID;
+      } else if (planType === 'business-enterprise') {
+        // Business Enterprise plan - £99.99/month (live mode)
+        priceId = process.env.STRIPE_BUSINESS_ENTERPRISE_PRICE_ID;
       } else if (planType === 'contractor') {
         // Contractor plan - £5/month (live mode)
         priceId = process.env.STRIPE_CONTRACTOR_PRICE_ID;
       } else {
         return res.status(400).json({ 
-          message: 'Invalid plan type. Must be "business" or "contractor"' 
+          message: 'Invalid plan type. Must be "business", "business-starter", "business-enterprise", or "contractor"' 
         });
       }
       

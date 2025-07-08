@@ -123,6 +123,7 @@ Preferred communication style: Simple, everyday language.
 - July 8, 2025: Created hybrid authentication flow: Firebase handles signup+verification, Passport.js handles post-verification sessions
 - July 8, 2025: Added `/api/sync-user` endpoint to sync Firebase users with PostgreSQL database
 - July 8, 2025: Firebase configuration updated to use verified `creativ-linc.firebaseapp.com` domain
+- July 8, 2025: **Multiple Business Subscription Tiers Added** - Business users can now choose from Starter, Standard, and Enterprise plans
 - July 4, 2025: Complete subscription system implemented for live mode
 - July 4, 2025: Fixed major data isolation bugs preventing cross-account data leaks
 - July 4, 2025: Subscription-gated registration flow fully functional
@@ -191,7 +192,9 @@ Preferred communication style: Simple, everyday language.
 **Current Implementation:**
 - Complete live-mode subscription system for both business and contractor accounts
 - Subscription requirement enforced during registration for direct signups
+- Business Starter: £29.99/month (Stripe Price ID: price_1RiEGMF4bfRUGDn9UErjyXjX)
 - Business Plan: £49.99/month (Stripe Price ID: price_1RgRilF4bfRUGDn9jMnjAo96)
+- Business Enterprise: £99.99/month (Stripe Price ID: price_1RgRilF4bfRUGDn9LWUhoJ6F)
 - Contractor Plan: £5/month (Stripe Price ID: price_1RgSmQ2VZ9lMI7tFePh2AV2g)
 - Full payment processing with Stripe Elements integration
 - Automatic user login after successful subscription completion

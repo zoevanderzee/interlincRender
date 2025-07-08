@@ -24,6 +24,19 @@ interface SubscriptionPlan {
 
 const subscriptionPlans: SubscriptionPlan[] = [
   {
+    id: "business-starter",
+    name: "Business Starter",
+    price: "£29.99/month",
+    description: "Essential tools for small businesses starting with contractors",
+    features: [
+      "Up to 5 contractor management",
+      "Basic project tracking",
+      "Manual payments",
+      "Basic reporting",
+      "Email support"
+    ]
+  },
+  {
     id: "business",
     name: "Business Plan",
     price: "£49.99/month",
@@ -38,6 +51,21 @@ const subscriptionPlans: SubscriptionPlan[] = [
       "Priority support"
     ],
     recommended: true
+  },
+  {
+    id: "business-enterprise",
+    name: "Business Enterprise",
+    price: "£99.99/month",
+    description: "Advanced features for large businesses with complex needs",
+    features: [
+      "Everything in Business Plan",
+      "White-label options",
+      "Custom integrations",
+      "Dedicated account manager",
+      "Advanced analytics",
+      "SLA guarantees",
+      "24/7 phone support"
+    ]
   },
   {
     id: "contractor",
@@ -259,18 +287,20 @@ export default function SubscriptionForm({
   }
 
   // Filter plans based on user role
-  const availablePlans = subscriptionPlans.filter(plan => plan.id === userRole);
+  const availablePlans = userRole === 'business' 
+    ? subscriptionPlans.filter(plan => plan.id.startsWith('business'))
+    : subscriptionPlans.filter(plan => plan.id === userRole);
 
   return (
     <div className="max-w-4xl mx-auto p-6">
       <div className="text-center mb-8">
         <h2 className="text-3xl font-bold mb-4">Complete Your Subscription</h2>
         <p className="text-gray-600">
-          {userRole === 'contractor' ? 'Contractor Plan' : 'Business Plan'} subscription required to continue
+          {userRole === 'contractor' ? 'Contractor Plan' : 'Choose your Business Plan'} subscription required to continue
         </p>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6 max-w-md mx-auto">
+      <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
         {availablePlans.map((plan) => (
           <Card 
             key={plan.id} 
