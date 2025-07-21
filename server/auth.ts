@@ -49,16 +49,16 @@ export function setupAuth(app: Express) {
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || 'creativlinc-secret-key',
     resave: false,
-    saveUninitialized: false, // Critical: Don't save empty sessions
+    saveUninitialized: false, // Don't save empty sessions
     name: 'creativlinc.sid',
-    rolling: true, // Extend session on each request
+    rolling: false, // Don't extend session on each request to avoid issues
     cookie: {
       secure: false, // Must be false for HTTP development
-      maxAge: 1000 * 60 * 60 * 24, // 24 hours  
-      httpOnly: false, // CRITICAL: Allow JS access in dev for debugging
-      sameSite: 'lax', // Works with same-site requests
+      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days for testing  
+      httpOnly: false, // Allow JS access for debugging
+      sameSite: 'lax', // Standard setting
       path: '/', // Available for entire site
-      domain: undefined, // Let browser set domain automatically
+      domain: undefined, // Let browser determine domain
     },
     // Use the storage implementation's session store
     store: storage.sessionStore
@@ -495,25 +495,33 @@ export function setupAuth(app: Express) {
         // Return user info without the password
         const { password, ...userInfo } = user;
         
-        // Log session info immediately after login
-        console.log("Login successful for user:", user.id, "Session ID:", req.sessionID);
-        
-        // Log response headers being sent back
-        console.log("Login response - setting cookie:", {
-          sessionID: req.sessionID,
-          isAuthenticated: req.isAuthenticated()
-        });
-        
-        // Check if user needs subscription and add redirect flag
-        const requiresSubscription = userInfo.subscriptionStatus === 'inactive' || 
-                                    userInfo.subscriptionStatus === 'past_due' ||
-                                    !userInfo.subscriptionStatus;
-        
-        return res.status(200).json({
-          ...userInfo,
-          emailVerified: userInfo.emailVerified,
-          requiresSubscription,
-          redirectToSubscription: requiresSubscription
+        // Force session save and then respond
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            console.error("Session save error:", saveErr);
+            return next(saveErr);
+          }
+          
+          console.log("Login successful for user:", user.id, "Session ID:", req.sessionID);
+          console.log("Session saved successfully, cookie should be set");
+          
+          // Manually set cookie header to ensure browser compatibility
+          const cookieValue = `creativlinc.sid=s%3A${req.sessionID}.${req.sessionID}; Path=/; Max-Age=${60*60*24*7}; SameSite=Lax`;
+          res.setHeader('Set-Cookie', cookieValue);
+          
+          console.log("Manually setting cookie header:", cookieValue);
+          
+          // Check if user needs subscription and add redirect flag
+          const requiresSubscription = userInfo.subscriptionStatus === 'inactive' || 
+                                      userInfo.subscriptionStatus === 'past_due' ||
+                                      !userInfo.subscriptionStatus;
+          
+          return res.status(200).json({
+            ...userInfo,
+            emailVerified: userInfo.emailVerified,
+            requiresSubscription,
+            redirectToSubscription: requiresSubscription
+          });
         });
       });
     })(req, res, next);

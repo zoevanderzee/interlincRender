@@ -106,14 +106,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
       
-      // Log the cookies and response headers after login for debugging
-      console.log("Cookies before API response processing:", document.cookie);
-      console.log("Login response headers:", {
+      // Log detailed debugging information
+      console.log("=== BROWSER LOGIN DEBUG ===");
+      console.log("Login successful, response status:", res.status);
+      console.log("Cookies before processing response:", document.cookie);
+      console.log("Response headers:", {
         'set-cookie': res.headers.get('set-cookie'),
-        'content-type': res.headers.get('content-type'),
+        'content-type': res.headers.get('content-type'), 
         status: res.status,
         allHeaders: Array.from(res.headers.entries())
       });
+      
+      // Wait for cookie to be set
+      setTimeout(() => {
+        console.log("Cookies after 100ms delay:", document.cookie);
+        console.log("Has creativlinc.sid cookie:", document.cookie.includes('creativlinc.sid'));
+      }, 100);
       
       // Get the response data
       const userData = await res.json();
