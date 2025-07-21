@@ -1,6 +1,6 @@
 import { ReactNode, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { Redirect, Route, useLocation } from "wouter";
+import { Route, useLocation } from "wouter";
 import { Loader2 } from "lucide-react";
 
 type ProtectedRouteProps = {
@@ -18,8 +18,15 @@ export function ProtectedRoute({ path, children }: ProtectedRouteProps) {
     if (!isLoading && !user) {
       console.log("Force redirecting to /auth");
       setLocation("/auth");
+    } else if (!isLoading && user && user.subscriptionStatus !== 'active') {
+      // Check if we're already on the subscription page
+      if (!location.includes('showSubscription=true')) {
+        console.log("User needs subscription, redirecting to subscription page");
+        const subscriptionUrl = `/auth?showSubscription=true&userId=${user.id}&role=${user.role}&email=${user.email}`;
+        setLocation(subscriptionUrl);
+      }
     }
-  }, [isLoading, user, setLocation]);
+  }, [isLoading, user, setLocation, location]);
 
   return (
     <Route path={path}>
@@ -31,17 +38,7 @@ export function ProtectedRoute({ path, children }: ProtectedRouteProps) {
           </div>
         </div>
       ) : user ? (
-        // Check subscription status - if inactive, block access to dashboard
-        user.subscriptionStatus === 'active' ? (
-          children
-        ) : (
-          <div className="flex items-center justify-center min-h-screen bg-black">
-            <div className="text-center">
-              <p className="text-white">Subscription required to access dashboard</p>
-              <p className="text-white text-sm mt-2">Please complete your subscription to continue</p>
-            </div>
-          </div>
-        )
+        children
       ) : (
         <div className="flex items-center justify-center min-h-screen bg-black">
           <div className="text-center">
