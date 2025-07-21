@@ -1,0 +1,57 @@
+✅ What You Must Implement (Right Now)
+
+You need to sync the email verification result from Firebase back into your PostgreSQL database.
+
+This can happen client-side or server-side. Here’s the most straightforward fix:
+
+✅ What to Tell Your Replit Agent:
+
+We're using our own user authentication system (not Firebase Auth for login), and storing users in PostgreSQL.
+However, we're using Firebase to send email verification links.
+When a user verifies their email using the Firebase link, Firebase marks their account as verified, but our database never knows — so login fails.
+Please implement the following:
+Frontend /verify route:
+Capture mode=verifyEmail and oobCode from the Firebase verification link
+Call applyActionCode() to confirm email verification via Firebase Web SDK
+Then call our backend API (e.g. POST /api/sync-email-verification) and send the user's email
+Example (React + TypeScript):
+
+import { getAuth, applyActionCode } from "firebase/auth";
+
+const auth = getAuth();
+const oobCode = new URLSearchParams(window.location.search).get("oobCode");
+const mode = new URLSearchParams(window.location.search).get("mode");
+
+if (mode === "verifyEmail" && oobCode) {
+  applyActionCode(auth, oobCode)
+    .then(() => {
+      // Tell backend this user is now verified
+      return fetch("/api/sync-email-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: auth.currentUser?.email }),
+      });
+    })
+    .then(() => {
+      alert("Email verified successfully! You can now log in.");
+      window.location.href = "/login";
+    })
+    .catch((error) => {
+      console.error("Verification error:", error);
+      alert("Invalid or expired link.");
+    });
+}
+Backend route /api/sync-email-verification:
+Look up the user by email in PostgreSQL
+Set email_verified = true
+Login handler:
+Continue checking credentials against the database
+But if login fails, show the correct error:
+If email_verified = false: "Please verify your email first."
+If credentials are wrong: "Invalid email or password."
+✅ Why This Will Fix It
+
+Users verify via Firebase ✅
+Your app updates your real auth database ✅
+Login succeeds (or gives proper error) ✅
+Let me know if you want me to write the /api/sync-email-verification endpoint too.
