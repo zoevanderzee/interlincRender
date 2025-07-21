@@ -1170,6 +1170,18 @@ export class DatabaseStorage implements IStorage {
 
     return updatedUser;
   }
+
+  async updateEmailVerification(userId: number, verified: boolean): Promise<User | undefined> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({
+        emailVerified: verified
+      })
+      .where(eq(users.id, userId))
+      .returning();
+
+    return updatedUser;
+  }
   
   async setPasswordResetToken(email: string, token: string, expires: Date): Promise<User | undefined> {
     const [user] = await db

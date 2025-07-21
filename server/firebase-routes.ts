@@ -47,6 +47,38 @@ export function registerFirebaseRoutes(app: Express) {
     }
   });
 
+  // Confirm email verification from Firebase
+  app.post("/api/confirm-verification", async (req, res) => {
+    try {
+      const { email, firebaseUid } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ error: "Email is required" });
+      }
+      
+      // Find user by email
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      // Update email verification status in our database
+      await storage.updateEmailVerification(user.id, true);
+      
+      // If Firebase UID provided, update that too
+      if (firebaseUid && !user.firebaseUid) {
+        await storage.updateUser(user.id, { firebaseUid });
+      }
+      
+      console.log(`Email verification confirmed for user: ${email}`);
+      res.json({ success: true, message: "Email verification confirmed successfully" });
+      
+    } catch (error) {
+      console.error('Error confirming email verification:', error);
+      res.status(500).json({ error: "Error confirming email verification" });
+    }
+  });
+
   // Verify email with token
   app.post("/api/auth/verify-email", async (req, res) => {
     try {
