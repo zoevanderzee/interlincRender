@@ -495,33 +495,19 @@ export function setupAuth(app: Express) {
         // Return user info without the password
         const { password, ...userInfo } = user;
         
-        // Force session save and then respond
-        req.session.save((saveErr) => {
-          if (saveErr) {
-            console.error("Session save error:", saveErr);
-            return next(saveErr);
-          }
-          
-          console.log("Login successful for user:", user.id, "Session ID:", req.sessionID);
-          console.log("Session saved successfully, cookie should be set");
-          
-          // Manually set cookie header to ensure browser compatibility
-          const cookieValue = `creativlinc.sid=s%3A${req.sessionID}.${req.sessionID}; Path=/; Max-Age=${60*60*24*7}; SameSite=Lax`;
-          res.setHeader('Set-Cookie', cookieValue);
-          
-          console.log("Manually setting cookie header:", cookieValue);
-          
-          // Check if user needs subscription and add redirect flag
-          const requiresSubscription = userInfo.subscriptionStatus === 'inactive' || 
-                                      userInfo.subscriptionStatus === 'past_due' ||
-                                      !userInfo.subscriptionStatus;
-          
-          return res.status(200).json({
-            ...userInfo,
-            emailVerified: userInfo.emailVerified,
-            requiresSubscription,
-            redirectToSubscription: requiresSubscription
-          });
+        console.log("Login successful for user:", user.id, "Session ID:", req.sessionID);
+        console.log("User authenticated, session cookie will be set by Express");
+        
+        // Check if user needs subscription and add redirect flag
+        const requiresSubscription = userInfo.subscriptionStatus === 'inactive' || 
+                                    userInfo.subscriptionStatus === 'past_due' ||
+                                    !userInfo.subscriptionStatus;
+        
+        return res.status(200).json({
+          ...userInfo,
+          emailVerified: userInfo.emailVerified,
+          requiresSubscription,
+          redirectToSubscription: requiresSubscription
         });
       });
     })(req, res, next);
