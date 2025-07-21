@@ -14,21 +14,26 @@ export function ProtectedRoute({ path, children }: ProtectedRouteProps) {
 
   console.log("ProtectedRoute:", { path, isLoading, hasUser: !!user });
 
-  // Skip subscription checks if we're already on the auth page
-  const isOnAuthPage = location.includes('/auth');
+  // Skip ALL protection if we're on subscription page
+  const isOnSubscriptionPage = location.includes('/auth') && location.includes('showSubscription=true');
+  
+  if (isOnSubscriptionPage) {
+    // Don't render protected content if on subscription page
+    return null;
+  }
 
   useEffect(() => {
-    if (!isLoading && !user && !isOnAuthPage) {
+    if (!isLoading && !user) {
       console.log("Force redirecting to /auth");
       setLocation("/auth");
     }
-    // Check subscription status only if not on auth page
-    else if (!isLoading && user && !isOnAuthPage && (!user.subscriptionStatus || user.subscriptionStatus !== 'active')) {
+    // Check subscription status 
+    else if (!isLoading && user && (!user.subscriptionStatus || user.subscriptionStatus !== 'active')) {
       console.log("User needs subscription, redirecting to subscription page");
       const subscriptionUrl = `/auth?showSubscription=true&userId=${user.id}&role=${user.role}&email=${user.email}`;
       window.location.href = subscriptionUrl;
     }
-  }, [isLoading, user, setLocation, isOnAuthPage]);
+  }, [isLoading, user, setLocation]);
 
   return (
     <Route path={path}>
