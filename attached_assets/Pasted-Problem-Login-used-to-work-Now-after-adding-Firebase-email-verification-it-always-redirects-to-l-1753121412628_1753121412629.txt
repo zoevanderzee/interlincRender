@@ -1,0 +1,48 @@
+Problem:
+Login used to work. Now, after adding Firebase email verification, it always redirects to login — even after a successful login or verification. We’ve confirmed that:
+apiRequest() requires X-User-ID and X-Firebase-UID from localStorage
+But they are not present after verification or login anymore
+Fix This in 4 Clear Steps:
+✅ 1. After Firebase Login (after clicking “Log In”), write this to localStorage:
+const auth = getAuth();
+const firebaseUser = auth.currentUser;
+
+const backendResponse = await fetch("/api/login", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    firebase_uid: firebaseUser?.uid,
+    email: firebaseUser?.email,
+  }),
+});
+
+const backendUser = await backendResponse.json();
+
+localStorage.setItem("user_id", backendUser.id.toString());
+localStorage.setItem("firebase_uid", firebaseUser?.uid || "");
+✅ This ensures all apiRequest() calls include the correct headers.
+
+✅ 2. After email verification is completed on /verify, force Firebase re-login to restore session:
+// After applyActionCode()
+await signInWithEmailAndPassword(auth, email, password); // you must re-authenticate
+
+// then repeat localStorage.setItem(...) like above
+✅ Email verification often clears the user session — this restores it.
+
+✅ 3. Fix all routes and fetches to use apiRequest() only
+If anything still uses raw fetch(), headers won’t be sent — causing silent 401 failures.
+
+✅ 4. In /api/user, log what's missing
+In the backend route, log this:
+
+console.log("X-User-ID:", req.headers["x-user-id"]);
+console.log("X-Firebase-UID:", req.headers["x-firebase-uid"]);
+If either is undefined, the frontend is still failing to set localStorage or route through apiRequest().
+
+Please implement this exact flow. The issue is localStorage + session state being lost after verification and not being re-synced. Our backend auth system depends entirely on those headers being restored after Firebase login.
+✅ Once Implemented:
+
+Firebase handles auth + verification
+Backend gets proper headers every time
+User no longer loops back to login
+Your frontend works exactly as before, plus email verification

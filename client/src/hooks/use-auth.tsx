@@ -59,8 +59,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const userData = await res.json();
         console.log("User authenticated:", userData?.username);
         
-        // Store user data in localStorage for header use
-        localStorage.setItem('creativlinc_user', JSON.stringify(userData));
+        // Store authentication data for headers
+        localStorage.setItem('user_id', userData.id.toString());
+        localStorage.setItem('firebase_uid', userData.firebaseUid || '');
         
         return userData;
       } catch (error) {
@@ -119,9 +120,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       console.log("Login successful, storing user data in localStorage:", userData);
       
-      // Store the user data in localStorage for header authentication
-      localStorage.setItem('creativlinc_user', JSON.stringify(userData));
-      console.log("User data stored in localStorage:", userData.id, userData.username);
+      // Store authentication data for headers as per your fix
+      localStorage.setItem('user_id', userData.id.toString());
+      localStorage.setItem('firebase_uid', userData.firebaseUid || '');
+      console.log("Authentication data stored:");
+      console.log("- user_id:", userData.id);
+      console.log("- firebase_uid:", userData.firebaseUid || 'none');
       
       return userData;
     },
@@ -240,8 +244,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: () => {
       console.log("Logout successful, clearing user data");
       
-      // Clear localStorage-based authentication data
-      localStorage.removeItem('creativlinc_user');
+      // Clear authentication data from localStorage
+      localStorage.removeItem('user_id');
+      localStorage.removeItem('firebase_uid');
+      localStorage.removeItem('creativlinc_user'); // Remove legacy key too
       
       // Clear user data and invalidate all protected queries
       queryClient.setQueryData(["/api/user"], null);
@@ -259,8 +265,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onError: (error: Error) => {
       console.error("Logout error:", error);
       
-      // Clear localStorage-based authentication data even if server logout fails
-      localStorage.removeItem('creativlinc_user');
+      // Clear authentication data even if server logout fails
+      localStorage.removeItem('user_id');
+      localStorage.removeItem('firebase_uid');
+      localStorage.removeItem('creativlinc_user'); // Remove legacy key too
       
       // Clear query cache data too
       queryClient.setQueryData(["/api/user"], null);

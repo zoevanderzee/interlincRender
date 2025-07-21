@@ -71,26 +71,26 @@ export async function apiRequest(
       defaultHeaders['X-CSRF-Token'] = csrfToken;
     }
     
-    // Add user ID header for authentication
-    try {
-      const userDataString = localStorage.getItem('creativlinc_user');
-      console.log('localStorage creativlinc_user:', userDataString);
-      
-      if (userDataString && userDataString !== 'null') {
-        const user = JSON.parse(userDataString);
-        console.log('Parsed user data:', user);
-        
-        if (user?.id) {
-          defaultHeaders['X-User-ID'] = user.id.toString();
-          console.log('Added X-User-ID header:', user.id);
-        } else {
-          console.log('No user.id found in localStorage data');
-        }
-      } else {
-        console.log('No valid user data in localStorage');
-      }
-    } catch (e) {
-      console.error('Error reading user from localStorage:', e);
+    // Add authentication headers required by backend
+    const userId = localStorage.getItem('user_id');
+    const firebaseUid = localStorage.getItem('firebase_uid');
+    
+    console.log('Authentication headers check:');
+    console.log('user_id from localStorage:', userId);
+    console.log('firebase_uid from localStorage:', firebaseUid);
+    
+    if (userId) {
+      defaultHeaders['X-User-ID'] = userId;
+      console.log('Added X-User-ID header:', userId);
+    }
+    
+    if (firebaseUid) {
+      defaultHeaders['X-Firebase-UID'] = firebaseUid;
+      console.log('Added X-Firebase-UID header:', firebaseUid);
+    }
+    
+    if (!userId && !firebaseUid) {
+      console.log('No authentication headers available - user not logged in');
     }
     
     const headers: Record<string, string> = { ...defaultHeaders, ...(customHeaders || {}) };
