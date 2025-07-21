@@ -36,7 +36,7 @@ import Wallet from "@/pages/wallet";
 import Layout from "@/components/layout/Layout";
 import AuthPage from "@/pages/auth";
 import VerifyEmailPage from "@/pages/verify-email";
-import VerifyEmail from "@/pages/VerifyEmail";
+import VerifyEmail from "@/pages/verify";
 import VerifyEmailCallback from "@/pages/VerifyEmailCallback";
 import ResetPasswordPage from "@/pages/reset-password";
 import ContractorInvitePage from "@/pages/contractor-invite";
