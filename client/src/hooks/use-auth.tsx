@@ -61,13 +61,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
 
+        // Add user ID header if available in localStorage
+        const headers: Record<string, string> = {
+          "Accept": "application/json",
+          "Cache-Control": "no-cache"
+        };
+        
+        const storedUserForHeader = localStorage.getItem('creativlinc_user');
+        if (storedUserForHeader) {
+          try {
+            const userData = JSON.parse(storedUserForHeader);
+            if (userData?.id) {
+              headers['X-User-ID'] = userData.id.toString();
+              console.log("Adding X-User-ID header:", userData.id);
+            }
+          } catch (e) {
+            // Ignore parse errors
+          }
+        }
+
         const res = await fetch("/api/user", {
           method: "GET",
           credentials: "include",
-          headers: {
-            "Accept": "application/json",
-            "Cache-Control": "no-cache"
-          }
+          headers
         });
         
         console.log("User data response status:", res.status);
@@ -142,12 +158,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("Login successful, storing user data in localStorage:", userData);
       
       // Store the user data in localStorage for session persistence
-      // This acts as a fallback when cookies fail
       localStorage.setItem('creativlinc_user', JSON.stringify(userData));
       
-      // Verify storage was successful
-      const storedData = localStorage.getItem('creativlinc_user');
-      console.log("Verification - localStorage data after setting:", storedData);
+      console.log("User data stored in localStorage:", userData.id, userData.username);
+      
+      // Immediately invalidate the user query to trigger a refresh with headers
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       
       return userData;
     },
