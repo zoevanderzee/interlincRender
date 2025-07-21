@@ -25,7 +25,10 @@ export function registerSyncUserRoutes(app: Express) {
       if (existingUser) {
         // Update existing user with Firebase UID and verification status
         if (emailVerified) {
-          await storage.updateUserEmailVerification(existingUser.id, true);
+          await storage.updateUser(existingUser.id, { 
+            emailVerified: true, 
+            firebaseUid: firebaseUid 
+          });
         }
         
         // Log the user in by creating a session
