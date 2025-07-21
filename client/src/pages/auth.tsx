@@ -445,16 +445,16 @@ export default function AuthPage() {
       } else {
         // Firebase registration failed
         toast({
-          title: "Registration Failed",
-          description: result.error || "Failed to create account. Please try again.",
+          title: "Unable to Create Account",
+          description: result.error || "Please try again or contact support if the problem continues.",
           variant: "destructive",
         });
       }
     } catch (error) {
       console.error('Firebase registration error:', error);
       toast({
-        title: "Registration Failed",
-        description: "An error occurred during registration. Please try again.",
+        title: "Unable to Create Account", 
+        description: "Please try again or contact support if the problem continues.",
         variant: "destructive",
       });
     }

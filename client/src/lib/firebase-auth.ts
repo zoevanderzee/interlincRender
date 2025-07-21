@@ -1,6 +1,7 @@
 import { createUserWithEmailAndPassword, sendEmailVerification, User } from "firebase/auth";
 import { auth } from "./firebase";
 import { apiRequest } from "./queryClient";
+import { handleFirebaseError } from "./firebase-errors";
 
 export interface FirebaseSignupResult {
   success: boolean;
@@ -36,10 +37,10 @@ export const signUpUser = async (email: string, password: string): Promise<Fireb
     };
 
   } catch (error: any) {
-    console.error("Signup or verification error:", error.message);
+    console.error("Signup or verification error:", error);
     return {
       success: false,
-      error: error.message
+      error: handleFirebaseError(error)
     };
   }
 };

@@ -7,6 +7,7 @@ import { Loader2, ArrowLeft, CheckCircle2, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { resendEmailVerification } from "@/lib/firebase-auth";
+import { handleFirebaseError } from "@/lib/firebase-errors";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
@@ -131,17 +132,18 @@ export function EmailVerificationForm({
           }
         } else {
           toast({
-            title: "Not Verified Yet",
-            description: "Please check your email and click the verification link first.",
+            title: "Email Not Verified Yet",
+            description: "Please check your email and click the verification link first, then try again.",
             variant: "destructive",
           });
         }
       }
     } catch (error: any) {
       console.error("Error checking verification:", error);
+      const userFriendlyMessage = handleFirebaseError(error);
       toast({
-        title: "Error",
-        description: error.message || "Failed to check verification status. Please try again.",
+        title: "Verification Check Failed",
+        description: userFriendlyMessage,
         variant: "destructive",
       });
     } finally {
