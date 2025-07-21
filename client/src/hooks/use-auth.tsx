@@ -106,8 +106,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
       
-      // Log the cookies after login for debugging
+      // Log the cookies and response headers after login for debugging
       console.log("Cookies after login:", document.cookie);
+      console.log("Set-Cookie header from response:", res.headers.get('set-cookie'));
+      console.log("All response headers:", Array.from(res.headers.entries()));
       
       // Get the response data
       const userData = await res.json();

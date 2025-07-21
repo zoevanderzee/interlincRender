@@ -48,6 +48,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.sendFile(path.resolve(__dirname, '..', 'client', 'public', 'login.html'));
   });
   
+  // Debug browser login page  
+  app.get('/debug-login', (req, res) => {
+    res.sendFile(path.resolve(__dirname, '..', 'debug-browser-login.html'));
+  });
+  
   // Public health check endpoint - no auth required
   app.get(`${apiRouter}/health`, async (req: Request, res: Response) => {
     try {

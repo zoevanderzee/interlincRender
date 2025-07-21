@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Browser Login</title>
+</head>
+<body>
+    <h1>Debug Browser Login Test</h1>
+    
+    <form id="loginForm">
+        <div>
+            <label>Username:</label>
+            <input type="text" id="username" value="demo" />
+        </div>
+        <div>
+            <label>Password:</label>
+            <input type="password" id="password" value="OriginalTest123!" />
+        </div>
+        <button type="submit">Login</button>
+    </form>
+    
+    <div id="result"></div>
+    
+    <script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const resultDiv = document.getElementById('result');
+        
+        console.log('Starting browser login test...');
+        
+        try {
+            console.log('Cookies before login:', document.cookie);
+            
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username, password }),
+                credentials: 'include'
+            });
+            
+            console.log('Login response status:', response.status);
+            console.log('Set-Cookie header:', response.headers.get('set-cookie'));
+            console.log('All headers:', [...response.headers.entries()]);
+            
+            if (!response.ok) {
+                const error = await response.json();
+                console.log('Login failed:', error);
+                resultDiv.innerHTML = `<div style="color: red;">Login failed: ${error.message}</div>`;
+                return;
+            }
+            
+            const userData = await response.json();
+            console.log('Login successful:', userData);
+            console.log('Cookies after login:', document.cookie);
+            
+            // Test immediate auth check
+            const userResponse = await fetch('/api/user', {
+                credentials: 'include'
+            });
+            
+            console.log('Auth check status:', userResponse.status);
+            
+            if (userResponse.ok) {
+                const authData = await userResponse.json();
+                console.log('Auth check successful:', authData);
+                resultDiv.innerHTML = `<div style="color: green;">Login and auth check successful!</div>`;
+            } else {
+                const authError = await userResponse.json();
+                console.log('Auth check failed:', authError);
+                resultDiv.innerHTML = `<div style="color: orange;">Login successful but auth check failed</div>`;
+            }
+            
+        } catch (error) {
+            console.error('Login error:', error);
+            resultDiv.innerHTML = `<div style="color: red;">Error: ${error.message}</div>`;
+        }
+    });
+    </script>
+</body>
+</html>

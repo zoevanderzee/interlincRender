@@ -49,15 +49,16 @@ export function setupAuth(app: Express) {
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || 'creativlinc-secret-key',
     resave: false,
-    saveUninitialized: true, // Allow creating sessions for login
+    saveUninitialized: false, // Critical: Don't save empty sessions
     name: 'creativlinc.sid',
-    rolling: false,
+    rolling: true, // Extend session on each request
     cookie: {
-      secure: false, // Keep false for HTTP in development
+      secure: false, // Must be false for HTTP development
       maxAge: 1000 * 60 * 60 * 24, // 24 hours
-      httpOnly: true, // Standard security for session cookies
-      sameSite: 'lax', // Standard setting for same-site requests
+      httpOnly: false, // Allow JavaScript access for debugging in development
+      sameSite: 'lax', // Works with same-site requests
       path: '/',
+      domain: undefined // Let browser set domain automatically
     },
     // Use the storage implementation's session store
     store: storage.sessionStore
@@ -84,6 +85,22 @@ export function setupAuth(app: Express) {
   // Configure Express to trust proxy headers in all environments
   // This is needed for cookies to work properly in Replit
   app.set("trust proxy", 1);
+  
+  // Add CORS headers for cookie support - only for development cross-origin requests
+  if (process.env.NODE_ENV === 'development') {
+    app.use((req, res, next) => {
+      res.header('Access-Control-Allow-Origin', req.headers.origin);
+      res.header('Access-Control-Allow-Credentials', 'true');
+      res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization');
+      
+      if (req.method === 'OPTIONS') {
+        res.sendStatus(200);
+      } else {
+        next();
+      }
+    });
+  }
 
   // Setup session middleware
   app.use(session(sessionSettings));
@@ -478,37 +495,25 @@ export function setupAuth(app: Express) {
         // Return user info without the password
         const { password, ...userInfo } = user;
         
-        // Force immediate session save to ensure the cookie is set
-        req.session.save((saveErr) => {
-          if (saveErr) {
-            console.error("Session save error:", saveErr);
-            return next(saveErr);
-          }
-          
-          // Save the session before responding
-          req.session.save((saveErr) => {
-            if (saveErr) {
-              console.error('Session save error:', saveErr);
-            }
-          });
-          
-          // Log response headers being sent back
-          console.log("Login response - setting cookie:", {
-            'Set-Cookie': res.getHeader('Set-Cookie'),
-            sessionID: req.sessionID
-          });
-          
-          // Check if user needs subscription and add redirect flag
-          const requiresSubscription = userInfo.subscriptionStatus === 'inactive' || 
-                                      userInfo.subscriptionStatus === 'past_due' ||
-                                      !userInfo.subscriptionStatus;
-          
-          return res.status(200).json({
-            ...userInfo,
-            emailVerified: userInfo.emailVerified,
-            requiresSubscription,
-            redirectToSubscription: requiresSubscription
-          });
+        // Log session info immediately after login
+        console.log("Login successful for user:", user.id, "Session ID:", req.sessionID);
+        
+        // Log response headers being sent back
+        console.log("Login response - setting cookie:", {
+          sessionID: req.sessionID,
+          isAuthenticated: req.isAuthenticated()
+        });
+        
+        // Check if user needs subscription and add redirect flag
+        const requiresSubscription = userInfo.subscriptionStatus === 'inactive' || 
+                                    userInfo.subscriptionStatus === 'past_due' ||
+                                    !userInfo.subscriptionStatus;
+        
+        return res.status(200).json({
+          ...userInfo,
+          emailVerified: userInfo.emailVerified,
+          requiresSubscription,
+          redirectToSubscription: requiresSubscription
         });
       });
     })(req, res, next);
