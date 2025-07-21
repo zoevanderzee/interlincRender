@@ -72,9 +72,21 @@ export async function apiRequest(
     }
     
     // Add user ID header for authentication fallback
-    const user = JSON.parse(localStorage.getItem('creativlinc_user') || 'null');
-    if (user?.id) {
-      defaultHeaders['X-User-ID'] = user.id.toString();
+    try {
+      const userDataString = localStorage.getItem('creativlinc_user');
+      console.log('localStorage creativlinc_user:', userDataString);
+      
+      if (userDataString) {
+        const user = JSON.parse(userDataString);
+        console.log('Parsed user data:', user);
+        
+        if (user?.id) {
+          defaultHeaders['X-User-ID'] = user.id.toString();
+          console.log('Added X-User-ID header:', user.id);
+        }
+      }
+    } catch (e) {
+      console.error('Error reading user from localStorage:', e);
     }
     
     const headers: Record<string, string> = { ...defaultHeaders, ...(customHeaders || {}) };
