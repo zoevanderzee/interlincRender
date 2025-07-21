@@ -18,15 +18,8 @@ export function ProtectedRoute({ path, children }: ProtectedRouteProps) {
     if (!isLoading && !user) {
       console.log("Force redirecting to /auth");
       setLocation("/auth");
-    } else if (!isLoading && user && user.subscriptionStatus !== 'active') {
-      // Check if we're already on the subscription page
-      if (!location.includes('showSubscription=true')) {
-        console.log("User needs subscription, redirecting to subscription page");
-        const subscriptionUrl = `/auth?showSubscription=true&userId=${user.id}&role=${user.role}&email=${user.email}`;
-        setLocation(subscriptionUrl);
-      }
     }
-  }, [isLoading, user, setLocation, location]);
+  }, [isLoading, user, setLocation]);
 
   return (
     <Route path={path}>
