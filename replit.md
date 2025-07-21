@@ -118,9 +118,10 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
-- July 21, 2025: **Email Verification to Subscription Flow Fixed** - Email verification now properly redirects to subscription payment instead of login page
+- July 21, 2025: **Firebase-to-Database Sync Fixed for All Users** - Fixed sync-user endpoint to properly handle Firebase users with placeholder passwords, ensuring all future email verified users can complete the login → subscription flow
+- July 21, 2025: **Login Success Subscription Redirect Implemented** - Users with inactive subscriptions are automatically redirected to existing subscription selection after successful login
+- July 21, 2025: **Email Verification to Login Flow Corrected** - Email verification now properly redirects to login page, then login process handles subscription redirect for inactive users
 - July 21, 2025: **Authentication Bug Fixed** - Resolved critical password comparison mismatch between scrypt hashing and bcrypt verification
-- July 21, 2025: **Database Sync Issue Resolved** - Firebase email verification now correctly updates PostgreSQL with fresh user data
 - July 8, 2025: **Firebase Web SDK Integration Complete** - Replaced server-side registration with client-side Firebase authentication
 - July 8, 2025: Updated email verification flow to use Firebase's built-in email verification system
 - July 8, 2025: Created hybrid authentication flow: Firebase handles signup+verification, Passport.js handles post-verification sessions
