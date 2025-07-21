@@ -128,11 +128,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["/api/budget"] });
       
-      // Check if user needs subscription after login
-      const needsSubscription = (!data.subscriptionStatus || data.subscriptionStatus === 'inactive') &&
-                               (data.role === 'business' || data.role === 'contractor');
-      
-      if (needsSubscription) {
+      // Check if user needs subscription after login (using server response flag)
+      if (data.redirectToSubscription) {
         console.log("User needs subscription, redirecting to subscription page");
         toast({
           title: "Account Setup Required",

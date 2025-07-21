@@ -107,10 +107,10 @@ export function setupAuth(app: Express) {
           return done(null, false, { message: "Invalid username or password" });
         }
 
-        // Check if email is verified (allow login for existing users without verification for backward compatibility)
-        if (user.emailVerified === false && user.emailVerificationToken) {
+        // Check if email is verified
+        if (user.emailVerified === false) {
           return done(null, false, { 
-            message: "Please verify your email address before logging in",
+            message: "Please verify your email before logging in.",
             requiresEmailVerification: true,
             email: user.email
           });
@@ -472,9 +472,16 @@ export function setupAuth(app: Express) {
             sessionID: req.sessionID
           });
           
+          // Check if user needs subscription and add redirect flag
+          const requiresSubscription = userInfo.subscriptionStatus === 'inactive' || 
+                                      userInfo.subscriptionStatus === 'past_due' ||
+                                      !userInfo.subscriptionStatus;
+          
           return res.status(200).json({
             ...userInfo,
-            emailVerified: userInfo.emailVerified
+            emailVerified: userInfo.emailVerified,
+            requiresSubscription,
+            redirectToSubscription: requiresSubscription
           });
         });
       });

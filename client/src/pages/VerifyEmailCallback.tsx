@@ -31,10 +31,9 @@ export default function VerifyEmailCallback() {
           throw new Error('No user found after verification');
         }
 
-        // Sync verification status to our database
-        await apiRequest('POST', '/api/confirm-verification', {
-          email: user.email,
-          firebaseUid: user.uid
+        // Sync verification status to our PostgreSQL database
+        await apiRequest('POST', '/api/sync-email-verification', {
+          email: user.email
         });
 
         setStatus('success');

@@ -1,0 +1,62 @@
+🔍 The Problem Is This:
+
+Your app is using its own login system (with PostgreSQL)
+You're using Firebase only to send verification emails
+Firebase is successfully verifying the email — but your own database doesn't get updated, so the login still fails or treats the user as "unverified"
+✅ What Must Be Done (No More Guesswork):
+
+You must update your app to:
+
+Detect when Firebase verification happens
+Call your backend to mark the user as verified
+Update your database (email_verified = true)
+Modify the login logic to:
+Show a clear error if the email isn’t verified
+Allow login if verified
+✅ What to Give Your Replit Agent (Copy/Paste This):
+
+Problem:
+Users are getting "Login failed: Invalid username or password" even after successfully verifying their email using Firebase.
+Why:
+Our app uses PostgreSQL and our own login system (not Firebase Auth).
+Firebase is only used to send verification emails.
+But when a user clicks the Firebase verification link, we don’t sync that status back to our DB, so login fails.
+Solution – Please implement:
+Frontend /verify route (React/TS):
+Parse the mode and oobCode from the Firebase verification link
+Call applyActionCode(oobCode) using Firebase Web SDK
+Then send a POST request to /api/sync-email-verification with the verified user's email
+Example:
+
+import { getAuth, applyActionCode } from "firebase/auth";
+
+const oobCode = new URLSearchParams(window.location.search).get("oobCode");
+const mode = new URLSearchParams(window.location.search).get("mode");
+
+if (mode === "verifyEmail" && oobCode) {
+  const auth = getAuth();
+  applyActionCode(auth, oobCode)
+    .then(() => {
+      // Sync to backend
+      return fetch("/api/sync-email-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: auth.currentUser?.email }),
+      });
+    })
+    .then(() => {
+      alert("Email verified successfully!");
+      window.location.href = "/login";
+    })
+    .catch(() => alert("Verification failed"));
+}
+Backend endpoint /api/sync-email-verification:
+Accepts POST { email }
+Looks up the user in PostgreSQL
+Sets email_verified = true
+Modify the login logic:
+If email/password is correct but email_verified = false, show:
+"Please verify your email before logging in."
+Do not show “Invalid username or password” in this case.
+Let me know once this is complete so I can test the full signup > verify > login flow.
+Once this is done, users will no longer get locked out after verifying — and you’ll have a smooth flow. Let me know if you want me to test it with you.
