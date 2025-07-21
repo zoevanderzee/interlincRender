@@ -89,20 +89,38 @@ export default function AuthPage() {
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     
+    // Handle subscription redirect after email verification
+    const showSubscriptionParam = searchParams.get('showSubscription');
+    const userIdParam = searchParams.get('userId');
+    const roleParam = searchParams.get('role');
+    const emailParam = searchParams.get('email');
+    
+    if (showSubscriptionParam === 'true' && userIdParam && roleParam && emailParam) {
+      console.log(`Processing subscription redirect after email verification: UserID=${userIdParam}, Role=${roleParam}, Email=${emailParam}`);
+      setShowSubscription(true);
+      setRegisteredUser({
+        id: parseInt(userIdParam),
+        email: emailParam,
+        username: emailParam.split('@')[0],
+        role: roleParam
+      });
+      return; // Exit early to avoid other URL handling
+    }
+    
     // Handle project-specific invites (legacy system)
     const inviteParam = searchParams.get('invite');
-    const emailParam = searchParams.get('email');
+    const inviteEmailParam = searchParams.get('email');
     
     // Handle business onboarding links
     const tokenParam = searchParams.get('token');
     const businessIdParam = searchParams.get('businessId');
     const workerParam = searchParams.get('worker');
     
-    if (inviteParam && emailParam) {
+    if (inviteParam && inviteEmailParam) {
       // Project-specific invitation with email
-      console.log(`Processing project invitation: ID=${inviteParam}, Email=${emailParam}`);
+      console.log(`Processing project invitation: ID=${inviteParam}, Email=${inviteEmailParam}`);
       setInviteId(parseInt(inviteParam));
-      setInviteEmail(emailParam);
+      setInviteEmail(inviteEmailParam);
       setActiveTab("register"); // Automatically switch to register tab for invites
     } 
     else if (tokenParam && businessIdParam) {

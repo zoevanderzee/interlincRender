@@ -121,10 +121,15 @@ export function EmailVerificationForm({
               title: "Email Verified",
               description: "Your email has been successfully verified!",
             });
-            // Pass user data with authentication status
+            // Check if user needs subscription after verification
+            const needsSubscription = syncData.user && 
+              (!syncData.user.subscriptionStatus || syncData.user.subscriptionStatus === 'inactive');
+            
+            // Pass user data with authentication status and subscription info
             onVerified({
               ...syncData.user,
-              authenticated: syncData.authenticated || true
+              authenticated: syncData.authenticated || true,
+              needsSubscription: needsSubscription && (syncData.user.role === 'business' || syncData.user.role === 'contractor')
             });
           } else {
             const errorData = await syncResponse.json();
