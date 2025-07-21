@@ -24,15 +24,17 @@ export function registerSyncUserRoutes(app: Express) {
       
       if (existingUser) {
         // Update existing user with Firebase UID and verification status
+        let updatedUser = existingUser;
         if (emailVerified) {
-          await storage.updateUser(existingUser.id, { 
+          const result = await storage.updateUser(existingUser.id, { 
             emailVerified: true, 
             firebaseUid: firebaseUid 
           });
+          updatedUser = result || existingUser;
         }
         
         // Log the user in by creating a session
-        req.login(existingUser, (err) => {
+        req.login(updatedUser, (err) => {
           if (err) {
             console.error('Error creating session:', err);
             return res.status(500).json({ 
@@ -44,8 +46,8 @@ export function registerSyncUserRoutes(app: Express) {
           return res.json({ 
             success: true, 
             message: "User synced and logged in",
-            userId: existingUser.id,
-            user: existingUser,
+            userId: updatedUser.id,
+            user: updatedUser,
             authenticated: true
           });
         });

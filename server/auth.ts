@@ -25,7 +25,17 @@ async function hashPassword(password: string) {
 
 // Function to compare passwords
 async function comparePasswords(supplied: string, stored: string) {
-  return await bcrypt.compare(supplied, stored);
+  // Handle both scrypt and bcrypt formats for backward compatibility
+  if (stored.includes('.') && stored.length > 100) {
+    // This is the scrypt format: hash.salt
+    const [storedHash, salt] = stored.split('.');
+    const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
+    const storedBuf = Buffer.from(storedHash, 'hex');
+    return timingSafeEqual(suppliedBuf, storedBuf);
+  } else {
+    // This is the bcrypt format 
+    return await bcrypt.compare(supplied, stored);
+  }
 }
 
 // Configure passport and session
