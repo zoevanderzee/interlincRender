@@ -492,8 +492,17 @@ export default function AuthPage() {
                 description: "Welcome back!",
               });
               
-              // Redirect to dashboard
-              window.location.href = '/';
+              // Check subscription status before allowing dashboard access
+              if (userData.subscriptionStatus !== 'active') {
+                console.log("User needs subscription, redirecting to subscription page");
+                // Redirect to subscription page with user info
+                const subscriptionUrl = `/auth?showSubscription=true&userId=${userData.id}&role=${userData.role}&email=${userData.email}`;
+                window.location.href = subscriptionUrl;
+              } else {
+                console.log("User has active subscription, redirecting to dashboard");
+                // Redirect to dashboard
+                window.location.href = '/';
+              }
             } else {
               throw new Error("Failed to retrieve user data from backend");
             }
