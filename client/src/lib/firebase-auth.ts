@@ -1,16 +1,21 @@
-import { createUserWithEmailAndPassword, sendEmailVerification, User } from "firebase/auth";
+import { 
+  createUserWithEmailAndPassword, 
+  sendEmailVerification, 
+  signInWithEmailAndPassword,
+  signOut,
+  User 
+} from "firebase/auth";
 import { auth } from "./firebase";
-import { apiRequest } from "./queryClient";
 import { handleFirebaseError } from "./firebase-errors";
 
-export interface FirebaseSignupResult {
+export interface FirebaseAuthResult {
   success: boolean;
   user?: User;
   error?: string;
 }
 
 // Function to handle Firebase user signup and email verification
-export const signUpUser = async (email: string, password: string): Promise<FirebaseSignupResult> => {
+export const signUpUser = async (email: string, password: string): Promise<FirebaseAuthResult> => {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user: User = userCredential.user;
@@ -18,9 +23,6 @@ export const signUpUser = async (email: string, password: string): Promise<Fireb
     // Send email verification
     await sendEmailVerification(user);
     console.log("Verification email sent to:", email);
-    
-    // Note: User will be synced to database during email verification process
-    console.log("Firebase user created, email verification sent");
 
     return {
       success: true,
@@ -36,10 +38,65 @@ export const signUpUser = async (email: string, password: string): Promise<Fireb
   }
 };
 
+// Function to handle Firebase login with email verification check
+export const loginUser = async (email: string, password: string): Promise<FirebaseAuthResult> => {
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+
+    // Check if email is verified
+    if (!user.emailVerified) {
+      await signOut(auth);
+      return {
+        success: false,
+        error: "Please verify your email before logging in."
+      };
+    }
+
+    // Sync user metadata to backend (optional)
+    try {
+      await fetch("/api/sync-firebase-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          uid: user.uid,
+          email: user.email,
+          emailVerified: user.emailVerified,
+          displayName: user.displayName || ""
+        }),
+      });
+    } catch (syncError) {
+      console.warn("Backend sync failed, but login succeeded:", syncError);
+    }
+
+    return {
+      success: true,
+      user: user
+    };
+
+  } catch (error: any) {
+    console.error("Login error:", error);
+    return {
+      success: false,
+      error: handleFirebaseError(error)
+    };
+  }
+};
+
 // Function to check if user's email is verified
 export const isEmailVerified = (): boolean => {
   const user = auth.currentUser;
   return user?.emailVerified ?? false;
+};
+
+// Function to get current Firebase user
+export const getCurrentUser = (): User | null => {
+  return auth.currentUser;
+};
+
+// Function to sign out
+export const logoutUser = async (): Promise<void> => {
+  await signOut(auth);
 };
 
 // Function to resend email verification

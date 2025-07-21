@@ -1,0 +1,80 @@
+MISSION: Fully transition authentication to Firebase Auth (no custom auth system)
+Our current setup (Firebase for verification + PostgreSQL for auth) is broken and unmaintainable.
+We are moving to Firebase-managed user accounts, which will 100% guarantee:
+Working signup and verification
+Reliable login
+No manual sync of email_verified or passwords
+DO THIS:
+1. ✅ Sign up user using Firebase Web SDK:
+import { getAuth, createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
+
+export const signUpUser = async (email: string, password: string): Promise<void> => {
+  const auth = getAuth();
+  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+  await sendEmailVerification(userCredential.user);
+  alert("Check your email to verify your account.");
+};
+2. ✅ Verify email in /verify route:
+Firebase sends the user to /verify?mode=verifyEmail&oobCode=XYZ.
+The app must handle this using applyActionCode.
+import { useEffect } from "react";
+import { useRouter } from "next/router";
+import { getAuth, applyActionCode } from "firebase/auth";
+
+export default function VerifyEmail() {
+  const router = useRouter();
+  const { oobCode, mode } = router.query;
+
+  useEffect(() => {
+    const verify = async () => {
+      if (mode === "verifyEmail" && typeof oobCode === "string") {
+        const auth = getAuth();
+        try {
+          await applyActionCode(auth, oobCode);
+          alert("Email verified!");
+          router.push("/login");
+        } catch (err) {
+          alert("Verification link is invalid or expired.");
+          router.push("/signup");
+        }
+      }
+    };
+    verify();
+  }, [mode, oobCode, router]);
+
+  return <div>Verifying your email...</div>;
+}
+3. ✅ Log in user using Firebase Web SDK:
+Only allow login if emailVerified is true.
+import { getAuth, signInWithEmailAndPassword, signOut } from "firebase/auth";
+
+export const loginUser = async (email: string, password: string): Promise<void> => {
+  const auth = getAuth();
+  const userCredential = await signInWithEmailAndPassword(auth, email, password);
+  const user = userCredential.user;
+
+  if (!user.emailVerified) {
+    await signOut(auth);
+    throw new Error("Please verify your email before logging in.");
+  }
+
+  // Proceed to dashboard
+};
+4. ✅ (Optional) Sync user to our backend only after login
+Only store metadata (not passwords or verification)
+await fetch("/api/users", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    uid: user.uid,
+    email: user.email,
+    name: user.displayName || "",
+  }),
+});
+5. ✅ Firebase Setup Checklist (Done by us in Console)
+Email/Password provider is enabled
+https://creativlinc.app is in Authorized Domains
+Email template uses %LINK% (no hardcoded links)
+Project has public-facing name + support email
+We are NOT using custom SMTP (unless properly configured)
+✅ This new system is fully managed by Firebase, removes our broken email_verified sync, and ensures login/verification will not fail.

@@ -7,29 +7,29 @@ export default function VerifyEmail() {
   const [status, setStatus] = useState("Verifying your email...");
 
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const oobCode = urlParams.get('oobCode');
-    const mode = urlParams.get('mode');
+    const verify = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const oobCode = urlParams.get('oobCode');
+      const mode = urlParams.get('mode');
 
-    if (mode === "verifyEmail" && oobCode) {
-      const auth = getAuth();
-      applyActionCode(auth, oobCode)
-        .then(async () => {
-          // Sync to backend
-          await fetch("/api/sync-email-verification", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: auth.currentUser?.email })
-          });
-          setStatus("✅ Email verified successfully. You can now log in.");
+      if (mode === "verifyEmail" && oobCode) {
+        const auth = getAuth();
+        try {
+          await applyActionCode(auth, oobCode);
+          setStatus("✅ Email verified successfully! You can now log in.");
           setTimeout(() => setLocation("/auth"), 3000);
-        })
-        .catch(() => {
-          setStatus("❌ Verification failed. This link may be expired or already used.");
-        });
-    } else {
-      setStatus("❌ Invalid verification link.");
-    }
+        } catch (error) {
+          console.error("Verification error:", error);
+          setStatus("❌ Verification link is invalid or expired.");
+          setTimeout(() => setLocation("/auth"), 3000);
+        }
+      } else {
+        setStatus("❌ Invalid verification link.");
+        setTimeout(() => setLocation("/auth"), 3000);
+      }
+    };
+
+    verify();
   }, [setLocation]);
 
   return (
@@ -37,6 +37,7 @@ export default function VerifyEmail() {
       <div className="max-w-md w-full space-y-8 p-8 text-center">
         <h2 className="text-2xl font-bold">Email Verification</h2>
         <p className="text-lg">{status}</p>
+        <p className="text-sm text-gray-600">Redirecting you to login...</p>
       </div>
     </div>
   );

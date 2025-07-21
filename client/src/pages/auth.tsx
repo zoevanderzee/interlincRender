@@ -29,7 +29,7 @@ import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
 import { EmailVerificationForm } from "@/components/auth/EmailVerificationForm";
 import SubscriptionForm from "@/components/SubscriptionForm";
 import Logo from "@assets/CD_icon_light@2x.png";
-import { signUpUser } from "@/lib/firebase-auth";
+import { signUpUser, loginUser } from "@/lib/firebase-auth";
 
 export default function AuthPage() {
   console.log("AuthPage component rendering");
@@ -379,7 +379,9 @@ export default function AuthPage() {
     const errors: Record<string, string> = {};
     
     if (!loginForm.username.trim()) {
-      errors.username = "Username is required";
+      errors.username = "Email is required";
+    } else if (!/\S+@\S+\.\S+/.test(loginForm.username)) {
+      errors.username = "Please enter a valid email address";
     }
     
     if (!loginForm.password) {
@@ -430,12 +432,48 @@ export default function AuthPage() {
     return Object.keys(errors).length === 0;
   };
 
-  // Handle login form submission
-  const handleLogin = (e: React.FormEvent) => {
+  // Handle login form submission with Firebase
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (validateLoginForm()) {
-      loginMutation.mutate(loginForm);
+    if (!validateLoginForm()) {
+      return;
+    }
+
+    try {
+      // Use email directly since form now requires email format
+      const result = await loginUser(loginForm.username, loginForm.password);
+      
+      if (result.success && result.user) {
+        toast({
+          title: "Login Successful",
+          description: "Welcome back!",
+        });
+        
+        // Redirect to dashboard or subscription page
+        window.location.href = '/';
+      } else {
+        setLoginErrors({
+          username: result.error || "Login failed",
+          password: ""
+        });
+        toast({
+          title: "Login Failed",
+          description: result.error || "Invalid credentials",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      console.error('Login error:', error);
+      setLoginErrors({
+        username: "Login failed",
+        password: ""
+      });
+      toast({
+        title: "Login Failed", 
+        description: "Please check your credentials and try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -663,11 +701,12 @@ export default function AuthPage() {
                 <form onSubmit={handleLogin}>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="username" className="text-white">Username</Label>
+                      <Label htmlFor="username" className="text-white">Email</Label>
                       <Input
                         id="username"
                         name="username"
-                        placeholder="Enter your username"
+                        type="email"
+                        placeholder="Enter your email"
                         value={loginForm.username}
                         onChange={handleLoginChange}
                         className="bg-zinc-800 border-zinc-700 text-white"
