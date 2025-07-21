@@ -39,27 +39,13 @@ export default function VerifyEmail() {
                   const userData = await syncResponse.json();
                   console.log("User synced successfully:", userData);
                   
-                  // Check if user needs subscription
-                  const needsSubscription = userData.user && 
-                    (!userData.user.subscriptionStatus || userData.user.subscriptionStatus === 'inactive');
+                  setStatus('success');
+                  setMessage("Your account is ready! You can now sign in.");
                   
-                  if (needsSubscription && (userData.user.role === 'business' || userData.user.role === 'contractor')) {
-                    setStatus('success');
-                    setMessage("Email verified! Setting up your subscription...");
-                    
-                    // Redirect to subscription flow
-                    setTimeout(() => {
-                      setLocation(`/auth?showSubscription=true&userId=${userData.user.id}&role=${userData.user.role}&email=${userData.user.email}`);
-                    }, 2000);
-                  } else {
-                    setStatus('success');
-                    setMessage("Your account is ready! You can now sign in.");
-                    
-                    // Redirect to login after 3 seconds
-                    setTimeout(() => {
-                      setLocation('/auth');
-                    }, 3000);
-                  }
+                  // Redirect to login after 3 seconds
+                  setTimeout(() => {
+                    setLocation('/auth');
+                  }, 3000);
                 } else {
                   throw new Error('Failed to sync user to database');
                 }

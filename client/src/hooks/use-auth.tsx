@@ -128,6 +128,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["/api/budget"] });
       
+      // Check if user needs subscription after login
+      const needsSubscription = (!data.subscriptionStatus || data.subscriptionStatus === 'inactive') &&
+                               (data.role === 'business' || data.role === 'contractor');
+      
+      if (needsSubscription) {
+        console.log("User needs subscription, redirecting to subscription page");
+        toast({
+          title: "Account Setup Required",
+          description: "Please select your subscription plan to access your dashboard.",
+        });
+        
+        // Redirect to subscription page with user info
+        const subscriptionUrl = `/auth?showSubscription=true&userId=${data.id}&role=${data.role}&email=${data.email}`;
+        window.location.href = subscriptionUrl;
+        return;
+      }
+      
       toast({
         title: "Login successful",
         description: `Welcome back, ${data.firstName}!`,
