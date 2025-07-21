@@ -547,7 +547,14 @@ export function setupAuth(app: Express) {
       'x-firebase-uid': req.headers['x-firebase-uid']
     });
     
-    // Priority 1: Check for Firebase UID header (Firebase Auth)
+    // Priority 1: Check if user is authenticated via PostgreSQL session
+    if (req.isAuthenticated()) {
+      // Return user info without the password
+      const { password, ...userInfo } = req.user as Express.User;
+      return res.json(userInfo);
+    }
+    
+    // Priority 2: Check for Firebase UID header (Firebase Auth)
     const firebaseUID = req.headers['x-firebase-uid'];
     if (firebaseUID) {
       try {
@@ -561,13 +568,6 @@ export function setupAuth(app: Express) {
       } catch (error) {
         console.error('Error in Firebase UID auth for /api/user:', error);
       }
-    }
-    
-    // Priority 2: Check if user is authenticated via PostgreSQL session (legacy)
-    if (req.isAuthenticated()) {
-      // Return user info without the password
-      const { password, ...userInfo } = req.user as Express.User;
-      return res.json(userInfo);
     }
     
     // Priority 3: Fallback - Check X-User-ID header for localStorage-based authentication

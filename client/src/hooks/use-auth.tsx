@@ -48,24 +48,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryFn: async () => {
       console.log("Fetching current user data...");
       try {
-        // Get Firebase user to send UID header
-        const { auth } = await import("../lib/firebase");
-        const firebaseUser = auth.currentUser;
-        
-        const headers: Record<string, string> = {
-          "Accept": "application/json",
-          "Cache-Control": "no-cache"
-        };
-        
-        // Add Firebase UID header if user is authenticated
-        if (firebaseUser?.uid) {
-          headers["x-firebase-uid"] = firebaseUser.uid;
-        }
-        
         const res = await fetch("/api/user", {
           method: "GET",
           credentials: "include",
-          headers
+          headers: {
+            "Accept": "application/json",
+            "Cache-Control": "no-cache"
+          }
         });
         
         console.log("User data response status:", res.status);
