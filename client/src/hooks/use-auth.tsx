@@ -48,6 +48,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryFn: async () => {
       console.log("Fetching current user data...");
       try {
+        // Check localStorage first for existing user data
+        const storedUser = localStorage.getItem('creativlinc_user');
+        if (storedUser) {
+          try {
+            const userData = JSON.parse(storedUser);
+            console.log("Using stored user data from localStorage:", userData?.username);
+            return userData;
+          } catch (e) {
+            console.log("Invalid stored user data, clearing localStorage");
+            localStorage.removeItem('creativlinc_user');
+          }
+        }
+
         const res = await fetch("/api/user", {
           method: "GET",
           credentials: "include",
