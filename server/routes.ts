@@ -43,14 +43,116 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // API routes prefix
   const apiRouter = "/api";
   
-  // Serve our static HTML login page
-  app.get('/direct-login', (req, res) => {
-    res.sendFile(path.resolve(__dirname, '..', 'client', 'public', 'login.html'));
-  });
+  // Direct login test removed due to __dirname issue
   
   // Debug browser login page  
   app.get('/debug-login', (req, res) => {
-    res.sendFile(path.resolve(__dirname, '..', 'debug-browser-login.html'));
+    res.send(`<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Browser Login</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        form { margin-bottom: 20px; }
+        div { margin-bottom: 10px; }
+        label { display: inline-block; width: 100px; }
+        input { padding: 5px; margin-left: 10px; }
+        button { padding: 10px 20px; background: #007cba; color: white; border: none; cursor: pointer; }
+        #result { margin-top: 20px; padding: 10px; border: 1px solid #ccc; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Debug Browser Login Test</h1>
+    
+    <form id="loginForm">
+        <div>
+            <label>Username:</label>
+            <input type="text" id="username" value="demo" />
+        </div>
+        <div>
+            <label>Password:</label>
+            <input type="password" id="password" value="OriginalTest123!" />
+        </div>
+        <button type="submit">🚀 Test Login</button>
+    </form>
+    
+    <div id="result">Ready to test...</div>
+    
+    <script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const resultDiv = document.getElementById('result');
+        
+        console.log('Starting browser login test...');
+        
+        try {
+            console.log('=== BROWSER LOGIN TEST START ===');
+            console.log('Cookies before login:', document.cookie);
+            console.log('Domain:', window.location.hostname);
+            console.log('Protocol:', window.location.protocol);
+            
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username, password }),
+                credentials: 'include'
+            });
+            
+            console.log('=== LOGIN RESPONSE ===');
+            console.log('Login response status:', response.status);
+            console.log('Set-Cookie header:', response.headers.get('set-cookie'));
+            console.log('All response headers:', [...response.headers.entries()]);
+            
+            if (!response.ok) {
+                const error = await response.json();
+                console.log('Login failed:', error);
+                resultDiv.innerHTML = \`<div style="color: red;">❌ Login failed: \${error.message}</div>\`;
+                return;
+            }
+            
+            const userData = await response.json();
+            console.log('Login successful - user data:', userData);
+            
+            // Wait a moment for cookies to be processed
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            console.log('=== COOKIE CHECK AFTER LOGIN ===');
+            console.log('Cookies after login:', document.cookie);
+            console.log('Cookie length:', document.cookie.length);
+            console.log('Has creativlinc.sid cookie:', document.cookie.includes('creativlinc.sid'));
+            
+            // Test immediate auth check
+            console.log('=== TESTING AUTH CHECK ===');
+            const userResponse = await fetch('/api/user', {
+                credentials: 'include'
+            });
+            
+            console.log('Auth check status:', userResponse.status);
+            console.log('Auth check headers sent with request - should include cookie');
+            
+            if (userResponse.ok) {
+                const authData = await userResponse.json();
+                console.log('Auth check successful:', authData);
+                resultDiv.innerHTML = \`<div style="color: green; font-weight: bold;">✅ LOGIN AND AUTH CHECK SUCCESSFUL!</div>\`;
+            } else {
+                const authError = await userResponse.json();
+                console.log('Auth check failed:', authError);
+                resultDiv.innerHTML = \`<div style="color: orange; font-weight: bold;">⚠️ LOGIN SUCCESSFUL BUT AUTH CHECK FAILED<br>This means cookies are not being maintained!</div>\`;
+            }
+            
+        } catch (error) {
+            console.error('Login error:', error);
+            resultDiv.innerHTML = \`<div style="color: red;">❌ Error: \${error.message}</div>\`;
+        }
+    });
+    </script>
+</body>
+</html>`);
   });
   
   // Public health check endpoint - no auth required
