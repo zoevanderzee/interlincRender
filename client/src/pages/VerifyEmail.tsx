@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { applyActionCode } from "firebase/auth";
+import { applyActionCode, onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function VerifyEmail() {
   const [, setLocation] = useLocation();
@@ -18,13 +19,50 @@ export default function VerifyEmail() {
     if (mode === 'verifyEmail' && oobCode) {
       applyActionCode(auth, oobCode)
         .then(() => {
-          setStatus('success');
-          setMessage("Your email has been verified successfully!");
+          console.log("Firebase email verification successful");
+          setMessage("Email verified! Setting up your account...");
           
-          // Redirect to login after 3 seconds
-          setTimeout(() => {
-            setLocation('/auth');
-          }, 3000);
+          // Wait for auth state to update and sync user to database
+          const unsubscribe = onAuthStateChanged(auth, async (user) => {
+            if (user && user.emailVerified) {
+              console.log("User is verified, syncing to database:", user.email);
+              
+              try {
+                // Sync the verified user to PostgreSQL
+                const syncResponse = await apiRequest("POST", "/api/sync-user", {
+                  firebaseUid: user.uid,
+                  email: user.email,
+                  emailVerified: true
+                });
+                
+                if (syncResponse.ok) {
+                  const userData = await syncResponse.json();
+                  console.log("User synced successfully:", userData);
+                  
+                  setStatus('success');
+                  setMessage("Your account is ready! You can now sign in.");
+                  
+                  // Redirect to login after 3 seconds
+                  setTimeout(() => {
+                    setLocation('/auth');
+                  }, 3000);
+                } else {
+                  throw new Error('Failed to sync user to database');
+                }
+              } catch (error) {
+                console.error('Error syncing user:', error);
+                setStatus('success');
+                setMessage("Email verified! Please try signing in.");
+                
+                // Still redirect to login even if sync fails
+                setTimeout(() => {
+                  setLocation('/auth');
+                }, 3000);
+              }
+              
+              unsubscribe(); // Clean up listener
+            }
+          });
         })
         .catch((error) => {
           console.error('Email verification error:', error);

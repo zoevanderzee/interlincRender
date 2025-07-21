@@ -53,7 +53,7 @@ export function registerSyncUserRoutes(app: Express) {
       const userData = {
         email,
         username: username || email.split('@')[0],
-        firstName: firstName || '',
+        firstName: firstName || 'User',
         lastName: lastName || '',
         passwordHash: 'firebase',
         role: role || 'contractor' as const,
