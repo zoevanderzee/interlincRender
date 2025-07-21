@@ -99,11 +99,15 @@ export function setupAuth(app: Express) {
       try {
         const user = await storage.getUserByUsername(username);
         if (!user) {
+          console.log(`User not found: ${username}`);
           return done(null, false, { message: "Invalid username or password" });
         }
         
+        console.log(`Login attempt for user: ${username}, emailVerified: ${user.emailVerified}`);
+        
         const isValid = await comparePasswords(password, user.password);
         if (!isValid) {
+          console.log(`Password validation failed for user: ${username}`);
           return done(null, false, { message: "Invalid username or password" });
         }
 

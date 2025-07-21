@@ -68,6 +68,29 @@ function Router() {
         <VerifyEmailCallback />
       </Route>
       
+      {/* Firebase verification URL handler - check root path for verification parameters */}
+      <Route path="/">
+        {() => {
+          const urlParams = new URLSearchParams(window.location.search);
+          const mode = urlParams.get('mode');
+          const oobCode = urlParams.get('oobCode');
+          
+          // If this is a Firebase email verification link, handle it
+          if (mode === 'verifyEmail' && oobCode) {
+            return <VerifyEmailCallback />;
+          }
+          
+          // Otherwise show normal protected route
+          return (
+            <ProtectedRoute path="/">
+              <Layout>
+                <Dashboard />
+              </Layout>
+            </ProtectedRoute>
+          );
+        }}
+      </Route>
+      
       <Route path="/reset-password">
         <ResetPasswordPage />
       </Route>
@@ -112,12 +135,7 @@ function Router() {
         <ContractorInvitePage />
       </Route>
 
-      {/* Protected Routes - require authentication */}
-      <ProtectedRoute path="/">
-        <Layout>
-          <Dashboard />
-        </Layout>
-      </ProtectedRoute>
+      {/* This is handled above in the nested route */}
       
       <ProtectedRoute path="/contracts">
         <Layout>

@@ -25,16 +25,31 @@ export default function VerifyEmailCallback() {
         const auth = getAuth();
         await applyActionCode(auth, oobCode);
 
-        // Get the user info to extract email
+        // Force refresh the user to get updated emailVerified status
+        await auth.currentUser?.reload();
         const user = auth.currentUser;
+        
         if (!user || !user.email) {
           throw new Error('No user found after verification');
         }
+        
+        if (!user.emailVerified) {
+          throw new Error('Email verification was not successful');
+        }
+        
+        console.log(`Firebase verification successful for: ${user.email}`);
 
         // Sync verification status to our PostgreSQL database
-        await apiRequest('POST', '/api/sync-email-verification', {
+        const syncResponse = await apiRequest('POST', '/api/sync-email-verification', {
           email: user.email
         });
+        
+        if (!syncResponse.ok) {
+          const errorData = await syncResponse.json();
+          throw new Error(errorData.error || 'Failed to sync verification to database');
+        }
+        
+        console.log('Database sync successful');
 
         setStatus('success');
         toast({
