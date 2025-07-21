@@ -31,7 +31,10 @@
         console.log('Starting browser login test...');
         
         try {
+            console.log('=== BROWSER LOGIN TEST START ===');
             console.log('Cookies before login:', document.cookie);
+            console.log('Domain:', window.location.hostname);
+            console.log('Protocol:', window.location.protocol);
             
             const response = await fetch('/api/login', {
                 method: 'POST',
@@ -42,9 +45,10 @@
                 credentials: 'include'
             });
             
+            console.log('=== LOGIN RESPONSE ===');
             console.log('Login response status:', response.status);
             console.log('Set-Cookie header:', response.headers.get('set-cookie'));
-            console.log('All headers:', [...response.headers.entries()]);
+            console.log('All response headers:', [...response.headers.entries()]);
             
             if (!response.ok) {
                 const error = await response.json();
@@ -54,24 +58,33 @@
             }
             
             const userData = await response.json();
-            console.log('Login successful:', userData);
+            console.log('Login successful - user data:', userData);
+            
+            // Wait a moment for cookies to be processed
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            console.log('=== COOKIE CHECK AFTER LOGIN ===');
             console.log('Cookies after login:', document.cookie);
+            console.log('Cookie length:', document.cookie.length);
+            console.log('Has creativlinc.sid cookie:', document.cookie.includes('creativlinc.sid'));
             
             // Test immediate auth check
+            console.log('=== TESTING AUTH CHECK ===');
             const userResponse = await fetch('/api/user', {
                 credentials: 'include'
             });
             
             console.log('Auth check status:', userResponse.status);
+            console.log('Auth check headers sent with request - should include cookie');
             
             if (userResponse.ok) {
                 const authData = await userResponse.json();
                 console.log('Auth check successful:', authData);
-                resultDiv.innerHTML = `<div style="color: green;">Login and auth check successful!</div>`;
+                resultDiv.innerHTML = `<div style="color: green;">✅ LOGIN AND AUTH CHECK SUCCESSFUL!</div>`;
             } else {
                 const authError = await userResponse.json();
                 console.log('Auth check failed:', authError);
-                resultDiv.innerHTML = `<div style="color: orange;">Login successful but auth check failed</div>`;
+                resultDiv.innerHTML = `<div style="color: orange;">⚠️ LOGIN SUCCESSFUL BUT AUTH CHECK FAILED<br>This means cookies are not being maintained!</div>`;
             }
             
         } catch (error) {

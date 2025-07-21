@@ -54,11 +54,11 @@ export function setupAuth(app: Express) {
     rolling: true, // Extend session on each request
     cookie: {
       secure: false, // Must be false for HTTP development
-      maxAge: 1000 * 60 * 60 * 24, // 24 hours
-      httpOnly: false, // Allow JavaScript access for debugging in development
+      maxAge: 1000 * 60 * 60 * 24, // 24 hours  
+      httpOnly: false, // CRITICAL: Allow JS access in dev for debugging
       sameSite: 'lax', // Works with same-site requests
-      path: '/',
-      domain: undefined // Let browser set domain automatically
+      path: '/', // Available for entire site
+      domain: undefined, // Let browser set domain automatically
     },
     // Use the storage implementation's session store
     store: storage.sessionStore
