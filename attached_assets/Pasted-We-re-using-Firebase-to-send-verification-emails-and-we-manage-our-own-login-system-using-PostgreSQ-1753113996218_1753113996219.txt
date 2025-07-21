@@ -1,0 +1,74 @@
+We’re using Firebase to send verification emails, and we manage our own login system using PostgreSQL.
+Login is failing with “Invalid username or password” even after successful email verification. This is a blocking issue.
+Here's what must be implemented — step-by-step:
+✅ 1. After Firebase user is created (signup):
+Immediately call the backend to store the user in our database with:
+
+email
+hashed password
+email_verified = false
+Firebase UID if needed
+await fetch("/api/users", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    email,
+    password, // Hash this before saving
+    email_verified: false,
+  }),
+});
+✅ 2. In the /verify page:
+After calling Firebase's applyActionCode(oobCode), call our backend to mark the user as verified:
+
+await fetch("/api/sync-email-verification", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ email: auth.currentUser?.email }),
+});
+✅ 3. Backend: /api/sync-email-verification endpoint:
+Accepts { email }
+Looks up the user in the DB
+Updates email_verified = true
+// Example (Node.js / Express)
+app.post("/api/sync-email-verification", async (req, res) => {
+  const { email } = req.body;
+  const user = await db.users.findOne({ where: { email } });
+
+  if (!user) return res.status(404).send("User not found");
+
+  await db.users.update(
+    { email_verified: true },
+    { where: { email } }
+  );
+
+  return res.sendStatus(200);
+});
+✅ 4. Backend Login Logic:
+Update the login function to:
+
+Check if the user exists
+Check password match
+If email_verified = false, return error: "Please verify your email"
+Only return "Invalid credentials" if password is actually wrong
+// Pseudocode
+const user = await db.users.findOne({ where: { email } });
+
+if (!user) return error("Invalid credentials");
+
+if (!user.email_verified) {
+  return error("Please verify your email before logging in");
+}
+
+if (!comparePasswords(inputPassword, user.hashed_password)) {
+  return error("Invalid credentials");
+}
+🔧 Add logs for:
+Whether user was found
+Whether password matched
+Whether user is verified
+✅ Result:
+
+Firebase handles email verification
+Your DB knows the user is verified
+Login finally works for verified users
+No more vague or false error messages
