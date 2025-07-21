@@ -487,20 +487,6 @@ export default function AuthPage() {
               console.log("- user_id:", userData.id);
               console.log("- firebase_uid:", result.user.uid);
               
-              // Check subscription status - redirect to subscription if needed
-              if (!userData.subscriptionStatus || userData.subscriptionStatus !== 'active') {
-                console.log("User needs subscription, redirecting to subscription page");
-                toast({
-                  title: "Subscription Required",
-                  description: "Please complete your subscription to access the platform.",
-                });
-                
-                // Redirect to subscription page with user info
-                const subscriptionUrl = `/auth?showSubscription=true&userId=${userData.id}&role=${userData.role}&email=${userData.email}`;
-                window.location.href = subscriptionUrl;
-                return;
-              }
-              
               toast({
                 title: "Login Successful",
                 description: "Welcome back!",

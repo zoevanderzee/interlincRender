@@ -10,30 +10,16 @@ type ProtectedRouteProps = {
 
 export function ProtectedRoute({ path, children }: ProtectedRouteProps) {
   const { user, isLoading } = useAuth();
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
 
   console.log("ProtectedRoute:", { path, isLoading, hasUser: !!user });
-
-  // Don't render anything if on auth page
-  if (location.startsWith('/auth')) {
-    return null;
-  }
 
   useEffect(() => {
     if (!isLoading && !user) {
       console.log("Force redirecting to /auth");
       setLocation("/auth");
-      return;
     }
-    
-    // Check subscription status - only redirect if not already on auth page
-    if (!isLoading && user && (!user.subscriptionStatus || user.subscriptionStatus !== 'active') && !location.startsWith('/auth')) {
-      console.log("User needs subscription, redirecting to subscription page");
-      const subscriptionUrl = `/auth?showSubscription=true&userId=${user.id}&role=${user.role}&email=${user.email}`;
-      setLocation(subscriptionUrl);
-      return;
-    }
-  }, [isLoading, user, setLocation, location]);
+  }, [isLoading, user, setLocation]);
 
   return (
     <Route path={path}>

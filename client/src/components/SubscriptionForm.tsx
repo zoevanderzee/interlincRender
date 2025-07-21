@@ -248,12 +248,16 @@ export default function SubscriptionForm({
   useEffect(() => {
     const fetchPrices = async () => {
       try {
-        const response = await apiRequest("GET", "/api/subscription-prices");
+        const response = await fetch('/api/subscription-prices');
         const priceData = await response.json();
         setPrices(priceData);
       } catch (error) {
         console.error('Error fetching prices:', error);
-        // Don't show error toast for prices, just use loading state
+        toast({
+          title: "Error",
+          description: "Failed to load subscription prices",
+          variant: "destructive",
+        });
       } finally {
         setLoadingPrices(false);
       }
