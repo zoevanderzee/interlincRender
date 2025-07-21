@@ -129,9 +129,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("Login successful, saving user data to query cache");
       queryClient.setQueryData(["/api/user"], data);
       
-      // After login, explicitly invalidate dashboard and other dependent queries
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/budget"] });
+      // Force immediate refresh of user query with the new localStorage data
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       
       // Check if user needs subscription after login (using server response flag)
       if (data.redirectToSubscription) {

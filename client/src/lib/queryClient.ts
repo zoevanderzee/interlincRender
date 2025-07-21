@@ -71,19 +71,23 @@ export async function apiRequest(
       defaultHeaders['X-CSRF-Token'] = csrfToken;
     }
     
-    // Add user ID header for authentication fallback
+    // Add user ID header for authentication
     try {
       const userDataString = localStorage.getItem('creativlinc_user');
       console.log('localStorage creativlinc_user:', userDataString);
       
-      if (userDataString) {
+      if (userDataString && userDataString !== 'null') {
         const user = JSON.parse(userDataString);
         console.log('Parsed user data:', user);
         
         if (user?.id) {
           defaultHeaders['X-User-ID'] = user.id.toString();
           console.log('Added X-User-ID header:', user.id);
+        } else {
+          console.log('No user.id found in localStorage data');
         }
+      } else {
+        console.log('No valid user data in localStorage');
       }
     } catch (e) {
       console.error('Error reading user from localStorage:', e);
