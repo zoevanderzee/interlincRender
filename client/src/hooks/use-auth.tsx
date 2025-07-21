@@ -48,53 +48,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryFn: async () => {
       console.log("Fetching current user data...");
       try {
-        // Check localStorage first for existing user data
-        const storedUser = localStorage.getItem('creativlinc_user');
-        if (storedUser) {
-          try {
-            const userData = JSON.parse(storedUser);
-            console.log("Using stored user data from localStorage:", userData?.username);
-            return userData;
-          } catch (e) {
-            console.log("Invalid stored user data, clearing localStorage");
-            localStorage.removeItem('creativlinc_user');
-          }
-        }
-
-        // Add user ID header if available in localStorage
-        const headers: Record<string, string> = {
-          "Accept": "application/json",
-          "Cache-Control": "no-cache"
-        };
-        
-        const storedUserForHeader = localStorage.getItem('creativlinc_user');
-        if (storedUserForHeader) {
-          try {
-            const userData = JSON.parse(storedUserForHeader);
-            if (userData?.id) {
-              headers['X-User-ID'] = userData.id.toString();
-              console.log("Adding X-User-ID header:", userData.id);
-            }
-          } catch (e) {
-            // Ignore parse errors
-          }
-        }
-
-        // Use apiRequest to ensure proper headers are sent
+        // Use apiRequest which handles X-User-ID header automatically
         const res = await apiRequest("GET", "/api/user");
         
-        console.log("User data response status:", res.status);
-        console.log("Auth query - isLoading will be false after this");
-        
         if (!res.ok) {
-          console.log("User not authenticated via API");
+          console.log("User not authenticated");
           return null;
         }
         
         const userData = await res.json();
         console.log("User authenticated:", userData?.username);
         
-        // Update localStorage with fresh user data
+        // Store user data in localStorage for header use
         localStorage.setItem('creativlinc_user', JSON.stringify(userData));
         
         return userData;
@@ -154,13 +119,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       console.log("Login successful, storing user data in localStorage:", userData);
       
-      // Store the user data in localStorage for session persistence
+      // Store the user data in localStorage for header authentication
       localStorage.setItem('creativlinc_user', JSON.stringify(userData));
-      
       console.log("User data stored in localStorage:", userData.id, userData.username);
-      
-      // Immediately invalidate the user query to trigger a refresh with headers
-      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       
       return userData;
     },
