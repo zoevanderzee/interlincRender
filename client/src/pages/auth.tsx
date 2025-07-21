@@ -655,7 +655,7 @@ export default function AuthPage() {
                         className="bg-zinc-800 border-zinc-700 text-white"
                       />
                       {loginErrors.username && (
-                        <p className="text-sm text-red-500">{loginErrors.username}</p>
+                        <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{loginErrors.username}</p>
                       )}
                     </div>
                     <div className="space-y-2">
@@ -670,7 +670,7 @@ export default function AuthPage() {
                         className="bg-zinc-800 border-zinc-700 text-white"
                       />
                       {loginErrors.password && (
-                        <p className="text-sm text-red-500">{loginErrors.password}</p>
+                        <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{loginErrors.password}</p>
                       )}
                       <div className="mt-2 text-right">
                         <button 
@@ -726,7 +726,7 @@ export default function AuthPage() {
                           className="bg-zinc-800 border-zinc-700 text-white"
                         />
                         {registerErrors.firstName && (
-                          <p className="text-sm text-red-500">{registerErrors.firstName}</p>
+                          <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.firstName}</p>
                         )}
                       </div>
                       <div className="space-y-2">
@@ -740,7 +740,7 @@ export default function AuthPage() {
                           className="bg-zinc-800 border-zinc-700 text-white"
                         />
                         {registerErrors.lastName && (
-                          <p className="text-sm text-red-500">{registerErrors.lastName}</p>
+                          <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.lastName}</p>
                         )}
                       </div>
                     </div>
@@ -757,7 +757,7 @@ export default function AuthPage() {
                         className="bg-zinc-800 border-zinc-700 text-white"
                       />
                       {registerErrors.email && (
-                        <p className="text-sm text-red-500">{registerErrors.email}</p>
+                        <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.email}</p>
                       )}
                     </div>
                     
@@ -772,7 +772,7 @@ export default function AuthPage() {
                         className="bg-zinc-800 border-zinc-700 text-white"
                       />
                       {registerErrors.username && (
-                        <p className="text-sm text-red-500">{registerErrors.username}</p>
+                        <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.username}</p>
                       )}
                     </div>
                     
@@ -789,7 +789,7 @@ export default function AuthPage() {
                           className="bg-zinc-800 border-zinc-700 text-white"
                         />
                         {registerErrors.password && (
-                          <p className="text-sm text-red-500">{registerErrors.password}</p>
+                          <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.password}</p>
                         )}
                       </div>
                       <div className="space-y-2">
@@ -804,7 +804,7 @@ export default function AuthPage() {
                           className="bg-zinc-800 border-zinc-700 text-white"
                         />
                         {registerErrors.confirmPassword && (
-                          <p className="text-sm text-red-500">{registerErrors.confirmPassword}</p>
+                          <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.confirmPassword}</p>
                         )}
                       </div>
                     </div>
@@ -837,7 +837,7 @@ export default function AuthPage() {
                           className="bg-zinc-800 border-zinc-700 text-white"
                         />
                         {registerErrors.company && (
-                          <p className="text-sm text-red-500">{registerErrors.company}</p>
+                          <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.company}</p>
                         )}
                       </div>
                     )}
@@ -924,8 +924,8 @@ export default function AuthPage() {
                           className="bg-zinc-800 border-zinc-700 text-white"
                         />
                         {forgotPasswordError && (
-                          <div className="flex items-center mt-2 text-sm text-red-500">
-                            <AlertCircle className="h-4 w-4 mr-1" />
+                          <div className="flex items-center mt-2 text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">
+                            <AlertCircle className="h-4 w-4 mr-2" />
                             {forgotPasswordError}
                           </div>
                         )}
