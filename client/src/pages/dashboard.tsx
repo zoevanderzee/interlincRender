@@ -49,8 +49,8 @@ const Dashboard = () => {
   const [_, navigate] = useLocation();
   const { user, isLoading: isAuthLoading } = useAuth();
 
-  // Redirect business users without Trolley profile to complete setup - BUT NOT if they need subscription
-  if (user && user.role === 'business' && !user.trolleyCompanyProfileId && user.subscriptionStatus === 'active') {
+  // Redirect business users without Trolley profile to complete setup
+  if (user && user.role === 'business' && !user.trolleyCompanyProfileId) {
     navigate('/business-setup');
     return null;
   }
