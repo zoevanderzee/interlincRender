@@ -99,7 +99,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.error || "Login failed");
+        const error = new Error(errorData.message || errorData.error || "Login failed");
+        // Attach error type for specific handling
+        (error as any).errorType = errorData.error;
+        (error as any).email = errorData.email;
+        throw error;
       }
       
       // Log the cookies after login for debugging
@@ -147,13 +151,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: `Welcome back, ${data.firstName}!`,
       });
     },
-    onError: (error: Error) => {
+    onError: (error: Error & { errorType?: string; email?: string }) => {
       console.error("Login error:", error);
-      toast({
-        title: "Login failed",
-        description: error.message,
-        variant: "destructive",
-      });
+      
+      if (error.errorType === 'unverified_email') {
+        toast({
+          title: "Email Verification Required",
+          description: "Please verify your email address before logging in. Check your inbox for the verification link.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Login failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
     },
   });
 

@@ -436,8 +436,21 @@ export function setupAuth(app: Express) {
       }
       
       if (!user) {
-        console.log("Login failed - invalid credentials");
-        return res.status(401).json({ error: info?.message || "Invalid username or password" });
+        console.log("Login failed:", info?.message || "Unknown error");
+        
+        // Handle different types of authentication failures
+        if (info?.requiresEmailVerification) {
+          return res.status(403).json({ 
+            error: "unverified_email",
+            message: info.message,
+            email: info.email
+          });
+        }
+        
+        return res.status(401).json({ 
+          error: "invalid_credentials",
+          message: info?.message || "Invalid username or password" 
+        });
       }
       
       // Log in the user (create the session)
