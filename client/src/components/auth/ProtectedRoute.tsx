@@ -30,7 +30,7 @@ export function ProtectedRoute({ path, children }: ProtectedRouteProps) {
     if (!isLoading && user && (!user.subscriptionStatus || user.subscriptionStatus !== 'active')) {
       console.log("User needs subscription, redirecting to subscription page");
       const subscriptionUrl = `/auth?showSubscription=true&userId=${user.id}&role=${user.role}&email=${user.email}`;
-      window.location.href = subscriptionUrl;
+      setLocation(subscriptionUrl);
       return;
     }
   }, [isLoading, user, setLocation]);
