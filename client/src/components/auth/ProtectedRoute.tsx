@@ -18,18 +18,8 @@ export function ProtectedRoute({ path, children }: ProtectedRouteProps) {
     if (!isLoading && !user) {
       console.log("Force redirecting to /auth");
       setLocation("/auth");
-    } else if (!isLoading && user && user.subscriptionStatus !== 'active') {
-      // If user is authenticated but doesn't have active subscription, redirect to subscription page
-      const currentPath = location;
-      const isAlreadyOnSubscriptionPage = currentPath.includes('showSubscription=true');
-      
-      if (!isAlreadyOnSubscriptionPage) {
-        console.log("User needs subscription, redirecting to subscription page from ProtectedRoute");
-        const subscriptionUrl = `/auth?showSubscription=true&userId=${user.id}&role=${user.role}&email=${user.email}`;
-        setLocation(subscriptionUrl);
-      }
     }
-  }, [isLoading, user, setLocation, location]);
+  }, [isLoading, user, setLocation]);
 
   return (
     <Route path={path}>
@@ -41,7 +31,17 @@ export function ProtectedRoute({ path, children }: ProtectedRouteProps) {
           </div>
         </div>
       ) : user ? (
-        children
+        // Check subscription status - if inactive, block access to dashboard
+        user.subscriptionStatus === 'active' ? (
+          children
+        ) : (
+          <div className="flex items-center justify-center min-h-screen bg-black">
+            <div className="text-center">
+              <p className="text-white">Subscription required to access dashboard</p>
+              <p className="text-white text-sm mt-2">Please complete your subscription to continue</p>
+            </div>
+          </div>
+        )
       ) : (
         <div className="flex items-center justify-center min-h-screen bg-black">
           <div className="text-center">
