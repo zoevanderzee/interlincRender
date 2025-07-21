@@ -441,17 +441,69 @@ export default function AuthPage() {
     }
 
     try {
+      console.log("Attempting Firebase login with:", loginForm.username);
+      
       // Use email directly since form now requires email format
       const result = await loginUser(loginForm.username, loginForm.password);
       
       if (result.success && result.user) {
-        toast({
-          title: "Login Successful",
-          description: "Welcome back!",
-        });
+        console.log("Firebase login successful, syncing with backend...");
         
-        // Redirect to dashboard or subscription page
-        window.location.href = '/';
+        // After successful Firebase login, get the user data from our backend
+        try {
+          const syncResponse = await fetch("/api/sync-firebase-user", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              uid: result.user.uid,
+              email: result.user.email,
+              emailVerified: result.user.emailVerified,
+              displayName: result.user.displayName || ""
+            }),
+            credentials: 'include'
+          });
+          
+          if (syncResponse.ok) {
+            const syncData = await syncResponse.json();
+            console.log("Backend sync successful:", syncData);
+            
+            // Now fetch the user data using Firebase UID header
+            const userResponse = await fetch('/api/user', {
+              headers: {
+                'X-Firebase-UID': result.user.uid,
+                'Content-Type': 'application/json'
+              },
+              credentials: 'include'
+            });
+            
+            if (userResponse.ok) {
+              const userData = await userResponse.json();
+              console.log("User data retrieved:", userData);
+              
+              // Store authentication data in localStorage for future requests
+              localStorage.setItem('user_id', userData.id.toString());
+              localStorage.setItem('firebase_uid', result.user.uid);
+              console.log("Authentication data stored:");
+              console.log("- user_id:", userData.id);
+              console.log("- firebase_uid:", result.user.uid);
+              
+              toast({
+                title: "Login Successful",
+                description: "Welcome back!",
+              });
+              
+              // Redirect to dashboard
+              window.location.href = '/';
+            } else {
+              throw new Error("Failed to retrieve user data from backend");
+            }
+          } else {
+            throw new Error("Failed to sync with backend");
+          }
+        } catch (syncError) {
+          console.error("Backend sync error:", syncError);
+          throw new Error("Authentication succeeded but failed to sync with backend");
+        }
       } else {
         setLoginErrors({
           username: result.error || "Login failed",
@@ -471,7 +523,7 @@ export default function AuthPage() {
       });
       toast({
         title: "Login Failed", 
-        description: "Please check your credentials and try again.",
+        description: error.message || "Please check your credentials and try again.",
         variant: "destructive",
       });
     }
