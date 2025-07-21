@@ -60,11 +60,11 @@ export function registerSyncUserRoutes(app: Express) {
         username: username || email.split('@')[0],
         firstName: firstName || 'User',
         lastName: lastName || '',
-        passwordHash: 'firebase',
+        password: 'firebase_managed_auth_placeholder', // Firebase users don't use password field for auth
         role: role || 'contractor' as const,
         firebaseUid: firebaseUid,
         emailVerified: emailVerified || false,
-        subscriptionStatus: 'pending' as const
+        subscriptionStatus: 'inactive' as const
       };
 
       const newUser = await storage.createUser(userData);
