@@ -120,6 +120,7 @@ Preferred communication style: Simple, everyday language.
 # Recent Changes
 
 - July 21, 2025: **PURE FIREBASE AUTHENTICATION COMPLETE** - Successfully transitioned to 100% Firebase Auth eliminating hybrid PostgreSQL system, all tests passing with registration → email verification → login flow working perfectly
+- July 21, 2025: **CRITICAL FIX DEPLOYED** - Fixed backend `/api/user` endpoint to check Firebase UID headers, authentication now works end-to-end for production clients
 - July 21, 2025: **Firebase Authentication Functions Implemented** - Added signUpUser, loginUser, and email verification handlers using pure Firebase Auth (createUserWithEmailAndPassword, signInWithEmailAndPassword, applyActionCode)
 - July 21, 2025: **Login Form Updated to Email-Based** - Changed username field to email field with proper validation for Firebase authentication requirements
 - July 21, 2025: **Backend Metadata Sync Optional** - Created /api/sync-firebase-user endpoint for optional PostgreSQL metadata storage while Firebase handles all authentication

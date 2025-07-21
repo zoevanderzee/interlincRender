@@ -535,7 +535,7 @@ export function setupAuth(app: Express) {
     });
   });
 
-  // Get current user route
+  // Get current user route - Updated for Firebase Auth
   app.get("/api/user", async (req, res) => {
     console.log("Auth check for session:", req.sessionID, "Authenticated:", req.isAuthenticated());
     
@@ -543,17 +543,34 @@ export function setupAuth(app: Express) {
     console.log("User API request headers:", {
       cookie: req.headers.cookie,
       'user-agent': req.headers['user-agent'],
-      'x-user-id': req.headers['x-user-id']
+      'x-user-id': req.headers['x-user-id'],
+      'x-firebase-uid': req.headers['x-firebase-uid']
     });
     
-    // Check if user is authenticated via session
+    // Priority 1: Check for Firebase UID header (Firebase Auth)
+    const firebaseUID = req.headers['x-firebase-uid'];
+    if (firebaseUID) {
+      try {
+        const user = await storage.getUserByFirebaseUID(firebaseUID as string);
+        if (user) {
+          console.log(`Firebase Auth: User found via UID ${firebaseUID}`);
+          // Return user info without the password
+          const { password, ...userInfo } = user;
+          return res.json(userInfo);
+        }
+      } catch (error) {
+        console.error('Error in Firebase UID auth for /api/user:', error);
+      }
+    }
+    
+    // Priority 2: Check if user is authenticated via PostgreSQL session (legacy)
     if (req.isAuthenticated()) {
       // Return user info without the password
       const { password, ...userInfo } = req.user as Express.User;
       return res.json(userInfo);
     }
     
-    // Fallback: Check X-User-ID header for localStorage-based authentication
+    // Priority 3: Fallback - Check X-User-ID header for localStorage-based authentication
     const userIdHeader = req.headers['x-user-id'];
     if (userIdHeader) {
       try {

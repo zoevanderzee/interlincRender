@@ -30,6 +30,7 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByFirebaseUID(firebaseUID: string): Promise<User | undefined>;
   getUsersByRole(role: string): Promise<User[]>;
   getUsersByConnectAccountId(connectAccountId: string): Promise<User[]>;
   getContractorsByBusinessId(businessId: number): Promise<User[]>; // Get contractors with contracts with this business
@@ -264,6 +265,12 @@ export class MemStorage implements IStorage {
   async getUserByEmail(email: string): Promise<User | undefined> {
     return Array.from(this.users.values()).find(
       (user) => user.email.toLowerCase() === email.toLowerCase()
+    );
+  }
+
+  async getUserByFirebaseUID(firebaseUID: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.firebaseUid === firebaseUID
     );
   }
   
@@ -1053,6 +1060,13 @@ export class DatabaseStorage implements IStorage {
   
   async getUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async getUserByFirebaseUID(firebaseUID: string): Promise<User | undefined> {
+    // Use raw SQL to avoid Drizzle ORM issues with this specific query
+    const result = await db.execute(sql`SELECT * FROM users WHERE firebase_uid = ${firebaseUID}`);
+    const user = result.rows[0] as User | undefined;
     return user;
   }
   
