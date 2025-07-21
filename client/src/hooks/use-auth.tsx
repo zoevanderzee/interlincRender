@@ -80,11 +80,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        const res = await fetch("/api/user", {
-          method: "GET",
-          credentials: "include",
-          headers
-        });
+        // Use apiRequest to ensure proper headers are sent
+        const res = await apiRequest("GET", "/api/user");
         
         console.log("User data response status:", res.status);
         console.log("Auth query - isLoading will be false after this");
