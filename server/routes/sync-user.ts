@@ -4,7 +4,8 @@ import { insertUserSchema } from "../../shared/schema";
 import { z } from "zod";
 
 const syncUserSchema = z.object({
-  firebaseUid: z.string(),
+  firebaseUid: z.string().optional(),
+  uid: z.string().optional(), // Alternative field name
   email: z.string().email(),
   emailVerified: z.boolean().optional(),
   username: z.string().optional(),
@@ -17,7 +18,10 @@ export function registerSyncUserRoutes(app: Express) {
   // Endpoint to sync Firebase user to PostgreSQL
   app.post("/api/sync-user", async (req, res) => {
     try {
-      const { firebaseUid, email, emailVerified, username, firstName, lastName, role } = syncUserSchema.parse(req.body);
+      const { firebaseUid, uid, email, emailVerified, username, firstName, lastName, role } = syncUserSchema.parse(req.body);
+      
+      // Use either firebaseUid or uid parameter
+      const fbUid = firebaseUid || uid;
       
       // Check if user already exists by email
       let existingUser = await storage.getUserByEmail(email);
@@ -26,10 +30,11 @@ export function registerSyncUserRoutes(app: Express) {
         // Update existing user with Firebase UID and verification status
         let updatedUser = existingUser;
         if (emailVerified) {
-          const result = await storage.updateUser(existingUser.id, { 
-            emailVerified: true, 
-            firebaseUid: firebaseUid 
-          });
+          const updateData: any = { emailVerified: true };
+          if (fbUid) {
+            updateData.firebaseUid = fbUid;
+          }
+          const result = await storage.updateUser(existingUser.id, updateData);
           updatedUser = result || existingUser;
         }
         
@@ -54,20 +59,13 @@ export function registerSyncUserRoutes(app: Express) {
         return;
       }
 
-      // Create new user in PostgreSQL with Firebase UID
-      const userData = {
-        email,
-        username: username || email.split('@')[0],
-        firstName: firstName || 'User',
-        lastName: lastName || '',
-        password: 'firebase_managed_auth_placeholder', // Firebase users don't use password field for auth
-        role: role || 'contractor' as const,
-        firebaseUid: firebaseUid,
-        emailVerified: emailVerified || false,
-        subscriptionStatus: 'inactive' as const
-      };
-
-      const newUser = await storage.createUser(userData);
+      // For existing users, just return success if they're already synced
+      return res.json({
+        success: true,
+        message: "User already exists and is synced",
+        user: existingUser,
+        authenticated: false // They need to login separately
+      });
       
       // Log the new user in
       req.login(newUser, (err) => {

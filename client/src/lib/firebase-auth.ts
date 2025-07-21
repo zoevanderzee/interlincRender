@@ -19,17 +19,8 @@ export const signUpUser = async (email: string, password: string): Promise<Fireb
     await sendEmailVerification(user);
     console.log("Verification email sent to:", email);
     
-    // Sync user data to PostgreSQL
-    try {
-      await apiRequest("POST", "/api/sync-user", {
-        uid: user.uid,
-        email: user.email
-      });
-      console.log("User synced to database");
-    } catch (syncError) {
-      console.error("Failed to sync user to database:", syncError);
-      // Still return success since Firebase user was created
-    }
+    // Note: User will be synced to database during email verification process
+    console.log("Firebase user created, email verification sent");
 
     return {
       success: true,
