@@ -26,14 +26,14 @@ export function ProtectedRoute({ path, children }: ProtectedRouteProps) {
       return;
     }
     
-    // Check subscription status
-    if (!isLoading && user && (!user.subscriptionStatus || user.subscriptionStatus !== 'active')) {
+    // Check subscription status - only redirect if not already on auth page
+    if (!isLoading && user && (!user.subscriptionStatus || user.subscriptionStatus !== 'active') && !location.startsWith('/auth')) {
       console.log("User needs subscription, redirecting to subscription page");
       const subscriptionUrl = `/auth?showSubscription=true&userId=${user.id}&role=${user.role}&email=${user.email}`;
       setLocation(subscriptionUrl);
       return;
     }
-  }, [isLoading, user, setLocation]);
+  }, [isLoading, user, setLocation, location]);
 
   return (
     <Route path={path}>
