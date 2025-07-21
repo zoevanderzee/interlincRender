@@ -49,11 +49,6 @@ import BusinessSetup from "@/pages/business-setup";
 function Router() {
   console.log("Router rendering, current path:", window.location.pathname + window.location.search);
   
-  // If we're on auth page, only render auth routes to prevent conflicts
-  if (window.location.pathname === '/auth') {
-    return <AuthPage />;
-  }
-  
   return (
     <Switch>
       {/* Public Routes */}

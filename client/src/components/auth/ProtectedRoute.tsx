@@ -14,6 +14,11 @@ export function ProtectedRoute({ path, children }: ProtectedRouteProps) {
 
   console.log("ProtectedRoute:", { path, isLoading, hasUser: !!user });
 
+  // Don't render anything if on auth page
+  if (location.startsWith('/auth')) {
+    return null;
+  }
+
   useEffect(() => {
     if (!isLoading && !user) {
       console.log("Force redirecting to /auth");
