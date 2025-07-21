@@ -105,6 +105,16 @@ export function setupAuth(app: Express) {
         
         console.log(`Login attempt for user: ${username}, emailVerified: ${user.emailVerified}`);
         
+        // Handle Firebase users with placeholder passwords
+        if (user.password === 'firebase_managed_auth_placeholder') {
+          console.log(`Firebase user attempting login without password: ${username}`);
+          return done(null, false, { 
+            message: "Please set up a password for your account. Contact support or reset your password.",
+            needsPasswordSetup: true,
+            email: user.email
+          });
+        }
+        
         const isValid = await comparePasswords(password, user.password);
         if (!isValid) {
           console.log(`Password validation failed for user: ${username}`);
