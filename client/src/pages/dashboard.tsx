@@ -50,7 +50,9 @@ const Dashboard = () => {
   const { user, isLoading: isAuthLoading } = useAuth();
 
   // Redirect business users without Trolley profile to complete setup
-  if (user && user.role === 'business' && !user.trolleyCompanyProfileId) {
+  // Check both possible field names (camelCase and snake_case) due to API inconsistencies
+  const hasTrolleyProfile = user?.trolleyCompanyProfileId || user?.['trolley_company_profile_id'];
+  if (user && user.role === 'business' && !hasTrolleyProfile) {
     navigate('/business-setup');
     return null;
   }
