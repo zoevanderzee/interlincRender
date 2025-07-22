@@ -362,13 +362,17 @@ export default function SubscriptionForm({
         </p>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+      <div className={`${
+        userRole === 'contractor' 
+          ? 'flex justify-center gap-6' 
+          : 'grid md:grid-cols-3 gap-6'
+      } max-w-5xl mx-auto`}>
         {availablePlans.map((plan) => (
           <Card 
             key={plan.id} 
             className={`relative cursor-pointer transition-all hover:shadow-lg ${
               selectedPlan === plan.id ? 'ring-2 ring-blue-500' : ''
-            }`}
+            } ${userRole === 'contractor' ? 'max-w-md w-full' : ''}`}
             onClick={() => setSelectedPlan(plan.id)}
           >
             {plan.recommended && (
