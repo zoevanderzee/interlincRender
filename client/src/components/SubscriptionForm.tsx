@@ -23,7 +23,19 @@ interface SubscriptionPlan {
 }
 
 const subscriptionPlans: SubscriptionPlan[] = [
-
+  {
+    id: "business-starter",
+    name: "Test Plan",
+    price: "Loading...",
+    description: "Try the platform with full features at a minimal cost",
+    features: [
+      "Full platform access",
+      "Test all features",
+      "Perfect for evaluation",
+      "Upgrade anytime",
+      "Email support"
+    ]
+  },
   {
     id: "business",
     name: "Standard",
