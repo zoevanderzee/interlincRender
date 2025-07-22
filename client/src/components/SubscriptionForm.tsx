@@ -69,7 +69,7 @@ const subscriptionPlans: SubscriptionPlan[] = [
   },
   {
     id: "business-annual",
-    name: "Annual Business Plan",
+    name: "Business Annual",
     price: "Loading...",
     description: "Get the full Standard Plan features with annual billing",
     features: [

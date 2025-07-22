@@ -120,6 +120,7 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
+- July 22, 2025: **SUBSCRIPTION PRICING FIXED** - Corrected price mapping where Annual Business Plan was showing £1.00/month instead of £1,200.00/year. All subscription plans now display correct pricing from Stripe dashboard.
 - July 21, 2025: **PRODUCTION AUTHENTICATION FULLY OPERATIONAL** - Fixed critical authentication issue where Firebase login wasn't properly syncing with backend or storing localStorage data. Real user accounts can now successfully login and access dashboard.
 - July 21, 2025: **FIREBASE-BACKEND SYNC FIXED** - Implemented proper authentication flow: Firebase login → backend sync → localStorage storage → header-based API authentication. User ID 86 (zoevdzee) confirmed working.
 - July 21, 2025: **AUTHENTICATION HEADERS IMPLEMENTED** - All API requests now properly include X-User-ID and X-Firebase-UID headers, enabling seamless backend authentication for all users.

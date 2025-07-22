@@ -4887,10 +4887,10 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
   app.get('/api/subscription-prices', async (req: Request, res: Response) => {
     try {
       const priceIds = [
-        'price_1RiEGMF4bfRUGDn9UErjyXjX', // business-starter - Test Plan £1.00/month
+        'price_1RgRilF4bfRUGDn9LWUhoJ6F', // business-starter - Test Plan £1.00/month  
         process.env.STRIPE_BUSINESS_PRICE_ID, // business - Standard £49.99/month 
         'price_1Ricn6F4bfRUGDn91XzkPq5F', // business-enterprise - Enterprise £200.00/month
-        'price_1RgRilF4bfRUGDn9LWUhoJ6F', // business-annual - Annual £1,200.00/year
+        'price_1RiEGMF4bfRUGDn9UErjyXjX', // business-annual - Annual £1,200.00/year
         process.env.STRIPE_CONTRACTOR_PRICE_ID, // contractor
       ];
 
@@ -4914,11 +4914,11 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
       );
 
       const priceMap = {
-        'business-starter': prices[0],
-        'business': prices[1],
-        'business-enterprise': prices[2],
-        'business-annual': prices[3],
-        'contractor': prices[4],
+        'business-starter': prices[3], // £1.00/month test plan
+        'business': prices[1],         // £49.99/month standard
+        'business-enterprise': prices[2], // £200.00/month enterprise
+        'business-annual': prices[0],  // £1,200.00/year annual
+        'contractor': prices[4],       // £5.00/month contractor
       };
 
       res.json(priceMap);
@@ -4951,14 +4951,14 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
         // Business plan - £49/month (live mode)
         priceId = process.env.STRIPE_BUSINESS_PRICE_ID;
       } else if (planType === 'business-starter') {
-        // Business Starter plan - £29.99/month (live mode)
-        priceId = 'price_1RiEGMF4bfRUGDn9UErjyXjX';
+        // Business Starter plan - Test Plan £1.00/month (live mode)
+        priceId = 'price_1RgRilF4bfRUGDn9LWUhoJ6F';
       } else if (planType === 'business-enterprise') {
         // Business Enterprise plan - Monthly (live mode)
         priceId = 'price_1Ricn6F4bfRUGDn91XzkPq5F';
       } else if (planType === 'business-annual') {
-        // Business Annual plan - (live mode)
-        priceId = 'price_1RgRilF4bfRUGDn9LWUhoJ6F';
+        // Business Annual plan - £1,200.00/year (live mode)
+        priceId = 'price_1RiEGMF4bfRUGDn9UErjyXjX';
       } else if (planType === 'contractor') {
         // Contractor plan - £5/month (live mode)
         priceId = process.env.STRIPE_CONTRACTOR_PRICE_ID;
