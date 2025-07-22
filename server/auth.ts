@@ -246,7 +246,7 @@ export function setupAuth(app: Express) {
       const hashedPassword = await hashPassword(req.body.password);
       
       // Determine user role and worker type based on registration source
-      let role = 'business'; // Default role
+      let role = 'business'; // Default role for direct signups
       let workerType = null; // Default worker type
       let businessId = null; // For tracking business relationship
       
@@ -262,9 +262,20 @@ export function setupAuth(app: Express) {
         workerType = businessInfo.workerType || 'contractor';
         businessId = businessInfo.businessId;
       }
-      // Manual setting (if provided in request)
+      // Manual setting for direct signups (validate to prevent accidental contractor assignments)
       else {
-        role = req.body.role || 'business';
+        // For direct registrations (no invite), only allow business role unless explicitly requested
+        const requestedRole = req.body.role;
+        
+        // If someone is signing up directly as a contractor, require explicit confirmation
+        if (requestedRole === 'contractor') {
+          console.warn(`⚠️ Direct contractor registration attempted for ${req.body.email}. This is unusual - most contractors should use invite links.`);
+          role = 'contractor'; // Allow it, but log the warning
+        } else {
+          // Default to business for all direct registrations
+          role = 'business';
+        }
+        
         workerType = req.body.workerType || null;
       }
       

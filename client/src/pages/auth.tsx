@@ -202,7 +202,7 @@ export default function AuthPage() {
     email: inviteEmail || "",
     firstName: "",
     lastName: "",
-    role: "contractor", // Default role for invited users
+    role: "business", // Default role for direct signups (only invites should be contractors)
     workerType: "", // Will be set from invite data
     company: "",
     position: "",
