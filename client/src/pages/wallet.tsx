@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { useBudget } from '@/hooks/use-budget';
 import { Wallet, Plus, DollarSign, History, CreditCard, Building2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -36,6 +37,8 @@ interface BudgetData {
 
 export default function WalletPage() {
   const [fundAmount, setFundAmount] = useState('');
+  const [budgetAmount, setBudgetAmount] = useState('');
+  const [showBudgetForm, setShowBudgetForm] = useState(false);
   const { toast } = useToast();
 
   // Get wallet balance
@@ -48,10 +51,8 @@ export default function WalletPage() {
     queryKey: ['/api/trolley/funding-history'],
   });
 
-  // Get budget data
-  const { data: budgetData, isLoading: budgetLoading } = useQuery({
-    queryKey: ['/api/budget'],
-  });
+  // Get budget data using the budget hook
+  const { budgetInfo: budgetData, isLoading: budgetLoading, setBudget, isSettingBudget } = useBudget();
 
   // Setup company profile mutation
   const setupProfileMutation = useMutation({
@@ -98,6 +99,8 @@ export default function WalletPage() {
     },
   });
 
+
+
   const handleFundWallet = () => {
     const amount = parseFloat(fundAmount);
     if (!amount || amount <= 0) {
@@ -109,6 +112,21 @@ export default function WalletPage() {
       return;
     }
     fundWalletMutation.mutate(amount);
+  };
+
+  const handleSetBudget = () => {
+    const amount = parseFloat(budgetAmount);
+    if (!amount || amount <= 0) {
+      toast({
+        title: "Invalid Amount",
+        description: "Please enter a valid budget amount",
+        variant: "destructive",
+      });
+      return;
+    }
+    setBudget({ budgetCap: amount });
+    setBudgetAmount('');
+    setShowBudgetForm(false);
   };
 
   const formatCurrency = (amount: number, currency = 'USD') => {
@@ -326,9 +344,62 @@ export default function WalletPage() {
                   </div>
                 )}
                 
-                <div className="text-xs text-zinc-500 mt-3">
-                  Period: {budgetData?.budgetPeriod || 'Yearly'}
+                <div className="flex justify-between items-center mt-4">
+                  <div className="text-xs text-zinc-500">
+                    Period: {budgetData?.budgetPeriod || 'Yearly'}
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setShowBudgetForm(!showBudgetForm)}
+                    className="text-zinc-300 border-zinc-600 hover:bg-zinc-800"
+                  >
+                    {budgetData?.budgetCap ? 'Edit Budget' : 'Set Budget'}
+                  </Button>
                 </div>
+                
+                {showBudgetForm && (
+                  <div className="mt-4 p-4 bg-zinc-800 rounded-lg border border-zinc-700">
+                    <div className="space-y-3">
+                      <div>
+                        <Label htmlFor="budget-amount" className="text-zinc-300 text-sm">
+                          Budget Limit (USD)
+                        </Label>
+                        <Input
+                          id="budget-amount"
+                          type="number"
+                          placeholder="0.00"
+                          value={budgetAmount}
+                          onChange={(e) => setBudgetAmount(e.target.value)}
+                          min="1"
+                          step="0.01"
+                          className="bg-zinc-700 border-zinc-600 text-white placeholder:text-zinc-500 mt-1"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button 
+                          onClick={handleSetBudget}
+                          disabled={isSettingBudget || !budgetAmount}
+                          className="bg-white text-black hover:bg-zinc-200 flex-1"
+                          size="sm"
+                        >
+                          {isSettingBudget ? 'Updating...' : 'Update Budget'}
+                        </Button>
+                        <Button 
+                          variant="outline"
+                          onClick={() => {
+                            setShowBudgetForm(false);
+                            setBudgetAmount('');
+                          }}
+                          className="text-zinc-300 border-zinc-600"
+                          size="sm"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
