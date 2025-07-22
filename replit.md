@@ -120,6 +120,7 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
+- July 22, 2025: **CRITICAL SUBSCRIPTION BYPASS VULNERABILITY FIXED** - Discovered and fixed major security flaw where ProtectedRoute component only checked authentication but not subscription status. Users with inactive subscriptions could access all protected pages despite API calls being blocked. Added comprehensive subscription enforcement to ProtectedRoute component with automatic redirect to subscription page.
 - July 22, 2025: **SUBSCRIPTION PRICING FIXED** - Corrected price mapping where Annual Business Plan was showing £1.00/month instead of £1,200.00/year. All subscription plans now display correct pricing from Stripe dashboard.
 - July 22, 2025: **SUBSCRIPTION ROLE-BASED ROUTING FIXED** - Fixed critical issue where business users were incorrectly shown contractor subscription plans. Replaced old hardcoded subscription page with proper role-based SubscriptionForm component. Business users now see only business plans (£29.99-£49.99), contractors see only contractor plan (£5/month).
 - July 22, 2025: **COMPLETE SUBSCRIPTION ENFORCEMENT IMPLEMENTED** - Applied subscription middleware to ALL protected routes ensuring users cannot bypass payment requirements. All dashboard, contracts, milestones, payments, documents, and API endpoints now require active subscriptions.
