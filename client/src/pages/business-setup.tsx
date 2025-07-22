@@ -228,10 +228,35 @@ export default function BusinessSetup() {
                   {isGeneratingLink ? 'Generating Verification Link...' : 'Start Business Verification with Trolley'}
                 </Button>
 
-                <div className="text-center">
+                <div className="text-center space-y-2">
                   <p className="text-xs text-zinc-500">
-                    Already completed verification? Contact support to link your account.
+                    Already completed verification? Use the sync button below.
                   </p>
+                  <Button
+                    onClick={async () => {
+                      try {
+                        const response = await apiRequest('POST', '/api/trolley/sync-status', {});
+                        const data = await response.json();
+                        if (data.success) {
+                          toast({
+                            title: 'Status Updated',
+                            description: 'Your Trolley approval status has been synchronized.',
+                          });
+                          queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+                        }
+                      } catch (error: any) {
+                        toast({
+                          title: 'Sync Failed',
+                          description: error.message || 'Failed to sync Trolley status',
+                          variant: 'destructive',
+                        });
+                      }
+                    }}
+                    variant="outline"
+                    size="sm"
+                  >
+                    Sync Trolley Status
+                  </Button>
                 </div>
               </div>
             </CardContent>

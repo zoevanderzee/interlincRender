@@ -5170,6 +5170,13 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
   // For now, we'll just export the middleware for later use
   (app as any).requireActiveSubscription = requireActiveSubscription;
 
+  // Register Trolley routes
+  trolleyRoutes(app, "/api", requireAuth);
+
+  // Register additional route modules
+  app.use("/api/plaid", plaidRoutes);
+  app.use("/api/trolley-test", trolleyTestRoutes);
+
   const httpServer = createServer(app);
   return httpServer;
 }
