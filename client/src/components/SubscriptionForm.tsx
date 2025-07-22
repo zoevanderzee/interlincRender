@@ -170,9 +170,26 @@ const CheckoutForm = ({
 
       if (error) {
         console.error('Stripe payment confirmation error:', error);
+        
+        // Provide specific error messages for common payment issues
+        let errorMessage = error.message;
+        if (error.code === 'authentication_required') {
+          errorMessage = "Your bank requires additional authentication. Please try a different card or contact your bank.";
+        } else if (error.code === 'card_declined') {
+          errorMessage = "Your card was declined. Please check your card details and try again, or use a different card.";
+        } else if (error.code === 'insufficient_funds') {
+          errorMessage = "Insufficient funds. Please use a different card or add funds to your account.";
+        } else if (error.code === 'incorrect_cvc') {
+          errorMessage = "The security code (CVC) is incorrect. Please check and try again.";
+        } else if (error.code === 'expired_card') {
+          errorMessage = "Your card has expired. Please use a different card.";
+        } else if (error.code === 'generic_decline') {
+          errorMessage = "Your card was declined. Please contact your bank for more information or use a different card.";
+        }
+        
         toast({
           title: "Payment Failed",
-          description: error.message,
+          description: errorMessage,
           variant: "destructive",
         });
         return;

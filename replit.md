@@ -120,6 +120,7 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
+- July 22, 2025: **PAYMENT ERROR HANDLING IMPROVED** - Enhanced subscription payment error messages with specific guidance for common Stripe authentication failures. Added troubleshooting guide for client payment issues.
 - July 22, 2025: **CRITICAL REGISTRATION BUG FIXED** - Fixed root cause of business accounts being saved as contractors. Frontend registration form was defaulting to role: "contractor" instead of "business". Updated frontend default and added backend validation to prevent future occurrences.
 - July 22, 2025: **BUSINESS ACCOUNT ROLE CORRECTIONS** - Updated User 110 (evanderzee@lincoln.ac.uk) and User 111 (emilevdz@gmail.com) from contractor role to business role. These accounts will now see business subscription plans instead of contractor plans.
 - July 22, 2025: **CRITICAL SUBSCRIPTION BYPASS VULNERABILITY FIXED** - Discovered and fixed major security flaw where ProtectedRoute component only checked authentication but not subscription status. Users with inactive subscriptions could access all protected pages despite API calls being blocked. Added comprehensive subscription enforcement to ProtectedRoute component with automatic redirect to subscription page.
