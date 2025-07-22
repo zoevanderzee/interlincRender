@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useBudget } from '@/hooks/use-budget';
 import { Wallet, Plus, DollarSign, History, CreditCard, Building2 } from 'lucide-react';
@@ -38,6 +39,7 @@ interface BudgetData {
 export default function WalletPage() {
   const [fundAmount, setFundAmount] = useState('');
   const [budgetAmount, setBudgetAmount] = useState('');
+  const [budgetPeriod, setBudgetPeriod] = useState<'monthly' | 'yearly'>('yearly');
   const [showBudgetForm, setShowBudgetForm] = useState(false);
   const { toast } = useToast();
 
@@ -124,7 +126,7 @@ export default function WalletPage() {
       });
       return;
     }
-    setBudget({ budgetCap: amount });
+    setBudget({ budgetCap: amount, budgetPeriod: budgetPeriod });
     setBudgetAmount('');
     setShowBudgetForm(false);
   };
@@ -346,7 +348,7 @@ export default function WalletPage() {
                 
                 <div className="flex justify-between items-center mt-4">
                   <div className="text-xs text-zinc-500">
-                    Period: {budgetData?.budgetPeriod || 'Yearly'}
+                    Period: {budgetData?.budgetPeriod ? budgetData.budgetPeriod.charAt(0).toUpperCase() + budgetData.budgetPeriod.slice(1) : 'Yearly'}
                   </div>
                   <Button 
                     variant="outline" 
@@ -375,6 +377,23 @@ export default function WalletPage() {
                           step="0.01"
                           className="bg-zinc-700 border-zinc-600 text-white placeholder:text-zinc-500 mt-1"
                         />
+                      </div>
+                      <div>
+                        <Label className="text-zinc-300 text-sm">
+                          Budget Period
+                        </Label>
+                        <Select value={budgetPeriod} onValueChange={(value: 'monthly' | 'yearly') => setBudgetPeriod(value)}>
+                          <SelectTrigger className="bg-zinc-700 border-zinc-600 text-white mt-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-zinc-700 border-zinc-600">
+                            <SelectItem value="monthly" className="text-white focus:bg-zinc-600">Monthly</SelectItem>
+                            <SelectItem value="yearly" className="text-white focus:bg-zinc-600">Yearly</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-zinc-500 mt-1">
+                          Budget will reset automatically at the end of each {budgetPeriod} period
+                        </p>
                       </div>
                       <div className="flex gap-2">
                         <Button 
