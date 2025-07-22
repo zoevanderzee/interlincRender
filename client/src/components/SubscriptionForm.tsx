@@ -347,7 +347,7 @@ export default function SubscriptionForm({
   // Filter plans based on user role and update prices
   const availablePlans = (userRole === 'business' 
     ? subscriptionPlans.filter(plan => plan.id.startsWith('business'))
-    : subscriptionPlans.filter(plan => plan.id === userRole)
+    : subscriptionPlans.filter(plan => plan.id === 'contractor')
   ).map(plan => ({
     ...plan,
     price: formatPrice(plan.id)
