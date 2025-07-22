@@ -42,6 +42,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // API routes prefix
   const apiRouter = "/api";
+
+  // Subscription requirement middleware
+  const requireActiveSubscription = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      let userId = req.user?.id;
+      
+      // Use X-User-ID header fallback if session auth failed
+      if (!userId && req.headers['x-user-id']) {
+        userId = parseInt(req.headers['x-user-id'] as string);
+      }
+      
+      if (!userId) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Check if user has active subscription
+      if (!user.subscriptionStatus || 
+          !['active', 'trialing'].includes(user.subscriptionStatus)) {
+        console.log(`SUBSCRIPTION BLOCK: User ${userId} (${user.username}) has subscription status: ${user.subscriptionStatus || 'inactive'}`);
+        return res.status(402).json({ 
+          message: 'Active subscription required',
+          subscriptionStatus: user.subscriptionStatus || 'inactive',
+          code: 'SUBSCRIPTION_REQUIRED'
+        });
+      }
+
+      console.log(`SUBSCRIPTION OK: User ${userId} (${user.username}) has active subscription: ${user.subscriptionStatus}`);
+      next();
+    } catch (error) {
+      console.error('Error checking subscription requirement:', error);
+      res.status(500).json({ message: 'Error validating subscription' });
+    }
+  };
   
   // Direct login test removed due to __dirname issue
   
@@ -647,7 +686,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Contract routes
-  app.get(`${apiRouter}/contracts`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/contracts`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
       const businessId = req.query.businessId ? parseInt(req.query.businessId as string) : null;
       const contractorId = req.query.contractorId ? parseInt(req.query.contractorId as string) : null;
@@ -997,7 +1036,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Milestone routes
-  app.get(`${apiRouter}/milestones`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/milestones`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
       const contractId = req.query.contractId ? parseInt(req.query.contractId as string) : null;
       const upcoming = req.query.upcoming === 'true';
@@ -1697,8 +1736,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Dashboard summary endpoint
-  app.get(`${apiRouter}/dashboard`, requireAuth, async (req: Request, res: Response) => {
+  // Dashboard summary endpoint - NOW WITH SUBSCRIPTION REQUIREMENT
+  app.get(`${apiRouter}/dashboard`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
       // Get the current user
       const userId = req.user?.id;
@@ -2988,7 +3027,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Budget Management Routes
   
   // Get budget information for the current user
-  app.get(`${apiRouter}/budget`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/budget`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
       const userId = req.user?.id;
       if (!userId) {
