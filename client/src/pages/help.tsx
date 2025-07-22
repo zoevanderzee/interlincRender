@@ -158,6 +158,31 @@ const Help = () => {
       ]
     },
     {
+      title: "For Contractors",
+      faqs: [
+        {
+          question: "How do I get started as a contractor?",
+          answer: "After receiving an invitation from a business, complete your profile setup including your profile code, company information, and payment details. Businesses will use your profile code to connect with you for new projects."
+        },
+        {
+          question: "How do I view my active projects?",
+          answer: "Your contractor dashboard shows all active projects, pending earnings, and total earnings. Navigate to 'My Assignments' to see detailed project information, milestones, and deadlines for each contract."
+        },
+        {
+          question: "How do I submit work for milestone approval?",
+          answer: "Go to your assigned contract, find the milestone you've completed, and upload your deliverables or provide progress updates. The business will review and approve your work, which automatically triggers payment."
+        },
+        {
+          question: "When will I receive payment?",
+          answer: "Payments are processed automatically when businesses approve your completed milestones. Depending on your location, payments are processed through Stripe (domestic) or Trolley (international) and typically take 1-3 business days to complete."
+        },
+        {
+          question: "How do connection requests work?",
+          answer: "Businesses can send you connection requests using your unique profile code. You'll see these requests in your Connections section where you can accept or decline them. Accepted connections allow businesses to assign you to their projects."
+        }
+      ]
+    },
+    {
       title: "Data & Security",
       faqs: [
         {
@@ -166,7 +191,7 @@ const Help = () => {
         },
         {
           question: "Who can access my contract information?",
-          answer: "Only authorized team members from your organization and the specific contractor assigned to a contract can access that contract's information. You can set custom permission levels for each team member in your account settings."
+          answer: "Only authorized team members from the business organization and you as the assigned contractor can access contract information. All data is completely isolated between different business accounts for maximum security."
         },
         {
           question: "Can I export my data for compliance purposes?",
@@ -358,6 +383,21 @@ const Help = () => {
                 <div className="h-12 w-12 rounded-full bg-accent-50 text-accent-500 flex items-center justify-center mb-4">
                   <FileText size={24} />
                 </div>
+                <h3 className="text-lg font-medium mb-2">Contractor Guide</h3>
+                <p className="text-primary-500 mb-4">
+                  Complete guide for contractors including profile setup, work submissions, and payment tracking.
+                </p>
+                <Button variant="outline" className="w-full">
+                  View Guide
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="border border-primary-100 hover:shadow-md transition-shadow">
+              <CardContent className="p-6">
+                <div className="h-12 w-12 rounded-full bg-accent-50 text-accent-500 flex items-center justify-center mb-4">
+                  <FileText size={24} />
+                </div>
                 <h3 className="text-lg font-medium mb-2">API Documentation</h3>
                 <p className="text-primary-500 mb-4">
                   Technical documentation for integrating with our API.
@@ -391,10 +431,10 @@ const Help = () => {
                 <PlayCircle size={48} className="text-primary-400" />
               </div>
               <CardContent className="p-4">
-                <h3 className="font-medium mb-1">Creating Your First Smart Contract</h3>
+                <h3 className="font-medium mb-1">Creating Your First Project Contract</h3>
                 <p className="text-sm text-primary-500 mb-2">7:45 • Updated 1 month ago</p>
                 <p className="text-primary-700">
-                  Step-by-step guide to creating and configuring smart contracts.
+                  Step-by-step guide to creating and configuring project contracts with milestones.
                 </p>
               </CardContent>
             </Card>
@@ -417,10 +457,23 @@ const Help = () => {
                 <PlayCircle size={48} className="text-primary-400" />
               </div>
               <CardContent className="p-4">
-                <h3 className="font-medium mb-1">Setting Up Automated Payments</h3>
+                <h3 className="font-medium mb-1">Setting Up Payment Methods</h3>
                 <p className="text-sm text-primary-500 mb-2">9:32 • Updated 1 month ago</p>
                 <p className="text-primary-700">
-                  Configure milestones and automatic payment triggers.
+                  Configure Stripe and Trolley payment processing for automatic milestone payments.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border border-primary-100 overflow-hidden">
+              <div className="aspect-video bg-primary-100 flex items-center justify-center">
+                <PlayCircle size={48} className="text-primary-400" />
+              </div>
+              <CardContent className="p-4">
+                <h3 className="font-medium mb-1">Contractor Dashboard Walkthrough</h3>
+                <p className="text-sm text-primary-500 mb-2">6:15 • Updated 1 week ago</p>
+                <p className="text-primary-700">
+                  Complete tour of the contractor interface including project tracking and payment management.
                 </p>
               </CardContent>
             </Card>
