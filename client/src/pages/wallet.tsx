@@ -257,8 +257,9 @@ export default function WalletPage() {
         </Card>
 
         <Tabs defaultValue="fund" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 bg-zinc-900 border-zinc-700">
+          <TabsList className="grid w-full grid-cols-3 bg-zinc-900 border-zinc-700">
             <TabsTrigger value="fund" className="data-[state=active]:bg-zinc-800 data-[state=active]:text-white text-zinc-400">Fund Wallet</TabsTrigger>
+            <TabsTrigger value="methods" className="data-[state=active]:bg-zinc-800 data-[state=active]:text-white text-zinc-400">Payment Methods</TabsTrigger>
             <TabsTrigger value="history" className="data-[state=active]:bg-zinc-800 data-[state=active]:text-white text-zinc-400">Transaction History</TabsTrigger>
           </TabsList>
 
@@ -316,26 +317,10 @@ export default function WalletPage() {
                 <CardHeader>
                   <CardTitle className="text-white">Funding Methods</CardTitle>
                   <CardDescription className="text-zinc-400">
-                    Available ways to add funds to your wallet
+                    Available ways to add funds to your pre-funded wallet
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex items-center gap-3 p-3 border border-zinc-700 rounded-lg">
-                    <CreditCard className="h-5 w-5 text-purple-400" />
-                    <div>
-                      <p className="font-medium text-white">Pay-as-you-go</p>
-                      <p className="text-sm text-zinc-500">Delivery based payment from a bank account you link to your account</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-3 p-3 border border-zinc-700 rounded-lg">
-                    <Wallet className="h-5 w-5 text-orange-400" />
-                    <div>
-                      <p className="font-medium text-white">Pre-funded Account</p>
-                      <p className="text-sm text-zinc-500">Available when businesses want wallet funding</p>
-                    </div>
-                  </div>
-                  
                   <div className="flex items-center gap-3 p-3 border border-zinc-700 rounded-lg">
                     <Building2 className="h-5 w-5 text-blue-400" />
                     <div>
@@ -353,16 +338,88 @@ export default function WalletPage() {
                   </div>
                   
                   <div className="bg-zinc-800 p-4 rounded-lg border border-zinc-700">
-                    <p className="text-sm text-zinc-300 mb-3">
+                    <p className="text-sm text-zinc-300">
                       <strong>Note:</strong> Current funding is processed through Trolley's secure payment system. 
                       Contact support for setting up recurring funding or custom payment methods.
                     </p>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-green-400"></div>
-                        <span className="text-sm text-zinc-300">Budget validation: Working for both payment methods</span>
-                      </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Payment Methods Tab */}
+          <TabsContent value="methods">
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Payment Methods */}
+              <Card className="bg-zinc-900 border-zinc-800">
+                <CardHeader>
+                  <CardTitle className="text-white">Payment Methods</CardTitle>
+                  <CardDescription className="text-zinc-400">
+                    How you pay your contractors
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center gap-3 p-3 border border-zinc-700 rounded-lg">
+                    <CreditCard className="h-5 w-5 text-purple-400" />
+                    <div className="flex-1">
+                      <p className="font-medium text-white">Pay-as-you-go</p>
+                      <p className="text-sm text-zinc-500">Direct payment from linked bank account when you approve milestones</p>
                     </div>
+                    <Button variant="outline" size="sm" className="text-zinc-300 border-zinc-600">
+                      Setup
+                    </Button>
+                  </div>
+                  
+                  <div className="flex items-center gap-3 p-3 border border-zinc-700 rounded-lg">
+                    <Wallet className="h-5 w-5 text-orange-400" />
+                    <div className="flex-1">
+                      <p className="font-medium text-white">Pre-funded Account</p>
+                      <p className="text-sm text-zinc-500">Add funds to wallet first, then pay contractors from balance</p>
+                    </div>
+                    <div className="text-sm text-green-400">Active</div>
+                  </div>
+                  
+                  <div className="bg-zinc-800 p-4 rounded-lg border border-zinc-700">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-2 h-2 rounded-full bg-green-400"></div>
+                      <span className="text-sm text-zinc-300">Budget validation: Working for both payment methods</span>
+                    </div>
+                    <p className="text-sm text-zinc-400">
+                      You can switch between payment methods at any time. Pay-as-you-go requires linking a bank account.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Linked Bank Accounts */}
+              <Card className="bg-zinc-900 border-zinc-800">
+                <CardHeader>
+                  <CardTitle className="text-white">Linked Bank Accounts</CardTitle>
+                  <CardDescription className="text-zinc-400">
+                    Bank accounts for pay-as-you-go payments
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="text-center py-8">
+                    <Building2 className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
+                    <p className="text-zinc-400 mb-4">No bank accounts linked</p>
+                    <Button className="bg-white text-black hover:bg-zinc-200">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Link Bank Account
+                    </Button>
+                  </div>
+                  
+                  <div className="bg-zinc-800 p-4 rounded-lg border border-zinc-700">
+                    <p className="text-sm text-zinc-300 mb-2">
+                      <strong>Secure Bank Linking:</strong>
+                    </p>
+                    <ul className="text-sm text-zinc-400 space-y-1">
+                      <li>• Bank-grade encryption and security</li>
+                      <li>• Instant verification through Trolley</li>
+                      <li>• Support for major US and international banks</li>
+                      <li>• Automatic payment processing</li>
+                    </ul>
                   </div>
                 </CardContent>
               </Card>
