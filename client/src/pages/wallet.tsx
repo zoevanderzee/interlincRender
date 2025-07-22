@@ -509,26 +509,58 @@ export default function WalletPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="text-center py-8">
-                    <Building2 className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
-                    <p className="text-zinc-400 mb-4">No bank accounts linked</p>
-                    <Button className="bg-white text-black hover:bg-zinc-200">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Link Bank Account
-                    </Button>
-                  </div>
-                  
-                  <div className="bg-zinc-800 p-4 rounded-lg border border-zinc-700">
-                    <p className="text-sm text-zinc-300 mb-2">
-                      <strong>Secure Bank Linking:</strong>
-                    </p>
-                    <ul className="text-sm text-zinc-400 space-y-1">
-                      <li>• Bank-grade encryption and security</li>
-                      <li>• Instant verification through Trolley</li>
-                      <li>• Support for major US and international banks</li>
-                      <li>• Automatic payment processing</li>
-                    </ul>
-                  </div>
+                  {userData?.trolleyBankAccountStatus === 'verified' ? (
+                    /* Show linked bank account */
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3 p-4 border border-zinc-700 rounded-lg bg-zinc-800">
+                        <div className="w-10 h-10 rounded-full bg-green-400/10 flex items-center justify-center">
+                          <Building2 className="h-5 w-5 text-green-400" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium text-white">Business Bank Account</p>
+                          <p className="text-sm text-zinc-400">
+                            Account ending in {userData.trolleyBankAccountLast4}
+                          </p>
+                          <p className="text-xs text-green-400 mt-1">✓ Verified through Trolley business verification</p>
+                        </div>
+                        <div className="text-sm text-green-400 font-medium">Active</div>
+                      </div>
+                      
+                      <div className="bg-zinc-800 p-4 rounded-lg border border-zinc-700">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-2 h-2 rounded-full bg-green-400"></div>
+                          <span className="text-sm text-zinc-300 font-medium">Ready for pay-as-you-go payments</span>
+                        </div>
+                        <p className="text-sm text-zinc-400">
+                          Your bank account is linked and verified. Milestone approvals will automatically charge this account.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Show no accounts linked */
+                    <div>
+                      <div className="text-center py-8">
+                        <Building2 className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
+                        <p className="text-zinc-400 mb-4">No bank accounts linked</p>
+                        <Button className="bg-white text-black hover:bg-zinc-200">
+                          <Plus className="h-4 w-4 mr-2" />
+                          Link Bank Account
+                        </Button>
+                      </div>
+                      
+                      <div className="bg-zinc-800 p-4 rounded-lg border border-zinc-700">
+                        <p className="text-sm text-zinc-300 mb-2">
+                          <strong>Secure Bank Linking:</strong>
+                        </p>
+                        <ul className="text-sm text-zinc-400 space-y-1">
+                          <li>• Bank-grade encryption and security</li>
+                          <li>• Instant verification through Trolley</li>
+                          <li>• Support for major US and international banks</li>
+                          <li>• Automatic payment processing</li>
+                        </ul>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
