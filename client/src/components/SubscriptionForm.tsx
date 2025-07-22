@@ -23,19 +23,7 @@ interface SubscriptionPlan {
 }
 
 const subscriptionPlans: SubscriptionPlan[] = [
-  {
-    id: "business-starter",
-    name: "Business Starter",
-    price: "Loading...",
-    description: "Essential tools for small businesses starting with contractors",
-    features: [
-      "Up to 5 contractor management",
-      "Basic project tracking",
-      "Manual payments",
-      "Basic reporting",
-      "Email support"
-    ]
-  },
+
   {
     id: "business",
     name: "Standard",
