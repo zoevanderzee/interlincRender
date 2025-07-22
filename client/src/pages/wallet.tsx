@@ -48,6 +48,9 @@ export default function WalletPage() {
     queryKey: ['/api/user'],
   });
 
+  // Debug: log user data to see bank account status
+  console.log('User data in wallet:', userData);
+
   // Get wallet balance
   const { data: walletData, isLoading: balanceLoading, error: balanceError } = useQuery({
     queryKey: ['/api/trolley/wallet-balance'],
