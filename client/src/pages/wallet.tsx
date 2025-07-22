@@ -24,6 +24,16 @@ interface FundingTransaction {
   createdAt: string;
 }
 
+interface BudgetData {
+  budgetCap: string | null;
+  budgetUsed: string;
+  budgetPeriod: string;
+  budgetStartDate: string | null;
+  budgetEndDate: string | null;
+  budgetResetEnabled: boolean;
+  remainingBudget: string | null;
+}
+
 export default function WalletPage() {
   const [fundAmount, setFundAmount] = useState('');
   const { toast } = useToast();
@@ -36,6 +46,11 @@ export default function WalletPage() {
   // Get funding history
   const { data: historyData, isLoading: historyLoading } = useQuery({
     queryKey: ['/api/trolley/funding-history'],
+  });
+
+  // Get budget data
+  const { data: budgetData, isLoading: budgetLoading } = useQuery({
+    queryKey: ['/api/budget'],
   });
 
   // Setup company profile mutation
@@ -233,28 +248,91 @@ export default function WalletPage() {
           </p>
         </div>
 
-        {/* Balance Card */}
-        <Card className="mb-8 bg-zinc-900 border-zinc-800">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-white">
-              <DollarSign className="h-5 w-5" />
-              Current Balance
-            </CardTitle>
-            <CardDescription className="text-zinc-400">
-              Available funds for contractor payments
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-4xl font-bold text-white">
-              {walletData ? formatCurrency(walletData.balance || 0) : '$0.00'}
-            </div>
-            {walletData?.companyProfileId && (
-              <p className="text-sm text-zinc-500 mt-2">
-                Profile ID: {walletData.companyProfileId}
-              </p>
-            )}
-          </CardContent>
-        </Card>
+        {/* Balance and Budget Cards */}
+        <div className="grid md:grid-cols-2 gap-6 mb-8">
+          {/* Current Balance Card */}
+          <Card className="bg-zinc-900 border-zinc-800">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-white">
+                <DollarSign className="h-5 w-5" />
+                Current Balance
+              </CardTitle>
+              <CardDescription className="text-zinc-400">
+                Available funds for contractor payments
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-4xl font-bold text-white">
+                {walletData ? formatCurrency(walletData.balance || 0) : '$0.00'}
+              </div>
+              {walletData?.companyProfileId && (
+                <p className="text-sm text-zinc-500 mt-2">
+                  Profile ID: {walletData.companyProfileId}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Budget Card */}
+          <Card className="bg-zinc-900 border-zinc-800">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-white">
+                <Wallet className="h-5 w-5" />
+                Budget Overview
+              </CardTitle>
+              <CardDescription className="text-zinc-400">
+                Spending limits for both payment methods
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm text-zinc-400">Budget Cap</span>
+                    <span className="text-white font-medium">
+                      {budgetData?.budgetCap ? formatCurrency(parseFloat(budgetData.budgetCap)) : 'No limit set'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm text-zinc-400">Used</span>
+                    <span className="text-white font-medium">
+                      {budgetData ? formatCurrency(parseFloat(budgetData.budgetUsed || '0')) : '$0.00'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-zinc-400">Remaining</span>
+                    <span className="text-green-400 font-medium">
+                      {budgetData?.remainingBudget ? formatCurrency(parseFloat(budgetData.remainingBudget)) : 'Unlimited'}
+                    </span>
+                  </div>
+                </div>
+                
+                {budgetData?.budgetCap && (
+                  <div className="mt-4">
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="text-zinc-400">Usage</span>
+                      <span className="text-zinc-400">
+                        {budgetData.budgetCap ? Math.round((parseFloat(budgetData.budgetUsed || '0') / parseFloat(budgetData.budgetCap)) * 100) : 0}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-zinc-700 rounded-full h-2">
+                      <div 
+                        className="bg-blue-400 h-2 rounded-full" 
+                        style={{ 
+                          width: `${budgetData.budgetCap ? Math.min((parseFloat(budgetData.budgetUsed || '0') / parseFloat(budgetData.budgetCap)) * 100, 100) : 0}%` 
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="text-xs text-zinc-500 mt-3">
+                  Period: {budgetData?.budgetPeriod || 'Yearly'}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         <Tabs defaultValue="fund" className="space-y-6">
           <TabsList className="grid w-full grid-cols-3 bg-zinc-900 border-zinc-700">
