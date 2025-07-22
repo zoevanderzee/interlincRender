@@ -5320,7 +5320,7 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
   // Check subscription status
   app.get("/api/subscription-status", requireAuth, async (req: Request, res: Response) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.id || (req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
       
       if (!userId) {
         return res.status(401).json({ message: 'Authentication required' });
@@ -5347,24 +5347,34 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
           }
 
           res.json({
-            subscriptionStatus: subscription.status,
-            subscriptionPlan: user.subscriptionPlan,
-            currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-            cancelAtPeriodEnd: subscription.cancel_at_period_end,
-            trialEnd: subscription.trial_end ? new Date(subscription.trial_end * 1000) : null
+            subscription: {
+              id: subscription.id,
+              status: subscription.status,
+              plan_name: user.subscriptionPlan,
+              amount: subscription.items.data[0]?.price?.unit_amount || 0,
+              currency: subscription.currency,
+              interval: subscription.items.data[0]?.price?.recurring?.interval || 'month',
+              current_period_start: subscription.current_period_start,
+              current_period_end: subscription.current_period_end,
+              cancel_at_period_end: subscription.cancel_at_period_end,
+              trial_end: subscription.trial_end
+            },
+            customer: {
+              id: subscription.customer
+            }
           });
         } catch (stripeError) {
           console.error('Error fetching Stripe subscription:', stripeError);
           res.json({
-            subscriptionStatus: user.subscriptionStatus || 'inactive',
-            subscriptionPlan: user.subscriptionPlan,
+            subscription: null,
+            customer: null,
             error: 'Could not sync with payment provider'
           });
         }
       } else {
         res.json({
-          subscriptionStatus: 'inactive',
-          subscriptionPlan: null,
+          subscription: null,
+          customer: null,
           message: 'No active subscription'
         });
       }
@@ -5409,6 +5419,77 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
       res.status(500).json({ message: 'Error validating subscription' });
     }
   };
+
+  // Cancel subscription
+  app.post("/api/cancel-subscription", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id || (req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
+      
+      if (!userId) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.stripeSubscriptionId) {
+        return res.status(404).json({ message: 'No subscription found' });
+      }
+
+      // Cancel subscription at end of period
+      const subscription = await stripe.subscriptions.update(user.stripeSubscriptionId, {
+        cancel_at_period_end: true
+      });
+
+      res.json({
+        success: true,
+        message: 'Subscription will cancel at the end of the current billing period',
+        cancelAtPeriodEnd: subscription.cancel_at_period_end,
+        currentPeriodEnd: new Date(subscription.current_period_end * 1000)
+      });
+
+    } catch (error) {
+      console.error('Error cancelling subscription:', error);
+      res.status(500).json({ 
+        message: 'Failed to cancel subscription',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Reactivate subscription 
+  app.post("/api/reactivate-subscription", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id || (req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
+      
+      if (!userId) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.stripeSubscriptionId) {
+        return res.status(404).json({ message: 'No subscription found' });
+      }
+
+      // Remove cancellation
+      const subscription = await stripe.subscriptions.update(user.stripeSubscriptionId, {
+        cancel_at_period_end: false
+      });
+
+      res.json({
+        success: true,
+        message: 'Subscription has been reactivated',
+        cancelAtPeriodEnd: subscription.cancel_at_period_end
+      });
+
+    } catch (error) {
+      console.error('Error reactivating subscription:', error);
+      res.status(500).json({ 
+        message: 'Failed to reactivate subscription',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
 
   // Apply subscription requirement to protected routes (add this to existing routes that need subscription)
   // For now, we'll just export the middleware for later use

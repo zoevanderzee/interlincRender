@@ -10,9 +10,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ProfileCodeSection } from "@/components/profile/ProfileCodeSection";
 import { ConnectionRequestsList } from "@/components/profile/ConnectionRequestsList";
 import { BudgetSettings } from "@/components/settings/BudgetSettings";
+import { SubscriptionSettings } from "@/components/settings/SubscriptionSettings";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useMutation } from "@tanstack/react-query";
-import { Loader2, User, Lock, Fingerprint, Bell, Settings as SettingsIcon, DollarSign } from "lucide-react";
+import { Loader2, User, Lock, Fingerprint, Bell, Settings as SettingsIcon, DollarSign, CreditCard } from "lucide-react";
 
 export default function Settings() {
   const { user } = useAuth();
@@ -130,6 +131,14 @@ export default function Settings() {
                     Budget
                   </Button>
                 )}
+                <Button
+                  variant={activeTab === "subscription" ? "default" : "ghost"}
+                  className="w-full justify-start"
+                  onClick={() => setActiveTab("subscription")}
+                >
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  Subscription
+                </Button>
                 <Button
                   variant={activeTab === "preferences" ? "default" : "ghost"}
                   className="w-full justify-start"
@@ -276,6 +285,10 @@ export default function Settings() {
                 </p>
               </CardContent>
             </Card>
+          )}
+
+          {activeTab === "subscription" && (
+            <SubscriptionSettings user={user} />
           )}
 
           {activeTab === "budget" && user.role === "business" && (
