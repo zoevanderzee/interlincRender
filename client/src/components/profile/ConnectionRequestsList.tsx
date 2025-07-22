@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, MessageSquare, Building2 } from "lucide-react";
+import { CheckCircle2, MessageSquare, Building2, User } from "lucide-react";
 import { format } from "date-fns";
 
 // Connection request type
@@ -21,6 +21,9 @@ interface ConnectionRequest {
 
 export function ConnectionRequestsList() {
   const { user } = useAuth();
+  
+  // Determine if user is a contractor (from contractor's perspective)
+  const isContractor = user?.role === "contractor";
 
   // Fetch connection requests
   const { data: connectionRequests = [], isLoading } = useQuery({
@@ -84,12 +87,16 @@ export function ConnectionRequestsList() {
     return (
       <Card className="w-full">
         <CardHeader>
-          <CardTitle>Company Requests</CardTitle>
-          <CardDescription>Companies you are connected with</CardDescription>
+          <CardTitle>{isContractor ? "Company Requests" : "Contractor Connections"}</CardTitle>
+          <CardDescription>
+            {isContractor 
+              ? "Companies you are connected with" 
+              : "Contractors you are connected with"}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
-            <p>No company connections yet</p>
+            <p>{isContractor ? "No company connections yet" : "No contractor connections yet"}</p>
           </div>
         </CardContent>
       </Card>
@@ -100,8 +107,12 @@ export function ConnectionRequestsList() {
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle>Company Requests</CardTitle>
-        <CardDescription>Companies you are connected with</CardDescription>
+        <CardTitle>{isContractor ? "Company Requests" : "Contractor Connections"}</CardTitle>
+        <CardDescription>
+          {isContractor 
+            ? "Companies you are connected with" 
+            : "Contractors you are connected with"}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -111,10 +122,21 @@ export function ConnectionRequestsList() {
                 <div className="flex justify-between items-center">
                   <div>
                     <div className="flex items-center space-x-2">
-                      <Building2 className="h-4 w-4 text-green-500" />
-                      <CardTitle className="text-base">
-                        {request.businessName || "Unknown Business"}
-                      </CardTitle>
+                      {isContractor ? (
+                        <>
+                          <Building2 className="h-4 w-4 text-green-500" />
+                          <CardTitle className="text-base">
+                            {request.businessName || "Unknown Business"}
+                          </CardTitle>
+                        </>
+                      ) : (
+                        <>
+                          <User className="h-4 w-4 text-green-500" />
+                          <CardTitle className="text-base">
+                            {request.contractorName || "Unknown Contractor"}
+                          </CardTitle>
+                        </>
+                      )}
                     </div>
                     <CardDescription className="mt-1">
                       Connected on {formatDate(request.updatedAt)}
