@@ -337,7 +337,10 @@ export default function Projects() {
               }
             </p>
             {!isContractor && (
-              <Button className="bg-blue-600 hover:bg-blue-700">
+              <Button 
+                className="bg-blue-600 hover:bg-blue-700"
+                onClick={() => navigate('/contracts/new')}
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 Create Your First Project
               </Button>

@@ -150,24 +150,29 @@ export const getQueryFn: <T>(options: {
       const endpoint = (queryKey[0] as string).toLowerCase();
       console.log(`Fetching data from ${endpoint}`);
       
-      // Add user ID header for authentication
-      const user = JSON.parse(localStorage.getItem('creativlinc_user') || 'null');
+      // Add authentication headers - use the same logic as apiRequest
+      const userId = localStorage.getItem('user_id');
+      const firebaseUid = localStorage.getItem('firebase_uid');
       
       // Log the fetch request for debugging
       console.log(`Query Request: GET ${endpoint}`, { 
         hasCookies: document.cookie.length > 0,
         cookieString: document.cookie,
-        hasUserInStorage: !!user
+        hasUserInStorage: !!userId
       });
       
-      // Use header-based authentication with localStorage fallback
+      // Use header-based authentication with localStorage
       const headers: HeadersInit = {
         'Accept': 'application/json',
         'Cache-Control': 'no-cache'
       };
       
-      if (user?.id) {
-        headers['X-User-ID'] = user.id.toString();
+      if (userId) {
+        headers['X-User-ID'] = userId;
+      }
+      
+      if (firebaseUid) {
+        headers['X-Firebase-UID'] = firebaseUid;
       }
       
       const res = await fetch(endpoint, {
