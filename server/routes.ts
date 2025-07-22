@@ -5158,10 +5158,10 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
       );
 
       const priceMap = {
-        'business-starter': prices[3], // £1.00/month test plan
+        'business-starter': prices[0], // £1.00/month test plan
         'business': prices[1],         // £49.99/month standard
         'business-enterprise': prices[2], // £200.00/month enterprise
-        'business-annual': prices[0],  // £1,200.00/year annual
+        'business-annual': prices[3],  // £1,200.00/year annual
         'contractor': prices[4],       // £5.00/month contractor
       };
 
