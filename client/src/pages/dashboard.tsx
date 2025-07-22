@@ -18,6 +18,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { ContractorDashboard } from "@/components/dashboard/ContractorDashboard";
 
+
 // Define interface for dashboard data
 interface DashboardData {
   stats: {
@@ -58,7 +59,7 @@ const Dashboard = () => {
   }
   const { toast } = useToast();
 
-  // Dashboard data query - use default query function with proper auth headers
+  // Dashboard data query with faster refresh for better integration
   const { 
     data: dashboardData, 
     isLoading: isDashboardLoading, 
@@ -66,15 +67,19 @@ const Dashboard = () => {
   } = useQuery<DashboardData>({
     queryKey: ['/api/dashboard'],
     enabled: !!user,
+    staleTime: 30 * 1000, // 30 seconds for faster cross-page updates
+    refetchInterval: 60 * 1000, // Auto-refresh every minute
   });
 
-  // Budget data query - use default query function with proper auth headers
+  // Budget data query with faster refresh
   const { 
     data: budgetData, 
     isLoading: isBudgetLoading 
   } = useQuery<BudgetData>({
     queryKey: ['/api/budget'],
     enabled: !!user,
+    staleTime: 30 * 1000, // 30 seconds for faster updates
+    refetchInterval: 60 * 1000, // Auto-refresh every minute
   });
 
   // Format the remaining budget as currency

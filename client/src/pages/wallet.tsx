@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useBudget } from '@/hooks/use-budget';
+import { useDataSync } from '@/hooks/use-data-sync';
 import { Wallet, Plus, DollarSign, History, CreditCard, Building2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -50,18 +51,25 @@ export default function WalletPage() {
 
 
 
-  // Get wallet balance
+  // Get wallet balance with faster refresh for better integration
   const { data: walletData, isLoading: balanceLoading, error: balanceError } = useQuery({
     queryKey: ['/api/trolley/wallet-balance'],
+    staleTime: 30 * 1000, // 30 seconds - financial data needs frequent updates
+    refetchInterval: 60 * 1000, // Auto-refresh every minute
   });
 
-  // Get funding history
+  // Get funding history with regular refresh
   const { data: historyData, isLoading: historyLoading } = useQuery({
     queryKey: ['/api/trolley/funding-history'],
+    staleTime: 60 * 1000, // 1 minute for history data
+    refetchInterval: 2 * 60 * 1000, // Auto-refresh every 2 minutes
   });
 
   // Get budget data using the budget hook
   const { budgetInfo: budgetData, isLoading: budgetLoading, setBudget, isSettingBudget } = useBudget();
+
+  // Import data sync hook
+  const { invalidateFinancialData, invalidateUserData } = useDataSync();
 
   // Setup company profile mutation
   const setupProfileMutation = useMutation({
@@ -74,8 +82,9 @@ export default function WalletPage() {
         title: "Profile Created",
         description: "Trolley company profile created successfully",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/trolley/wallet-balance'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/trolley/funding-history'] });
+      // Use integrated data sync instead of individual invalidations
+      invalidateFinancialData();
+      invalidateUserData();
     },
     onError: (error: any) => {
       toast({
