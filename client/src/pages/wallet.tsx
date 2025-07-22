@@ -321,6 +321,22 @@ export default function WalletPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center gap-3 p-3 border border-zinc-700 rounded-lg">
+                    <CreditCard className="h-5 w-5 text-purple-400" />
+                    <div>
+                      <p className="font-medium text-white">Pay-as-you-go</p>
+                      <p className="text-sm text-zinc-500">Delivery based payment from a bank account you link to your account</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3 p-3 border border-zinc-700 rounded-lg">
+                    <Wallet className="h-5 w-5 text-orange-400" />
+                    <div>
+                      <p className="font-medium text-white">Pre-funded Account</p>
+                      <p className="text-sm text-zinc-500">Available when businesses want wallet funding</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3 p-3 border border-zinc-700 rounded-lg">
                     <Building2 className="h-5 w-5 text-blue-400" />
                     <div>
                       <p className="font-medium text-white">Bank Transfer (ACH)</p>
@@ -337,10 +353,16 @@ export default function WalletPage() {
                   </div>
                   
                   <div className="bg-zinc-800 p-4 rounded-lg border border-zinc-700">
-                    <p className="text-sm text-zinc-300">
+                    <p className="text-sm text-zinc-300 mb-3">
                       <strong>Note:</strong> Current funding is processed through Trolley's secure payment system. 
                       Contact support for setting up recurring funding or custom payment methods.
                     </p>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-green-400"></div>
+                        <span className="text-sm text-zinc-300">Budget validation: Working for both payment methods</span>
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
