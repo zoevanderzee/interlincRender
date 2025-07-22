@@ -4888,7 +4888,7 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
     try {
       const priceIds = [
         'price_1RgRilF4bfRUGDn9LWUhoJ6F', // business-starter - Test Plan £1.00/month  
-        process.env.STRIPE_BUSINESS_PRICE_ID, // business - Standard £49.99/month 
+        'price_1RgRilF4bfRUGDn9jMnjAo96', // business - Standard £49.99/month 
         'price_1Ricn6F4bfRUGDn91XzkPq5F', // business-enterprise - Enterprise £200.00/month
         'price_1RiEGMF4bfRUGDn9UErjyXjX', // business-annual - Annual £1,200.00/year
         process.env.STRIPE_CONTRACTOR_PRICE_ID, // contractor
@@ -4948,8 +4948,8 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
       let priceId;
       
       if (planType === 'business') {
-        // Business plan - £49/month (live mode)
-        priceId = process.env.STRIPE_BUSINESS_PRICE_ID;
+        // Business plan - Standard £49.99/month (live mode)
+        priceId = 'price_1RgRilF4bfRUGDn9jMnjAo96';
       } else if (planType === 'business-starter') {
         // Business Starter plan - Test Plan £1.00/month (live mode)
         priceId = 'price_1RgRilF4bfRUGDn9LWUhoJ6F';
