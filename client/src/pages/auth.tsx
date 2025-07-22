@@ -494,10 +494,15 @@ export default function AuthPage() {
               
               // Check subscription status before allowing dashboard access
               if (userData.subscriptionStatus !== 'active') {
-                console.log("User needs subscription, redirecting to subscription page");
-                // Redirect to subscription page with user info
-                const subscriptionUrl = `/auth?showSubscription=true&userId=${userData.id}&role=${userData.role}&email=${userData.email}`;
-                window.location.href = subscriptionUrl;
+                console.log("User needs subscription, showing subscription form");
+                // Show subscription form directly without redirect
+                setShowSubscription(true);
+                setRegisteredUser({
+                  id: userData.id,
+                  email: userData.email,
+                  username: userData.username,
+                  role: userData.role
+                });
               } else {
                 console.log("User has active subscription, redirecting to dashboard");
                 // Redirect to dashboard
