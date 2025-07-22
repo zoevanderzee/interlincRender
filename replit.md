@@ -120,6 +120,8 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
+- July 22, 2025: **HELP SYSTEM UPDATED WITH CURRENT FUNCTIONALITY** - Completely updated Help & Support section to remove all smart contract references and replace with relevant information about contractor management, payment providers (Stripe/Trolley), subscription plans, project milestones, and actual platform features. Updated FAQs to reflect real user workflows.
+- July 22, 2025: **SUBSCRIPTION MANAGEMENT COMPLETED** - Full settings page implementation with subscription status display, plan details, billing periods, and cancel/reactivate functionality through proper Stripe API integration.
 - July 22, 2025: **PAYMENT ERROR HANDLING IMPROVED** - Enhanced subscription payment error messages with specific guidance for common Stripe authentication failures. Added troubleshooting guide for client payment issues.
 - July 22, 2025: **CRITICAL REGISTRATION BUG FIXED** - Fixed root cause of business accounts being saved as contractors. Frontend registration form was defaulting to role: "contractor" instead of "business". Updated frontend default and added backend validation to prevent future occurrences.
 - July 22, 2025: **BUSINESS ACCOUNT ROLE CORRECTIONS** - Updated User 110 (evanderzee@lincoln.ac.uk) and User 111 (emilevdz@gmail.com) from contractor role to business role. These accounts will now see business subscription plans instead of contractor plans.

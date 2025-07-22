@@ -94,62 +94,66 @@ const Help = () => {
       title: "Getting Started",
       faqs: [
         {
-          question: "How do I create my first smart contract?",
-          answer: "To create your first smart contract, navigate to the Contracts page and click on 'New Contract'. You'll be guided through a step-by-step process to set up your contract including defining payment terms, milestones, and contractor details."
+          question: "How do I create my first project contract?",
+          answer: "Navigate to the Contracts section and click 'Create New Contract'. Select a contractor, define your project milestones with clear deliverables and deadlines, set payment amounts for each milestone, and send for contractor approval. Once accepted, work can begin."
         },
         {
           question: "How do I add a contractor to my account?",
-          answer: "You can add contractors from the Contractors page by clicking the 'Add Contractor' button. Fill in their details, and they'll receive an invitation to join your workspace. Once they accept, you can assign them to contracts."
+          answer: "Go to the Contractors section and click 'Add Contractor'. Enter their email address to send an invitation, or use the unique contractor code they provide. Once they accept and complete their profile setup, they'll be available for contract creation."
         },
         {
-          question: "What payment methods are supported?",
-          answer: "Creativ Linc supports major credit and debit cards, ACH transfers, and bank transfers for payment processing. All payment information is securely stored and compliant with PCI DSS standards."
+          question: "What subscription plans are available?",
+          answer: "We offer multiple business plans: Test Plan (£1/month), Standard Plan (£49.99/month), and Enterprise Plan with custom pricing. Contractors pay £5/month. Each plan includes different features and contractor limits. Visit Settings > Subscription to view and change your plan."
+        },
+        {
+          question: "How do I upgrade my subscription?",
+          answer: "Go to Settings > Subscription to view your current plan and available upgrades. Click 'Change Plan' to select a new subscription tier. Payment will be processed immediately and your new features will be activated instantly."
+        }
+      ]
+    },
+    {
+      title: "Project Management",
+      faqs: [
+        {
+          question: "How do project milestones work?",
+          answer: "Milestones break your project into manageable phases with specific deliverables, deadlines, and payment amounts. When a contractor completes a milestone, you review and approve it, which automatically triggers the associated payment through our secure payment system."
+        },
+        {
+          question: "Can I modify an active contract?",
+          answer: "Yes, navigate to the contract page and click 'Edit'. Both parties must approve any changes before they take effect. All modifications are tracked and documented for compliance and transparency."
+        },
+        {
+          question: "How do I track project progress?",
+          answer: "Use the Dashboard to see an overview of all active projects. Each contract page shows detailed milestone progress, upcoming deadlines, and payment status. You'll receive notifications for important updates and deadlines."
+        },
+        {
+          question: "What happens if a milestone isn't completed on time?",
+          answer: "Overdue milestones are clearly marked in your dashboard. You can message the contractor directly, extend the deadline if needed, or take other actions. All timeline changes are documented in the contract history."
+        }
+      ]
+    },
+    {
+      title: "Payments & Payment Providers",
+      faqs: [
+        {
+          question: "What payment providers do you use?",
+          answer: "We use Stripe for subscription billing and domestic payments, and Trolley for international contractor payments. Both providers are industry-leading, secure payment platforms that ensure your financial data is protected with bank-level security."
         },
         {
           question: "How are payments triggered?",
-          answer: "Payments are automatically triggered when a milestone is marked as complete and approved. The contractor submits their work, you approve it, and the payment is automatically processed based on the terms set in the smart contract."
-        }
-      ]
-    },
-    {
-      title: "Smart Contracts",
-      faqs: [
-        {
-          question: "What makes these 'smart' contracts?",
-          answer: "Our smart contracts automate the agreement process between you and your contractors. They contain predefined terms, milestone deliverables, and payment conditions that execute automatically when conditions are met, removing the need for manual invoicing and approvals."
+          answer: "Payments are automatically triggered when you approve a completed milestone. The system processes the payment through either Stripe or Trolley depending on the contractor's location and your payment settings. Payments typically complete within 1-3 business days."
         },
         {
-          question: "Can I customize contract templates?",
-          answer: "Yes, you can create custom contract templates that suit your specific business needs. Navigate to Contracts > Templates to create or modify templates with your own terms, milestone structures, and payment schedules."
+          question: "How do international payments work?",
+          answer: "International payments are handled through our Trolley integration, which supports over 200 countries and multiple currencies. Exchange rates are calculated in real-time and clearly displayed before payment confirmation."
         },
         {
-          question: "How do I modify an active contract?",
-          answer: "To modify an active contract, navigate to the specific contract page and click 'Edit'. Both parties will need to approve any changes before they take effect. A full history of changes is maintained for compliance purposes."
+          question: "What if a payment fails?",
+          answer: "If a payment fails, you'll receive immediate notification with specific error details. Common issues include expired payment methods or insufficient funds. You can retry the payment or update your payment method in Settings > Budget."
         },
         {
-          question: "What happens if a milestone isn't completed?",
-          answer: "If a milestone isn't completed by the due date, it will be marked as overdue. You can then request an update from the contractor, extend the deadline, or take other actions as defined in your contract terms."
-        }
-      ]
-    },
-    {
-      title: "Payments & Billing",
-      faqs: [
-        {
-          question: "How are payment fees calculated?",
-          answer: "Creativ Linc charges a small percentage fee on each payment processed. The exact fee depends on your subscription plan and payment volume. You can view the detailed fee structure in the Billing section of your Settings."
-        },
-        {
-          question: "Can I schedule recurring payments?",
-          answer: "Yes, you can set up recurring payments for ongoing contractor relationships. When creating a contract, select the 'Recurring Payment' option and define the frequency (weekly, monthly, etc.) and duration."
-        },
-        {
-          question: "How do I handle international payments?",
-          answer: "International payments are fully supported and processed in the contractor's preferred currency. Currency conversion is handled automatically with transparent exchange rates displayed at the time of contract creation."
-        },
-        {
-          question: "What happens if a payment fails?",
-          answer: "If a payment fails, you'll be notified immediately. The system will automatically retry the payment after 24 hours. If it fails again, you'll need to update your payment method or manually initiate the payment from the Payments dashboard."
+          question: "How do subscription payments work?",
+          answer: "Subscription payments are processed monthly through Stripe. Your subscription automatically renews unless cancelled. You can view billing history, update payment methods, and manage your subscription in Settings > Subscription."
         }
       ]
     },
@@ -281,7 +285,7 @@ const Help = () => {
                 </div>
                 <h3 className="text-lg font-medium mb-2">Getting Started Guide</h3>
                 <p className="text-primary-500 mb-4">
-                  Learn the basics of Creativ Linc and how to set up your first smart contract.
+                  Learn the basics of Creativ Linc and how to set up your first project contract.
                 </p>
                 <Button variant="outline" className="w-full">
                   View Guide
@@ -294,9 +298,9 @@ const Help = () => {
                 <div className="h-12 w-12 rounded-full bg-accent-50 text-accent-500 flex items-center justify-center mb-4">
                   <FileText size={24} />
                 </div>
-                <h3 className="text-lg font-medium mb-2">Smart Contract Creation</h3>
+                <h3 className="text-lg font-medium mb-2">Project Contract Creation</h3>
                 <p className="text-primary-500 mb-4">
-                  Detailed documentation on creating and managing smart contracts.
+                  Detailed documentation on creating and managing project contracts with milestones.
                 </p>
                 <Button variant="outline" className="w-full">
                   View Guide
@@ -309,9 +313,9 @@ const Help = () => {
                 <div className="h-12 w-12 rounded-full bg-accent-50 text-accent-500 flex items-center justify-center mb-4">
                   <FileText size={24} />
                 </div>
-                <h3 className="text-lg font-medium mb-2">Payment Integration</h3>
+                <h3 className="text-lg font-medium mb-2">Payment Setup</h3>
                 <p className="text-primary-500 mb-4">
-                  Learn how to set up and manage automated payments and billing.
+                  Learn how to set up Stripe and Trolley payments for domestic and international contractors.
                 </p>
                 <Button variant="outline" className="w-full">
                   View Guide
