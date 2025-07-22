@@ -120,6 +120,7 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
+- July 22, 2025: **COMPLETE DATA ISOLATION SECURITY IMPLEMENTED** - Secured all API endpoints with user-based filtering to prevent cross-account data access. Added authentication requirements and business/contractor verification to milestones, payments, and documents endpoints. Each account now has completely separate data with zero cross-contamination.
 - July 22, 2025: **COMPREHENSIVE DATA INTEGRATION IMPLEMENTED** - Built complete data synchronization system ensuring all pages display consistent, real-time data. Enhanced dashboard and wallet with 30-second refresh rates, automatic cache invalidation, and cross-page data updates. Created data sync hooks for seamless integration across all components.
 - July 22, 2025: **PAY-AS-YOU-GO BANK ACCOUNT STATUS IMPLEMENTED** - Added automatic bank account status tracking for Trolley-verified businesses. Wallet now shows "Bank Account Connected" with account details when users complete business verification. Pay-as-you-go option automatically enabled for verified businesses without requiring separate bank linking.
 - July 22, 2025: **SUBSCRIPTION PRICING FIXED** - Corrected price mapping where Annual Business Plan was showing £1.00/month instead of £1,200.00/year. All subscription plans now display correct pricing from Stripe dashboard.

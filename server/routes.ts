@@ -997,74 +997,167 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Milestone routes
-  app.get(`${apiRouter}/milestones`, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/milestones`, requireAuth, async (req: Request, res: Response) => {
     try {
       const contractId = req.query.contractId ? parseInt(req.query.contractId as string) : null;
       const upcoming = req.query.upcoming === 'true';
+      const userId = req.user?.id;
+      const userRole = req.user?.role || 'business';
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
       
       let milestones;
       if (contractId) {
-        // Check if the contract is deleted
+        // SECURITY: Check if the contract belongs to the authenticated user
         const contract = await storage.getContract(contractId);
-        if (contract && contract.status === 'deleted') {
+        if (!contract) {
+          return res.status(404).json({ message: "Contract not found" });
+        }
+        
+        // Verify user has access to this contract
+        if (userRole === 'business' && contract.businessId !== userId) {
+          return res.status(403).json({ message: "Access denied: Cannot access other business data" });
+        }
+        if (userRole === 'contractor' && contract.contractorId !== userId) {
+          return res.status(403).json({ message: "Access denied: Cannot access other contractor data" });
+        }
+        
+        if (contract.status === 'deleted') {
           return res.json([]); // Return empty array for deleted contracts
         }
         milestones = await storage.getMilestonesByContractId(contractId);
       } else if (upcoming) {
-        milestones = await storage.getUpcomingMilestones(5); // Limit to 5 for dashboard
+        // SECURITY: Only get milestones for user's contracts
+        let userContractIds = [];
+        if (userRole === 'business') {
+          const userContracts = await storage.getContractsByBusinessId(userId);
+          userContractIds = userContracts
+            .filter(contract => contract.status !== 'deleted')
+            .map(contract => contract.id);
+        } else if (userRole === 'contractor') {
+          const userContracts = await storage.getContractsByContractorId(userId);
+          userContractIds = userContracts
+            .filter(contract => contract.status !== 'deleted')
+            .map(contract => contract.id);
+        }
         
-        // Get all active contracts to filter milestones
-        const allContracts = await storage.getAllContracts();
-        const activeContractIds = allContracts
-          .filter(contract => contract && contract.status !== 'deleted')
-          .map(contract => contract.id);
-          
-        // Filter out milestones for deleted contracts
-        milestones = milestones.filter(milestone => 
-          activeContractIds.includes(milestone.contractId));
+        // Get upcoming milestones only for user's contracts
+        const allMilestones = await storage.getUpcomingMilestones(50); // Get more to filter
+        milestones = allMilestones
+          .filter(milestone => userContractIds.includes(milestone.contractId))
+          .slice(0, 5); // Limit to 5 for dashboard
       } else {
-        // Default behavior
+        // Default behavior - return empty for security
         milestones = [];
       }
       
       res.json(milestones);
     } catch (error) {
+      console.error("Error fetching milestones:", error);
       res.status(500).json({ message: "Error fetching milestones" });
     }
   });
   
-  app.get(`${apiRouter}/milestones/:id`, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/milestones/:id`, requireAuth, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
-      const milestone = await storage.getMilestone(id);
+      const userId = req.user?.id;
+      const userRole = req.user?.role || 'business';
       
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const milestone = await storage.getMilestone(id);
       if (!milestone) {
         return res.status(404).json({ message: "Milestone not found" });
       }
       
+      // SECURITY: Verify user has access to this milestone's contract
+      const contract = await storage.getContract(milestone.contractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contract not found" });
+      }
+      
+      if (userRole === 'business' && contract.businessId !== userId) {
+        return res.status(403).json({ message: "Access denied: Cannot access other business data" });
+      }
+      if (userRole === 'contractor' && contract.contractorId !== userId) {
+        return res.status(403).json({ message: "Access denied: Cannot access other contractor data" });
+      }
+      
       res.json(milestone);
     } catch (error) {
+      console.error("Error fetching milestone:", error);
       res.status(500).json({ message: "Error fetching milestone" });
     }
   });
   
-  app.post(`${apiRouter}/milestones`, async (req: Request, res: Response) => {
+  app.post(`${apiRouter}/milestones`, requireAuth, async (req: Request, res: Response) => {
     try {
+      const userId = req.user?.id;
+      const userRole = req.user?.role || 'business';
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
       const milestoneInput = insertMilestoneSchema.parse(req.body);
+      
+      // SECURITY: Verify user has access to create milestones for this contract
+      const contract = await storage.getContract(milestoneInput.contractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contract not found" });
+      }
+      
+      if (userRole === 'business' && contract.businessId !== userId) {
+        return res.status(403).json({ message: "Access denied: Cannot create milestones for other business contracts" });
+      }
+      if (userRole === 'contractor' && contract.contractorId !== userId) {
+        return res.status(403).json({ message: "Access denied: Cannot create milestones for other contractor contracts" });
+      }
+      
       const newMilestone = await storage.createMilestone(milestoneInput);
       res.status(201).json(newMilestone);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid milestone data", errors: error.errors });
       }
+      console.error("Error creating milestone:", error);
       res.status(500).json({ message: "Error creating milestone" });
     }
   });
   
-  app.patch(`${apiRouter}/milestones/:id`, async (req: Request, res: Response) => {
+  app.patch(`${apiRouter}/milestones/:id`, requireAuth, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       const updateData = req.body;
+      const userId = req.user?.id;
+      const userRole = req.user?.role || 'business';
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      // SECURITY: Verify user has access to update this milestone
+      const existingMilestone = await storage.getMilestone(id);
+      if (!existingMilestone) {
+        return res.status(404).json({ message: "Milestone not found" });
+      }
+      
+      const contract = await storage.getContract(existingMilestone.contractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contract not found" });
+      }
+      
+      if (userRole === 'business' && contract.businessId !== userId) {
+        return res.status(403).json({ message: "Access denied: Cannot update other business milestones" });
+      }
+      if (userRole === 'contractor' && contract.contractorId !== userId) {
+        return res.status(403).json({ message: "Access denied: Cannot update other contractor milestones" });
+      }
       
       const updatedMilestone = await storage.updateMilestone(id, updateData);
       
@@ -1074,6 +1167,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(updatedMilestone);
     } catch (error) {
+      console.error("Error updating milestone:", error);
       res.status(500).json({ message: "Error updating milestone" });
     }
   });
@@ -1269,122 +1363,174 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Payment routes
-  app.get(`${apiRouter}/payments`, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/payments`, requireAuth, async (req: Request, res: Response) => {
     try {
-      const userId = req.user?.id || (req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
-      const userRole = req.user?.role || 'business'; // Default to business if not specified
-      
-      const contractId = req.query.contractId ? parseInt(req.query.contractId as string) : null;
-      let payments = await storage.getAllPayments(contractId);
-      
-      // Log debugging information
-      console.log(`Fetching payments for user ID ${userId} with role ${userRole}`);
+      const userId = req.user?.id;
+      const userRole = req.user?.role || 'business';
       
       if (!userId) {
-        console.log("No authenticated user, returning empty payments array");
-        return res.json([]);
+        return res.status(401).json({ message: "Authentication required" });
       }
       
-      // Get all contracts for the current user
-      let userContracts = [];
-      if (userRole === 'business') {
-        userContracts = await storage.getContractsByBusinessId(userId);
-      } else if (userRole === 'contractor') {
-        userContracts = await storage.getContractsByContractorId(userId);
+      const contractId = req.query.contractId ? parseInt(req.query.contractId as string) : null;
+      const upcoming = req.query.upcoming === 'true';
+      
+      console.log(`SECURITY: Fetching payments for user ID ${userId} with role ${userRole}`);
+      
+      let payments;
+      if (contractId) {
+        // SECURITY: Verify user has access to this contract
+        const contract = await storage.getContract(contractId);
+        if (!contract) {
+          return res.status(404).json({ message: "Contract not found" });
+        }
+        
+        if (userRole === 'business' && contract.businessId !== userId) {
+          console.log(`SECURITY BLOCK: Business user ${userId} attempted to access payments for contract ${contractId} owned by business ${contract.businessId}`);
+          return res.status(403).json({ message: "Access denied: Cannot access other business payments" });
+        }
+        if (userRole === 'contractor' && contract.contractorId !== userId) {
+          console.log(`SECURITY BLOCK: Contractor user ${userId} attempted to access payments for contract ${contractId} assigned to contractor ${contract.contractorId}`);
+          return res.status(403).json({ message: "Access denied: Cannot access other contractor payments" });
+        }
+        
+        payments = await storage.getPaymentsByContractId(contractId);
+      } else {
+        // SECURITY: Only get payments for user's own contracts
+        let userContracts = [];
+        if (userRole === 'business') {
+          userContracts = await storage.getContractsByBusinessId(userId);
+        } else if (userRole === 'contractor') {
+          userContracts = await storage.getContractsByContractorId(userId);
+        }
+        
+        console.log(`SECURITY: Found ${userContracts.length} contracts for user ${userId}`);
+        
+        const userContractIds = userContracts
+          .filter(contract => contract.status !== 'deleted')
+          .map(contract => contract.id);
+        
+        const allUserPayments = await storage.getAllPayments(null);
+        payments = allUserPayments.filter(payment => userContractIds.includes(payment.contractId));
+        
+        if (upcoming) {
+          payments = payments.slice(0, 10); // Limit for dashboard
+        }
+        
+        console.log(`SECURITY: After filtering for user's contracts: ${payments.length} payments remaining`);
       }
       
-      console.log(`Found ${userContracts.length} contracts for user ${userId}`);
-      
-      // Get IDs of all the user's contracts (both active and deleted)
-      const userContractIds = userContracts.map(contract => contract.id);
-      
-      // First filter: only keep payments for this user's contracts
-      payments = payments.filter(payment => userContractIds.includes(payment.contractId));
-      console.log(`After filtering for user's contracts: ${payments.length} payments remaining`);
-      
-      // Second filter: exclude payments for deleted contracts
-      const activeContracts = userContracts.filter(contract => contract.status !== 'deleted');
-      const activeContractIds = activeContracts.map(contract => contract.id);
-      
-      payments = payments.filter(payment => activeContractIds.includes(payment.contractId));
-      console.log(`After filtering out deleted contracts: ${payments.length} payments remaining`);
-      
-      // Only create virtual pending payments for ACTIVE contracts
-      const pendingContractPayments = activeContracts
-        .filter(contract => contract.status !== 'deleted') // Double-check no deleted contracts slip through
-        .map(contract => {
-          // Convert contract value to number
-          const contractValueNum = parseFloat(contract.value.toString());
-          
-          // Calculate total existing payments for this contract
-          const existingPaymentsTotal = payments
-            .filter(payment => payment.contractId === contract.id)
-            .reduce((total, payment) => total + parseFloat(payment.amount.toString()), 0);
-          
-          // If there are no payments or the total doesn't match the contract value,
-          // create a virtual pending payment
-          if (existingPaymentsTotal < contractValueNum) {
-            const remainingAmount = contractValueNum - existingPaymentsTotal;
-            return {
-              id: -contract.id, // Use a negative ID to indicate this is a virtual payment
-              contractId: contract.id,
-              milestoneId: 0, // No milestone associated yet
-              amount: remainingAmount.toFixed(2),
-              status: 'pending',
-              scheduledDate: contract.startDate || new Date(),
-              completedDate: null,
-              notes: `Pending contract payment for ${contract.contractName}`,
-              contractName: contract.contractName, // Add contract name for display purposes
-              isVirtual: true // Mark as virtual so we know it's not a real payment record
-            };
-          }
-          return null;
-        }).filter(Boolean); // Remove null entries
-      
-      console.log(`Generated ${pendingContractPayments.length} virtual pending payments`);
-      
-      // Combine actual payments with virtual payments
-      const allPayments = [...payments, ...pendingContractPayments];
-      
-      res.json(allPayments);
+      res.json(payments);
     } catch (error) {
       console.error("Error fetching payments:", error);
       res.status(500).json({ message: "Error fetching payments" });
     }
   });
   
-  app.get(`${apiRouter}/payments/:id`, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/payments/:id`, requireAuth, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
-      const payment = await storage.getPayment(id);
+      const userId = req.user?.id;
+      const userRole = req.user?.role || 'business';
       
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const payment = await storage.getPayment(id);
       if (!payment) {
         return res.status(404).json({ message: "Payment not found" });
       }
       
+      // SECURITY: Verify user has access to this payment's contract
+      const contract = await storage.getContract(payment.contractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contract not found" });
+      }
+      
+      if (userRole === 'business' && contract.businessId !== userId) {
+        console.log(`SECURITY BLOCK: Business user ${userId} attempted to access payment ${id} for contract owned by business ${contract.businessId}`);
+        return res.status(403).json({ message: "Access denied: Cannot access other business payments" });
+      }
+      if (userRole === 'contractor' && contract.contractorId !== userId) {
+        console.log(`SECURITY BLOCK: Contractor user ${userId} attempted to access payment ${id} for contract assigned to contractor ${contract.contractorId}`);
+        return res.status(403).json({ message: "Access denied: Cannot access other contractor payments" });
+      }
+      
       res.json(payment);
     } catch (error) {
+      console.error("Error fetching payment:", error);
       res.status(500).json({ message: "Error fetching payment" });
     }
   });
   
-  app.post(`${apiRouter}/payments`, async (req: Request, res: Response) => {
+  app.post(`${apiRouter}/payments`, requireAuth, async (req: Request, res: Response) => {
     try {
+      const userId = req.user?.id;
+      const userRole = req.user?.role || 'business';
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
       const paymentInput = insertPaymentSchema.parse(req.body);
+      
+      // SECURITY: Verify user has access to create payments for this contract
+      const contract = await storage.getContract(paymentInput.contractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contract not found" });
+      }
+      
+      if (userRole === 'business' && contract.businessId !== userId) {
+        console.log(`SECURITY BLOCK: Business user ${userId} attempted to create payment for contract owned by business ${contract.businessId}`);
+        return res.status(403).json({ message: "Access denied: Cannot create payments for other business contracts" });
+      }
+      if (userRole === 'contractor' && contract.contractorId !== userId) {
+        console.log(`SECURITY BLOCK: Contractor user ${userId} attempted to create payment for contract assigned to contractor ${contract.contractorId}`);
+        return res.status(403).json({ message: "Access denied: Cannot create payments for other contractor contracts" });
+      }
+      
       const newPayment = await storage.createPayment(paymentInput);
       res.status(201).json(newPayment);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid payment data", errors: error.errors });
       }
+      console.error("Error creating payment:", error);
       res.status(500).json({ message: "Error creating payment" });
     }
   });
   
-  app.patch(`${apiRouter}/payments/:id`, async (req: Request, res: Response) => {
+  app.patch(`${apiRouter}/payments/:id`, requireAuth, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       const updateData = req.body;
+      const userId = req.user?.id;
+      const userRole = req.user?.role || 'business';
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      // SECURITY: Verify user has access to update this payment
+      const existingPayment = await storage.getPayment(id);
+      if (!existingPayment) {
+        return res.status(404).json({ message: "Payment not found" });
+      }
+      
+      const contract = await storage.getContract(existingPayment.contractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contract not found" });
+      }
+      
+      if (userRole === 'business' && contract.businessId !== userId) {
+        console.log(`SECURITY BLOCK: Business user ${userId} attempted to update payment ${id} for contract owned by business ${contract.businessId}`);
+        return res.status(403).json({ message: "Access denied: Cannot update other business payments" });
+      }
+      if (userRole === 'contractor' && contract.contractorId !== userId) {
+        console.log(`SECURITY BLOCK: Contractor user ${userId} attempted to update payment ${id} for contract assigned to contractor ${contract.contractorId}`);
+        return res.status(403).json({ message: "Access denied: Cannot update other contractor payments" });
+      }
       
       const updatedPayment = await storage.updatePayment(id, updateData);
       
@@ -1394,43 +1540,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(updatedPayment);
     } catch (error) {
+      console.error("Error updating payment:", error);
       res.status(500).json({ message: "Error updating payment" });
     }
   });
   
   // Document routes
-  app.get(`${apiRouter}/documents`, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/documents`, requireAuth, async (req: Request, res: Response) => {
     try {
       const contractId = req.query.contractId ? parseInt(req.query.contractId as string) : null;
       const userId = req.user?.id;
       const userRole = req.user?.role || 'business';
       
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
       let documents = [];
       if (contractId) {
-        // If contractId is provided, return documents for that contract
+        // SECURITY: Verify user has access to this contract
+        const contract = await storage.getContract(contractId);
+        if (!contract) {
+          return res.status(404).json({ message: "Contract not found" });
+        }
+        
+        if (userRole === 'business' && contract.businessId !== userId) {
+          console.log(`SECURITY BLOCK: Business user ${userId} attempted to access documents for contract ${contractId} owned by business ${contract.businessId}`);
+          return res.status(403).json({ message: "Access denied: Cannot access other business documents" });
+        }
+        if (userRole === 'contractor' && contract.contractorId !== userId) {
+          console.log(`SECURITY BLOCK: Contractor user ${userId} attempted to access documents for contract ${contractId} assigned to contractor ${contract.contractorId}`);
+          return res.status(403).json({ message: "Access denied: Cannot access other contractor documents" });
+        }
+        
         documents = await storage.getDocumentsByContractId(contractId);
-      } else if (userId && userRole === 'business') {
-        // If user is logged in and is a business, get contracts for that user
-        const contracts = await storage.getContractsByBusinessId(userId);
-        
-        // Fetch documents for each contract
-        for (const contract of contracts) {
-          const contractDocuments = await storage.getDocumentsByContractId(contract.id);
-          documents = [...documents, ...contractDocuments];
-        }
-      } else if (userId && userRole === 'contractor') {
-        // If user is logged in and is a contractor, get contracts for that contractor
-        const contracts = await storage.getContractsByContractorId(userId);
-        
-        // Fetch documents for each contract
-        for (const contract of contracts) {
-          const contractDocuments = await storage.getDocumentsByContractId(contract.id);
-          documents = [...documents, ...contractDocuments];
-        }
       } else {
-        // For development only - if not logged in, return an empty array
-        // In production, this would return a 401 Unauthorized
-        documents = [];
+        // SECURITY: Only get documents for user's own contracts
+        let userContracts = [];
+        if (userRole === 'business') {
+          userContracts = await storage.getContractsByBusinessId(userId);
+        } else if (userRole === 'contractor') {
+          userContracts = await storage.getContractsByContractorId(userId);
+        }
+        
+        console.log(`SECURITY: Found ${userContracts.length} contracts for user ${userId}`);
+        
+        // Fetch documents for each user's contract
+        for (const contract of userContracts) {
+          const contractDocuments = await storage.getDocumentsByContractId(contract.id);
+          documents = [...documents, ...contractDocuments];
+        }
       }
       
       res.json(documents);
@@ -1464,30 +1623,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get(`${apiRouter}/documents/:id`, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/documents/:id`, requireAuth, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
-      const document = await storage.getDocument(id);
+      const userId = req.user?.id;
+      const userRole = req.user?.role || 'business';
       
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const document = await storage.getDocument(id);
       if (!document) {
         return res.status(404).json({ message: "Document not found" });
       }
       
+      // SECURITY: Verify user has access to this document's contract
+      const contract = await storage.getContract(document.contractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contract not found" });
+      }
+      
+      if (userRole === 'business' && contract.businessId !== userId) {
+        console.log(`SECURITY BLOCK: Business user ${userId} attempted to access document ${id} for contract owned by business ${contract.businessId}`);
+        return res.status(403).json({ message: "Access denied: Cannot access other business documents" });
+      }
+      if (userRole === 'contractor' && contract.contractorId !== userId) {
+        console.log(`SECURITY BLOCK: Contractor user ${userId} attempted to access document ${id} for contract assigned to contractor ${contract.contractorId}`);
+        return res.status(403).json({ message: "Access denied: Cannot access other contractor documents" });
+      }
+      
       res.json(document);
     } catch (error) {
+      console.error("Error fetching document:", error);
       res.status(500).json({ message: "Error fetching document" });
     }
   });
   
-  app.post(`${apiRouter}/documents`, async (req: Request, res: Response) => {
+  app.post(`${apiRouter}/documents`, requireAuth, async (req: Request, res: Response) => {
     try {
+      const userId = req.user?.id;
+      const userRole = req.user?.role || 'business';
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
       const documentInput = insertDocumentSchema.parse(req.body);
+      
+      // SECURITY: Verify user has access to create documents for this contract
+      const contract = await storage.getContract(documentInput.contractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contract not found" });
+      }
+      
+      if (userRole === 'business' && contract.businessId !== userId) {
+        console.log(`SECURITY BLOCK: Business user ${userId} attempted to create document for contract owned by business ${contract.businessId}`);
+        return res.status(403).json({ message: "Access denied: Cannot create documents for other business contracts" });
+      }
+      if (userRole === 'contractor' && contract.contractorId !== userId) {
+        console.log(`SECURITY BLOCK: Contractor user ${userId} attempted to create document for contract assigned to contractor ${contract.contractorId}`);
+        return res.status(403).json({ message: "Access denied: Cannot create documents for other contractor contracts" });
+      }
+      
       const newDocument = await storage.createDocument(documentInput);
       res.status(201).json(newDocument);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid document data", errors: error.errors });
       }
+      console.error("Error creating document:", error);
       res.status(500).json({ message: "Error creating document" });
     }
   });
