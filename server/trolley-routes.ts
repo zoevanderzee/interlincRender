@@ -77,7 +77,11 @@ export default function trolleyRoutes(app: Express, apiPath: string, authMiddlew
           trolleyCompanyProfileId: company_id as string,
           trolleyVerificationStatus: 'approved',
           trolleyVerificationCompletedAt: new Date(),
-          trolleyVerificationToken: null // Clear token after use
+          trolleyVerificationToken: null, // Clear token after use
+          // Automatically set bank account as verified since it's included in business verification
+          trolleyBankAccountStatus: 'verified',
+          trolleyBankAccountId: 'verified',
+          trolleyBankAccountLast4: '****'
         }).where(eq(users.id, userData.id));
 
         // Redirect to success page
@@ -128,7 +132,11 @@ export default function trolleyRoutes(app: Express, apiPath: string, authMiddlew
               trolleyCompanyProfileId: company_id,
               trolleyVerificationStatus: 'approved',
               trolleyVerificationCompletedAt: new Date(),
-              trolleyVerificationToken: null
+              trolleyVerificationToken: null,
+              // Automatically set bank account as verified since it's included in business verification
+              trolleyBankAccountStatus: 'verified',
+              trolleyBankAccountId: data.bank_account_id || 'verified',
+              trolleyBankAccountLast4: data.bank_account_last4 || '****'
             }).where(eq(users.id, approvedUser[0].id));
           }
           break;

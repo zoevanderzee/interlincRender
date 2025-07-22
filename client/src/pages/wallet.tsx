@@ -43,6 +43,11 @@ export default function WalletPage() {
   const [showBudgetForm, setShowBudgetForm] = useState(false);
   const { toast } = useToast();
 
+  // Get current user data for bank account status
+  const { data: userData } = useQuery({
+    queryKey: ['/api/user'],
+  });
+
   // Get wallet balance
   const { data: walletData, isLoading: balanceLoading, error: balanceError } = useQuery({
     queryKey: ['/api/trolley/wallet-balance'],
@@ -443,17 +448,28 @@ export default function WalletPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* Pay-as-you-go Method */}
                   <div className="flex items-center gap-3 p-3 border border-zinc-700 rounded-lg">
                     <CreditCard className="h-5 w-5 text-purple-400" />
                     <div className="flex-1">
                       <p className="font-medium text-white">Pay-as-you-go</p>
                       <p className="text-sm text-zinc-500">Direct payment from linked bank account when you approve milestones</p>
+                      {userData?.trolleyBankAccountStatus === 'verified' && (
+                        <p className="text-xs text-green-400 mt-1">
+                          ✓ Bank account ending in {userData.trolleyBankAccountLast4} linked
+                        </p>
+                      )}
                     </div>
-                    <Button variant="outline" size="sm" className="text-zinc-300 border-zinc-600">
-                      Setup
-                    </Button>
+                    {userData?.trolleyBankAccountStatus === 'verified' ? (
+                      <div className="text-sm text-green-400">Ready</div>
+                    ) : (
+                      <Button variant="outline" size="sm" className="text-zinc-300 border-zinc-600">
+                        Link Bank
+                      </Button>
+                    )}
                   </div>
                   
+                  {/* Pre-funded Account Method */}
                   <div className="flex items-center gap-3 p-3 border border-zinc-700 rounded-lg">
                     <Wallet className="h-5 w-5 text-orange-400" />
                     <div className="flex-1">
@@ -463,13 +479,22 @@ export default function WalletPage() {
                     <div className="text-sm text-green-400">Active</div>
                   </div>
                   
+                  {/* Status Information */}
                   <div className="bg-zinc-800 p-4 rounded-lg border border-zinc-700">
                     <div className="flex items-center gap-2 mb-2">
                       <div className="w-2 h-2 rounded-full bg-green-400"></div>
-                      <span className="text-sm text-zinc-300">Budget validation: Working for both payment methods</span>
+                      <span className="text-sm text-zinc-300">
+                        {userData?.trolleyBankAccountStatus === 'verified' 
+                          ? 'Both payment methods available' 
+                          : 'Pre-funded account available, pay-as-you-go requires business verification'
+                        }
+                      </span>
                     </div>
                     <p className="text-sm text-zinc-400">
-                      You can switch between payment methods at any time. Pay-as-you-go requires linking a bank account.
+                      {userData?.trolleyBankAccountStatus === 'verified' 
+                        ? 'You can switch between payment methods at any time.'
+                        : 'Complete Trolley business verification to enable pay-as-you-go payments.'
+                      }
                     </p>
                   </div>
                 </CardContent>

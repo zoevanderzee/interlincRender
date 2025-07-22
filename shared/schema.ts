@@ -33,6 +33,9 @@ export const users = pgTable("users", {
   trolleyRecipientId: text("trolley_recipient_id"), // Trolley recipient ID for contractors
   trolleySubmerchantId: text("trolley_submerchant_id"), // Trolley submerchant account ID for businesses
   trolleySubmerchantStatus: text("trolley_submerchant_status"), // Status of submerchant onboarding
+  trolleyBankAccountStatus: text("trolley_bank_account_status"), // Bank account verification status (pending, verified, failed)
+  trolleyBankAccountId: text("trolley_bank_account_id"), // Trolley bank account ID for pay-as-you-go
+  trolleyBankAccountLast4: text("trolley_bank_account_last4"), // Last 4 digits of linked bank account
   trolleyVerificationToken: text("trolley_verification_token"), // Token for Trolley business verification
   trolleyVerificationStarted: timestamp("trolley_verification_started"), // When verification was initiated
   payoutEnabled: boolean("payout_enabled").default(false), // Whether the contractor is ready to receive payments
