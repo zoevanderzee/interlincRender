@@ -4887,10 +4887,10 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
   app.get('/api/subscription-prices', async (req: Request, res: Response) => {
     try {
       const priceIds = [
-        'price_1RiEGMF4bfRUGDn9UErjyXjX', // business-starter
-        process.env.STRIPE_BUSINESS_PRICE_ID, // business
-        'price_1Ricn6F4bfRUGDn91XzkPq5F', // business-enterprise
-        'price_1RgRilF4bfRUGDn9LWUhoJ6F', // business-annual
+        'price_1RiEGMF4bfRUGDn9UErjyXjX', // business-starter (keeping this as starter)
+        process.env.STRIPE_BUSINESS_PRICE_ID, // business - Standard £49.99/month 
+        'price_1Ricn6F4bfRUGDn91XzkPq5F', // business-enterprise - Enterprise £200.00/month
+        'price_1RgRilF4bfRUGDn9LWUhoJ6F', // business-annual - Annual £1,200.00/year
         process.env.STRIPE_CONTRACTOR_PRICE_ID, // contractor
       ];
 

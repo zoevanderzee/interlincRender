@@ -38,7 +38,7 @@ const subscriptionPlans: SubscriptionPlan[] = [
   },
   {
     id: "business",
-    name: "Business Plan",
+    name: "Standard",
     price: "Loading...",
     description: "Perfect for businesses managing contractors and projects",
     features: [
@@ -54,11 +54,11 @@ const subscriptionPlans: SubscriptionPlan[] = [
   },
   {
     id: "business-enterprise",
-    name: "Business Enterprise",
+    name: "Enterprise",
     price: "Loading...",
     description: "Advanced features for large businesses with complex needs",
     features: [
-      "Everything in Business Plan",
+      "Everything in Standard Plan",
       "White-label options",
       "Custom integrations",
       "Dedicated account manager",
@@ -69,11 +69,11 @@ const subscriptionPlans: SubscriptionPlan[] = [
   },
   {
     id: "business-annual",
-    name: "Business Annual",
+    name: "Annual Business Plan",
     price: "Loading...",
-    description: "Get the full Business Plan features with annual billing",
+    description: "Get the full Standard Plan features with annual billing",
     features: [
-      "Everything in Business Plan",
+      "Everything in Standard Plan",
       "Annual billing discount",
       "Priority support",
       "Extended data retention",
