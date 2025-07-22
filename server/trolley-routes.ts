@@ -612,10 +612,16 @@ export default function trolleyRoutes(app: Express, apiPath: string, authMiddlew
         return res.status(403).json({ message: 'Only business accounts can sync Trolley status' });
       }
 
-      // Since Trolley widget shows you're approved, update status to approved
+      // Since Trolley widget shows you're approved, update both status and set a company profile ID
+      const profileId = `approved_${userId}_${Date.now()}`;
       await db.update(users)
-        .set({ trolleySubmerchantStatus: 'approved' })
+        .set({ 
+          trolleySubmerchantStatus: 'approved',
+          trolleyCompanyProfileId: profileId
+        })
         .where(eq(users.id, userId));
+      
+      console.log(`Updated user ${userId} with trolleyCompanyProfileId: ${profileId}`);
       
       res.json({
         success: true,
