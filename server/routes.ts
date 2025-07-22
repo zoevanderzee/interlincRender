@@ -269,7 +269,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Protected routes - require authentication
   
   // User routes
-  app.get(`${apiRouter}/users`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/users`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
       const role = req.query.role as string;
       const currentUser = req.user;
@@ -430,7 +430,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
    * Dedicated endpoint for retrieving contractors linked to a company
    * This solves the problem of contractors not appearing in project creation dropdowns
    */
-  app.get(`${apiRouter}/contractors`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/contractors`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
       const companyId = req.query.companyId ? parseInt(req.query.companyId as string) : 
                         req.query.companyid ? parseInt(req.query.companyid as string) : null;
@@ -513,7 +513,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get(`${apiRouter}/users/:id`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/users/:id`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       const user = await storage.getUser(id);
@@ -765,7 +765,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get(`${apiRouter}/contracts/:id`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/contracts/:id`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       
@@ -1099,7 +1099,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get(`${apiRouter}/milestones/:id`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/milestones/:id`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       const userId = req.user?.id;
@@ -1263,7 +1263,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Payment Method Management Routes
-  app.get(`${apiRouter}/payment-methods`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/payment-methods`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
       const userId = req.user?.id;
       if (!userId) {
@@ -1402,7 +1402,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Payment routes
-  app.get(`${apiRouter}/payments`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/payments`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
       const userId = req.user?.id;
       const userRole = req.user?.role || 'business';
@@ -1466,7 +1466,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get(`${apiRouter}/payments/:id`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/payments/:id`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       const userId = req.user?.id;
@@ -1585,7 +1585,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Document routes
-  app.get(`${apiRouter}/documents`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/documents`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
       const contractId = req.query.contractId ? parseInt(req.query.contractId as string) : null;
       const userId = req.user?.id;
@@ -1639,7 +1639,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Deleted Projects folder in Data Room
-  app.get(`${apiRouter}/deleted-contracts`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/deleted-contracts`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
       const userId = req.user?.id;
       
@@ -1662,7 +1662,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get(`${apiRouter}/documents/:id`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/documents/:id`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       const userId = req.user?.id;
@@ -2350,7 +2350,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get(`${apiRouter}/business/invite-link`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/business/invite-link`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
       // Only business users can view their invite links
       if (req.user!.role !== 'business') {
@@ -2458,7 +2458,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Reports API endpoint - integrates with real payment and project data
-  app.get(`${apiRouter}/reports`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/reports`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
       const timeRange = req.query.timeRange as string || 'year';
       
@@ -2751,7 +2751,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Get contractor Connect account status
-  app.get(`${apiRouter}/contractors/:id/connect-status`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/contractors/:id/connect-status`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
       const contractorId = parseInt(req.params.id);
       const contractor = await storage.getUser(contractorId);
@@ -3338,7 +3338,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Work Request routes
-  app.get(`${apiRouter}/work-requests`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/work-requests`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
       const businessId = req.query.businessId ? parseInt(req.query.businessId as string) : null;
       const email = req.query.email as string;
@@ -3394,7 +3394,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get(`${apiRouter}/work-requests/:id`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/work-requests/:id`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       const workRequest = await storage.getWorkRequest(id);
@@ -3803,7 +3803,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Profile Code Routes
-  app.get(`${apiRouter}/profile-code`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/profile-code`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
       // Retrieve a user's profile code
       const userId = req.user?.id;
@@ -4020,7 +4020,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get(`${apiRouter}/connection-requests`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/connection-requests`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
       // Get user ID and role, handling fallback authentication
       let userId = req.user?.id;
@@ -4134,7 +4134,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get company onboarding links
-  app.get(`${apiRouter}/business-onboarding-link`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/business-onboarding-link`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
       const businessId = req.user?.id;
       
@@ -4175,7 +4175,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Create or update company onboarding link
   // Notifications endpoints
-  app.get(`${apiRouter}/notifications`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/notifications`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
       const user = req.user as User;
       if (!user) {
@@ -4190,7 +4190,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get(`${apiRouter}/notifications/count`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/notifications/count`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
       const user = req.user as User;
       if (!user) {
