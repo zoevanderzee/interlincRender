@@ -946,6 +946,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // All checks passed, proceed with the update
         console.log("Budget validation passed, updating contract with contractor");
         
+        // Map contractorValue to contractorBudget for database storage
+        updateData.contractorBudget = contractorValue;
+        console.log(`Setting contractor budget to: $${contractorValue}`);
+        
         // CRITICAL: Deduct budget from business user when contractor is assigned
         // Only deduct if this is a new contractor assignment (not an update)
         if (!existingContract.contractorId && updateData.contractorId) {
@@ -3040,15 +3044,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         contract.status !== 'deleted'
       );
       
-      // Get milestones for active contracts and sum their payment amounts
-      const allMilestones = await storage.getAllMilestones();
-      const userContractIds = userContracts.map(contract => contract.id);
-      const relevantMilestones = allMilestones.filter(milestone => 
-        userContractIds.includes(milestone.contractId)
-      );
-      
-      const totalProjectAllocations = relevantMilestones.reduce((sum, milestone) => {
-        return sum + parseFloat(milestone.paymentAmount.toString() || '0');
+      // Calculate total project allocations from contractor assignment values
+      const totalProjectAllocations = userContracts.reduce((sum, contract) => {
+        // Only count contracts that have contractors assigned with budget allocation
+        if (contract.contractorId && contract.contractorBudget) {
+          return sum + parseFloat(contract.contractorBudget.toString() || '0');
+        }
+        return sum;
       }, 0);
       
       // Return budget-related information
