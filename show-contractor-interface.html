@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Switch to Contractor View</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: #000;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            text-align: center;
+            max-width: 500px;
+            background: #111;
+            padding: 40px;
+            border-radius: 12px;
+            border: 1px solid #333;
+        }
+        h1 {
+            margin-bottom: 20px;
+            color: #48bb78;
+        }
+        p {
+            margin-bottom: 30px;
+            color: #999;
+            line-height: 1.6;
+        }
+        .button {
+            background: #48bb78;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            margin: 10px;
+            transition: background 0.2s;
+        }
+        .button:hover {
+            background: #38a169;
+        }
+        .button.secondary {
+            background: #333;
+            color: #fff;
+        }
+        .button.secondary:hover {
+            background: #444;
+        }
+        .note {
+            font-size: 14px;
+            color: #666;
+            margin-top: 20px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Contractor Interface Demo</h1>
+        <p>
+            I'll temporarily switch you to a contractor user account so you can see the contractor interface without creating a real account.
+        </p>
+        <p>
+            <strong>Test Contractor:</strong> Quick Test (quicktest@example.com)<br>
+            This will show you the contractor dashboard, project assignments, and payment tracking features.
+        </p>
+        
+        <button class="button" onclick="switchToContractor()">
+            Switch to Contractor View
+        </button>
+        
+        <button class="button secondary" onclick="switchBackToBusiness()">
+            Switch Back to Business View
+        </button>
+        
+        <p class="note">
+            This temporarily changes your localStorage to demo the contractor interface. 
+            Your actual account remains unchanged.
+        </p>
+    </div>
+
+    <script>
+        function switchToContractor() {
+            // Store current user ID for restoration
+            const currentUserId = localStorage.getItem('user_id');
+            if (currentUserId) {
+                localStorage.setItem('original_user_id', currentUserId);
+            }
+            
+            // Switch to contractor user (ID 85)
+            localStorage.setItem('user_id', '85');
+            localStorage.removeItem('firebase_uid'); // Clear Firebase UID
+            
+            alert('Switched to contractor view! Redirecting to dashboard...');
+            window.location.href = '/';
+        }
+        
+        function switchBackToBusiness() {
+            // Restore original user ID
+            const originalUserId = localStorage.getItem('original_user_id');
+            if (originalUserId) {
+                localStorage.setItem('user_id', originalUserId);
+                localStorage.removeItem('original_user_id');
+            }
+            
+            alert('Switched back to business view! Redirecting to dashboard...');
+            window.location.href = '/';
+        }
+        
+        // Show current user info
+        const currentUserId = localStorage.getItem('user_id');
+        if (currentUserId) {
+            document.addEventListener('DOMContentLoaded', () => {
+                const container = document.querySelector('.container');
+                const currentInfo = document.createElement('div');
+                currentInfo.innerHTML = `
+                    <div style="margin-top: 20px; padding: 15px; background: #1a1a1a; border-radius: 8px; border: 1px solid #333;">
+                        <strong>Current User ID:</strong> ${currentUserId}
+                    </div>
+                `;
+                container.appendChild(currentInfo);
+            });
+        }
+    </script>
+</body>
+</html>

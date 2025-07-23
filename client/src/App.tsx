@@ -253,8 +253,69 @@ function Router() {
         </Layout>
       </ProtectedRoute>
       
+      <Route path="/demo-contractor" component={DemoContractor} />
       <Route component={NotFound} />
     </Switch>
+  );
+}
+
+function DemoContractor() {
+  return (
+    <div className="min-h-screen bg-black text-white flex items-center justify-center p-6">
+      <div className="max-w-md w-full bg-zinc-900 border border-zinc-800 rounded-lg p-8 text-center">
+        <h1 className="text-2xl font-bold mb-6 text-accent-500">🔧 Contractor Interface Demo</h1>
+        <p className="text-zinc-400 mb-6">
+          Switch to a test contractor account to see the contractor interface without creating a real account.
+        </p>
+        <p className="text-zinc-400 mb-8">
+          <strong className="text-white">Test Contractor:</strong> Quick Test<br />
+          This will show you the contractor dashboard, project assignments, and payment tracking.
+        </p>
+        
+        <div className="space-y-3">
+          <button 
+            onClick={() => {
+              // Store current user ID for restoration
+              const currentUserId = localStorage.getItem('user_id');
+              if (currentUserId) {
+                localStorage.setItem('original_user_id', currentUserId);
+              }
+              
+              // Switch to contractor user (ID 85)
+              localStorage.setItem('user_id', '85');
+              localStorage.removeItem('firebase_uid');
+              
+              alert('Switched to contractor view! Redirecting to dashboard...');
+              window.location.href = '/';
+            }}
+            className="w-full bg-accent-500 hover:bg-accent-600 text-white font-medium py-3 px-6 rounded-lg transition-colors"
+          >
+            Switch to Contractor View
+          </button>
+          
+          <button 
+            onClick={() => {
+              // Restore original user ID
+              const originalUserId = localStorage.getItem('original_user_id');
+              if (originalUserId) {
+                localStorage.setItem('user_id', originalUserId);
+                localStorage.removeItem('original_user_id');
+              }
+              
+              alert('Switched back to business view! Redirecting to dashboard...');
+              window.location.href = '/';
+            }}
+            className="w-full bg-zinc-700 hover:bg-zinc-600 text-white font-medium py-3 px-6 rounded-lg transition-colors"
+          >
+            Switch Back to Business View
+          </button>
+        </div>
+        
+        <p className="text-zinc-500 text-sm mt-6 italic">
+          This temporarily changes your session to demo the contractor interface. Your actual account remains unchanged.
+        </p>
+      </div>
+    </div>
   );
 }
 
