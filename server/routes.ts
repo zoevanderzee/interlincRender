@@ -3033,14 +3033,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
       
-      // Calculate project allocations from contracts (excluding deleted contracts)
+      // Calculate project allocations from milestone payment amounts (excluding deleted contracts)
       const allContracts = await storage.getAllContracts();
       const userContracts = allContracts.filter(contract => 
         (contract.businessId === userId || contract.contractorId === userId) &&
         contract.status !== 'deleted'
       );
-      const totalProjectAllocations = userContracts.reduce((sum, contract) => {
-        return sum + parseFloat(contract.value.toString() || '0');
+      
+      // Get milestones for active contracts and sum their payment amounts
+      const allMilestones = await storage.getAllMilestones();
+      const userContractIds = userContracts.map(contract => contract.id);
+      const relevantMilestones = allMilestones.filter(milestone => 
+        userContractIds.includes(milestone.contractId)
+      );
+      
+      const totalProjectAllocations = relevantMilestones.reduce((sum, milestone) => {
+        return sum + parseFloat(milestone.paymentAmount.toString() || '0');
       }, 0);
       
       // Return budget-related information
