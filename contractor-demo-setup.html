@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Contractor Demo Setup</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #111; color: #fff; }
+        .container { max-width: 500px; margin: 0 auto; text-align: center; }
+        .button { background: #48bb78; color: white; border: none; padding: 15px 30px; margin: 10px; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        .info { background: #1a1a1a; padding: 15px; margin: 15px 0; border-radius: 8px; border: 1px solid #333; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Contractor Interface Demo</h1>
+        
+        <div class="info">
+            <h3>Test Contractor Account:</h3>
+            <p><strong>Email:</strong> contractor@demo.com</p>
+            <p><strong>User ID:</strong> 112</p>
+            <p><strong>Role:</strong> contractor</p>
+        </div>
+        
+        <button class="button" onclick="setContractorSession()">
+            View Contractor Interface
+        </button>
+        
+        <button class="button" onclick="resetToOriginal()" style="background: #666;">
+            Reset to Your Account
+        </button>
+        
+        <p><small>Click "View Contractor Interface" then go to your main app to see the contractor dashboard</small></p>
+    </div>
+
+    <script>
+        function setContractorSession() {
+            // Store current user ID
+            const currentUserId = localStorage.getItem('user_id');
+            if (currentUserId) {
+                localStorage.setItem('original_user_id', currentUserId);
+            }
+            
+            // Set contractor user
+            localStorage.setItem('user_id', '112');
+            localStorage.removeItem('firebase_uid');
+            
+            alert('Contractor session set! Now go back to your main app tab to see the contractor interface.');
+        }
+        
+        function resetToOriginal() {
+            const originalUserId = localStorage.getItem('original_user_id');
+            if (originalUserId) {
+                localStorage.setItem('user_id', originalUserId);
+                localStorage.removeItem('original_user_id');
+                alert('Reset to your original account!');
+            } else {
+                alert('No original account found to restore.');
+            }
+        }
+    </script>
+</body>
+</html>
