@@ -38,7 +38,6 @@ import {
   Phone,
   Mail,
   Search,
-  Clock,
 } from "lucide-react";
 
 const supportFormSchema = z.object({
@@ -426,8 +425,8 @@ const Help = () => {
 
         {/* Contact Support Tab */}
         <TabsContent value="contact">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-6">
+          <div className="max-w-4xl mx-auto">
+            <div className="space-y-6">
               {/* Quick Help Section */}
               <Card className="border border-primary-100">
                 <CardContent className="p-6">
@@ -569,30 +568,6 @@ const Help = () => {
                       </div>
                     </form>
                   </Form>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="space-y-6">
-              <Card className="border border-primary-100">
-                <CardContent className="p-6">
-                  <div className="h-12 w-12 rounded-full bg-primary-50 text-primary-500 flex items-center justify-center mb-4">
-                    <Clock size={24} />
-                  </div>
-                  <h3 className="font-medium text-lg mb-2">Response Times</h3>
-                  <p className="text-primary-500 mb-4">
-                    We aim to respond to all support requests within 24 hours during business days.
-                  </p>
-                  <div className="text-sm space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-primary-600">Business Hours:</span>
-                      <span className="font-medium">Monday - Friday</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-primary-600">Response Time:</span>
-                      <span className="font-medium">Within 24 hours</span>
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
             </div>
