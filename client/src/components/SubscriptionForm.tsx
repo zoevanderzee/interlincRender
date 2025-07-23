@@ -313,10 +313,39 @@ export default function SubscriptionForm({
         throw new Error(data.message || 'Failed to create subscription');
       }
 
-      setClientSecret(data.clientSecret);
       setSubscriptionId(data.subscriptionId);
       setSelectedPlan(planId);
-      setShowPayment(true);
+      
+      // Check if this is a free subscription (no clientSecret)
+      if (data.clientSecret) {
+        // Paid subscription - show payment form
+        setClientSecret(data.clientSecret);
+        setShowPayment(true);
+      } else {
+        // Free subscription - complete immediately by calling complete subscription API
+        try {
+          const completeResponse = await apiRequest("POST", "/api/complete-subscription", {
+            subscriptionId: data.subscriptionId,
+            userId: userId
+          });
+
+          if (!completeResponse.ok) {
+            throw new Error('Failed to activate free subscription');
+          }
+
+          toast({
+            title: "Subscription Complete!",
+            description: "Your free subscription has been activated.",
+          });
+          onSubscriptionComplete();
+        } catch (completeError) {
+          toast({
+            title: "Activation Error",
+            description: "Your subscription was created but could not be activated. Please contact support.",
+            variant: "destructive",
+          });
+        }
+      }
 
     } catch (error) {
       toast({
@@ -368,6 +397,11 @@ export default function SubscriptionForm({
     const interval = priceData.interval;
     const intervalCount = priceData.interval_count || 1;
     
+    // Handle free plans
+    if (amount === 0) {
+      return "Free";
+    }
+    
     if (interval === 'month') {
       return `${currency === 'GBP' ? '£' : '$'}${amount.toFixed(2)}${intervalCount === 1 ? '/month' : `/${intervalCount} months`}`;
     } else if (interval === 'year') {
@@ -385,9 +419,9 @@ export default function SubscriptionForm({
     ...plan,
     price: formatPrice(plan.id)
   })).filter(plan => {
-    // Filter out plans with zero pricing or invalid price data
+    // Only filter out plans with completely missing price data
     const priceData = prices[plan.id];
-    return priceData && priceData.amount > 0;
+    return priceData !== undefined;
   });
 
 

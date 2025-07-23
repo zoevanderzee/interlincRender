@@ -5238,24 +5238,43 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
         });
       }
 
-      // Create subscription
-      const subscription = await stripe.subscriptions.create({
+      // Get price details to check if it's a free plan
+      const price = await stripe.prices.retrieve(priceId);
+      const isFree = price.unit_amount === 0;
+
+      // Create subscription with different settings for free vs paid plans
+      const subscriptionParams: any = {
         customer: customer.id,
         items: [{ price: priceId }],
-        payment_behavior: 'default_incomplete',
-        payment_settings: { save_default_payment_method: 'on_subscription' },
-        expand: ['latest_invoice.payment_intent'],
         metadata: {
           planType: planType
         }
-      });
+      };
 
-      res.json({
+      if (isFree) {
+        // For free subscriptions, no payment required
+        subscriptionParams.payment_behavior = 'allow_incomplete';
+      } else {
+        // For paid subscriptions, require payment
+        subscriptionParams.payment_behavior = 'default_incomplete';
+        subscriptionParams.payment_settings = { save_default_payment_method: 'on_subscription' };
+        subscriptionParams.expand = ['latest_invoice.payment_intent'];
+      }
+
+      const subscription = await stripe.subscriptions.create(subscriptionParams);
+
+      const response: any = {
         subscriptionId: subscription.id,
-        clientSecret: (subscription.latest_invoice as any)?.payment_intent?.client_secret,
         customerId: customer.id,
         planType: planType
-      });
+      };
+
+      // Only add clientSecret for paid subscriptions
+      if (!isFree && subscription.latest_invoice) {
+        response.clientSecret = (subscription.latest_invoice as any)?.payment_intent?.client_secret;
+      }
+
+      res.json(response);
 
     } catch (error) {
       console.error('Error creating subscription:', error);
