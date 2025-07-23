@@ -451,12 +451,7 @@ const Help = () => {
                         <div className="text-sm text-primary-500">Go to Wallet → Bank Details → Update Information</div>
                       </div>
                     </Button>
-                    <Button variant="outline" className="justify-start h-auto p-4 text-left">
-                      <div>
-                        <div className="font-medium">What are the subscription plans?</div>
-                        <div className="text-sm text-primary-500">Business: £29.99-£49.99/month, Contractor: £5/month</div>
-                      </div>
-                    </Button>
+
                   </div>
                 </CardContent>
               </Card>
