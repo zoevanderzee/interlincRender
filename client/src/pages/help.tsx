@@ -38,6 +38,7 @@ import {
   Phone,
   Mail,
   Search,
+  Clock,
 } from "lucide-react";
 
 const supportFormSchema = z.object({
@@ -576,60 +577,22 @@ const Help = () => {
               <Card className="border border-primary-100">
                 <CardContent className="p-6">
                   <div className="h-12 w-12 rounded-full bg-primary-50 text-primary-500 flex items-center justify-center mb-4">
-                    <LifeBuoy size={24} />
+                    <Clock size={24} />
                   </div>
-                  <h3 className="font-medium text-lg mb-2">Priority Support</h3>
+                  <h3 className="font-medium text-lg mb-2">Response Times</h3>
                   <p className="text-primary-500 mb-4">
-                    Business and Enterprise plans include priority support with dedicated response times.
+                    We aim to respond to all support requests within 24 hours during business days.
                   </p>
                   <div className="text-sm space-y-2">
                     <div className="flex justify-between">
-                      <span className="text-primary-600">Business Plan:</span>
-                      <span className="font-medium">4 hour response time</span>
+                      <span className="text-primary-600">Business Hours:</span>
+                      <span className="font-medium">Monday - Friday</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-primary-600">Enterprise Plan:</span>
-                      <span className="font-medium">1 hour response time</span>
+                      <span className="text-primary-600">Response Time:</span>
+                      <span className="font-medium">Within 24 hours</span>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border border-primary-100">
-                <CardContent className="p-6">
-                  <h3 className="font-medium text-lg mb-4">Contact Information</h3>
-                  <div className="space-y-4">
-                    <div className="flex items-start">
-                      <Mail className="h-5 w-5 text-primary-500 mr-3 mt-0.5" />
-                      <div>
-                        <p className="font-medium">Email Support</p>
-                        <p className="text-primary-500">support@creativlinc.com</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start">
-                      <Phone className="h-5 w-5 text-primary-500 mr-3 mt-0.5" />
-                      <div>
-                        <p className="font-medium">Phone Support</p>
-                        <p className="text-primary-500">+1 (800) 555-1234</p>
-                        <p className="text-xs text-primary-400">
-                          Monday - Friday, 9am - 5pm EST
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border border-primary-100">
-                <CardContent className="p-6">
-                  <h3 className="font-medium text-lg mb-4">Live Chat</h3>
-                  <p className="text-primary-500 mb-4">
-                    Get instant assistance from our support team through live chat.
-                  </p>
-                  <Button className="w-full">
-                    <MessageSquare className="mr-2 h-4 w-4" />
-                    Start Live Chat
-                  </Button>
                 </CardContent>
               </Card>
             </div>
