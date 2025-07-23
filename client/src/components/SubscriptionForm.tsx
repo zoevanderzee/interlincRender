@@ -384,7 +384,11 @@ export default function SubscriptionForm({
   ).map(plan => ({
     ...plan,
     price: formatPrice(plan.id)
-  }));
+  })).filter(plan => {
+    // Filter out plans with zero pricing or invalid price data
+    const priceData = prices[plan.id];
+    return priceData && priceData.amount > 0;
+  });
 
 
 
