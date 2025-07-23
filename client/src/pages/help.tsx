@@ -43,6 +43,7 @@ import {
 const supportFormSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email address"),
+  category: z.string().min(1, "Please select a category"),
   subject: z.string().min(5, "Subject must be at least 5 characters"),
   message: z.string().min(10, "Message must be at least 10 characters"),
 });
@@ -58,6 +59,7 @@ const Help = () => {
     defaultValues: {
       name: "",
       email: "",
+      category: "",
       subject: "",
       message: "",
     },
@@ -67,12 +69,22 @@ const Help = () => {
   const onSubmitSupport = async (values: z.infer<typeof supportFormSchema>) => {
     try {
       setIsSubmitting(true);
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      
+      const response = await fetch('/api/support', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(values),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to submit support request');
+      }
       
       toast({
         title: "Support request submitted",
-        description: "We'll get back to you as soon as possible.",
+        description: "We've received your message and will get back to you within 24 hours.",
       });
       
       supportForm.reset();
@@ -414,10 +426,45 @@ const Help = () => {
         {/* Contact Support Tab */}
         <TabsContent value="contact">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-2 space-y-6">
+              {/* Quick Help Section */}
               <Card className="border border-primary-100">
                 <CardContent className="p-6">
-                  <h2 className="text-xl font-semibold mb-6">Contact Support</h2>
+                  <h2 className="text-xl font-semibold mb-4">Quick Help</h2>
+                  <p className="text-primary-600 mb-4">Check our most common questions first:</p>
+                  <div className="grid gap-3">
+                    <Button variant="outline" className="justify-start h-auto p-4 text-left">
+                      <div>
+                        <div className="font-medium">How do I create a new contract?</div>
+                        <div className="text-sm text-primary-500">Go to Dashboard → New Contract → Fill details → Send to contractor</div>
+                      </div>
+                    </Button>
+                    <Button variant="outline" className="justify-start h-auto p-4 text-left">
+                      <div>
+                        <div className="font-medium">When will I get paid?</div>
+                        <div className="text-sm text-primary-500">Payments are processed within 24 hours of milestone approval</div>
+                      </div>
+                    </Button>
+                    <Button variant="outline" className="justify-start h-auto p-4 text-left">
+                      <div>
+                        <div className="font-medium">How do I update my payment details?</div>
+                        <div className="text-sm text-primary-500">Go to Wallet → Bank Details → Update Information</div>
+                      </div>
+                    </Button>
+                    <Button variant="outline" className="justify-start h-auto p-4 text-left">
+                      <div>
+                        <div className="font-medium">What are the subscription plans?</div>
+                        <div className="text-sm text-primary-500">Business: £29.99-£49.99/month, Contractor: £5/month</div>
+                      </div>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Contact Form */}
+              <Card className="border border-primary-100">
+                <CardContent className="p-6">
+                  <h2 className="text-xl font-semibold mb-6">Contact Support Team</h2>
                   <Form {...supportForm}>
                     <form onSubmit={supportForm.handleSubmit(onSubmitSupport)} className="space-y-6">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -452,12 +499,34 @@ const Help = () => {
 
                       <FormField
                         control={supportForm.control}
+                        name="category"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Issue Category</FormLabel>
+                            <FormControl>
+                              <select {...field} className="w-full p-3 border border-primary-200 rounded-lg">
+                                <option value="">Select category...</option>
+                                <option value="billing">Billing & Subscription</option>
+                                <option value="payments">Payments & Wallet</option>
+                                <option value="contracts">Contracts & Milestones</option>
+                                <option value="account">Account & Profile</option>
+                                <option value="technical">Technical Issues</option>
+                                <option value="general">General Questions</option>
+                              </select>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={supportForm.control}
                         name="subject"
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Subject</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="Help with smart contracts" />
+                              <Input {...field} placeholder="Brief description of your issue" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>

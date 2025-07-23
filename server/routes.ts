@@ -5502,6 +5502,69 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
   app.use("/api/plaid", plaidRoutes);
   app.use("/api/trolley-test", trolleyTestRoutes);
 
+  // Support contact form endpoint
+  app.post("/api/support", async (req: Request, res: Response) => {
+    try {
+      const { name, email, category, subject, message } = req.body;
+      
+      // Validate required fields
+      if (!name || !email || !category || !subject || !message) {
+        return res.status(400).json({ message: "All fields are required" });
+      }
+      
+      // Email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ message: "Invalid email address" });
+      }
+      
+      // Create support request object
+      const supportRequest = {
+        name,
+        email,
+        category,
+        subject,
+        message,
+        timestamp: new Date().toISOString(),
+        userAgent: req.headers['user-agent'] || 'Unknown'
+      };
+      
+      // Log the support request for now
+      console.log('Support request received:', supportRequest);
+      
+      // TODO: Once SendGrid API key is available, send email to zoevdzee@creativlinc.co.uk
+      // For now, we'll just log and return success
+      
+      const emailBody = `
+New Support Request from Creativ Linc
+
+Name: ${name}
+Email: ${email}
+Category: ${category}
+Subject: ${subject}
+
+Message:
+${message}
+
+Submitted at: ${supportRequest.timestamp}
+User Agent: ${supportRequest.userAgent}
+      `;
+      
+      console.log('Email to send to zoevdzee@creativlinc.co.uk:');
+      console.log(emailBody);
+      
+      // Return success response
+      res.json({ 
+        message: "Support request submitted successfully",
+        requestId: `support_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      });
+      
+    } catch (error) {
+      console.error('Error processing support request:', error);
+      res.status(500).json({ message: "Error processing support request" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
