@@ -120,6 +120,7 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
+- July 23, 2025: **BUDGET CALCULATION ARCHITECTURE FIXED** - Resolved critical budget calculation bug where system used contract header values instead of milestone payment amounts. Budget allocations now correctly calculate from milestone payment_amount values for active contracts only. Fixed contractor assignment workflow - users can now properly assign workers when budget validation aligns with project values.
 - July 23, 2025: **FREE CONTRACTOR PRO SUBSCRIPTION IMPLEMENTED** - Fixed contractor-pro subscription flow to handle £0.00 pricing correctly. Free subscriptions now activate immediately without payment processing while paid subscriptions use standard payment flow. Contractors can choose between Basic (£5/month) and Pro (Free) plans.
 - July 23, 2025: **CONTRACTOR SUBSCRIPTION OPTIONS EXPANDED** - Added second contractor subscription plan "Contractor Pro" with price ID price_1Ro2tQF4bfRUGDn9SKrfWjfD. Contractors now see two subscription options: Basic (£5/month) and Pro plans. Updated frontend subscription form to display both options in grid layout with "Pro" plan marked as recommended.
 - July 23, 2025: **CRYPTO IMPORT BUG FULLY RESOLVED** - Fixed all remaining require('crypto') statements in storage.ts with proper ES module imports. Business invite link API now fully operational without fallback errors.
