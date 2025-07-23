@@ -34,7 +34,6 @@ import {
   Send,
   MessageSquare,
   LifeBuoy,
-  PlayCircle,
   Loader2,
   Phone,
   Mail,
@@ -246,10 +245,6 @@ const Help = () => {
             <Book size={16} className="mr-2" />
             Documentation
           </TabsTrigger>
-          <TabsTrigger value="tutorials" className="flex items-center">
-            <PlayCircle size={16} className="mr-2" />
-            Video Tutorials
-          </TabsTrigger>
           <TabsTrigger value="contact" className="flex items-center">
             <MessageSquare size={16} className="mr-2" />
             Contact Support
@@ -398,11 +393,15 @@ const Help = () => {
                 <div className="h-12 w-12 rounded-full bg-accent-50 text-accent-500 flex items-center justify-center mb-4">
                   <FileText size={24} />
                 </div>
-                <h3 className="text-lg font-medium mb-2">API Documentation</h3>
+                <h3 className="text-lg font-medium mb-2">Tax & E-Invoicing Compliance</h3>
                 <p className="text-primary-500 mb-4">
-                  Technical documentation for integrating with our API.
+                  Complete overview of tax compliance and e-invoicing standards compliance including Trolley partnership compliance and audit trail documentation.
                 </p>
-                <Button variant="outline" className="w-full">
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => window.open('/TAX_COMPLIANCE.md', '_blank')}
+                >
                   View Guide
                 </Button>
               </CardContent>
@@ -410,101 +409,7 @@ const Help = () => {
           </div>
         </TabsContent>
 
-        {/* Tutorials Tab */}
-        <TabsContent value="tutorials">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="border border-primary-100 overflow-hidden">
-              <div className="aspect-video bg-primary-100 flex items-center justify-center">
-                <PlayCircle size={48} className="text-primary-400" />
-              </div>
-              <CardContent className="p-4">
-                <h3 className="font-medium mb-1">Getting Started with Creativ Linc</h3>
-                <p className="text-sm text-primary-500 mb-2">5:22 • Updated 2 weeks ago</p>
-                <p className="text-primary-700">
-                  A comprehensive overview of the platform and its core features.
-                </p>
-              </CardContent>
-            </Card>
 
-            <Card className="border border-primary-100 overflow-hidden">
-              <div className="aspect-video bg-primary-100 flex items-center justify-center">
-                <PlayCircle size={48} className="text-primary-400" />
-              </div>
-              <CardContent className="p-4">
-                <h3 className="font-medium mb-1">Creating Your First Project Contract</h3>
-                <p className="text-sm text-primary-500 mb-2">7:45 • Updated 1 month ago</p>
-                <p className="text-primary-700">
-                  Step-by-step guide to creating and configuring project contracts with milestones.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border border-primary-100 overflow-hidden">
-              <div className="aspect-video bg-primary-100 flex items-center justify-center">
-                <PlayCircle size={48} className="text-primary-400" />
-              </div>
-              <CardContent className="p-4">
-                <h3 className="font-medium mb-1">Managing Contractors and Teams</h3>
-                <p className="text-sm text-primary-500 mb-2">6:18 • Updated 3 weeks ago</p>
-                <p className="text-primary-700">
-                  Learn how to onboard contractors and manage team permissions.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border border-primary-100 overflow-hidden">
-              <div className="aspect-video bg-primary-100 flex items-center justify-center">
-                <PlayCircle size={48} className="text-primary-400" />
-              </div>
-              <CardContent className="p-4">
-                <h3 className="font-medium mb-1">Setting Up Payment Methods</h3>
-                <p className="text-sm text-primary-500 mb-2">9:32 • Updated 1 month ago</p>
-                <p className="text-primary-700">
-                  Configure Stripe and Trolley payment processing for automatic milestone payments.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border border-primary-100 overflow-hidden">
-              <div className="aspect-video bg-primary-100 flex items-center justify-center">
-                <PlayCircle size={48} className="text-primary-400" />
-              </div>
-              <CardContent className="p-4">
-                <h3 className="font-medium mb-1">Contractor Dashboard Walkthrough</h3>
-                <p className="text-sm text-primary-500 mb-2">6:15 • Updated 1 week ago</p>
-                <p className="text-primary-700">
-                  Complete tour of the contractor interface including project tracking and payment management.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border border-primary-100 overflow-hidden">
-              <div className="aspect-video bg-primary-100 flex items-center justify-center">
-                <PlayCircle size={48} className="text-primary-400" />
-              </div>
-              <CardContent className="p-4">
-                <h3 className="font-medium mb-1">Using the Data Room for Document Management</h3>
-                <p className="text-sm text-primary-500 mb-2">4:55 • Updated 2 months ago</p>
-                <p className="text-primary-700">
-                  Securely store and manage contract-related documents and files.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border border-primary-100 overflow-hidden">
-              <div className="aspect-video bg-primary-100 flex items-center justify-center">
-                <PlayCircle size={48} className="text-primary-400" />
-              </div>
-              <CardContent className="p-4">
-                <h3 className="font-medium mb-1">Generating Financial Reports</h3>
-                <p className="text-sm text-primary-500 mb-2">8:10 • Updated 3 months ago</p>
-                <p className="text-primary-700">
-                  Creating custom reports for financial tracking and compliance.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
 
         {/* Contact Support Tab */}
         <TabsContent value="contact">

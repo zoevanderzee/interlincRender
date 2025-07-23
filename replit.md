@@ -120,6 +120,8 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
+- July 23, 2025: **DOCUMENTATION CLEANED FOR CLIENT ONBOARDING** - Removed video tutorial sections and API documentation from help system. Added comprehensive Tax & E-Invoicing Compliance documentation (TAX_COMPLIANCE.md) covering Trolley partnership compliance, invoice-free workflows, e-invoicing compatibility, audit trails, and regulatory requirements. Help system now streamlined for actual platform functionality.
+- July 23, 2025: **AUTHENTICATION BUG FIXED** - Corrected subscription check logic that was incorrectly checking for non-existent `subscriptionStatus` field instead of `stripe_subscription_id`. Users with active subscriptions now properly bypass subscription form and go directly to dashboard.
 - July 22, 2025: **HELP SYSTEM UPDATED FOR BOTH BUSINESS & CONTRACTOR USERS** - Completely updated Help & Support section to remove all smart contract references and added comprehensive information for both business and contractor users. Includes contractor-specific FAQs about profile setup, project assignments, milestone submissions, payment tracking, and connection requests. Updated documentation and tutorials to reflect real platform workflows.
 - July 22, 2025: **SUBSCRIPTION MANAGEMENT COMPLETED** - Full settings page implementation with subscription status display, plan details, billing periods, and cancel/reactivate functionality through proper Stripe API integration.
 - July 22, 2025: **PAYMENT ERROR HANDLING IMPROVED** - Enhanced subscription payment error messages with specific guidance for common Stripe authentication failures. Added troubleshooting guide for client payment issues.

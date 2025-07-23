@@ -1,0 +1,69 @@
+# Creativ Linc Tax & E-Invoicing Compliance Overview
+
+**Last Updated:** July 2025
+
+## Introduction
+
+Creativ Linc enables frictionless collaboration and payment across creative and project-based work without requiring manual invoicing. Despite eliminating traditional invoices, the platform remains fully compliant with relevant tax laws and e-invoicing standards through automation, digital audit trails, and partnerships with regulated financial providers.
+
+## 1. Payment Compliance via Trolley Partnership
+
+All payments on Creativ Linc are processed via Trolley, a PCI-compliant and globally trusted payment platform. Trolley ensures that:
+
+• Contractor tax forms (e.g. 1099, T4A, W-8BEN) are collected and filed  
+• Regulatory reporting obligations in multiple jurisdictions are fulfilled  
+• Know Your Customer (KYC) checks are conducted for all payees  
+• Trolley's infrastructure classifies each user as a submerchant under a master account, keeping payment records distinct and auditable
+
+## 2. Invoice-Free Workflow That Meets Compliance Standards
+
+Rather than requiring manual invoices, Creativ Linc uses milestone- and delivery-based triggers to generate payable events. These include:
+
+• Milestone completions  
+• Task approvals  
+• Deliverable sign-offs
+
+Each payable event includes:
+• Time-stamped approval  
+• Description of service or deliverable  
+• Payment amount and currency  
+• Payer and payee details
+
+This data is logged and can be exported, meeting the requirements of invoice-equivalent documentation under most digital tax codes (e.g. OECD, HMRC MTD, EU VAT rules).
+
+## 3. e-Invoicing Compatibility
+
+While Creativ Linc does not generate traditional PDF invoices, our digital workflows are compatible with e-invoicing frameworks such as:
+
+• Peppol BIS Billing 3.0 (EU/eIDAS)  
+• MTD (Making Tax Digital) in the UK  
+• IRS electronic records requirements (US)
+
+Users can export:
+• Transaction summaries  
+• Digital receipts  
+• CSV payment logs with payer/payee/project info
+
+These exports satisfy recordkeeping and audit standards for both internal accounting and tax authorities.
+
+## 4. Recordkeeping and Audit Trail
+
+All financial activity on the platform is:
+• Logged securely  
+• Exportable at any time  
+• Associated with a project and user ID
+
+This creates a clear, consistent audit trail. Businesses can share these logs with bookkeepers, auditors, or tax authorities to demonstrate compliance.
+
+## 5. Custom Invoicing or Tax Documentation Needs
+
+If a business or contractor requires:
+• Traditional invoices (PDF format)  
+• VAT-inclusive line items  
+• PO-matching
+
+These can be enabled through workflow customization or third-party integrations. Please contact our support team to activate this feature.
+
+## Conclusion
+
+Creativ Linc is fully tax-compliant and aligned with modern e-invoicing requirements, despite removing the friction of manual invoice generation. Through automated documentation, real-time audit trails, and integration with Trolley's regulatory infrastructure, the platform ensures every transaction is legally and financially sound.
