@@ -2268,15 +2268,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Business invite link - temporarily remove requireAuth for debugging
-  app.post(`${apiRouter}/business/invite-link`, async (req: Request, res: Response) => {
-    console.log("Business invite link request received, auth status:", req.isAuthenticated());
-    
-    // Check if user is authenticated
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated", debug: true });
-    }
-    
+  // Business invite link generation endpoint
+  app.post(`${apiRouter}/business/invite-link`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
       // Only business users can create invite links
       if (req.user!.role !== 'business') {
