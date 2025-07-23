@@ -201,38 +201,13 @@ const Contractors = () => {
   // Function to get or create the permanent business onboarding link
   const generateOnboardingLink = async () => {
     try {
-      // First check if we're authenticated by using our session debug endpoint
-      const sessionResponse = await fetch("/api/session-debug");
-      const sessionData = await sessionResponse.json();
-      
-      if (!sessionData.isAuthenticated) {
-        // We're not authenticated - show error
-        throw new Error("Authentication issue detected. Please refresh the page and try again.");
-      }
-      
-      // Try the regular API
+      // Directly call the API with proper authentication headers
       const response = await apiRequest("POST", "/api/business/invite-link", {
         workerType: "contractor" // Default to contractor
       });
       const linkData = await response.json();
       
       if (!linkData.url) {
-        // If the API doesn't return a URL, create a direct link using user ID
-        // This is a fallback mechanism for when the business invite link API fails
-        if (sessionData.user && 'id' in sessionData.user && sessionData.user.id) {
-          const appUrl = window.location.origin;
-          const fallbackLink = `${appUrl}/auth?invite=contractor&email=direct&token=permanent-link-${sessionData.user.id}&businessId=${sessionData.user.id}&workerType=contractor`;
-          
-          setDirectLink(fallbackLink);
-          setIsLinkDialogOpen(true);
-          
-          // Show warning that we're using a fallback
-          toast({
-            title: "Using fallback link",
-            description: "The link was generated using a fallback method. It should still work, but please report this issue.",
-          });
-          return;
-        }
         throw new Error("Failed to get a valid onboarding link");
       }
       
@@ -247,11 +222,11 @@ const Contractors = () => {
       console.error("Error generating permanent onboarding link:", error);
       
       // Generate a fallback link using a fixed token format
-      const user = await queryClient.getQueryData<{id: number, role: string}>(["/api/user"]);
+      const currentUser = await queryClient.getQueryData<{id: number, role: string}>(["/api/user"]);
       
-      if (user && user.id) {
+      if (currentUser && currentUser.id) {
         const appUrl = window.location.origin;
-        const fallbackLink = `${appUrl}/auth?invite=contractor&email=direct&token=fallback-token-${user.id}&businessId=${user.id}&workerType=contractor`;
+        const fallbackLink = `${appUrl}/auth?invite=contractor&email=direct&token=fallback-token-${currentUser.id}&businessId=${currentUser.id}&workerType=contractor`;
         
         setDirectLink(fallbackLink);
         setIsLinkDialogOpen(true);

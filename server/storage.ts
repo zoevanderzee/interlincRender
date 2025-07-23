@@ -20,6 +20,7 @@ import { eq, and, desc, lte, gte, sql, or, inArray } from "drizzle-orm";
 import { db, pool } from "./db";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
+import * as crypto from "crypto";
 
 // Storage interface for CRUD operations
 export interface IStorage {
@@ -1110,8 +1111,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updatePassword(userId: number, newPassword: string): Promise<User | undefined> {
-    const crypto = await import('crypto');
-    
     const salt = crypto.randomBytes(16).toString('hex');
     const hashedPassword = await new Promise<string>((resolve, reject) => {
       crypto.scrypt(newPassword, salt, 64, (err, derivedKey) => {
@@ -1410,7 +1409,6 @@ export class DatabaseStorage implements IStorage {
   
   async createInvite(insertInvite: InsertInvite): Promise<Invite> {
     // Generate a secure token for the invite
-    const crypto = await import('crypto');
     const token = crypto.randomBytes(32).toString('hex');
     
     // Set default values similar to MemStorage implementation
@@ -2151,7 +2149,6 @@ export class DatabaseStorage implements IStorage {
       return updatedLink;
     } else {
       // Generate a random token for new links only
-      const crypto = require('crypto');
       const token = crypto.randomBytes(32).toString('hex'); // Using 32 bytes for stronger token
       
       // Create a new link
