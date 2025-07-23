@@ -82,7 +82,7 @@ const subscriptionPlans: SubscriptionPlan[] = [
   },
   {
     id: "contractor",
-    name: "Contractor Plan",
+    name: "Contractor Basic",
     price: "Loading...",
     description: "Essential tools for independent contractors",
     features: [
@@ -93,6 +93,22 @@ const subscriptionPlans: SubscriptionPlan[] = [
       "Basic reporting",
       "Email support"
     ]
+  },
+  {
+    id: "contractor-pro",
+    name: "Contractor Pro",
+    price: "Loading...",
+    description: "Advanced tools for professional contractors",
+    features: [
+      "Everything in Basic Plan",
+      "Advanced analytics",
+      "Priority support",
+      "Custom invoicing",
+      "Extended file storage",
+      "API access",
+      "White-label options"
+    ],
+    recommended: true
   }
 ];
 
@@ -364,7 +380,7 @@ export default function SubscriptionForm({
   // Filter plans based on user role and update prices
   const availablePlans = (userRole === 'business' 
     ? subscriptionPlans.filter(plan => plan.id.startsWith('business'))
-    : subscriptionPlans.filter(plan => plan.id === 'contractor')
+    : subscriptionPlans.filter(plan => plan.id.startsWith('contractor'))
   ).map(plan => ({
     ...plan,
     price: formatPrice(plan.id)
@@ -377,21 +393,21 @@ export default function SubscriptionForm({
       <div className="text-center mb-8">
         <h2 className="text-3xl font-bold mb-4">Complete Your Subscription</h2>
         <p className="text-gray-600">
-          {userRole === 'contractor' ? 'Contractor Plan' : 'Choose your Business Plan'} subscription required to continue
+          {userRole === 'contractor' ? 'Choose your Contractor Plan' : 'Choose your Business Plan'} subscription required to continue
         </p>
       </div>
 
       <div className={`${
         userRole === 'contractor' 
-          ? 'flex justify-center gap-6' 
-          : 'grid md:grid-cols-3 gap-6'
-      } max-w-5xl mx-auto`}>
+          ? 'grid md:grid-cols-2 gap-6 max-w-4xl' 
+          : 'grid md:grid-cols-3 gap-6 max-w-5xl'
+      } mx-auto`}>
         {availablePlans.map((plan) => (
           <Card 
             key={plan.id} 
             className={`relative cursor-pointer transition-all hover:shadow-lg ${
               selectedPlan === plan.id ? 'ring-2 ring-blue-500' : ''
-            } ${userRole === 'contractor' ? 'max-w-md w-full' : ''}`}
+            }`}
             onClick={() => setSelectedPlan(plan.id)}
           >
             {plan.recommended && (

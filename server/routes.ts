@@ -5150,7 +5150,8 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
         'price_1RgRilF4bfRUGDn9jMnjAo96', // business - Standard £49.99/month 
         'price_1Ricn6F4bfRUGDn91XzkPq5F', // business-enterprise - Enterprise £200.00/month
         'price_1RiEGMF4bfRUGDn9UErjyXjX', // business-annual - Annual £1,200.00/year
-        process.env.STRIPE_CONTRACTOR_PRICE_ID, // contractor
+        process.env.STRIPE_CONTRACTOR_PRICE_ID, // contractor - Basic
+        'price_1Ro2tQF4bfRUGDn9SKrfWjfD', // contractor-pro - Pro
       ];
 
       const prices = await Promise.all(
@@ -5177,7 +5178,8 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
         'business': prices[1],         // £49.99/month standard
         'business-enterprise': prices[2], // £200.00/month enterprise
         'business-annual': prices[3],  // £1,200.00/year annual
-        'contractor': prices[4],       // £5.00/month contractor
+        'contractor': prices[4],       // £5.00/month contractor basic
+        'contractor-pro': prices[5],   // contractor pro
       };
 
       res.json(priceMap);
@@ -5219,11 +5221,14 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
         // Business Annual plan - £1,200.00/year (live mode)
         priceId = 'price_1RiEGMF4bfRUGDn9UErjyXjX';
       } else if (planType === 'contractor') {
-        // Contractor plan - £5/month (live mode)
+        // Contractor Basic plan - £5/month (live mode)
         priceId = process.env.STRIPE_CONTRACTOR_PRICE_ID;
+      } else if (planType === 'contractor-pro') {
+        // Contractor Pro plan - (live mode)
+        priceId = 'price_1Ro2tQF4bfRUGDn9SKrfWjfD';
       } else {
         return res.status(400).json({ 
-          message: 'Invalid plan type. Must be "business", "business-starter", "business-enterprise", "business-annual", or "contractor"' 
+          message: 'Invalid plan type. Must be "business", "business-starter", "business-enterprise", "business-annual", "contractor", or "contractor-pro"' 
         });
       }
       
