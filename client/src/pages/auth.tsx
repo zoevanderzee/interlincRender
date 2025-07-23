@@ -492,8 +492,8 @@ export default function AuthPage() {
                 description: "Welcome back!",
               });
               
-              // Check subscription status before allowing dashboard access
-              if (userData.subscriptionStatus !== 'active') {
+              // Check if user has active subscription
+              if (!userData.stripe_subscription_id && !userData.invited) {
                 console.log("User needs subscription, showing subscription form");
                 // Show subscription form directly without redirect
                 setShowSubscription(true);
@@ -504,7 +504,7 @@ export default function AuthPage() {
                   role: userData.role
                 });
               } else {
-                console.log("User has active subscription, redirecting to dashboard");
+                console.log("User has active subscription or is invited, redirecting to dashboard");
                 // Redirect to dashboard
                 window.location.href = '/';
               }
