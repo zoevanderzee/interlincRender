@@ -977,7 +977,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.delete(`${apiRouter}/contracts/:id`, async (req: Request, res: Response) => {
+  app.delete(`${apiRouter}/contracts/:id`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       const contract = await storage.getContract(id);

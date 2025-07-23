@@ -113,23 +113,38 @@ export default function ContractDetailPage() {
 
   // Delete mutation
   const deleteMutation = useMutation({
-    mutationFn: () => apiRequest(`/api/contracts/${contractId}`, { method: 'DELETE' }),
+    mutationFn: async () => {
+      const response = await apiRequest('DELETE', `/api/contracts/${contractId}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete project');
+      }
+      return response.json();
+    },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/contracts'] });
       toast({ title: 'Project deleted successfully' });
       setLocation('/projects');
     },
-    onError: () => {
-      toast({ title: 'Failed to delete project', variant: 'destructive' });
+    onError: (error: any) => {
+      toast({ 
+        title: 'Failed to delete project', 
+        description: error.message || 'An error occurred while deleting the project',
+        variant: 'destructive' 
+      });
     }
   });
 
   // Milestone mutations
   const completeMutation = useMutation({
-    mutationFn: (milestoneId: number) => 
-      apiRequest(`/api/milestones/${milestoneId}`, {
-        method: 'PATCH',
-        body: { status: 'completed' }
-      }),
+    mutationFn: async (milestoneId: number) => {
+      const response = await apiRequest('PATCH', `/api/milestones/${milestoneId}`, { status: 'completed' });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to complete milestone');
+      }
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/milestones'] });
       toast({ title: 'Milestone marked as complete' });
@@ -137,8 +152,14 @@ export default function ContractDetailPage() {
   });
 
   const approveMutation = useMutation({
-    mutationFn: (milestoneId: number) => 
-      apiRequest(`/api/milestones/${milestoneId}/approve`, { method: 'POST' }),
+    mutationFn: async (milestoneId: number) => {
+      const response = await apiRequest('POST', `/api/milestones/${milestoneId}/approve`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to approve milestone');
+      }
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/milestones'] });
       queryClient.invalidateQueries({ queryKey: ['/api/payments'] });
