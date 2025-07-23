@@ -4441,6 +4441,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get work submissions for the authenticated business user
+  app.get('/api/work-submissions/business', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const user = req.user!;
+      console.log('Work submissions endpoint - User:', { id: user.id, role: user.role });
+      
+      // Only allow business users to access this endpoint
+      if (user.role !== 'business') {
+        console.log('Access denied - user role is not business:', user.role);
+        return res.status(403).json({ message: 'Access denied - business role required' });
+      }
+
+      console.log('Fetching work submissions for business ID:', user.id);
+      const submissions = await storage.getWorkSubmissionsByBusinessId(user.id);
+      console.log('Found submissions:', submissions.length);
+      res.json(submissions);
+    } catch (error: any) {
+      console.error('Error fetching business work submissions:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get('/api/work-submissions/business/:businessId', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const businessId = parseInt(req.params.businessId);

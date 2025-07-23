@@ -2705,15 +2705,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getWorkSubmissionsByBusinessId(businessId: number): Promise<WorkSubmission[]> {
-    const contractsList = await this.getContractsByBusinessId(businessId);
-    const contractIds = contractsList.map(c => c.id);
-    
-    if (contractIds.length === 0) return [];
-    
     return await db
       .select()
       .from(workSubmissions)
-      .where(inArray(workSubmissions.contractId, contractIds))
+      .where(eq(workSubmissions.businessId, businessId))
       .orderBy(desc(workSubmissions.submittedAt));
   }
 
