@@ -16,7 +16,7 @@ Regulatory reporting obligations in multiple jurisdictions are fulfilled.
 
 Know Your Customer (KYC) checks are conducted for all payees.
 
-Trolley's infrastructure classifies each user as a submerchant under a master account, keeping payment records distinct and auditable.
+Trolley’s infrastructure classifies each user as a submerchant under a master account, keeping payment records distinct and auditable.
 
 2. Invoice-Free Workflow That Meets Compliance Standards
 
@@ -38,13 +38,13 @@ Payment amount and currency
 
 Payer and payee details
 
-These events are automatically converted in the back end into compliant e-invoices. Every contract initiated as a work request is processed through this system, with the final result generating an invoice record that appears in the project's Data Room.
+These events are automatically converted in the back end into compliant e-invoices. Every contract initiated as a work request is processed through this system, with the final result generating an invoice record that appears in the project’s Data Room.
 
 This data is logged and can be exported, meeting the requirements of invoice-equivalent documentation under most digital tax codes (e.g. OECD, HMRC MTD, EU VAT rules).
 
 3. e-Invoicing Compatibility
 
-While Creativ Linc does not require users to manually generate invoices, the platform's back-end system automatically creates structured e-invoices in line with:
+While Creativ Linc does not require users to manually generate invoices, the platform’s back-end system automatically creates structured e-invoices in line with:
 
 Peppol BIS Billing 3.0 (EU/eIDAS)
 
@@ -92,4 +92,5 @@ These can be enabled through workflow customization or third-party integrations.
 
 Conclusion
 
-Creativ Linc is fully tax-compliant and aligned with modern e-invoicing requirements, despite removing the friction of manual invoice generation. Through automated documentation, real-time audit trails, back-end invoice creation, and integration with Trolley's regulatory infrastructure, the platform ensures every transaction is legally and financially sound.
+Creativ Linc is fully tax-compliant and aligned with modern e-invoicing requirements, despite removing the friction of manual invoice generation. Through automated documentation, real-time audit trails, back-end invoice creation, and integration with Trolley’s regulatory infrastructure, the platform ensures every transaction is legally and financially sound.
+
