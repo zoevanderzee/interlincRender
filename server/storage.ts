@@ -2005,19 +2005,12 @@ export class DatabaseStorage implements IStorage {
     let isUnique = false;
 
     // Function to create a readable yet unique code
-    // Format: LASTNAME-XXXX where X is alphanumeric
+    // Format: USERNAME-YEAR
     const generateCode = () => {
-      const lastName = user.lastName?.toUpperCase() || user.username.toUpperCase();
-      const baseName = lastName.replace(/[^A-Z]/g, '').substring(0, 10);
+      const username = user.username.toUpperCase();
+      const currentYear = new Date().getFullYear();
       
-      // Generate a 4-digit random alphanumeric suffix
-      const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-      let suffix = '';
-      for (let i = 0; i < 4; i++) {
-        suffix += characters.charAt(Math.floor(Math.random() * characters.length));
-      }
-      
-      return `${baseName}-${suffix}`;
+      return `${username}-${currentYear}`;
     };
 
     // Keep generating until we find a unique code
