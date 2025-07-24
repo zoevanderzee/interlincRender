@@ -18,31 +18,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Copy, RefreshCw, Loader2, Fingerprint, Check, AlertTriangle } from "lucide-react";
+
+import { Copy, Loader2, Fingerprint, Check } from "lucide-react";
 
 export function ProfileCodeSection() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isCopied, setIsCopied] = useState(false);
-  const [isRegenerateDialogOpen, setIsRegenerateDialogOpen] = useState(false);
 
   // Query to fetch the user's profile code
   const {
@@ -53,33 +35,6 @@ export function ProfileCodeSection() {
   } = useQuery({
     queryKey: ['/api/profile-code'],
     retry: false,
-  });
-
-  // Mutation to regenerate the profile code
-  const regenerateCodeMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/profile-code/regenerate");
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to regenerate profile code");
-      }
-      return await response.json();
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/profile-code'] });
-      toast({
-        title: "Profile code regenerated",
-        description: "Your new profile code has been generated successfully.",
-      });
-      setIsRegenerateDialogOpen(false);
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Regeneration failed",
-        description: error.message || "Failed to regenerate profile code",
-        variant: "destructive",
-      });
-    },
   });
 
   // Copy profile code to clipboard
@@ -97,16 +52,6 @@ export function ProfileCodeSection() {
         setIsCopied(false);
       }, 2000);
     }
-  };
-
-  // Handle regenerate button click
-  const handleRegenerateClick = () => {
-    setIsRegenerateDialogOpen(true);
-  };
-
-  // Handle regenerate confirmation
-  const confirmRegenerate = () => {
-    regenerateCodeMutation.mutate();
   };
 
   // Check if we need to generate an initial profile code
@@ -150,7 +95,7 @@ export function ProfileCodeSection() {
           Your Profile Code
         </CardTitle>
         <CardDescription>
-          Share your unique profile code with businesses to connect without exposing your email address.
+          Share your unique profile code with businesses to connect without exposing your email address. This code is permanent and cannot be changed.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -223,47 +168,9 @@ export function ProfileCodeSection() {
                 Share this code with businesses who want to connect with you.
               </p>
             </div>
-
-            <div className="flex justify-end">
-              <Button
-                variant="outline"
-                onClick={handleRegenerateClick}
-                disabled={regenerateCodeMutation.isPending}
-              >
-                {regenerateCodeMutation.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                )}
-                Regenerate Code
-              </Button>
-            </div>
           </div>
         )}
       </CardContent>
-
-      {/* Regenerate confirmation dialog */}
-      <AlertDialog open={isRegenerateDialogOpen} onOpenChange={setIsRegenerateDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center">
-              <AlertTriangle className="h-5 w-5 text-amber-500 mr-2" />
-              Regenerate Profile Code?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Your current profile code will be invalidated and a new one will be generated. 
-              Businesses that have your current code won't be able to use it anymore.
-              Are you sure you want to continue?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmRegenerate}>
-              Regenerate
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </Card>
   );
 }
