@@ -99,75 +99,8 @@ const Help = () => {
     }
   };
 
-  // FAQ data
+  // FAQ data - Contractor focused
   const faqCategories = [
-    {
-      title: "Getting Started",
-      faqs: [
-        {
-          question: "How do I create my first project contract?",
-          answer: "Navigate to the Contracts section and click 'Create New Contract'. Select a contractor, define your project milestones with clear deliverables and deadlines, set payment amounts for each milestone, and send for contractor approval. Once accepted, work can begin."
-        },
-        {
-          question: "How do I add a contractor to my account?",
-          answer: "Go to the Contractors section and click 'Add Contractor'. Enter their email address to send an invitation, or use the unique contractor code they provide. Once they accept and complete their profile setup, they'll be available for contract creation."
-        },
-        {
-          question: "What subscription plans are available?",
-          answer: "We offer multiple business plans: Test Plan (£1/month), Standard Plan (£49.99/month), and Enterprise Plan with custom pricing. Contractors pay £5/month. Each plan includes different features and contractor limits. Visit Settings > Subscription to view and change your plan."
-        },
-        {
-          question: "How do I upgrade my subscription?",
-          answer: "Go to Settings > Subscription to view your current plan and available upgrades. Click 'Change Plan' to select a new subscription tier. Payment will be processed immediately and your new features will be activated instantly."
-        }
-      ]
-    },
-    {
-      title: "Project Management",
-      faqs: [
-        {
-          question: "How do project milestones work?",
-          answer: "Milestones break your project into manageable phases with specific deliverables, deadlines, and payment amounts. When a contractor completes a milestone, you review and approve it, which automatically triggers the associated payment through our secure payment system."
-        },
-        {
-          question: "Can I modify an active contract?",
-          answer: "Yes, navigate to the contract page and click 'Edit'. Both parties must approve any changes before they take effect. All modifications are tracked and documented for compliance and transparency."
-        },
-        {
-          question: "How do I track project progress?",
-          answer: "Use the Dashboard to see an overview of all active projects. Each contract page shows detailed milestone progress, upcoming deadlines, and payment status. You'll receive notifications for important updates and deadlines."
-        },
-        {
-          question: "What happens if a milestone isn't completed on time?",
-          answer: "Overdue milestones are clearly marked in your dashboard. You can message the contractor directly, extend the deadline if needed, or take other actions. All timeline changes are documented in the contract history."
-        }
-      ]
-    },
-    {
-      title: "Payments & Payment Providers",
-      faqs: [
-        {
-          question: "What payment providers do you use?",
-          answer: "We use Stripe for subscription billing and domestic payments, and Trolley for international contractor payments. Both providers are industry-leading, secure payment platforms that ensure your financial data is protected with bank-level security."
-        },
-        {
-          question: "How are payments triggered?",
-          answer: "Payments are automatically triggered when you approve a completed milestone. The system processes the payment through either Stripe or Trolley depending on the contractor's location and your payment settings. Payments typically complete within 1-3 business days."
-        },
-        {
-          question: "How do international payments work?",
-          answer: "International payments are handled through our Trolley integration, which supports over 200 countries and multiple currencies. Exchange rates are calculated in real-time and clearly displayed before payment confirmation."
-        },
-        {
-          question: "What if a payment fails?",
-          answer: "If a payment fails, you'll receive immediate notification with specific error details. Common issues include expired payment methods or insufficient funds. You can retry the payment or update your payment method in Settings > Budget."
-        },
-        {
-          question: "How do subscription payments work?",
-          answer: "Subscription payments are processed monthly through Stripe. Your subscription automatically renews unless cancelled. You can view billing history, update payment methods, and manage your subscription in Settings > Subscription."
-        }
-      ]
-    },
     {
       title: "For Contractors",
       faqs: [
@@ -309,15 +242,15 @@ const Help = () => {
 
         {/* Documentation Tab */}
         <TabsContent value="documentation">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card className="border border-primary-100 hover:shadow-md transition-shadow">
               <CardContent className="p-6">
                 <div className="h-12 w-12 rounded-full bg-accent-50 text-accent-500 flex items-center justify-center mb-4">
                   <FileText size={24} />
                 </div>
-                <h3 className="text-lg font-medium mb-2">Getting Started Guide</h3>
+                <h3 className="text-lg font-medium mb-2">Contractor Getting Started</h3>
                 <p className="text-primary-500 mb-4">
-                  Learn the basics of Creativ Linc and how to set up your first project contract.
+                  Learn how to set up your contractor profile and manage project assignments.
                 </p>
                 <Button variant="outline" className="w-full">
                   View Guide
@@ -330,9 +263,9 @@ const Help = () => {
                 <div className="h-12 w-12 rounded-full bg-accent-50 text-accent-500 flex items-center justify-center mb-4">
                   <FileText size={24} />
                 </div>
-                <h3 className="text-lg font-medium mb-2">Project Contract Creation</h3>
+                <h3 className="text-lg font-medium mb-2">Work Submission Guide</h3>
                 <p className="text-primary-500 mb-4">
-                  Detailed documentation on creating and managing project contracts with milestones.
+                  Documentation on submitting work for milestones and tracking your earnings.
                 </p>
                 <Button variant="outline" className="w-full">
                   View Guide
@@ -340,84 +273,7 @@ const Help = () => {
               </CardContent>
             </Card>
 
-            <Card className="border border-primary-100 hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="h-12 w-12 rounded-full bg-accent-50 text-accent-500 flex items-center justify-center mb-4">
-                  <FileText size={24} />
-                </div>
-                <h3 className="text-lg font-medium mb-2">Payment Setup</h3>
-                <p className="text-primary-500 mb-4">
-                  Learn how to set up Stripe and Trolley payments for domestic and international contractors.
-                </p>
-                <Button variant="outline" className="w-full">
-                  View Guide
-                </Button>
-              </CardContent>
-            </Card>
 
-            <Card className="border border-primary-100 hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="h-12 w-12 rounded-full bg-accent-50 text-accent-500 flex items-center justify-center mb-4">
-                  <FileText size={24} />
-                </div>
-                <h3 className="text-lg font-medium mb-2">Contractor Management</h3>
-                <p className="text-primary-500 mb-4">
-                  Guidelines for onboarding and managing contractors.
-                </p>
-                <Button variant="outline" className="w-full">
-                  View Guide
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card className="border border-primary-100 hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="h-12 w-12 rounded-full bg-accent-50 text-accent-500 flex items-center justify-center mb-4">
-                  <FileText size={24} />
-                </div>
-                <h3 className="text-lg font-medium mb-2">Reporting & Analytics</h3>
-                <p className="text-primary-500 mb-4">
-                  Learn how to use financial reports and analytics features.
-                </p>
-                <Button variant="outline" className="w-full">
-                  View Guide
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card className="border border-primary-100 hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="h-12 w-12 rounded-full bg-accent-50 text-accent-500 flex items-center justify-center mb-4">
-                  <FileText size={24} />
-                </div>
-                <h3 className="text-lg font-medium mb-2">Contractor Guide</h3>
-                <p className="text-primary-500 mb-4">
-                  Complete guide for contractors including profile setup, work submissions, and payment tracking.
-                </p>
-                <Button variant="outline" className="w-full">
-                  View Guide
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card className="border border-primary-100 hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="h-12 w-12 rounded-full bg-accent-50 text-accent-500 flex items-center justify-center mb-4">
-                  <FileText size={24} />
-                </div>
-                <h3 className="text-lg font-medium mb-2">Tax & E-Invoicing Compliance</h3>
-                <p className="text-primary-500 mb-4">
-                  Complete overview of tax compliance and e-invoicing standards compliance including Trolley partnership compliance and audit trail documentation.
-                </p>
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={() => window.open('/TAX_COMPLIANCE.md', '_blank')}
-                >
-                  View Guide
-                </Button>
-              </CardContent>
-            </Card>
           </div>
         </TabsContent>
 
@@ -431,12 +287,12 @@ const Help = () => {
               <Card className="border border-primary-100">
                 <CardContent className="p-6">
                   <h2 className="text-xl font-semibold mb-4">Quick Help</h2>
-                  <p className="text-primary-600 mb-4">Check our most common questions first:</p>
+                  <p className="text-primary-600 mb-4">Check our most common contractor questions first:</p>
                   <div className="grid gap-3">
                     <Button variant="outline" className="justify-start h-auto p-4 text-left">
                       <div>
-                        <div className="font-medium">How do I create a new contract?</div>
-                        <div className="text-sm text-primary-500">Go to Dashboard → New Contract → Fill details → Send to contractor</div>
+                        <div className="font-medium">How do I submit work for a milestone?</div>
+                        <div className="text-sm text-primary-500">Go to My Assignments → Select Contract → Upload deliverables → Submit for approval</div>
                       </div>
                     </Button>
                     <Button variant="outline" className="justify-start h-auto p-4 text-left">
@@ -447,8 +303,8 @@ const Help = () => {
                     </Button>
                     <Button variant="outline" className="justify-start h-auto p-4 text-left">
                       <div>
-                        <div className="font-medium">How do I update my payment details?</div>
-                        <div className="text-sm text-primary-500">Go to Wallet → Bank Details → Update Information</div>
+                        <div className="font-medium">How do I accept connection requests?</div>
+                        <div className="text-sm text-primary-500">Go to Connections → Review requests → Accept to connect with businesses</div>
                       </div>
                     </Button>
 
