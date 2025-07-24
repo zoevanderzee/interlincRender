@@ -4991,6 +4991,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register Trolley submerchant routes
   registerTrolleySubmerchantRoutes(app, requireAuth);
+  
+  // Register Trolley contractor routes
+  const { registerTrolleyContractorRoutes } = await import('./trolley-contractor-routes');
+  registerTrolleyContractorRoutes(app, apiRouter, requireAuth);
 
   // Data Room Export Routes for Compliance
   app.get(`${apiRouter}/data-room/export/all`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {

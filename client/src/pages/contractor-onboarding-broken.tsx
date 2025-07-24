@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, Clock, AlertCircle, DollarSign } from 'lucide-react';
+import { CheckCircle, Clock, AlertCircle, DollarSign, ExternalLink } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 
@@ -87,85 +87,83 @@ export default function ContractorOnboarding() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-white mb-2">Payment Setup</h1>
-        <p className="text-zinc-400">Complete your payment account setup to receive payments from projects.</p>
-      </div>
+        <div>
+          <h1 className="text-3xl font-bold text-white mb-2">Payment Setup</h1>
+          <p className="text-zinc-400">Complete your payment account setup to receive payments from projects.</p>
+        </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
-              Payment Account Status
-            </CardTitle>
-            <CardDescription>
-              Your current payment account verification status
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-zinc-400">Account Setup</span>
-              {getStatusBadge(onboardingStatus?.status || 'not_started')}
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-zinc-400">Payout Enabled</span>
-              {user.payoutEnabled ? (
-                <Badge className="bg-green-600"><CheckCircle className="h-3 w-3 mr-1" />Enabled</Badge>
-              ) : (
-                <Badge variant="destructive"><AlertCircle className="h-3 w-3 mr-1" />Disabled</Badge>
-              )}
-            </div>
-
-            {user.trolleyRecipientId && (
+        <div className="grid gap-6 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5" />
+                Payment Account Status
+              </CardTitle>
+              <CardDescription>
+                Your current payment account verification status
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-zinc-400">Recipient ID</span>
-                <span className="text-xs font-mono text-zinc-300">{user.trolleyRecipientId}</span>
+                <span className="text-sm text-zinc-400">Account Setup</span>
+                {getStatusBadge(onboardingStatus?.status || 'not_started')}
               </div>
-            )}
-          </CardContent>
-        </Card>
+              
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-zinc-400">Payout Enabled</span>
+                {user.payoutEnabled ? (
+                  <Badge className="bg-green-600"><CheckCircle className="h-3 w-3 mr-1" />Enabled</Badge>
+                ) : (
+                  <Badge variant="destructive"><AlertCircle className="h-3 w-3 mr-1" />Disabled</Badge>
+                )}
+              </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Setup Options</CardTitle>
-            <CardDescription>
-              Choose how you'd like to set up your payment account
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-white">Setup Type</label>
-              <div className="grid grid-cols-2 gap-2">
+              {user.trolleyRecipientId && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-zinc-400">Recipient ID</span>
+                  <span className="text-xs font-mono text-zinc-300">{user.trolleyRecipientId}</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Setup Options</CardTitle>
+              <CardDescription>
+                Choose how you'd like to set up your payment account
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
                 <Button
                   variant={widgetType === 'quickSetup' ? 'default' : 'outline'}
                   onClick={() => setWidgetType('quickSetup')}
-                  size="sm"
+                  className="w-full justify-start"
                 >
                   Quick Setup
                 </Button>
+                <p className="text-xs text-zinc-400 pl-4">
+                  Fast setup with basic payment information
+                </p>
+              </div>
+
+              <div className="space-y-2">
                 <Button
                   variant={widgetType === 'fullOnboarding' ? 'default' : 'outline'}
                   onClick={() => setWidgetType('fullOnboarding')}
-                  size="sm"
+                  className="w-full justify-start"
                 >
                   Full Onboarding
                 </Button>
+                <p className="text-xs text-zinc-400 pl-4">
+                  Complete setup with all payment methods and verification
+                </p>
               </div>
-            </div>
+            </CardContent>
+          </Card>
+        </div>
 
-            <div className="text-sm text-zinc-400">
-              {widgetType === 'quickSetup' 
-                ? 'Basic setup with essential payment information'
-                : 'Complete setup with all tax and compliance features'
-              }
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-6">
         {!user.trolleyRecipientId && (
           <Card>
             <CardHeader>

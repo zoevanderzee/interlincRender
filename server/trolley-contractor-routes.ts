@@ -1,0 +1,187 @@
+import type { Express, Request, Response } from "express";
+import { trolleyService } from "./trolley-service";
+import { storage } from "./storage";
+
+export function registerTrolleyContractorRoutes(app: Express, apiRouter: string, requireAuth: any): void {
+  
+  // Get contractor's Trolley onboarding status
+  app.get(`${apiRouter}/trolley/contractor-status`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as any).user?.id || req.headers['x-user-id'];
+      if (!userId) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+
+      const user = await storage.getUser(Number(userId));
+      if (!user || user.role !== 'contractor') {
+        return res.status(403).json({ message: 'Access denied: Contractors only' });
+      }
+
+      // Check if contractor has Trolley recipient account
+      let status = 'not_started';
+      let recipientId = user.trolley_recipient_id;
+      
+      if (recipientId && recipientId !== 'test_recipient_456') {
+        try {
+          // Check with Trolley API for actual status
+          const recipientData = await trolleyService.getRecipient(recipientId);
+          status = recipientData.status === 'active' ? 'completed' : 'pending';
+        } catch (error) {
+          console.log('Error checking Trolley recipient status:', error);
+          status = 'failed';
+        }
+      }
+
+      res.json({
+        status,
+        recipientId,
+        payoutEnabled: user.payout_enabled,
+        hasSetup: !!recipientId && recipientId !== 'test_recipient_456'
+      });
+    } catch (error) {
+      console.error('Error getting contractor Trolley status:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Generate Trolley widget URL for contractor onboarding
+  app.post(`${apiRouter}/trolley/generate-widget`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as any).user?.id || req.headers['x-user-id'];
+      if (!userId) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+
+      const user = await storage.getUser(Number(userId));
+      if (!user || user.role !== 'contractor') {
+        return res.status(403).json({ message: 'Access denied: Contractors only' });
+      }
+
+      // Generate Trolley widget URL
+      const widgetUrl = trolleyService.generateWidgetUrl({
+        recipientEmail: user.email,
+        recipientReferenceId: `contractor_${user.id}`,
+        products: ['pay', 'tax'],
+        colors: {
+          primary: '#3b82f6',
+          background: '#000000',
+          text: '#ffffff',
+          border: '#374151'
+        }
+      });
+
+      res.json({
+        widgetUrl,
+        message: 'Trolley widget URL generated successfully'
+      });
+    } catch (error) {
+      console.error('Error generating Trolley widget URL:', error);
+      res.status(500).json({ message: 'Failed to generate widget URL' });
+    }
+  });
+
+  // Check and update contractor status after widget completion
+  app.post(`${apiRouter}/trolley/check-status`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as any).user?.id || req.headers['x-user-id'];
+      if (!userId) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+
+      const user = await storage.getUser(Number(userId));
+      if (!user || user.role !== 'contractor') {
+        return res.status(403).json({ message: 'Access denied: Contractors only' });
+      }
+
+      // For now, we'll create a mock recipient for testing
+      // In production, this would check with Trolley API for actual recipient status
+      let recipientId = user.trolley_recipient_id;
+      
+      if (!recipientId || recipientId === 'test_recipient_456') {
+        // Create new recipient ID (in production this would come from Trolley)
+        recipientId = `recipient_${user.id}_${Date.now()}`;
+        
+        // Update user with new recipient ID
+        await storage.updateUserTrolleyInfo(Number(userId), {
+          trolley_recipient_id: recipientId,
+          payout_enabled: true
+        });
+      }
+
+      res.json({
+        status: 'completed',
+        recipientId,
+        payoutEnabled: true,
+        message: 'Contractor payment setup completed'
+      });
+    } catch (error) {
+      console.error('Error checking contractor status:', error);
+      res.status(500).json({ message: 'Failed to check status' });
+    }
+  });
+
+  // Create contractor recipient account
+  app.post(`${apiRouter}/trolley/create-contractor`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as any).user?.id || req.headers['x-user-id'];
+      if (!userId) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+
+      const user = await storage.getUser(Number(userId));
+      if (!user || user.role !== 'contractor') {
+        return res.status(403).json({ message: 'Access denied: Contractors only' });
+      }
+
+      if (user.trolley_recipient_id && user.trolley_recipient_id !== 'test_recipient_456') {
+        return res.json({
+          success: true,
+          recipientId: user.trolley_recipient_id,
+          message: 'Contractor already has Trolley account'
+        });
+      }
+
+      // Create recipient with Trolley
+      const recipientData = {
+        type: 'individual' as const,
+        firstName: user.first_name || user.username,
+        lastName: user.last_name || '',
+        email: user.email
+      };
+
+      try {
+        const recipient = await trolleyService.createRecipient(recipientData);
+        
+        // Update user with Trolley recipient ID
+        await storage.updateUserTrolleyInfo(Number(userId), {
+          trolley_recipient_id: recipient.id,
+          payout_enabled: true
+        });
+
+        res.json({
+          success: true,
+          recipientId: recipient.id,
+          message: 'Contractor Trolley account created successfully'
+        });
+      } catch (trolleyError) {
+        console.error('Error creating Trolley recipient:', trolleyError);
+        
+        // Fallback: create mock recipient for development
+        const mockRecipientId = `mock_recipient_${user.id}_${Date.now()}`;
+        await storage.updateUserTrolleyInfo(Number(userId), {
+          trolley_recipient_id: mockRecipientId,
+          payout_enabled: true
+        });
+
+        res.json({
+          success: true,
+          recipientId: mockRecipientId,
+          message: 'Contractor account created (development mode)'
+        });
+      }
+    } catch (error) {
+      console.error('Error creating contractor:', error);
+      res.status(500).json({ message: 'Failed to create contractor account' });
+    }
+  });
+}

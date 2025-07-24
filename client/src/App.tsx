@@ -44,6 +44,7 @@ import { ConnectionRequestsNotification } from "@/components/notifications/Conne
 // Use correct import path to match the file location
 import WorkRequestRespond from "./pages/work-request-respond";
 import ContractorOnboarding from "@/pages/contractor-onboarding";
+import ContractorPaymentSetup from "@/pages/contractor-payment-setup";
 import BusinessSetup from "@/pages/business-setup";
 
 function Router() {
@@ -194,6 +195,18 @@ function Router() {
       <ProtectedRoute path="/work-requests">
         <Layout>
           <ContractorRequests />
+        </Layout>
+      </ProtectedRoute>
+      
+      <ProtectedRoute path="/contractor-onboarding">
+        <Layout>
+          <ContractorOnboarding />
+        </Layout>
+      </ProtectedRoute>
+      
+      <ProtectedRoute path="/payment-setup">
+        <Layout>
+          <ContractorPaymentSetup />
         </Layout>
       </ProtectedRoute>
       
