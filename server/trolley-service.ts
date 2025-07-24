@@ -84,8 +84,7 @@ class TrolleyService {
     this.apiSecret = process.env.TROLLEY_API_SECRET || '';
     
     if (!this.apiKey || !this.apiSecret) {
-      console.warn('Trolley API credentials not configured');
-      return;
+      throw new Error('LIVE Trolley API credentials required. Please configure TROLLEY_API_KEY and TROLLEY_API_SECRET');
     }
 
     this.client = (trolley as any).connect({
@@ -93,7 +92,7 @@ class TrolleyService {
       secret: this.apiSecret
     });
     
-    console.log('Trolley SDK client initialized successfully');
+    console.log('Trolley SDK client initialized successfully with LIVE production credentials');
   }
 
   private ensureClient() {

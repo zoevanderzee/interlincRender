@@ -93,27 +93,58 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
         return res.status(403).json({ message: 'Access denied: Contractors only' });
       }
 
-      // For now, we'll create a mock recipient for testing
-      // In production, this would check with Trolley API for actual recipient status
+      // Check actual Trolley recipient status and create if needed
       let recipientId = user.trolley_recipient_id;
       
       if (!recipientId || recipientId === 'test_recipient_456') {
-        // Create new recipient ID (in production this would come from Trolley)
-        recipientId = `recipient_${user.id}_${Date.now()}`;
-        
-        // Update user with new recipient ID
-        await storage.updateUserTrolleyInfo(Number(userId), {
-          trolley_recipient_id: recipientId,
-          payout_enabled: true
-        });
-      }
+        // Create real Trolley recipient account
+        try {
+          const recipientData = {
+            type: 'individual' as const,
+            firstName: user.first_name || user.username,
+            lastName: user.last_name || '',
+            email: user.email
+          };
 
-      res.json({
-        status: 'completed',
-        recipientId,
-        payoutEnabled: true,
-        message: 'Contractor payment setup completed'
-      });
+          const recipient = await trolleyService.createRecipient(recipientData);
+          recipientId = recipient.id;
+          
+          // Update user with real Trolley recipient ID
+          await storage.updateUserTrolleyInfo(Number(userId), {
+            trolley_recipient_id: recipientId,
+            payout_enabled: true
+          });
+
+          res.json({
+            status: 'completed',
+            recipientId,
+            payoutEnabled: true,
+            message: 'Live Trolley recipient account created successfully'
+          });
+        } catch (trolleyError) {
+          console.error('Error creating live Trolley recipient:', trolleyError);
+          res.status(500).json({ 
+            message: 'Failed to create live Trolley recipient account',
+            error: trolleyError 
+          });
+        }
+      } else {
+        // Check existing recipient status with live Trolley API
+        try {
+          const recipient = await trolleyService.getRecipient(recipientId);
+          res.json({
+            status: recipient.status === 'active' ? 'completed' : 'pending',
+            recipientId,
+            payoutEnabled: recipient.status === 'active',
+            message: 'Live Trolley recipient status verified'
+          });
+        } catch (error) {
+          res.status(500).json({ 
+            message: 'Failed to verify live Trolley recipient status',
+            error 
+          });
+        }
+      }
     } catch (error) {
       console.error('Error checking contractor status:', error);
       res.status(500).json({ message: 'Failed to check status' });
@@ -164,19 +195,11 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
           message: 'Contractor Trolley account created successfully'
         });
       } catch (trolleyError) {
-        console.error('Error creating Trolley recipient:', trolleyError);
-        
-        // Fallback: create mock recipient for development
-        const mockRecipientId = `mock_recipient_${user.id}_${Date.now()}`;
-        await storage.updateUserTrolleyInfo(Number(userId), {
-          trolley_recipient_id: mockRecipientId,
-          payout_enabled: true
-        });
-
-        res.json({
-          success: true,
-          recipientId: mockRecipientId,
-          message: 'Contractor account created (development mode)'
+        console.error('Error creating live Trolley recipient:', trolleyError);
+        res.status(500).json({
+          success: false,
+          message: 'Failed to create live Trolley recipient account',
+          error: trolleyError
         });
       }
     } catch (error) {
