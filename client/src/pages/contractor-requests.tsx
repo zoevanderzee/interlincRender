@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Clock, CheckCircle, XCircle, Calendar } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatDistanceToNow, format } from "date-fns";
+import { useLocation } from "wouter";
 
 // Define the work request type
 interface WorkRequest {
@@ -42,6 +43,7 @@ interface WorkRequest {
 const ContractorRequests = () => {
   const { toast } = useToast();
   const { user } = useAuth();
+  const [, navigate] = useLocation();
   const [filterStatus, setFilterStatus] = useState<string>("pending");
   
   // Only show requests that match the contractor's email
@@ -345,14 +347,11 @@ const ContractorRequests = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="border-zinc-700 text-zinc-400"
+                          className="border-zinc-700 text-zinc-400 hover:bg-zinc-800 hover:text-white"
                           onClick={() => {
-                            // Navigate to the project details
-                            if (request.contractId) {
-                              window.location.href = `/contract/${request.contractId}`;
-                            }
+                            // Navigate to projects page where contractors can see their assignments
+                            navigate('/projects');
                           }}
-                          disabled={!request.contractId}
                         >
                           View Project
                         </Button>
