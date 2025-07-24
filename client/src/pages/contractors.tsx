@@ -40,9 +40,7 @@ const Contractors = () => {
   const isContractor = user?.role === "contractor";
   const [searchTerm, setSearchTerm] = useState("");
   
-  // State for profile code dialog
-  const [showProfileCode, setShowProfileCode] = useState(false);
-  const [profileCode, setProfileCode] = useState("");
+
   
   // State for direct link dialog
   const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
@@ -247,152 +245,8 @@ const Contractors = () => {
 
   const isLoading = isLoadingWorkers || isLoadingInvites || (isContractor && isLoadingBusinesses);
 
-  // Function to get contractor's profile code
-  const getProfileCode = async () => {
-    try {
-      const response = await fetch("/api/profile-code", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "X-User-ID": user?.id.toString() || ""
-        }
-      });
-      const data = await response.json();
-      
-      if (data && data.profileCode) {
-        setProfileCode(data.profileCode);
-        setShowProfileCode(true);
-      } else {
-        // If no profile code exists, try to generate one
-        generateProfileCode();
-      }
-    } catch (error) {
-      console.error("Error fetching profile code:", error);
-      toast({
-        title: "Error",
-        description: "Could not retrieve your unique ID. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-  
-  // Function to generate a new profile code if one doesn't exist
-  const generateProfileCode = async () => {
-    try {
-      // Generate a permanent code based on username and a random number
-      const randomDigits = Math.floor(1000 + Math.random() * 9000); // 4-digit number
-      const permanentCode = user?.username ? `${user.username}-${randomDigits}` : `WORKER-${randomDigits}`;
-      
-      const response = await fetch("/api/profile-code/generate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-User-ID": user?.id.toString() || ""
-        },
-        body: JSON.stringify({ profileCode: permanentCode })
-      });
-      const data = await response.json();
-      
-      if (data && data.code) {
-        setProfileCode(data.code);
-        setShowProfileCode(true);
-      } else if (response.ok) {
-        // If no code in response but request was successful, use our generated code
-        setProfileCode(permanentCode);
-        setShowProfileCode(true);
-      } else {
-        // Create a fallback code if the API fails
-        const fallbackCode = `${user?.username || "USER"}-${Date.now().toString().slice(-4)}`;
-        setProfileCode(fallbackCode);
-        setShowProfileCode(true);
-        
-        console.warn("Using fallback worker code:", fallbackCode);
-      }
-    } catch (error) {
-      console.error("Error generating profile code:", error);
-      
-      // Generate a fallback code even if the API fails
-      const fallbackCode = `${user?.username || "USER"}-${Date.now().toString().slice(-4)}`;
-      setProfileCode(fallbackCode);
-      setShowProfileCode(true);
-      
-      toast({
-        title: "Using offline code",
-        description: "We've generated a temporary code for you to use.",
-      });
-    }
-  };
-
   return (
     <>
-      {/* Unique ID Button - Only visible for contractors */}
-      {isContractor && (
-        <div className="fixed top-20 right-4 z-10">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={getProfileCode}
-            className="bg-zinc-800 border-zinc-700 hover:bg-zinc-700"
-          >
-            <Fingerprint size={18} className="mr-2" />
-            My Unique ID
-          </Button>
-        </div>
-      )}
-      
-      {/* Profile Code Dialog */}
-      <Dialog open={showProfileCode} onOpenChange={setShowProfileCode}>
-        <DialogContent className="sm:max-w-[550px]">
-          <DialogHeader>
-            <DialogTitle>Your Unique User ID</DialogTitle>
-            <DialogDescription>
-              Share this unique ID with companies so they can connect with you and assign you to projects.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="mt-4 space-y-4">
-            <div className="relative">
-              <Input
-                value={profileCode}
-                readOnly
-                className="pr-20 text-center font-mono text-xl"
-              />
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="absolute right-1 top-1"
-                      onClick={() => copyToClipboard(profileCode)}
-                    >
-                      <Copy size={14} />
-                      <span className="ml-1">Copy</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Copy to clipboard</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-            <div className="bg-blue-50 p-4 rounded-md border border-blue-100">
-              <h3 className="text-sm font-medium flex items-center text-blue-800">
-                <Fingerprint size={16} className="mr-2" />
-                How to use your ID
-              </h3>
-              <p className="text-sm mt-1 text-blue-700">
-                When a company asks for your Worker ID, provide them with this code. They can use it to add you to their team and assign you to projects.
-              </p>
-            </div>
-          </div>
-          <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setShowProfileCode(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
       {/* Direct Link Dialog */}
       <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
         <DialogContent className="sm:max-w-[550px]">
