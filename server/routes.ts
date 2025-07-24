@@ -18,6 +18,7 @@ import Stripe from "stripe";
 import stripeService from "./services/stripe";
 import notificationService from "./services/notifications";
 import automatedPaymentService from "./services/automated-payments";
+import { generateComplianceExport, generateInvoiceExport, generatePaymentExport, generateCSVExport } from './export-helpers';
 import { trolleySdk } from "./trolley-sdk-service";
 import { trolleySubmerchantService, type TrolleySubmerchantData } from "./services/trolley-submerchant";
 import { setupAuth } from "./auth";
@@ -4990,6 +4991,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register Trolley submerchant routes
   registerTrolleySubmerchantRoutes(app, requireAuth);
+
+  // Data Room Export Routes for Compliance
+  app.get(`${apiRouter}/data-room/export/all`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      const userRole = req.user?.role || 'business';
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const exportData = await generateComplianceExport(userId, userRole);
+      
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="compliance-data-${userId}-${new Date().toISOString().split('T')[0]}.json"`);
+      res.json(exportData);
+    } catch (error) {
+      console.error("Error generating compliance export:", error);
+      res.status(500).json({ message: "Error generating export" });
+    }
+  });
+
+  app.get(`${apiRouter}/data-room/export/invoices`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      const userRole = req.user?.role || 'business';
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const invoices = await generateInvoiceExport(userId, userRole);
+      
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="invoices-${userId}-${new Date().toISOString().split('T')[0]}.json"`);
+      res.json(invoices);
+    } catch (error) {
+      console.error("Error generating invoice export:", error);
+      res.status(500).json({ message: "Error generating invoice export" });
+    }
+  });
+
+  app.get(`${apiRouter}/data-room/export/payments`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      const userRole = req.user?.role || 'business';
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const payments = await generatePaymentExport(userId, userRole);
+      
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="payments-${userId}-${new Date().toISOString().split('T')[0]}.json"`);
+      res.json(payments);
+    } catch (error) {
+      console.error("Error generating payment export:", error);
+      res.status(500).json({ message: "Error generating payment export" });
+    }
+  });
+
+  app.get(`${apiRouter}/data-room/export/csv`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      const userRole = req.user?.role || 'business';
+      const { type } = req.query;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const csvData = await generateCSVExport(userId, userRole, type as string);
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="${type || 'compliance'}-${userId}-${new Date().toISOString().split('T')[0]}.csv"`);
+      res.send(csvData);
+    } catch (error) {
+      console.error("Error generating CSV export:", error);
+      res.status(500).json({ message: "Error generating CSV export" });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;
