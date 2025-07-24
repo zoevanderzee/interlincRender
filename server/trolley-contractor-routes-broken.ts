@@ -80,8 +80,8 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
     }
   });
 
-  // Initialize contractor onboarding via live Trolley API
-  app.post(`${apiRouter}/trolley/initialize-contractor-onboarding`, requireAuth, async (req: Request, res: Response) => {
+  // Check and update contractor status after widget completion
+  app.post(`${apiRouter}/trolley/check-status`, requireAuth, async (req: Request, res: Response) => {
     try {
       const userId = (req as any).user?.id || req.headers['x-user-id'];
       if (!userId) {
@@ -116,15 +116,14 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
           });
 
           res.json({
-            success: true,
-            recipientId,
             status: 'completed',
+            recipientId,
+            payoutEnabled: true,
             message: 'Live Trolley recipient account created successfully'
           });
         } catch (trolleyError) {
           console.error('Error creating live Trolley recipient:', trolleyError);
           res.status(500).json({ 
-            success: false,
             message: 'Failed to create live Trolley recipient account',
             error: trolleyError 
           });
@@ -134,7 +133,6 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
         try {
           const recipient = await trolleyService.getRecipient(recipientId);
           res.json({
-            success: true,
             status: recipient.status === 'active' ? 'completed' : 'pending',
             recipientId,
             payoutEnabled: recipient.status === 'active',
@@ -142,19 +140,18 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
           });
         } catch (error) {
           res.status(500).json({ 
-            success: false,
             message: 'Failed to verify live Trolley recipient status',
             error 
           });
         }
       }
     } catch (error) {
-      console.error('Error initializing contractor onboarding:', error);
-      res.status(500).json({ message: 'Failed to initialize onboarding' });
+      console.error('Error checking contractor status:', error);
+      res.status(500).json({ message: 'Failed to check status' });
     }
   });
 
-  // Create contractor recipient account (legacy endpoint)
+  // Create contractor recipient account
   app.post(`${apiRouter}/trolley/create-contractor`, requireAuth, async (req: Request, res: Response) => {
     try {
       const userId = (req as any).user?.id || req.headers['x-user-id'];
@@ -167,36 +164,35 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
         return res.status(403).json({ message: 'Access denied: Contractors only' });
       }
 
-      if (user.trolleyRecipientId) {
+      if (user.trolley_recipient_id) {
         return res.json({
           success: true,
-          recipientId: user.trolleyRecipientId,
-          message: 'Contractor already has live Trolley account'
+          recipientId: user.trolley_recipient_id,
+          message: 'Contractor already has Trolley account'
         });
       }
 
-      // Create recipient with live Trolley API
+      // Create recipient with Trolley
       const recipientData = {
         type: 'individual' as const,
-        firstName: user.firstName || user.username,
-        lastName: user.lastName || '',
+        firstName: user.first_name || user.username,
+        lastName: user.last_name || '',
         email: user.email
       };
 
       try {
         const recipient = await trolleyService.createRecipient(recipientData);
         
-        // Update user with live Trolley recipient ID
-        await storage.updateUser(Number(userId), {
-          trolleyRecipientId: recipient.id,
-          payoutEnabled: recipient.status === 'active'
+        // Update user with Trolley recipient ID
+        await storage.updateUserTrolleyInfo(Number(userId), {
+          trolley_recipient_id: recipient.id,
+          payout_enabled: true
         });
 
         res.json({
           success: true,
           recipientId: recipient.id,
-          status: recipient.status,
-          message: 'Live Trolley recipient account created successfully'
+          message: 'Contractor Trolley account created successfully'
         });
       } catch (trolleyError) {
         console.error('Error creating live Trolley recipient:', trolleyError);
