@@ -1207,6 +1207,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!updatedMilestone) {
         return res.status(404).json({ message: "Milestone not found" });
       }
+
+      // Create notification when contractor submits work (marks milestone as completed)
+      if (updateData.status === 'completed' && userRole === 'contractor') {
+        try {
+          await notificationService.createWorkSubmission(
+            contract.businessId,
+            updatedMilestone.name,
+            contract.contractName || "Project",
+            userId
+          );
+        } catch (notificationError) {
+          console.error('Error creating work submission notification:', notificationError);
+        }
+      }
       
       res.json(updatedMilestone);
     } catch (error) {
@@ -1235,6 +1249,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!updatedMilestone) {
         return res.status(404).json({ message: "Milestone not found" });
+      }
+
+      // Create notification for milestone approval
+      try {
+        const contract = await storage.getContract(updatedMilestone.contractId);
+        if (contract) {
+          await notificationService.createMilestoneApproval(
+            contract.contractorId,
+            updatedMilestone.name,
+            `£${parseFloat(updatedMilestone.paymentAmount).toFixed(2)}`
+          );
+        }
+      } catch (notificationError) {
+        console.error('Error creating milestone approval notification:', notificationError);
       }
 
       // Trigger automated payment processing
@@ -2128,6 +2156,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           );
           
           console.log(`ACH Payment ${paymentId} marked as completed`);
+          
+          // Create notification for payment completion
+          try {
+            const contract = await storage.getContract(payment.contractId);
+            if (contract) {
+              await notificationService.createPaymentCompleted(
+                contract.contractorId,
+                `£${parseFloat(payment.amount).toFixed(2)}`,
+                contract.contractName || "Project"
+              );
+            }
+          } catch (notificationError) {
+            console.error('Error creating payment completion notification:', notificationError);
+          }
           
           // Email notifications disabled
           console.log(`Payment ${paymentId} completed - email notifications disabled`);
@@ -4107,6 +4149,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Update the request status
       const updatedRequest = await storage.updateConnectionRequest(parseInt(id), { status });
+
+      // Create notification for connection acceptance
+      if (status === 'accepted') {
+        try {
+          const businessUser = await storage.getUser(connectionRequest.businessId);
+          await notificationService.createContractInvitation(
+            connectionRequest.businessId,
+            "Connection Accepted",
+            req.user?.username || "Contractor"
+          );
+        } catch (notificationError) {
+          console.error('Error creating connection acceptance notification:', notificationError);
+        }
+      }
       
       // If the request is accepted, make sure the contractor has the correct workerType
       // According to client/src/pages/contractors.tsx:
@@ -4231,29 +4287,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create sample notifications for testing
-  app.post(`${apiRouter}/notifications/create-samples`, requireAuth, async (req: Request, res: Response) => {
-    try {
-      // Get user ID from session or X-User-ID header
-      const userId = req.user?.id || (req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
-      
-      if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
-      }
 
-      // Get user details to determine role
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      const count = await notificationService.createSampleNotifications(userId, user.role);
-      return res.json({ message: `${count} sample notifications created`, count });
-    } catch (error) {
-      console.error('Error creating sample notifications:', error);
-      return res.status(500).json({ message: "Failed to create sample notifications" });
-    }
-  });
 
   app.post(`${apiRouter}/business-onboarding-link`, requireAuth, async (req: Request, res: Response) => {
     try {

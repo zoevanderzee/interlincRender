@@ -51,6 +51,13 @@ This is a comprehensive contractor/freelancer management platform built with Rea
 - **Plaid** (configured): Bank account verification and ACH transfers
 - **SendGrid** (disabled): Email notifications system
 
+## Notification System
+- **Real-time Notifications**: Interactive notification bell with automatic updates every 30 seconds
+- **Event-based Generation**: Automatic notification creation for milestone approvals, work submissions, payment completions, and connection acceptances
+- **User-specific Filtering**: Complete data isolation ensuring users only see their own notifications
+- **Interactive UI**: Click-to-mark-as-read functionality with dropdown menu
+- **Authentication Integration**: Works seamlessly with header-based authentication system
+
 # Data Flow
 
 ## Payment Flow
@@ -120,6 +127,7 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
+- July 24, 2025: **REAL-TIME NOTIFICATION SYSTEM FULLY IMPLEMENTED** - Created comprehensive event-based notification system with automatic notification creation for key workflow events. Integrated notification generation into milestone approvals, work submissions, payment completions, and connection acceptances. Removed fake test data and implemented clean notification system with proper authentication and real-time updates.
 - July 24, 2025: **PROFILE CODE GENERATION SYSTEM IMPROVED** - Updated profile code generation from generic "USER-2025" format to proper "USERNAME-YEAR" format (e.g., "MARIAMHN-2025"). Fixed storage logic to use username directly instead of random suffixes, making codes more meaningful and user-friendly.
 - July 24, 2025: **CONTRACTOR HELP INTERFACE STREAMLINED** - Completely updated Help & Support page to show only contractor-relevant content. Removed all business-specific sections and documentation. Now shows only: Getting Started, Project Management, Work Submission, Payment Tracking, Connection Requests, and Data Security sections tailored for contractor users.
 - July 23, 2025: **BUDGET CALCULATION ARCHITECTURE CORRECTED** - Fixed budget calculation to use contractor assignment values (contractorBudget) instead of milestone payment amounts. Budget allocations now properly reflect actual contractor payments when workers are assigned to projects. Milestones serve as work descriptions while contractor assignment values drive budget tracking. Fixed API mapping from contractorValue parameter to contractorBudget database field.
