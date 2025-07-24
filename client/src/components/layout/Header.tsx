@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   Search, 
   Bell, 
@@ -9,6 +9,8 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Link } from "wouter";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 
 interface HeaderProps {
   toggleSidebar: () => void;
@@ -17,9 +19,64 @@ interface HeaderProps {
 const Header = ({ toggleSidebar }: HeaderProps) => {
   const { user, logoutMutation } = useAuth();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [notificationMenuOpen, setNotificationMenuOpen] = useState(false);
+  const notificationRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
+
+  // Fetch notification count
+  const { data: notificationCount = 0 } = useQuery({
+    queryKey: ['/api/notifications/count'],
+    enabled: !!user,
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  // Fetch notifications when menu is open
+  const { data: notifications = [] } = useQuery({
+    queryKey: ['/api/notifications'],
+    enabled: !!user && notificationMenuOpen,
+    refetchInterval: notificationMenuOpen ? 10000 : false, // Refresh every 10 seconds when open
+  });
+
+  // Mark notification as read mutation
+  const markAsReadMutation = useMutation({
+    mutationFn: (notificationId: number) => 
+      apiRequest("PATCH", `/api/notifications/${notificationId}/read`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications/count'] });
+    }
+  });
+
+  // Close menus when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+        setNotificationMenuOpen(false);
+      }
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const toggleUserMenu = () => {
     setUserMenuOpen(!userMenuOpen);
+  };
+
+  const toggleNotificationMenu = () => {
+    setNotificationMenuOpen(!notificationMenuOpen);
+  };
+
+  const handleNotificationClick = (notification: any) => {
+    if (!notification.isRead) {
+      markAsReadMutation.mutate(notification.id);
+    }
   };
 
   const handleLogout = () => {
@@ -53,14 +110,56 @@ const Header = ({ toggleSidebar }: HeaderProps) => {
             <Search size={20} />
           </button>
           
-          <button className="relative text-white hover:text-gray-300">
-            <Bell size={20} />
-            <span className="absolute top-0 right-0 transform translate-x-1/2 -translate-y-1/2 bg-destructive text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-              3
-            </span>
-          </button>
+          <div className="relative" ref={notificationRef}>
+            <button 
+              onClick={toggleNotificationMenu}
+              className="relative text-white hover:text-gray-300 focus:outline-none"
+            >
+              <Bell size={20} />
+              {notificationCount > 0 && (
+                <span className="absolute top-0 right-0 transform translate-x-1/2 -translate-y-1/2 bg-destructive text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                  {notificationCount > 99 ? '99+' : notificationCount}
+                </span>
+              )}
+            </button>
+            
+            {notificationMenuOpen && (
+              <div className="absolute right-0 mt-2 w-80 bg-zinc-900 rounded-md shadow-lg py-1 z-20 border border-zinc-800 max-h-96 overflow-y-auto">
+                <div className="px-4 py-2 border-b border-zinc-800">
+                  <h3 className="text-sm font-medium text-white">Notifications</h3>
+                </div>
+                {notifications.length > 0 ? (
+                  notifications.slice(0, 10).map((notification: any) => (
+                    <div 
+                      key={notification.id} 
+                      onClick={() => handleNotificationClick(notification)}
+                      className="px-4 py-3 hover:bg-zinc-800 border-b border-zinc-800 last:border-b-0 cursor-pointer"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-white">{notification.title}</p>
+                          <p className="text-xs text-gray-400 mt-1">{notification.message}</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {new Date(notification.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                        {!notification.isRead && (
+                          <div className="w-2 h-2 bg-accent-500 rounded-full flex-shrink-0 mt-1"></div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="px-4 py-8 text-center">
+                    <Bell className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                    <p className="text-sm text-gray-400">No notifications yet</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
           
-          <div className="relative">
+          <div className="relative" ref={userMenuRef}>
             <button 
               onClick={toggleUserMenu}
               className="flex items-center space-x-1 focus:outline-none"
@@ -73,7 +172,7 @@ const Header = ({ toggleSidebar }: HeaderProps) => {
             </button>
             
             {userMenuOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-zinc-900 rounded-md shadow-lg py-1 z-10 border border-zinc-800">
+              <div className="absolute right-0 mt-2 w-48 bg-zinc-900 rounded-md shadow-lg py-1 z-20 border border-zinc-800">
                 <Link href="/settings">
                   <div className="flex items-center px-4 py-2 text-sm text-white hover:bg-zinc-800 cursor-pointer">
                     <Settings size={16} className="mr-2" />

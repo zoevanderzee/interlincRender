@@ -4181,12 +4181,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Notifications endpoints
   app.get(`${apiRouter}/notifications`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
-      const user = req.user as User;
-      if (!user) {
-        return res.status(401).json({ message: "User not authenticated" });
+      // Get user ID from session or X-User-ID header
+      const userId = req.user?.id || (req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
       }
 
-      const notifications = await storage.getNotificationsByUserId(user.id);
+      const notifications = await storage.getNotificationsByUserId(userId);
       return res.json(notifications);
     } catch (error) {
       console.error('Error fetching notifications:', error);
@@ -4196,12 +4198,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get(`${apiRouter}/notifications/count`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
-      const user = req.user as User;
-      if (!user) {
-        return res.status(401).json({ message: "User not authenticated" });
+      // Get user ID from session or X-User-ID header
+      const userId = req.user?.id || (req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
       }
 
-      const count = await storage.getUnreadNotificationCount(user.id);
+      const count = await storage.getUnreadNotificationCount(userId);
       return res.json({ count });
     } catch (error) {
       console.error('Error fetching notification count:', error);
@@ -4212,9 +4216,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch(`${apiRouter}/notifications/:id/read`, requireAuth, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const user = req.user as User;
-      if (!user) {
-        return res.status(401).json({ message: "User not authenticated" });
+      // Get user ID from session or X-User-ID header
+      const userId = req.user?.id || (req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
       }
 
       const notification = await storage.markNotificationAsRead(parseInt(id));
@@ -4222,6 +4228,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error marking notification as read:', error);
       return res.status(500).json({ message: "Failed to mark notification as read" });
+    }
+  });
+
+  // Create sample notifications for testing
+  app.post(`${apiRouter}/notifications/create-samples`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      // Get user ID from session or X-User-ID header
+      const userId = req.user?.id || (req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user details to determine role
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const count = await notificationService.createSampleNotifications(userId, user.role);
+      return res.json({ message: `${count} sample notifications created`, count });
+    } catch (error) {
+      console.error('Error creating sample notifications:', error);
+      return res.status(500).json({ message: "Failed to create sample notifications" });
     }
   });
 
