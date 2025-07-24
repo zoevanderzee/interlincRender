@@ -1,47 +1,31 @@
-import * as trolley from 'trolleyhq';
+import trolley from 'trolleyhq';
+import crypto from 'crypto';
+import type { User } from '../shared/schema';
 
-/**
- * Trolley Payment Service
- * Handles contractor payments through Trolley SDK using batch-based payments
- */
-
+// Trolley API Response Types
 interface TrolleyRecipient {
   id: string;
   email: string;
   firstName: string;
   lastName: string;
+  status: string;
   type: 'individual' | 'business';
-  status: string;
-  routeType?: string;
-  estimatedFees?: string;
-  accounts?: Array<{
-    id: string;
-    type: string;
-    primary: boolean;
-  }>;
-}
-
-interface TrolleyBatch {
-  id: string;
-  status: string;
-  description: string;
-  sentAt?: string;
-  completedAt?: string;
-  paymentsCount: number;
-  totalAmount: string;
-  currency: string;
+  dob?: string;
+  address?: {
+    street1: string;
+    street2?: string;
+    city: string;
+    region: string;
+    country: string;
+    postalCode: string;
+  };
 }
 
 interface TrolleyPayment {
   id: string;
-  recipient: {
-    id: string;
-    email: string;
-  };
+  recipientId: string;
   amount: string;
   currency: string;
-  memo: string;
-  externalId: string;
   status: string;
   batchId: string;
   processedAt?: string;
@@ -49,28 +33,15 @@ interface TrolleyPayment {
   fees?: string;
 }
 
-interface CreateBatchRequest {
+interface TrolleyBatch {
+  id: string;
+  status: string;
   description: string;
-  currency?: string;
-  payments?: Array<{
-    recipient: {
-      id: string;
-    };
-    amount: string;
-    currency: string;
-    memo: string;
-    externalId?: string;
-  }>;
-}
-
-interface CreatePaymentRequest {
-  recipient: {
-    id: string;
-  };
-  amount: string;
+  totalAmount: string;
   currency: string;
-  memo: string;
-  externalId?: string;
+  sentAt?: string;
+  completedAt?: string;
+  payments?: TrolleyPayment[];
 }
 
 interface CreateRecipientRequest {
@@ -90,34 +61,39 @@ interface CreateRecipientRequest {
   ssn?: string;
 }
 
+interface CreatePaymentRequest {
+  recipient: { id: string };
+  amount: string;
+  currency: string;
+  memo: string;
+  externalId?: string;
+}
+
 class TrolleyService {
   private client: any;
+  private apiKey: string;
+  private apiSecret: string;
+  private readonly API_BASE = 'https://api.trolley.com/v1';
 
   constructor() {
     this.initializeClient();
   }
 
   private initializeClient() {
-    const apiKey = process.env.TROLLEY_API_KEY;
-    const apiSecret = process.env.TROLLEY_API_SECRET;
+    this.apiKey = process.env.TROLLEY_API_KEY || '';
+    this.apiSecret = process.env.TROLLEY_API_SECRET || '';
     
-    if (!apiKey || !apiSecret) {
+    if (!this.apiKey || !this.apiSecret) {
       console.warn('Trolley API credentials not configured');
       return;
     }
 
     this.client = (trolley as any).connect({
-      key: apiKey,
-      secret: apiSecret
+      key: this.apiKey,
+      secret: this.apiSecret
     });
     
-    console.log('Trolley SDK client initialized');
-  }
-
-  // Method to refresh credentials dynamically
-  public refreshCredentials() {
-    this.initializeClient();
-    console.log('Trolley credentials refreshed');
+    console.log('Trolley SDK client initialized successfully');
   }
 
   private ensureClient() {
@@ -126,13 +102,28 @@ class TrolleyService {
     }
   }
 
+  private getAuthHeaders(method: string, path: string, body?: string): Record<string, string> {
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    
+    const message = `${method}${path}${body || ''}${timestamp}`;
+    const signature = crypto.createHmac('sha256', this.apiSecret).update(message).digest('hex');
+    
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `prsign=${signature}; timestamp=${timestamp}; key=${this.apiKey}`,
+    };
+  }
+
+  /**
+   * Create a recipient account for contractor payments
+   * This sets up the contractor to receive direct bank transfers
+   */
   async createRecipient(recipientData: CreateRecipientRequest): Promise<TrolleyRecipient> {
     this.ensureClient();
     
     try {
       const recipient = await this.client.recipient.create(recipientData);
       console.log(`Created Trolley recipient: ${recipient.id} for ${recipientData.email}`);
-      
       return recipient;
     } catch (error) {
       console.error('Error creating Trolley recipient:', error);
@@ -140,23 +131,48 @@ class TrolleyService {
     }
   }
 
+  /**
+   * Get recipient details and verify account status
+   */
   async getRecipient(recipientId: string): Promise<TrolleyRecipient> {
     this.ensureClient();
     
     try {
-      return await this.client.recipient.find(recipientId);
+      const recipient = await this.client.recipient.find(recipientId);
+      return recipient;
     } catch (error) {
-      console.error('Error fetching Trolley recipient:', error);
+      console.error('Error fetching recipient:', error);
       throw error;
     }
   }
 
-  async createBatch(batchData: CreateBatchRequest): Promise<TrolleyBatch> {
+  /**
+   * Create payment batch and process payment to contractor's bank account
+   * This is where the actual payment transfer happens
+   */
+  async createAndProcessPayment(
+    recipientId: string, 
+    amount: string, 
+    currency: string = 'USD', 
+    memo: string
+  ): Promise<{ batch: TrolleyBatch; payment: TrolleyPayment }> {
     const path = '/batches';
+    const batchData = {
+      description: `Milestone payment: ${memo}`,
+      currency,
+      payments: [{
+        recipient: { id: recipientId },
+        amount,
+        currency,
+        memo,
+        externalId: `milestone_${Date.now()}`
+      }]
+    };
+
     const body = JSON.stringify(batchData);
     
     try {
-      const response = await fetch(`${TROLLEY_API_BASE}${path}`, {
+      const response = await fetch(`${this.API_BASE}${path}`, {
         method: 'POST',
         headers: this.getAuthHeaders('POST', path, body),
         body
@@ -164,230 +180,67 @@ class TrolleyService {
 
       if (!response.ok) {
         const errorData = await response.text();
-        console.error('Trolley API error creating batch:', errorData);
-        throw new Error(`Trolley API error: ${response.status} - ${errorData}`);
+        throw new Error(`Trolley API error (${response.status}): ${errorData}`);
       }
 
-      const batch = await response.json();
-      console.log(`Created Trolley batch: ${batch.id}`);
+      const batch: TrolleyBatch = await response.json();
+      const payment = batch.payments?.[0];
       
-      return batch;
+      if (!payment) {
+        throw new Error('No payment created in batch');
+      }
+
+      console.log(`Payment batch created: ${batch.id}, Payment ID: ${payment.id}`);
+      console.log(`Contractor will receive ${amount} ${currency} directly to their bank account`);
+      
+      return { batch, payment };
     } catch (error) {
       console.error('Error creating Trolley batch:', error);
       throw error;
     }
   }
 
-  async addPaymentToBatch(batchId: string, paymentData: CreatePaymentRequest): Promise<TrolleyPayment> {
-    const path = `/batches/${batchId}/payments`;
-    const body = JSON.stringify(paymentData);
-    
-    try {
-      const response = await fetch(`${TROLLEY_API_BASE}${path}`, {
-        method: 'POST',
-        headers: this.getAuthHeaders('POST', path, body),
-        body
-      });
-
-      if (!response.ok) {
-        const errorData = await response.text();
-        console.error('Trolley API error adding payment to batch:', errorData);
-        throw new Error(`Trolley API error: ${response.status} - ${errorData}`);
-      }
-
-      const payment = await response.json();
-      console.log(`Added payment to batch ${batchId}: ${payment.id}`);
-      
-      return payment;
-    } catch (error) {
-      console.error('Error adding payment to batch:', error);
-      throw error;
-    }
-  }
-
-  async processBatch(batchId: string): Promise<TrolleyBatch> {
-    const path = `/batches/${batchId}/start-processing`;
-    
-    try {
-      const response = await fetch(`${TROLLEY_API_BASE}${path}`, {
-        method: 'POST',
-        headers: this.getAuthHeaders('POST', path)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.text();
-        console.error('Trolley API error processing batch:', errorData);
-        throw new Error(`Trolley API error: ${response.status} - ${errorData}`);
-      }
-
-      const batch = await response.json();
-      console.log(`Started processing batch: ${batch.id}`);
-      
-      return batch;
-    } catch (error) {
-      console.error('Error processing batch:', error);
-      throw error;
-    }
-  }
-
-  async getBatch(batchId: string): Promise<TrolleyBatch> {
-    const path = `/batches/${batchId}`;
-    
-    try {
-      const response = await fetch(`${TROLLEY_API_BASE}${path}`, {
-        method: 'GET',
-        headers: this.getAuthHeaders('GET', path)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(`Trolley API error: ${response.status} - ${errorData}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching Trolley batch:', error);
-      throw error;
-    }
-  }
-
-  async getPayment(paymentId: string): Promise<TrolleyPayment> {
-    const path = `/payments/${paymentId}`;
-    
-    try {
-      const response = await fetch(`${TROLLEY_API_BASE}${path}`, {
-        method: 'GET',
-        headers: this.getAuthHeaders('GET', path)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(`Trolley API error: ${response.status} - ${errorData}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching Trolley payment:', error);
-      throw error;
-    }
-  }
-
-  async getPaymentsByRecipient(recipientId: string): Promise<TrolleyPayment[]> {
-    const path = `/recipients/${recipientId}/payments`;
-    
-    try {
-      const response = await fetch(`${TROLLEY_API_BASE}${path}`, {
-        method: 'GET',
-        headers: this.getAuthHeaders('GET', path)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(`Trolley API error: ${response.status} - ${errorData}`);
-      }
-
-      const result = await response.json();
-      return result.payments || [];
-    } catch (error) {
-      console.error('Error fetching recipient payments:', error);
-      throw error;
-    }
-  }
-
   /**
-   * Creates a complete payment flow: recipient (if needed) → batch → payment → process
+   * Generate secure widget URL for contractor onboarding
+   * This URL allows contractors to set up their bank account and verify identity
    */
-  async createAndProcessPayment(paymentData: {
-    recipientId: string;
-    amount: string;
-    currency: string;
-    memo: string;
-    externalId?: string;
-    description?: string;
-  }): Promise<{ batch: TrolleyBatch; payment: TrolleyPayment }> {
-    try {
-      // Create batch
-      const batch = await this.createBatch({
-        description: paymentData.description || `Payment for ${paymentData.memo}`,
-        currency: paymentData.currency
-      });
-
-      // Add payment to batch
-      const payment = await this.addPaymentToBatch(batch.id, {
-        recipient: { id: paymentData.recipientId },
-        amount: paymentData.amount,
-        currency: paymentData.currency,
-        memo: paymentData.memo,
-        externalId: paymentData.externalId
-      });
-
-      // Process batch
-      const processedBatch = await this.processBatch(batch.id);
-
-      return { batch: processedBatch, payment };
-    } catch (error) {
-      console.error('Error in complete payment flow:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Generates Trolley Widget URL for recipient onboarding
-   * Following official Trolley documentation for widget generation
-   */
-  generateWidgetUrl(recipientEmail: string, options: {
+  generateWidgetUrl(options: {
+    recipientEmail: string;
     recipientReferenceId?: string;
-    hideEmail?: boolean;
-    roEmail?: boolean;
-    locale?: string;
     products?: string[];
     colors?: Record<string, string>;
     address?: Record<string, string>;
-  } = {}): string {
-    const timestamp = Math.floor(Date.now() / 1000);
-    
-    // Build query parameters following Trolley documentation
+  }): string {
     const queryParams: Record<string, string> = {
-      ts: timestamp.toString(),
       key: this.apiKey,
-      email: recipientEmail,
-      hideEmail: options.hideEmail ? 'true' : 'false',
-      roEmail: options.roEmail ? 'true' : 'false',
-      locale: options.locale || 'en',
-      products: options.products?.join(',') || 'pay,tax'
+      recipientEmail: options.recipientEmail,
+      products: (options.products || ['pay', 'tax']).join(','),
     };
 
-    // Add reference ID if provided
     if (options.recipientReferenceId) {
       queryParams.refid = options.recipientReferenceId;
     }
 
-    // Add color customizations if provided
     if (options.colors) {
       Object.entries(options.colors).forEach(([key, value]) => {
         queryParams[`colors.${key}`] = value;
       });
     }
 
-    // Add address fields if provided
     if (options.address) {
       Object.entries(options.address).forEach(([key, value]) => {
         queryParams[`addr.${key}`] = value;
       });
     }
 
-    // Create query string with proper encoding
     const queryString = Object.entries(queryParams)
       .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
-      .join('&')
-      .replace(/\+/g, '%20');
+      .join('&');
 
-    // Generate HMAC signature
-    const hmac = createHmac('sha256', this.apiSecret);
-    hmac.update(queryString);
-    const signature = hmac.digest('hex');
+    const signature = crypto.createHmac('sha256', this.apiSecret)
+      .update(queryString)
+      .digest('hex');
 
-    // Return complete widget URL
     return `https://widget.trolley.com?${queryString}&sign=${signature}`;
   }
 }
