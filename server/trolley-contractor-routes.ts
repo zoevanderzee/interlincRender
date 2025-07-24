@@ -93,32 +93,30 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
         return res.status(403).json({ message: 'Access denied: Contractors only' });
       }
 
-      // Check actual Trolley recipient status and create if needed
-      let recipientId = user.trolleyRecipientId;
-      
-      if (!recipientId) {
-        // Create real Trolley recipient account
+      // Create new Trolley recipient account if none exists
+      if (!user.trolleyRecipientId) {
         try {
           const recipientData = {
             type: 'individual' as const,
             firstName: user.firstName || user.username,
-            lastName: user.lastName || '',
+            lastName: user.lastName || 'User',
             email: user.email
           };
 
+          console.log('Creating new Trolley recipient for user:', user.id, user.email);
           const recipient = await trolleyService.createRecipient(recipientData);
-          recipientId = recipient.id;
           
           // Update user with real Trolley recipient ID
           await storage.updateUser(Number(userId), {
-            trolleyRecipientId: recipientId,
-            payoutEnabled: true
+            trolleyRecipientId: recipient.id,
+            payoutEnabled: recipient.status === 'active'
           });
 
           res.json({
             success: true,
-            recipientId,
-            status: 'completed',
+            recipientId: recipient.id,
+            status: recipient.status === 'active' ? 'completed' : 'pending',
+            payoutEnabled: recipient.status === 'active',
             message: 'Live Trolley recipient account created successfully'
           });
         } catch (trolleyError) {
@@ -132,15 +130,16 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
       } else {
         // Check existing recipient status with live Trolley API
         try {
-          const recipient = await trolleyService.getRecipient(recipientId);
+          const recipient = await trolleyService.getRecipient(user.trolleyRecipientId);
           res.json({
             success: true,
             status: recipient.status === 'active' ? 'completed' : 'pending',
-            recipientId,
+            recipientId: user.trolleyRecipientId,
             payoutEnabled: recipient.status === 'active',
             message: 'Live Trolley recipient status verified'
           });
         } catch (error) {
+          console.error('Error verifying existing Trolley recipient:', error);
           res.status(500).json({ 
             success: false,
             message: 'Failed to verify live Trolley recipient status',
@@ -179,7 +178,7 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
       const recipientData = {
         type: 'individual' as const,
         firstName: user.firstName || user.username,
-        lastName: user.lastName || '',
+        lastName: user.lastName || 'User',
         email: user.email
       };
 
