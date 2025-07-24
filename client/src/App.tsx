@@ -204,6 +204,12 @@ function Router() {
         </Layout>
       </ProtectedRoute>
       
+      <ProtectedRoute path="/contractor-payment-setup">
+        <Layout>
+          <ContractorPaymentSetup />
+        </Layout>
+      </ProtectedRoute>
+      
       <ProtectedRoute path="/payment-setup">
         <Layout>
           <ContractorPaymentSetup />
