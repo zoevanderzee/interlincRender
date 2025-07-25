@@ -205,7 +205,6 @@ class TrolleyService {
    */
   generateWidgetUrl(options: {
     recipientEmail: string;
-    recipientId?: string;
     recipientReferenceId?: string;
     products?: string[];
     colors?: Record<string, string>;
@@ -224,10 +223,8 @@ class TrolleyService {
       locale: 'en'
     };
 
-    // Add recipient ID for existing recipients or reference ID for new ones
-    if (options.recipientId) {
-      queryParams.recipientId = options.recipientId;
-    } else if (options.recipientReferenceId) {
+    // Add reference ID for recipient identification
+    if (options.recipientReferenceId) {
       queryParams.refid = options.recipientReferenceId;
     }
 
