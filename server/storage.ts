@@ -16,7 +16,7 @@ import {
   type WorkSubmission, type InsertWorkSubmission,
   type WorkRequestSubmission, type InsertWorkRequestSubmission
 } from "@shared/schema";
-import { eq, and, desc, lte, gte, sql, or, inArray } from "drizzle-orm";
+import { eq, and, desc, lte, gte, sql, or, inArray, isNotNull } from "drizzle-orm";
 import { db, pool } from "./db";
 import session from "express-session";
 import connectPg from "connect-pg-simple";

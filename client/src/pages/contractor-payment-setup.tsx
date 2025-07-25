@@ -59,15 +59,33 @@ export default function ContractorPaymentSetup() {
 
   const checkStatusMutation = useMutation({
     mutationFn: () => apiRequest('POST', '/api/trolley/check-status'),
-    onSuccess: () => {
+    onSuccess: (response: any) => {
+      if (response.success && response.status === 'completed') {
+        toast({
+          title: 'Account Verified!',
+          description: response.message,
+        });
+        // Refresh user data to update payout status
+        queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+      } else {
+        toast({
+          title: 'Status Update',
+          description: response.message || 'Status checked successfully',
+        });
+      }
+      // Refresh trolley status as well
       queryClient.invalidateQueries({ queryKey: ['/api/trolley/contractor-status'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+    },
+    onError: (error: any) => {
       toast({
-        title: 'Status Updated',
-        description: 'Your payment setup status has been refreshed.',
+        title: 'Status Check Failed',
+        description: error.message || 'Failed to check account status',
+        variant: 'destructive',
       });
     },
   });
+
+
 
   const getStatusBadge = (status: string) => {
     switch (status) {

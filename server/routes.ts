@@ -21,6 +21,7 @@ import automatedPaymentService from "./services/automated-payments";
 import { generateComplianceExport, generateInvoiceExport, generatePaymentExport, generateCSVExport } from './export-helpers';
 import { trolleySdk } from "./trolley-sdk-service";
 import { trolleySubmerchantService, type TrolleySubmerchantData } from "./services/trolley-submerchant";
+import { trolleyService } from "./trolley-service";
 import { setupAuth } from "./auth";
 import plaidRoutes from "./plaid-routes";
 import trolleyRoutes from "./trolley-routes";
@@ -4995,6 +4996,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register Trolley contractor routes
   const { registerTrolleyContractorRoutes } = await import('./trolley-contractor-routes');
   registerTrolleyContractorRoutes(app, apiRouter, requireAuth);
+  
+  // Trolley status checking endpoint for contractors
+  app.post(`${apiRouter}/trolley/check-status`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const user = await storage.getUser(userId);
+
+      if (!user || user.role !== 'contractor') {
+        return res.status(403).json({ 
+          success: false, 
+          message: 'Only contractors can check payment setup status' 
+        });
+      }
+
+      if (!user.trolleyRecipientId) {
+        return res.json({
+          success: false,
+          status: 'not_started',
+          message: 'No Trolley recipient account found. Please start payment setup first.'
+        });
+      }
+
+      // Check recipient status with live Trolley API
+      
+      try {
+        const recipient = await trolleyService.getRecipient(user.trolleyRecipientId);
+
+        if (!recipient) {
+          return res.json({
+            success: false,
+            status: 'error',
+            message: 'Unable to verify account status with Trolley'
+          });
+        }
+
+        console.log(`Checking Trolley recipient status for user ${userId}:`, {
+          recipientId: user.trolleyRecipientId,
+          status: recipient.status,
+          accounts: recipient.accounts?.length || 0
+        });
+
+        // Check if recipient is active and has payment methods
+        const isActive = recipient.status === 'active' || recipient.status === 'verified';
+        const hasPaymentMethod = recipient.accounts && recipient.accounts.length > 0;
+
+        if (isActive && hasPaymentMethod && !user.payoutEnabled) {
+          // Update user to enable payouts
+          await storage.updateUser(userId, { payoutEnabled: true });
+          
+          // Create success notification
+          await storage.createNotification(
+            userId,
+            'payment_setup_completed',
+            'Payment Setup Complete',
+            'Your Trolley account has been verified and you can now receive payments!',
+            { recipientId: user.trolleyRecipientId, status: recipient.status }
+          );
+
+          console.log(`✅ Activated payouts for user ${userId} - Trolley recipient is now verified`);
+
+          return res.json({
+            success: true,
+            status: 'completed',
+            message: 'Account verified! You can now receive payments.',
+            recipientStatus: recipient.status,
+            payoutEnabled: true
+          });
+        }
+
+        return res.json({
+          success: true,
+          status: isActive ? 'pending_payment_method' : 'pending_verification',
+          message: isActive 
+            ? 'Account verified but payment method setup needed'
+            : 'Account still pending verification by Trolley',
+          recipientStatus: recipient.status,
+          payoutEnabled: user.payoutEnabled,
+          hasPaymentMethod
+        });
+
+      } catch (trolleyError) {
+        console.error('Trolley API error:', trolleyError);
+        return res.json({
+          success: false,
+          status: 'api_error',
+          message: 'Unable to check status with Trolley. Please try again later.'
+        });
+      }
+
+    } catch (error) {
+      console.error('Error checking Trolley status:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to check account status'
+      });
+    }
+  });
 
   // Data Room Export Routes for Compliance
   app.get(`${apiRouter}/data-room/export/all`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
