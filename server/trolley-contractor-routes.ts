@@ -58,27 +58,7 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
         return res.status(403).json({ message: 'Access denied: Contractors only' });
       }
 
-      // For existing recipients, we need special handling to avoid "Email already exists" error
-      if (user.trolleyRecipientId) {
-        // User already has Trolley account - use direct widget without refid
-        const widgetUrl = trolleyService.generateWidgetUrl({
-          recipientEmail: user.email,
-          // Skip recipientReferenceId for existing accounts to avoid conflicts
-          products: ['pay', 'tax'],
-          colors: {
-            primary: '#3b82f6',
-            background: '#ffffff',
-            text: '#000000'
-          }
-        });
-        
-        return res.json({
-          widgetUrl,
-          message: 'Trolley widget URL generated for existing account'
-        });
-      }
-      
-      // For new recipients, use the business widget pattern with refid
+      // Use the exact same approach as the working business widget
       const referenceId = `contractor_${userId}_${Date.now()}`;
       const widgetUrl = trolleySdk.generateWidgetUrl(user.email, referenceId);
 
