@@ -63,33 +63,53 @@ export default function ContractorPaymentSetup() {
         console.log('Opening Trolley widget URL:', response.widgetUrl);
         
         try {
-          // Try to open popup window
+          // Try to open popup window - must be triggered by user click
           const newWindow = window.open(
             response.widgetUrl, 
             'trolley_setup', 
-            'width=900,height=700,scrollbars=yes,resizable=yes,toolbar=no,menubar=no,location=no,status=no'
+            'width=1000,height=800,scrollbars=yes,resizable=yes,toolbar=no,menubar=no,location=no,status=no,left=200,top=100'
           );
           
-          if (newWindow && !newWindow.closed) {
+          // Check if popup opened successfully
+          if (newWindow && !newWindow.closed && typeof newWindow.closed !== 'undefined') {
             console.log('Trolley popup opened successfully');
             toast({
               title: 'Trolley Setup Started',
-              description: 'Complete the setup in the new window to receive payments. Use "Check Status" to verify completion.',
+              description: 'Complete the setup in the popup window. When finished, use "Check Status" to verify completion.',
             });
             
             // Focus on the new window
             newWindow.focus();
+            
+            // Monitor popup closure to refresh status
+            const checkClosed = setInterval(() => {
+              if (newWindow.closed) {
+                clearInterval(checkClosed);
+                console.log('Trolley popup closed, refreshing status...');
+                // Give user a moment to complete, then refresh
+                setTimeout(() => {
+                  queryClient.invalidateQueries({ queryKey: ['/api/trolley/contractor-status'] });
+                }, 2000);
+              }
+            }, 1000);
+            
           } else {
-            console.log('Popup blocked, showing fallback');
-            // Fallback: show link to open manually
+            console.log('Popup blocked by browser');
             toast({
               title: 'Popup Blocked',
-              description: 'Click the link below to open Trolley setup manually.',
-              variant: 'destructive',
+              description: 'Please allow popups for this site and try again, or click the manual link below.',
+              variant: 'destructive', 
+              action: (
+                <a 
+                  href={response.widgetUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                >
+                  Open Manually
+                </a>
+              )
             });
-            
-            // Try direct navigation as fallback
-            window.location.href = response.widgetUrl;
           }
         } catch (error) {
           console.error('Error opening Trolley widget:', error);
