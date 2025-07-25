@@ -210,8 +210,11 @@ class TrolleyService {
     colors?: Record<string, string>;
     address?: Record<string, string>;
   }): string {
-    // Updated parameters for 2025 Trolley widget API
+    // Updated parameters for 2025 Trolley recipient widget API
+    const timestamp = Math.floor(Date.now() / 1000);
+    
     const queryParams: Record<string, string> = {
+      ts: timestamp.toString(),
       api_key: this.apiKey,
       email: options.recipientEmail,
       products: (options.products || ['pay', 'tax']).join(','),
