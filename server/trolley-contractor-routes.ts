@@ -1,6 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { trolleyService } from "./trolley-service";
 import { storage } from "./storage";
+import { trolleySdk } from "./trolley-sdk-service";
 
 export function registerTrolleyContractorRoutes(app: Express, apiRouter: string, requireAuth: any): void {
   
@@ -57,18 +58,12 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
         return res.status(403).json({ message: 'Access denied: Contractors only' });
       }
 
-      // For existing recipients, use only email to avoid "Email already exists" error
-      const widgetUrl = trolleyService.generateWidgetUrl({
-        recipientEmail: user.email,
-        // Skip recipientReferenceId entirely for now to avoid conflicts
-        products: ['pay', 'tax'],
-        colors: {
-          primary: '#3b82f6',
-          background: '#ffffff',
-          text: '#000000',
-          border: '#e5e7eb'
-        }
-      });
+      // Use the same approach as the working business widget
+      // Generate simple reference ID for tracking (same pattern as business)
+      const referenceId = `contractor_${userId}_${Date.now()}`;
+      
+      // Use the same working trolleySdk implementation as business widget
+      const widgetUrl = trolleySdk.generateWidgetUrl(user.email, referenceId);
 
       res.json({
         widgetUrl,
