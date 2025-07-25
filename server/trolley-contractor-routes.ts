@@ -64,9 +64,9 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
         products: ['pay', 'tax'],
         colors: {
           primary: '#3b82f6',
-          background: '#000000',
-          text: '#ffffff',
-          border: '#374151'
+          background: '#ffffff',
+          text: '#000000',
+          border: '#e5e7eb'
         }
       });
 

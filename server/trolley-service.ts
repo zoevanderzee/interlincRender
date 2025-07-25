@@ -226,6 +226,7 @@ class TrolleyService {
     // Skip reference ID to avoid conflicts with existing recipients
     // Trolley will use email-only lookup for existing recipients
 
+    // Use light theme colors to prevent black screen
     if (options.colors) {
       Object.entries(options.colors).forEach(([key, value]) => {
         queryParams[`colors.${key}`] = value;
