@@ -210,14 +210,17 @@ class TrolleyService {
     colors?: Record<string, string>;
     address?: Record<string, string>;
   }): string {
-    // Updated parameters for 2025 Trolley recipient widget API
+    // Official Trolley recipient widget API parameters
     const timestamp = Math.floor(Date.now() / 1000);
     
     const queryParams: Record<string, string> = {
       ts: timestamp.toString(),
-      api_key: this.apiKey,
+      key: this.apiKey,
       email: options.recipientEmail,
       products: (options.products || ['pay', 'tax']).join(','),
+      hideEmail: 'false',
+      roEmail: 'false',
+      locale: 'en'
     };
 
     if (options.recipientReferenceId) {
@@ -236,22 +239,18 @@ class TrolleyService {
       });
     }
 
-    // Sort parameters for consistent signature generation
-    const sortedParams = Object.keys(queryParams).sort().reduce((result, key) => {
-      result[key] = queryParams[key];
-      return result;
-    }, {} as Record<string, string>);
-
-    const queryString = Object.entries(sortedParams)
+    // Create query string exactly as per Trolley documentation
+    const queryString = Object.entries(queryParams)
       .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
-      .join('&');
+      .join('&')
+      .replace(/\+/g, '%20');
 
-    // Generate hash signature using sorted parameters
-    const hash = crypto.createHmac('sha256', this.apiSecret)
+    // Generate signature exactly as per Trolley documentation
+    const signature = crypto.createHmac('sha256', this.apiSecret)
       .update(queryString)
       .digest('hex');
 
-    return `https://widget.trolley.com?${queryString}&hash=${hash}`;
+    return `https://widget.trolley.com?${queryString}&sign=${signature}`;
   }
 }
 
