@@ -48,26 +48,52 @@ export default function ContractorPaymentSetup() {
       return widgetResponse;
     },
     onSuccess: (response: any) => {
+      console.log('Trolley setup response:', response);
+      
       if (response.widgetUrl) {
-        // Open Trolley widget in new window
-        const newWindow = window.open(response.widgetUrl, '_blank', 'width=900,height=700,scrollbars=yes,resizable=yes');
+        console.log('Opening Trolley widget URL:', response.widgetUrl);
         
-        if (newWindow) {
-          toast({
-            title: 'Trolley Setup Started',
-            description: 'Complete the setup in the new window to receive payments. Use "Check Status" to verify completion.',
-          });
+        try {
+          // Try to open popup window
+          const newWindow = window.open(
+            response.widgetUrl, 
+            'trolley_setup', 
+            'width=900,height=700,scrollbars=yes,resizable=yes,toolbar=no,menubar=no,location=no,status=no'
+          );
           
-          // Focus on the new window
-          newWindow.focus();
-        } else {
-          // Fallback if popup blocked
-          toast({
-            title: 'Popup Blocked',
-            description: 'Please allow popups for this site and try again.',
-            variant: 'destructive',
-          });
+          if (newWindow && !newWindow.closed) {
+            console.log('Trolley popup opened successfully');
+            toast({
+              title: 'Trolley Setup Started',
+              description: 'Complete the setup in the new window to receive payments. Use "Check Status" to verify completion.',
+            });
+            
+            // Focus on the new window
+            newWindow.focus();
+          } else {
+            console.log('Popup blocked, showing fallback');
+            // Fallback: show link to open manually
+            toast({
+              title: 'Popup Blocked',
+              description: 'Click the link below to open Trolley setup manually.',
+              variant: 'destructive',
+            });
+            
+            // Try direct navigation as fallback
+            window.location.href = response.widgetUrl;
+          }
+        } catch (error) {
+          console.error('Error opening Trolley widget:', error);
+          // Last resort: navigate to the URL directly
+          window.location.href = response.widgetUrl;
         }
+      } else {
+        console.error('No widget URL in response:', response);
+        toast({
+          title: 'Setup Error',
+          description: 'Failed to generate setup link. Please try again.',
+          variant: 'destructive',
+        });
       }
     },
     onError: (error: any) => {
