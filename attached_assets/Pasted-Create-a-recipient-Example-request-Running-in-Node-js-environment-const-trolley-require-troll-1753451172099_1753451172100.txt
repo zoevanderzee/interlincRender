@@ -1,0 +1,404 @@
+Create a recipient
+Example request
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const recipient = await client.recipient.create(
+  {
+    type: "individual",
+    firstName: "John",
+    lastName: "Smith",
+    email: "jsmith@example.com",
+    address: {
+      city: "Montréal",
+      country: "CA",
+      phone: "+15141111111",
+      postalCode: "A1A 1A1",
+      region: "BC",
+      street1: "Toad Street",
+      street2: "Avenue Rock"
+    }
+  }
+);
+
+console.log(recipient.id);
+
+Example response (200 Ok)
+{
+  "ok": true,
+  "recipient": {
+    "id": "R-1a3B3c4D5e6F7g8H9i0J1k",
+    "referenceId": "jsmith11@example.com",
+    "email": "jsmith11@example.com",
+    "name": "John Smith",
+    "lastName": "John",
+    "firstName": "Smith",
+    "type": "individual",
+    "status": "incomplete",
+    "language": "en",
+    "complianceStatus": "verified",
+    "dob": null,
+    "updatedAt": "2017-03-20T19:06:40.937Z",
+    "createdAt": "2017-03-17T20:10:45.818Z",
+    "gravatarUrl": "https://s3.amazonaws.com/static.api.trolley.com/icon_user.svg",
+    "placeOfBirth": null,
+    "ssn": null,
+    "tags": [],
+    "passport": "",
+    "payoutMethod": "bank-transfer",
+    "compliance": {
+      "status": "verified",
+      "checkedAt": "2017-03-20T19:06:23.916Z"
+    },
+    "routeType": "ach",
+    "routeMinimum": "1",
+    "estimatedFees": "1.25",
+    "accounts": [],
+    "address": {
+      "street1": "",
+      "street2": null,
+      "city": "",
+      "postalCode": "",
+      "phone": "",
+      "country": null,
+      "region": null
+    },
+    "primaryCurrency": "CAD"
+  }
+}
+Example response of Recipient with address (200 Ok)
+{
+  "ok": true,
+  "recipient": {
+    "id": "R-1a3B3c4D5e6F7g8H9i0J1k",
+    "referenceId": "jsmith11@example.com",
+    "email": "jsmith11@example.com",
+    "name": "John Smith",
+    "lastName": "John",
+    "firstName": "Smith",
+    "type": "individual",
+    "status": "incomplete",
+    "language": "en",
+    "complianceStatus": "verified",
+    "dob": null,
+    "updatedAt": "2017-03-20T19:06:40.937Z",
+    "createdAt": "2017-03-17T20:10:45.818Z",
+    "gravatarUrl": "https://s3.amazonaws.com/static.api.trolley.com/icon_user.svg",
+    "placeOfBirth": null,
+    "ssn": null,
+    "tags": [],
+    "passport": "",
+    "payoutMethod": "bank-transfer",
+    "compliance": {
+      "status": "verified",
+      "checkedAt": "2017-03-20T19:06:23.916Z"
+    },
+    "routeType": "ach",
+    "routeMinimum": "1",
+    "estimatedFees": "1.25",
+    "accounts": [],
+    "address": {
+      "street1": "Apt# 14",
+      "street2": null,
+      "city": "",
+      "postalCode": "H3WXXX",
+      "phone": "",
+      "country": "CA",
+      "region": "QC"
+    },
+    "primaryCurrency": "CAD"
+  }
+}
+To create a Recipient, send a POST request to the /recipients endpoint and include the user details in JSON format in the request body. Each recipient will be assigned and represented by an auto-generated ID (recipientId) which can be used to retrieve or update recipient details at a later time.
+
+HTTP Request
+
+POST https://api.trolley.com/v1/recipients/
+
+Fields	Description
+referenceId
+optional
+string	Recipient reference ID as assigned by your business (your internal user reference number, e.g. U1234556678)
+type
+required
+string	Recipient type, either: business or individual
+name
+conditional
+string	Name of Business (e.g. ABC Company Ltd). Required if Type is business. (Note: If type is individual, we will automatically populate this field with firstName and lastName of individual).
+firstName
+conditional
+string	Recipient’s First name (e.g. John). Required if Type is individual. Optionally can provide contact persons first name if Type is business.
+lastName
+conditional
+string	Recipient’s Last name (surname), (e.g. Smith). Required if Type is individual. Optionally can provide contact persons last name if Type is business.
+email
+required
+string	Email address of recipient (e.g. john@email.com)
+address
+optional
+address	Address object. Please read the documentation
+passport
+optional
+string	Recipients valid passport number
+dob
+optional
+date	Recipient’s date of birth. The format should be YYYY-MM-DD, ie 1990-04-29
+phone
+optional
+string	Recipient’s phone number (e.g. 415-123-0000 or +14151230000). Required for bank transfer payout method for these countries only: Argentina, Bangladesh, Brazil, Chile, China, Colombia, Costa Rica, Ethiopia, Fiji, Guatemala, Jordan, Kazakhstan, Kiribati, Korea (South), Mongolia, Russia, South Africa, Taiwan, Thailand, Tuvalu, Togo, Tonga. Otherwise it is optional.
+HTTP Response codes
+
+HTTP Code	Description
+200	Recipient successfully created
+400	One or more fields failed validation, see errors[] in response body
+401	Invalid API key
+500	Internal error
+Errors
+
+This table lists the expected errors that this method could return. However, other errors can be returned in the case where the service is down or other unexpected factors affect processing. Callers should always check the value of the ok params in the response.
+
+Error Code	Description
+empty_field	A field is required
+invalid_field	A field failed a validation check
+invalid_api_key	Invalid API key
+internal_server_error	Internal server errors
+Errors Example
+
+If there is a validation error creating a recipients, the API will respond with an error. For example:
+
+Response (406 Not Acceptable)
+{
+  "ok": false,
+  "errors": [
+    {
+      "code": "invalid_field",
+      "field": "email",
+      "message": "Email is already exists"
+    },
+    {
+      "code": "empty_field",
+      "field": "name",
+      "message": "Expected to have a non-null or non-empty value"
+    }
+  ]
+}
+Retrieve a recipient
+Example Request
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.recipient.find(recipient.id);
+
+console.log(recipient.id);
+
+You can retrieve details of a recipient account by sending a GET request to the /recipients/:id endpoint.
+
+HTTP Request
+
+GET https://api.trolley.com/v1/recipients/:id
+
+Fields	Description
+id
+required
+string	Recipient ID
+Example Response (200 Ok)
+{
+  "ok": true,
+  "recipient": {
+    "id": "R-1a2B3c4D5e6F7g8H9i0J1k",
+    "referenceId": "jsmith11@example.com",
+    "email": "jsmith11@example.com",
+    "name": "Richard Hendricks",
+    "lastName": "Hendricks",
+    "firstName": "Richard",
+    "type": "individual",
+    "status": "active",
+    "language": "en",
+    "complianceStatus": "verified",
+    "dob": null,
+    "updatedAt": "2017-03-20T19:06:40.937Z",
+    "createdAt": "2017-03-17T20:10:45.818Z",
+    "gravatarUrl": "https://s3.amazonaws.com/static.api.trolley.com/icon_user.svg",
+    "placeOfBirth": null,
+    "ssn": null,
+    "tags": [],
+    "passport": "",
+    "payoutMethod": "bank-transfer",
+    "compliance": {
+      "status": "verified",
+      "checkedAt": "2017-03-20T19:06:23.916Z"
+    },
+    "routeType": "ach",
+    "routeMinimum": "1", 
+    "estimatedFees": "1.25",
+    "accounts": [
+      {
+        "accountHolderName": "Richard Hendricks",
+        "bankId": "123",
+        "currency": "CAD",
+        "country": "CA",
+        "bankName": "TD CANADA TRUST",
+        "branchId": "47261",
+        "accountNum": "*****47"
+      }
+    ],
+    "address": {
+      "street1": "Apt# 14",
+      "street2": null,
+      "city": "",
+      "postalCode": "H3WXXX",
+      "phone": "",
+      "country": "CA",
+      "region": "QC"
+    },
+    "primaryCurrency": "CAD"
+  }
+}
+HTTP Code	Description
+200	Recipient Object
+401	Invalid API key
+404	Recipient not found
+500	Internal error
+Errors
+
+This table lists the expected errors that this method could return. However, other errors can be returned in the case where the service is down or other unexpected factors affect processing. Callers should always check the value of the ok params in the response.
+
+Error Code	Description
+not_found	Object doesn’t exist
+invalid_api_key	Invalid API key
+internal_server_error	Internal server errors
+Errors Example
+
+If recipient doesn’t exist, the API will respond with an error. For example:
+
+Response (404 Not Found)
+{
+  "ok": false,
+  "errors": [
+    {
+      "code": "not_found",
+      "message": "Object not found"
+    }
+  ]
+}
+Update a recipient
+Example Request
+// Running in Node.js environment
+
+const trolley = require("trolley");
+
+const client = trolley.connect({
+  key: "YOUR_ACCESS_KEY",
+  secret: "YOUR_SECRET_KEY"
+});
+
+const response = await client.recipient.update(
+  recipient.id,
+  { 
+    firstName: "John"
+  }
+);
+
+console.log(response);
+
+Response (200 Ok)
+{
+  "ok": true,
+  "recipient": {
+    "id": "R-1a3B3c4D5e6F7g8H9i0J1k",
+    "referenceId": "jsmith11@example.com",
+    "email": "jsmith11@example.com",
+    "name": "tom Smith",
+    "lastName": "Smith",
+    "firstName": "tom",
+    "type": "individual",
+    "status": "incomplete",
+    "language": "en",
+    "complianceStatus": "verified",
+    "dob": null,
+    "updatedAt": "2017-03-20T19:06:40.937Z",
+    "createdAt": "2017-03-17T20:10:45.818Z",
+    "gravatarUrl": "https://s3.amazonaws.com/static.api.trolley.com/icon_user.svg",
+    "placeOfBirth": null,
+    "ssn": null,
+    "tags": [],
+    "passport": "",
+    "payoutMethod": "bank-transfer",
+    "compliance": {
+      "status": "verified",
+      "checkedAt": "2017-03-20T19:06:23.916Z"
+    },
+    "routeType": "ach",
+    "routeMinimum": "1", 
+    "estimatedFees": "1.25",
+    "accounts": [],
+    "address": {
+      "street1": "Apt# 14",
+      "street2": null,
+      "city": "",
+      "postalCode": "H3WXXX",
+      "phone": "",
+      "country": "CA",
+      "region": "QC"
+    },
+    "primaryCurrency": "CAD"
+  }
+}
+You can update the information of an existing recipient by sending a PATCH request to the /recipients/:id endpoint.
+
+Examples of this would be: recipient has a new street address, new payout method, or new payout method details such as a different bank account number, etc. You can also change the status of a recipient such as to active or suspended.
+
+Note: Account cannot be updated via this interface. Refer to Recipient Account for more information
+
+HTTP Request
+
+PATCH https://api.trolley.com/v1/recipients/:id
+
+Fields	Description
+id
+required
+string	Recipient ID
+HTTP Response codes
+
+HTTP Code	Description
+200	Recipient successfully updated
+400	One or more fields failed validation, see errors[] in response body
+401	Invalid API key
+500	Internal error
+Errors
+
+This table lists the expected errors that this request could return. However, other errors can be returned in the case where the service is down or other unexpected factors affect processing. Callers should always check the value of the ok params in the response.
+
+Error Code	Description
+empty_field	A field is required
+invalid_field	A field failed a validation check
+invalid_api_key	Invalid API key
+not_found	Object doesn’t exist
+internal_server_error	Internal server errors
+Errors Example
+
+If there is a validation error updating a recipient, the API will respond with an error. For example:
+
+Response (406 Not Acceptable)
+{
+  "ok": false,
+  "errors": [
+    {
+      "code": "invalid_field",
+      "field": "type",
+      "message": "Expected to have a non-null or non-empty value"
+    }
+  ]
+}
