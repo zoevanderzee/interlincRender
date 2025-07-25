@@ -38,20 +38,43 @@ export default function ContractorPaymentSetup() {
   });
 
   const generateTrolleyWidgetMutation = useMutation({
-    mutationFn: () => apiRequest('POST', '/api/trolley/generate-widget'),
+    mutationFn: async () => {
+      // First initialize contractor onboarding if needed
+      const initResponse = await apiRequest('POST', '/api/trolley/initialize-contractor-onboarding');
+      console.log('Contractor onboarding initialized:', initResponse);
+      
+      // Then generate the widget URL
+      const widgetResponse = await apiRequest('POST', '/api/trolley/generate-widget');
+      return widgetResponse;
+    },
     onSuccess: (response: any) => {
       if (response.widgetUrl) {
-        window.open(response.widgetUrl, '_blank', 'width=800,height=600');
-        toast({
-          title: 'Trolley Setup Started',
-          description: 'Complete the setup in the new window to receive payments.',
-        });
+        // Open Trolley widget in new window
+        const newWindow = window.open(response.widgetUrl, '_blank', 'width=900,height=700,scrollbars=yes,resizable=yes');
+        
+        if (newWindow) {
+          toast({
+            title: 'Trolley Setup Started',
+            description: 'Complete the setup in the new window to receive payments. Use "Check Status" to verify completion.',
+          });
+          
+          // Focus on the new window
+          newWindow.focus();
+        } else {
+          // Fallback if popup blocked
+          toast({
+            title: 'Popup Blocked',
+            description: 'Please allow popups for this site and try again.',
+            variant: 'destructive',
+          });
+        }
       }
     },
     onError: (error: any) => {
+      console.error('Trolley setup error:', error);
       toast({
         title: 'Setup Failed',
-        description: error.message || 'Failed to generate Trolley widget',
+        description: error.message || 'Failed to start Trolley setup. Please try again.',
         variant: 'destructive',
       });
     },
@@ -73,7 +96,8 @@ export default function ContractorPaymentSetup() {
           description: response.message || 'Status checked successfully',
         });
       }
-      // Refresh trolley status as well
+      // Refresh both user data and trolley status
+      queryClient.invalidateQueries({ queryKey: ['/api/user'] });
       queryClient.invalidateQueries({ queryKey: ['/api/trolley/contractor-status'] });
     },
     onError: (error: any) => {
@@ -240,9 +264,16 @@ export default function ContractorPaymentSetup() {
                   }
                 </Button>
 
-                <p className="text-xs text-zinc-500 text-center">
-                  Powered by Trolley for secure international payments
-                </p>
+                <div className="text-xs text-zinc-500 space-y-1">
+                  <p className="text-center font-medium">Setup Instructions:</p>
+                  <ul className="space-y-1">
+                    <li>• A new window will open with Trolley's secure setup form</li>
+                    <li>• Complete all required verification steps</li>
+                    <li>• Add your bank account details for direct deposits</li>
+                    <li>• Use "Check Status" button below to verify completion</li>
+                  </ul>
+                  <p className="text-center mt-2">Powered by Trolley for secure international payments</p>
+                </div>
               </>
             )}
           </CardContent>
