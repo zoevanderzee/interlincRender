@@ -210,9 +210,10 @@ class TrolleyService {
     colors?: Record<string, string>;
     address?: Record<string, string>;
   }): string {
+    // Updated parameters for 2025 Trolley widget API
     const queryParams: Record<string, string> = {
-      key: this.apiKey,
-      recipientEmail: options.recipientEmail,
+      api_key: this.apiKey,
+      email: options.recipientEmail,
       products: (options.products || ['pay', 'tax']).join(','),
     };
 
@@ -232,15 +233,22 @@ class TrolleyService {
       });
     }
 
-    const queryString = Object.entries(queryParams)
+    // Sort parameters for consistent signature generation
+    const sortedParams = Object.keys(queryParams).sort().reduce((result, key) => {
+      result[key] = queryParams[key];
+      return result;
+    }, {} as Record<string, string>);
+
+    const queryString = Object.entries(sortedParams)
       .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
       .join('&');
 
-    const signature = crypto.createHmac('sha256', this.apiSecret)
+    // Generate hash signature using sorted parameters
+    const hash = crypto.createHmac('sha256', this.apiSecret)
       .update(queryString)
       .digest('hex');
 
-    return `https://widget.trolley.com?${queryString}&sign=${signature}`;
+    return `https://widget.trolley.com?${queryString}&hash=${hash}`;
   }
 }
 
