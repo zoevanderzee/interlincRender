@@ -160,7 +160,7 @@ export default function ContractorPaymentSetup() {
             
             <div className="flex items-center justify-between">
               <span className="text-sm text-zinc-400">Payout Enabled</span>
-              {user.payoutEnabled ? (
+              {trolleyStatus?.payoutEnabled ? (
                 <Badge className="bg-green-600">
                   <CheckCircle className="h-3 w-3 mr-1" />
                   Enabled
