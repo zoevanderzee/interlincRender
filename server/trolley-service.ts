@@ -223,10 +223,8 @@ class TrolleyService {
       locale: 'en'
     };
 
-    // Add reference ID for recipient identification
-    if (options.recipientReferenceId) {
-      queryParams.refid = options.recipientReferenceId;
-    }
+    // Skip reference ID to avoid conflicts with existing recipients
+    // Trolley will use email-only lookup for existing recipients
 
     if (options.colors) {
       Object.entries(options.colors).forEach(([key, value]) => {
