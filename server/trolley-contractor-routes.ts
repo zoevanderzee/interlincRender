@@ -57,10 +57,10 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
         return res.status(403).json({ message: 'Access denied: Contractors only' });
       }
 
-      // Generate Trolley widget URL using consistent reference ID
+      // For existing recipients, use only email to avoid "Email already exists" error
       const widgetUrl = trolleyService.generateWidgetUrl({
         recipientEmail: user.email,
-        recipientReferenceId: `contractor_${user.id}`,
+        // Skip recipientReferenceId entirely for now to avoid conflicts
         products: ['pay', 'tax'],
         colors: {
           primary: '#3b82f6',
