@@ -39,13 +39,22 @@ export default function ContractorPaymentSetup() {
 
   const generateTrolleyWidgetMutation = useMutation({
     mutationFn: async () => {
-      // First initialize contractor onboarding if needed
-      const initResponse = await apiRequest('POST', '/api/trolley/initialize-contractor-onboarding');
-      console.log('Contractor onboarding initialized:', initResponse);
-      
-      // Then generate the widget URL
-      const widgetResponse = await apiRequest('POST', '/api/trolley/generate-widget');
-      return widgetResponse;
+      try {
+        // First initialize contractor onboarding if needed
+        const initRes = await apiRequest('POST', '/api/trolley/initialize-contractor-onboarding');
+        const initResponse = await initRes.json();
+        console.log('Contractor onboarding initialized:', initResponse);
+        
+        // Then generate the widget URL
+        const widgetRes = await apiRequest('POST', '/api/trolley/generate-widget');
+        const widgetResponse = await widgetRes.json();
+        console.log('Widget response parsed:', widgetResponse);
+        
+        return widgetResponse;
+      } catch (error) {
+        console.error('Error in Trolley setup:', error);
+        throw error;
+      }
     },
     onSuccess: (response: any) => {
       console.log('Trolley setup response:', response);
