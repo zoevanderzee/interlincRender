@@ -58,7 +58,26 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
         return res.status(403).json({ message: 'Access denied: Contractors only' });
       }
 
-      // Use the exact same approach as the working business widget
+      // For existing Trolley accounts, use email-only widget (no refid to avoid conflicts)
+      if (user.trolleyRecipientId) {
+        // User has existing account - use simplified widget to complete setup
+        const widgetUrl = trolleyService.generateWidgetUrl({
+          recipientEmail: user.email,
+          products: ['pay', 'tax'],
+          colors: {
+            primary: '#3b82f6',
+            background: '#ffffff', 
+            text: '#000000'
+          }
+        });
+        
+        return res.json({
+          widgetUrl,
+          message: 'Continue setting up your existing Trolley account'
+        });
+      }
+      
+      // For completely new users, use business widget pattern
       const referenceId = `contractor_${userId}_${Date.now()}`;
       const widgetUrl = trolleySdk.generateWidgetUrl(user.email, referenceId);
 
