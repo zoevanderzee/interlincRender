@@ -1,0 +1,115 @@
+Recipient Information
+The Widget loads up for an individual recipient, so you have to supply it with information pertaining to an individual recipient you want to load.
+
+This information can either be the email id or the reference id of the recipient.
+
+Recipient Email ID
+
+Email address of the recipient you will create or edit. Using an email address that is not yet linked to a recipient in your Trolley account will create a new recipient with that email address in your Trolley account. All email addresses are unique.
+
+Recipient Reference ID
+
+Your internal recipient Reference ID for the recipient you will create or edit. If no Reference ID is provided Trolley will look for an email in the query parameters, and will raise an error if that’s not found.
+
+Using Reference ID and Email together
+
+When you provide only one of either refid or email for the recipient, the Widget looks up the Recipient only with the parameter that’s provided.
+
+But when you provide refid and email both, then the lookup logic prefers refid over the email.
+
+To further detail:
+
+When a Recipient is found with the refid, we load widget for them as long as the email provided is assigned to them.
+
+When a Recipient is found with refid but their email doesn’t match with the one provided in the parameter, we try to update the Recipient’s email by replacing it with the email provided. Unless that email is already occupied by another Recipient. If that’s the case, we throw the error Email already exists.
+
+If a Recipient is not found with the refid, the Widget tries to create a new Recipient with the provided email and assign the refid to it.
+
+This is the complete rule for what happens when you use the refid and email parameters as argument to the Widget url.
+
+If we assume that we have a system which already has two registered users:
+
+samantha@example.com with refId = 1234
+tom@example.com with refId = 7777
+Calling the Widget with the following parameters will result in the following behaviors:
+
+samantha@example.com	tom@example.com	bob@example.com (new email)	(blank)
+1234	Load widget for Samantha.	Load widget for Samantha.	Load widget for Samantha, update Samantha’s email to bob@example.com.	Load widget for Samantha.
+7777	Load widget for Tom.	Load widget for Tom.	Load widget for Tom, update Tom’s email to bob@example.com if the email is unique. If not, raise “Error: Email already exists.”	Load widget for Tom.
+5678 (new refid)	Error: Email already exists.	Error: Email already exists.	Create a new recipient with email, assign refid to it.	Error: Must refer to existing recipient.
+(blank)	Load widget for Samantha.	Load widget for Tom	Create new recipient with email.	Error: Missing required parameter.
+As a reminder the Trolley treats email address as a unique key across the system.
+
+Optional Configuration
+You can provide more configuration options to the Widget to aide the recipient experience. You can pre-fill some of the recipient information, set a locale to render the Widget in more languages, Style the Widget, and more.
+
+Here is the information on how to do set these configuration options.
+
+Email Field Options
+
+Parameter	Example	Description
+roEmail	true or false	If set to true, the email field is read-only. The default is false.
+hideEmail	true or false	If set to true, the email field is not shown. The default is false.
+Setting a Locale
+
+Parameter	Example	Description
+locale	en, fr etc.	The widget is rendered in the specified locale. The default is en. Look at the Supported Language Code Reference to learn about other allowed values.
+Showing Modules
+
+You can use the products parameter to specify which modules you want to load in the Widget.
+The default is to load all the modules enabled in your merchant account.
+
+For all the modules, the recipient’s profile will be showed first, followed by the module you selected.
+
+Parameter	Example	Description
+products	pay,trust	A comma separated String value. Allowed values can be a mix between pay, tax, and trust.
+For more information, refer to the Widget Modules section.
+
+Payout Methods to show
+
+If you’re using the Pay module, you can select which payout methods the recipient can fill in.
+
+A combination of following values, separated by commas (without spaces) can be supplied:
+
+bank-transfer
+check
+paypal
+Parameter	Example Values	Description
+payoutMethods	paypal , or bank-transfer,paypal	A comma separated String value.
+Recipient Address
+
+A set of optional fields which will be used as default values in the recipient information section of the Widget. You can use these values to pre-fill the User Profile section.
+
+Refer to the sample code to learn how to use this configuration, here’s a description of the address fields:
+
+Parameter	Example	Description
+addr.firstName	Jane	First name of the recipient.
+addr.lastName	Doe	Last name of the recipient.
+addr.governmentId	ABCD1234#	Government ID, if any, of the recipient.
+addr.street1	123 Some Street	First line of the street address.
+addr.street2	Apt 12	Second line of the street address.
+addr.city	Montreal	City of the recipient.
+addr.postalCode	K1A 0B1	ZIP/Postal code.
+addr.region	QC	Region code.
+addr.country	CA	ISO ALPHA-2 Country Code.
+All values are in String format
+
+Widget Styling
+
+Although you select the Widget’s styling and branding from the Trolley Dashboard, you can override these values by supplying them in the query parameters.
+
+Refer to the sample code to learn how to use this configuration, here’s a description of the fields:
+
+Parameter	Example
+colors.heading	"#111111"
+colors.inputText	"#222222"
+colors.inputBorder	"#333333"
+colors.text	"#555555"
+colors.subText	"#666666"
+colors.background	"#777777"
+colors.primary	"red"
+colors.border	"blue"
+colors.success	"#AAAAAA"
+colors.error	"#BBBBBB"
+colors.warning	"#CCCCCC"
+All values are in String format

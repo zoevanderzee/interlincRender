@@ -40,15 +40,18 @@ export default function ContractorPaymentSetup() {
   const generateTrolleyWidgetMutation = useMutation({
     mutationFn: async () => {
       try {
+        // CRITICAL: Generate fresh widget URL each time (30-second HMAC validity)
+        console.log('Generating fresh Trolley widget URL for existing account access...');
+        
         // First initialize contractor onboarding if needed
         const initRes = await apiRequest('POST', '/api/trolley/initialize-contractor-onboarding');
         const initResponse = await initRes.json();
         console.log('Contractor onboarding initialized:', initResponse);
         
-        // Then generate the widget URL
+        // Generate fresh widget URL (HMAC signature only valid for 30 seconds)
         const widgetRes = await apiRequest('POST', '/api/trolley/generate-widget');
         const widgetResponse = await widgetRes.json();
-        console.log('Widget response parsed:', widgetResponse);
+        console.log('Fresh widget URL generated:', widgetResponse);
         
         return widgetResponse;
       } catch (error) {
@@ -63,6 +66,9 @@ export default function ContractorPaymentSetup() {
         console.log('Opening Trolley widget URL:', response.widgetUrl);
         
         try {
+          // CRITICAL: Open widget immediately after generation (30-second HMAC validity)
+          console.log('Opening fresh widget URL immediately (HMAC expires in 30 seconds)');
+          
           // Try to open popup window - must be triggered by user click
           const newWindow = window.open(
             response.widgetUrl, 

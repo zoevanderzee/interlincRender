@@ -298,7 +298,44 @@ class TrolleySdkService {
 
   // Generate widget URL specifically for existing recipients (no refid)
   generateWidgetUrlForExisting(recipientEmail: string): string {
-    return this.generateWidgetUrl(recipientEmail); // No refid parameter
+    console.log(`Generating existing account widget URL for: ${recipientEmail}`);
+    
+    const apiKey = process.env.TROLLEY_API_KEY;
+    const apiSecret = process.env.TROLLEY_API_SECRET;
+    
+    if (!apiKey || !apiSecret) {
+      throw new Error('Trolley API credentials not configured');
+    }
+
+    // Generate Trolley widget URL without refid for existing accounts
+    const widgetBaseUrl = new URL('https://widget.trolley.com');
+    
+    const baseParams = {
+      ts: Math.floor(new Date().getTime() / 1000).toString(),
+      key: apiKey,
+      email: recipientEmail,
+      hideEmail: 'false',
+      roEmail: 'false',
+      locale: 'en',
+      products: 'pay,tax'
+    };
+
+    // Create query string WITHOUT refid (this is key for existing accounts)
+    const queryParams = new URLSearchParams(baseParams);
+    const querystring = queryParams.toString().replace(/\+/g, '%20');
+    
+    // Create HMAC signature - without refid for existing accounts
+    const hmac = crypto.createHmac('sha256', apiSecret);
+    hmac.update(querystring);
+    const signature = hmac.digest('hex');
+    
+    // Build final URL with signature
+    widgetBaseUrl.search = querystring + '&sign=' + signature;
+    
+    const finalUrl = widgetBaseUrl.toString();
+    console.log(`Generated existing account widget URL: ${finalUrl}`);
+    
+    return finalUrl;
   }
 }
 
