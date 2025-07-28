@@ -264,14 +264,14 @@ class TrolleySdkService {
       throw new Error('Trolley API credentials not configured');
     }
 
-    // Generate Trolley widget URL based on official documentation
+    // Generate Trolley widget URL - remove refid for existing accounts to prevent conflicts
     const widgetBaseUrl = new URL('https://widget.trolley.com');
     
     const queryParams = new URLSearchParams({
       ts: Math.floor(new Date().getTime() / 1000).toString(),
       key: apiKey,
       email: recipientEmail,
-      refid: recipientReferenceId,
+      // Don't include refid for existing accounts - let widget handle account access
       hideEmail: 'false',
       roEmail: 'false',
       locale: 'en',
