@@ -58,12 +58,29 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
         return res.status(403).json({ message: 'Access denied: Contractors only' });
       }
 
-      // ALWAYS use the same approach as business widget - widget handles everything
-      // No need to check for existing accounts - widget will handle that internally
-      console.log(`Generating contractor widget for ${user.email} using business-style approach`);
-      
-      const referenceId = `contractor_${userId}_${Date.now()}`;
-      const widgetUrl = trolleySdk.generateWidgetUrl(user.email, referenceId);
+      // Per Trolley documentation: for existing recipients, omit refid to avoid "Email already exists"
+      // Check if recipient exists first
+      let widgetUrl;
+      try {
+        const searchResult = await trolleySdk.searchRecipients({ email: user.email });
+        const hasExistingRecipient = searchResult && searchResult.recipients && searchResult.recipients.length > 0;
+        
+        if (hasExistingRecipient) {
+          console.log(`Found existing recipient for ${user.email} - generating widget WITHOUT refid`);
+          // For existing recipients: NO refid parameter (per Trolley docs)
+          widgetUrl = trolleySdk.generateWidgetUrl(user.email);
+        } else {
+          console.log(`No existing recipient for ${user.email} - generating widget WITH refid for new account`);
+          // For new recipients: include refid for tracking
+          const referenceId = `contractor_${userId}_${Date.now()}`;
+          widgetUrl = trolleySdk.generateWidgetUrl(user.email, referenceId);
+        }
+      } catch (searchError) {
+        console.log(`Could not search for existing recipient, assuming new: ${searchError.message}`);
+        // If search fails, assume new recipient
+        const referenceId = `contractor_${userId}_${Date.now()}`;
+        widgetUrl = trolleySdk.generateWidgetUrl(user.email, referenceId);
+      }
 
       res.json({
         widgetUrl,

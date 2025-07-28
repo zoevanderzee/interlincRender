@@ -256,7 +256,7 @@ class TrolleySdkService {
   }
 
   // Generate widget URL for contractor onboarding
-  generateWidgetUrl(recipientEmail: string, recipientReferenceId: string): string {
+  generateWidgetUrl(recipientEmail: string, recipientReferenceId?: string): string {
     const apiKey = process.env.TROLLEY_API_KEY;
     const apiSecret = process.env.TROLLEY_API_SECRET;
     
@@ -264,19 +264,24 @@ class TrolleySdkService {
       throw new Error('Trolley API credentials not configured');
     }
 
-    // Generate Trolley widget URL - remove refid for existing accounts to prevent conflicts
+    // Generate Trolley widget URL
     const widgetBaseUrl = new URL('https://widget.trolley.com');
     
-    const queryParams = new URLSearchParams({
+    const baseParams = {
       ts: Math.floor(new Date().getTime() / 1000).toString(),
       key: apiKey,
       email: recipientEmail,
-      // Don't include refid for existing accounts - let widget handle account access
       hideEmail: 'false',
       roEmail: 'false',
       locale: 'en',
       products: 'pay,tax'
-    });
+    };
+
+    // Only include refid for NEW recipients - per Trolley documentation
+    // For existing recipients, omit refid to access existing account
+    const queryParams = recipientReferenceId 
+      ? new URLSearchParams({ ...baseParams, refid: recipientReferenceId })
+      : new URLSearchParams(baseParams);
 
     const querystring = queryParams.toString().replace(/\+/g, '%20');
     
@@ -289,6 +294,11 @@ class TrolleySdkService {
     widgetBaseUrl.search = querystring + '&sign=' + signature;
     
     return widgetBaseUrl.toString();
+  }
+
+  // Generate widget URL specifically for existing recipients (no refid)
+  generateWidgetUrlForExisting(recipientEmail: string): string {
+    return this.generateWidgetUrl(recipientEmail); // No refid parameter
   }
 }
 

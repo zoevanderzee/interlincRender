@@ -1,0 +1,347 @@
+Recipient Profile
+The Recipient Profile is a default module which allows the recipient to enter general information such as their name and address. Because this information is essential for all other modules, the user profile precedes all other modules.
+
+Screenshot of Widget with Recipient Profile
+
+Events Emitter
+The Widget emits events upon successful completion of some selected activities so that your web page can take any actions when these activities happen.
+This is how the event emitter also enables cross-origin communication between the page and the embedded iframe.
+
+To listen to these Widget events, you need to implement an event listener using window.addEventListener("message", function(e) {...}) in your webpage that hosts the Widget iframe. The events object contains some additional data which you can make use of.
+Switch to the JavaScript view in the code viewer to see an example.
+
+The following events will be available:
+
+List of Events
+
+//To be run on the front end
+
+(function() {
+  window.addEventListener("message", function(e) {
+    var widgetEvent = e.data;
+
+    if (widgetEvent.event === "document.height") {
+      //Document's height changed
+      console.log('Changed Height', widgetEvent.document.height);
+
+      //Example Action: setting iframe height as per data received
+      var iframeElement = document.getElementById("trolley-widget");
+
+      if (iframeElement) {
+        iframeElement.style.height = widgetEvent.document.height;
+      }
+
+    }else if (widgetEvent.event === "document.loaded") {
+      // The document has been loaded
+      console.log(`Document Loaded. Name of the event - ${widgetEvent.event}`);
+
+    }else if (widgetEvent.event === "document.failed") {
+      // The document failed to load
+      console.log(`Document failed to load. Name of the event - ${widgetEvent.event}.`);
+      console.log(`Error Message: "${widgetEvent.document.message}".`);
+      console.log(`Error Code: "${widgetEvent.document.code}"`);
+
+    }else if(widgetEvent.event === 'module.loaded'){
+      // A module has been loaded
+      console.log(`${widgetEvent.module[0]} module loaded.`);
+
+    }else if(widgetEvent.event === 'module.successful'){
+      // A module has submitted its data successfully
+      console.log(`${widgetEvent.module[0]} module submitted successfully.`);
+
+    }else if(widgetEvent.event === 'module.failed'){
+      // A module failed to submitted it's data
+      console.log(`${widgetEvent.module[0]} module failed.`);
+
+    }
+  });
+})();
+We have two types of events, Developer Experience and Module related, all set as the e.data.event value, as shown in the Javascript code sample.
+
+Developer Experience Events
+
+These events tied to generalized event workflows to improve the overall widget integration experience.
+
+Event Name	Event Object	Description
+document.loaded	e.data.document	When the Widget is initially loaded on the page.
+document.failed	e.data.document	When the Widget fails to authenticate and/or load. The document object will further contain message and code fields explaining the error. Look at Debugging Errors for more.
+document.height	e.data.document	When the height of the Widget changes, often due to different pages or screen size adjustments.
+Module Events
+
+These events are available for each module you have enabled pay, tax, trust, and profile. The specific module is identified within e.data.module.
+
+Event Name	Event Object	Description
+module.loaded	e.data.module	When the UI for that module is available to the recipient. Only triggered on the first page of multi-page modules.
+module.successful	e.data.module	When the module was submitted successfully by the recipient.
+module.failed	e.data.module	When the submission of the module by the recipient hits an error.
+Events on Mobile Devices
+If you’re loading the Widget inside a webview on your Android/iOS apps, you can use the native bindings that Android and iOS provide, to listen to these events.
+Follow these simple steps for this:
+
+Prepare a webpage which contains the Widget iframe, along with your JavaScript code. This code will listen to the Widget events.
+Load this webpage in the webview, and setup your native code binding (see blow for Android/iOS platform documentation).
+Setup your JavaScript code to call the native callback methods, whenever it receives any widget event.
+For Android, here’s the official Android documentation detailing how to Bind JavaScript to Android code.
+
+For iOS, here’s the official iOS documentation that details how to use WKUserContentController to bind with JavaScript.
+
+Tickets in Widget
+Tickets are created by the Trolley team when we need additional information from a recipient regarding a payment. They can be automatically sent directly to your recipients for prompt response to facilitate their payment without you having to individually contact them
+
+When a Ticket is created to request for information from a recipient, the Widget automatically shows a notice and requests the recipients for the information.
+
+Example of tickets in Widget
+
+No Dev Setup Required
+
+The tickets flow doesn’t require any coding to setup. However, you may need to do configuration in the Trolley Dashboard.
+
+To find out how to do that, please refer to our product documentation: Getting Started with Tickets
+
+
+
+
+
+
+Debugging Integration Errors
+Not every integration goes right the first time. To assist you in debugging these issues, we return error messages in the HTML and emit respective events to tell you the Widget ran into errors.
+
+When the Widget encounters errors, following things happen:
+
+The error is displayed on screen for recipients/users to see.
+The returned HTML body contains an ERROR HTML comment that should help you debug the issue visually.
+A document.failed event is emitted.
+Each of the above is explained in the sections below.
+
+Error Screenshots
+Here are the screenshots of some common errors showing how these errors look visually to the recipients:
+
+
+
+
+
+
+
+
+
+
+Errors in HTML Body
+If you Inspect the page, you will see the errors as a block of code similar to the following:
+
+<body>
+...
+  <!--ERRORS: invalid_api_key Timestamp is more than 30 seconds off of server time -->
+...
+</body>
+
+Error Events
+When the Widget encounters errors, it emits a document.failed event that contains a document object with document.message and document.code fields containing more information.
+
+Here’s how that document object looks for the same error when document.failed event is fired:
+
+   document: {
+     message: "Timestamp is more than 30 seconds off of server time",
+     code: "invalid_api_key"
+   }
+
+Look at Events Emitter to learn how to subscribe to Widget events.
+
+List of Common Errors
+Here’s a list of common errors that you’ll see, their explanation, and values for document.code and document.message objects:
+
+Error Name	code	message	Explanation
+Invalid token: bad hash	bad_hash	Invalid token: bad hash	Your computation of the signed value is incorrect. This could happen because the URL being loaded in the iFrame is stale. Make sure your web app is computing this URL for every request and is not cached.
+Invalid API Key	invalid_api_key	Invalid API Key	The Public key used by is not found in your merchant account. Ensure that your API key and secret aren’t disabled, and that they point to the appropriate environment for you integration (live or sandbox).
+Missing Parameter - key=ok sign=ok ts=missing	invalid_param_ts	Missing parameter - key=ok sign=ok ts=missing	Some parameters are missing. For example, the timestamp is missing in this example.
+Missing Parameter - raw	invalid_param	Missing Parameter - raw	No parameters were supplied.
+Missing required parameter: refid or email	invalid_refid_email	Missing required parameter: refid or email	Required information of recipient is missing. You must provide either referenceId or email to highlight which recipient you want to load.
+Value is invalid	invalid_value	Value is invalid	The recipient email is incorrectly formatted.
+Timestamp is more than 30 seconds off of server time	timestamp_expired	Timestamp is more than 30 seconds off of server time	The timestamp is more than 30 seconds off. You need to synchronize your clock’s UTC time.
+Email already exists	duplicate_email	Email already exists	The email supplied to create a new recipient already exists.
+
+
+The above explanations should help you understand these errors, and take action by responding to document.failed event when they occur on the frontend.
+
+Resolving Errors
+If you hit these errors, please look at the above explanation to understand what the codes mean to fix them accordingly.
+
+Since these errors occur on your frontend, we suggest you subscribe to the document.failed event and send back useful actionable information to your backend.
+
+Check out the sample code for listening to events for an example on how to respond document.failed events.
+
+Here are some extra tips:
+
+Make sure to generate a new URL every time the Widget is loaded.
+Ensure that your API key and secret aren’t disabled, and that they point to the appropriate environment for you integration (live or sandbox)
+If you continue to face issues, please reach out to us at developers@trolley.com.
+
+Reference
+API Keys
+ACCESS_KEY
+
+API Access Key is provided to authenticate with Trolley API, which the Widget uses to function, and to indicate which environment you want to use - sandbox or production.
+
+SECRET_KEY:
+
+The secret key is used to sign the query parameters and generate a hash that you’re required to send with the Widget URL.
+
+These keys can be created on the dashboard in the Settings > API Keys section.
+
+Recipient Information
+The Widget loads up for an individual recipient, so you have to supply it with information pertaining to an individual recipient you want to load.
+
+This information can either be the email id or the reference id of the recipient.
+
+Recipient Email ID
+
+Email address of the recipient you will create or edit. Using an email address that is not yet linked to a recipient in your Trolley account will create a new recipient with that email address in your Trolley account. All email addresses are unique.
+
+Recipient Reference ID
+
+Your internal recipient Reference ID for the recipient you will create or edit. If no Reference ID is provided Trolley will look for an email in the query parameters, and will raise an error if that’s not found.
+
+Using Reference ID and Email together
+
+When you provide only one of either refid or email for the recipient, the Widget looks up the Recipient only with the parameter that’s provided.
+
+But when you provide refid and email both, then the lookup logic prefers refid over the email.
+
+To further detail:
+
+When a Recipient is found with the refid, we load widget for them as long as the email provided is assigned to them.
+
+When a Recipient is found with refid but their email doesn’t match with the one provided in the parameter, we try to update the Recipient’s email by replacing it with the email provided. Unless that email is already occupied by another Recipient. If that’s the case, we throw the error Email already exists.
+
+If a Recipient is not found with the refid, the Widget tries to create a new Recipient with the provided email and assign the refid to it.
+
+This is the complete rule for what happens when you use the refid and email parameters as argument to the Widget url.
+
+If we assume that we have a system which already has two registered users:
+
+samantha@example.com with refId = 1234
+tom@example.com with refId = 7777
+Calling the Widget with the following parameters will result in the following behaviors:
+
+samantha@example.com	tom@example.com	bob@example.com (new email)	(blank)
+1234	Load widget for Samantha.	Load widget for Samantha.	Load widget for Samantha, update Samantha’s email to bob@example.com.	Load widget for Samantha.
+7777	Load widget for Tom.	Load widget for Tom.	Load widget for Tom, update Tom’s email to bob@example.com if the email is unique. If not, raise “Error: Email already exists.”	Load widget for Tom.
+5678 (new refid)	Error: Email already exists.	Error: Email already exists.	Create a new recipient with email, assign refid to it.	Error: Must refer to existing recipient.
+(blank)	Load widget for Samantha.	Load widget for Tom	Create new recipient with email.	Error: Missing required parameter.
+As a reminder the Trolley treats email address as a unique key across the system.
+
+Optional Configuration
+You can provide more configuration options to the Widget to aide the recipient experience. You can pre-fill some of the recipient information, set a locale to render the Widget in more languages, Style the Widget, and more.
+
+Here is the information on how to do set these configuration options.
+
+Email Field Options
+
+Parameter	Example	Description
+roEmail	true or false	If set to true, the email field is read-only. The default is false.
+hideEmail	true or false	If set to true, the email field is not shown. The default is false.
+Setting a Locale
+
+Parameter	Example	Description
+locale	en, fr etc.	The widget is rendered in the specified locale. The default is en. Look at the Supported Language Code Reference to learn about other allowed values.
+Showing Modules
+
+You can use the products parameter to specify which modules you want to load in the Widget.
+The default is to load all the modules enabled in your merchant account.
+
+For all the modules, the recipient’s profile will be showed first, followed by the module you selected.
+
+Parameter	Example	Description
+products	pay,trust	A comma separated String value. Allowed values can be a mix between pay, tax, and trust.
+For more information, refer to the Widget Modules section.
+
+Payout Methods to show
+
+If you’re using the Pay module, you can select which payout methods the recipient can fill in.
+
+A combination of following values, separated by commas (without spaces) can be supplied:
+
+bank-transfer
+check
+paypal
+Parameter	Example Values	Description
+payoutMethods	paypal , or bank-transfer,paypal	A comma separated String value.
+Recipient Address
+
+A set of optional fields which will be used as default values in the recipient information section of the Widget. You can use these values to pre-fill the User Profile section.
+
+Refer to the sample code to learn how to use this configuration, here’s a description of the address fields:
+
+Parameter	Example	Description
+addr.firstName	Jane	First name of the recipient.
+addr.lastName	Doe	Last name of the recipient.
+addr.governmentId	ABCD1234#	Government ID, if any, of the recipient.
+addr.street1	123 Some Street	First line of the street address.
+addr.street2	Apt 12	Second line of the street address.
+addr.city	Montreal	City of the recipient.
+addr.postalCode	K1A 0B1	ZIP/Postal code.
+addr.region	QC	Region code.
+addr.country	CA	ISO ALPHA-2 Country Code.
+All values are in String format
+
+Widget Styling
+
+Although you select the Widget’s styling and branding from the Trolley Dashboard, you can override these values by supplying them in the query parameters.
+
+Refer to the sample code to learn how to use this configuration, here’s a description of the fields:
+
+Parameter	Example
+colors.heading	"#111111"
+colors.inputText	"#222222"
+colors.inputBorder	"#333333"
+colors.text	"#555555"
+colors.subText	"#666666"
+colors.background	"#777777"
+colors.primary	"red"
+colors.border	"blue"
+colors.success	"#AAAAAA"
+colors.error	"#BBBBBB"
+colors.warning	"#CCCCCC"
+All values are in String format
+
+Supported Language Codes
+The Widget supports the following ISO 639-1 language codes:
+
+Code	Language
+bg	Bulgarian
+bn	Bengali
+cs	Czech
+da	Danish
+de	Deutsch
+el	Greek
+en	English
+es	Spanish
+fi	Finnish
+fr	French
+hr	Croatian
+hu	Hungarian
+id	Indonesian
+it	Italian
+ja	Japanese
+ko	Korean
+lt	Lithuanian
+lv	Latvian
+mk	Macedonian
+ms	Malay
+nl	Dutch
+no	Norwegian
+pl	Polish
+pt	Portuguese
+pt-BR	Brazilian Portuguese
+ro	Romanian
+ru	Russian
+sk	Slovakian
+sl	Slovenian
+sv	Swedish
+th	Thai
+tr	Turkish
+uk	Ukrainian
+vi	Vietnamese
+zh	Chinese (Traditional)
+zh-CN	Chinese (Simplified)
+Reach out to us at developers@trolley.com for any further questions you may have.
+
