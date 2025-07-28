@@ -73,19 +73,10 @@ export default function ContractorPaymentSetup() {
           // Check if popup opened successfully
           if (newWindow && !newWindow.closed && typeof newWindow.closed !== 'undefined') {
             console.log('Trolley popup opened successfully');
-            // Check if this is an existing account case
-            if (response.existingAccount) {
-              toast({
-                title: 'Existing Account Detected',
-                description: `Account ${response.recipientId} found. If you didn't create this account, contact support.`,
-                variant: "destructive"
-              });
-            } else {
-              toast({
-                title: 'Trolley Setup Started',
-                description: 'Complete the setup in the popup window.',
-              });
-            }
+            toast({
+              title: 'Trolley Setup Started',
+              description: 'Complete the setup in the popup window.',
+            });
             
             // Focus on the new window
             newWindow.focus();
@@ -103,22 +94,9 @@ export default function ContractorPaymentSetup() {
             }, 1000);
             
           } else {
-            console.log('Popup blocked by browser');
-            toast({
-              title: 'Popup Blocked',
-              description: 'Please allow popups for this site and try again, or click the manual link below.',
-              variant: 'destructive', 
-              action: (
-                <a 
-                  href={response.widgetUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-block px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
-                >
-                  Open Manually
-                </a>
-              )
-            });
+            console.log('Popup blocked by browser - redirecting to widget URL');
+            // If popup is blocked, redirect to the widget URL directly
+            window.location.href = response.widgetUrl;
           }
         } catch (error) {
           console.error('Error opening Trolley widget:', error);
