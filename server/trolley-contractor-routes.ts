@@ -58,22 +58,26 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
         return res.status(403).json({ message: 'Access denied: Contractors only' });
       }
 
-      // For existing Trolley accounts, use email-only widget (no refid to avoid conflicts)
+      // For existing Trolley accounts, check if we should reset or continue
       if (user.trolleyRecipientId) {
-        // User has existing account - use simplified widget to complete setup
+        console.log(`User ${user.email} has existing Trolley account ${user.trolleyRecipientId}`);
+        
+        // Option 1: Generate widget URL without refid for existing account
         const widgetUrl = trolleyService.generateWidgetUrl({
           recipientEmail: user.email,
-          products: ['pay', 'tax'],
+          products: ['pay', 'tax'], 
           colors: {
             primary: '#3b82f6',
-            background: '#ffffff', 
+            background: '#ffffff',
             text: '#000000'
           }
         });
         
         return res.json({
           widgetUrl,
-          message: 'Continue setting up your existing Trolley account'
+          message: 'Access your existing Trolley account to complete setup',
+          existingAccount: true,
+          recipientId: user.trolleyRecipientId
         });
       }
       
@@ -221,4 +225,40 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
       res.status(500).json({ message: 'Failed to create contractor account' });
     }
   });
+
+  // Add account reset endpoint for mystery account situations  
+  app.post(`${apiRouter}/trolley/reset-account`, requireAuth, async (req, res) => {
+    try {
+      const userId = req.user?.id || req.headers['x-user-id'];
+      if (!userId) {
+        return res.status(401).json({ message: 'User not authenticated' });
+      }
+
+      const user = await storage.getUser(Number(userId));
+      if (!user || user.role !== 'contractor') {
+        return res.status(403).json({ message: 'Access denied: Contractors only' });
+      }
+
+      console.log(`Resetting Trolley account for user ${user.email}, clearing recipient ID: ${user.trolleyRecipientId}`);
+
+      // Clear the trolley recipient ID to force fresh account creation
+      await storage.updateUser(Number(userId), {
+        trolleyRecipientId: null,
+        payoutEnabled: false
+      });
+
+      res.json({
+        success: true,
+        message: 'Account reset completed. You can now create a fresh Trolley account.'
+      });
+    } catch (error) {
+      console.error('Account reset error:', error);
+      res.status(500).json({ 
+        message: 'Failed to reset account', 
+        error: error.message 
+      });
+    }
+  });
+
+  // No return needed as we're using app directly
 }

@@ -73,10 +73,19 @@ export default function ContractorPaymentSetup() {
           // Check if popup opened successfully
           if (newWindow && !newWindow.closed && typeof newWindow.closed !== 'undefined') {
             console.log('Trolley popup opened successfully');
-            toast({
-              title: 'Trolley Account Access',
-              description: 'Complete your account setup in the popup. Since your email is already registered, you can continue where you left off.',
-            });
+            // Check if this is an existing account case
+            if (response.existingAccount) {
+              toast({
+                title: 'Existing Account Detected',
+                description: `Account ${response.recipientId} found. If you didn't create this account, contact support.`,
+                variant: "destructive"
+              });
+            } else {
+              toast({
+                title: 'Trolley Setup Started',
+                description: 'Complete the setup in the popup window.',
+              });
+            }
             
             // Focus on the new window
             newWindow.focus();
