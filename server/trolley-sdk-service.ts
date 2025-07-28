@@ -322,12 +322,17 @@ class TrolleySdkService {
 
     // Create query string WITHOUT refid (this is key for existing accounts)
     const queryParams = new URLSearchParams(baseParams);
-    const querystring = queryParams.toString().replace(/\+/g, '%20');
+    const querystring = queryParams.toString();
+    
+    // CRITICAL FIX: Trolley HMAC expects spaces not %20 encoding
+    const hmacString = querystring.replace(/\+/g, ' ');
+    console.log(`HMAC calculation string: ${hmacString}`);
     
     // Create HMAC signature - without refid for existing accounts
     const hmac = crypto.createHmac('sha256', apiSecret);
-    hmac.update(querystring);
+    hmac.update(hmacString);
     const signature = hmac.digest('hex');
+    console.log(`Generated HMAC signature: ${signature}`);
     
     // Build final URL with signature
     widgetBaseUrl.search = querystring + '&sign=' + signature;
