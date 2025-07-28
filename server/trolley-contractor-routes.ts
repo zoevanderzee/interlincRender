@@ -58,12 +58,12 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
         return res.status(403).json({ message: 'Access denied: Contractors only' });
       }
 
-      // CRITICAL FIX: Remove refid completely to access existing recipient account
-      // Per Trolley docs: "blank refid = Load widget for existing user"
-      console.log(`Generating contractor widget for ${user.email} WITHOUT refid to access existing account`);
+      // FRESH START: User has no Trolley account, create completely fresh widget
+      console.log(`Generating contractor widget for ${user.email} - FRESH START, no existing account`);
       
-      // NO refid parameter - this will access existing recipient account instead of creating new
-      const widgetUrl = trolleySdk.generateWidgetUrl(user.email);
+      // Generate fresh reference ID for new recipient creation
+      const referenceId = `contractor_${userId}_${Date.now()}`;
+      const widgetUrl = trolleySdk.generateWidgetUrl(user.email, referenceId);
 
       res.json({
         widgetUrl,
