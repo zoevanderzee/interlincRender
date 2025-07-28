@@ -4696,47 +4696,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create Trolley recipient for contractor
-  app.post(`${apiRouter}/trolley/recipient`, requireAuth, async (req: Request, res: Response) => {
-    try {
-      const user = req.user;
-      if (!user || user.role === 'business') {
-        return res.status(403).json({ message: "Only contractors can create recipient profiles" });
-      }
-
-      if (user.trolleyRecipientId) {
-        return res.status(400).json({ message: "Recipient profile already exists" });
-      }
-
-      const recipientData = {
-        email: user.email,
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
-        type: 'individual' as const
-      };
-
-      const result = await trolleySdk.createRecipient(recipientData);
-      
-      if (!result.success) {
-        return res.status(400).json({ message: result.error });
-      }
-
-      // Update user with Trolley recipient ID
-      await storage.updateUser(user.id, {
-        trolleyRecipientId: result.recipientId
-      });
-
-      res.json({
-        success: true,
-        recipientId: result.recipientId,
-        message: "Recipient profile created successfully"
-      });
-
-    } catch (error) {
-      console.error("Error creating Trolley recipient:", error);
-      res.status(500).json({ message: "Error creating recipient profile" });
-    }
-  });
+  // REMOVED: This endpoint was automatically creating Trolley accounts without user consent
+  // This was causing the "Email already exists" bug in widgets
+  // Users should ONLY create Trolley accounts through the widget interface
+  // 
+  // If this endpoint is needed in the future, it should:
+  // 1. Only be called explicitly by user action (not during registration)
+  // 2. Check if account already exists in Trolley first
+  // 3. Use widget flow instead of direct API creation
 
   // Get wallet balance
   app.get(`${apiRouter}/trolley/wallet-balance`, requireAuth, async (req: Request, res: Response) => {
