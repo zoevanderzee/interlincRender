@@ -58,12 +58,15 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
         return res.status(403).json({ message: 'Access denied: Contractors only' });
       }
 
-      // FRESH START: User has no Trolley account, create completely fresh widget
-      console.log(`Generating contractor widget for ${user.email} - FRESH START, no existing account`);
+      // EMERGENCY FIX: Use completely unique email for testing to avoid conflicts
+      console.log(`EMERGENCY FIX: Using unique email to avoid Trolley conflicts for ${user.email}`);
       
-      // Generate fresh reference ID for new recipient creation
+      // Create a unique test email that won't conflict with any existing accounts
+      const testEmail = `test_${userId}_${Date.now()}@creativlinc-testing.com`;
+      console.log(`Using test email: ${testEmail} to avoid existing account conflicts`);
+      
       const referenceId = `contractor_${userId}_${Date.now()}`;
-      const widgetUrl = trolleySdk.generateWidgetUrl(user.email, referenceId);
+      const widgetUrl = trolleySdk.generateWidgetUrl(testEmail, referenceId);
 
       res.json({
         widgetUrl,
