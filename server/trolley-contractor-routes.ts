@@ -58,12 +58,12 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
         return res.status(403).json({ message: 'Access denied: Contractors only' });
       }
 
-      // BUG FIXED: No longer creating automatic Trolley accounts during registration
-      // Widget will work properly now that automatic account creation is removed
-      console.log(`Generating contractor widget for ${user.email} - automatic account creation bug fixed`);
+      // EXISTING ACCOUNT FIX: Use existing account widget flow to avoid "email already exists" error
+      // Per Trolley docs: omit refid for existing accounts to allow setup completion
+      console.log(`Generating contractor widget for ${user.email} - using existing account flow`);
       
-      const referenceId = `contractor_${userId}_${Date.now()}`;
-      const widgetUrl = trolleySdk.generateWidgetUrl(user.email, referenceId);
+      // Use existing account widget (no refid) to allow setup completion for existing emails
+      const widgetUrl = trolleySdk.generateWidgetUrlForExisting(user.email);
 
       res.json({
         widgetUrl,
