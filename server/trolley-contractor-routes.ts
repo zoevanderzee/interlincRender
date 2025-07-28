@@ -58,29 +58,12 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
         return res.status(403).json({ message: 'Access denied: Contractors only' });
       }
 
-      // Per Trolley documentation: for existing recipients, omit refid to avoid "Email already exists"
-      // Check if recipient exists first
-      let widgetUrl;
-      try {
-        const searchResult = await trolleySdk.searchRecipients({ email: user.email });
-        const hasExistingRecipient = searchResult && searchResult.recipients && searchResult.recipients.length > 0;
-        
-        if (hasExistingRecipient) {
-          console.log(`Found existing recipient for ${user.email} - generating widget WITHOUT refid`);
-          // For existing recipients: NO refid parameter (per Trolley docs)
-          widgetUrl = trolleySdk.generateWidgetUrl(user.email);
-        } else {
-          console.log(`No existing recipient for ${user.email} - generating widget WITH refid for new account`);
-          // For new recipients: include refid for tracking
-          const referenceId = `contractor_${userId}_${Date.now()}`;
-          widgetUrl = trolleySdk.generateWidgetUrl(user.email, referenceId);
-        }
-      } catch (searchError) {
-        console.log(`Could not search for existing recipient, assuming new: ${searchError.message}`);
-        // If search fails, assume new recipient
-        const referenceId = `contractor_${userId}_${Date.now()}`;
-        widgetUrl = trolleySdk.generateWidgetUrl(user.email, referenceId);
-      }
+      // CRITICAL FIX: Remove refid completely to access existing recipient account
+      // Per Trolley docs: "blank refid = Load widget for existing user"
+      console.log(`Generating contractor widget for ${user.email} WITHOUT refid to access existing account`);
+      
+      // NO refid parameter - this will access existing recipient account instead of creating new
+      const widgetUrl = trolleySdk.generateWidgetUrl(user.email);
 
       res.json({
         widgetUrl,
