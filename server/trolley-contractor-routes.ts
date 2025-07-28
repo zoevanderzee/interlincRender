@@ -58,30 +58,10 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
         return res.status(403).json({ message: 'Access denied: Contractors only' });
       }
 
-      // For existing Trolley accounts, check if we should reset or continue
-      if (user.trolleyRecipientId) {
-        console.log(`User ${user.email} has existing Trolley account ${user.trolleyRecipientId}`);
-        
-        // Option 1: Generate widget URL without refid for existing account
-        const widgetUrl = trolleyService.generateWidgetUrl({
-          recipientEmail: user.email,
-          products: ['pay', 'tax'], 
-          colors: {
-            primary: '#3b82f6',
-            background: '#ffffff',
-            text: '#000000'
-          }
-        });
-        
-        return res.json({
-          widgetUrl,
-          message: 'Access your existing Trolley account to complete setup',
-          existingAccount: true,
-          recipientId: user.trolleyRecipientId
-        });
-      }
+      // ALWAYS use the same approach as business widget - widget handles everything
+      // No need to check for existing accounts - widget will handle that internally
+      console.log(`Generating contractor widget for ${user.email} using business-style approach`);
       
-      // For completely new users, use business widget pattern
       const referenceId = `contractor_${userId}_${Date.now()}`;
       const widgetUrl = trolleySdk.generateWidgetUrl(user.email, referenceId);
 
@@ -95,7 +75,7 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
     }
   });
 
-  // Initialize contractor onboarding via live Trolley API
+  // Initialize contractor onboarding via live Trolley API - USE WIDGET-ONLY APPROACH LIKE BUSINESS
   app.post(`${apiRouter}/trolley/initialize-contractor-onboarding`, requireAuth, async (req: Request, res: Response) => {
     try {
       const userId = (req as any).user?.id || req.headers['x-user-id'];
@@ -108,67 +88,22 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
         return res.status(403).json({ message: 'Access denied: Contractors only' });
       }
 
-      // Create new Trolley recipient account if none exists
-      if (!user.trolleyRecipientId) {
-        try {
-          const recipientData = {
-            type: 'individual' as const,
-            firstName: user.firstName || user.username,
-            lastName: user.lastName || 'User',
-            email: user.email
-          };
-
-          console.log('Creating new Trolley recipient for user:', user.id, user.email);
-          const recipient = await trolleyService.createRecipient(recipientData);
-          
-          // Update user with real Trolley recipient ID
-          await storage.updateUser(Number(userId), {
-            trolleyRecipientId: recipient.id,
-            payoutEnabled: recipient.status === 'active'
-          });
-
-          res.json({
-            success: true,
-            recipientId: recipient.id,
-            status: recipient.status === 'active' ? 'completed' : 'pending',
-            payoutEnabled: recipient.status === 'active',
-            message: 'Live Trolley recipient account created successfully'
-          });
-        } catch (trolleyError) {
-          console.error('Error creating live Trolley recipient:', trolleyError);
-          res.status(500).json({ 
-            success: false,
-            message: 'Failed to create live Trolley recipient account',
-            error: trolleyError 
-          });
-        }
-      } else {
-        // Check existing recipient status with live Trolley API
-        try {
-          const recipient = await trolleyService.getRecipient(user.trolleyRecipientId);
-          res.json({
-            success: true,
-            status: recipient.status === 'active' ? 'completed' : 'pending',
-            recipientId: user.trolleyRecipientId,
-            payoutEnabled: recipient.status === 'active',
-            message: 'Live Trolley recipient status verified'
-          });
-        } catch (error) {
-          console.error('Error verifying existing Trolley recipient:', error);
-          res.status(500).json({ 
-            success: false,
-            message: 'Failed to verify live Trolley recipient status',
-            error 
-          });
-        }
-      }
+      // DO NOT CREATE RECIPIENT VIA API - Let the widget handle everything like business flow
+      // This prevents "email already exists" errors
+      console.log(`Contractor ${user.email} onboarding initialized - widget will handle recipient creation`);
+      
+      res.json({
+        success: true,
+        status: 'widget_ready',
+        message: 'Ready for widget-based onboarding - no pre-creation needed'
+      });
     } catch (error) {
       console.error('Error initializing contractor onboarding:', error);
       res.status(500).json({ message: 'Failed to initialize onboarding' });
     }
   });
 
-  // Create contractor recipient account (legacy endpoint)
+  // Legacy endpoint - now widget-only approach
   app.post(`${apiRouter}/trolley/create-contractor`, requireAuth, async (req: Request, res: Response) => {
     try {
       const userId = (req as any).user?.id || req.headers['x-user-id'];
@@ -181,48 +116,17 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
         return res.status(403).json({ message: 'Access denied: Contractors only' });
       }
 
-      if (user.trolleyRecipientId) {
-        return res.json({
-          success: true,
-          recipientId: user.trolleyRecipientId,
-          message: 'Contractor already has live Trolley account'
-        });
-      }
-
-      // Create recipient with live Trolley API
-      const recipientData = {
-        type: 'individual' as const,
-        firstName: user.firstName || user.username,
-        lastName: user.lastName || 'User',
-        email: user.email
-      };
-
-      try {
-        const recipient = await trolleyService.createRecipient(recipientData);
-        
-        // Update user with live Trolley recipient ID
-        await storage.updateUser(Number(userId), {
-          trolleyRecipientId: recipient.id,
-          payoutEnabled: recipient.status === 'active'
-        });
-
-        res.json({
-          success: true,
-          recipientId: recipient.id,
-          status: recipient.status,
-          message: 'Live Trolley recipient account created successfully'
-        });
-      } catch (trolleyError) {
-        console.error('Error creating live Trolley recipient:', trolleyError);
-        res.status(500).json({
-          success: false,
-          message: 'Failed to create live Trolley recipient account',
-          error: trolleyError
-        });
-      }
+      // WIDGET-ONLY APPROACH - no more API recipient creation
+      console.log(`Legacy create-contractor endpoint called for ${user.email} - redirecting to widget flow`);
+      
+      res.json({
+        success: true,
+        message: 'Please use the widget for account setup - no API creation needed',
+        redirectToWidget: true
+      });
     } catch (error) {
-      console.error('Error creating contractor:', error);
-      res.status(500).json({ message: 'Failed to create contractor account' });
+      console.error('Error in legacy create-contractor:', error);
+      res.status(500).json({ message: 'Failed to process request' });
     }
   });
 

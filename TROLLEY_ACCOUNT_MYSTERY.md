@@ -26,8 +26,22 @@
 3. Implement bypass mechanism for existing accounts
 4. Add proper account cleanup procedures
 
-## Resolution Strategy
-Need to either:
-- Delete the existing Trolley account and start fresh
-- Complete the existing account setup properly  
-- Implement account takeover/recovery mechanism
+## ROOT CAUSE IDENTIFIED
+**Business vs Contractor Widget Flow Mismatch:**
+
+**Business Widget (WORKS):**
+- Uses `trolleySdk.generateWidgetUrl(email, referenceId)`
+- Widget handles all account creation internally
+- No pre-API recipient creation
+
+**Contractor Widget (FAILED):**
+- Attempted `trolleyService.createRecipient()` API call FIRST
+- Then widget generation 
+- But email already exists in Trolley from business setup
+
+## SOLUTION IMPLEMENTED
+**Unified Widget-Only Approach:**
+- Contractor flow now identical to business flow
+- No pre-API recipient creation
+- Widget handles everything including existing account conflicts
+- Both use same `trolleySdk.generateWidgetUrl()` pattern
