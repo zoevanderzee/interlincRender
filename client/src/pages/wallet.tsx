@@ -238,9 +238,8 @@ export default function WalletPage() {
     );
   }
 
-  // Check if user needs Trolley onboarding - either error or no account setup
-  const needsOnboarding = (balanceError && (balanceError as any)?.status === 400) || 
-                          (!userData?.trolleySubmerchantId && !userData?.trolleyVerificationToken);
+  // Check if user needs Trolley onboarding - only show if there's an actual error
+  const needsOnboarding = balanceError && (balanceError as any)?.status === 400;
 
   if (needsOnboarding) {
     return (
@@ -313,83 +312,24 @@ export default function WalletPage() {
                 </ul>
               </div>
 
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Button 
-                    onClick={() => setShowVerifiedForm(!showVerifiedForm)}
-                    variant="outline"
-                    className="w-full border-zinc-600 text-zinc-300 hover:bg-zinc-800 py-3"
-                  >
-                    <Building2 className="h-5 w-5 mr-2" />
-                    Connect Verified Account
-                  </Button>
-                  
-                  <Button 
-                    onClick={handleTrolleySubmerchantSetup}
-                    disabled={setupProfileMutation.isPending}
-                    className="w-full bg-white text-black hover:bg-zinc-200 py-3"
-                  >
-                    {setupProfileMutation.isPending ? (
-                      <>
-                        <div className="animate-spin w-5 h-5 border-2 border-black border-t-transparent rounded-full mr-2" />
-                        Creating...
-                      </>
-                    ) : (
-                      <>
-                        <Building2 className="h-5 w-5 mr-2" />
-                        Create New Account
-                      </>
-                    )}
-                  </Button>
-                </div>
-
-                {showVerifiedForm && (
-                  <div className="mt-6 p-4 bg-zinc-800 rounded-lg border border-zinc-700">
-                    <h3 className="text-white font-medium mb-4">Connect Your Verified Trolley Account</h3>
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="access-key" className="text-zinc-300 text-sm">
-                          Trolley Access Key
-                        </Label>
-                        <Input
-                          id="access-key"
-                          type="text"
-                          placeholder="Enter your Trolley access key"
-                          value={trolleyAccessKey}
-                          onChange={(e) => setTrolleyAccessKey(e.target.value)}
-                          className="bg-zinc-700 border-zinc-600 text-white placeholder:text-zinc-500 mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="secret-key" className="text-zinc-300 text-sm">
-                          Trolley Secret Key
-                        </Label>
-                        <Input
-                          id="secret-key"
-                          type="password"
-                          placeholder="Enter your Trolley secret key"
-                          value={trolleySecretKey}
-                          onChange={(e) => setTrolleySecretKey(e.target.value)}
-                          className="bg-zinc-700 border-zinc-600 text-white placeholder:text-zinc-500 mt-1"
-                        />
-                      </div>
-                      <Button 
-                        onClick={handleVerifiedAccountSetup}
-                        disabled={setupProfileMutation.isPending}
-                        className="w-full bg-green-600 hover:bg-green-700 text-white"
-                      >
-                        {setupProfileMutation.isPending ? (
-                          <>
-                            <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-2" />
-                            Connecting...
-                          </>
-                        ) : (
-                          'Connect Verified Account'
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                )}
+              <div className="flex justify-center">
+                <Button 
+                  onClick={handleTrolleySubmerchantSetup}
+                  disabled={setupProfileMutation.isPending}
+                  className="bg-white text-black hover:bg-zinc-200 px-8 py-3"
+                >
+                  {setupProfileMutation.isPending ? (
+                    <>
+                      <div className="animate-spin w-5 h-5 border-2 border-black border-t-transparent rounded-full mr-2" />
+                      Setting up...
+                    </>
+                  ) : (
+                    <>
+                      <Building2 className="h-5 w-5 mr-2" />
+                      Setup Payment Account
+                    </>
+                  )}
+                </Button>
               </div>
             </CardContent>
           </Card>

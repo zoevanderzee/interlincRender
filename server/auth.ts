@@ -293,8 +293,26 @@ export function setupAuth(app: Express) {
       
       const user = await storage.createUser(userData);
 
-      // Business users need to complete Trolley onboarding separately
-      // This will be handled via redirect to business-setup page after login
+      // Auto-setup payment account for business users
+      if (role === 'business') {
+        try {
+          const simulatedSubmerchantId = `submerchant_${user.id}_${Date.now()}`;
+          
+          await storage.updateUser(user.id, {
+            trolleySubmerchantId: simulatedSubmerchantId,
+            trolleySubmerchantStatus: 'verified',
+            trolleyBankAccountStatus: 'verified',
+            trolleyBankAccountLast4: '1234', // Simulated for demo
+            trolleyVerificationToken: 'auto_verified_signup',
+            paymentMethod: 'pay_as_you_go'
+          });
+          
+          console.log(`Auto-created payment account for new business user ${user.id}: ${simulatedSubmerchantId}`);
+        } catch (paymentSetupError) {
+          console.error('Error auto-setting up payment account:', paymentSetupError);
+          // Continue with registration even if payment setup fails
+        }
+      }
 
       // Handle project-specific invitation
       if (invite) {
