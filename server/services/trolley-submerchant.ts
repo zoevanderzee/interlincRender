@@ -55,43 +55,29 @@ class TrolleySubmerchantService {
    */
   async createSubmerchantAccount(data: TrolleySubmerchantData): Promise<TrolleySubmerchantResponse> {
     try {
-      if (!trolleySdk || !(trolleySdk as any).client) {
-        console.log('Trolley SDK not initialized - using mock response for development');
-        // For development/sandbox mode, return a mock successful response
-        return {
-          success: true,
-          submerchantId: `sub_mock_${Date.now()}`,
-          status: 'created',
-          message: 'Submerchant account created successfully (sandbox mode)'
-        };
-      }
+      console.log('Creating live Trolley submerchant account with data:', {
+        merchantName: data.merchant.name,
+        currency: data.merchant.currency,
+        businessName: data.onboarding.businessLegalName
+      });
 
-      // Create submerchant account using Trolley SDK
+      // Create submerchant account using live Trolley SDK
       const result = await (trolleySdk as any).client.submerchant.create({
         name: data.merchant.name,
         currency: data.merchant.currency,
         onboarding: data.onboarding
       });
 
+      console.log('Successfully created live Trolley submerchant:', result.id);
+      
       return {
         success: true,
         submerchantId: result.id,
         status: result.status || 'created',
-        message: 'Submerchant account created successfully'
+        message: 'Live Trolley submerchant account created successfully'
       };
     } catch (error) {
-      console.error('Error creating Trolley submerchant:', error);
-      
-      // For development/sandbox mode, return a mock successful response
-      if ((error as Error).message.includes('Cannot read properties of undefined')) {
-        console.log('Trolley submerchant API not available - using mock response');
-        return {
-          success: true,
-          submerchantId: `sub_mock_${Date.now()}`,
-          status: 'created',
-          message: 'Submerchant account created successfully (sandbox mode)'
-        };
-      }
+      console.error('Error creating live Trolley submerchant:', error);
       
       return {
         success: false,
@@ -105,31 +91,15 @@ class TrolleySubmerchantService {
    */
   async getSubmerchantAccount(submerchantId: string): Promise<any> {
     try {
-      if (!trolleySdk || !(trolleySdk as any).client) {
-        console.log('Trolley SDK not initialized - returning mock submerchant data');
-        return {
-          id: submerchantId,
-          name: 'Mock Business',
-          status: 'active',
-          currency: 'USD'
-        };
-      }
-
-      return await (trolleySdk as any).client.submerchant.find(submerchantId);
+      console.log('Fetching live Trolley submerchant account:', submerchantId);
+      
+      const result = await (trolleySdk as any).client.submerchant.find(submerchantId);
+      
+      console.log('Successfully fetched live Trolley submerchant:', result.id);
+      
+      return result;
     } catch (error) {
-      console.error('Error fetching Trolley submerchant:', error);
-      
-      // Return mock data for development
-      if ((error as Error).message.includes('Cannot read properties of undefined')) {
-        console.log('Trolley submerchant API not available - returning mock data');
-        return {
-          id: submerchantId,
-          name: 'Mock Business',
-          status: 'active',
-          currency: 'USD'
-        };
-      }
-      
+      console.error('Error fetching live Trolley submerchant:', error);
       throw error;
     }
   }
@@ -165,11 +135,14 @@ class TrolleySubmerchantService {
    */
   async createSubmerchantPayment(paymentData: TrolleyPaymentRequest): Promise<TrolleyPaymentResponse> {
     try {
-      if (!trolleySdk || !(trolleySdk as any).client) {
-        throw new Error('Trolley SDK not initialized');
-      }
+      console.log('Creating live Trolley submerchant payment:', {
+        submerchantId: paymentData.submerchantId,
+        recipientId: paymentData.recipientId,
+        amount: paymentData.amount,
+        currency: paymentData.currency
+      });
 
-      // Create batch for the submerchant
+      // Create batch for the submerchant using live API
       const batch = await (trolleySdk as any).client.batch.create({
         sourceAccountId: paymentData.submerchantId,
         description: paymentData.memo || 'Milestone payment'
@@ -188,15 +161,17 @@ class TrolleySubmerchantService {
       // Process the batch
       await (trolleySdk as any).client.batch.process(batch.id);
 
+      console.log('Successfully created live Trolley payment:', payment.id);
+
       return {
         success: true,
         paymentId: payment.id,
         batchId: batch.id,
         status: 'processing',
-        message: 'Payment created and processing'
+        message: 'Live Trolley payment created and processing'
       };
     } catch (error) {
-      console.error('Error creating Trolley submerchant payment:', error);
+      console.error('Error creating live Trolley submerchant payment:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to create payment'
@@ -209,31 +184,20 @@ class TrolleySubmerchantService {
    */
   async getSubmerchantBalance(submerchantId: string): Promise<{ balance: number; currency: string } | null> {
     try {
-      if (!trolleySdk || !(trolleySdk as any).client) {
-        console.log('Trolley SDK not initialized - returning mock balance');
-        return {
-          balance: 1000,
-          currency: 'USD'
-        };
-      }
-
+      console.log('Fetching live Trolley submerchant balance for:', submerchantId);
+      
       const account = await (trolleySdk as any).client.submerchant.find(submerchantId);
-      return {
+      
+      const balance = {
         balance: account.balance || 0,
         currency: account.currency || 'USD'
       };
+      
+      console.log('Live Trolley balance retrieved:', balance);
+      
+      return balance;
     } catch (error) {
-      console.error('Error fetching Trolley submerchant balance:', error);
-      
-      // Return mock balance for development
-      if ((error as Error).message.includes('Cannot read properties of undefined')) {
-        console.log('Trolley balance API not available - returning mock balance');
-        return {
-          balance: 1000,
-          currency: 'USD'
-        };
-      }
-      
+      console.error('Error fetching live Trolley submerchant balance:', error);
       return null;
     }
   }
