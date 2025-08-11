@@ -4967,11 +4967,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`Generating Trolley business widget for: ${user.email}`);
 
-      // Use the existing working widget generation that already works!
-      const widgetUrl = trolleyService.generateWidgetUrl({
-        recipientEmail: user.email
-        // No recipientReferenceId for existing accounts
+      // For existing business account, generate business widget URL directly
+      const timestamp = Math.floor(Date.now() / 1000);
+      const queryParams = new URLSearchParams({
+        ts: timestamp.toString(),
+        key: process.env.TROLLEY_API_KEY!,
+        email: user.email,
+        products: 'tax,pay,banking',
+        locale: 'en',
+        business_id: '86'  // Your existing business ID
       });
+      
+      const queryString = queryParams.toString();
+      const signature = require('crypto').createHmac('sha256', process.env.TROLLEY_API_SECRET!)
+        .update(queryString)
+        .digest('hex');
+      
+      const widgetUrl = `https://widget.trolley.com?${queryString}&sign=${signature}`;
 
       console.log(`Generated business widget URL using existing service`);
 
