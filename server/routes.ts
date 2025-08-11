@@ -4968,7 +4968,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Generating Trolley business widget for: ${user.email}`);
 
       // Use the existing working widget generation that already works!
-      const widgetUrl = trolleyService.generateWidgetUrlForExisting(user.email);
+      const widgetUrl = trolleyService.generateWidgetUrl({
+        recipientEmail: user.email
+        // No recipientReferenceId for existing accounts
+      });
 
       console.log(`Generated business widget URL using existing service`);
 
