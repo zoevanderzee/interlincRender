@@ -36,16 +36,16 @@ export default function trolleyRoutes(app: Express, apiPath: string, authMiddlew
         return res.status(403).json({ message: 'Only business users can access onboarding' });
       }
 
-      // Generate simple reference ID for tracking
-      const referenceId = `business_${userId}_${Date.now()}`;
+      // Use existing account widget flow (no refid) for existing Trolley accounts
+      // This prevents "Email already exists" errors for businesses with existing Trolley accounts
+      console.log(`Generating business widget for existing account: ${userData.email}`);
       
-      // Use the Trolley SDK to generate the widget URL
-      const onboardingUrl = trolleySdk.generateWidgetUrl(userData.email, referenceId);
+      // Use the existing account widget URL generator (no refid to avoid conflicts)
+      const onboardingUrl = trolleySdk.generateWidgetUrlForExisting(userData.email);
 
       res.json({
         onboardingUrl,
-        referenceId,
-        message: 'Complete verification on Trolley and you will be redirected back automatically'
+        message: 'Complete business verification on Trolley. This will access your existing account and complete the setup process.'
       });
 
     } catch (error) {

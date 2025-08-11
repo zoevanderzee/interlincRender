@@ -4957,6 +4957,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
 
+  // Trolley company profile setup endpoint for businesses with existing accounts
+  app.post(`${apiRouter}/trolley/setup-company-profile`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user;
+      if (!user || user.role !== 'business') {
+        return res.status(403).json({ message: "Only business accounts can set up company profiles" });
+      }
+
+      console.log(`Setting up Trolley company profile for existing account: ${user.email}`);
+
+      // Generate widget URL for existing Trolley account (no refid to avoid "Email already exists" error)
+      const widgetUrl = trolleyService.generateWidgetUrl({
+        recipientEmail: user.email,
+        // No recipientReferenceId for existing accounts - this is key to avoid conflicts
+        products: ['pay', 'tax'],
+        colors: {
+          primary: '#ffffff',
+          secondary: '#000000'
+        }
+      });
+
+      console.log(`Generated Trolley widget URL for existing business account`);
+
+      res.json({
+        success: true,
+        widgetUrl,
+        message: 'Trolley widget URL generated. Complete business verification to link your account.'
+      });
+
+    } catch (error) {
+      console.error("Error setting up Trolley company profile:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Error generating Trolley widget URL" 
+      });
+    }
+  });
+
   // Register Trolley submerchant routes
   registerTrolleySubmerchantRoutes(app, requireAuth);
   
