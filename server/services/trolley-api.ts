@@ -274,6 +274,41 @@ export class TrolleyApiService {
   }
 
   /**
+   * Get company balance from Trolley
+   */
+  async getCompanyBalance(profileId: string): Promise<{ balance: number; currency: string }> {
+    if (!this.isConfigured()) {
+      throw new Error('Trolley API key not configured');
+    }
+
+    try {
+      const response = await fetch(`${this.baseUrl}/embedded/company-profiles/${profileId}/balance`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+          'X-API-Version': '1'
+        }
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`Trolley API error: ${error}`);
+      }
+
+      const result = await response.json();
+      return {
+        balance: result.balance || 0,
+        currency: result.currency || 'USD'
+      };
+
+    } catch (error: any) {
+      console.error('Trolley balance error:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get batch status from Trolley
    */
   async getBatchStatus(batchId: string): Promise<{ success: boolean; status?: string; payments?: any[]; error?: string }> {

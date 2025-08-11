@@ -4719,29 +4719,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only business accounts can access wallet" });
       }
 
+      // NO FAKE DATA - Only real Trolley API responses
       if (!user.trolleyCompanyProfileId) {
-        return res.status(400).json({ message: "Company profile required. Please complete Trolley onboarding first." });
-      }
-
-      // Call live Trolley API to get real balance
-      const balance = await trolleySubmerchantService.getSubmerchantBalance(user.trolleyCompanyProfileId);
-      
-      if (!balance) {
-        console.log('No balance data from Trolley, using default values');
-        return res.json({
-          balance: 0.00,
-          currency: 'USD',
-          companyProfileId: user.trolleyCompanyProfileId,
-          hasBankingSetup: false
+        return res.status(400).json({ 
+          message: "No Trolley company profile found. Please connect your verified business account." 
         });
       }
 
-      res.json({
-        balance: balance.balance,
-        currency: balance.currency,
-        companyProfileId: user.trolleyCompanyProfileId,
-        hasBankingSetup: true
-      });
+      try {
+        console.log(`🔴 FETCHING LIVE BALANCE for company profile: ${user.trolleyCompanyProfileId}`);
+        
+        // Use the direct Trolley API service instead of submerchant mock data
+        const balance = await trolleyApi.getCompanyBalance(user.trolleyCompanyProfileId);
+        
+        console.log(`✅ LIVE BALANCE RETRIEVED: $${balance.balance} ${balance.currency}`);
+        
+        res.json({
+          balance: balance.balance,
+          currency: balance.currency,
+          companyProfileId: user.trolleyCompanyProfileId,
+          hasBankingSetup: true
+        });
+        
+      } catch (apiError) {
+        console.error(`❌ LIVE BALANCE FETCH FAILED:`, apiError);
+        // CRITICAL: DO NOT RETURN FAKE DATA - Return error to force user to fix authentication
+        return res.status(503).json({ 
+          message: "Unable to fetch live balance. Please verify your Trolley account connection." 
+        });
+      }
 
     } catch (error) {
       console.error("Error getting wallet balance:", error);
