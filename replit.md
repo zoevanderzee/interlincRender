@@ -1,11 +1,15 @@
 # Overview
 
-This is a comprehensive contractor/freelancer management platform built with React, Express.js, and PostgreSQL. The system enables businesses to manage contractors, handle project milestones, process payments, and maintain relationships with external workers through a unified dashboard.
+This is a comprehensive contractor/freelancer management platform built with React, Express.js, and PostgreSQL. It enables businesses to manage contractors, handle project milestones, process payments, and maintain relationships with external workers through a unified dashboard. The platform aims to streamline external workforce management, offering robust tools for project oversight and financial transactions.
+
+# User Preferences
+
+Preferred communication style: Simple, everyday language.
 
 # System Architecture
 
 ## Frontend Architecture
-- **Framework**: React with TypeScript using Vite for build tooling
+- **Framework**: React with TypeScript using Vite
 - **UI Components**: Radix UI primitives with custom shadcn/ui components
 - **Styling**: Tailwind CSS with custom theming
 - **State Management**: React Query for server state, React Hook Form for form management
@@ -13,283 +17,37 @@ This is a comprehensive contractor/freelancer management platform built with Rea
 
 ## Backend Architecture
 - **Framework**: Express.js with TypeScript
-- **Database**: PostgreSQL with Drizzle ORM for type-safe database operations
-- **Authentication**: Passport.js with local strategy and express-session
-- **Payment Processing**: Dual integration with Stripe Connect and Trolley for different payment flows
+- **Database**: PostgreSQL with Drizzle ORM
+- **Authentication**: Passport.js with local strategy and express-session; Hybrid authentication with Firebase Auth fallback
+- **Payment Processing**: Dual integration with Stripe Connect and Trolley
 - **API Design**: RESTful API with middleware for authentication, CSRF protection, and error handling
 
-# Key Components
-
-## Database Schema
-- **Users**: Supports business accounts, contractors, and freelancers with role-based access
-- **Contracts**: Project agreements between businesses and contractors
-- **Milestones**: Project deliverables with automated payment triggers
-- **Payments**: Payment records with status tracking and external service integration
-- **Invites**: System for onboarding new contractors and freelancers
-- **Work Requests**: Streamlined project request system with token-based acceptance
-
-## Authentication System
-- **Hybrid Authentication Architecture** - PostgreSQL session-based authentication (primary) with Firebase Auth fallback (secondary)
-- **Session Cookie Management** - Standard Express sessions with PostgreSQL storage for reliable authentication persistence
-- **Email Verification Required** - Users must verify email before login access
-- **Role-based Access Control** - Business, contractor, freelancer, admin roles
-- **Backward Compatibility** - Supports existing user sessions while enabling Firebase integration for new features
-- **CSRF Protection** - Form submissions protected
-
-## Payment Processing
-- **Stripe Connect**: For direct business-to-contractor payments with platform fees
-- **Trolley Integration**: For batch payments and international contractor support
-- **Trolley Submerchant System**: Complete business account management with budget controls
-- **Payment Methods**: Pre-funded accounts and pay-as-you-go options for businesses
-- **Automated Payments**: Milestone approval triggers automatic payment processing
-- **Budget Management**: Business account spending limits and tracking with real-time validation
-
-## External Integrations
-- **Trolley API**: Comprehensive submerchant system, batch payment processing, and recipient management
-- **Stripe API**: Payment intents, Connect accounts, and subscription management
-- **Firebase Auth**: Production-ready email service integration for password resets
-- **Plaid** (configured): Bank account verification and ACH transfers
-- **SendGrid** (disabled): Email notifications system
-
-## Notification System
-- **Real-time Notifications**: Interactive notification bell with automatic updates every 30 seconds
-- **Event-based Generation**: Automatic notification creation for milestone approvals, work submissions, payment completions, and connection acceptances
-- **User-specific Filtering**: Complete data isolation ensuring users only see their own notifications
-- **Interactive UI**: Click-to-mark-as-read functionality with dropdown menu
-- **Authentication Integration**: Works seamlessly with header-based authentication system
-
-# Data Flow
-
-## Payment Flow
-1. Business creates contract with contractor
-2. Contract milestones are defined with payment amounts
-3. Contractor completes milestone work
-4. Business approves milestone
-5. Automated payment service processes payment through Stripe or Trolley
-6. Payment status tracked in database with external service IDs
-
-## User Onboarding Flow
-1. Business sends invite to contractor email
-2. Invite contains unique token for registration
-3. Contractor registers account and links payment method
-4. Stripe Connect or Trolley account setup for payout capability
-5. Contractor marked as payout-enabled for future payments
-
-## Work Request Flow
-1. Business creates work request with description and budget
-2. System generates unique token and shares with potential contractors
-3. Contractors can accept work request using token
-4. Acceptance creates formal contract and milestone structure
+## Key Architectural Decisions & Features
+- **Database Schema**: Supports users (business, contractor, freelancer roles), contracts, milestones, payments, invites, and work requests with role-based access.
+- **Authentication System**: PostgreSQL session-based authentication (primary) with Firebase Auth fallback (secondary). Features session cookie management, email verification requirement, role-based access control, and CSRF protection.
+- **Payment Processing**: Integrates Stripe Connect for direct payments and Trolley for batch payments and international support, including a submerchant system and budget management. Automated payments are triggered by milestone approval.
+- **Notification System**: Real-time, event-based notifications for milestone approvals, work submissions, payment completions, and connection acceptances, with user-specific filtering and interactive UI.
+- **Deployment Strategy**: Node.js 20 with ES modules, TSX for development, ESBuild for production bundling. Utilizes Neon PostgreSQL for the database and static file serving for SPA routing.
+- **Subscription System**: Live-mode subscription system for both business and contractor accounts, enforcing subscription requirements during registration for direct signups with role-based plan presentation.
 
 # External Dependencies
 
 ## Payment Services
-- **Stripe**: Primary payment processor for US-based transactions
-- **Trolley**: International payments and batch processing
-- **Plaid**: Bank account verification (configured but not actively used)
+- **Stripe**: Primary payment processor for US-based transactions.
+- **Trolley**: International payments and batch processing, including submerchant system.
+- **Plaid**: Bank account verification (configured).
 
 ## Database & Infrastructure
-- **Neon PostgreSQL**: Serverless PostgreSQL database with connection pooling
-- **Drizzle ORM**: Type-safe database operations with automatic migrations
-- **Express Session Store**: PostgreSQL-backed session management
+- **Neon PostgreSQL**: Serverless PostgreSQL database with connection pooling.
+- **Drizzle ORM**: Type-safe database operations and migrations.
+- **Express Session Store**: PostgreSQL-backed session management.
+
+## Authentication & Communication
+- **Firebase Auth**: Used for email verification, password resets, and as a fallback authentication mechanism.
+- **SendGrid**: Configured for email notifications (currently disabled).
 
 ## Development & Build Tools
-- **Vite**: Frontend build tool with hot module replacement
-- **ESBuild**: Server-side bundling for production builds
-- **TypeScript**: Full-stack type safety
-- **Drizzle Kit**: Database schema management and migrations
-
-# Deployment Strategy
-
-## Development Environment
-- **Runtime**: Node.js 20 with ES modules
-- **Development Server**: TSX for TypeScript execution with hot reload
-- **Database**: Neon PostgreSQL with WebSocket connections for serverless compatibility
-- **Port Configuration**: Application runs on port 5000 with proper external port mapping
-
-## Production Build Process
-1. Frontend assets built with Vite to `dist/public`
-2. Server code bundled with ESBuild to `dist/index.js`
-3. Static file serving configured for SPA routing
-4. Session management with persistent PostgreSQL store
-5. Autoscale deployment target with health checks
-
-## Environment Configuration
-- Database URL for Neon PostgreSQL connection
-- Stripe API keys for payment processing
-- Trolley API credentials for international payments
-- Session secret for secure cookie management
-- Optional email service configuration (currently disabled)
-
-# User Preferences
-
-Preferred communication style: Simple, everyday language.
-
-# Recent Changes
-
-- July 28, 2025: **LEGACY ACCOUNT CLEANUP COMPLETED FOR TESTING** - Completely removed problematic User 113 (mariamhn) and all associated data (connection requests, notifications) to eliminate widget conflicts from old auto-registration system. Created fresh test contractor account (ID: 114, testcontractor@example.com) for clean end-to-end payment workflow testing without legacy complications.
-- July 28, 2025: **CRITICAL TROLLEY WIDGET BUGS FIXED** - Fixed two major issues: 1) Removed dangerous automatic Trolley account creation during registration that violated user privacy and caused conflicts. 2) Implemented proper existing account handling by using widget without refid parameter, allowing users with existing accounts to complete their setup even if they previously abandoned the process. Users can now properly complete Trolley onboarding regardless of account status.
-- July 25, 2025: **AUTOMATIC VERIFICATION DATA CONSISTENCY FIXED** - Resolved critical database inconsistency where user 113 had `payout_enabled=true` despite incomplete Trolley setup. System now properly validates database state against live Trolley API status before enabling payouts. Automatic verification system correctly shows `payoutEnabled: false` for contractors with incomplete affiliate setup and zero payment methods.
-- July 28, 2025: **CONTRACTOR WIDGET FLOW FIXED TO MATCH BUSINESS APPROACH** - Identified root cause of "Email already exists" error: contractor flow was attempting API recipient creation before widget, while business flow uses widget-only approach. Unified both flows to use identical `trolleySdk.generateWidgetUrl()` pattern with no pre-API creation. This eliminates conflicts with existing Trolley accounts and allows widget to handle all account management internally.
-- July 25, 2025: **COMPLETE END-TO-END TROLLEY PAYMENT WORKFLOW OPERATIONAL** - Fixed critical routing bug for `/contractor-payment-setup` page and cleaned all test data from database. Live Trolley API successfully creates real recipient accounts (e.g., `R-TAARkMAQT6VQRRYLnFQQAy`) with production credentials. Verified 4-step contractor onboarding: 1) Platform setup by Creativ Linc, 2) Recipient invitation, 3) Affiliate form submission, 4) Activation for payouts. System exclusively uses live API with no fallback modes.
-- July 24, 2025: **TROLLEY AFFILIATE MODEL FULLY IMPLEMENTED WITH LIVE API** - Complete contractor payment system now properly aligned with Trolley's affiliate/submerchant model using live production credentials. Businesses operate as Trolley submerchants while contractors set up recipient accounts for direct bank transfers. Payment flow: Business submerchant → Trolley affiliate network → Contractor bank account. System requires live TROLLEY_API_KEY and TROLLEY_API_SECRET, no test/mock modes. Contractor "Payment Setup" interface integrated in sidebar for seamless onboarding.
-- July 24, 2025: **AUTOMATED PAYMENT SYSTEM FULLY VERIFIED** - Confirmed complete contractor payment workflow is operational. When businesses approve milestones, the automatedPaymentService.processMilestoneApproval() function automatically triggers Trolley payments to contractors. System successfully processes approval, updates milestone status, and attempts payment processing. Ready for production with live Trolley API credentials.
-- July 24, 2025: **CONTRACTOR WORK REQUEST NAVIGATION FIXED** - Fixed "View Project" button functionality in contractor work requests page. Replaced broken window.location.href navigation with proper wouter routing system. Button now correctly navigates contractors to their assignments page instead of attempting to access restricted contract details endpoint.
-- July 24, 2025: **DATA ROOM EXPORT SYSTEM FULLY COMPLETED** - Comprehensive data export system implemented with backend routes for all compliance data, export helper functions, frontend Data Room interface, and support for JSON/CSV formats with UK e-invoicing compliance.
-- July 24, 2025: **REAL-TIME NOTIFICATION SYSTEM FULLY IMPLEMENTED** - Created comprehensive event-based notification system with automatic notification creation for key workflow events. Integrated notification generation into milestone approvals, work submissions, payment completions, and connection acceptances. Removed fake test data and implemented clean notification system with proper authentication and real-time updates.
-- July 24, 2025: **PROFILE CODE GENERATION SYSTEM IMPROVED** - Updated profile code generation from generic "USER-2025" format to proper "USERNAME-YEAR" format (e.g., "MARIAMHN-2025"). Fixed storage logic to use username directly instead of random suffixes, making codes more meaningful and user-friendly.
-- July 24, 2025: **CONTRACTOR HELP INTERFACE STREAMLINED** - Completely updated Help & Support page to show only contractor-relevant content. Removed all business-specific sections and documentation. Now shows only: Getting Started, Project Management, Work Submission, Payment Tracking, Connection Requests, and Data Security sections tailored for contractor users.
-- July 23, 2025: **BUDGET CALCULATION ARCHITECTURE CORRECTED** - Fixed budget calculation to use contractor assignment values (contractorBudget) instead of milestone payment amounts. Budget allocations now properly reflect actual contractor payments when workers are assigned to projects. Milestones serve as work descriptions while contractor assignment values drive budget tracking. Fixed API mapping from contractorValue parameter to contractorBudget database field.
-- July 23, 2025: **FREE CONTRACTOR PRO SUBSCRIPTION IMPLEMENTED** - Fixed contractor-pro subscription flow to handle £0.00 pricing correctly. Free subscriptions now activate immediately without payment processing while paid subscriptions use standard payment flow. Contractors can choose between Basic (£5/month) and Pro (Free) plans.
-- July 23, 2025: **CONTRACTOR SUBSCRIPTION OPTIONS EXPANDED** - Added second contractor subscription plan "Contractor Pro" with price ID price_1Ro2tQF4bfRUGDn9SKrfWjfD. Contractors now see two subscription options: Basic (£5/month) and Pro plans. Updated frontend subscription form to display both options in grid layout with "Pro" plan marked as recommended.
-- July 23, 2025: **CRYPTO IMPORT BUG FULLY RESOLVED** - Fixed all remaining require('crypto') statements in storage.ts with proper ES module imports. Business invite link API now fully operational without fallback errors.
-- July 23, 2025: **DOCUMENTATION CLEANED FOR CLIENT ONBOARDING** - Removed video tutorial sections and API documentation from help system. Added comprehensive Tax & E-Invoicing Compliance documentation (TAX_COMPLIANCE.md) covering Trolley partnership compliance, invoice-free workflows, e-invoicing compatibility, audit trails, and regulatory requirements. Help system now streamlined for actual platform functionality.
-- July 23, 2025: **AUTHENTICATION BUG FIXED** - Corrected subscription check logic that was incorrectly checking for non-existent `subscriptionStatus` field instead of `stripe_subscription_id`. Users with active subscriptions now properly bypass subscription form and go directly to dashboard.
-- July 22, 2025: **HELP SYSTEM UPDATED FOR BOTH BUSINESS & CONTRACTOR USERS** - Completely updated Help & Support section to remove all smart contract references and added comprehensive information for both business and contractor users. Includes contractor-specific FAQs about profile setup, project assignments, milestone submissions, payment tracking, and connection requests. Updated documentation and tutorials to reflect real platform workflows.
-- July 22, 2025: **SUBSCRIPTION MANAGEMENT COMPLETED** - Full settings page implementation with subscription status display, plan details, billing periods, and cancel/reactivate functionality through proper Stripe API integration.
-- July 22, 2025: **PAYMENT ERROR HANDLING IMPROVED** - Enhanced subscription payment error messages with specific guidance for common Stripe authentication failures. Added troubleshooting guide for client payment issues.
-- July 22, 2025: **CRITICAL REGISTRATION BUG FIXED** - Fixed root cause of business accounts being saved as contractors. Frontend registration form was defaulting to role: "contractor" instead of "business". Updated frontend default and added backend validation to prevent future occurrences.
-- July 22, 2025: **BUSINESS ACCOUNT ROLE CORRECTIONS** - Updated User 110 (evanderzee@lincoln.ac.uk) and User 111 (emilevdz@gmail.com) from contractor role to business role. These accounts will now see business subscription plans instead of contractor plans.
-- July 22, 2025: **CRITICAL SUBSCRIPTION BYPASS VULNERABILITY FIXED** - Discovered and fixed major security flaw where ProtectedRoute component only checked authentication but not subscription status. Users with inactive subscriptions could access all protected pages despite API calls being blocked. Added comprehensive subscription enforcement to ProtectedRoute component with automatic redirect to subscription page.
-- July 22, 2025: **SUBSCRIPTION PRICING FIXED** - Corrected price mapping where Annual Business Plan was showing £1.00/month instead of £1,200.00/year. All subscription plans now display correct pricing from Stripe dashboard.
-- July 22, 2025: **SUBSCRIPTION ROLE-BASED ROUTING FIXED** - Fixed critical issue where business users were incorrectly shown contractor subscription plans. Replaced old hardcoded subscription page with proper role-based SubscriptionForm component. Business users now see only business plans (£29.99-£49.99), contractors see only contractor plan (£5/month).
-- July 22, 2025: **COMPLETE SUBSCRIPTION ENFORCEMENT IMPLEMENTED** - Applied subscription middleware to ALL protected routes ensuring users cannot bypass payment requirements. All dashboard, contracts, milestones, payments, documents, and API endpoints now require active subscriptions.
-- July 22, 2025: **COMPLETE DATA ISOLATION SECURITY IMPLEMENTED** - Secured all API endpoints with user-based filtering to prevent cross-account data access. Added authentication requirements and business/contractor verification to milestones, payments, and documents endpoints. Each account now has completely separate data with zero cross-contamination.
-- July 22, 2025: **COMPREHENSIVE DATA INTEGRATION IMPLEMENTED** - Built complete data synchronization system ensuring all pages display consistent, real-time data. Enhanced dashboard and wallet with 30-second refresh rates, automatic cache invalidation, and cross-page data updates. Created data sync hooks for seamless integration across all components.
-- July 22, 2025: **PAY-AS-YOU-GO BANK ACCOUNT STATUS IMPLEMENTED** - Added automatic bank account status tracking for Trolley-verified businesses. Wallet now shows "Bank Account Connected" with account details when users complete business verification. Pay-as-you-go option automatically enabled for verified businesses without requiring separate bank linking.
-- July 22, 2025: **SUBSCRIPTION PRICING FIXED** - Corrected price mapping where Annual Business Plan was showing £1.00/month instead of £1,200.00/year. All subscription plans now display correct pricing from Stripe dashboard.
-- July 21, 2025: **PRODUCTION AUTHENTICATION FULLY OPERATIONAL** - Fixed critical authentication issue where Firebase login wasn't properly syncing with backend or storing localStorage data. Real user accounts can now successfully login and access dashboard.
-- July 21, 2025: **FIREBASE-BACKEND SYNC FIXED** - Implemented proper authentication flow: Firebase login → backend sync → localStorage storage → header-based API authentication. User ID 86 (zoevdzee) confirmed working.
-- July 21, 2025: **AUTHENTICATION HEADERS IMPLEMENTED** - All API requests now properly include X-User-ID and X-Firebase-UID headers, enabling seamless backend authentication for all users.
-- July 21, 2025: **HYBRID AUTHENTICATION ARCHITECTURE** - System successfully supports both PostgreSQL sessions and Firebase UID authentication with proper localStorage persistence
-- July 8, 2025: **Firebase Web SDK Integration Complete** - Replaced server-side registration with client-side Firebase authentication
-- July 8, 2025: Updated email verification flow to use Firebase's built-in email verification system
-- July 8, 2025: Created hybrid authentication flow: Firebase handles signup+verification, Passport.js handles post-verification sessions
-- July 8, 2025: Added `/api/sync-user` endpoint to sync Firebase users with PostgreSQL database
-- July 8, 2025: Firebase configuration updated to use verified `creativ-linc.firebaseapp.com` domain
-- July 8, 2025: **Multiple Business Subscription Tiers Added** - Business users can now choose from Starter, Standard, and Enterprise plans
-- July 4, 2025: Complete subscription system implemented for live mode
-- July 4, 2025: Fixed major data isolation bugs preventing cross-account data leaks
-- July 4, 2025: Subscription-gated registration flow fully functional
-- July 4, 2025: Live Stripe integration with business (£49/month) and contractor (£5/month) plans
-- July 4, 2025: Removed hardcoded test data that caused contractor data leaks
-- July 4, 2025: Enhanced security with proper user filtering and authentication checks
-- June 28, 2025: Comprehensive Trolley submerchant integration completed
-- June 28, 2025: Database schema updated with Trolley submerchant fields
-- June 28, 2025: API endpoints created for submerchant account management
-- June 28, 2025: Payment method controls (pre-funded vs pay-as-you-go) implemented
-- June 28, 2025: Budget checking and validation system operational
-- June 25, 2025: Email verification system implemented with token-based authentication
-- June 25, 2025: Password reset functionality working with manual token entry
-- June 25, 2025: Firebase Auth configured for future email service integration
-- June 25, 2025: Database schema updated with email verification fields
-
-# Email Service Status
-
-**Current Implementation:**
-- Password reset generates secure tokens (e.g., `2df512c2-3d12-47cb-bdf6-48c52d647081`)
-- Firebase Admin SDK installed and configured for email sending
-- System currently in development mode - logs URLs to console
-- Production-ready structure in place for automatic email sending
-
-**User Flow:**
-1. User clicks "Forgot Password" and enters email
-2. System generates secure token and saves to database with expiration
-3. Once Firebase credentials are active: automatic email sent with reset link
-4. User clicks link in email, taken to reset page with pre-filled token
-5. User enters new password, system validates token and updates password
-
-**Production Status:**
-- Firebase Admin SDK successfully initialized and active
-- Password reset tokens generated and validated through Firebase Auth
-- Email links created successfully via Firebase generatePasswordResetLink API
-- System ready for external email delivery service integration
-- All authentication flows working with secure token generation
-
-# Trolley Submerchant System Status
-
-**Current Implementation:**
-- Complete submerchant account creation system for businesses
-- Database schema includes all Trolley-specific fields (submerchant ID, status, payment method, balance)
-- API endpoints for account management, payment processing, and budget validation
-- Support for both pre-funded and pay-as-you-go payment models
-- Comprehensive budget checking to prevent overspending
-
-**User Flow:**
-1. Business creates submerchant account through validated API
-2. Chooses payment method: pre-funded account or pay-as-you-go
-3. System validates budget availability before processing payments
-4. Milestone approvals trigger automatic Trolley submerchant payments
-5. Real-time balance tracking and budget management
-
-**Production Ready Features:**
-- ✅ Authentication-protected API endpoints
-- ✅ Database integration with proper schema
-- ✅ Budget validation and spending controls
-- ✅ Payment method configuration
-- ✅ Mock responses for sandbox development
-- ✅ Error handling and validation
-- ✅ Session management integration
-
-# Subscription System Status
-
-**Current Implementation:**
-- Complete live-mode subscription system for both business and contractor accounts
-- Subscription requirement enforced during registration for direct signups
-- Business Starter: £29.99/month (Stripe Price ID: price_1RiEGMF4bfRUGDn9UErjyXjX)
-- Business Plan: £49.99/month (Stripe Price ID: price_1RgRilF4bfRUGDn9jMnjAo96)
-- Business Enterprise: Monthly (Stripe Price ID: price_1Ricn6F4bfRUGDn91XzkPq5F)
-- Contractor Plan: £5/month (Stripe Price ID: price_1RgSmQ2VZ9lMI7tFePh2AV2g)
-- Full payment processing with Stripe Elements integration
-- Automatic user login after successful subscription completion
-
-**User Flow:**
-1. User registers for new account (business or contractor role)
-2. System checks if subscription is required (non-invited direct registrations)
-3. User taken to subscription selection page matching their role
-4. Stripe payment processing with live mode integration
-5. Successful payment activates subscription and logs user in
-6. User redirected to main dashboard with full access
-
-**Production Ready Features:**
-- ✅ Live Stripe integration with approved account
-- ✅ Subscription requirement middleware for protected routes
-- ✅ Automatic subscription status synchronization
-- ✅ Database storage of subscription details and status
-- ✅ Complete user authentication flow with subscription gates
-- ✅ Error handling and payment failure management
-- ✅ Role-based subscription plan presentation
-
-# Changelog
-
-Changelog:
-- July 7, 2025: Email verification system fully implemented for user registration
-- July 4, 2025: Comprehensive subscription system implemented with live Stripe integration
-- June 25, 2025: Initial setup with comprehensive authentication system
-
-# Email Verification Status
-
-**Current Implementation:**
-- Complete email verification system for new user registration
-- Database integration with verification tokens and expiration handling
-- Secure UUID token generation with 24-hour expiration
-- Frontend email verification component with resend functionality
-- Registration flow requires email verification before subscription for direct signups
-- Storage methods for saving and validating verification tokens
-
-**User Flow:**
-1. User registers with email address
-2. System generates secure verification token and saves to database
-3. Email verification form displayed to user
-4. User verifies email using token (via email link or manual entry)
-5. After verification, user proceeds to subscription checkout
-6. Invited users bypass email verification requirement
-
-**Production Ready Features:**
-- ✅ Database schema with email verification fields
-- ✅ Secure token generation and validation
-- ✅ Proper expiration handling (24 hours)
-- ✅ Frontend verification component with user-friendly interface
-- ✅ Integration with existing subscription flow
-- ✅ Error handling and retry mechanisms
-- ✅ Bypass verification for invited users
+- **Vite**: Frontend build tool with hot module replacement.
+- **ESBuild**: Server-side bundling for production builds.
+- **TypeScript**: Full-stack type safety.
+- **Drizzle Kit**: Database schema management and migrations.

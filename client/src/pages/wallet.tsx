@@ -11,6 +11,8 @@ import { useBudget } from '@/hooks/use-budget';
 import { useDataSync } from '@/hooks/use-data-sync';
 import { Wallet, Plus, DollarSign, History, CreditCard, Building2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PlaidLink } from '@/components/payments/PlaidLink';
+import { BankAccountSelector } from '@/components/payments/BankAccountSelector';
 
 interface WalletBalance {
   balance: number;
@@ -42,7 +44,39 @@ export default function WalletPage() {
   const [budgetAmount, setBudgetAmount] = useState('');
   const [budgetPeriod, setBudgetPeriod] = useState<'monthly' | 'yearly'>('yearly');
   const [showBudgetForm, setShowBudgetForm] = useState(false);
+  const [showBankLinking, setShowBankLinking] = useState(false);
   const { toast } = useToast();
+
+  // Handler for Plaid success
+  const handlePlaidSuccess = async (publicToken: string, metadata: any) => {
+    try {
+      // Exchange the public token for access token
+      const response = await apiRequest('POST', '/api/plaid/exchange-public-token', {
+        publicToken,
+        accountId: metadata.account.id,
+        accountName: metadata.account.name,
+      });
+      
+      if (response.ok) {
+        toast({
+          title: 'Bank Account Linked',
+          description: 'Your bank account has been successfully linked.',
+        });
+        // Refresh user data and wallet data
+        invalidateUserData();
+        invalidateFinancialData();
+        setShowBankLinking(false);
+      } else {
+        throw new Error('Failed to link bank account');
+      }
+    } catch (error) {
+      toast({
+        title: 'Link Failed',
+        description: 'Failed to link your bank account. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   // Get current user data for bank account status
   const { data: userData } = useQuery({
