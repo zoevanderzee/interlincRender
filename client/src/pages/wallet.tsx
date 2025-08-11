@@ -42,11 +42,31 @@ export default function WalletPage() {
   const [budgetAmount, setBudgetAmount] = useState('');
   const [budgetPeriod, setBudgetPeriod] = useState<'monthly' | 'yearly'>('yearly');
   const [showBudgetForm, setShowBudgetForm] = useState(false);
+  const [showVerifiedForm, setShowVerifiedForm] = useState(false);
+  const [trolleyAccessKey, setTrolleyAccessKey] = useState('');
+  const [trolleySecretKey, setTrolleySecretKey] = useState('');
   const { toast } = useToast();
 
-  // Handler for Trolley sub-merchant creation
+  // Handler for Trolley sub-merchant creation (new businesses)
   const handleTrolleySubmerchantSetup = async () => {
     setupProfileMutation.mutate();
+  };
+
+  // Handler for verified business account connection
+  const handleVerifiedAccountSetup = async () => {
+    if (!trolleyAccessKey || !trolleySecretKey) {
+      toast({
+        title: "Missing Credentials",
+        description: "Please enter both access key and secret key",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setupProfileMutation.mutate({
+      accessKey: trolleyAccessKey,
+      secretKey: trolleySecretKey
+    });
   };
 
   // Get current user data for bank account status
@@ -76,17 +96,24 @@ export default function WalletPage() {
   // Import data sync hook
   const { invalidateFinancialData, invalidateUserData } = useDataSync();
 
-  // Setup company profile mutation for sub-merchant creation
+  // Setup company profile mutation for both verified and new businesses
   const setupProfileMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/trolley/setup-company-profile");
+    mutationFn: async (trolleyCredentials?: { accessKey: string; secretKey: string }) => {
+      const response = await apiRequest("POST", "/api/trolley/setup-company-profile", {
+        trolleyCredentials
+      });
       return response.json();
     },
     onSuccess: (data) => {
-      if (data.success && data.submerchantId) {
+      if (data.success && data.isVerified) {
         toast({
-          title: "Business Payment Account Created",
-          description: "Your business payment account has been successfully created with Trolley. You can now make payments to contractors and freelancers.",
+          title: "Verified Account Connected",
+          description: data.description || "Your verified Trolley account is ready for payments.",
+        });
+      } else if (data.success && data.submerchantId) {
+        toast({
+          title: "Sub-merchant Account Created",
+          description: data.description || "Sub-merchant account created. Complete verification to enable payments.",
         });
       } else if (data.success && data.message) {
         toast({
@@ -101,7 +128,7 @@ export default function WalletPage() {
     onError: (error: any) => {
       toast({
         title: "Setup Failed",
-        description: error.message || "Failed to create business payment account",
+        description: error.message || "Failed to set up payment account",
         variant: "destructive",
       });
     },
@@ -258,23 +285,84 @@ export default function WalletPage() {
                 </ul>
               </div>
 
-              <Button 
-                onClick={handleTrolleySubmerchantSetup}
-                disabled={setupProfileMutation.isPending}
-                className="w-full bg-white text-black hover:bg-zinc-200 py-3 text-lg"
-              >
-                {setupProfileMutation.isPending ? (
-                  <>
-                    <div className="animate-spin w-5 h-5 border-2 border-black border-t-transparent rounded-full mr-2" />
-                    Creating Account...
-                  </>
-                ) : (
-                  <>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Button 
+                    onClick={() => setShowVerifiedForm(!showVerifiedForm)}
+                    variant="outline"
+                    className="w-full border-zinc-600 text-zinc-300 hover:bg-zinc-800 py-3"
+                  >
                     <Building2 className="h-5 w-5 mr-2" />
-                    Create Business Account
-                  </>
+                    Connect Verified Account
+                  </Button>
+                  
+                  <Button 
+                    onClick={handleTrolleySubmerchantSetup}
+                    disabled={setupProfileMutation.isPending}
+                    className="w-full bg-white text-black hover:bg-zinc-200 py-3"
+                  >
+                    {setupProfileMutation.isPending ? (
+                      <>
+                        <div className="animate-spin w-5 h-5 border-2 border-black border-t-transparent rounded-full mr-2" />
+                        Creating...
+                      </>
+                    ) : (
+                      <>
+                        <Building2 className="h-5 w-5 mr-2" />
+                        Create New Account
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {showVerifiedForm && (
+                  <div className="mt-6 p-4 bg-zinc-800 rounded-lg border border-zinc-700">
+                    <h3 className="text-white font-medium mb-4">Connect Your Verified Trolley Account</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="access-key" className="text-zinc-300 text-sm">
+                          Trolley Access Key
+                        </Label>
+                        <Input
+                          id="access-key"
+                          type="text"
+                          placeholder="Enter your Trolley access key"
+                          value={trolleyAccessKey}
+                          onChange={(e) => setTrolleyAccessKey(e.target.value)}
+                          className="bg-zinc-700 border-zinc-600 text-white placeholder:text-zinc-500 mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="secret-key" className="text-zinc-300 text-sm">
+                          Trolley Secret Key
+                        </Label>
+                        <Input
+                          id="secret-key"
+                          type="password"
+                          placeholder="Enter your Trolley secret key"
+                          value={trolleySecretKey}
+                          onChange={(e) => setTrolleySecretKey(e.target.value)}
+                          className="bg-zinc-700 border-zinc-600 text-white placeholder:text-zinc-500 mt-1"
+                        />
+                      </div>
+                      <Button 
+                        onClick={handleVerifiedAccountSetup}
+                        disabled={setupProfileMutation.isPending}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        {setupProfileMutation.isPending ? (
+                          <>
+                            <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-2" />
+                            Connecting...
+                          </>
+                        ) : (
+                          'Connect Verified Account'
+                        )}
+                      </Button>
+                    </div>
+                  </div>
                 )}
-              </Button>
+              </div>
             </CardContent>
           </Card>
         </div>

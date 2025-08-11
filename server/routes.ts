@@ -4957,7 +4957,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
 
-  // Trolley company profile setup - business sub-merchant creation
+  // Trolley company profile setup - hybrid approach for verified and new businesses
   app.post(`${apiRouter}/trolley/setup-company-profile`, requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user;
@@ -4965,15 +4965,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only business accounts can set up company profiles" });
       }
 
-      console.log(`Creating Trolley sub-merchant for business: ${user.email}`);
+      console.log(`Setting up Trolley payment account for business: ${user.email}`);
 
-      // Check if user already has a sub-merchant ID
-      if (user.trolleySubmerchantId) {
-        console.log(`User already has sub-merchant ID: ${user.trolleySubmerchantId}`);
+      // Check if user already has payment setup (either direct or sub-merchant)
+      if (user.trolleySubmerchantId || user.trolleyVerificationToken) {
+        console.log(`User already has payment setup: submerchant=${user.trolleySubmerchantId}, token=${user.trolleyVerificationToken}`);
         return res.json({
           success: true,
           submerchantId: user.trolleySubmerchantId,
-          message: 'Sub-merchant account already exists'
+          verificationToken: user.trolleyVerificationToken,
+          isVerified: !!user.trolleyVerificationToken,
+          message: user.trolleyVerificationToken ? 'Verified account ready for payments' : 'Sub-merchant account exists'
+        });
+      }
+
+      // Check for existing Trolley credentials indicating verified business
+      const { trolleyCredentials } = req.body;
+      
+      if (trolleyCredentials?.accessKey && trolleyCredentials?.secretKey) {
+        // Verified business path - connect existing account
+        console.log('Connecting verified Trolley business account');
+        
+        // Store the credentials securely
+        await storage.updateUser(user.id, {
+          trolleySubmerchantAccessKey: trolleyCredentials.accessKey,
+          trolleySubmerchantSecretKey: trolleyCredentials.secretKey,
+          trolleyVerificationToken: 'verified_direct_account',
+          trolleySubmerchantStatus: 'verified',
+          paymentMethod: 'pay_as_you_go'
+        });
+
+        return res.json({
+          success: true,
+          isVerified: true,
+          message: 'Verified account connected successfully',
+          description: 'Your verified Trolley account is now connected. You can start making payments immediately.'
         });
       }
 
@@ -5026,7 +5052,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true,
         submerchantId: result.submerchantId,
         status: result.status,
-        message: 'Business payment account created successfully'
+        isVerified: false,
+        message: 'Sub-merchant account created - verification required',
+        description: 'Your sub-merchant account has been created. Complete verification through Trolley to enable payments.'
       });
 
     } catch (error) {
