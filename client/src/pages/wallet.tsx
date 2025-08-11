@@ -167,8 +167,8 @@ export default function WalletPage() {
       apiRequest('POST', '/api/trolley/fund-wallet', { amount }),
     onSuccess: () => {
       toast({
-        title: "Wallet Funded",
-        description: `Successfully added $${fundAmount} to your wallet`,
+        title: "🔴 LIVE MONEY TRANSFER COMPLETED",
+        description: `Real $${fundAmount} transfer processed through your Trolley business account`,
       });
       setFundAmount('');
       queryClient.invalidateQueries({ queryKey: ['/api/trolley/wallet-balance'] });
@@ -176,8 +176,8 @@ export default function WalletPage() {
     },
     onError: (error: any) => {
       toast({
-        title: "Funding Failed",
-        description: error.message || "Failed to fund wallet",
+        title: "Live Transfer Failed",
+        description: error.message || "Real money transfer could not be processed",
         variant: "destructive",
       });
     },
@@ -710,7 +710,7 @@ export default function WalletPage() {
                         <p className="text-zinc-400 mb-4">No bank accounts linked</p>
                         <Button 
                           className="bg-white text-black hover:bg-zinc-200"
-                          onClick={handleTrolleySubmerchantSetup}
+                          onClick={() => window.open('https://dashboard.trolley.com/settings/funding', '_blank')}
                         >
                           <Plus className="h-4 w-4 mr-2" />
                           Link Bank Account
@@ -767,17 +767,17 @@ export default function WalletPage() {
                   <Button 
                     onClick={handleFundWallet}
                     disabled={fundWalletMutation.isPending || !fundAmount}
-                    className="w-full bg-white text-black hover:bg-zinc-200"
+                    className="w-full bg-red-600 text-white hover:bg-red-700 border-2 border-red-500"
                   >
                     {fundWalletMutation.isPending ? (
                       <>
-                        <div className="animate-spin w-4 h-4 border-2 border-black border-t-transparent rounded-full mr-2" />
-                        Processing...
+                        <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2" />
+                        🔴 PROCESSING LIVE TRANSFER...
                       </>
                     ) : (
                       <>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add ${fundAmount || '0'} to Wallet
+                        <div className="w-4 h-4 mr-2 rounded-full bg-red-500"></div>
+                        🔴 LIVE: Add ${fundAmount || '0'} Real Money
                       </>
                     )}
                   </Button>

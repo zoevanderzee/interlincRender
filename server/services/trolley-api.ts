@@ -210,6 +210,38 @@ export class TrolleyApiService {
   }
 
   /**
+   * Get funding history for a company profile
+   */
+  async getFundingHistory(profileId: string): Promise<any[]> {
+    if (!this.isConfigured()) {
+      throw new Error('Trolley API key not configured');
+    }
+
+    try {
+      const response = await fetch(`${this.baseUrl}/embedded/company-profiles/${profileId}/transactions`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+          'X-API-Version': '1'
+        }
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`Trolley API error: ${error}`);
+      }
+
+      const result = await response.json();
+      return result.transactions || [];
+
+    } catch (error: any) {
+      console.error('Trolley funding history error:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get batch status from Trolley
    */
   async getBatchStatus(batchId: string): Promise<{ success: boolean; status?: string; payments?: any[]; error?: string }> {

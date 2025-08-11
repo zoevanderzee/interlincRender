@@ -1,4 +1,9 @@
 import type { Express, Request, Response, NextFunction } from "express";
+
+// Define AuthenticatedRequest interface
+interface AuthenticatedRequest extends Request {
+  user?: any;
+}
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
@@ -21,6 +26,7 @@ import automatedPaymentService from "./services/automated-payments";
 import { generateComplianceExport, generateInvoiceExport, generatePaymentExport, generateCSVExport } from './export-helpers';
 import { trolleySdk } from "./trolley-sdk-service";
 import { trolleySubmerchantService, type TrolleySubmerchantData } from "./services/trolley-submerchant";
+import { trolleyApi } from "./services/trolley-api";
 import { trolleyService } from "./trolley-service";
 import { setupAuth } from "./auth";
 import plaidRoutes from "./plaid-routes";
@@ -4717,12 +4723,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Company profile required. Please complete Trolley onboarding first." });
       }
 
-      // For now, return mock balance - in production this would call Trolley API
+      // Call live Trolley API to get real balance
+      const balance = await trolleySubmerchantService.getSubmerchantBalance(user.trolleyCompanyProfileId);
+      
+      if (!balance) {
+        console.log('No balance data from Trolley, using default values');
+        return res.json({
+          balance: 0.00,
+          currency: 'USD',
+          companyProfileId: user.trolleyCompanyProfileId,
+          hasBankingSetup: false
+        });
+      }
+
       res.json({
-        balance: 0.00,
-        currency: 'USD',
+        balance: balance.balance,
+        currency: balance.currency,
         companyProfileId: user.trolleyCompanyProfileId,
-        hasBankingSetup: false
+        hasBankingSetup: true
       });
 
     } catch (error) {
@@ -4743,8 +4761,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Company profile required. Please complete Trolley onboarding first." });
       }
 
-      // For now, return empty history - in production this would call Trolley API
-      res.json([]);
+      // Call live Trolley API to get real funding history
+      try {
+        const history = await trolleyApi.getFundingHistory(user.trolleyCompanyProfileId);
+        res.json(history || []);
+      } catch (apiError) {
+        console.log('Error fetching funding history from Trolley API:', apiError);
+        res.json([]); // Return empty array if API call fails
+      }
 
     } catch (error) {
       console.error("Error getting funding history:", error);
@@ -4769,16 +4793,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Valid amount required" });
       }
 
+      console.log(`🔴 PROCESSING LIVE MONEY TRANSFER: $${amount} for user ${user.username} (${user.email})`);
+      
       const result = await trolleyApi.fundCompanyWallet(user.trolleyCompanyProfileId, amount);
       
       if (!result.success) {
+        console.error(`❌ LIVE TRANSFER FAILED: ${result.error}`);
         return res.status(400).json({ message: result.error });
       }
 
+      console.log(`✅ LIVE TRANSFER SUCCESS: Transaction ID ${result.transactionId}`);
+      
       res.json({
         success: true,
         transactionId: result.transactionId,
-        message: `Wallet funded with $${amount}`
+        message: `LIVE: $${amount} transferred from your business account`
       });
 
     } catch (error) {
