@@ -4957,7 +4957,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
 
-  // Trolley company profile setup - business verification widget
+  // Trolley company profile setup - business sub-merchant creation
   app.post(`${apiRouter}/trolley/setup-company-profile`, requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user;
@@ -4965,40 +4965,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only business accounts can set up company profiles" });
       }
 
-      console.log(`Generating Trolley business widget for: ${user.email}`);
+      console.log(`Creating Trolley sub-merchant for business: ${user.email}`);
 
-      // Generate business widget URL that works for any existing business account
-      const timestamp = Math.floor(Date.now() / 1000);
-      const queryParams = new URLSearchParams({
-        ts: timestamp.toString(),
-        key: process.env.TROLLEY_API_KEY!,
-        email: user.email,
-        products: 'tax,pay,banking',
-        locale: 'en'
-        // Don't include business_id - let Trolley look up by email
+      // Check if user already has a sub-merchant ID
+      if (user.trolleySubmerchantId) {
+        console.log(`User already has sub-merchant ID: ${user.trolleySubmerchantId}`);
+        return res.json({
+          success: true,
+          submerchantId: user.trolleySubmerchantId,
+          message: 'Sub-merchant account already exists'
+        });
+      }
+
+      // Create sub-merchant account using live Trolley API
+      const submerchantData = {
+        merchant: {
+          name: user.companyName || `${user.firstName} ${user.lastName}`,
+          currency: 'USD'
+        },
+        onboarding: {
+          businessWebsite: user.website || 'https://example.com',
+          businessLegalName: user.companyName || `${user.firstName} ${user.lastName}`,
+          businessAsName: user.companyName || `${user.firstName} ${user.lastName}`,
+          businessTaxId: user.taxId || '000000000',
+          businessCategory: 'business_service',
+          businessCountry: user.country || 'US',
+          businessCity: user.city || 'New York',
+          businessAddress: user.address || '123 Business St',
+          businessZip: user.zipCode || '10001',
+          businessRegion: user.state || 'NY',
+          businessTotalMonthly: '10000',
+          businessPpm: '100',
+          businessIntlPercentage: '25',
+          expectedPayoutCountries: 'US,CA,GB'
+        }
+      };
+
+      // Create sub-merchant using Trolley service
+      const result = await trolleySubmerchantService.createSubmerchantAccount(submerchantData);
+
+      if (!result.success) {
+        return res.status(500).json({
+          success: false,
+          message: result.error || 'Failed to create sub-merchant account'
+        });
+      }
+
+      // Update user with sub-merchant information
+      await storage.updateUser(user.id, {
+        trolleySubmerchantId: result.submerchantId,
+        trolleySubmerchantStatus: result.status,
+        // Store API keys securely (consider encryption in production)
+        trolleySubmerchantAccessKey: result.accessKey,
+        trolleySubmerchantSecretKey: result.secretKey
       });
-      
-      const queryString = queryParams.toString();
-      const crypto = await import('crypto');
-      const signature = crypto.createHmac('sha256', process.env.TROLLEY_API_SECRET!)
-        .update(queryString)
-        .digest('hex');
-      
-      const widgetUrl = `https://widget.trolley.com?${queryString}&sign=${signature}`;
 
-      console.log(`Generated business widget URL using existing service`);
+      console.log(`Successfully created sub-merchant for user ${user.id}: ${result.submerchantId}`);
 
       res.json({
         success: true,
-        widgetUrl,
-        message: 'Complete business verification with Trolley'
+        submerchantId: result.submerchantId,
+        status: result.status,
+        message: 'Sub-merchant account created successfully'
       });
 
     } catch (error) {
-      console.error("Error generating business widget:", error);
+      console.error("Error creating sub-merchant:", error);
       res.status(500).json({ 
         success: false, 
-        message: "Error generating widget URL" 
+        message: "Error creating sub-merchant account" 
       });
     }
   });

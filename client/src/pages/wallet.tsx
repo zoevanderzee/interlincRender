@@ -44,27 +44,9 @@ export default function WalletPage() {
   const [showBudgetForm, setShowBudgetForm] = useState(false);
   const { toast } = useToast();
 
-  // Handler for Trolley business verification (bank account linking)
-  const handleTrolleyBankLinking = async () => {
-    try {
-      const response = await apiRequest("POST", "/api/trolley/setup-company-profile");
-      const data = await response.json();
-      
-      if (data.widgetUrl) {
-        // Open Trolley widget in new tab
-        window.open(data.widgetUrl, '_blank');
-        toast({
-          title: "Business Verification Started",
-          description: "Complete the verification process to link your bank account",
-        });
-      }
-    } catch (error: any) {
-      toast({
-        title: "Setup Failed",
-        description: error.message || "Failed to start bank account linking",
-        variant: "destructive",
-      });
-    }
+  // Handler for Trolley sub-merchant creation
+  const handleTrolleySubmerchantSetup = async () => {
+    setupProfileMutation.mutate();
   };
 
   // Get current user data for bank account status
@@ -94,17 +76,24 @@ export default function WalletPage() {
   // Import data sync hook
   const { invalidateFinancialData, invalidateUserData } = useDataSync();
 
-  // Setup company profile mutation
+  // Setup company profile mutation for sub-merchant creation
   const setupProfileMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest("POST", "/api/trolley/setup-company-profile");
       return response.json();
     },
-    onSuccess: () => {
-      toast({
-        title: "Profile Created",
-        description: "Trolley company profile created successfully",
-      });
+    onSuccess: (data) => {
+      if (data.success && data.submerchantId) {
+        toast({
+          title: "Sub-merchant Account Created",
+          description: "Your business account has been successfully created with Trolley. You can now accept payments.",
+        });
+      } else if (data.success && data.message) {
+        toast({
+          title: "Account Status", 
+          description: data.message,
+        });
+      }
       // Use integrated data sync instead of individual invalidations
       invalidateFinancialData();
       invalidateUserData();
@@ -112,7 +101,7 @@ export default function WalletPage() {
     onError: (error: any) => {
       toast({
         title: "Setup Failed",
-        description: error.message || "Failed to create company profile",
+        description: error.message || "Failed to create sub-merchant account",
         variant: "destructive",
       });
     },
@@ -196,7 +185,7 @@ export default function WalletPage() {
   }
 
   // Check if user needs Trolley onboarding
-  const needsOnboarding = balanceError && balanceError.status === 400;
+  const needsOnboarding = balanceError && (balanceError as any)?.status === 400;
 
   if (needsOnboarding) {
     return (
@@ -270,19 +259,19 @@ export default function WalletPage() {
               </div>
 
               <Button 
-                onClick={() => setupProfileMutation.mutate()}
+                onClick={handleTrolleySubmerchantSetup}
                 disabled={setupProfileMutation.isPending}
                 className="w-full bg-white text-black hover:bg-zinc-200 py-3 text-lg"
               >
                 {setupProfileMutation.isPending ? (
                   <>
                     <div className="animate-spin w-5 h-5 border-2 border-black border-t-transparent rounded-full mr-2" />
-                    Setting up...
+                    Creating Account...
                   </>
                 ) : (
                   <>
                     <Building2 className="h-5 w-5 mr-2" />
-                    Create Company Profile
+                    Create Business Account
                   </>
                 )}
               </Button>
@@ -322,11 +311,11 @@ export default function WalletPage() {
             </CardHeader>
             <CardContent>
               <div className="text-4xl font-bold text-white">
-                {walletData ? formatCurrency(walletData.balance || 0) : '$0.00'}
+                {walletData ? formatCurrency((walletData as any)?.balance || 0) : '$0.00'}
               </div>
-              {walletData?.companyProfileId && (
+              {(walletData as any)?.companyProfileId && (
                 <p className="text-sm text-zinc-500 mt-2">
-                  Profile ID: {walletData.companyProfileId}
+                  Profile ID: {(walletData as any)?.companyProfileId}
                 </p>
               )}
             </CardContent>
@@ -488,22 +477,22 @@ export default function WalletPage() {
                     <div className="flex-1">
                       <p className="font-medium text-white">Pay-as-you-go</p>
                       <p className="text-sm text-zinc-500">Direct payment from linked bank account when you approve milestones</p>
-                      {userData?.trolleyBankAccountStatus === 'verified' && (
+                      {(userData as any)?.trolleyBankAccountStatus === 'verified' && (
                         <p className="text-xs text-green-400 mt-1">
-                          ✓ Bank account ending in {userData.trolleyBankAccountLast4} linked
+                          ✓ Bank account ending in {(userData as any)?.trolleyBankAccountLast4} linked
                         </p>
                       )}
                     </div>
-                    {userData?.trolleyBankAccountStatus === 'verified' ? (
+                    {(userData as any)?.trolleyBankAccountStatus === 'verified' ? (
                       <div className="text-sm text-green-400">Ready</div>
                     ) : (
                       <Button 
                         variant="outline" 
                         size="sm" 
                         className="text-zinc-300 border-zinc-600"
-                        onClick={handleTrolleyBankLinking}
+                        onClick={handleTrolleySubmerchantSetup}
                       >
-                        Link Bank
+                        Setup Business
                       </Button>
                     )}
                   </div>
@@ -523,14 +512,14 @@ export default function WalletPage() {
                     <div className="flex items-center gap-2 mb-2">
                       <div className="w-2 h-2 rounded-full bg-green-400"></div>
                       <span className="text-sm text-zinc-300">
-                        {userData?.trolleyBankAccountStatus === 'verified' 
+                        {(userData as any)?.trolleyBankAccountStatus === 'verified' 
                           ? 'Both payment methods available' 
                           : 'Pre-funded account available, pay-as-you-go requires business verification'
                         }
                       </span>
                     </div>
                     <p className="text-sm text-zinc-400">
-                      {userData?.trolleyBankAccountStatus === 'verified' 
+                      {(userData as any)?.trolleyBankAccountStatus === 'verified' 
                         ? 'You can switch between payment methods at any time.'
                         : 'Complete Trolley business verification to enable pay-as-you-go payments.'
                       }
@@ -548,7 +537,7 @@ export default function WalletPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {userData?.trolleyBankAccountStatus === 'verified' ? (
+                  {(userData as any)?.trolleyBankAccountStatus === 'verified' ? (
                     /* Show linked bank account */
                     <div className="space-y-4">
                       <div className="flex items-center gap-3 p-4 border border-zinc-700 rounded-lg bg-zinc-800">
@@ -558,7 +547,7 @@ export default function WalletPage() {
                         <div className="flex-1">
                           <p className="font-medium text-white">Business Bank Account</p>
                           <p className="text-sm text-zinc-400">
-                            Account ending in {userData.trolleyBankAccountLast4}
+                            Account ending in {(userData as any)?.trolleyBankAccountLast4}
                           </p>
                           <p className="text-xs text-green-400 mt-1">✓ Verified through Trolley business verification</p>
                         </div>
@@ -583,7 +572,7 @@ export default function WalletPage() {
                         <p className="text-zinc-400 mb-4">No bank accounts linked</p>
                         <Button 
                           className="bg-white text-black hover:bg-zinc-200"
-                          onClick={handleTrolleyBankLinking}
+                          onClick={handleTrolleySubmerchantSetup}
                         >
                           <Plus className="h-4 w-4 mr-2" />
                           Link Bank Account
@@ -710,9 +699,9 @@ export default function WalletPage() {
                   <div className="flex items-center justify-center py-8">
                     <div className="animate-spin w-6 h-6 border-2 border-white border-t-transparent rounded-full" />
                   </div>
-                ) : historyData && historyData.length > 0 ? (
+                ) : historyData && (historyData as any)?.length > 0 ? (
                   <div className="space-y-4">
-                    {historyData.map((transaction: FundingTransaction) => (
+                    {(historyData as any)?.map((transaction: any) => (
                       <div key={transaction.id} className="flex items-center justify-between p-4 border border-zinc-700 rounded-lg">
                         <div className="flex items-center gap-3">
                           <div className={`p-2 rounded-full ${

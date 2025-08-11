@@ -26,6 +26,8 @@ export interface TrolleySubmerchantData {
 export interface TrolleySubmerchantResponse {
   success: boolean;
   submerchantId?: string;
+  accessKey?: string;
+  secretKey?: string;
   status?: string;
   message?: string;
   error?: string;
@@ -61,19 +63,42 @@ class TrolleySubmerchantService {
         businessName: data.onboarding.businessLegalName
       });
 
-      // Create submerchant account using live Trolley SDK
-      const result = await (trolleySdk as any).client.submerchant.create({
-        name: data.merchant.name,
-        currency: data.merchant.currency,
-        onboarding: data.onboarding
+      // Use direct HTTP API call for sub-merchant creation (Live mode)
+      const apiKey = process.env.TROLLEY_API_KEY;
+      const apiSecret = process.env.TROLLEY_API_SECRET;
+      
+      if (!apiKey || !apiSecret) {
+        throw new Error('Trolley API credentials not configured');
+      }
+
+      const response = await fetch('https://api.trolley.com/v1/profile/submerchant', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Basic ${Buffer.from(`${apiKey}:${apiSecret}`).toString('base64')}`
+        },
+        body: JSON.stringify(data)
       });
 
-      console.log('Successfully created live Trolley submerchant:', result.id);
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`Trolley API error: ${response.status} - ${error}`);
+      }
+
+      const result = await response.json();
+      
+      if (!result.ok) {
+        throw new Error(`Trolley API returned error: ${JSON.stringify(result)}`);
+      }
+
+      console.log('Successfully created live Trolley submerchant:', result.merchant.id);
       
       return {
         success: true,
-        submerchantId: result.id,
-        status: result.status || 'created',
+        submerchantId: result.merchant.id,
+        accessKey: result.merchant.accessKey,
+        secretKey: result.merchant.secretKey,
+        status: 'created',
         message: 'Live Trolley submerchant account created successfully'
       };
     } catch (error) {
