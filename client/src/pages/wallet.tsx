@@ -11,8 +11,6 @@ import { useBudget } from '@/hooks/use-budget';
 import { useDataSync } from '@/hooks/use-data-sync';
 import { Wallet, Plus, DollarSign, History, CreditCard, Building2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PlaidLink } from '@/components/payments/PlaidLink';
-import { BankAccountSelector } from '@/components/payments/BankAccountSelector';
 
 interface WalletBalance {
   balance: number;
@@ -44,36 +42,27 @@ export default function WalletPage() {
   const [budgetAmount, setBudgetAmount] = useState('');
   const [budgetPeriod, setBudgetPeriod] = useState<'monthly' | 'yearly'>('yearly');
   const [showBudgetForm, setShowBudgetForm] = useState(false);
-  const [showBankLinking, setShowBankLinking] = useState(false);
   const { toast } = useToast();
 
-  // Handler for Plaid success
-  const handlePlaidSuccess = async (publicToken: string, metadata: any) => {
+  // Handler for Trolley business verification (bank account linking)
+  const handleTrolleyBankLinking = async () => {
     try {
-      // Exchange the public token for access token
-      const response = await apiRequest('POST', '/api/plaid/exchange-public-token', {
-        publicToken,
-        accountId: metadata.account.id,
-        accountName: metadata.account.name,
-      });
+      const response = await apiRequest("POST", "/api/trolley/setup-company-profile");
+      const data = await response.json();
       
-      if (response.ok) {
+      if (data.widgetUrl) {
+        // Open Trolley widget in new tab
+        window.open(data.widgetUrl, '_blank');
         toast({
-          title: 'Bank Account Linked',
-          description: 'Your bank account has been successfully linked.',
+          title: "Business Verification Started",
+          description: "Complete the verification process to link your bank account",
         });
-        // Refresh user data and wallet data
-        invalidateUserData();
-        invalidateFinancialData();
-        setShowBankLinking(false);
-      } else {
-        throw new Error('Failed to link bank account');
       }
-    } catch (error) {
+    } catch (error: any) {
       toast({
-        title: 'Link Failed',
-        description: 'Failed to link your bank account. Please try again.',
-        variant: 'destructive',
+        title: "Setup Failed",
+        description: error.message || "Failed to start bank account linking",
+        variant: "destructive",
       });
     }
   };
@@ -508,7 +497,12 @@ export default function WalletPage() {
                     {userData?.trolleyBankAccountStatus === 'verified' ? (
                       <div className="text-sm text-green-400">Ready</div>
                     ) : (
-                      <Button variant="outline" size="sm" className="text-zinc-300 border-zinc-600">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="text-zinc-300 border-zinc-600"
+                        onClick={handleTrolleyBankLinking}
+                      >
                         Link Bank
                       </Button>
                     )}
@@ -587,7 +581,10 @@ export default function WalletPage() {
                       <div className="text-center py-8">
                         <Building2 className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
                         <p className="text-zinc-400 mb-4">No bank accounts linked</p>
-                        <Button className="bg-white text-black hover:bg-zinc-200">
+                        <Button 
+                          className="bg-white text-black hover:bg-zinc-200"
+                          onClick={handleTrolleyBankLinking}
+                        >
                           <Plus className="h-4 w-4 mr-2" />
                           Link Bank Account
                         </Button>
