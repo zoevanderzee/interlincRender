@@ -120,6 +120,13 @@ export default function WalletPage() {
   // Get budget data using the budget hook
   const { budgetInfo: budgetData, isLoading: budgetLoading, setBudget, isSettingBudget } = useBudget();
 
+  // Get real bank account data from Trolley
+  const { data: bankAccountData, isLoading: bankAccountLoading } = useQuery({
+    queryKey: ['/api/trolley/bank-accounts'],
+    staleTime: 5 * 60 * 1000, // 5 minutes for bank account data
+    refetchInterval: 10 * 60 * 1000, // Auto-refresh every 10 minutes
+  });
+
   // Import data sync hook
   const { invalidateFinancialData, invalidateUserData } = useDataSync();
 
@@ -675,21 +682,26 @@ export default function WalletPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {(userData as any)?.trolleyBankAccountStatus === 'verified' ? (
-                    /* Show linked bank account */
+                  {bankAccountLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin w-6 h-6 border-2 border-white border-t-transparent rounded-full" />
+                      <span className="ml-2 text-zinc-400">Loading real bank account data...</span>
+                    </div>
+                  ) : bankAccountData?.hasLinkedAccount ? (
+                    /* Show real linked bank account from Trolley */
                     <div className="space-y-4">
                       <div className="flex items-center gap-3 p-4 border border-zinc-700 rounded-lg bg-zinc-800">
                         <div className="w-10 h-10 rounded-full bg-green-400/10 flex items-center justify-center">
                           <Building2 className="h-5 w-5 text-green-400" />
                         </div>
                         <div className="flex-1">
-                          <p className="font-medium text-white">Business Bank Account</p>
+                          <p className="font-medium text-white">🔴 LIVE: {bankAccountData.bankName || 'Business Bank Account'}</p>
                           <p className="text-sm text-zinc-400">
-                            Account ending in {(userData as any)?.trolleyBankAccountLast4}
+                            Real account ending in {bankAccountData.last4 || 'XXXX'}
                           </p>
-                          <p className="text-xs text-green-400 mt-1">✓ Verified through Trolley business verification</p>
+                          <p className="text-xs text-green-400 mt-1">✅ LIVE: Verified through your Trolley business account</p>
                         </div>
-                        <div className="text-sm text-green-400 font-medium">Active</div>
+                        <div className="text-sm text-green-400 font-medium">LIVE</div>
                       </div>
                       
                       <div className="bg-zinc-800 p-4 rounded-lg border border-zinc-700">
@@ -698,7 +710,7 @@ export default function WalletPage() {
                           <span className="text-sm text-zinc-300 font-medium">Ready for pay-as-you-go payments</span>
                         </div>
                         <p className="text-sm text-zinc-400">
-                          Your bank account is linked and verified. Milestone approvals will automatically charge this account.
+                          🔴 LIVE MODE: Your real business bank account is verified. Milestone approvals will automatically charge this account with REAL MONEY.
                         </p>
                       </div>
                     </div>

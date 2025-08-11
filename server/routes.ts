@@ -4776,6 +4776,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get real bank account data from Trolley
+  app.get(`${apiRouter}/trolley/bank-accounts`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user;
+      if (!user || user.role !== 'business') {
+        return res.status(403).json({ message: "Only business accounts can access bank account data" });
+      }
+
+      if (!user.trolleyCompanyProfileId) {
+        console.log('No Trolley company profile ID for user:', user.username);
+        return res.json({
+          hasLinkedAccount: false,
+          error: 'No Trolley company profile found'
+        });
+      }
+
+      // Call live Trolley API to get real bank account data
+      try {
+        console.log(`🔴 FETCHING LIVE BANK ACCOUNT DATA for company profile: ${user.trolleyCompanyProfileId}`);
+        
+        const bankAccounts = await trolleyApi.getCompanyBankAccounts(user.trolleyCompanyProfileId);
+        
+        // Extract the primary bank account details
+        const primaryAccount = bankAccounts.find((account: any) => account.primary) || bankAccounts[0];
+        
+        if (primaryAccount) {
+          console.log(`✅ LIVE BANK ACCOUNT FOUND: ${primaryAccount.bankName} ending in ${primaryAccount.accountNumber?.slice(-4)}`);
+          return res.json({
+            hasLinkedAccount: true,
+            accountType: primaryAccount.accountType || 'business',
+            bankName: primaryAccount.bankName,
+            last4: primaryAccount.accountNumber?.slice(-4) || '',
+            status: primaryAccount.status || 'verified'
+          });
+        } else {
+          console.log('❌ NO BANK ACCOUNTS FOUND in Trolley response');
+          return res.json({
+            hasLinkedAccount: false
+          });
+        }
+      } catch (apiError) {
+        console.log('❌ TROLLEY API ERROR fetching bank accounts:', apiError);
+        return res.json({
+          hasLinkedAccount: false,
+          error: 'Unable to fetch live bank account data - authentication needed'
+        });
+      }
+
+    } catch (error) {
+      console.error("Error getting bank account data:", error);
+      return res.status(500).json({ message: "Error getting bank account data" });
+    }
+  });
+
   // Fund company wallet
   app.post(`${apiRouter}/trolley/fund-wallet`, requireAuth, async (req: Request, res: Response) => {
     try {

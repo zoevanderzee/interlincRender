@@ -242,6 +242,38 @@ export class TrolleyApiService {
   }
 
   /**
+   * Get company bank accounts from Trolley
+   */
+  async getCompanyBankAccounts(profileId: string): Promise<any[]> {
+    if (!this.isConfigured()) {
+      throw new Error('Trolley API key not configured');
+    }
+
+    try {
+      const response = await fetch(`${this.baseUrl}/embedded/company-profiles/${profileId}/bank-accounts`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+          'X-API-Version': '1'
+        }
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`Trolley API error: ${error}`);
+      }
+
+      const result = await response.json();
+      return result.bankAccounts || [];
+
+    } catch (error: any) {
+      console.error('Trolley bank accounts error:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get batch status from Trolley
    */
   async getBatchStatus(batchId: string): Promise<{ success: boolean; status?: string; payments?: any[]; error?: string }> {
