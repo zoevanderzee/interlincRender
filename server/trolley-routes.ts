@@ -18,7 +18,7 @@ interface AuthenticatedRequest extends Request {
 export default function trolleyRoutes(app: Express, apiPath: string, authMiddleware: any) {
   const trolleyBasePath = `${apiPath}/trolley`;
 
-  // Generate unique onboarding link for business verification
+  // Create submerchant account and generate business onboarding widget
   app.post(`${trolleyBasePath}/business-onboarding-link`, authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user?.id;
@@ -36,21 +36,80 @@ export default function trolleyRoutes(app: Express, apiPath: string, authMiddlew
         return res.status(403).json({ message: 'Only business users can access onboarding' });
       }
 
-      // Use existing account widget flow (no refid) for existing Trolley accounts
-      // This prevents "Email already exists" errors for businesses with existing Trolley accounts
-      console.log(`Generating business widget for existing account: ${userData.email}`);
+      // CRITICAL FIX: Create SUBMERCHANT account, not recipient account
+      // Businesses need submerchant profiles to make payments to contractors
+      console.log(`🔴 CREATING SUBMERCHANT ACCOUNT for business: ${userData.email}`);
       
-      // Use the existing account widget URL generator (no refid to avoid conflicts)
-      const onboardingUrl = trolleySdk.generateWidgetUrlForExisting(userData.email);
+      try {
+        // Create submerchant account with business information
+        const submerchantData = {
+          merchant: {
+            name: userData.companyName || userData.username,
+            currency: 'USD'
+          },
+          onboarding: {
+            businessWebsite: userData.website || 'https://example.com',
+            businessLegalName: userData.companyName || userData.username,
+            businessAsName: userData.companyName || userData.username,
+            businessTaxId: 'PENDING', // Will be collected in widget
+            businessCategory: 'business_service',
+            businessCountry: 'US',
+            businessCity: 'PENDING',
+            businessAddress: 'PENDING',
+            businessZip: 'PENDING',
+            businessRegion: 'PENDING',
+            businessTotalMonthly: '10000',
+            businessPpm: '100',
+            businessIntlPercentage: '15',
+            expectedPayoutCountries: 'US'
+          }
+        };
 
-      res.json({
-        onboardingUrl,
-        message: 'Complete business verification on Trolley. This will access your existing account and complete the setup process.'
-      });
+        const submerchant = await trolleySdk.createSubmerchant(submerchantData);
+        
+        // Save submerchant details to user account
+        await db.update(users).set({
+          trolleyCompanyProfileId: submerchant.merchant.id,
+          trolleySubmerchantId: submerchant.merchant.id,
+          trolleySubmerchantAccessKey: submerchant.merchant.accessKey,
+          trolleySubmerchantSecretKey: submerchant.merchant.secretKey,
+          trolleySubmerchantStatus: 'pending'
+        }).where(eq(users.id, userData.id));
+
+        console.log(`✅ SUBMERCHANT CREATED: ${submerchant.merchant.id} for ${userData.email}`);
+
+        // Generate SUBMERCHANT widget URL (not recipient widget)
+        const onboardingUrl = trolleySdk.generateSubmerchantWidgetUrl({
+          submerchantId: submerchant.merchant.id,
+          accessKey: submerchant.merchant.accessKey,
+          secretKey: submerchant.merchant.secretKey,
+          businessEmail: userData.email
+        });
+
+        res.json({
+          onboardingUrl,
+          submerchantId: submerchant.merchant.id,
+          message: 'Complete your business profile setup. This will collect all required business information and banking details.'
+        });
+
+      } catch (trolleyError: any) {
+        console.error('❌ SUBMERCHANT CREATION FAILED:', trolleyError);
+        
+        // If submerchant already exists, try to get existing widget
+        if (trolleyError.message?.includes('already exists')) {
+          const onboardingUrl = trolleySdk.generateWidgetUrlForExisting(userData.email);
+          return res.json({
+            onboardingUrl,
+            message: 'Continue your existing business setup process.'
+          });
+        }
+        
+        throw trolleyError;
+      }
 
     } catch (error) {
-      console.error('Error generating business onboarding link:', error);
-      res.status(500).json({ message: 'Failed to generate onboarding link' });
+      console.error('Error creating submerchant onboarding:', error);
+      res.status(500).json({ message: 'Failed to generate business onboarding link' });
     }
   });
 

@@ -124,6 +124,81 @@ class TrolleySdkService {
     console.log('Trolley SDK credentials refreshed');
   }
 
+  /**
+   * Create submerchant account for business 
+   * CRITICAL: This creates a SUBMERCHANT (payment facilitator) not a RECIPIENT
+   */
+  async createSubmerchant(submerchantData: any): Promise<any> {
+    this.ensureClient();
+    
+    try {
+      // Use Trolley API directly since SDK may not have submerchant methods
+      const response = await fetch('https://api.trolley.com/v1/profile/submerchant', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.TROLLEY_API_KEY}`,
+          'Content-Type': 'application/json',
+          'X-API-Version': '1'
+        },
+        body: JSON.stringify(submerchantData)
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`Trolley submerchant creation failed: ${error}`);
+      }
+
+      const result = await response.json();
+      console.log(`✅ SUBMERCHANT CREATED: ${result.merchant.id}`);
+      
+      return result;
+
+    } catch (error: any) {
+      console.error('❌ SUBMERCHANT CREATION ERROR:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Generate submerchant widget URL for business onboarding
+   * CRITICAL: This creates a BUSINESS WIDGET not a RECIPIENT WIDGET
+   */
+  generateSubmerchantWidgetUrl(options: {
+    submerchantId: string;
+    accessKey: string;
+    secretKey: string;
+    businessEmail: string;
+  }): string {
+    const timestamp = Math.floor(Date.now() / 1000);
+    
+    // Submerchant widget parameters (different from recipient widget)
+    const queryParams: Record<string, string> = {
+      ts: timestamp.toString(),
+      key: options.accessKey, // Use submerchant's own access key
+      email: options.businessEmail,
+      merchant_id: options.submerchantId,
+      products: 'pay,tax,trust', // Full business verification modules
+      hideEmail: 'false',
+      roEmail: 'false',
+      locale: 'en',
+      type: 'business' // CRITICAL: Business type, not individual
+    };
+
+    // Create query string
+    const queryString = Object.entries(queryParams)
+      .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+      .join('&')
+      .replace(/\+/g, '%20');
+
+    // Generate signature using submerchant's secret key
+    const signature = crypto.createHmac('sha256', options.secretKey)
+      .update(queryString)
+      .digest('hex');
+
+    // Return submerchant widget URL
+    return `https://widget.trolley.com?${queryString}&sign=${signature}`;
+  }
+
   private ensureClient() {
     if (!this.client) {
       throw new Error('Trolley SDK client not initialized - check API credentials');

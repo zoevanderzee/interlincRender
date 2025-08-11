@@ -40,6 +40,8 @@ export const users = pgTable("users", {
   trolleyBankAccountLast4: text("trolley_bank_account_last4"), // Last 4 digits of linked bank account
   trolleyVerificationToken: text("trolley_verification_token"), // Token for Trolley business verification
   trolleyVerificationStarted: timestamp("trolley_verification_started"), // When verification was initiated
+  trolleyVerificationStatus: text("trolley_verification_status"), // Status of Trolley verification (pending, approved, rejected)
+  trolleyVerificationCompletedAt: timestamp("trolley_verification_completed_at"), // When verification was completed
   payoutEnabled: boolean("payout_enabled").default(false), // Whether the contractor is ready to receive payments
   budgetCap: decimal("budget_cap", { precision: 15, scale: 2 }), // Maximum budget for outsourcing (for business accounts)
   budgetUsed: decimal("budget_used", { precision: 15, scale: 2 }).default("0"), // Amount of budget already allocated to projects
