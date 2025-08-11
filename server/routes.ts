@@ -4957,7 +4957,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
 
-  // Trolley company profile setup endpoint for businesses with existing accounts
+  // Trolley company profile setup - business verification widget
   app.post(`${apiRouter}/trolley/setup-company-profile`, requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user;
@@ -4965,32 +4965,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only business accounts can set up company profiles" });
       }
 
-      console.log(`Setting up Trolley company profile for existing account: ${user.email}`);
+      console.log(`Generating Trolley business widget for: ${user.email}`);
 
-      // Generate widget URL for existing Trolley account (no refid to avoid "Email already exists" error)
-      const widgetUrl = trolleyService.generateWidgetUrl({
-        recipientEmail: user.email,
-        // No recipientReferenceId for existing accounts - this is key to avoid conflicts
-        products: ['pay', 'tax'],
-        colors: {
-          primary: '#ffffff',
-          secondary: '#000000'
-        }
-      });
+      // Use Trolley's business verification widget - this is the standard approach
+      const apiKey = process.env.TROLLEY_API_KEY;
+      const apiSecret = process.env.TROLLEY_API_SECRET;
+      
+      if (!apiKey || !apiSecret) {
+        throw new Error('Trolley credentials not configured');
+      }
 
-      console.log(`Generated Trolley widget URL for existing business account`);
+      // EXACT Trolley business widget - same as successful integrations
+      const timestamp = Math.floor(Date.now() / 1000);
+      
+      // Simple business widget parameters (no refid = existing account support)
+      const widgetParams = {
+        ts: timestamp.toString(),
+        key: apiKey,
+        email: user.email,
+        locale: 'en'
+      };
+
+      const queryString = Object.entries(widgetParams)
+        .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+        .join('&');
+      
+      // Standard HMAC signature
+      const crypto = require('crypto');
+      const signature = crypto
+        .createHmac('sha256', apiSecret)
+        .update(queryString)
+        .digest('hex');
+
+      const widgetUrl = `https://widget.trolley.com?${queryString}&sign=${signature}`;
+
+      console.log(`Generated business widget URL for ${user.email}`);
 
       res.json({
         success: true,
         widgetUrl,
-        message: 'Trolley widget URL generated. Complete business verification to link your account.'
+        message: 'Complete business verification with Trolley'
       });
 
     } catch (error) {
-      console.error("Error setting up Trolley company profile:", error);
+      console.error("Error generating business widget:", error);
       res.status(500).json({ 
         success: false, 
-        message: "Error generating Trolley widget URL" 
+        message: "Error generating widget URL" 
       });
     }
   });
