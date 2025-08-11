@@ -1,0 +1,543 @@
+Create Sub-merchant
+This endpoint is for creating a new sub-merchant. The new sub-merchant is bound to the parent merchant used to create it. This endpoint requires that the Partner API (Sub-merchant feature) be enabled for your merchant account. Contact support for more information.
+
+Request
+{
+  // required data:
+  merchant: {
+    name: string; // Sub-merchants business name
+    currency: string; // 3 letter currency code in ISO 4217
+  };
+
+  // also required
+  onboarding: {
+    businessWebsite: string;
+    businessLegalName: string;
+    businessAsName: string;
+    businessTaxId: string;  
+    businessCategory: string;
+    businessCountry: string; // 2 letter country ISO 3166-1 alpha-2
+    businessCity: string;
+    businessAddress: string;
+    businessZip: string; // optional if country has postal code
+    businessRegion: string; // state or province - ideally 2 letter code
+    businessTotalMonthly: string; // Expected total value of payouts per month in USD (e.g. "10000" or "500000" etc)
+    businessPpm: string; // Expected number of payouts per month; (e.g. "15000" or "520000" etc).
+    businessIntlPercentage: string; // The percentage (%) of payment volume that will be sent internationally; (e.g. "15" or "52" etc).
+    expectedPayoutCountries: string // 2 letter country ISO 3166-1 alpha-2. Accepts multiple country input
+  };
+}
+
+Response (200 Ok)
+{
+  ok: boolean;
+  merchant: {
+    id: string;
+    accessKey: string;
+    secretKey: string;
+  }
+}
+This endpoint will return a sub-merchant id (alphanumeric guid) and an API key. The API key is important if you’re going to access the sub-merchant programmatically as this is the only time you will be able to get it - so make sure you store it in the right place.
+
+HTTP Request
+
+POST /v1/profile/submerchant
+
+Fields	Description
+merchant.name
+required
+string	Name of the sub-merchant
+merchant.website
+required
+string	Website URL
+merchant.country
+required
+string	2 letter country code in ISO 3166-1
+merchant.currency
+required
+string	3 letter currency code in ISO 4217
+onboarding.businessLegalName
+required
+string	Legal name of the sub-merchant
+onboarding.businessAsName
+required
+string	Doing business name of the sub-merchant
+onboarding.businessTaxId
+required
+string	Tax ID of the sub-merchant
+onboarding.businessPhone
+required
+string	Phone number
+onboarding.businessWebsite
+required
+string	Website URL
+onboarding.businessCategory
+required
+string	The category of the business. Expected one of the allowed values, as defined below.
+onboarding.businessCountry
+required
+string	2 letter country code in ISO-3166-1
+onboarding.businessCity
+required
+string	City of the sub-merchant
+onboarding.businessAddress
+required
+string	Address of the sub-merchant
+onboarding.businessZip
+required
+string	Postal code for the sub-merchant
+onboarding.businessRegion
+required
+string	Region of the sub-merchant (e.g. state/province)
+onboarding.businessTotalMonthly
+required
+string	Expected total value of payouts per month in USD (e.g. “10000” or “500000” etc).
+onboarding.businessPpm
+required
+string	Expected number of payouts per month; (e.g. “15000” or “520000” etc).
+onboarding.businessIntlPercentage
+required
+string	The percentage (%) of payment volume that will be sent internationally; (e.g. “15” or “52” etc).
+onboarding.expectedPayoutCountries
+required
+string	Expected countries the sub-merchant will payout to
+If any of the required “onboarding” fields are missing then onboarding will not be complete. Following are more details about accepted parameters for some of the required attributes as defined above.
+
+Allowed Values for Business Category
+
+Category	Allowed Value
+Online Market	online_market
+App Store	app_store
+Affiliate Platform	affiliate_platform
+Ad Network	ad_network
+Crowd Funding	crowdfunding
+Crowd Sourcing	crowdsourcing
+Share Economy	share_economy
+E-Commerce	e-commerce
+Charity	charity
+Surveys	surveys
+Rebates	rebates
+Startup	startup
+Publishing	publishing
+Entertainment	entertainment
+Travel	travel
+Education	education
+Manufacturing	manufacturing
+Business Service	business_service
+Influencer Platform	influencer_platform
+Online Gambling	online_gambling
+Adult Entertainment	adult_entertainment
+Multi Level Marketing	multi_level_marketing
+Firearms	firearms
+Money Transmitter Service	money_transmitter_service
+Credit Card Processing	credit_card_processing
+Other	other
+This endpoint will return a sub-merchant id (alphanumeric guid) and an API key. The API key is important if you’re going to access the sub-merchant programmatically as this is the only time you will be able to get it - so make sure you store it in the right place.
+
+HTTP Code	Description
+200	Submerchant successfully created
+401	Invalid API key
+404	Recipient not found
+500	Internal error
+Errors
+
+This table lists the expected errors that this method could return. However, other errors can be returned in the case where the service is down or other unexpected factors affect processing. Callers should always check the value of the ok params in the response.
+
+Error Code	Description
+not_found	Object doesn’t exist
+invalid_api_key	Invalid API key
+internal_server_error	Internal server errors
+Modify Onboarding Information
+With a sub-merchant’s key, you can modify onboarding information for an existing sub-merchant. You need to be using the sub-merchant’s key.
+
+POST /v1/onboarding/update
+
+Request
+{
+businessTotalMonthly?: string; // should be a number of USD (eg: "10000" or "500000" etc..)
+businessPpm?: string
+}
+Response (200 Ok)
+{
+  ok: boolean;
+}
+Request
+
+Fields	Description
+businessTotalMonthly
+optional
+string	Expected total value of payouts per month in USD (e.g. “10000” or “500000” etc), expressed as a JSON string
+businessPpm
+optional
+string	Number of expected payments per month.
+HTTP Code	Description
+200	Submerchant successfully created
+401	Invalid API key
+404	Recipient not found
+500	Internal error
+Errors
+
+This table lists the expected errors that this method could return. However, other errors can be returned in the case where the service is down or other unexpected factors affect processing. Callers should always check the value of the ok params in the response.
+
+Error Code	Description
+not_found	Object doesn’t exist
+invalid_api_key	Invalid API key
+internal_server_error	Internal server errors
+Get Funding Information
+Response (200 Ok)
+{
+  info: {
+    accountAddress: string;
+    accountCity: string;
+    accountCountryCode: string;
+    accountCurrency: string;
+    accountName: string;
+    accountNum: string;
+    accountPostalCode: string;
+    accountRegion: string;
+    bankAddress: string;
+    bankCity: string;
+    bankCountry: string;
+    bankCountryCode: string;
+    bankName: string;
+    bankPostalCode: string;
+    bankRegion: string;
+    institution: string;
+    // IMPORTANT: must be put in the memo field
+    referenceMemo: string;
+    routingNumber: string;
+    // potentially other fields depending on the bank
+  }[],
+}
+GET /v1/balances/info
+
+Returns the bank account information needed in order to fund the sub-merchant account by bank wire or bank transfer. Note that the referenceMemo information must be included in the memo field of the bank wire or bank transfer. This is used to route the the incoming funds to the correct sub-merchant account balance.
+
+Sandbox Merchant
+Sandbox Create
+This endpoint works identically to the “create sub-merchant” endpoint but creates sandbox sub-merchants instead.
+
+This endpoint is for creating a new sub-merchant. The new sub-merchant is bound to the parent sandbox merchant used to create it. This endpoint requires that the sub-merchant feature be enabled for your merchant.
+
+Request
+{
+  // optional - true to generate API keys for the sandbox account
+  apikey: boolean;
+  // optional data -- copied from master merchant if not provided
+  merchant: {
+    name: string; // Sub-merchants business name
+    currency: string; // 3 letter currency code in ISO 4217
+  };
+}
+This endpoint will return a sub-merchant id (alphanumeric guid) and an API key. The API key is important if you’re going to access the sub-merchant programmatically as this is the only time you will be able to get it to make sure you store it in the right place.
+
+Response (200 Ok)
+{
+  ok: boolean; // true if everything is good
+  merchant: {
+    id: string;
+    accessKey: string; // present if apikey is provided
+    secretKey: string; // present if apikey is provided
+  }
+}
+HTTP Request
+
+POST /v1/profile/sandbox
+
+Fields	Description
+apikey
+required
+boolean	Value of true to generate API keys for the sandbox account
+merchant.name
+required
+string	Sub-merchant business name
+merchant.currency
+required
+string	3 letter currency code in ISO 4217
+Sandbox Delete
+To delete a sandbox sub merchant that you’ve created you need to provide the id of the sub-merchant to delete.
+
+DELETE /v1/profile/sandbox
+
+Request
+{
+  // required -- the sandbox id to delete
+  id: string;
+}
+Response (200 Ok)
+{
+  ok: boolean;
+}
+Fields	Description
+id
+required
+string	Id of sandbox sub-merchant to delete
+HTTP Code	Description
+200	Submerchant successfully created
+403	Invalid parameter
+401	Invalid API key
+500	Internal error
+Errors
+
+This table lists the expected errors that this method could return. However, other errors can be returned in the case where the service is down or other unexpected factors affect processing. Callers should always check the value of the ok params in the response.
+
+Error Code	Description
+not_found	Object doesn’t exist
+invalid_api_key	Invalid API key
+internal_server_error	Internal server errors
+invalid_field	
+Sub-Merchant Bank Account
+Request
+{
+  accountName: string;
+  currency: string; // 3 letter currency code
+  bankCountry: string; // 2 letter
+  branchId: string; // must be only numbers
+  bankId: string; // must only be numbers
+  institution: string; // must only be numbers
+  transit: string; // must only be numbers
+  accountNum: string; // must only be numbers
+  enabled: boolean;
+}
+Response (200)
+{
+  ok: boolean; 
+  merchantBankAccount: {
+    currency: string;
+    accountName: string;
+    fileLink: string | null;
+    completed: boolean;
+
+    iban: string; // masked
+    accountNum: string; //masked
+    swiftBic?: string | null;
+    branchId?: string | null;
+    bankId?: string | null;
+
+    bankName: string;
+    bankAddress: string;
+    bankCity: string;
+    bankPostalCode: string;
+    bankRegion: string;
+    country: string; // bank country code
+    enabled: boolean;
+  };
+}
+Use this endpoint to both create and update the Sub-merchant’s bank account.
+
+The sub-merchant bank account information is used when sub-merchant’s are funding their sub-merchant account balance. It is used to know where the bank transfer or wire will be originated from.
+
+HTTP Request
+
+POST /v1/direct-debit/bank-account/
+
+Fields	Description
+accountName
+required
+boolean	Name of the account
+currency
+required
+string	3 letter currency code in ISO 4217
+bankCountry
+required
+string	2 letter country code in ISO-3166-1
+branchId
+required
+string	Must only be numbers
+bankId
+required
+string	Must only be numbers
+institution
+required
+string	Must only be numbers
+transit
+required
+string	Must only be numbers
+accountNum
+required
+string	Must only be numbers
+enabled
+required
+string	If this should be enabled
+Widget Configuration
+Request
+HexColor = string
+
+// regex: “/^#?([0-9A-F]{3}|[0-9A-F]{6})$/i”
+// eg: “#112233” or “112233” or “abFF22” or “#123” etc..
+
+{
+  colors:  {
+    primary: HexColor;
+    success: HexColor;
+    error: HexColor;
+    warning: HexColor;
+    border: HexColor;
+    heading: HexColor;
+    text: HexColor;
+    inputText: HexColor;
+    inputBorder: HexColor;
+    subText: HexColor;
+    background: HexColor;
+  },
+},
+POST /v1/iframe/config
+
+You can implement the Recipient Widget for sub-merchant accounts in order to capture recipient information directly into each sub-merchant account. Ensure you use the relevant sub-merchant API key when you integrate the widget.
+
+This endpoint allows you to programmatically customimze the colors of the widget for each sub-merchant.
+
+Webhooks
+Create Webhook
+POST /v1/subscriptions
+
+Adds a new webhook
+
+Request
+{
+  action: NotificationAction,
+  model: NotificationType,
+  target: string, // URL endpoint to send events to
+}
+Enumerated Strings
+enum NotificationAction {
+  CREATED = "created",
+  UPDATED = "updated",
+  DELETED = "deleted",
+
+  // Batch
+  PROCESSING = "processing", // fired when batch startProcessing() is called
+  COMPLETED = "completed", // processed with at least one success
+  // We don't expose Batch.COMPLETED in the UI because
+  // It overlaps with PROCESSING too much
+
+  // Payment
+  FAILED = "failed",
+  RETURNED = "returned",
+
+  // Batch and Payments
+  PROCESSED = "processed", // once a batch/payment is processed successfully
+  // (for batch this means one payment is successful)
+
+  // User
+  PASSWORD_RESET = "password-reset",
+
+  // Recipient
+  COMPLIANCE_CHECK = "compliance-check",
+
+  // Batch and Recipient uploads
+  UPLOAD_RECEIVED = "upload-received",
+  UPLOAD_PROCESSING = "upload-processing",
+  UPLOAD_COMPLETE = "upload-completed",
+
+  ALL = "*",
+}
+
+enum NotificationType {
+  USER = "user",
+  RECIPIENT = "recipient",
+  UPLOAD = "upload",
+  BATCH = "batch",
+  PAYMENT = "payment",
+  RECIPIENT_ACCOUNT = "recipientAccount",
+  ALL = "*",
+}
+Response (200 Ok)
+{
+  ok: boolean; 
+  subscription: {
+    id: string;
+    action: NotificationAction;
+    model: NotificationType;
+    target: string;
+  }
+}
+Request
+
+Fields	Description
+action
+required
+string	The event that triggered this webhook
+model
+required
+string	NotificationType - description of the model object
+target
+required
+string	URL to send webhooks to
+Webhooks List
+GET /v1/subscriptions
+
+Get the list of subscriptions and values
+
+Response (200 ok)
+{
+  subscriptions: {
+    id: string,
+    action: NotificationAction,
+    model: NotificationType,
+    target: string,
+  }[];
+}
+Get Webhook
+GET /v1/subscriptions/<webhook id>
+
+Response (200 Ok)
+{
+  ok: boolean;
+  subscription: {
+    id: string,
+    action: NotificationAction,
+    model: NotificationType,
+    target: string,
+  };
+}
+Update Webhook
+PATCH /v1/subscriptions/<webhook id>
+
+Response (200 Ok)
+{
+  ok: boolean;
+  action: NotificationAction,
+  model: NotificationType,
+  target: string,
+}
+Delete Webhook
+DELETE /v1/subscriptions/<webhook id>
+
+Response (200 Ok)
+{
+  ok: boolean;
+}
+Webhook callbacks for Sub-merchant profiles
+The format for all webhook callbacks are the same except for the model object returned. Webhook callbacks and their format are explained here:
+
+http://developers.trolley.com/api/#webhooks
+
+Merchant Model Object:
+interface Merchant {
+  id: number;
+  merchantId: string;
+  name: string;
+  parentMerchantId: string | null;
+  status: string;
+  phone: string;
+  website: string;
+  sandbox: boolean;
+  primaryCurrency: extra.CurrencyCode; // string 3 letters
+  allowedIPs: string;
+  allowedDomains: string;
+  country: extra.CountryCode | null; // string 3 letters
+  region: string | null;
+}
+The “status” field will tell you if the sub-merchant has gone live. The sub-merchant status values can be one of these:
+
+Once the sub-merchant or merchant is “approved” that merchant is live.
+
+enum MerchantStatus {
+ APPROVED = "approved",
+ APPROVED_BY_PARTNER = "approved_by_partner",
+ SUSPENDED = "suspended",
+ DELETED = "deleted",
+ PENDING = "pending",
+ SIGNUP_REQUESTED = "signup_requested",
+}
