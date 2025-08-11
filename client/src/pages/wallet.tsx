@@ -612,6 +612,88 @@ export default function WalletPage() {
                         : 'Complete Trolley business verification to enable pay-as-you-go payments.'
                       }
                     </p>
+                    
+                    {/* Add option for verified businesses to connect their account */}
+                    {(userData as any)?.trolleyBankAccountStatus !== 'verified' && (
+                      <div className="mt-4 pt-4 border-t border-zinc-700">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm text-zinc-300 font-medium">Have a verified Trolley account?</span>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => setShowVerifiedForm(!showVerifiedForm)}
+                            className="text-zinc-300 border-zinc-600 hover:bg-zinc-700"
+                          >
+                            Connect Verified Account
+                          </Button>
+                        </div>
+                        
+                        {showVerifiedForm && (
+                          <div className="mt-3 p-3 bg-zinc-700 rounded-lg border border-zinc-600">
+                            <p className="text-xs text-zinc-400 mb-3">
+                              If you already have a verified Trolley business account, you can connect it directly using your API credentials.
+                            </p>
+                            <div className="space-y-3">
+                              <div>
+                                <Label htmlFor="access-key-main" className="text-zinc-300 text-xs">
+                                  Trolley Access Key
+                                </Label>
+                                <Input
+                                  id="access-key-main"
+                                  type="text"
+                                  placeholder="Enter your Trolley access key"
+                                  value={trolleyAccessKey}
+                                  onChange={(e) => setTrolleyAccessKey(e.target.value)}
+                                  className="bg-zinc-600 border-zinc-500 text-white placeholder:text-zinc-400 mt-1 text-sm"
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="secret-key-main" className="text-zinc-300 text-xs">
+                                  Trolley Secret Key
+                                </Label>
+                                <Input
+                                  id="secret-key-main"
+                                  type="password"
+                                  placeholder="Enter your Trolley secret key"
+                                  value={trolleySecretKey}
+                                  onChange={(e) => setTrolleySecretKey(e.target.value)}
+                                  className="bg-zinc-600 border-zinc-500 text-white placeholder:text-zinc-400 mt-1 text-sm"
+                                />
+                              </div>
+                              <div className="flex gap-2">
+                                <Button 
+                                  onClick={handleVerifiedAccountSetup}
+                                  disabled={setupProfileMutation.isPending || !trolleyAccessKey || !trolleySecretKey}
+                                  className="bg-green-600 hover:bg-green-700 text-white flex-1"
+                                  size="sm"
+                                >
+                                  {setupProfileMutation.isPending ? (
+                                    <>
+                                      <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2" />
+                                      Connecting...
+                                    </>
+                                  ) : (
+                                    'Connect Account'
+                                  )}
+                                </Button>
+                                <Button 
+                                  variant="outline"
+                                  onClick={() => {
+                                    setShowVerifiedForm(false);
+                                    setTrolleyAccessKey('');
+                                    setTrolleySecretKey('');
+                                  }}
+                                  className="text-zinc-300 border-zinc-500"
+                                  size="sm"
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
