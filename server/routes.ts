@@ -4967,19 +4967,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`Generating Trolley business widget for: ${user.email}`);
 
-      // For existing business account, generate business widget URL directly
+      // Generate business widget URL that works for any existing business account
       const timestamp = Math.floor(Date.now() / 1000);
       const queryParams = new URLSearchParams({
         ts: timestamp.toString(),
         key: process.env.TROLLEY_API_KEY!,
         email: user.email,
         products: 'tax,pay,banking',
-        locale: 'en',
-        business_id: '86'  // Your existing business ID
+        locale: 'en'
+        // Don't include business_id - let Trolley look up by email
       });
       
       const queryString = queryParams.toString();
-      const signature = require('crypto').createHmac('sha256', process.env.TROLLEY_API_SECRET!)
+      const crypto = await import('crypto');
+      const signature = crypto.createHmac('sha256', process.env.TROLLEY_API_SECRET!)
         .update(queryString)
         .digest('hex');
       
