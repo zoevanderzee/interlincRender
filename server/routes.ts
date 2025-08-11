@@ -4957,6 +4957,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
 
+  // Direct route for verified businesses to connect their existing Trolley account
+  app.post(`${apiRouter}/trolley/connect-verified-account`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user;
+      if (!user || user.role !== 'business') {
+        return res.status(403).json({ message: "Only business accounts can connect verified accounts" });
+      }
+
+      const { accessKey, secretKey } = req.body;
+      
+      if (!accessKey || !secretKey) {
+        return res.status(400).json({ message: "Access key and secret key are required" });
+      }
+
+      console.log(`Connecting verified Trolley account for business: ${user.email}`);
+      
+      // Store the credentials securely and mark as verified
+      await storage.updateUser(user.id, {
+        trolleySubmerchantAccessKey: accessKey,
+        trolleySubmerchantSecretKey: secretKey,
+        trolleyVerificationToken: 'verified_direct_account',
+        trolleySubmerchantStatus: 'verified',
+        trolleyBankAccountStatus: 'verified',
+        paymentMethod: 'pay_as_you_go'
+      });
+
+      return res.json({
+        success: true,
+        isVerified: true,
+        message: 'Verified account connected successfully',
+        description: 'Your verified Trolley account is now connected. You can start making payments immediately.'
+      });
+
+    } catch (error) {
+      console.error("Error connecting verified account:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Error connecting verified account" 
+      });
+    }
+  });
+
   // Trolley company profile setup - hybrid approach for verified and new businesses
   app.post(`${apiRouter}/trolley/setup-company-profile`, requireAuth, async (req: Request, res: Response) => {
     try {

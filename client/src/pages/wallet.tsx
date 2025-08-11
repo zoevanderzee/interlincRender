@@ -63,10 +63,37 @@ export default function WalletPage() {
       return;
     }
     
-    setupProfileMutation.mutate({
-      accessKey: trolleyAccessKey,
-      secretKey: trolleySecretKey
-    });
+    try {
+      const response = await apiRequest("POST", "/api/trolley/connect-verified-account", {
+        accessKey: trolleyAccessKey,
+        secretKey: trolleySecretKey
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        toast({
+          title: "Account Connected!",
+          description: result.description,
+        });
+        
+        // Invalidate all relevant queries to refresh data
+        invalidateFinancialData();
+        invalidateUserData();
+      } else {
+        toast({
+          title: "Connection Failed",
+          description: result.message,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Connection Failed",
+        description: "Failed to connect your verified account. Please check your credentials.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Get current user data for bank account status
@@ -211,8 +238,9 @@ export default function WalletPage() {
     );
   }
 
-  // Check if user needs Trolley onboarding
-  const needsOnboarding = balanceError && (balanceError as any)?.status === 400;
+  // Check if user needs Trolley onboarding - either error or no account setup
+  const needsOnboarding = (balanceError && (balanceError as any)?.status === 400) || 
+                          (!userData?.trolleySubmerchantId && !userData?.trolleyVerificationToken);
 
   if (needsOnboarding) {
     return (
