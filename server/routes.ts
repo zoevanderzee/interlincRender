@@ -4967,38 +4967,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`Generating Trolley business widget for: ${user.email}`);
 
-      // Use Trolley's business verification widget - this is the standard approach
-      const apiKey = process.env.TROLLEY_API_KEY;
-      const apiSecret = process.env.TROLLEY_API_SECRET;
-      
-      if (!apiKey || !apiSecret) {
-        throw new Error('Trolley credentials not configured');
-      }
+      // Use the existing working widget generation that already works!
+      const widgetUrl = trolleyService.generateWidgetUrlForExisting(user.email);
 
-      // EXACT Trolley business widget - same as successful integrations
-      const timestamp = Math.floor(Date.now() / 1000);
-      
-      // Simple business widget parameters (no refid = existing account support)
-      const widgetParams = {
-        ts: timestamp.toString(),
-        key: apiKey,
-        email: user.email,
-        locale: 'en'
-      };
-
-      const queryString = Object.entries(widgetParams)
-        .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
-        .join('&');
-      
-      // Standard HMAC signature
-      const signature = nodeCrypto
-        .createHmac('sha256', apiSecret)
-        .update(queryString)
-        .digest('hex');
-
-      const widgetUrl = `https://widget.trolley.com?${queryString}&sign=${signature}`;
-
-      console.log(`Generated business widget URL for ${user.email}`);
+      console.log(`Generated business widget URL using existing service`);
 
       res.json({
         success: true,
