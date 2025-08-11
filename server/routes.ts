@@ -5007,7 +5007,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!result.success) {
         return res.status(500).json({
           success: false,
-          message: result.error || 'Failed to create sub-merchant account'
+          message: result.error || 'Failed to create business payment account'
         });
       }
 
@@ -5026,14 +5026,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true,
         submerchantId: result.submerchantId,
         status: result.status,
-        message: 'Sub-merchant account created successfully'
+        message: 'Business payment account created successfully'
       });
 
     } catch (error) {
       console.error("Error creating sub-merchant:", error);
       res.status(500).json({ 
         success: false, 
-        message: "Error creating sub-merchant account" 
+        message: "Error creating business payment account" 
       });
     }
   });

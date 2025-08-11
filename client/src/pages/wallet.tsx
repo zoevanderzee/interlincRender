@@ -85,8 +85,8 @@ export default function WalletPage() {
     onSuccess: (data) => {
       if (data.success && data.submerchantId) {
         toast({
-          title: "Sub-merchant Account Created",
-          description: "Your business account has been successfully created with Trolley. You can now accept payments.",
+          title: "Business Payment Account Created",
+          description: "Your business payment account has been successfully created with Trolley. You can now make payments to contractors and freelancers.",
         });
       } else if (data.success && data.message) {
         toast({
@@ -101,7 +101,7 @@ export default function WalletPage() {
     onError: (error: any) => {
       toast({
         title: "Setup Failed",
-        description: error.message || "Failed to create sub-merchant account",
+        description: error.message || "Failed to create business payment account",
         variant: "destructive",
       });
     },
