@@ -4991,8 +4991,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .join('&');
       
       // Standard HMAC signature
-      const crypto = require('crypto');
-      const signature = crypto
+      const signature = nodeCrypto
         .createHmac('sha256', apiSecret)
         .update(queryString)
         .digest('hex');
