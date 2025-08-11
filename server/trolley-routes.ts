@@ -620,23 +620,58 @@ export default function trolleyRoutes(app: Express, apiPath: string, authMiddlew
         return res.status(403).json({ message: 'Only business accounts can sync Trolley status' });
       }
 
-      // Since Trolley widget shows you're approved, update both status and set a company profile ID
-      const profileId = `approved_${userId}_${Date.now()}`;
-      await db.update(users)
-        .set({ 
-          trolleySubmerchantStatus: 'approved',
-          trolleyCompanyProfileId: profileId
-        })
-        .where(eq(users.id, userId));
+      // ACTUALLY check with Trolley API to verify account status
+      console.log(`Checking real Trolley account status for: ${user.email}`);
       
-      console.log(`Updated user ${userId} with trolleyCompanyProfileId: ${profileId}`);
-      
-      res.json({
-        success: true,
-        message: 'Trolley status updated to approved',
-        status: 'approved',
-        note: 'Updated based on Trolley widget confirmation that email already exists'
-      });
+      try {
+        // Use Trolley API to find the business account by email
+        const recipients = await trolleySdk.client.recipient.search({
+          term: user.email,
+          type: 'business'
+        });
+        
+        if (recipients && recipients.length > 0) {
+          const business = recipients[0];
+          const businessId = business.id;
+          const status = business.status;
+          
+          console.log(`Found Trolley business:`, { id: businessId, status, email: user.email });
+          
+          // Update with REAL Trolley business ID and status
+          await db.update(users)
+            .set({ 
+              trolleySubmerchantStatus: status,
+              trolleyCompanyProfileId: businessId.toString(),
+              trolleyVerificationStatus: status === 'active' ? 'approved' : 'pending'
+            })
+            .where(eq(users.id, userId));
+          
+          console.log(`Updated user ${userId} with REAL Trolley business ID: ${businessId}`);
+          
+          res.json({
+            success: true,
+            message: `Account verification synced from Trolley`,
+            status: status,
+            businessId: businessId,
+            isVerified: status === 'active'
+          });
+        } else {
+          // Account not found in Trolley
+          console.log(`No Trolley business account found for: ${user.email}`);
+          res.json({
+            success: false,
+            message: 'No Trolley business account found. Please complete verification first.',
+            status: 'not_found'
+          });
+        }
+      } catch (trolleyError) {
+        console.error('Error checking Trolley business status:', trolleyError);
+        res.status(500).json({
+          success: false,
+          message: 'Failed to verify account with Trolley API',
+          error: trolleyError instanceof Error ? trolleyError.message : 'Unknown error'
+        });
+      }
 
     } catch (error) {
       console.error('Error syncing Trolley status:', error);
