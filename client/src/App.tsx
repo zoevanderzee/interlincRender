@@ -81,6 +81,11 @@ function Router() {
             return <VerifyEmailCallback />;
           }
           
+          // If this is a Firebase password reset link, handle it
+          if (mode === 'resetPassword' && oobCode) {
+            return <ResetPasswordPage />;
+          }
+          
           // Otherwise show normal protected route
           return (
             <ProtectedRoute path="/">
