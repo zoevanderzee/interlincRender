@@ -32,11 +32,17 @@ export default function ResetPasswordPage() {
   const params = new URLSearchParams(window.location.search);
   const mode = params.get("mode");
   const oobCode = params.get("oobCode") || "";
+  const apiKey = params.get("apiKey");
   const continueUrl = params.get("continueUrl") || "/auth";
   
   // Verify the reset code when component mounts
   useEffect(() => {
-    console.log("Reset password page params:", { mode, oobCode: oobCode ? 'present' : 'missing' });
+    console.log("Reset password page params:", { 
+      mode, 
+      oobCode: oobCode ? 'present' : 'missing',
+      apiKey: apiKey ? 'present' : 'missing',
+      continueUrl 
+    });
     
     if (mode !== "resetPassword" || !oobCode) {
       console.log("Invalid parameters - mode:", mode, "oobCode:", oobCode ? 'present' : 'missing');
@@ -45,6 +51,12 @@ export default function ResetPasswordPage() {
     }
     
     console.log("Attempting to verify Firebase reset code...");
+    console.log("Using Firebase config:", {
+      apiKey: auth.config.apiKey,
+      authDomain: auth.config.authDomain,
+      projectId: auth.config.projectId
+    });
+    
     verifyPasswordResetCode(auth, oobCode)
       .then((userEmail) => {
         console.log("Firebase reset code verified for email:", userEmail);
@@ -53,9 +65,11 @@ export default function ResetPasswordPage() {
       })
       .catch((error) => {
         console.error("Firebase reset code verification failed:", error);
+        console.error("Error code:", error.code);
+        console.error("Error message:", error.message);
         setState("invalid");
       });
-  }, [auth, mode, oobCode]);
+  }, [auth, mode, oobCode, apiKey]);
   
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
