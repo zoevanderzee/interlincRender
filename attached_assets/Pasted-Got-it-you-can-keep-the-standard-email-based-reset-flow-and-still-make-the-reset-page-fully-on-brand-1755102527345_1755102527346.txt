@@ -1,0 +1,93 @@
+Got it—you can keep the standard email-based reset flow and still make the reset page fully on-brand. The trick is: keep Firebase sending the email, but change the link target to your own branded reset page, which uses the Firebase token under the hood.
+Here’s exactly what to do.
+
+1) Keep email, change its link
+Firebase Console → Authentication → Templates → Password reset
+Set the action link to:
+https://creativlinc.app/reset-password?mode=resetPassword&oobCode=code&continueUrl=https%3A%2F%2Fcreativlinc.app%2Fauth
+Also add creativlinc.app (and your dev domain) under Authentication → Settings → Authorized domains.
+2) Build your branded reset page
+Create /reset-password in your app. It verifies the oobCode from the email and sets the new password—styled to your brand.
+React/TypeScript skeleton (drop-in):
+
+import { useEffect, useState } from "react";
+import { getAuth, verifyPasswordResetCode, confirmPasswordReset } from "firebase/auth";
+
+export default function ResetPassword() {
+  const auth = getAuth();
+  const params = new URLSearchParams(window.location.search);
+  const mode = params.get("mode");
+  const oobCode = params.get("oobCode") || "";
+  const continueUrl = params.get("continueUrl") || "/auth";
+
+  const [email, setEmail] = useState<string>("");
+  const [pwd1, setPwd1] = useState("");
+  const [pwd2, setPwd2] = useState("");
+  const [state, setState] = useState<"checking"|"ready"|"done"|"invalid"|"error">("checking");
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    if (mode !== "resetPassword" || !oobCode) { setState("invalid"); return; }
+    verifyPasswordResetCode(auth, oobCode)
+      .then((em) => { setEmail(em); setState("ready"); })
+      .catch(() => setState("invalid"));
+  }, [auth, mode, oobCode]);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (pwd1 !== pwd2) return setErr("Passwords do not match.");
+    try {
+      await confirmPasswordReset(auth, oobCode, pwd1);
+      setState("done");
+      window.location.assign(continueUrl);
+    } catch (e: any) {
+      setErr("Could not update password. Please request a new link.");
+      setState("error");
+    }
+  }
+
+  if (state === "checking") return <Shell>Checking link…</Shell>;
+  if (state === "invalid")  return <Shell>Link invalid or expired. Request a new one.</Shell>;
+  if (state === "done")     return <Shell>Password updated. Redirecting…</Shell>;
+
+  return (
+    <Shell>
+      <Header title="Reset your password" subtitle={email ? `for ${email}` : ""} />
+      <form onSubmit={submit} className="max-w-md space-y-4">
+        <Input type="password" label="New password" value={pwd1} onChange={setPwd1} />
+        <Input type="password" label="Confirm password" value={pwd2} onChange={setPwd2} />
+        {err && <p className="text-red-600 text-sm">{err}</p>}
+        <Button>Update password</Button>
+      </form>
+    </Shell>
+  );
+}
+
+/* Replace these with your design system */
+function Shell({ children }: { children: any }) {
+  return <div className="min-h-screen bg-neutral-50 text-neutral-900">
+    <div className="mx-auto max-w-3xl px-6 py-12">
+      <a href="/" className="inline-flex items-center gap-2 mb-6">
+        <div className="h-6 w-6 rounded-md bg-black" />
+        <span className="font-semibold">Creativ Linc</span>
+      </a>
+      <div className="rounded-2xl bg-white p-8 shadow">{children}</div>
+      <p className="mt-8 text-xs text-neutral-500">© Creativ Linc</p>
+    </div>
+  </div>;
+}
+function Header({ title, subtitle }: { title: string; subtitle?: string }) {
+  return (<div><h1 className="text-2xl font-semibold">{title}</h1>
+    {subtitle && <p className="text-sm text-neutral-500 mt-1">{subtitle}</p>}</div>);
+}
+function Input(props: any) {
+  return (<label className="block">
+    <span className="text-sm">{props.label}</span>
+    <input {...props} onChange={(e)=>props.onChange(e.target.value)}
+      className="mt-1 w-full rounded-xl border px-3 py-2" />
+  </label>);
+}
+function Button({ children }: { children: any }) {
+  return <button className="w-full rounded-xl bg-black px-4 py-2 font-semibold text-white">{children}</button>;
+}
+Brand it with your fonts, colors, and layout.
