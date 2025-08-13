@@ -53,8 +53,7 @@ export default function ResetPasswordPage() {
     console.log("Attempting to verify Firebase reset code...");
     console.log("Using Firebase config:", {
       apiKey: auth.config.apiKey,
-      authDomain: auth.config.authDomain,
-      projectId: auth.config.projectId
+      authDomain: auth.config.authDomain
     });
     
     verifyPasswordResetCode(auth, oobCode)
