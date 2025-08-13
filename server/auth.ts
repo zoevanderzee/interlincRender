@@ -561,6 +561,46 @@ export function setupAuth(app: Express) {
     });
   });
 
+  // Password sync route - for Firebase password reset integration
+  app.post("/api/sync-password-reset", async (req, res) => {
+    try {
+      const { email, newPassword } = req.body;
+
+      if (!email || !newPassword) {
+        return res.status(400).json({ message: "Email and new password are required" });
+      }
+
+      console.log("Syncing password reset for email:", email);
+
+      // Find user by email
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Hash the new password using the same method as registration
+      const hashedPassword = await hashPassword(newPassword);
+
+      // Update the user's password in the database
+      await storage.updateUser(user.id, {
+        password: hashedPassword
+      });
+
+      console.log("Password successfully updated in database for user:", user.id);
+
+      res.json({ 
+        message: "Password updated successfully" 
+      });
+
+    } catch (error: any) {
+      console.error("Password sync error:", error);
+      res.status(500).json({ 
+        message: "Failed to update password", 
+        error: error.message 
+      });
+    }
+  });
+
   // Get current user route - Updated for Firebase Auth
   app.get("/api/user", async (req, res) => {
     console.log("Auth check for session:", req.sessionID, "Authenticated:", req.isAuthenticated());

@@ -89,7 +89,31 @@ export default function ResetPasswordPage() {
     setError("");
     
     try {
+      // First, reset the Firebase password
+      console.log("Updating Firebase password...");
       await confirmPasswordReset(auth, oobCode, password);
+      console.log("Firebase password updated successfully");
+      
+      // Now sync the new password to our PostgreSQL database
+      console.log("Syncing new password to database for email:", email);
+      const syncResponse = await fetch("/api/sync-password-reset", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email,
+          newPassword: password,
+        }),
+      });
+      
+      if (!syncResponse.ok) {
+        const syncError = await syncResponse.json();
+        console.error("Database password sync failed:", syncError);
+        throw new Error(syncError.message || "Failed to sync password to database");
+      }
+      
+      console.log("Password successfully synced to database");
       setState("done");
       
       toast({
@@ -105,12 +129,12 @@ export default function ResetPasswordPage() {
       
     } catch (error: any) {
       console.error("Password reset error:", error);
-      setError("Could not update password. Please request a new reset link.");
+      setError(error.message || "Could not update password. Please request a new reset link.");
       setState("error");
       
       toast({
         title: "Password Reset Failed",
-        description: "Could not update password. Please request a new reset link.",
+        description: error.message || "Could not update password. Please request a new reset link.",
         variant: "destructive",
       });
     } finally {
