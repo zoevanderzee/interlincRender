@@ -36,17 +36,25 @@ export default function ResetPasswordPage() {
   
   // Verify the reset code when component mounts
   useEffect(() => {
+    console.log("Reset password page params:", { mode, oobCode: oobCode ? 'present' : 'missing' });
+    
     if (mode !== "resetPassword" || !oobCode) {
+      console.log("Invalid parameters - mode:", mode, "oobCode:", oobCode ? 'present' : 'missing');
       setState("invalid");
       return;
     }
     
+    console.log("Attempting to verify Firebase reset code...");
     verifyPasswordResetCode(auth, oobCode)
       .then((userEmail) => {
+        console.log("Firebase reset code verified for email:", userEmail);
         setEmail(userEmail);
         setState("ready");
       })
-      .catch(() => setState("invalid"));
+      .catch((error) => {
+        console.error("Firebase reset code verification failed:", error);
+        setState("invalid");
+      });
   }, [auth, mode, oobCode]);
   
   // Handle form submission
