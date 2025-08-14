@@ -272,9 +272,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Quick login helper for development
+  app.get('/login-helper', (req: Request, res: Response) => {
+    res.sendFile(path.join(__dirname, '../login-helper.html'));
+  });
 
-
-
+  // Admin endpoint to create session for testing
+  app.post(`${apiRouter}/admin/create-session`, async (req: Request, res: Response) => {
+    try {
+      const { email } = req.body;
+      if (email !== 'zoevdzee@creativlinc.co.uk') {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+      
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      
+      // Create session
+      req.session.userId = user.id;
+      req.session.save((err) => {
+        if (err) {
+          console.error('Session save error:', err);
+          return res.status(500).json({ error: 'Session creation failed' });
+        }
+        res.json({ message: 'Session created successfully', userId: user.id });
+      });
+    } catch (error) {
+      console.error('Admin session creation error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
 
   // Public routes are defined above (login, register) in the auth.ts file
   

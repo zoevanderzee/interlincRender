@@ -49,15 +49,15 @@ export function setupAuth(app: Express) {
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || 'creativlinc-secret-key',
     resave: false,
-    saveUninitialized: true, // Save empty sessions to establish cookies
+    saveUninitialized: false, // Don't save empty sessions
     name: 'creativlinc.sid',
     rolling: false, // Don't extend session on each request to avoid issues
     cookie: {
-      secure: false,
+      secure: false, // Must be false for development
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
-      httpOnly: false,
-      sameSite: 'lax',
-      path: '/',
+      httpOnly: false, // Allow JS access for debugging
+      sameSite: 'lax', // Standard for same-origin requests
+      path: '/', // Available for entire site
     },
     // Use the storage implementation's session store
     store: storage.sessionStore
@@ -81,10 +81,25 @@ export function setupAuth(app: Express) {
   // Don't clear sessions on startup anymore to maintain user sessions
   console.log('Session store initialized, keeping existing sessions');
 
-  // Trust proxy for Replit environment
+  // Configure Express to trust proxy headers in all environments
+  // This is needed for cookies to work properly in Replit
   app.set("trust proxy", 1);
   
-
+  // Add CORS headers for cookie support - only for development cross-origin requests
+  if (process.env.NODE_ENV === 'development') {
+    app.use((req, res, next) => {
+      res.header('Access-Control-Allow-Origin', req.headers.origin);
+      res.header('Access-Control-Allow-Credentials', 'true');
+      res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization');
+      
+      if (req.method === 'OPTIONS') {
+        res.sendStatus(200);
+      } else {
+        next();
+      }
+    });
+  }
 
   // Setup session middleware
   app.use(session(sessionSettings));
@@ -109,7 +124,9 @@ export function setupAuth(app: Express) {
         if (!user.password) {
           console.log(`User has no password set: ${username}`);
           return done(null, false, { 
-            message: "Password required. Please reset your password to continue."
+            message: "Password required. Please reset your password to continue.",
+            needsPasswordSetup: true,
+            email: user.email
           });
         }
         
@@ -122,7 +139,9 @@ export function setupAuth(app: Express) {
         // Check if email is verified
         if (user.emailVerified === false) {
           return done(null, false, { 
-            message: "Please verify your email before logging in."
+            message: "Please verify your email before logging in.",
+            requiresEmailVerification: true,
+            email: user.email
           });
         }
         
@@ -135,7 +154,7 @@ export function setupAuth(app: Express) {
 
   // Configure how users are stored in the session
   passport.serializeUser((user, done) => {
-    console.log(`🔐 SERIALIZE: Storing user ID ${user.id} in session`);
+    console.log("Serializing user:", user.id);
     done(null, user.id);
   });
   
@@ -144,16 +163,16 @@ export function setupAuth(app: Express) {
     try {
       // If id is undefined or null, return undefined
       if (id === undefined || id === null) {
-        console.log("🔐 DESERIALIZE: undefined/null user ID");
+        console.log("Deserializing with undefined/null user ID");
         return done(null, undefined);
       }
       
-      console.log(`🔐 DESERIALIZE: Looking up user ID ${id}`);
+      console.log("Deserializing user with ID:", id);
       const user = await storage.getUser(id);
       
       // If no user found, return undefined instead of null
       if (!user) {
-        console.log(`🔐 DESERIALIZE: No user found with ID: ${id}`);
+        console.log(`No user found with ID: ${id}`);
         return done(null, undefined);
       }
       
@@ -337,7 +356,9 @@ export function setupAuth(app: Express) {
 
       // Handle project-specific invitation
       if (invite) {
-        await storage.updateInvite(invite.id, {});
+        await storage.updateInvite(invite.id, { 
+          status: 'accepted'
+        });
         
         // If the invite is associated with a contract, create one automatically
         if (invite.projectId && invite.contractDetails) {
@@ -362,8 +383,16 @@ export function setupAuth(app: Express) {
         
         // Send a welcome email to the newly registered user
         try {
+          const { sendContractCreatedEmail } = await import('./services/email');
           const appUrl = `${req.protocol}://${req.get('host')}`;
-          // Email notifications available but not critical for login flow
+          
+          await sendContractCreatedEmail({
+            contractName: invite.projectName,
+            contractCode: `${invite.projectName.substring(0, 3).toUpperCase()}-${Date.now().toString().substring(9)}`,
+            value: invite.paymentAmount || '0',
+            startDate: new Date(),
+            endDate: new Date(new Date().setMonth(new Date().getMonth() + 3))
+          }, user.email, appUrl);
         } catch (emailError) {
           console.error('Failed to send welcome email:', emailError);
           // Continue with login even if email fails
@@ -378,10 +407,20 @@ export function setupAuth(app: Express) {
           
           // Send welcome email to the newly registered contractor
           try {
+            const { sendEmail } = await import('./services/email');
             const business = await storage.getUser(businessInfo.businessId);
             const businessName = business ? (business.companyName || `${business.firstName || ''} ${business.lastName || ''}`).trim() : "Your client";
             const appUrl = `${req.protocol}://${req.get('host')}`;
-            // Email notifications available but not critical for registration flow
+            
+            await sendEmail({
+              to: user.email,
+              subject: `Welcome to ${businessName}'s Team on Creativ Linc`,
+              text: `Welcome to Creativ Linc!\n\n${businessName} has invited you to join their team as a ${businessInfo.workerType || 'contractor'}. You can now login to view your projects and contracts.\n\nVisit ${appUrl} to get started.`,
+              html: `<h1>Welcome to Creativ Linc!</h1>
+                     <p><strong>${businessName}</strong> has invited you to join their team as a ${businessInfo.workerType || 'contractor'}.</p>
+                     <p>You can now login to view your projects and contracts.</p>
+                     <p><a href="${appUrl}" style="background-color: #000; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">Get Started</a></p>`
+            });
           } catch (emailError) {
             console.error('Failed to send welcome email:', emailError);
             // Continue with login even if email fails
@@ -602,35 +641,23 @@ export function setupAuth(app: Express) {
     }
   });
 
-  // Get current user route - FIXED for session persistence
+  // Get current user route - Updated for Firebase Auth
   app.get("/api/user", async (req, res) => {
-    console.log(`=== USER SESSION CHECK ===`);
-    console.log(`Session ID: ${req.sessionID}`);
-    console.log(`Authenticated: ${req.isAuthenticated()}`);
-    console.log(`User in session: ${req.user?.id || 'none'}`);
-    console.log(`Cookie header: ${req.headers.cookie?.includes('creativlinc.sid') ? 'PRESENT' : 'MISSING'}`);
+    console.log("Auth check for session:", req.sessionID, "Authenticated:", req.isAuthenticated());
+    
+    // Log request headers for debugging
+    console.log("User API request headers:", {
+      cookie: req.headers.cookie,
+      'user-agent': req.headers['user-agent'],
+      'x-user-id': req.headers['x-user-id'],
+      'x-firebase-uid': req.headers['x-firebase-uid']
+    });
     
     // Priority 1: Check if user is authenticated via PostgreSQL session
-    if (req.isAuthenticated() && req.user) {
-      try {
-        // Fetch fresh user data to ensure latest Trolley details are included
-        const freshUser = await storage.getUser(req.user.id);
-        if (!freshUser) {
-          console.log(`❌ Session user not found in database: ${req.user.id}`);
-          return res.status(404).json({ error: "User not found" });
-        }
-        
-        console.log(`✅ Session auth successful: ${freshUser.username} (${freshUser.email})`);
-        console.log(`✅ Trolley recipient ID: ${freshUser.trolleyRecipientId || 'none'}`);
-        console.log(`✅ Bank account verified: ${freshUser.trolleyBankAccountStatus === 'verified' ? 'YES' : 'NO'}`);
-        
-        // Return fresh user info without the password - this ensures Trolley details persist
-        const { password, ...userInfo } = freshUser;
-        return res.json(userInfo);
-      } catch (error) {
-        console.error('Error fetching fresh user data from session:', error);
-        return res.status(500).json({ error: "Error fetching user data" });
-      }
+    if (req.isAuthenticated()) {
+      // Return user info without the password
+      const { password, ...userInfo } = req.user as Express.User;
+      return res.json(userInfo);
     }
     
     // Priority 2: Check for Firebase UID header (Firebase Auth)
@@ -669,7 +696,6 @@ export function setupAuth(app: Express) {
     }
     
     // If all authentication methods fail
-    console.log(`❌ All authentication methods failed`);
     return res.status(401).json({ error: "Not authenticated" });
   });
 
