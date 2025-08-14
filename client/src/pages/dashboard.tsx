@@ -10,7 +10,8 @@ import {
   Coins, 
   Loader2,
   Clock,
-  Calendar
+  Calendar,
+  Settings
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Contract, User, Payment, Milestone } from "@shared/schema";
@@ -228,7 +229,7 @@ const Dashboard = () => {
         </div>
         
         {/* Quick Actions for Contractors */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           {/* Assignments */}
           <Button 
             variant="outline"
@@ -252,6 +253,19 @@ const Dashboard = () => {
             <div className="text-left">
               <div className="font-medium">Payments</div>
               <div className="text-xs text-gray-400">View payment history</div>
+            </div>
+          </Button>
+
+          {/* Payment Setup */}
+          <Button 
+            variant="outline"
+            className="text-white border-zinc-700 hover:bg-zinc-800 hover:text-white h-auto py-3 justify-start"
+            onClick={() => navigate('/payment-setup')}
+          >
+            <Settings className="mr-3" size={18} />
+            <div className="text-left">
+              <div className="font-medium">Payment Setup</div>
+              <div className="text-xs text-gray-400">Configure payout details</div>
             </div>
           </Button>
           

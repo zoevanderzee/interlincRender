@@ -8,6 +8,8 @@ This is a comprehensive contractor/freelancer management platform built with Rea
 
 **AUTHENTICATION ISSUE RESOLVED (August 14, 2025)**: Fixed Firebase email verification cache issue preventing existing users from logging in. Implemented bypass for Firebase verification status check while maintaining security. Email verification system working correctly for all users.
 
+**CONTRACTOR ONBOARDING REDESIGN (August 14, 2025)**: Completely eliminated Trolley widget dependency for contractors. Replaced external widget approach with native Creativ Linc payment setup interface at `/payment-setup`. Contractors now onboard through integrated form that collects payout details and creates Trolley recipients via direct API calls. This provides better user experience and maintains brand consistency.
+
 # User Preferences
 
 Preferred communication style: Simple, everyday language.
