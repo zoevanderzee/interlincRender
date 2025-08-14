@@ -256,30 +256,43 @@ class TrolleyService {
   }
 
   /**
-   * Fund wallet from linked business bank account
-   * This triggers a bank transfer from the verified business account to Trolley balance
+   * Get funding instructions for business wallet
+   * Returns bank details and steps for manual bank transfer
    */
-  async fundWallet(amount: number, currency: string = 'GBP'): Promise<{
-    success: boolean;
-    message?: string;
-    error?: string;
-    details?: any;
+  async getFundingInstructions(): Promise<{
+    accountName: string;
+    accountNumber: string;
+    sortCode: string;
+    reference: string;
   }> {
     try {
-      // For Trolley, wallet funding is done through bank transfers initiated by the business
-      // The API doesn't have a direct "fund wallet" endpoint - funding is done externally
-      // However, we can provide proper instructions for the funding process
-      
+      // Call Trolley API to get funding instructions
+      const path = '/v1/funding/bank-transfer-info';
+      const response = await fetch(`${this.baseUrl}${path}`, {
+        method: 'GET',
+        headers: this.getAuthHeaders('GET', path)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to get funding instructions: ${response.status}`);
+      }
+
+      const data = await response.json();
       return {
-        success: false,
-        error: `Wallet funding requires a bank transfer to your Trolley business account. Please initiate a bank transfer of £${amount} to your verified Trolley business account using your banking platform. Include your Trolley reference number in the transfer memo.`
+        accountName: data.accountName || 'Trolley Inc',
+        accountNumber: data.accountNum || 'Contact Trolley Support',
+        sortCode: data.routingNumber || 'Contact Trolley Support',
+        reference: data.referenceMemo || 'Your Recipient ID'
       };
       
     } catch (error) {
-      console.error('Error in fundWallet:', error);
+      console.error('Error getting funding instructions:', error);
+      // Return fallback instructions
       return {
-        success: false,
-        error: 'Failed to initiate wallet funding process'
+        accountName: 'Trolley Inc',
+        accountNumber: 'Contact Trolley Support for Details',
+        sortCode: 'Contact Trolley Support for Details', 
+        reference: 'Use your Recipient ID as reference'
       };
     }
   }

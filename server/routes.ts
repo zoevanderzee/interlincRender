@@ -4891,20 +4891,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { trolleyService } = await import('./trolley-service');
       
       try {
-        // Call Trolley funding API - this triggers bank transfer from linked business account
-        const result = await trolleyService.fundWallet(amount, 'GBP');
+        // Get Trolley funding instructions - bank details for manual transfer
+        const fundingInstructions = await trolleyService.getFundingInstructions();
         
-        if (!result.success) {
-          console.error(`❌ LIVE TRANSFER FAILED: ${result.error}`);
-          return res.status(400).json({ message: result.error });
-        }
-
-        console.log(`✅ LIVE TRANSFER SUCCESS: ${result.message}`);
+        const instructions = {
+          amount: amount,
+          currency: 'GBP',
+          recipientId: user.trolleyRecipientId,
+          steps: [
+            '1. Log into your business bank account',
+            '2. Set up a new payee with these Trolley bank details:',
+            `   • Account Name: ${fundingInstructions.accountName}`,
+            `   • Account Number: ${fundingInstructions.accountNumber}`, 
+            `   • Sort Code: ${fundingInstructions.sortCode}`,
+            `   • Reference: ${user.trolleyRecipientId || 'Your Recipient ID'}`,
+            `3. Send a bank transfer of £${amount}`,
+            '4. Your Trolley balance will update within 1-3 business days',
+            '5. You can then pay contractors directly from your wallet'
+          ],
+          important: 'CRITICAL: You MUST include your Recipient ID in the bank transfer reference'
+        };
         
         res.json({
           success: true,
-          message: `LIVE: £${amount} funding initiated from your verified business account`,
-          details: result.details
+          message: `Funding instructions for £${amount}`,
+          instructions: instructions
         });
         
       } catch (error: any) {
