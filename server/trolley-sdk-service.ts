@@ -374,7 +374,7 @@ class TrolleySdkService {
   }
 
   // Generate widget URL specifically for existing recipients (no refid)
-  generateWidgetUrlForExisting(recipientEmail: string): string {
+  generateWidgetUrlForExisting(recipientEmail: string, userType: 'individual' | 'business' = 'individual'): string {
     console.log(`Generating existing account widget URL for: ${recipientEmail}`);
     
     const apiKey = process.env.TROLLEY_API_KEY;
@@ -395,7 +395,7 @@ class TrolleySdkService {
       roEmail: 'false',
       locale: 'en',
       products: 'pay,tax',
-      type: 'business'  // This function is only for existing business users
+      type: userType  // Use the specified user type - default to 'individual' for contractors
     };
 
     // Create query string WITHOUT refid (this is key for existing accounts)

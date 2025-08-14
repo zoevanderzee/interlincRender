@@ -63,7 +63,8 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
       console.log(`Generating contractor widget for ${user.email} - using existing account flow`);
       
       // Use existing account widget (no refid) to allow setup completion for existing emails
-      const widgetUrl = trolleySdk.generateWidgetUrlForExisting(user.email);
+      // Contractors are recipients receiving payments, so use 'individual' type
+      const widgetUrl = trolleySdk.generateWidgetUrlForExisting(user.email, 'individual');
 
       res.json({
         widgetUrl,
