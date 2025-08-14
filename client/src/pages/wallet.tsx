@@ -542,12 +542,41 @@ export default function WalletPage() {
                       <p className="text-sm text-zinc-500">Direct payment from linked bank account when you approve milestones</p>
                       {(userData as any)?.trolleyBankAccountStatus === 'verified' && (
                         <p className="text-xs text-green-400 mt-1">
-                          ✓ Bank account ending in {(userData as any)?.trolleyBankAccountLast4} linked
+                          ✓ Bank account ending in {(userData as any)?.trolleyBankAccountLast4 || 'loading...'} linked
                         </p>
                       )}
                     </div>
                     {(userData as any)?.trolleyBankAccountStatus === 'verified' ? (
-                      <div className="text-sm text-green-400">Ready</div>
+                      <div className="flex items-center gap-2">
+                        <div className="text-sm text-green-400">Ready</div>
+                        {!(userData as any)?.trolleyBankAccountLast4 && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-xs text-zinc-300 border-zinc-600"
+                            onClick={async () => {
+                              try {
+                                const response = await apiRequest("POST", "/api/trolley/refresh-bank-account");
+                                if (response.ok) {
+                                  queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+                                  toast({
+                                    title: "Bank Account Refreshed",
+                                    description: "Live bank account data has been updated.",
+                                  });
+                                }
+                              } catch (error) {
+                                toast({
+                                  title: "Refresh Failed",
+                                  description: "Could not refresh bank account data.",
+                                  variant: "destructive",
+                                });
+                              }
+                            }}
+                          >
+                            Refresh
+                          </Button>
+                        )}
+                      </div>
                     ) : (
                       <Button 
                         variant="outline" 

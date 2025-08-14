@@ -131,16 +131,30 @@ export default function trolleyRoutes(app: Express, apiPath: string, authMiddlew
       const userData = user[0];
 
       if (status === 'approved' && company_id) {
+        // Fetch real bank account data from Trolley API
+        let realBankAccountLast4 = null;
+        try {
+          const { trolleyApi } = await import('./services/trolley-api');
+          const bankAccounts = await trolleyApi.getCompanyBankAccounts(company_id as string);
+          const primaryAccount = bankAccounts.find((account: any) => account.primary) || bankAccounts[0];
+          if (primaryAccount?.accountNumber) {
+            realBankAccountLast4 = primaryAccount.accountNumber.slice(-4);
+            console.log(`✅ LIVE BANK ACCOUNT VERIFIED: ${primaryAccount.bankName} ending in ${realBankAccountLast4}`);
+          }
+        } catch (apiError) {
+          console.log('⚠️ Could not fetch live bank account data, will update later:', apiError);
+        }
+
         // Update user with approved Trolley company profile
         await db.update(users).set({
           trolleyCompanyProfileId: company_id as string,
           trolleyVerificationStatus: 'approved',
           trolleyVerificationCompletedAt: new Date(),
           trolleyVerificationToken: null, // Clear token after use
-          // Automatically set bank account as verified since it's included in business verification
+          // Use real bank account data if available
           trolleyBankAccountStatus: 'verified',
           trolleyBankAccountId: 'verified',
-          trolleyBankAccountLast4: '****'
+          trolleyBankAccountLast4: realBankAccountLast4 || null // Store real last 4 digits or null
         }).where(eq(users.id, userData.id));
 
         // Redirect to success page
@@ -187,15 +201,31 @@ export default function trolleyRoutes(app: Express, apiPath: string, authMiddlew
           // Find user by reference ID (verification token)
           const approvedUser = await db.select().from(users).where(eq(users.trolleyVerificationToken, reference_id)).limit(1);
           if (approvedUser.length) {
+            // Fetch real bank account data from Trolley API
+            let realBankAccountLast4 = data.bank_account_last4;
+            if (!realBankAccountLast4) {
+              try {
+                const { trolleyApi } = await import('./services/trolley-api');
+                const bankAccounts = await trolleyApi.getCompanyBankAccounts(company_id);
+                const primaryAccount = bankAccounts.find((account: any) => account.primary) || bankAccounts[0];
+                if (primaryAccount?.accountNumber) {
+                  realBankAccountLast4 = primaryAccount.accountNumber.slice(-4);
+                  console.log(`✅ WEBHOOK: LIVE BANK ACCOUNT VERIFIED: ${primaryAccount.bankName} ending in ${realBankAccountLast4}`);
+                }
+              } catch (apiError) {
+                console.log('⚠️ Webhook: Could not fetch live bank account data:', apiError);
+              }
+            }
+
             await db.update(users).set({
               trolleyCompanyProfileId: company_id,
               trolleyVerificationStatus: 'approved',
               trolleyVerificationCompletedAt: new Date(),
               trolleyVerificationToken: null,
-              // Automatically set bank account as verified since it's included in business verification
+              // Use real bank account data
               trolleyBankAccountStatus: 'verified',
               trolleyBankAccountId: data.bank_account_id || 'verified',
-              trolleyBankAccountLast4: data.bank_account_last4 || '****'
+              trolleyBankAccountLast4: realBankAccountLast4 // Store real last 4 digits
             }).where(eq(users.id, approvedUser[0].id));
           }
           break;
@@ -215,6 +245,62 @@ export default function trolleyRoutes(app: Express, apiPath: string, authMiddlew
     } catch (error) {
       console.error('Error handling webhook:', error);
       res.status(500).json({ message: 'Webhook processing failed' });
+    }
+  });
+
+  // Refresh bank account data from live Trolley API
+  app.post(`${trolleyBasePath}/refresh-bank-account`, authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+
+      const userData = await storage.getUser(userId);
+      if (!userData) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      if (!userData.trolleyCompanyProfileId) {
+        return res.status(400).json({ message: 'No Trolley company profile found. Complete business verification first.' });
+      }
+
+      // Fetch real bank account data from Trolley API
+      try {
+        const { trolleyApi } = await import('./services/trolley-api');
+        const bankAccounts = await trolleyApi.getCompanyBankAccounts(userData.trolleyCompanyProfileId);
+        const primaryAccount = bankAccounts.find((account: any) => account.primary) || bankAccounts[0];
+        
+        if (primaryAccount?.accountNumber) {
+          const realBankAccountLast4 = primaryAccount.accountNumber.slice(-4);
+          
+          // Update user with real bank account data
+          await db.update(users).set({
+            trolleyBankAccountStatus: 'verified',
+            trolleyBankAccountId: primaryAccount.id || 'verified',
+            trolleyBankAccountLast4: realBankAccountLast4
+          }).where(eq(users.id, userId));
+
+          console.log(`✅ REFRESHED LIVE BANK ACCOUNT: ${primaryAccount.bankName} ending in ${realBankAccountLast4}`);
+          
+          res.json({
+            success: true,
+            bankName: primaryAccount.bankName,
+            last4: realBankAccountLast4,
+            status: 'verified'
+          });
+        } else {
+          console.log('❌ NO BANK ACCOUNTS FOUND in Trolley response');
+          res.status(404).json({ message: 'No bank accounts found in your Trolley business profile' });
+        }
+      } catch (apiError) {
+        console.log('❌ TROLLEY API ERROR refreshing bank accounts:', apiError);
+        res.status(500).json({ message: 'Unable to refresh bank account data from Trolley API' });
+      }
+
+    } catch (error) {
+      console.error('Error refreshing bank account data:', error);
+      res.status(500).json({ message: 'Error refreshing bank account data' });
     }
   });
 
