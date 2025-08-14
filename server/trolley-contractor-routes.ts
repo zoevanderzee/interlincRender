@@ -45,6 +45,55 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
     }
   });
 
+  // Debug endpoint to test Trolley API directly
+  app.get(`${apiRouter}/trolley/debug-api`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as any).user?.id || req.headers['x-user-id'];
+      if (!userId) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+
+      const user = await storage.getUser(Number(userId));
+      if (!user || user.role !== 'contractor') {
+        return res.status(403).json({ message: 'Access denied: Contractors only' });
+      }
+
+      // Test direct API call to check credentials
+      try {
+        const recipientData = {
+          type: 'individual' as const,
+          firstName: user.username || 'Test',
+          lastName: 'User',
+          email: user.email
+        };
+
+        console.log(`Testing Trolley API: Creating recipient for ${user.email}`);
+        const recipient = await trolleyService.createRecipient(recipientData);
+        
+        console.log('Trolley API SUCCESS: Recipient created:', recipient.id);
+        
+        // Update user with recipient ID
+        await storage.updateUserTrolleyRecipientId(Number(userId), recipient.id);
+        
+        res.json({
+          success: true,
+          recipientId: recipient.id,
+          message: 'Direct API creation successful'
+        });
+      } catch (apiError: any) {
+        console.error('Trolley API error:', apiError);
+        res.json({
+          success: false,
+          error: apiError.message,
+          details: apiError.response?.data || 'No additional details'
+        });
+      }
+    } catch (error) {
+      console.error('Debug endpoint error:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
   // Generate Trolley widget URL for contractor onboarding
   app.post(`${apiRouter}/trolley/generate-widget`, requireAuth, async (req: Request, res: Response) => {
     try {
@@ -56,6 +105,38 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
       const user = await storage.getUser(Number(userId));
       if (!user || user.role !== 'contractor') {
         return res.status(403).json({ message: 'Access denied: Contractors only' });
+      }
+
+      // Try direct API creation first, then fallback to widget
+      if (!user.trolleyRecipientId) {
+        try {
+          console.log(`No recipient ID found. Creating recipient via API for ${user.email}`);
+          
+          const recipientData = {
+            type: 'individual' as const,
+            firstName: user.username || 'Contractor',
+            lastName: 'User',
+            email: user.email
+          };
+
+          const recipient = await trolleyService.createRecipient(recipientData);
+          console.log('API recipient created successfully:', recipient.id);
+          
+          // Update user with recipient ID
+          await storage.updateUserTrolleyRecipientId(Number(userId), recipient.id);
+          
+          // Generate widget URL for setup completion using recipient ID
+          const widgetUrl = trolleySdk.generateWidgetUrl(recipient.id, user.email, 'individual');
+          
+          res.json({
+            widgetUrl,
+            recipientId: recipient.id,
+            message: 'Recipient created - widget ready for setup completion'
+          });
+          return;
+        } catch (apiError: any) {
+          console.log('API creation failed, falling back to existing account widget:', apiError.message);
+        }
       }
 
       // EXISTING ACCOUNT FIX: Use existing account widget flow to avoid "email already exists" error

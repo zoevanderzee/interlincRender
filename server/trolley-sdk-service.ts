@@ -398,17 +398,17 @@ class TrolleySdkService {
       type: userType  // Use the specified user type - default to 'individual' for contractors
     };
 
-    // Create query string WITHOUT refid (this is key for existing accounts)
-    const queryParams = new URLSearchParams(baseParams);
-    const querystring = queryParams.toString();
+    // Create query string exactly as per Trolley documentation
+    const querystring = Object.entries(baseParams)
+      .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+      .join('&')
+      .replace(/\+/g, '%20');
     
-    // CRITICAL FIX: Trolley HMAC expects spaces not %20 encoding
-    const hmacString = querystring.replace(/\+/g, ' ');
-    console.log(`HMAC calculation string: ${hmacString}`);
+    console.log(`HMAC calculation string: ${querystring}`);
     
-    // Create HMAC signature - without refid for existing accounts
+    // Create HMAC signature using the exact querystring that will be in the URL
     const hmac = crypto.createHmac('sha256', apiSecret);
-    hmac.update(hmacString);
+    hmac.update(querystring);
     const signature = hmac.digest('hex');
     console.log(`Generated HMAC signature: ${signature}`);
     
