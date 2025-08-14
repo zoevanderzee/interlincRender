@@ -445,6 +445,7 @@ export default function AuthPage() {
       
       // Use email directly since form now requires email format
       const result = await loginUser(loginForm.username, loginForm.password);
+      console.log("Firebase login result:", { success: result.success, hasUser: !!result.user, error: result.error });
       
       if (result.success && result.user) {
         console.log("Firebase login successful, syncing with backend...");
