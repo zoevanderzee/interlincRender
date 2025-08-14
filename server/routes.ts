@@ -2899,7 +2899,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Process real payment through Trolley
       console.log('🔴 PROCESSING REAL TROLLEY PAYMENT');
       
-      const { trolleyApi } = await import('./trolley-api');
+      const { trolleyApi } = await import('./services/trolley-api');
       
       // Create real Trolley payment to contractor
       const paymentData = {

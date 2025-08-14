@@ -60,11 +60,21 @@ interface TrolleyBatch {
 
 export class TrolleyApiService {
   private apiKey: string;
+  private apiSecret: string;
   private baseUrl: string;
 
   constructor() {
     this.apiKey = process.env.TROLLEY_API_KEY || '';
+    this.apiSecret = process.env.TROLLEY_API_SECRET || '';
     this.baseUrl = process.env.TROLLEY_API_URL || 'https://api.trolley.com/v1';
+  }
+
+  private getAuthHeaders(): Record<string, string> {
+    return {
+      'Authorization': `Basic ${Buffer.from(`${this.apiKey}:${this.apiSecret}`).toString('base64')}`,
+      'Content-Type': 'application/json',
+      'X-API-Version': '1'
+    };
   }
 
   /**
@@ -368,6 +378,123 @@ export class TrolleyApiService {
 
     } catch (error: any) {
       console.error('Trolley recipient fetch error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Create a payment to a recipient
+   */
+  async createPayment(paymentData: {
+    recipientId: string;
+    amount: string;
+    currency: string;
+    description: string;
+    externalId: string;
+  }): Promise<{ success: boolean; paymentId?: string; error?: string }> {
+    if (!this.isConfigured()) {
+      return { success: false, error: 'Trolley API key not configured' };
+    }
+
+    try {
+      // First create a batch
+      const batchResponse = await fetch(`${this.baseUrl}/batches`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+          'X-API-Version': '1'
+        },
+        body: JSON.stringify({
+          description: paymentData.description,
+          currency: paymentData.currency
+        })
+      });
+
+      if (!batchResponse.ok) {
+        const error = await batchResponse.text();
+        return { success: false, error: `Trolley batch creation failed: ${error}` };
+      }
+
+      const batchResult = await batchResponse.json();
+      const batchId = batchResult.batch.id;
+
+      // Add payment to the batch
+      const paymentResponse = await fetch(`${this.baseUrl}/batches/${batchId}/payments`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+          'X-API-Version': '1'
+        },
+        body: JSON.stringify({
+          recipient: { id: paymentData.recipientId },
+          amount: paymentData.amount,
+          currency: paymentData.currency,
+          memo: paymentData.description,
+          externalId: paymentData.externalId
+        })
+      });
+
+      if (!paymentResponse.ok) {
+        const error = await paymentResponse.text();
+        return { success: false, error: `Trolley payment creation failed: ${error}` };
+      }
+
+      const paymentResult = await paymentResponse.json();
+
+      // Send the batch to process the payment
+      const sendResponse = await fetch(`${this.baseUrl}/batches/${batchId}/send`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+          'X-API-Version': '1'
+        }
+      });
+
+      if (!sendResponse.ok) {
+        const error = await sendResponse.text();
+        return { success: false, error: `Trolley batch send failed: ${error}` };
+      }
+
+      return { 
+        success: true, 
+        paymentId: paymentResult.payment.id 
+      };
+
+    } catch (error: any) {
+      console.error('Trolley payment creation error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Get payment status from Trolley
+   */
+  async getPayment(paymentId: string): Promise<{ success: boolean; payment?: any; error?: string }> {
+    if (!this.isConfigured()) {
+      return { success: false, error: 'Trolley API key not configured' };
+    }
+
+    try {
+      const response = await fetch(`${this.baseUrl}/payments/${paymentId}`, {
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'X-API-Version': '1'
+        }
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        return { success: false, error: `Trolley API error: ${error}` };
+      }
+
+      const result = await response.json();
+      return { success: true, payment: result.payment };
+
+    } catch (error: any) {
+      console.error('Trolley payment fetch error:', error);
       return { success: false, error: error.message };
     }
   }
