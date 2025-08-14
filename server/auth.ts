@@ -56,8 +56,9 @@ export function setupAuth(app: Express) {
       secure: false, // Must be false for development
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
       httpOnly: false, // Allow JS access for debugging
-      sameSite: 'none', // Allow cross-origin cookies in development
+      sameSite: 'lax', // Standard for same-origin requests
       path: '/', // Available for entire site
+      domain: null, // No domain restriction
     },
     // Use the storage implementation's session store
     store: storage.sessionStore
@@ -81,25 +82,11 @@ export function setupAuth(app: Express) {
   // Don't clear sessions on startup anymore to maintain user sessions
   console.log('Session store initialized, keeping existing sessions');
 
-  // Configure Express to trust proxy headers in all environments
-  // This is needed for cookies to work properly in Replit
+  // Trust proxy for Replit environment
   app.set("trust proxy", 1);
   
-  // Add CORS headers for cookie support - only for development cross-origin requests
-  if (process.env.NODE_ENV === 'development') {
-    app.use((req, res, next) => {
-      res.header('Access-Control-Allow-Origin', req.headers.origin);
-      res.header('Access-Control-Allow-Credentials', 'true');
-      res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-      res.header('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization');
-      
-      if (req.method === 'OPTIONS') {
-        res.sendStatus(200);
-      } else {
-        next();
-      }
-    });
-  }
+  // Remove CORS configuration that interferes with cookies
+  // Cookies work better in same-origin development environment
 
   // Setup session middleware
   app.use(session(sessionSettings));

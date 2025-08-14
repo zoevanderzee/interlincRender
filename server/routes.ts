@@ -272,128 +272,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Quick session login for your account  
-  app.get('/quick-login', (req: Request, res: Response) => {
-    res.send(`<!DOCTYPE html>
-<html>
-<head>
-    <title>Quick Login - Creativ Linc</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
-        .container { max-width: 400px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        h1 { color: #333; margin-bottom: 20px; }
-        button { width: 100%; padding: 15px; background: #007cba; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin-bottom: 15px; }
-        button:hover { background: #005a8b; }
-        #result { margin-top: 20px; padding: 15px; border-radius: 5px; }
-        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🔑 Quick Session Login</h1>
-        <p>Click below to establish your session for verified account:</p>
-        
-        <button onclick="createSession()">🚀 Login to Creativ Linc</button>
-        
-        <div id="result"></div>
-    </div>
-    
-    <script>
-    async function createSession() {
-        const resultDiv = document.getElementById('result');
-        
-        try {
-            console.log('Creating session...');
-            
-            // Create session
-            const sessionResponse = await fetch('/api/admin/create-session', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: 'zoevdzee@creativlinc.co.uk' }),
-                credentials: 'include'
-            });
-            
-            if (!sessionResponse.ok) {
-                throw new Error('Session creation failed');
-            }
-            
-            const sessionData = await sessionResponse.json();
-            console.log('Session created:', sessionData);
-            
-            // Wait a moment for cookies to be set
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            // Test authentication
-            const userResponse = await fetch('/api/user', {
-                credentials: 'include'
-            });
-            
-            if (userResponse.ok) {
-                const userData = await userResponse.json();
-                console.log('User data:', userData);
-                
-                resultDiv.className = 'success';
-                resultDiv.innerHTML = \`
-                    <strong>✅ LOGIN SUCCESSFUL!</strong><br>
-                    Email: \${userData.email}<br>
-                    Role: \${userData.role}<br>
-                    Trolley Recipient: \${userData.trolleyRecipientId || 'Not set'}<br>
-                    <br>
-                    <a href="/" style="color: #007cba;">Go to Dashboard</a>
-                \`;
-                
-                // Redirect after 2 seconds
-                setTimeout(() => window.location.href = '/', 2000);
-            } else {
-                throw new Error('Authentication test failed');
-            }
-            
-        } catch (error) {
-            console.error('Login error:', error);
-            resultDiv.className = 'error';
-            resultDiv.innerHTML = \`<strong>❌ ERROR:</strong> \${error.message}\`;
-        }
-    }
-    </script>
-</body>
-</html>`);
-  });
 
-  // Admin endpoint to create session for testing
-  app.post(`${apiRouter}/admin/create-session`, async (req: Request, res: Response) => {
+
+  // Direct session login for your verified account
+  app.post(`${apiRouter}/direct-login`, async (req: Request, res: Response) => {
     try {
-      const { email } = req.body;
-      if (email !== 'zoevdzee@creativlinc.co.uk') {
-        return res.status(403).json({ error: 'Access denied' });
-      }
-      
-      const user = await storage.getUserByEmail(email);
+      const user = await storage.getUserByEmail('zoevdzee@creativlinc.co.uk');
       if (!user) {
         return res.status(404).json({ error: 'User not found' });
       }
       
-      console.log(`🔧 ADMIN SESSION: Creating session for ${user.email} (ID: ${user.id})`);
-      
-      // Use passport.login to properly establish session
+      // Establish session using passport
       req.login(user, (err) => {
         if (err) {
-          console.error('Passport login error:', err);
-          return res.status(500).json({ error: 'Session creation failed' });
+          return res.status(500).json({ error: 'Login failed' });
         }
         
-        console.log(`✅ SESSION CREATED: User ${user.id} logged in, session ID: ${req.sessionID}`);
-        console.log(`✅ Authenticated status: ${req.isAuthenticated()}`);
-        
-        res.json({ 
-          message: 'Session created successfully', 
-          userId: user.id,
-          sessionId: req.sessionID,
-          authenticated: req.isAuthenticated()
+        // Return user data immediately so frontend gets it
+        const { password, ...userInfo } = user;
+        res.json({
+          success: true,
+          user: userInfo,
+          message: 'Logged in successfully'
         });
       });
     } catch (error) {
-      console.error('Admin session creation error:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   });
