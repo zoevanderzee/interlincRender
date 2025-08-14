@@ -49,14 +49,14 @@ export function setupAuth(app: Express) {
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || 'creativlinc-secret-key',
     resave: false,
-    saveUninitialized: false, // Don't save empty sessions
+    saveUninitialized: true, // Save empty sessions to establish cookies
     name: 'creativlinc.sid',
     rolling: false, // Don't extend session on each request to avoid issues
     cookie: {
       secure: false, // Must be false for development
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
       httpOnly: false, // Allow JS access for debugging
-      sameSite: 'lax', // Standard for same-origin requests
+      sameSite: 'none', // Allow cross-origin cookies in development
       path: '/', // Available for entire site
     },
     // Use the storage implementation's session store
@@ -154,7 +154,7 @@ export function setupAuth(app: Express) {
 
   // Configure how users are stored in the session
   passport.serializeUser((user, done) => {
-    console.log("Serializing user:", user.id);
+    console.log(`🔐 SERIALIZE: Storing user ID ${user.id} in session`);
     done(null, user.id);
   });
   
@@ -163,16 +163,16 @@ export function setupAuth(app: Express) {
     try {
       // If id is undefined or null, return undefined
       if (id === undefined || id === null) {
-        console.log("Deserializing with undefined/null user ID");
+        console.log("🔐 DESERIALIZE: undefined/null user ID");
         return done(null, undefined);
       }
       
-      console.log("Deserializing user with ID:", id);
+      console.log(`🔐 DESERIALIZE: Looking up user ID ${id}`);
       const user = await storage.getUser(id);
       
       // If no user found, return undefined instead of null
       if (!user) {
-        console.log(`No user found with ID: ${id}`);
+        console.log(`🔐 DESERIALIZE: No user found with ID: ${id}`);
         return done(null, undefined);
       }
       
