@@ -641,23 +641,35 @@ export function setupAuth(app: Express) {
     }
   });
 
-  // Get current user route - Updated for Firebase Auth
+  // Get current user route - FIXED for session persistence
   app.get("/api/user", async (req, res) => {
-    console.log("Auth check for session:", req.sessionID, "Authenticated:", req.isAuthenticated());
-    
-    // Log request headers for debugging
-    console.log("User API request headers:", {
-      cookie: req.headers.cookie,
-      'user-agent': req.headers['user-agent'],
-      'x-user-id': req.headers['x-user-id'],
-      'x-firebase-uid': req.headers['x-firebase-uid']
-    });
+    console.log(`=== USER SESSION CHECK ===`);
+    console.log(`Session ID: ${req.sessionID}`);
+    console.log(`Authenticated: ${req.isAuthenticated()}`);
+    console.log(`User in session: ${req.user?.id || 'none'}`);
+    console.log(`Cookie header: ${req.headers.cookie?.includes('creativlinc.sid') ? 'PRESENT' : 'MISSING'}`);
     
     // Priority 1: Check if user is authenticated via PostgreSQL session
-    if (req.isAuthenticated()) {
-      // Return user info without the password
-      const { password, ...userInfo } = req.user as Express.User;
-      return res.json(userInfo);
+    if (req.isAuthenticated() && req.user) {
+      try {
+        // Fetch fresh user data to ensure latest Trolley details are included
+        const freshUser = await storage.getUser(req.user.id);
+        if (!freshUser) {
+          console.log(`❌ Session user not found in database: ${req.user.id}`);
+          return res.status(404).json({ error: "User not found" });
+        }
+        
+        console.log(`✅ Session auth successful: ${freshUser.username} (${freshUser.email})`);
+        console.log(`✅ Trolley recipient ID: ${freshUser.trolleyRecipientId || 'none'}`);
+        console.log(`✅ Bank account verified: ${freshUser.trolleyBankAccountStatus === 'verified' ? 'YES' : 'NO'}`);
+        
+        // Return fresh user info without the password - this ensures Trolley details persist
+        const { password, ...userInfo } = freshUser;
+        return res.json(userInfo);
+      } catch (error) {
+        console.error('Error fetching fresh user data from session:', error);
+        return res.status(500).json({ error: "Error fetching user data" });
+      }
     }
     
     // Priority 2: Check for Firebase UID header (Firebase Auth)
@@ -696,6 +708,7 @@ export function setupAuth(app: Express) {
     }
     
     // If all authentication methods fail
+    console.log(`❌ All authentication methods failed`);
     return res.status(401).json({ error: "Not authenticated" });
   });
 
