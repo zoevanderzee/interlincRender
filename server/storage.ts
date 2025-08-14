@@ -2006,18 +2006,28 @@ export class DatabaseStorage implements IStorage {
     // Generate a new unique profile code
     let code = '';
     let isUnique = false;
+    let attempts = 0;
+    const maxAttempts = 50;
 
-    // Function to create a readable yet unique code
-    // Format: USERNAME-YEAR
+    // Function to create a professional and unique code
+    // Format: USERNAME-XXXX (where XXXX is a unique 4-digit number)
     const generateCode = () => {
-      const username = user.username.toUpperCase();
-      const currentYear = new Date().getFullYear();
+      // Clean up username: remove special chars, keep alphanumeric
+      let cleanUsername = user.username.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
       
-      return `${username}-${currentYear}`;
+      // Limit username to 8 characters for readability
+      if (cleanUsername.length > 8) {
+        cleanUsername = cleanUsername.substring(0, 8);
+      }
+      
+      // Generate a random 4-digit number
+      const randomNum = Math.floor(1000 + Math.random() * 9000);
+      
+      return `${cleanUsername}-${randomNum}`;
     };
 
     // Keep generating until we find a unique code
-    while (!isUnique) {
+    while (!isUnique && attempts < maxAttempts) {
       code = generateCode();
       
       // Check if code is already used
@@ -2030,6 +2040,14 @@ export class DatabaseStorage implements IStorage {
       if (existingUser.length === 0) {
         isUnique = true;
       }
+      
+      attempts++;
+    }
+
+    if (!isUnique) {
+      // Fallback to timestamp-based code if we can't find unique random
+      const timestamp = Date.now().toString().slice(-6);
+      code = `${user.username.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().substring(0, 6)}-${timestamp}`;
     }
 
     // Update the user with the new profile code
@@ -2229,37 +2247,6 @@ export class DatabaseStorage implements IStorage {
   }
   
   // Profile code methods
-  async generateProfileCode(userId: number): Promise<string> {
-    const user = await this.getUser(userId);
-    if (!user) {
-      throw new Error(`User with ID ${userId} not found`);
-    }
-    
-    // Generate a profile code based on user's name or username
-    let baseName = "";
-    if (user.lastName) {
-      baseName = user.lastName.toUpperCase();
-    } else if (user.firstName) {
-      baseName = user.firstName.toUpperCase();
-    } else {
-      baseName = user.username.toUpperCase();
-    }
-    
-    // Remove spaces and invalid characters, keep only letters, numbers, and hyphens
-    baseName = baseName.replace(/[^A-Z0-9-]/g, '');
-    
-    // Add a random suffix (current year + random number)
-    const currentYear = new Date().getFullYear();
-    const suffix = Math.floor(Math.random() * 100).toString().padStart(2, '0');
-    const profileCode = `${baseName.substring(0, 8)}-${currentYear}`;
-    
-    // Update user with the new profile code
-    await db.update(users)
-      .set({ profileCode })
-      .where(eq(users.id, userId));
-    
-    return profileCode;
-  }
   
   async getUserByProfileCode(profileCode: string): Promise<User | undefined> {
     const [user] = await db
