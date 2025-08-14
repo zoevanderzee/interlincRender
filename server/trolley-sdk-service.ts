@@ -349,7 +349,8 @@ class TrolleySdkService {
       hideEmail: 'false',
       roEmail: 'false',
       locale: 'en',
-      products: 'pay,tax'
+      products: 'pay,tax',
+      type: 'business'  // Force business type for all our users
     };
 
     // Only include refid for NEW recipients - per Trolley documentation
@@ -392,7 +393,8 @@ class TrolleySdkService {
       hideEmail: 'false',
       roEmail: 'false',
       locale: 'en',
-      products: 'pay,tax'
+      products: 'pay,tax',
+      type: 'business'  // Force business type for existing users too
     };
 
     // Create query string WITHOUT refid (this is key for existing accounts)
