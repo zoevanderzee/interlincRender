@@ -56,9 +56,8 @@ export function setupAuth(app: Express) {
       secure: false, // Must be false for development
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
       httpOnly: false, // Allow JS access for debugging
-      sameSite: 'lax', // Standard for same-origin requests
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Fix for Replit preview
       path: '/', // Available for entire site
-      domain: null, // No domain restriction
     },
     // Use the storage implementation's session store
     store: storage.sessionStore
@@ -85,8 +84,22 @@ export function setupAuth(app: Express) {
   // Trust proxy for Replit environment
   app.set("trust proxy", 1);
   
-  // Remove CORS configuration that interferes with cookies
-  // Cookies work better in same-origin development environment
+  // Add CORS headers for Replit preview environment
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin) {
+      res.header('Access-Control-Allow-Origin', origin);
+      res.header('Access-Control-Allow-Credentials', 'true');
+    }
+    res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization');
+    
+    if (req.method === 'OPTIONS') {
+      res.sendStatus(200);
+    } else {
+      next();
+    }
+  });
 
   // Setup session middleware
   app.use(session(sessionSettings));

@@ -821,6 +821,42 @@ export default function AuthPage() {
                         "Login"
                       )}
                     </Button>
+                    
+                    {/* Development direct login for verified account */}
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      className="w-full mt-3 text-sm border-zinc-600 text-zinc-300 hover:bg-zinc-800"
+                      onClick={async () => {
+                        try {
+                          const response = await fetch("/api/direct-login", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            credentials: "include",
+                          });
+                          
+                          if (response.ok) {
+                            window.location.href = "/";
+                          } else {
+                            const error = await response.json();
+                            toast({
+                              title: "Direct Login Failed",
+                              description: error.message || "Login failed",
+                              variant: "destructive",
+                            });
+                          }
+                        } catch (error) {
+                          console.error("Direct login error:", error);
+                          toast({
+                            title: "Direct Login Failed",
+                            description: "Network error occurred",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                    >
+                      🔧 Dev: Quick Login (Verified Account)
+                    </Button>
                   </CardFooter>
                 </form>
               </Card>
