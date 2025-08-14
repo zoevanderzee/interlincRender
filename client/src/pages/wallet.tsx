@@ -545,15 +545,9 @@ export default function WalletPage() {
                           <p className="text-xs text-green-400">
                             ✓ Trolley business verification complete
                           </p>
-                          {(userData as any)?.trolleyBankAccountStatus === 'verified' || (userData as any)?.trolleyRecipientId ? (
-                            <p className="text-xs text-green-400">
-                              ✓ Bank account verified via Trolley business verification
-                            </p>
-                          ) : (
-                            <p className="text-xs text-yellow-400">
-                              ⏳ Bank account verification in progress...
-                            </p>
-                          )}
+                          <p className="text-xs text-green-400">
+                            ✓ Bank account verified via Trolley business verification
+                          </p>
                         </div>
                       )}
                     </div>
@@ -588,21 +582,21 @@ export default function WalletPage() {
                     <div className="flex items-center gap-2 mb-2">
                       <div className="w-2 h-2 rounded-full bg-green-400"></div>
                       <span className="text-sm text-zinc-300">
-                        {(userData as any)?.trolleyBankAccountStatus === 'verified' 
+                        {((userData as any)?.trolleyCompanyProfileId || (userData as any)?.trolleyRecipientId)
                           ? 'Both payment methods available' 
                           : 'Pre-funded account available, pay-as-you-go requires business verification'
                         }
                       </span>
                     </div>
                     <p className="text-sm text-zinc-400">
-                      {(userData as any)?.trolleyBankAccountStatus === 'verified' 
+                      {((userData as any)?.trolleyCompanyProfileId || (userData as any)?.trolleyRecipientId)
                         ? 'You can switch between payment methods at any time.'
                         : 'Complete Trolley business verification to enable pay-as-you-go payments.'
                       }
                     </p>
                     
                     {/* Add option for verified businesses to connect their account */}
-                    {(userData as any)?.trolleyBankAccountStatus !== 'verified' && (
+                    {!((userData as any)?.trolleyCompanyProfileId || (userData as any)?.trolleyRecipientId) && (
                       <div className="mt-4 pt-4 border-t border-zinc-700">
                         <div className="flex justify-between items-center mb-2">
                           <span className="text-sm text-zinc-300 font-medium">Have a verified Trolley account?</span>
