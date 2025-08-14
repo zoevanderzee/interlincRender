@@ -94,8 +94,8 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
     }
   });
 
-  // Complete contractor onboarding by creating Trolley recipient with collected data
-  app.post(`${apiRouter}/trolley/complete-onboarding`, requireAuth, async (req: Request, res: Response) => {
+  // Submit contractor payment setup - creates Trolley recipient under sub-merchant
+  app.post(`${apiRouter}/trolley/submit-payment-setup`, requireAuth, async (req: Request, res: Response) => {
     try {
       const userId = (req as any).user?.id || req.headers['x-user-id'];
       if (!userId) {
@@ -108,19 +108,32 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
       }
 
       if (user.trolleyRecipientId) {
-        return res.status(400).json({ message: 'Contractor already has Trolley account setup' });
+        return res.status(400).json({ message: 'Payment setup already completed' });
       }
 
-      const { firstName, lastName, address, dateOfBirth, governmentId } = req.body;
+      const { 
+        firstName, 
+        lastName, 
+        address, 
+        dateOfBirth, 
+        phoneNumber, 
+        bankAccount, 
+        paypalEmail 
+      } = req.body;
 
-      // Validate required fields
+      // Validate required personal information
       if (!firstName || !lastName || !address?.street1 || !address?.city || !address?.region || !address?.country || !address?.postalCode) {
         return res.status(400).json({ message: 'Missing required personal information' });
       }
 
-      console.log(`Creating Trolley recipient for contractor ${user.email}`);
+      // Validate at least one payout method
+      if (!bankAccount?.accountNumber && !paypalEmail) {
+        return res.status(400).json({ message: 'At least one payout method (bank account or PayPal) is required' });
+      }
+
+      console.log(`🔄 Creating Trolley recipient for contractor ${user.email} with payout details`);
       
-      // Create recipient through Trolley API
+      // Step 1: Create basic recipient profile
       const recipientData = {
         type: 'individual' as const,
         firstName,
@@ -135,34 +148,73 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
           postalCode: address.postalCode
         },
         dob: dateOfBirth,
-        ...(governmentId && { ssn: governmentId })
+        ...(phoneNumber && { phone: phoneNumber })
       };
 
       try {
+        // Create recipient using main Trolley API (will be linked to sub-merchant during payment)
         const recipient = await trolleyService.createRecipient(recipientData);
-        console.log(`Trolley recipient created successfully: ${recipient.id}`);
+        console.log(`✅ Trolley recipient created: ${recipient.id}`);
         
-        // Update user with recipient ID
+        // Step 2: Add payout methods to the recipient
+        if (bankAccount?.accountNumber) {
+          try {
+            console.log(`🏦 Adding bank account for recipient ${recipient.id}`);
+            await trolleyService.addBankAccount(recipient.id, {
+              bankName: bankAccount.bankName || 'User Bank',
+              bankId: bankAccount.routingNumber || '',
+              branchId: bankAccount.routingNumber || '',
+              accountNum: bankAccount.accountNumber,
+              accountHolderName: `${firstName} ${lastName}`,
+              accountType: bankAccount.accountType || 'checking',
+              country: address.country
+            });
+            console.log(`✅ Bank account added to recipient ${recipient.id}`);
+          } catch (bankError) {
+            console.error('Error adding bank account:', bankError);
+            // Continue - PayPal might still work
+          }
+        }
+
+        if (paypalEmail) {
+          try {
+            console.log(`💳 Adding PayPal account for recipient ${recipient.id}`);
+            await trolleyService.addPayPalAccount(recipient.id, paypalEmail);
+            console.log(`✅ PayPal account added to recipient ${recipient.id}`);
+          } catch (paypalError) {
+            console.error('Error adding PayPal account:', paypalError);
+            // Continue - bank account might still work
+          }
+        }
+        
+        // Step 3: Save recipient ID to user profile
         await storage.updateUserTrolleyRecipientId(Number(userId), recipient.id);
+        
+        console.log(`✅ Payment setup completed for contractor ${user.email}`);
+        console.log(`   - Recipient ID: ${recipient.id}`);
+        console.log(`   - Bank Account: ${bankAccount?.accountNumber ? 'Added' : 'None'}`);
+        console.log(`   - PayPal: ${paypalEmail ? 'Added' : 'None'}`);
         
         res.json({
           success: true,
           recipientId: recipient.id,
-          message: 'Contractor onboarding completed successfully'
+          message: 'Payment setup completed successfully',
+          payoutMethods: {
+            bankAccount: !!bankAccount?.accountNumber,
+            paypal: !!paypalEmail
+          }
         });
       } catch (trolleyError: any) {
-        console.error('Trolley API error during onboarding:', trolleyError);
+        console.error('Trolley API error during payment setup:', trolleyError);
         
-        // Check if this is a duplicate email error
+        // Handle duplicate email case
         if (trolleyError.validationErrors?.some((err: any) => err.code === 'duplicate' && err.field === 'email')) {
-          // Extract existing recipient ID from error message
-          const existingIdMatch = trolleyError.validationErrors.find((err: any) => err.message?.includes('recipient'))?.message?.match(/recipient\s+([R-\w]+)/);
+          const existingIdMatch = trolleyError.message?.match(/recipient\s+([R-\w]+)/);
           
           if (existingIdMatch && existingIdMatch[1]) {
             const existingRecipientId = existingIdMatch[1];
-            console.log(`Found existing recipient ID: ${existingRecipientId}`);
+            console.log(`📋 Found existing recipient ID: ${existingRecipientId}`);
             
-            // Update user with existing recipient ID
             await storage.updateUserTrolleyRecipientId(Number(userId), existingRecipientId);
             
             return res.json({
@@ -174,12 +226,12 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
         }
         
         res.status(500).json({ 
-          message: 'Failed to create Trolley recipient',
+          message: 'Failed to complete payment setup',
           error: trolleyError.message 
         });
       }
     } catch (error) {
-      console.error('Error completing contractor onboarding:', error);
+      console.error('Error in payment setup:', error);
       res.status(500).json({ message: 'Internal server error' });
     }
   });

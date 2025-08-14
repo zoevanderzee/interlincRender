@@ -146,6 +146,52 @@ class TrolleyService {
   }
 
   /**
+   * Add bank account to existing recipient
+   */
+  async addBankAccount(recipientId: string, bankAccountData: {
+    bankName: string;
+    bankId: string;
+    branchId: string;
+    accountNum: string;
+    accountHolderName: string;
+    accountType: string;
+    country: string;
+  }): Promise<any> {
+    this.ensureClient();
+    
+    try {
+      const bankAccount = await this.client.recipientAccount.create(recipientId, {
+        type: 'bank-transfer',
+        ...bankAccountData
+      });
+      console.log(`Bank account added to recipient ${recipientId}`);
+      return bankAccount;
+    } catch (error) {
+      console.error('Error adding bank account:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Add PayPal account to existing recipient
+   */
+  async addPayPalAccount(recipientId: string, paypalEmail: string): Promise<any> {
+    this.ensureClient();
+    
+    try {
+      const paypalAccount = await this.client.recipientAccount.create(recipientId, {
+        type: 'paypal',
+        emailAddress: paypalEmail
+      });
+      console.log(`PayPal account added to recipient ${recipientId}`);
+      return paypalAccount;
+    } catch (error) {
+      console.error('Error adding PayPal account:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Create payment batch and process payment to contractor's bank account
    * This is where the actual payment transfer happens
    */

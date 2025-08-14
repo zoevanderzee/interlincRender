@@ -202,34 +202,6 @@ export default function PaymentSetup() {
 
                 <FormField
                   control={form.control}
-                  name="phoneNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone Number (Optional)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="+1 (555) 123-4567" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="dateOfBirth"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Date of Birth</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
                   name="street1"
                   render={({ field }) => (
                     <FormItem>
@@ -311,131 +283,163 @@ export default function PaymentSetup() {
                     </FormItem>
                   )}
                 />
+
+                <FormField
+                  control={form.control}
+                  name="dateOfBirth"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Date of Birth</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="phoneNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Phone Number (Optional)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="+1 (555) 123-4567" 
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                </div>
               </CardContent>
             </Card>
 
-            {/* Payout Methods Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <span className="bg-blue-100 text-blue-600 rounded-full w-8 h-8 flex items-center justify-center text-sm font-semibold mr-3">2</span>
-                  Payout Methods
-                </CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Add at least one payout method to receive payments
-                </p>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Bank Account Section */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Bank Account (Recommended)</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="bankAccountNumber"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Account Number</FormLabel>
-                          <FormControl>
-                            <Input placeholder="123456789" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="bankRoutingNumber"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Routing Number</FormLabel>
-                          <FormControl>
-                            <Input placeholder="021000021" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="bankName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Bank Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Chase Bank" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="bankAccountType"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Account Type</FormLabel>
-                          <FormControl>
-                            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background" {...field}>
-                              <option value="checking">Checking</option>
-                              <option value="savings">Savings</option>
-                            </select>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
-
-                {/* PayPal Section */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">PayPal (Alternative)</h3>
+          {/* Payout Methods Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <span className="bg-blue-100 text-blue-600 rounded-full w-8 h-8 flex items-center justify-center text-sm font-semibold mr-3">2</span>
+                Payout Methods
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Add at least one payout method to receive payments
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Bank Account Section */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Bank Account (Recommended)</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="paypalEmail"
+                    name="bankAccountNumber"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>PayPal Email</FormLabel>
+                        <FormLabel>Account Number</FormLabel>
                         <FormControl>
-                          <Input placeholder="you@example.com" type="email" {...field} />
+                          <Input placeholder="123456789" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="bankRoutingNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Routing Number</FormLabel>
+                        <FormControl>
+                          <Input placeholder="021000021" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="bankName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Bank Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Chase Bank" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="bankAccountType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Account Type</FormLabel>
+                        <FormControl>
+                          <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background" {...field}>
+                            <option value="checking">Checking</option>
+                            <option value="savings">Savings</option>
+                          </select>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
 
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                  <div className="flex">
-                    <AlertCircle className="h-5 w-5 text-amber-600 mr-3 mt-0.5" />
-                    <div>
-                      <h4 className="text-sm font-medium text-amber-800">Payment Method Required</h4>
-                      <p className="text-sm text-amber-700 mt-1">
-                        You need to provide at least one payout method (bank account or PayPal) to receive payments.
-                      </p>
-                    </div>
+              {/* PayPal Section */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">PayPal (Alternative)</h3>
+                <FormField
+                  control={form.control}
+                  name="paypalEmail"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>PayPal Email</FormLabel>
+                      <FormControl>
+                        <Input placeholder="you@example.com" type="email" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <div className="flex">
+                  <AlertCircle className="h-5 w-5 text-amber-600 mr-3 mt-0.5" />
+                  <div>
+                    <h4 className="text-sm font-medium text-amber-800">Payment Method Required</h4>
+                    <p className="text-sm text-amber-700 mt-1">
+                      You need to provide at least one payout method (bank account or PayPal) to receive payments.
+                    </p>
                   </div>
                 </div>
+              </div>
 
-                <Button 
-                  type="submit" 
-                  className="w-full" 
-                  disabled={paymentSetupMutation.isPending}
-                >
-                  {paymentSetupMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Setting up payment...
-                    </>
-                  ) : (
-                    'Complete Payment Setup'
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={paymentSetupMutation.isPending}
+              >
+                {paymentSetupMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Setting up payment...
+                  </>
+                ) : (
+                  'Complete Payment Setup'
+                )}
+              </Button>
+            </CardContent>
+          </Card>
           </form>
         </Form>
       </div>
