@@ -26,7 +26,7 @@ import automatedPaymentService from "./services/automated-payments";
 import { generateComplianceExport, generateInvoiceExport, generatePaymentExport, generateCSVExport } from './export-helpers';
 import { trolleySdk } from "./trolley-sdk-service";
 import { trolleySubmerchantService, type TrolleySubmerchantData } from "./services/trolley-submerchant";
-import { trolleyApi } from "./services/trolley-api";
+import { trolleyApiFixed as trolleyApi } from "./services/trolley-api-fixed";
 import { trolleyService } from "./trolley-service";
 import { setupAuth } from "./auth";
 import plaidRoutes from "./plaid-routes";

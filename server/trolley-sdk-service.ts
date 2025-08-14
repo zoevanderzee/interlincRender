@@ -132,13 +132,14 @@ class TrolleySdkService {
     this.ensureClient();
     
     try {
-      // Use Trolley API directly since SDK may not have submerchant methods
+      // Use Trolley API with correct Basic auth format
+      const credentials = Buffer.from(`${process.env.TROLLEY_API_KEY}:${process.env.TROLLEY_API_SECRET}`).toString('base64');
+      
       const response = await fetch('https://api.trolley.com/v1/profile/submerchant', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.TROLLEY_API_KEY}`,
+          'Authorization': `Basic ${credentials}`,
           'Content-Type': 'application/json',
-          'X-API-Version': '1'
         },
         body: JSON.stringify(submerchantData)
       });
