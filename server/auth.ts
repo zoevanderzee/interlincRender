@@ -293,14 +293,15 @@ export function setupAuth(app: Express) {
       
       const user = await storage.createUser(userData);
 
-      // Auto-setup REAL Trolley submerchant account for business users
+      // Auto-setup REAL Trolley business account for business users
       if (role === 'business') {
         try {
-          console.log(`🔴 CREATING REAL TROLLEY SUBMERCHANT for business: ${user.email}`);
+          console.log(`🔴 CREATING REAL TROLLEY BUSINESS ACCOUNT for: ${user.email}`);
           
           const { trolleySdk } = await import('./trolley-sdk-service');
+          const { trolleyService } = await import('./trolley-service');
           
-          // Create real submerchant account with business information
+          // Step 1: Create real submerchant account with business information
           const submerchantData = {
             merchant: {
               name: user.company || user.username,
@@ -326,17 +327,29 @@ export function setupAuth(app: Express) {
 
           const submerchant = await trolleySdk.createSubmerchant(submerchantData);
           
+          // Step 2: Create BUSINESS recipient (not individual) - CRITICAL FIX
+          console.log(`🔴 CREATING BUSINESS RECIPIENT for: ${user.email}`);
+          const businessRecipient = await trolleyService.createRecipient({
+            email: user.email,
+            firstName: user.company || user.username,
+            lastName: 'Business',
+            type: 'business'  // FORCE BUSINESS TYPE - prevents Individual widget bug
+          });
+          
           await storage.updateUser(user.id, {
             trolleySubmerchantId: submerchant.merchant.id,
             trolleySubmerchantAccessKey: submerchant.merchant.accessKey,
             trolleySubmerchantSecretKey: submerchant.merchant.secretKey,
             trolleySubmerchantStatus: 'pending_verification',
+            trolleyRecipientId: businessRecipient.id,  // Link business recipient
             paymentMethod: 'pay_as_you_go'
           });
           
-          console.log(`✅ REAL TROLLEY SUBMERCHANT CREATED for user ${user.id}: ${submerchant.merchant.id}`);
+          console.log(`✅ REAL TROLLEY BUSINESS SETUP COMPLETE for user ${user.id}`);
+          console.log(`   - Submerchant: ${submerchant.merchant.id}`);
+          console.log(`   - Business Recipient: ${businessRecipient.id}`);
         } catch (paymentSetupError) {
-          console.error('Error creating real Trolley submerchant:', paymentSetupError);
+          console.error('Error creating real Trolley business account:', paymentSetupError);
           // Continue with registration even if payment setup fails
         }
       }

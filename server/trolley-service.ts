@@ -209,6 +209,7 @@ class TrolleyService {
     products?: string[];
     colors?: Record<string, string>;
     address?: Record<string, string>;
+    userRole?: string;
   }): string {
     // Official Trolley recipient widget API parameters
     const timestamp = Math.floor(Date.now() / 1000);
@@ -220,7 +221,8 @@ class TrolleyService {
       products: (options.products || ['pay', 'tax']).join(','),
       hideEmail: 'false',
       roEmail: 'false',
-      locale: 'en'
+      locale: 'en',
+      type: 'business'  // Force business type for all Creativ Linc users
     };
 
     // Skip reference ID to avoid conflicts with existing recipients

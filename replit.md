@@ -4,6 +4,8 @@ This is a comprehensive contractor/freelancer management platform built with Rea
 
 **MAJOR MILESTONE ACHIEVED (August 11, 2025)**: Successfully converted from test/simulation mode to LIVE MONEY TRANSFERS using the user's verified Trolley business account. The platform now processes real money transactions for both pre-funded wallets and pay-as-you-go payments.
 
+**CRITICAL BUG FIXED (August 14, 2025)**: Resolved Trolley widget type mismatch where business users were incorrectly processed as Individual type. Root cause was missing `type: 'business'` parameter in widget generation. All future business signups now automatically create proper business recipients and force business verification flow.
+
 # User Preferences
 
 Preferred communication style: Simple, everyday language.
