@@ -194,32 +194,26 @@ class AutomatedPaymentService {
         contract: contract.contractCode
       });
 
-      // For development: simulate Trolley API response
-      // In production, this would call the actual Trolley Embedded Payouts API
-      const mockTrolleyResponse = {
-        batch: {
-          id: `embedded_batch_${Date.now()}`,
-          status: 'processing',
-          companyProfile: business.trolleyCompanyProfileId,
-          payments: [{
-            id: `embedded_payment_${Date.now()}`,
-            status: 'pending_compliance',
-            recipient: {
-              id: contractor.email
-            },
-            amount: amount,
-            fees: {
-              trolleyFee: amount * 0.01, // 1% Trolley fee
-              platformFee: applicationFee
-            }
-          }]
-        }
-      };
+      // LIVE TROLLEY PAYMENT - Create real payment through Trolley API
+      const { trolleyService } = await import('../trolley-service');
+      
+      const trolleyResult = await trolleyService.createAndProcessPayment({
+        recipientId: contractor.trolleyRecipientId,
+        amount: amount.toString(),
+        currency: 'USD',
+        memo: `Milestone: ${milestone.name} - Contract ${contract.contractCode}`
+      });
+
+      if (!trolleyResult) {
+        return { success: false, error: 'Failed to create live Trolley payment' };
+      }
+
+      console.log('✅ LIVE TROLLEY PAYMENT CREATED:', trolleyResult.payment.id);
 
       return {
         success: true,
-        batchId: mockTrolleyResponse.batch.id,
-        paymentId: mockTrolleyResponse.batch.payments[0].id
+        batchId: trolleyResult.batch.id,
+        paymentId: trolleyResult.payment.id
       };
 
     } catch (error: any) {
