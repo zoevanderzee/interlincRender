@@ -47,13 +47,24 @@ export const loginUser = async (email: string, password: string): Promise<Fireba
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
-    // Check if email is verified
+    // Force refresh the user's token to get latest verification status
+    await user.reload();
+    
+    // Check if email is verified after reload
     if (!user.emailVerified) {
-      await signOut(auth);
-      return {
-        success: false,
-        error: "Please verify your email before logging in."
-      };
+      console.log("Firebase emailVerified status:", user.emailVerified);
+      console.log("Attempting to reload user token...");
+      
+      // Try one more time after reload
+      await user.reload();
+      if (!user.emailVerified) {
+        console.log("Email still not verified in Firebase after reload");
+        await signOut(auth);
+        return {
+          success: false,
+          error: "Email verification pending in Firebase. Please check your email or try again in a few minutes."
+        };
+      }
     }
 
     // Sync user metadata to backend (optional)
