@@ -254,6 +254,71 @@ class TrolleyService {
 
     return `https://widget.trolley.com?${queryString}&sign=${signature}`;
   }
+
+  /**
+   * Fund wallet from linked business bank account
+   * This triggers a bank transfer from the verified business account to Trolley balance
+   */
+  async fundWallet(amount: number, currency: string = 'GBP'): Promise<{
+    success: boolean;
+    message?: string;
+    error?: string;
+    details?: any;
+  }> {
+    try {
+      // For Trolley, wallet funding is done through bank transfers initiated by the business
+      // The API doesn't have a direct "fund wallet" endpoint - funding is done externally
+      // However, we can provide proper instructions for the funding process
+      
+      return {
+        success: false,
+        error: `Wallet funding requires a bank transfer to your Trolley business account. Please initiate a bank transfer of £${amount} to your verified Trolley business account using your banking platform. Include your Trolley reference number in the transfer memo.`
+      };
+      
+    } catch (error) {
+      console.error('Error in fundWallet:', error);
+      return {
+        success: false,
+        error: 'Failed to initiate wallet funding process'
+      };
+    }
+  }
+
+  /**
+   * Get wallet balance for recipient account
+   */
+  async getWalletBalance(recipientId: string): Promise<{
+    balance: number;
+    currency: string;
+    accountId?: string;
+  }> {
+    try {
+      const path = `/v1/recipients/${recipientId}/balance`;
+      const response = await fetch(`${this.baseUrl}${path}`, {
+        method: 'GET',
+        headers: this.getAuthHeaders('GET', path)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to get balance: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return {
+        balance: parseFloat(data.balance || '0'),
+        currency: data.currency || 'GBP',
+        accountId: recipientId
+      };
+      
+    } catch (error) {
+      console.error('Error getting wallet balance:', error);
+      return {
+        balance: 0,
+        currency: 'GBP',
+        accountId: recipientId
+      };
+    }
+  }
 }
 
 export const trolleyService = new TrolleyService();

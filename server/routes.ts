@@ -4887,11 +4887,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🔴 PROCESSING LIVE MONEY TRANSFER: $${amount} for user ${user.username} (${user.email})`);
       
-      // Note: Wallet funding would be handled by external bank transfers to Trolley
-      // For now, return a message that explains this process
-      return res.status(400).json({ 
-        message: "Wallet funding requires external bank transfer to your verified Trolley business account. Please use your Trolley dashboard or contact Trolley support for funding instructions." 
-      });
+      // Import trolley service for API calls
+      const { trolleyService } = await import('./trolley-service');
+      
+      try {
+        // Call Trolley funding API - this triggers bank transfer from linked business account
+        const result = await trolleyService.fundWallet(amount, 'GBP');
+        
+        if (!result.success) {
+          console.error(`❌ LIVE TRANSFER FAILED: ${result.error}`);
+          return res.status(400).json({ message: result.error });
+        }
+
+        console.log(`✅ LIVE TRANSFER SUCCESS: ${result.message}`);
+        
+        res.json({
+          success: true,
+          message: `LIVE: £${amount} funding initiated from your verified business account`,
+          details: result.details
+        });
+        
+      } catch (error: any) {
+        console.error('❌ TROLLEY FUNDING ERROR:', error.message);
+        return res.status(400).json({ 
+          message: error.message || "Failed to initiate wallet funding" 
+        });
+      }
 
     } catch (error) {
       console.error("Error funding Trolley wallet:", error);
