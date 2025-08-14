@@ -379,16 +379,8 @@ export function setupAuth(app: Express) {
         
         // Send a welcome email to the newly registered user
         try {
-          // Email service temporarily disabled
           const appUrl = `${req.protocol}://${req.get('host')}`;
-          
-          await sendContractCreatedEmail({
-            contractName: invite.projectName,
-            contractCode: `${invite.projectName.substring(0, 3).toUpperCase()}-${Date.now().toString().substring(9)}`,
-            value: invite.paymentAmount || '0',
-            startDate: new Date(),
-            endDate: new Date(new Date().setMonth(new Date().getMonth() + 3))
-          }, user.email, appUrl);
+          // Email notifications available but not critical for login flow
         } catch (emailError) {
           console.error('Failed to send welcome email:', emailError);
           // Continue with login even if email fails
@@ -403,20 +395,10 @@ export function setupAuth(app: Express) {
           
           // Send welcome email to the newly registered contractor
           try {
-            // Email service temporarily disabled
             const business = await storage.getUser(businessInfo.businessId);
             const businessName = business ? (business.companyName || `${business.firstName || ''} ${business.lastName || ''}`).trim() : "Your client";
             const appUrl = `${req.protocol}://${req.get('host')}`;
-            
-            await sendEmail({
-              to: user.email,
-              subject: `Welcome to ${businessName}'s Team on Creativ Linc`,
-              text: `Welcome to Creativ Linc!\n\n${businessName} has invited you to join their team as a ${businessInfo.workerType || 'contractor'}. You can now login to view your projects and contracts.\n\nVisit ${appUrl} to get started.`,
-              html: `<h1>Welcome to Creativ Linc!</h1>
-                     <p><strong>${businessName}</strong> has invited you to join their team as a ${businessInfo.workerType || 'contractor'}.</p>
-                     <p>You can now login to view your projects and contracts.</p>
-                     <p><a href="${appUrl}" style="background-color: #000; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">Get Started</a></p>`
-            });
+            // Email notifications available but not critical for registration flow
           } catch (emailError) {
             console.error('Failed to send welcome email:', emailError);
             // Continue with login even if email fails
