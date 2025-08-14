@@ -352,34 +352,41 @@ export default function WalletPage() {
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <Wallet className="h-8 w-8 text-white" />
-            <h1 className="text-3xl font-bold text-white">Payment Wallet</h1>
+            <h1 className="text-3xl font-bold text-white">Payment Setup</h1>
           </div>
           <p className="text-zinc-400">
-            Manage your payment wallet to fund contractor payments
+            Set up and manage contractor payment processing
           </p>
         </div>
 
         {/* Balance and Budget Cards */}
         <div className="grid md:grid-cols-2 gap-6 mb-8">
-          {/* Current Balance Card */}
+          {/* Payment Status Card */}
           <Card className="bg-zinc-900 border-zinc-800">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-white">
-                <DollarSign className="h-5 w-5" />
-                Current Balance
+                <CreditCard className="h-5 w-5" />
+                Payment Status
               </CardTitle>
               <CardDescription className="text-zinc-400">
-                Available funds for contractor payments
+                Your contractor payment setup status
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-4xl font-bold text-white">
-                {walletData ? formatCurrency((walletData as any)?.balance || 0) : '$0.00'}
-              </div>
-              {(walletData as any)?.companyProfileId && (
-                <p className="text-sm text-zinc-500 mt-2">
-                  Profile ID: {(walletData as any)?.companyProfileId}
-                </p>
+              {((userData as any)?.trolleyCompanyProfileId || (userData as any)?.trolleyRecipientId) ? (
+                <div>
+                  <div className="text-2xl font-bold text-green-400 mb-2">Ready</div>
+                  <p className="text-sm text-zinc-400">
+                    Pay-as-you-go payments enabled via verified business account
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <div className="text-2xl font-bold text-orange-400 mb-2">Setup Required</div>
+                  <p className="text-sm text-zinc-400">
+                    Complete business verification to enable payments
+                  </p>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -516,10 +523,9 @@ export default function WalletPage() {
         </div>
 
         <Tabs defaultValue="methods" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 bg-zinc-900 border-zinc-700">
-            <TabsTrigger value="methods" className="data-[state=active]:bg-zinc-800 data-[state=active]:text-white text-zinc-400">Payment Methods</TabsTrigger>
-            <TabsTrigger value="fund" className="data-[state=active]:bg-zinc-800 data-[state=active]:text-white text-zinc-400">Fund Wallet</TabsTrigger>
-            <TabsTrigger value="history" className="data-[state=active]:bg-zinc-800 data-[state=active]:text-white text-zinc-400">Transaction History</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 bg-zinc-900 border-zinc-700">
+            <TabsTrigger value="methods" className="data-[state=active]:bg-zinc-800 data-[state=active]:text-white text-zinc-400">Payment Setup</TabsTrigger>
+            <TabsTrigger value="history" className="data-[state=active]:bg-zinc-800 data-[state=active]:text-white text-zinc-400">Payment History</TabsTrigger>
           </TabsList>
 
           {/* Payment Methods Tab */}
@@ -567,15 +573,7 @@ export default function WalletPage() {
                     )}
                   </div>
                   
-                  {/* Pre-funded Account Method */}
-                  <div className="flex items-center gap-3 p-3 border border-zinc-700 rounded-lg">
-                    <Wallet className="h-5 w-5 text-orange-400" />
-                    <div className="flex-1">
-                      <p className="font-medium text-white">Pre-funded Account</p>
-                      <p className="text-sm text-zinc-500">Add funds to wallet first, then pay contractors from balance</p>
-                    </div>
-                    <div className="text-sm text-green-400">Active</div>
-                  </div>
+
                   
                   {/* Status Information */}
                   <div className="bg-zinc-800 p-4 rounded-lg border border-zinc-700">
@@ -583,15 +581,15 @@ export default function WalletPage() {
                       <div className="w-2 h-2 rounded-full bg-green-400"></div>
                       <span className="text-sm text-zinc-300">
                         {((userData as any)?.trolleyCompanyProfileId || (userData as any)?.trolleyRecipientId)
-                          ? 'Both payment methods available' 
-                          : 'Pre-funded account available, pay-as-you-go requires business verification'
+                          ? 'Pay-as-you-go payments ready' 
+                          : 'Business verification required for payments'
                         }
                       </span>
                     </div>
                     <p className="text-sm text-zinc-400">
                       {((userData as any)?.trolleyCompanyProfileId || (userData as any)?.trolleyRecipientId)
-                        ? 'You can switch between payment methods at any time.'
-                        : 'Complete Trolley business verification to enable pay-as-you-go payments.'
+                        ? 'Payments will be processed directly from your linked bank account when contractors are paid.'
+                        : 'Complete Trolley business verification to enable payments.'
                       }
                     </p>
                     
@@ -749,101 +747,18 @@ export default function WalletPage() {
             </div>
           </TabsContent>
 
-          {/* Fund Wallet Tab */}
-          <TabsContent value="fund">
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Quick Fund */}
-              <Card className="bg-zinc-900 border-zinc-800">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-white">
-                    <Plus className="h-5 w-5" />
-                    Add Funds
-                  </CardTitle>
-                  <CardDescription className="text-zinc-400">
-                    Add money to your wallet for contractor payments
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="amount" className="text-zinc-300">Amount (USD)</Label>
-                    <Input
-                      id="amount"
-                      type="number"
-                      placeholder="0.00"
-                      value={fundAmount}
-                      onChange={(e) => setFundAmount(e.target.value)}
-                      min="1"
-                      step="0.01"
-                      className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500"
-                    />
-                  </div>
-                  
-                  <Button 
-                    onClick={handleFundWallet}
-                    disabled={fundWalletMutation.isPending || !fundAmount}
-                    className="w-full bg-red-600 text-white hover:bg-red-700 border-2 border-red-500"
-                  >
-                    {fundWalletMutation.isPending ? (
-                      <>
-                        <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2" />
-                        🔴 PROCESSING LIVE TRANSFER...
-                      </>
-                    ) : (
-                      <>
-                        <div className="w-4 h-4 mr-2 rounded-full bg-red-500"></div>
-                        🔴 LIVE: Add ${fundAmount || '0'} Real Money
-                      </>
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
 
-              {/* Funding Methods */}
-              <Card className="bg-zinc-900 border-zinc-800">
-                <CardHeader>
-                  <CardTitle className="text-white">Funding Methods</CardTitle>
-                  <CardDescription className="text-zinc-400">
-                    Available ways to add funds to your pre-funded wallet
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center gap-3 p-3 border border-zinc-700 rounded-lg">
-                    <Building2 className="h-5 w-5 text-blue-400" />
-                    <div>
-                      <p className="font-medium text-white">Bank Transfer (ACH)</p>
-                      <p className="text-sm text-zinc-500">2-3 business days</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-3 p-3 border border-zinc-700 rounded-lg">
-                    <CreditCard className="h-5 w-5 text-green-400" />
-                    <div>
-                      <p className="font-medium text-white">Wire Transfer</p>
-                      <p className="text-sm text-zinc-500">Same day processing</p>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-zinc-800 p-4 rounded-lg border border-zinc-700">
-                    <p className="text-sm text-zinc-300">
-                      <strong>Note:</strong> Current funding is processed through Trolley's secure payment system. 
-                      Contact support for setting up recurring funding or custom payment methods.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
 
-          {/* Transaction History Tab */}
+          {/* Payment History Tab */}
           <TabsContent value="history">
             <Card className="bg-zinc-900 border-zinc-800">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-white">
                   <History className="h-5 w-5" />
-                  Funding History
+                  Payment History
                 </CardTitle>
                 <CardDescription className="text-zinc-400">
-                  Track all wallet funding transactions
+                  Track all contractor payments processed
                 </CardDescription>
               </CardHeader>
               <CardContent>
