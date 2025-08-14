@@ -125,13 +125,13 @@ export default function BusinessSetup() {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-zinc-400">Company Profile</span>
-                {getStatusBadge(!!user.trolleyCompanyProfileId)}
+                {getStatusBadge(!!(user.trolleyCompanyProfileId || user.trolleyRecipientId))}
               </div>
               
-              {user.trolleyCompanyProfileId && (
+              {(user.trolleyCompanyProfileId || user.trolleyRecipientId) && (
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-zinc-400">Profile ID</span>
-                  <span className="text-xs font-mono text-zinc-300">{user.trolleyCompanyProfileId}</span>
+                  <span className="text-xs font-mono text-zinc-300">{user.trolleyCompanyProfileId || user.trolleyRecipientId}</span>
                 </div>
               )}
 
@@ -158,7 +158,7 @@ export default function BusinessSetup() {
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex items-center gap-2">
-                {user.trolleyCompanyProfileId ? (
+                {(user.trolleyCompanyProfileId || user.trolleyRecipientId) ? (
                   <CheckCircle className="h-4 w-4 text-green-400" />
                 ) : (
                   <AlertCircle className="h-4 w-4 text-red-400" />
@@ -166,7 +166,7 @@ export default function BusinessSetup() {
                 <span className="text-sm">Send payments to contractors</span>
               </div>
               <div className="flex items-center gap-2">
-                {user.trolleyCompanyProfileId ? (
+                {(user.trolleyCompanyProfileId || user.trolleyRecipientId) ? (
                   <CheckCircle className="h-4 w-4 text-green-400" />
                 ) : (
                   <AlertCircle className="h-4 w-4 text-red-400" />
@@ -185,7 +185,7 @@ export default function BusinessSetup() {
           </Card>
         </div>
 
-        {!user.trolleyCompanyProfileId && (
+        {!(user.trolleyCompanyProfileId || user.trolleyRecipientId) && (
           <Card>
             <CardHeader>
               <CardTitle>Complete Trolley Business Verification</CardTitle>
@@ -263,7 +263,7 @@ export default function BusinessSetup() {
           </Card>
         )}
 
-        {user.trolleyCompanyProfileId && (
+        {(user.trolleyCompanyProfileId || user.trolleyRecipientId) && (
           <Card>
             <CardHeader>
               <CardTitle>Fund Your Account</CardTitle>
