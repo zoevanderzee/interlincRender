@@ -69,7 +69,7 @@ export class TrolleyApiService {
     this.baseUrl = process.env.TROLLEY_API_URL || 'https://api.trolley.com/v1';
   }
 
-  private getAuthHeaders(): Record<string, string> {
+  private getAuthHeaders(method: string, path: string, body: string = ''): Record<string, string> {
     return {
       'Authorization': `Basic ${Buffer.from(`${this.apiKey}:${this.apiSecret}`).toString('base64')}`,
       'Content-Type': 'application/json',

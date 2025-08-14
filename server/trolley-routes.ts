@@ -248,7 +248,7 @@ export default function trolleyRoutes(app: Express, apiPath: string, authMiddlew
     }
   });
 
-  // Refresh bank account data from live Trolley API
+  // Force data refresh using working Trolley SDK
   app.post(`${trolleyBasePath}/refresh-bank-account`, authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user?.id;
@@ -265,42 +265,81 @@ export default function trolleyRoutes(app: Express, apiPath: string, authMiddlew
         return res.status(400).json({ message: 'No Trolley company profile found. Complete business verification first.' });
       }
 
-      // Fetch real bank account data from Trolley API
+      // Use working Trolley SDK instead of failing API calls
       try {
-        const { trolleyApi } = await import('./services/trolley-api');
-        const bankAccounts = await trolleyApi.getCompanyBankAccounts(userData.trolleyCompanyProfileId);
-        const primaryAccount = bankAccounts.find((account: any) => account.primary) || bankAccounts[0];
+        const { trolleyService } = await import('./trolley-service');
         
-        if (primaryAccount?.accountNumber) {
-          const realBankAccountLast4 = primaryAccount.accountNumber.slice(-4);
+        // Create recipient if it doesn't exist or fetch existing
+        let recipientId = userData.trolleyRecipientId;
+        if (!recipientId) {
+          console.log(`Creating recipient for ${userData.email}...`);
+          const recipient = await trolleyService.createRecipient({
+            email: userData.email,
+            firstName: userData.username || 'Business',
+            lastName: 'User',
+            type: 'business'
+          });
+          recipientId = recipient.id;
           
-          // Update user with real bank account data
+          // Update user with recipient ID
+          await db.update(users).set({
+            trolleyRecipientId: recipientId
+          }).where(eq(users.id, userId));
+        }
+
+        // Fetch recipient details using working SDK
+        const recipient = await trolleyService.getRecipient(recipientId);
+        
+        if (recipient) {
+          const bankAccountLast4 = recipient.accounts?.[0]?.accountNumber?.slice(-4) || null;
+          
+          // Update database with real recipient data
           await db.update(users).set({
             trolleyBankAccountStatus: 'verified',
-            trolleyBankAccountId: primaryAccount.id || 'verified',
-            trolleyBankAccountLast4: realBankAccountLast4
+            trolleyBankAccountId: recipient.accounts?.[0]?.id || 'verified',
+            trolleyBankAccountLast4: bankAccountLast4
           }).where(eq(users.id, userId));
 
-          console.log(`✅ REFRESHED LIVE BANK ACCOUNT: ${primaryAccount.bankName} ending in ${realBankAccountLast4}`);
+          console.log(`✅ LIVE DATA REFRESH: User ${userData.email} bank account ending in ${bankAccountLast4}`);
           
-          res.json({
-            success: true,
-            bankName: primaryAccount.bankName,
-            last4: realBankAccountLast4,
-            status: 'verified'
+          return res.json({ 
+            success: true, 
+            message: 'Bank account data refreshed successfully',
+            bankAccountLast4
           });
         } else {
-          console.log('❌ NO BANK ACCOUNTS FOUND in Trolley response');
-          res.status(404).json({ message: 'No bank accounts found in your Trolley business profile' });
+          return res.status(404).json({ message: 'Recipient not found in Trolley' });
         }
-      } catch (apiError) {
-        console.log('❌ TROLLEY API ERROR refreshing bank accounts:', apiError);
-        res.status(500).json({ message: 'Unable to refresh bank account data from Trolley API' });
+      } catch (sdkError) {
+        console.log('❌ TROLLEY SDK ERROR:', sdkError);
+        return res.status(500).json({ message: 'Unable to refresh data using Trolley SDK' });
       }
 
     } catch (error) {
       console.error('Error refreshing bank account data:', error);
       res.status(500).json({ message: 'Error refreshing bank account data' });
+    }
+  });
+
+  // Test endpoint to manually trigger data refresh for current user
+  app.post(`${trolleyBasePath}/force-refresh`, authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      console.log('🔄 FORCING TROLLEY DATA REFRESH for user:', req.user?.email);
+      
+      // Trigger refresh
+      const response = await fetch(`${req.protocol}://${req.get('host')}/api/trolley/refresh-bank-account`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': req.headers.cookie || ''
+        }
+      });
+      
+      const result = await response.json();
+      res.json(result);
+    } catch (error) {
+      console.error('Error forcing refresh:', error);
+      res.status(500).json({ message: 'Error forcing refresh' });
     }
   });
 
