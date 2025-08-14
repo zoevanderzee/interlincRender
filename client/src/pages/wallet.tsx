@@ -237,7 +237,8 @@ export default function WalletPage() {
     });
   };
 
-  if (balanceLoading) {
+  // Show loading until BOTH user data and balance data are loaded
+  if (balanceLoading || !userData) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="animate-spin w-8 h-8 border-4 border-white border-t-transparent rounded-full" />
@@ -246,7 +247,7 @@ export default function WalletPage() {
   }
 
   // Check if user needs Trolley onboarding - show only if user doesn't have verified accounts
-  const needsOnboarding = !userData || (!(userData as any)?.trolleyCompanyProfileId && !(userData as any)?.trolleyRecipientId);
+  const needsOnboarding = !(userData as any)?.trolleyCompanyProfileId && !(userData as any)?.trolleyRecipientId;
 
   if (needsOnboarding) {
     return (
