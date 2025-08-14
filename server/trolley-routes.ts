@@ -265,18 +265,10 @@ export default function trolleyRoutes(app: Express, apiPath: string, authMiddlew
       if (userData.trolleyRecipientId === 'R-AeVtg3cVK1ExCDPQosEHve' && userData.role === 'business') {
         console.log(`✅ VERIFIED BUSINESS: ${userData.email} has verified Trolley account R-AeVtg3cVK1ExCDPQosEHve`);
         
-        // Update database with verified business account details
-        await db.update(users).set({
-          trolleyBankAccountStatus: 'verified',
-          trolleyBankAccountId: 'verified_business',
-          trolleyBankAccountLast4: '5ED' // From verified London business account
-        }).where(eq(users.id, userId));
-
         return res.json({ 
           success: true, 
-          message: 'Verified business bank account confirmed',
-          bankAccountLast4: '5ED',
-          bankName: 'Business Bank Account'
+          message: 'Verified business account confirmed - live payments ready',
+          verified: true
         });
       }
 

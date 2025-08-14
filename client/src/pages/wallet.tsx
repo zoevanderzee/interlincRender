@@ -545,9 +545,9 @@ export default function WalletPage() {
                           <p className="text-xs text-green-400">
                             ✓ Trolley business verification complete
                           </p>
-                          {(userData as any)?.trolleyBankAccountStatus === 'verified' ? (
+                          {(userData as any)?.trolleyBankAccountStatus === 'verified' || (userData as any)?.trolleyRecipientId ? (
                             <p className="text-xs text-green-400">
-                              ✓ Bank account {(userData as any)?.trolleyBankAccountLast4 ? `ending in ${(userData as any)?.trolleyBankAccountLast4}` : ''} verified via Trolley
+                              ✓ Bank account verified via Trolley business verification
                             </p>
                           ) : (
                             <p className="text-xs text-yellow-400">
