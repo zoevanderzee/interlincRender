@@ -53,11 +53,11 @@ export function setupAuth(app: Express) {
     name: 'creativlinc.sid',
     rolling: false, // Don't extend session on each request to avoid issues
     cookie: {
-      secure: process.env.NODE_ENV === 'production', // Secure in production
+      secure: false,
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
-      httpOnly: false, // Allow JS access for debugging
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'none', // Strict for production
-      path: '/', // Available for entire site
+      httpOnly: false,
+      sameSite: 'lax',
+      path: '/',
     },
     // Use the storage implementation's session store
     store: storage.sessionStore
@@ -84,24 +84,7 @@ export function setupAuth(app: Express) {
   // Trust proxy for Replit environment
   app.set("trust proxy", 1);
   
-  // CORS configuration for cross-origin requests
-  if (process.env.NODE_ENV !== 'production') {
-    app.use((req, res, next) => {
-      const origin = req.headers.origin;
-      if (origin) {
-        res.header('Access-Control-Allow-Origin', origin);
-        res.header('Access-Control-Allow-Credentials', 'true');
-      }
-      res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-      res.header('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization');
-      
-      if (req.method === 'OPTIONS') {
-        res.sendStatus(200);
-      } else {
-        next();
-      }
-    });
-  }
+
 
   // Setup session middleware
   app.use(session(sessionSettings));
