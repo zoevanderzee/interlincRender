@@ -115,9 +115,10 @@ export class NotificationService {
     return await storage.createNotification(notification);
   }
 
-  // Create sample notifications for testing
+  // DISABLED: No sample notifications - live production system only
   static async createSampleNotifications(userId: number, userRole: string) {
-    const notifications: InsertNotification[] = [];
+    console.log('⚠️ createSampleNotifications() called but DISABLED - Live production system only');
+    return [];
 
     if (userRole === 'business') {
       notifications.push({

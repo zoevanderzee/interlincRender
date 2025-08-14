@@ -120,11 +120,11 @@ export function setupAuth(app: Express) {
         
         console.log(`Login attempt for user: ${username}, emailVerified: ${user.emailVerified}`);
         
-        // Handle Firebase users with placeholder passwords
-        if (user.password === 'firebase_managed_auth_placeholder') {
-          console.log(`Firebase user attempting login without password: ${username}`);
+        // REMOVED: No placeholder passwords allowed in live production system
+        if (!user.password) {
+          console.log(`User has no password set: ${username}`);
           return done(null, false, { 
-            message: "Please set up a password for your account. Contact support or reset your password.",
+            message: "Password required. Please reset your password to continue.",
             needsPasswordSetup: true,
             email: user.email
           });

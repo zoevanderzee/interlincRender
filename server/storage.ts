@@ -832,6 +832,9 @@ export class MemStorage implements IStorage {
   
   // Seed data method for development
   private seedData() {
+    // REMOVED: All test data creation disabled for live production system
+    console.log('⚠️ seedData() called but DISABLED - Live production system only');
+    return;
     // Create sample users
     const business = this.createUser({
       username: "sarah_thompson",
