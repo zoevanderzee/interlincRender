@@ -274,32 +274,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
 
-  // Direct session login for your verified account
-  app.post(`${apiRouter}/direct-login`, async (req: Request, res: Response) => {
-    try {
-      const user = await storage.getUserByEmail('zoevdzee@creativlinc.co.uk');
-      if (!user) {
-        return res.status(404).json({ error: 'User not found' });
-      }
-      
-      // Establish session using passport
-      req.login(user, (err) => {
-        if (err) {
-          return res.status(500).json({ error: 'Login failed' });
-        }
-        
-        // Return user data immediately so frontend gets it
-        const { password, ...userInfo } = user;
-        res.json({
-          success: true,
-          user: userInfo,
-          message: 'Logged in successfully'
-        });
-      });
-    } catch (error) {
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  });
+
 
   // Public routes are defined above (login, register) in the auth.ts file
   
