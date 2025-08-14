@@ -54,11 +54,35 @@ class AutomatedPaymentService {
         return { success: false, error: 'Contractor not set up for payments. Please onboard them first.' };
       }
 
+      // Get business user details for budget checking
+      const businessUser = await storage.getUser(contract.businessId);
+      if (!businessUser) {
+        return { success: false, error: 'Business user not found' };
+      }
+
       // Calculate payment amounts
       const totalAmount = parseFloat(milestone.paymentAmount);
       const platformFeeRate = 0.0025; // 0.25% platform fee
       const applicationFee = totalAmount * platformFeeRate;
       const netAmount = totalAmount - applicationFee;
+
+      // ✅ BUDGET VALIDATION - Check if payment exceeds budget cap
+      const budgetInfo = await storage.getBudget(contract.businessId);
+      if (budgetInfo && budgetInfo.budgetCap) {
+        const budgetCap = parseFloat(budgetInfo.budgetCap);
+        const budgetUsed = parseFloat(budgetInfo.budgetUsed || '0');
+        const budgetRemaining = budgetCap - budgetUsed;
+
+        if (totalAmount > budgetRemaining) {
+          console.log(`🚫 PAYMENT BLOCKED: Amount $${totalAmount} exceeds remaining budget $${budgetRemaining}`);
+          return { 
+            success: false, 
+            error: `Payment blocked: Amount $${totalAmount.toFixed(2)} exceeds remaining budget $${budgetRemaining.toFixed(2)}. Please increase your budget cap or reduce the payment amount.` 
+          };
+        }
+
+        console.log(`✅ BUDGET CHECK PASSED: Payment $${totalAmount} within remaining budget $${budgetRemaining}`);
+      }
 
       // Create payment through Trolley API first
       const paymentResult = await trolleyService.createAndProcessPayment({
@@ -91,6 +115,10 @@ class AutomatedPaymentService {
       };
 
       const payment = await storage.createPayment(paymentData);
+
+      // ✅ BUDGET TRACKING - Deduct payment amount from available budget
+      await storage.increaseBudgetUsed(contract.businessId, totalAmount);
+      console.log(`✅ BUDGET UPDATED: Deducted $${totalAmount} from business user ${contract.businessId} budget`);
 
       // Create compliance log
       const logId = await this.createComplianceLog(
