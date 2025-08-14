@@ -4832,7 +4832,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         console.log(`🔴 FETCHING LIVE BANK ACCOUNT DATA for company profile: ${user.trolleyCompanyProfileId}`);
         
-        const bankAccounts = await trolleyApi.getCompanyBankAccounts(user.trolleyCompanyProfileId);
+        // Import trolley SDK service
+        const { trolleyService } = await import('./trolley-sdk-service');
+        const bankAccounts = await trolleyService.getBankAccounts(user.trolleyRecipientId || user.trolleyCompanyProfileId);
         
         // Extract the primary bank account details
         const primaryAccount = bankAccounts.find((account: any) => account.primary) || bankAccounts[0];
@@ -4874,7 +4876,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only business accounts can fund wallets" });
       }
 
-      if (!user.trolleyCompanyProfileId) {
+      if (!user.trolleyCompanyProfileId && !user.trolleyRecipientId) {
         return res.status(400).json({ message: "Company profile required. Please complete Trolley onboarding first." });
       }
 
@@ -4885,19 +4887,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🔴 PROCESSING LIVE MONEY TRANSFER: $${amount} for user ${user.username} (${user.email})`);
       
-      const result = await trolleyApi.fundCompanyWallet(user.trolleyCompanyProfileId, amount);
-      
-      if (!result.success) {
-        console.error(`❌ LIVE TRANSFER FAILED: ${result.error}`);
-        return res.status(400).json({ message: result.error });
-      }
-
-      console.log(`✅ LIVE TRANSFER SUCCESS: Transaction ID ${result.transactionId}`);
-      
-      res.json({
-        success: true,
-        transactionId: result.transactionId,
-        message: `LIVE: $${amount} transferred from your business account`
+      // Note: Wallet funding would be handled by external bank transfers to Trolley
+      // For now, return a message that explains this process
+      return res.status(400).json({ 
+        message: "Wallet funding requires external bank transfer to your verified Trolley business account. Please use your Trolley dashboard or contact Trolley support for funding instructions." 
       });
 
     } catch (error) {
