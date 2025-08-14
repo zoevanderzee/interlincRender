@@ -245,8 +245,8 @@ export default function WalletPage() {
     );
   }
 
-  // Check if user needs Trolley onboarding - only show if there's an actual error
-  const needsOnboarding = balanceError && (balanceError as any)?.status === 400;
+  // Check if user needs Trolley onboarding - show only if user doesn't have verified accounts
+  const needsOnboarding = !userData || (!(userData as any)?.trolleyCompanyProfileId && !(userData as any)?.trolleyRecipientId);
 
   if (needsOnboarding) {
     return (
