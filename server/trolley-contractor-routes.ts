@@ -144,7 +144,7 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
           street2: address.street2 || '',
           city: address.city,
           region: address.region,
-          country: address.country,
+          country: address.country, // Already using full country name from dropdown
           postalCode: address.postalCode
         },
         dob: dateOfBirth,

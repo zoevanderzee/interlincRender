@@ -62,6 +62,7 @@ export interface IStorage {
   updateTrolleySubmerchantInfo(userId: number, submerchantId: string, status: string): Promise<User | undefined>;
   setPaymentMethod(userId: number, method: 'pre_funded' | 'pay_as_you_go'): Promise<User | undefined>;
   updateTrolleyAccountBalance(userId: number, balance: number): Promise<User | undefined>;
+  updateUserTrolleyRecipientId(userId: number, recipientId: string): Promise<User | undefined>;
   
   // Profile Code
   generateProfileCode(userId: number): Promise<string>;
@@ -2801,6 +2802,16 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(users)
       .set({ trolleyAccountBalance: balance.toString() })
+      .where(eq(users.id, userId))
+      .returning();
+    
+    return updated;
+  }
+
+  async updateUserTrolleyRecipientId(userId: number, recipientId: string): Promise<User | undefined> {
+    const [updated] = await db
+      .update(users)
+      .set({ trolleyRecipientId: recipientId })
       .where(eq(users.id, userId))
       .returning();
     

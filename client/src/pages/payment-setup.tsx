@@ -8,8 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, CheckCircle, AlertCircle, DollarSign } from 'lucide-react';
+import { TROLLEY_COUNTRIES, US_STATES, BANK_ACCOUNT_TYPES, INDUSTRY_CATEGORIES, getCountryName } from '@shared/trolley-data';
 
 const paymentSetupSchema = z.object({
   // Personal Information
@@ -17,13 +19,14 @@ const paymentSetupSchema = z.object({
   lastName: z.string().min(1, 'Last name is required'),
   phoneNumber: z.string().optional(),
   dateOfBirth: z.string().min(1, 'Date of birth is required'),
+  industry: z.string().min(1, 'Industry is required'),
   
   // Address Information
   street1: z.string().min(1, 'Street address is required'),
   street2: z.string().optional(),
   city: z.string().min(1, 'City is required'),
   region: z.string().min(1, 'State/Province is required'),
-  country: z.string().min(2, 'Country is required').default('US'),
+  country: z.string().min(2, 'Country is required').default('United States'),
   postalCode: z.string().min(1, 'Postal code is required'),
   
   // Bank Account Information (Optional)
@@ -55,11 +58,12 @@ export default function PaymentSetup() {
       lastName: '',
       phoneNumber: '',
       dateOfBirth: '',
+      industry: '',
       street1: '',
       street2: '',
       city: '',
       region: '',
-      country: 'US',
+      country: '',
       postalCode: '',
       bankAccountNumber: '',
       bankRoutingNumber: '',
@@ -85,6 +89,11 @@ export default function PaymentSetup() {
           postalCode: data.postalCode
         }
       };
+
+      // Add industry
+      if (data.industry) {
+        requestData.industry = data.industry;
+      }
 
       // Add bank account if provided
       if (data.bankAccountNumber && data.bankRoutingNumber) {
@@ -230,6 +239,31 @@ export default function PaymentSetup() {
 
                 <FormField
                   control={form.control}
+                  name="industry"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Industry</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select your industry" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {INDUSTRY_CATEGORIES.map((industry) => (
+                            <SelectItem key={industry.value} value={industry.value}>
+                              {industry.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
                   name="street1"
                   render={({ field }) => (
                     <FormItem>
@@ -256,6 +290,31 @@ export default function PaymentSetup() {
                   )}
                 />
 
+                <FormField
+                  control={form.control}
+                  name="country"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Country</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select your country" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent className="max-h-[200px]">
+                          {TROLLEY_COUNTRIES.map((country) => (
+                            <SelectItem key={country.code} value={country.name}>
+                              {country.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <FormField
                     control={form.control}
@@ -264,7 +323,7 @@ export default function PaymentSetup() {
                       <FormItem>
                         <FormLabel>City</FormLabel>
                         <FormControl>
-                          <Input placeholder="New York" {...field} />
+                          <Input placeholder="e.g. New York, London, Tokyo" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -275,9 +334,9 @@ export default function PaymentSetup() {
                     name="region"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>State/Province</FormLabel>
+                        <FormLabel>State/Province/Region</FormLabel>
                         <FormControl>
-                          <Input placeholder="NY" {...field} />
+                          <Input placeholder="e.g. NY, Ontario, Tokyo" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -288,29 +347,15 @@ export default function PaymentSetup() {
                     name="postalCode"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Postal Code</FormLabel>
+                        <FormLabel>Postal/ZIP Code</FormLabel>
                         <FormControl>
-                          <Input placeholder="10001" {...field} />
+                          <Input placeholder="e.g. 10001, M5V 3A8, 100-0001" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
-
-                <FormField
-                  control={form.control}
-                  name="country"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Country</FormLabel>
-                      <FormControl>
-                        <Input placeholder="US" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </CardContent>
             </Card>
 
@@ -377,12 +422,20 @@ export default function PaymentSetup() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Account Type</FormLabel>
-                          <FormControl>
-                            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background" {...field}>
-                              <option value="checking">Checking</option>
-                              <option value="savings">Savings</option>
-                            </select>
-                          </FormControl>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select account type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {BANK_ACCOUNT_TYPES.map((type) => (
+                                <SelectItem key={type.value} value={type.value}>
+                                  {type.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
