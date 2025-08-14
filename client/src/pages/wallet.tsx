@@ -540,53 +540,26 @@ export default function WalletPage() {
                     <div className="flex-1">
                       <p className="font-medium text-white">Pay-as-you-go</p>
                       <p className="text-sm text-zinc-500">Direct payment from your verified Trolley business account</p>
-                      {(userData as any)?.trolleyCompanyProfileId && (
+                      {((userData as any)?.trolleyCompanyProfileId || (userData as any)?.trolleyRecipientId) && (
                         <div className="mt-2">
                           <p className="text-xs text-green-400">
                             ✓ Trolley business verification complete
                           </p>
-                          {(userData as any)?.trolleyBankAccountLast4 ? (
+                          {(userData as any)?.trolleyBankAccountStatus === 'verified' ? (
                             <p className="text-xs text-green-400">
-                              ✓ Bank account ending in {(userData as any)?.trolleyBankAccountLast4} linked via Trolley
+                              ✓ Bank account {(userData as any)?.trolleyBankAccountLast4 ? `ending in ${(userData as any)?.trolleyBankAccountLast4}` : ''} verified via Trolley
                             </p>
                           ) : (
                             <p className="text-xs text-yellow-400">
-                              ⏳ Bank account linked via Trolley (fetching details...)
+                              ⏳ Bank account verification in progress...
                             </p>
                           )}
                         </div>
                       )}
                     </div>
-                    {(userData as any)?.trolleyCompanyProfileId ? (
+                    {((userData as any)?.trolleyCompanyProfileId || (userData as any)?.trolleyRecipientId) ? (
                       <div className="flex items-center gap-2">
                         <div className="text-sm text-green-400">Ready</div>
-                        {!(userData as any)?.trolleyBankAccountLast4 && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-xs text-zinc-300 border-zinc-600"
-                            onClick={async () => {
-                              try {
-                                const response = await apiRequest("POST", "/api/trolley/refresh-bank-account");
-                                if (response.ok) {
-                                  queryClient.invalidateQueries({ queryKey: ['/api/user'] });
-                                  toast({
-                                    title: "Bank Account Details Updated",
-                                    description: "Your Trolley bank account information has been refreshed.",
-                                  });
-                                }
-                              } catch (error) {
-                                toast({
-                                  title: "Refresh Failed",
-                                  description: "Could not fetch bank account details from Trolley.",
-                                  variant: "destructive",
-                                });
-                              }
-                            }}
-                          >
-                            Get Details
-                          </Button>
-                        )}
                       </div>
                     ) : (
                       <Button 
@@ -755,31 +728,26 @@ export default function WalletPage() {
                       </div>
                     </div>
                   ) : (
-                    /* Show no accounts linked */
-                    <div>
-                      <div className="text-center py-8">
-                        <Building2 className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
-                        <p className="text-zinc-400 mb-4">No bank accounts linked</p>
+                    /* Business users link bank accounts during Trolley widget onboarding */
+                    <div className="text-center py-8">
+                      <Building2 className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
+                      <p className="text-zinc-400 mb-2">Bank account setup required</p>
+                      <p className="text-sm text-zinc-500 mb-4">
+                        Complete your Trolley business verification to link bank accounts
+                      </p>
+                      {!(userData as any)?.trolleyCompanyProfileId ? (
                         <Button 
-                          className="bg-white text-black hover:bg-zinc-200"
-                          onClick={() => window.open('https://dashboard.trolley.com/settings/funding', '_blank')}
+                          variant="outline"
+                          onClick={handleTrolleySubmerchantSetup}
+                          className="text-zinc-300 border-zinc-600"
                         >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Link Bank Account
+                          Start Business Verification
                         </Button>
-                      </div>
-                      
-                      <div className="bg-zinc-800 p-4 rounded-lg border border-zinc-700">
-                        <p className="text-sm text-zinc-300 mb-2">
-                          <strong>Secure Bank Linking:</strong>
+                      ) : (
+                        <p className="text-sm text-green-400">
+                          ✓ Business verification complete. Bank account should be linked automatically.
                         </p>
-                        <ul className="text-sm text-zinc-400 space-y-1">
-                          <li>• Bank-grade encryption and security</li>
-                          <li>• Instant verification through Trolley</li>
-                          <li>• Support for major US and international banks</li>
-                          <li>• Automatic payment processing</li>
-                        </ul>
-                      </div>
+                      )}
                     </div>
                   )}
                 </CardContent>
