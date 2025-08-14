@@ -373,6 +373,54 @@ class TrolleySdkService {
     return widgetBaseUrl.toString();
   }
 
+  // Generate widget URL for new recipient onboarding (with refid)
+  generateWidgetUrlForNewRecipient(recipientEmail: string, recipientReferenceId: string, userType: 'individual' | 'business' = 'individual'): string {
+    console.log(`Generating NEW recipient widget URL for: ${recipientEmail} with refid: ${recipientReferenceId}`);
+    
+    const apiKey = process.env.TROLLEY_API_KEY;
+    const apiSecret = process.env.TROLLEY_API_SECRET;
+    
+    if (!apiKey || !apiSecret) {
+      throw new Error('Trolley API credentials not configured');
+    }
+
+    // Generate Trolley widget URL with refid for NEW recipients (per official docs)
+    const widgetBaseUrl = new URL('https://widget.trolley.com');
+    
+    // Follow exact Trolley documentation format
+    const baseParams = {
+      ts: Math.floor(new Date().getTime() / 1000).toString(),
+      key: apiKey,
+      email: recipientEmail,
+      refid: recipientReferenceId,  // REQUIRED for new recipients per docs
+      hideEmail: 'false',
+      roEmail: 'false',
+      locale: 'en',
+      products: 'pay,tax'
+      // Note: no 'type' parameter - let Trolley handle the type determination
+    };
+
+    // Use URLSearchParams and replace + with %20 exactly as shown in docs
+    const queryParams = new URLSearchParams(baseParams);
+    const querystring = queryParams.toString().replace(/\+/g, '%20');
+    
+    console.log(`HMAC calculation string: ${querystring}`);
+    
+    // Create HMAC signature exactly as per Trolley documentation
+    const hmac = crypto.createHmac('sha256', apiSecret);
+    hmac.update(querystring);
+    const signature = hmac.digest('hex');
+    console.log(`Generated HMAC signature: ${signature}`);
+    
+    // Build final URL with signature
+    widgetBaseUrl.search = querystring + '&sign=' + signature;
+    
+    const finalUrl = widgetBaseUrl.toString();
+    console.log(`Generated NEW recipient widget URL: ${finalUrl}`);
+    
+    return finalUrl;
+  }
+
   // Generate widget URL specifically for existing recipients (no refid)
   generateWidgetUrlForExisting(recipientEmail: string, userType: 'individual' | 'business' = 'individual'): string {
     console.log(`Generating existing account widget URL for: ${recipientEmail}`);
@@ -394,19 +442,17 @@ class TrolleySdkService {
       hideEmail: 'false',
       roEmail: 'false',
       locale: 'en',
-      products: 'pay,tax',
-      type: userType  // Use the specified user type - default to 'individual' for contractors
+      products: 'pay,tax'
+      // Note: no refid for existing accounts, no type parameter
     };
 
-    // Create query string exactly as per Trolley documentation
-    const querystring = Object.entries(baseParams)
-      .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
-      .join('&')
-      .replace(/\+/g, '%20');
+    // Use URLSearchParams and replace + with %20 exactly as shown in docs
+    const queryParams = new URLSearchParams(baseParams);
+    const querystring = queryParams.toString().replace(/\+/g, '%20');
     
     console.log(`HMAC calculation string: ${querystring}`);
     
-    // Create HMAC signature using the exact querystring that will be in the URL
+    // Create HMAC signature exactly as per Trolley documentation
     const hmac = crypto.createHmac('sha256', apiSecret);
     hmac.update(querystring);
     const signature = hmac.digest('hex');

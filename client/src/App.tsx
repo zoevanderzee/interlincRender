@@ -46,6 +46,7 @@ import WorkRequestRespond from "./pages/work-request-respond";
 import ContractorOnboarding from "@/pages/contractor-onboarding";
 import ContractorPaymentSetup from "@/pages/contractor-payment-setup";
 import BusinessSetup from "@/pages/business-setup";
+import PaymentSetup from "@/pages/payment-setup";
 
 function Router() {
   console.log("Router rendering, current path:", window.location.pathname + window.location.search);
@@ -217,7 +218,7 @@ function Router() {
       
       <ProtectedRoute path="/payment-setup">
         <Layout>
-          <ContractorPaymentSetup />
+          <PaymentSetup />
         </Layout>
       </ProtectedRoute>
       

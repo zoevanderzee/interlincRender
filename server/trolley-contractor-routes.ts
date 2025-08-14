@@ -94,8 +94,8 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
     }
   });
 
-  // Generate Trolley widget URL for contractor onboarding
-  app.post(`${apiRouter}/trolley/generate-widget`, requireAuth, async (req: Request, res: Response) => {
+  // Complete contractor onboarding by creating Trolley recipient with collected data
+  app.post(`${apiRouter}/trolley/complete-onboarding`, requireAuth, async (req: Request, res: Response) => {
     try {
       const userId = (req as any).user?.id || req.headers['x-user-id'];
       if (!userId) {
@@ -107,53 +107,80 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
         return res.status(403).json({ message: 'Access denied: Contractors only' });
       }
 
-      // Try direct API creation first, then fallback to widget
-      if (!user.trolleyRecipientId) {
-        try {
-          console.log(`No recipient ID found. Creating recipient via API for ${user.email}`);
-          
-          const recipientData = {
-            type: 'individual' as const,
-            firstName: user.username || 'Contractor',
-            lastName: 'User',
-            email: user.email
-          };
-
-          const recipient = await trolleyService.createRecipient(recipientData);
-          console.log('API recipient created successfully:', recipient.id);
-          
-          // Update user with recipient ID
-          await storage.updateUserTrolleyRecipientId(Number(userId), recipient.id);
-          
-          // Generate widget URL for setup completion using recipient ID
-          const widgetUrl = trolleySdk.generateWidgetUrl(recipient.id, user.email, 'individual');
-          
-          res.json({
-            widgetUrl,
-            recipientId: recipient.id,
-            message: 'Recipient created - widget ready for setup completion'
-          });
-          return;
-        } catch (apiError: any) {
-          console.log('API creation failed, falling back to existing account widget:', apiError.message);
-        }
+      if (user.trolleyRecipientId) {
+        return res.status(400).json({ message: 'Contractor already has Trolley account setup' });
       }
 
-      // EXISTING ACCOUNT FIX: Use existing account widget flow to avoid "email already exists" error
-      // Per Trolley docs: omit refid for existing accounts to allow setup completion
-      console.log(`Generating contractor widget for ${user.email} - using existing account flow`);
-      
-      // Use existing account widget (no refid) to allow setup completion for existing emails
-      // Contractors are recipients receiving payments, so use 'individual' type
-      const widgetUrl = trolleySdk.generateWidgetUrlForExisting(user.email, 'individual');
+      const { firstName, lastName, address, dateOfBirth, governmentId } = req.body;
 
-      res.json({
-        widgetUrl,
-        message: 'Trolley widget URL generated successfully'
-      });
+      // Validate required fields
+      if (!firstName || !lastName || !address?.street1 || !address?.city || !address?.region || !address?.country || !address?.postalCode) {
+        return res.status(400).json({ message: 'Missing required personal information' });
+      }
+
+      console.log(`Creating Trolley recipient for contractor ${user.email}`);
+      
+      // Create recipient through Trolley API
+      const recipientData = {
+        type: 'individual' as const,
+        firstName,
+        lastName,
+        email: user.email,
+        address: {
+          street1: address.street1,
+          street2: address.street2 || '',
+          city: address.city,
+          region: address.region,
+          country: address.country,
+          postalCode: address.postalCode
+        },
+        dob: dateOfBirth,
+        ...(governmentId && { ssn: governmentId })
+      };
+
+      try {
+        const recipient = await trolleyService.createRecipient(recipientData);
+        console.log(`Trolley recipient created successfully: ${recipient.id}`);
+        
+        // Update user with recipient ID
+        await storage.updateUserTrolleyRecipientId(Number(userId), recipient.id);
+        
+        res.json({
+          success: true,
+          recipientId: recipient.id,
+          message: 'Contractor onboarding completed successfully'
+        });
+      } catch (trolleyError: any) {
+        console.error('Trolley API error during onboarding:', trolleyError);
+        
+        // Check if this is a duplicate email error
+        if (trolleyError.validationErrors?.some((err: any) => err.code === 'duplicate' && err.field === 'email')) {
+          // Extract existing recipient ID from error message
+          const existingIdMatch = trolleyError.validationErrors.find((err: any) => err.message?.includes('recipient'))?.message?.match(/recipient\s+([R-\w]+)/);
+          
+          if (existingIdMatch && existingIdMatch[1]) {
+            const existingRecipientId = existingIdMatch[1];
+            console.log(`Found existing recipient ID: ${existingRecipientId}`);
+            
+            // Update user with existing recipient ID
+            await storage.updateUserTrolleyRecipientId(Number(userId), existingRecipientId);
+            
+            return res.json({
+              success: true,
+              recipientId: existingRecipientId,
+              message: 'Connected to existing Trolley account'
+            });
+          }
+        }
+        
+        res.status(500).json({ 
+          message: 'Failed to create Trolley recipient',
+          error: trolleyError.message 
+        });
+      }
     } catch (error) {
-      console.error('Error generating Trolley widget URL:', error);
-      res.status(500).json({ message: 'Failed to generate widget URL' });
+      console.error('Error completing contractor onboarding:', error);
+      res.status(500).json({ message: 'Internal server error' });
     }
   });
 
