@@ -84,22 +84,24 @@ export function setupAuth(app: Express) {
   // Trust proxy for Replit environment
   app.set("trust proxy", 1);
   
-  // Add CORS headers for Replit preview environment
-  app.use((req, res, next) => {
-    const origin = req.headers.origin;
-    if (origin) {
-      res.header('Access-Control-Allow-Origin', origin);
-      res.header('Access-Control-Allow-Credentials', 'true');
-    }
-    res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization');
-    
-    if (req.method === 'OPTIONS') {
-      res.sendStatus(200);
-    } else {
-      next();
-    }
-  });
+  // CORS configuration for cross-origin requests
+  if (process.env.NODE_ENV !== 'production') {
+    app.use((req, res, next) => {
+      const origin = req.headers.origin;
+      if (origin) {
+        res.header('Access-Control-Allow-Origin', origin);
+        res.header('Access-Control-Allow-Credentials', 'true');
+      }
+      res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization');
+      
+      if (req.method === 'OPTIONS') {
+        res.sendStatus(200);
+      } else {
+        next();
+      }
+    });
+  }
 
   // Setup session middleware
   app.use(session(sessionSettings));
@@ -124,9 +126,7 @@ export function setupAuth(app: Express) {
         if (!user.password) {
           console.log(`User has no password set: ${username}`);
           return done(null, false, { 
-            message: "Password required. Please reset your password to continue.",
-            needsPasswordSetup: true,
-            email: user.email
+            message: "Password required. Please reset your password to continue."
           });
         }
         
@@ -139,9 +139,7 @@ export function setupAuth(app: Express) {
         // Check if email is verified
         if (user.emailVerified === false) {
           return done(null, false, { 
-            message: "Please verify your email before logging in.",
-            requiresEmailVerification: true,
-            email: user.email
+            message: "Please verify your email before logging in."
           });
         }
         
