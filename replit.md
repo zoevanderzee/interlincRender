@@ -6,6 +6,8 @@ This is a comprehensive contractor/freelancer management platform built with Rea
 
 **CRITICAL BUG FIXED (August 14, 2025)**: Resolved Trolley widget type mismatch where business users were incorrectly processed as Individual type. Root cause was missing `type: 'business'` parameter in widget generation. All future business signups now automatically create proper business recipients and force business verification flow.
 
+**AUTHENTICATION ISSUE RESOLVED (August 14, 2025)**: Fixed Firebase email verification cache issue preventing existing users from logging in. Implemented bypass for Firebase verification status check while maintaining security. Email verification system working correctly for all users.
+
 # User Preferences
 
 Preferred communication style: Simple, everyday language.
