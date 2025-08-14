@@ -20,9 +20,9 @@ export const signUpUser = async (email: string, password: string): Promise<Fireb
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user: User = userCredential.user;
 
-    // Send email verification with custom action URL
+    // Send email verification with production action URL
     await sendEmailVerification(user, {
-      url: window.location.origin + '/?mode=verifyEmail', // This will ensure proper routing
+      url: 'https://creativlinc.app/?mode=verifyEmail',
       handleCodeInApp: false
     });
     console.log("Verification email sent to:", email);
