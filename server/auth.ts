@@ -118,7 +118,7 @@ export function setupAuth(app: Express) {
           return done(null, false, { message: "Invalid username or password" });
         }
         
-        console.log(`Login attempt for user: ${username}, emailVerified: ${user.emailVerified}`);
+        console.log(`Login attempt for user: ${username}, emailVerified: ${user.emailVerified} (type: ${typeof user.emailVerified})`);
         
         // REMOVED: No placeholder passwords allowed in live production system
         if (!user.password) {
@@ -136,8 +136,8 @@ export function setupAuth(app: Express) {
           return done(null, false, { message: "Invalid username or password" });
         }
 
-        // Check if email is verified
-        if (user.emailVerified === false) {
+        // Check if email is verified - handle both boolean and string values
+        if (!user.emailVerified || user.emailVerified === false || user.emailVerified === 'false') {
           return done(null, false, { 
             message: "Please verify your email before logging in.",
             requiresEmailVerification: true,
