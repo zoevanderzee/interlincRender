@@ -354,9 +354,7 @@ export function setupAuth(app: Express) {
 
       // Handle project-specific invitation
       if (invite) {
-        await storage.updateInvite(invite.id, { 
-          status: 'accepted'
-        });
+        await storage.updateInvite(invite.id, {});
         
         // If the invite is associated with a contract, create one automatically
         if (invite.projectId && invite.contractDetails) {
@@ -381,7 +379,7 @@ export function setupAuth(app: Express) {
         
         // Send a welcome email to the newly registered user
         try {
-          const { sendContractCreatedEmail } = await import('./services/email');
+          // Email service temporarily disabled
           const appUrl = `${req.protocol}://${req.get('host')}`;
           
           await sendContractCreatedEmail({
@@ -405,7 +403,7 @@ export function setupAuth(app: Express) {
           
           // Send welcome email to the newly registered contractor
           try {
-            const { sendEmail } = await import('./services/email');
+            // Email service temporarily disabled
             const business = await storage.getUser(businessInfo.businessId);
             const businessName = business ? (business.companyName || `${business.firstName || ''} ${business.lastName || ''}`).trim() : "Your client";
             const appUrl = `${req.protocol}://${req.get('host')}`;
