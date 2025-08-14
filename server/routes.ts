@@ -2896,67 +2896,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let paymentIntent;
       
-      if (isSimulated) {
-        // For simulated accounts, create a regular payment intent without Connect
-        console.log('Creating simulated direct payment for testing');
-        
-        // Generate a fake payment intent ID for simulation
-        const fakePaymentIntentId = `pi_${nodeCrypto.randomBytes(16).toString('hex')}`;
-        const fakeClientSecret = `${fakePaymentIntentId}_secret_${nodeCrypto.randomBytes(8).toString('hex')}`;
-        
-        // Simulate a payment intent object
-        paymentIntent = {
-          id: fakePaymentIntentId,
-          clientSecret: fakeClientSecret,
-          status: 'requires_payment_method'
-        };
-        
-        // Generate a fake transfer ID for simulation
-        const fakeTransferId = `tr_${nodeCrypto.randomBytes(16).toString('hex')}`;
-        
-        // Update payment with simulated Stripe payment intent details
-        await storage.updatePaymentStripeDetails(
-          paymentId, 
-          paymentIntent.id, 
-          'requires_payment_method'
-        );
-        
-        // Update payment with simulated transfer details
-        await storage.updatePaymentTransferDetails(
-          paymentId,
-          fakeTransferId,
-          'pending',
-          platformFee
-        );
-      } else {
-        // Create direct payment to contractor using Stripe Connect
-        paymentIntent = await stripeService.processDirectPayment(
-          payment,
-          contractor.stripeConnectAccountId,
-          platformFee
-        );
-        
-        // Update payment with Stripe payment intent details
-        await storage.updatePaymentStripeDetails(
-          paymentId, 
-          paymentIntent.id, 
-          'requires_payment_method'
-        );
-        
-        // Update payment with transfer details
-        await storage.updatePaymentTransferDetails(
-          paymentId,
-          '', // Transfer ID will be updated after payment completes
-          'pending',
-          platformFee
-        );
+      // Process real payment through Trolley
+      console.log('🔴 PROCESSING REAL TROLLEY PAYMENT');
+      
+      const { trolleyApi } = await import('./trolley-api');
+      
+      // Create real Trolley payment to contractor
+      const paymentData = {
+        recipientId: contractor.trolleyRecipientId,
+        amount: payment.amount,
+        currency: 'USD',
+        description: `Payment for milestone: ${payment.description || 'Contractor payment'}`,
+        externalId: `payment_${paymentId}_${Date.now()}`
+      };
+
+      const trolleyPayment = await trolleyApi.createPayment(paymentData);
+      
+      if (!trolleyPayment.success) {
+        return res.status(400).json({ message: trolleyPayment.error });
       }
+
+      // Update payment with Trolley payment details
+      await storage.updatePayment(paymentId, {
+        trolleyPaymentId: trolleyPayment.paymentId,
+        paymentProcessor: 'trolley',
+        status: 'processing'
+      });
+      
+      paymentIntent = {
+        id: trolleyPayment.paymentId,
+        status: 'processing'
+      };
       
       res.json({
-        clientSecret: paymentIntent.clientSecret,
-        paymentIntentId: paymentIntent.id,
-        directToContractor: true,
-        simulated: isSimulated
+        paymentId: paymentIntent.id,
+        status: paymentIntent.status,
+        message: 'Real Trolley payment initiated successfully'
       });
     } catch (error) {
       console.error('Error creating direct payment:', error);
@@ -5059,18 +5034,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ success: true, message: 'Already configured' });
       }
 
-      console.log(`Auto-creating Trolley account for business: ${user.email}`);
+      console.log(`🔴 CREATING REAL TROLLEY SUBMERCHANT for business: ${user.email}`);
       
-      // For now, create a simulated verified account for all businesses
-      // In production, this would create actual sub-merchant accounts
-      const simulatedSubmerchantId = `submerchant_${user.id}_${Date.now()}`;
+      const { trolleySdk } = await import('./trolley-sdk-service');
+      
+      // Create real submerchant account with business information
+      const submerchantData = {
+        merchant: {
+          name: user.company || user.username,
+          currency: 'USD'
+        },
+        onboarding: {
+          businessWebsite: 'https://creativlinc.app',
+          businessLegalName: user.company || user.username,
+          businessAsName: user.company || user.username,
+          businessTaxId: 'PENDING',
+          businessCategory: 'business_service',
+          businessCountry: 'US',
+          businessCity: 'PENDING',
+          businessAddress: 'PENDING',
+          businessZip: 'PENDING',
+          businessRegion: 'PENDING',
+          businessTotalMonthly: '10000',
+          businessPpm: '100',
+          businessIntlPercentage: '15',
+          expectedPayoutCountries: 'US'
+        }
+      };
+
+      const submerchant = await trolleySdk.createSubmerchant(submerchantData);
       
       await storage.updateUser(user.id, {
-        trolleySubmerchantId: simulatedSubmerchantId,
-        trolleySubmerchantStatus: 'verified',
-        trolleyBankAccountStatus: 'verified',
-        trolleyBankAccountLast4: '1234', // Simulated
-        trolleyVerificationToken: 'auto_verified',
+        trolleySubmerchantId: submerchant.merchant.id,
+        trolleySubmerchantAccessKey: submerchant.merchant.accessKey,
+        trolleySubmerchantSecretKey: submerchant.merchant.secretKey,
+        trolleySubmerchantStatus: 'pending_verification',
         paymentMethod: 'pay_as_you_go'
       });
 
@@ -5109,27 +5107,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // For production deployment, create a verified payment account for all businesses
-      // This simulates having integrated Trolley's full onboarding flow
-      const simulatedSubmerchantId = `submerchant_${user.id}_${Date.now()}`;
+      console.log(`🔴 CREATING REAL TROLLEY SUBMERCHANT for business: ${user.email}`);
+      
+      const { trolleySdk } = await import('./trolley-sdk-service');
+      
+      // Create real submerchant account
+      const submerchantData = {
+        merchant: {
+          name: user.company || user.username,
+          currency: 'USD'
+        },
+        onboarding: {
+          businessWebsite: 'https://creativlinc.app',
+          businessLegalName: user.company || user.username,
+          businessAsName: user.company || user.username,
+          businessTaxId: 'PENDING',
+          businessCategory: 'business_service',
+          businessCountry: 'US',
+          businessCity: 'PENDING',
+          businessAddress: 'PENDING',
+          businessZip: 'PENDING',
+          businessRegion: 'PENDING',
+          businessTotalMonthly: '10000',
+          businessPpm: '100',
+          businessIntlPercentage: '15',
+          expectedPayoutCountries: 'US'
+        }
+      };
+
+      const submerchant = await trolleySdk.createSubmerchant(submerchantData);
       
       await storage.updateUser(user.id, {
-        trolleySubmerchantId: simulatedSubmerchantId,
-        trolleySubmerchantStatus: 'verified',
-        trolleyBankAccountStatus: 'verified',
-        trolleyBankAccountLast4: '1234', // Simulated for demo
-        trolleyVerificationToken: 'production_verified',
+        trolleySubmerchantId: submerchant.merchant.id,
+        trolleySubmerchantAccessKey: submerchant.merchant.accessKey,
+        trolleySubmerchantSecretKey: submerchant.merchant.secretKey,
+        trolleySubmerchantStatus: 'pending_verification',
         paymentMethod: 'pay_as_you_go'
       });
 
-      console.log(`Successfully configured payment account for user ${user.id}: ${simulatedSubmerchantId}`);
+      console.log(`✅ REAL TROLLEY SUBMERCHANT CREATED for user ${user.id}: ${submerchant.merchant.id}`);
 
       res.json({
         success: true,
-        submerchantId: simulatedSubmerchantId,
-        isVerified: true,
-        message: 'Payment account configured successfully',
-        description: 'Your payment account is ready. You can now fund your wallet and pay contractors.'
+        submerchantId: submerchant.merchant.id,
+        isVerified: false,
+        message: 'Real Trolley submerchant account created',
+        description: 'Complete verification to enable live payments.'
       });
 
     } catch (error) {

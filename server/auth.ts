@@ -293,23 +293,50 @@ export function setupAuth(app: Express) {
       
       const user = await storage.createUser(userData);
 
-      // Auto-setup payment account for business users
+      // Auto-setup REAL Trolley submerchant account for business users
       if (role === 'business') {
         try {
-          const simulatedSubmerchantId = `submerchant_${user.id}_${Date.now()}`;
+          console.log(`🔴 CREATING REAL TROLLEY SUBMERCHANT for business: ${user.email}`);
+          
+          const { trolleySdk } = await import('./trolley-sdk-service');
+          
+          // Create real submerchant account with business information
+          const submerchantData = {
+            merchant: {
+              name: user.company || user.username,
+              currency: 'USD'
+            },
+            onboarding: {
+              businessWebsite: 'https://creativlinc.app',
+              businessLegalName: user.company || user.username,
+              businessAsName: user.company || user.username,
+              businessTaxId: 'PENDING',
+              businessCategory: 'business_service',
+              businessCountry: 'US',
+              businessCity: 'PENDING',
+              businessAddress: 'PENDING',
+              businessZip: 'PENDING',
+              businessRegion: 'PENDING',
+              businessTotalMonthly: '10000',
+              businessPpm: '100',
+              businessIntlPercentage: '15',
+              expectedPayoutCountries: 'US'
+            }
+          };
+
+          const submerchant = await trolleySdk.createSubmerchant(submerchantData);
           
           await storage.updateUser(user.id, {
-            trolleySubmerchantId: simulatedSubmerchantId,
-            trolleySubmerchantStatus: 'verified',
-            trolleyBankAccountStatus: 'verified',
-            trolleyBankAccountLast4: '1234', // Simulated for demo
-            trolleyVerificationToken: 'auto_verified_signup',
+            trolleySubmerchantId: submerchant.merchant.id,
+            trolleySubmerchantAccessKey: submerchant.merchant.accessKey,
+            trolleySubmerchantSecretKey: submerchant.merchant.secretKey,
+            trolleySubmerchantStatus: 'pending_verification',
             paymentMethod: 'pay_as_you_go'
           });
           
-          console.log(`Auto-created payment account for new business user ${user.id}: ${simulatedSubmerchantId}`);
+          console.log(`✅ REAL TROLLEY SUBMERCHANT CREATED for user ${user.id}: ${submerchant.merchant.id}`);
         } catch (paymentSetupError) {
-          console.error('Error auto-setting up payment account:', paymentSetupError);
+          console.error('Error creating real Trolley submerchant:', paymentSetupError);
           // Continue with registration even if payment setup fails
         }
       }
