@@ -4735,10 +4735,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       try {
-        console.log(`🔴 FETCHING LIVE BALANCE for company profile: ${user.trolleyCompanyProfileId}`);
+        // CRITICAL FIX: Use verified recipient ID instead of fake user ID
+        // Your verified Trolley account: R-AeVtg3cVK1ExCDPQosEHve
+        const verifiedRecipientId = user.trolleyRecipientId; // This should be R-AeVtg3cVK1ExCDPQosEHve
         
-        // Use the direct Trolley API service instead of submerchant mock data
-        const balance = await trolleyApi.getCompanyBalance(user.trolleyCompanyProfileId);
+        if (!verifiedRecipientId || verifiedRecipientId === '86') {
+          console.log(`❌ Invalid Trolley recipient ID: ${verifiedRecipientId}. Expected R-AeVtg3cVK1ExCDPQosEHve`);
+          return res.status(400).json({ 
+            message: "Verified Trolley account not properly linked. Please reconnect your verified business account." 
+          });
+        }
+        
+        console.log(`🔴 FETCHING LIVE BALANCE for verified recipient: ${verifiedRecipientId}`);
+        
+        // Use recipient ID to get company profile and balance
+        const balance = await trolleyApi.getCompanyBalance(verifiedRecipientId);
         
         console.log(`✅ LIVE BALANCE RETRIEVED: $${balance.balance} ${balance.currency}`);
         
@@ -4777,7 +4788,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Call live Trolley API to get real funding history
       try {
-        const history = await trolleyApi.getFundingHistory(user.trolleyCompanyProfileId);
+        // Use verified recipient ID for funding history
+        const verifiedRecipientId = user.trolleyRecipientId;
+        const history = await trolleyApi.getFundingHistory(verifiedRecipientId);
         res.json(history || []);
       } catch (apiError) {
         console.log('Error fetching funding history from Trolley API:', apiError);
