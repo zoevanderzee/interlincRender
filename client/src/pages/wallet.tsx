@@ -539,14 +539,25 @@ export default function WalletPage() {
                     <CreditCard className="h-5 w-5 text-purple-400" />
                     <div className="flex-1">
                       <p className="font-medium text-white">Pay-as-you-go</p>
-                      <p className="text-sm text-zinc-500">Direct payment from linked bank account when you approve milestones</p>
-                      {(userData as any)?.trolleyBankAccountStatus === 'verified' && (
-                        <p className="text-xs text-green-400 mt-1">
-                          ✓ Bank account ending in {(userData as any)?.trolleyBankAccountLast4 || 'loading...'} linked
-                        </p>
+                      <p className="text-sm text-zinc-500">Direct payment from your verified Trolley business account</p>
+                      {(userData as any)?.trolleyCompanyProfileId && (
+                        <div className="mt-2">
+                          <p className="text-xs text-green-400">
+                            ✓ Trolley business verification complete
+                          </p>
+                          {(userData as any)?.trolleyBankAccountLast4 ? (
+                            <p className="text-xs text-green-400">
+                              ✓ Bank account ending in {(userData as any)?.trolleyBankAccountLast4} linked via Trolley
+                            </p>
+                          ) : (
+                            <p className="text-xs text-yellow-400">
+                              ⏳ Bank account linked via Trolley (fetching details...)
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
-                    {(userData as any)?.trolleyBankAccountStatus === 'verified' ? (
+                    {(userData as any)?.trolleyCompanyProfileId ? (
                       <div className="flex items-center gap-2">
                         <div className="text-sm text-green-400">Ready</div>
                         {!(userData as any)?.trolleyBankAccountLast4 && (
@@ -560,20 +571,20 @@ export default function WalletPage() {
                                 if (response.ok) {
                                   queryClient.invalidateQueries({ queryKey: ['/api/user'] });
                                   toast({
-                                    title: "Bank Account Refreshed",
-                                    description: "Live bank account data has been updated.",
+                                    title: "Bank Account Details Updated",
+                                    description: "Your Trolley bank account information has been refreshed.",
                                   });
                                 }
                               } catch (error) {
                                 toast({
                                   title: "Refresh Failed",
-                                  description: "Could not refresh bank account data.",
+                                  description: "Could not fetch bank account details from Trolley.",
                                   variant: "destructive",
                                 });
                               }
                             }}
                           >
-                            Refresh
+                            Get Details
                           </Button>
                         )}
                       </div>
