@@ -20,8 +20,11 @@ export const signUpUser = async (email: string, password: string): Promise<Fireb
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user: User = userCredential.user;
 
-    // Send email verification
-    await sendEmailVerification(user);
+    // Send email verification with custom action URL
+    await sendEmailVerification(user, {
+      url: window.location.origin + '/?mode=verifyEmail', // This will ensure proper routing
+      handleCodeInApp: false
+    });
     console.log("Verification email sent to:", email);
 
     return {
@@ -108,7 +111,10 @@ export const resendEmailVerification = async (): Promise<boolean> => {
   }
 
   try {
-    await sendEmailVerification(user);
+    await sendEmailVerification(user, {
+      url: window.location.origin + '/?mode=verifyEmail', // This will ensure proper routing
+      handleCodeInApp: false
+    });
     console.log("Verification email resent");
     return true;
   } catch (error) {
