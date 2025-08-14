@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quick Login Helper</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+        .login-card { border: 1px solid #ddd; padding: 20px; border-radius: 8px; }
+        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px; }
+        button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .status { margin: 10px 0; padding: 10px; border-radius: 4px; }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <h2>Quick Login for zoevdzee@creativlinc.co.uk</h2>
+        <div id="status"></div>
+        
+        <h3>Option 1: Direct Database Login</h3>
+        <button onclick="directLogin()">Login as zoevdzee@creativlinc.co.uk</button>
+        
+        <h3>Option 2: Manual Login</h3>
+        <input type="email" id="email" placeholder="Email" value="zoevdzee@creativlinc.co.uk">
+        <input type="password" id="password" placeholder="Password">
+        <button onclick="manualLogin()">Login</button>
+        
+        <h3>Account Status</h3>
+        <p><strong>Email:</strong> zoevdzee@creativlinc.co.uk</p>
+        <p><strong>Role:</strong> business</p>
+        <p><strong>Trolley Profile:</strong> Company ID 86 (linked)</p>
+        <p><strong>Status:</strong> Active subscription</p>
+    </div>
+
+    <script>
+        async function directLogin() {
+            const statusDiv = document.getElementById('status');
+            
+            try {
+                statusDiv.innerHTML = '<div class="status">Creating direct login session...</div>';
+                
+                // Call backend to create session for this user
+                const response = await fetch('/api/admin/create-session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ email: 'zoevdzee@creativlinc.co.uk' })
+                });
+                
+                if (response.ok) {
+                    statusDiv.innerHTML = '<div class="status success">✅ Login successful! Redirecting...</div>';
+                    setTimeout(() => {
+                        window.location.href = '/dashboard';
+                    }, 1000);
+                } else {
+                    const error = await response.text();
+                    statusDiv.innerHTML = `<div class="status error">❌ Login failed: ${error}</div>`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+            }
+        }
+        
+        async function manualLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const statusDiv = document.getElementById('status');
+            
+            if (!email || !password) {
+                statusDiv.innerHTML = '<div class="status error">Please enter email and password</div>';
+                return;
+            }
+            
+            try {
+                statusDiv.innerHTML = '<div class="status">Logging in...</div>';
+                
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ email, password })
+                });
+                
+                if (response.ok) {
+                    statusDiv.innerHTML = '<div class="status success">✅ Login successful! Redirecting...</div>';
+                    setTimeout(() => {
+                        window.location.href = '/dashboard';
+                    }, 1000);
+                } else {
+                    const error = await response.json();
+                    statusDiv.innerHTML = `<div class="status error">❌ Login failed: ${error.error || error.message}</div>`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -276,8 +276,8 @@ export default function trolleyRoutes(app: Express, apiPath: string, authMiddlew
           const recipient = await trolleyService.createRecipient({
             email: userData.email,
             firstName: userData.username || userData.email.split('@')[0],
-            lastName: 'Business',
-            type: 'business'  // Explicitly force business type
+            lastName: userData.role === 'business' ? 'Business' : userData.username || 'User',
+            type: userData.role === 'business' ? 'business' : 'individual'  // Set type based on user role
           });
           recipientId = recipient.id;
           

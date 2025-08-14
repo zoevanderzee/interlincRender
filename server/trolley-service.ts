@@ -222,7 +222,7 @@ class TrolleyService {
       hideEmail: 'false',
       roEmail: 'false',
       locale: 'en',
-      type: 'business'  // Force business type for all Creativ Linc users
+      type: options.userRole === 'business' ? 'business' : 'individual'  // Set type based on user role
     };
 
     // Skip reference ID to avoid conflicts with existing recipients

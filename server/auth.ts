@@ -304,13 +304,13 @@ export function setupAuth(app: Express) {
           // Step 1: Create real submerchant account with business information
           const submerchantData = {
             merchant: {
-              name: user.company || user.username,
+              name: user.companyName || user.username,
               currency: 'USD'
             },
             onboarding: {
               businessWebsite: 'https://creativlinc.app',
-              businessLegalName: user.company || user.username,
-              businessAsName: user.company || user.username,
+              businessLegalName: user.companyName || user.username,
+              businessAsName: user.companyName || user.username,
               businessTaxId: 'PENDING',
               businessCategory: 'business_service',
               businessCountry: 'US',
@@ -331,7 +331,7 @@ export function setupAuth(app: Express) {
           console.log(`🔴 CREATING BUSINESS RECIPIENT for: ${user.email}`);
           const businessRecipient = await trolleyService.createRecipient({
             email: user.email,
-            firstName: user.company || user.username,
+            firstName: user.companyName || user.username,
             lastName: 'Business',
             type: 'business'  // FORCE BUSINESS TYPE - prevents Individual widget bug
           });
