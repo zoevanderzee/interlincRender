@@ -56,7 +56,7 @@ export function setupAuth(app: Express) {
       secure: false, // Must be false for development
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
       httpOnly: false, // Allow JS access for debugging
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Fix for Replit preview
+      sameSite: 'none', // Required for cross-origin in Replit preview
       path: '/', // Available for entire site
     },
     // Use the storage implementation's session store
