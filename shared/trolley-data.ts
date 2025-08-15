@@ -276,11 +276,43 @@ export const US_STATES = [
   { code: 'DC', name: 'District of Columbia' }
 ];
 
-// Bank account types supported by Trolley
+// Bank account types supported by Trolley - Global compatibility
 export const BANK_ACCOUNT_TYPES = [
   { value: 'checking', label: 'Checking Account' },
-  { value: 'savings', label: 'Savings Account' }
+  { value: 'savings', label: 'Savings Account' },
+  { value: 'business', label: 'Business Account' },
+  { value: 'current', label: 'Current Account' },
+  { value: 'deposit', label: 'Deposit Account' },
+  { value: 'investment', label: 'Investment Account' },
+  { value: 'other', label: 'Other' }
 ];
+
+// Bank routing/sort code labels by country for better UX
+export const BANK_CODE_LABELS = {
+  'US': 'Routing Number',
+  'GB': 'Sort Code',
+  'CA': 'Institution Number',
+  'AU': 'BSB Code',
+  'DE': 'BLZ Code',
+  'FR': 'RIB Code',
+  'NL': 'IBAN',
+  'BE': 'IBAN',
+  'IT': 'ABI/CAB Code',
+  'ES': 'IBAN',
+  'CH': 'BC Number',
+  'JP': 'Bank Code',
+  'SG': 'Bank Code',
+  'HK': 'Bank Code',
+  'IN': 'IFSC Code',
+  'BR': 'Bank Code',
+  'MX': 'CLABE',
+  'default': 'Bank Code/Routing Number'
+};
+
+// Helper to get appropriate bank code label
+export function getBankCodeLabel(countryCode: string): string {
+  return BANK_CODE_LABELS[countryCode] || BANK_CODE_LABELS.default;
+}
 
 // Helper function to get country name from code
 export function getCountryName(countryCode: string): string {

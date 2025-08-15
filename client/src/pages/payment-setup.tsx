@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, CheckCircle, AlertCircle, DollarSign } from 'lucide-react';
-import { TROLLEY_COUNTRIES, US_STATES, BANK_ACCOUNT_TYPES, INDUSTRY_CATEGORIES, getCountryName } from '@shared/trolley-data';
+import { TROLLEY_COUNTRIES, US_STATES, BANK_ACCOUNT_TYPES, INDUSTRY_CATEGORIES, getBankCodeLabel, getCountryName } from '@shared/trolley-data';
 
 const paymentSetupSchema = z.object({
   // Personal Information
@@ -44,6 +44,8 @@ type PaymentSetupFormData = z.infer<typeof paymentSetupSchema>;
 export default function PaymentSetup() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [showBankForm, setShowBankForm] = useState(false);
+  const [showPayPalForm, setShowPayPalForm] = useState(false);
 
   // Get contractor status
   const { data: status, isLoading: statusLoading } = useQuery({
@@ -72,6 +74,9 @@ export default function PaymentSetup() {
       paypalEmail: ''
     }
   });
+
+  // Watch country selection to update bank code label
+  const selectedCountry = form.watch('country');
 
   const paymentSetupMutation = useMutation({
     mutationFn: async (data: PaymentSetupFormData) => {
@@ -373,7 +378,19 @@ export default function PaymentSetup() {
               <CardContent className="space-y-6">
                 {/* Bank Account Section */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Bank Account (Recommended)</h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-medium">Bank Account (Recommended)</h3>
+                    <Button 
+                      type="button" 
+                      variant={showBankForm ? "default" : "outline"} 
+                      onClick={() => setShowBankForm(!showBankForm)}
+                      className="text-sm"
+                    >
+                      {showBankForm ? "Hide" : "Add Bank Account"}
+                    </Button>
+                  </div>
+                  {showBankForm && (
+                  <>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
@@ -393,15 +410,25 @@ export default function PaymentSetup() {
                       name="bankRoutingNumber"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Routing Number</FormLabel>
+                          <FormLabel>{getBankCodeLabel(selectedCountry || 'US')}</FormLabel>
                           <FormControl>
-                            <Input placeholder="021000021" {...field} />
+                            <Input 
+                              placeholder={
+                                selectedCountry === 'US' ? '021000021' :
+                                selectedCountry === 'GB' ? '12-34-56' :
+                                selectedCountry === 'CA' ? '001' :
+                                selectedCountry === 'AU' ? '123-456' :
+                                'Bank routing code'
+                              } 
+                              {...field} 
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
                   </div>
+                  
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
@@ -441,11 +468,24 @@ export default function PaymentSetup() {
                       )}
                     />
                   </div>
+                  </>
+                  )}
                 </div>
 
                 {/* PayPal Section */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-medium">PayPal (Alternative)</h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-medium">PayPal (Alternative)</h3>
+                    <Button 
+                      type="button" 
+                      variant={showPayPalForm ? "default" : "outline"} 
+                      onClick={() => setShowPayPalForm(!showPayPalForm)}
+                      className="text-sm"
+                    >
+                      {showPayPalForm ? "Hide" : "Add PayPal"}
+                    </Button>
+                  </div>
+                  {showPayPalForm && (
                   <FormField
                     control={form.control}
                     name="paypalEmail"
@@ -459,6 +499,7 @@ export default function PaymentSetup() {
                       </FormItem>
                     )}
                   />
+                  )}
                 </div>
 
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
