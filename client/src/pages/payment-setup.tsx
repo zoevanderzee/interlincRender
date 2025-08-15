@@ -26,7 +26,7 @@ const paymentSetupSchema = z.object({
   street2: z.string().optional(),
   city: z.string().min(1, 'City is required'),
   region: z.string().min(1, 'State/Province is required'),
-  country: z.string().min(2, 'Country is required').default('United States'),
+  country: z.string().min(2, 'Country is required').default('US'),
   postalCode: z.string().min(1, 'Postal code is required'),
   
   // Bank Account Information (Optional)
@@ -63,7 +63,7 @@ export default function PaymentSetup() {
       street2: '',
       city: '',
       region: '',
-      country: '',
+      country: 'US',
       postalCode: '',
       bankAccountNumber: '',
       bankRoutingNumber: '',
@@ -304,7 +304,7 @@ export default function PaymentSetup() {
                         </FormControl>
                         <SelectContent className="max-h-[200px]">
                           {TROLLEY_COUNTRIES.map((country) => (
-                            <SelectItem key={country.code} value={country.name}>
+                            <SelectItem key={country.code} value={country.code}>
                               {country.name}
                             </SelectItem>
                           ))}

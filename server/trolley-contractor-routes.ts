@@ -132,6 +132,9 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
       }
 
       console.log(`🔄 Creating Trolley recipient for contractor ${user.email} with payout details`);
+      console.log(`📍 Address data received:`, address);
+      console.log(`🌍 Country field value: "${address.country}"`);
+      console.log(`🌍 Country field type: ${typeof address.country}`);
       
       // Step 1: Create basic recipient profile
       const recipientData = {
