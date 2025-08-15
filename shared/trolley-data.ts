@@ -311,7 +311,10 @@ export const BANK_CODE_LABELS = {
 
 // Helper to get appropriate bank code label
 export function getBankCodeLabel(countryCode: string): string {
-  return BANK_CODE_LABELS[countryCode] || BANK_CODE_LABELS.default;
+  console.log('Getting bank code label for country:', countryCode);
+  const label = BANK_CODE_LABELS[countryCode] || BANK_CODE_LABELS.default;
+  console.log('Returning label:', label);
+  return label;
 }
 
 // Helper function to get country name from code

@@ -77,6 +77,9 @@ export default function PaymentSetup() {
 
   // Watch country selection to update bank code label
   const selectedCountry = form.watch('country');
+  
+  // Debug logging
+  console.log('Current selected country:', selectedCountry);
 
   const paymentSetupMutation = useMutation({
     mutationFn: async (data: PaymentSetupFormData) => {
@@ -410,7 +413,7 @@ export default function PaymentSetup() {
                       name="bankRoutingNumber"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{getBankCodeLabel(selectedCountry || 'US')}</FormLabel>
+                          <FormLabel>{getBankCodeLabel(selectedCountry || 'US')} {selectedCountry && `(${selectedCountry})`}</FormLabel>
                           <FormControl>
                             <Input 
                               placeholder={
@@ -418,6 +421,10 @@ export default function PaymentSetup() {
                                 selectedCountry === 'GB' ? '12-34-56' :
                                 selectedCountry === 'CA' ? '001' :
                                 selectedCountry === 'AU' ? '123-456' :
+                                selectedCountry === 'DE' ? '12345678' :
+                                selectedCountry === 'FR' ? '20041' :
+                                selectedCountry === 'JP' ? '0001' :
+                                selectedCountry === 'IN' ? 'ABCD0123456' :
                                 'Bank routing code'
                               } 
                               {...field} 
