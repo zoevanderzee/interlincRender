@@ -52,6 +52,7 @@ export interface IStorage {
   verifyEmailToken(token: string): Promise<User | undefined>;
   
   // Budget Management
+  getBudget(userId: number): Promise<{ budgetCap: string | null, budgetUsed: string | null } | null>;
   setBudgetCap(userId: number, budgetCap: number, period?: string, startDate?: Date, endDate?: Date): Promise<User | undefined>;
   increaseBudgetUsed(userId: number, amount: number): Promise<User | undefined>;
   decreaseBudgetUsed(userId: number, amount: number): Promise<User | undefined>;
@@ -1627,9 +1628,23 @@ export class DatabaseStorage implements IStorage {
   }
   
   async updateMilestone(id: number, milestoneData: Partial<InsertMilestone>): Promise<Milestone | undefined> {
+    // Process any date fields that might come in as strings
+    const processedData = { ...milestoneData };
+    
+    // Convert string dates to Date objects for timestamp fields
+    if (processedData.submittedAt && typeof processedData.submittedAt === 'string') {
+      processedData.submittedAt = new Date(processedData.submittedAt);
+    }
+    if (processedData.approvedAt && typeof processedData.approvedAt === 'string') {
+      processedData.approvedAt = new Date(processedData.approvedAt);
+    }
+    if (processedData.dueDate && typeof processedData.dueDate === 'string') {
+      processedData.dueDate = new Date(processedData.dueDate);
+    }
+    
     const [updatedMilestone] = await db
       .update(milestones)
-      .set(milestoneData)
+      .set(processedData)
       .where(eq(milestones.id, id))
       .returning();
     return updatedMilestone;
@@ -2354,6 +2369,21 @@ export class DatabaseStorage implements IStorage {
   }
   
   // Budget Management Methods
+  
+  async getBudget(userId: number): Promise<{ budgetCap: string | null, budgetUsed: string | null } | null> {
+    try {
+      const user = await this.getUser(userId);
+      if (!user) return null;
+      
+      return {
+        budgetCap: user.budgetCap,
+        budgetUsed: user.budgetUsed
+      };
+    } catch (error) {
+      console.error("Error getting budget:", error);
+      return null;
+    }
+  }
   
   async setBudgetCap(userId: number, budgetCap: number, period: string = 'yearly', startDate?: Date, endDate?: Date): Promise<User | undefined> {
     try {

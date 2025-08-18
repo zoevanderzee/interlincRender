@@ -1,293 +1,218 @@
-import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { ObjectUploader } from "./ObjectUploader";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Card, CardContent } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/queryClient';
-import { Upload, CheckCircle, FileText, X } from 'lucide-react';
-
-const submitWorkSchema = z.object({
-  title: z.string().min(1, 'Title is required'),
-  description: z.string().min(1, 'Description is required'),
-  notes: z.string().optional(),
-  submissionType: z.enum(['digital', 'physical']),
-  attachmentUrls: z.array(z.string()).optional(),
-});
-
-type SubmitWorkFormData = z.infer<typeof submitWorkSchema>;
+} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { Upload, FileText } from "lucide-react";
 
 interface SubmitWorkModalProps {
   isOpen: boolean;
   onClose: () => void;
-  workRequest: any;
+  milestoneId: number;
+  milestoneName: string;
 }
 
-export function SubmitWorkModal({ isOpen, onClose, workRequest }: SubmitWorkModalProps) {
+export function SubmitWorkModal({
+  isOpen,
+  onClose,
+  milestoneId,
+  milestoneName,
+}: SubmitWorkModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
-
-  const form = useForm<SubmitWorkFormData>({
-    resolver: zodResolver(submitWorkSchema),
-    defaultValues: {
-      title: workRequest?.title || '',
-      description: `Completed: ${workRequest?.title || ''}`,
-      notes: '',
-      submissionType: 'digital',
-      attachmentUrls: [],
-    },
-  });
+  const [submissionType, setSubmissionType] = useState<"digital" | "physical">("digital");
+  const [description, setDescription] = useState("");
+  const [uploadedFiles, setUploadedFiles] = useState<Array<{
+    url: string;
+    name: string;
+    type: string;
+    size: number;
+  }>>([]);
 
   const submitWorkMutation = useMutation({
-    mutationFn: async (data: SubmitWorkFormData) => {
-      return await apiRequest('POST', '/api/work-request-submissions', {
-        workRequestId: workRequest.id,
-        ...data,
-        attachmentUrls: uploadedFiles,
-      });
+    mutationFn: async (data: {
+      status: string;
+      submittedAt: string;
+      submissionType: string;
+      deliverableFiles?: any[];
+      deliverableDescription?: string;
+    }) => {
+      const response = await apiRequest("PATCH", `/milestones/${milestoneId}`, data);
+      return response.json();
     },
     onSuccess: () => {
       toast({
-        title: 'Work submitted successfully',
-        description: 'Your work has been submitted for review',
+        title: "Work Submitted",
+        description: "Your deliverable has been submitted for approval.",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/work-requests'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/work-request-submissions'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/milestones"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/contracts"] });
       onClose();
-      form.reset();
-      setUploadedFiles([]);
     },
     onError: (error: any) => {
       toast({
-        title: 'Error submitting work',
-        description: error.message || 'Failed to submit work. Please try again.',
-        variant: 'destructive',
+        title: "Submission Failed",
+        description: error.message || "Failed to submit work. Please try again.",
+        variant: "destructive",
       });
     },
   });
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
+  const handleGetUploadParameters = async () => {
+    const response = await apiRequest("POST", "/objects/upload");
+    const data = await response.json();
+    return {
+      method: "PUT" as const,
+      url: data.uploadURL,
+    };
+  };
 
-    setIsUploading(true);
-    const newFileUrls: string[] = [];
-
-    try {
-      for (const file of Array.from(files)) {
-        // In a real app, you'd upload to a file storage service
-        // For now, we'll simulate by creating a local URL
-        const fileUrl = `uploads/${Date.now()}-${file.name}`;
-        newFileUrls.push(fileUrl);
-      }
-      
-      setUploadedFiles(prev => [...prev, ...newFileUrls]);
-      toast({
-        title: 'Files uploaded',
-        description: `${files.length} file(s) uploaded successfully`,
-      });
-    } catch (error) {
-      toast({
-        title: 'Upload failed',
-        description: 'Failed to upload files. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsUploading(false);
+  const handleUploadComplete = (result: any) => {
+    if (result.successful && result.successful.length > 0) {
+      const newFiles = result.successful.map((file: any) => ({
+        url: file.uploadURL,
+        name: file.name,
+        type: file.type,
+        size: file.size,
+      }));
+      setUploadedFiles([...uploadedFiles, ...newFiles]);
     }
   };
 
-  const removeFile = (index: number) => {
-    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
-  };
+  const handleSubmit = () => {
+    if (submissionType === "digital" && uploadedFiles.length === 0) {
+      toast({
+        title: "Files Required",
+        description: "Please upload at least one file for digital deliverables.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-  const onSubmit = (data: SubmitWorkFormData) => {
-    submitWorkMutation.mutate({
-      ...data,
-      attachmentUrls: uploadedFiles,
-    });
-  };
+    if (submissionType === "physical" && !description.trim()) {
+      toast({
+        title: "Description Required",
+        description: "Please provide a description for physical deliverables.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-  const submissionType = form.watch('submissionType');
+    const submissionData = {
+      status: "completed",
+      submittedAt: new Date().toISOString(),
+      submissionType,
+      ...(submissionType === "digital" 
+        ? { deliverableFiles: uploadedFiles }
+        : { deliverableDescription: description }
+      ),
+    };
+
+    submitWorkMutation.mutate(submissionData);
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-zinc-900 border-zinc-800">
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle className="text-white">Submit Work</DialogTitle>
-          <DialogDescription className="text-gray-400">
-            Submit your completed work for: {workRequest?.title}
+          <DialogTitle>Submit Deliverable</DialogTitle>
+          <DialogDescription>
+            Submit your work for "{milestoneName}" to get approval and payment.
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          {/* Submission Type */}
-          <div className="space-y-3">
-            <Label className="text-white">Submission Type</Label>
+        <div className="space-y-6">
+          <div>
+            <Label className="text-base font-medium">Submission Type</Label>
             <RadioGroup
               value={submissionType}
-              onValueChange={(value) => form.setValue('submissionType', value as 'digital' | 'physical')}
-              className="grid grid-cols-2 gap-4"
+              onValueChange={(value: "digital" | "physical") => setSubmissionType(value)}
+              className="mt-2"
             >
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="digital" id="digital" />
-                <Label htmlFor="digital" className="text-white cursor-pointer">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    Digital Delivery
-                  </div>
-                </Label>
+                <Label htmlFor="digital">Digital Work (files, documents, etc.)</Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="physical" id="physical" />
-                <Label htmlFor="physical" className="text-white cursor-pointer">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4" />
-                    Physical Task
-                  </div>
-                </Label>
+                <Label htmlFor="physical">Physical Work (cannot be digitally evidenced)</Label>
               </div>
             </RadioGroup>
           </div>
 
-          {/* Title */}
-          <div className="space-y-2">
-            <Label htmlFor="title" className="text-white">Title</Label>
-            <Input
-              id="title"
-              {...form.register('title')}
-              className="bg-zinc-800 border-zinc-700 text-white"
-              placeholder="Work submission title"
-            />
-            {form.formState.errors.title && (
-              <p className="text-red-400 text-sm">{form.formState.errors.title.message}</p>
-            )}
-          </div>
-
-          {/* Description */}
-          <div className="space-y-2">
-            <Label htmlFor="description" className="text-white">Description</Label>
-            <Textarea
-              id="description"
-              {...form.register('description')}
-              className="bg-zinc-800 border-zinc-700 text-white min-h-[100px]"
-              placeholder="Describe what you've completed..."
-            />
-            {form.formState.errors.description && (
-              <p className="text-red-400 text-sm">{form.formState.errors.description.message}</p>
-            )}
-          </div>
-
-          {/* File Upload for Digital Submissions */}
-          {submissionType === 'digital' && (
+          {submissionType === "digital" ? (
             <div className="space-y-4">
-              <Label className="text-white">Attachments</Label>
+              <Label className="text-base font-medium">Upload Deliverable Files</Label>
+              <ObjectUploader
+                maxNumberOfFiles={5}
+                maxFileSize={50 * 1024 * 1024} // 50MB
+                onGetUploadParameters={handleGetUploadParameters}
+                onComplete={handleUploadComplete}
+                buttonClassName="w-full"
+              >
+                <div className="flex items-center gap-2">
+                  <Upload className="w-4 h-4" />
+                  <span>Upload Files</span>
+                </div>
+              </ObjectUploader>
               
-              <Card className="bg-zinc-800 border-zinc-700 border-dashed">
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                    <Label htmlFor="file-upload" className="cursor-pointer">
-                      <span className="text-blue-400 hover:text-blue-300">Upload files</span>
-                      <span className="text-gray-400"> or drag and drop</span>
-                    </Label>
-                    <Input
-                      id="file-upload"
-                      type="file"
-                      multiple
-                      onChange={handleFileUpload}
-                      className="hidden"
-                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.zip"
-                    />
-                    <p className="text-xs text-gray-400 mt-2">
-                      PDF, DOC, JPG, PNG, ZIP up to 10MB each
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-
               {uploadedFiles.length > 0 && (
                 <div className="space-y-2">
-                  <Label className="text-white">Uploaded Files:</Label>
+                  <Label className="text-sm font-medium">Uploaded Files:</Label>
                   {uploadedFiles.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between bg-zinc-800 p-3 rounded border border-zinc-700">
-                      <span className="text-white text-sm">{file.split('/').pop()}</span>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeFile(index)}
-                        className="text-gray-400 hover:text-red-400"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
+                    <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+                      <FileText className="w-4 h-4" />
+                      <span className="text-sm">{file.name}</span>
+                      <span className="text-xs text-gray-500">
+                        ({(file.size / 1024 / 1024).toFixed(1)} MB)
+                      </span>
                     </div>
                   ))}
                 </div>
               )}
             </div>
+          ) : (
+            <div className="space-y-2">
+              <Label htmlFor="description" className="text-base font-medium">
+                Work Description
+              </Label>
+              <Textarea
+                id="description"
+                placeholder="Describe the physical work completed that cannot be digitally evidenced (e.g., 'Installed new plumbing system in bathroom', 'Delivered materials to construction site', etc.)"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={4}
+                className="resize-none"
+              />
+            </div>
           )}
+        </div>
 
-          {/* Physical Task Completion */}
-          {submissionType === 'physical' && (
-            <Card className="bg-zinc-800 border-zinc-700">
-              <CardContent className="pt-6">
-                <div className="text-center">
-                  <CheckCircle className="mx-auto h-12 w-12 text-green-500 mb-4" />
-                  <h3 className="text-white font-medium mb-2">Physical Task Completion</h3>
-                  <p className="text-gray-400 text-sm">
-                    By submitting, you confirm that the physical task has been completed as requested.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Additional Notes */}
-          <div className="space-y-2">
-            <Label htmlFor="notes" className="text-white">Additional Notes (Optional)</Label>
-            <Textarea
-              id="notes"
-              {...form.register('notes')}
-              className="bg-zinc-800 border-zinc-700 text-white"
-              placeholder="Any additional information or notes..."
-            />
-          </div>
-
-          {/* Actions */}
-          <div className="flex justify-end gap-3 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              className="border-gray-700 text-white hover:bg-gray-800"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={submitWorkMutation.isPending || isUploading}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              {submitWorkMutation.isPending ? 'Submitting...' : 'Submit Work'}
-            </Button>
-          </div>
-        </form>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={submitWorkMutation.isPending}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSubmit} 
+            disabled={submitWorkMutation.isPending}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            {submitWorkMutation.isPending ? "Submitting..." : "Submit Deliverable"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

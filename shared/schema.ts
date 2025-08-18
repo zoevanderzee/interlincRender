@@ -92,7 +92,7 @@ export const contracts = pgTable("contracts", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Milestones table
+// Deliverables table (formerly milestones - using "deliverable" terminology throughout)
 export const milestones = pgTable("milestones", {
   id: serial("id").primaryKey(),
   contractId: integer("contract_id").notNull(),
@@ -105,7 +105,10 @@ export const milestones = pgTable("milestones", {
   submittedAt: timestamp("submitted_at"), // When contractor submitted the deliverable
   approvedAt: timestamp("approved_at"), // When business approved the deliverable
   autoPayEnabled: boolean("auto_pay_enabled").default(true), // Whether payment should be automatically triggered on approval
-  deliverableUrl: text("deliverable_url"), // URL or path to submitted deliverable
+  deliverableUrl: text("deliverable_url"), // URL or path to submitted deliverable (legacy)
+  deliverableFiles: jsonb("deliverable_files"), // Array of file objects {url, name, type, size}
+  deliverableDescription: text("deliverable_description"), // Description for physical work that cannot be digitally evidenced
+  submissionType: text("submission_type").default("digital"), // "digital" or "physical"
   approvalNotes: text("approval_notes"), // Business notes on approval/rejection
 });
 

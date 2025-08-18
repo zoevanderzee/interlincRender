@@ -28,6 +28,7 @@ import { trolleySdk } from "./trolley-sdk-service";
 import { trolleySubmerchantService, type TrolleySubmerchantData } from "./services/trolley-submerchant";
 import { trolleyService } from "./trolley-service";
 import { setupAuth } from "./auth";
+import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import plaidRoutes from "./plaid-routes";
 import trolleyRoutes from "./trolley-routes";
 import trolleyTestRoutes from "./trolley-test-routes";
@@ -6070,6 +6071,68 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
   // Register additional route modules
   app.use("/api/plaid", plaidRoutes);
   app.use("/api/trolley-test", trolleyTestRoutes);
+
+  // Object Storage Routes
+  
+  // Serve private objects with ACL check
+  app.get("/objects/:objectPath(*)", requireAuth, async (req, res) => {
+    const userId = req.user?.id?.toString() || req.headers['x-user-id']?.toString();
+    const objectStorageService = new ObjectStorageService();
+    try {
+      const objectFile = await objectStorageService.getObjectEntityFile(
+        req.path,
+      );
+      const canAccess = await objectStorageService.canAccessObjectEntity({
+        objectFile,
+        userId: userId,
+        requestedPermission: "read" as any,
+      });
+      if (!canAccess) {
+        return res.sendStatus(401);
+      }
+      objectStorageService.downloadObject(objectFile, res);
+    } catch (error) {
+      console.error("Error checking object access:", error);
+      if (error instanceof ObjectNotFoundError) {
+        return res.sendStatus(404);
+      }
+      return res.sendStatus(500);
+    }
+  });
+
+  // Get upload URL for object entities
+  app.post("/api/objects/upload", requireAuth, async (req, res) => {
+    const objectStorageService = new ObjectStorageService();
+    const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+    res.json({ uploadURL });
+  });
+
+  // Update deliverable files after upload
+  app.put("/api/deliverable-files", requireAuth, async (req, res) => {
+    if (!req.body.deliverableFileURL) {
+      return res.status(400).json({ error: "deliverableFileURL is required" });
+    }
+
+    const userId = req.user?.id?.toString() || req.headers['x-user-id']?.toString();
+
+    try {
+      const objectStorageService = new ObjectStorageService();
+      const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
+        req.body.deliverableFileURL,
+        {
+          owner: userId,
+          visibility: "private", // Deliverable files are private by default
+        },
+      );
+
+      res.status(200).json({
+        objectPath: objectPath,
+      });
+    } catch (error) {
+      console.error("Error setting deliverable file:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
 
   // Support contact form endpoint
   app.post("/api/support", async (req: Request, res: Response) => {
