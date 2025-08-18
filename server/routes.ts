@@ -976,14 +976,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const contractorValue = parseFloat(updateData.contractorValue.toString());
         
         // Get the business user's budget information  
+        console.log(`🔍 DEBUGGING: Getting budget for business ID: ${existingContract.businessId}`);
         const budgetInfo = await storage.getBudget(existingContract.businessId);
+        console.log(`🔍 DEBUGGING: Budget info retrieved:`, JSON.stringify(budgetInfo));
+        
         if (budgetInfo && budgetInfo.budgetCap) {
           const budgetCap = parseFloat(budgetInfo.budgetCap);
           const budgetUsed = parseFloat(budgetInfo.budgetUsed || '0');
           const budgetRemaining = budgetCap - budgetUsed;
           
+          console.log(`🔍 DEBUGGING: Budget calculation:`, {
+            budgetCap,
+            budgetUsed,
+            budgetRemaining,
+            contractorValue,
+            willExceed: contractorValue > budgetRemaining
+          });
+          
           if (contractorValue > budgetRemaining) {
-            console.log(`Budget validation failed: Contractor value $${contractorValue} exceeds remaining budget $${budgetRemaining}`);
+            console.log(`❌ BUDGET VALIDATION FAILED: Contractor value $${contractorValue} exceeds remaining budget $${budgetRemaining}`);
             return res.status(400).json({
               message: "Budget exceeded",
               error: `The contractor value ($${contractorValue}) exceeds the remaining budget ($${budgetRemaining.toFixed(2)}). Please adjust the amount or increase your budget.`,
@@ -995,15 +1006,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           console.log(`✅ BUDGET CHECK PASSED: Contractor value $${contractorValue} within remaining budget $${budgetRemaining}`);
         } else {
+          console.log(`⚠️ NO BUDGET CAP SET - Using fallback contract value validation`);
           // If no budget cap set, use the contract value as fallback
           const contractValue = parseFloat(existingContract.value || '0');
+          console.log(`🔍 DEBUGGING: Fallback validation:`, {
+            contractorValue,
+            contractValue,
+            willExceed: contractorValue > contractValue && contractValue > 0
+          });
+          
           if (contractorValue > contractValue && contractValue > 0) {
-            console.log(`Budget validation failed: Contractor value ${contractorValue} exceeds contract value ${contractValue}`);
+            console.log(`❌ FALLBACK VALIDATION FAILED: Contractor value ${contractorValue} exceeds contract value ${contractValue}`);
             return res.status(400).json({
               message: "Budget exceeded",
               error: "The contractor value exceeds the project budget. Please adjust the values."
             });
           }
+          
+          console.log(`✅ FALLBACK CHECK PASSED: No budget restrictions or contractor value within contract value`);
         }
         
         // All checks passed, proceed with the update
