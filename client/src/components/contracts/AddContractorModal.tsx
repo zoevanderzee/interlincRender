@@ -206,8 +206,17 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
     const contractorValueNum = parseFloat(contractorValue);
     const contractValueNum = parseFloat(contract?.value || '0');
     
+    console.log('🔍 CLIENT VALIDATION DEBUG:', {
+      contract,
+      contractorValue,
+      contractorValueNum,
+      contractValueNum,
+      contractId,
+      willExceed: contractorValueNum > contractValueNum
+    });
+    
     // Budget check: Verify contractor value doesn't exceed project budget
-    if (contractorValueNum > contractValueNum) {
+    if (contractValueNum > 0 && contractorValueNum > contractValueNum) {
       toast({
         title: "Budget exceeded",
         description: `The contractor value ($${contractorValueNum}) exceeds the project budget ($${contractValueNum}).`,
