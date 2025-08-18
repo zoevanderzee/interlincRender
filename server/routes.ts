@@ -12,7 +12,7 @@ import {
   insertUserSchema,
   insertInviteSchema,
   insertContractSchema,
-  insertMilestoneSchema,
+  insertDeliverableSchema,
   insertPaymentSchema,
   insertDocumentSchema,
   insertWorkRequestSchema,
@@ -1019,7 +1019,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Deliverable routes
-  app.get(`${apiRouter}/milestones`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/deliverables`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
       const contractId = req.query.contractId ? parseInt(req.query.contractId as string) : null;
       const upcoming = req.query.upcoming === 'true';
@@ -1082,7 +1082,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get(`${apiRouter}/milestones/:id`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/deliverables/:id`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       const userId = req.user?.id;
@@ -1117,7 +1117,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post(`${apiRouter}/milestones`, requireAuth, async (req: Request, res: Response) => {
+  app.post(`${apiRouter}/deliverables`, requireAuth, async (req: Request, res: Response) => {
     try {
       const userId = req.user?.id;
       const userRole = req.user?.role || 'business';
@@ -1127,7 +1127,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       console.log('🔍 RAW REQUEST BODY:', JSON.stringify(req.body, null, 2));
-      const deliverableInput = insertMilestoneSchema.parse(req.body);
+      const deliverableInput = insertDeliverableSchema.parse(req.body);
       console.log('✅ VALIDATION SUCCESS:', JSON.stringify(deliverableInput, null, 2));
       
       // SECURITY: Verify user has access to create deliverables for this contract
@@ -1156,7 +1156,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.patch(`${apiRouter}/milestones/:id`, requireAuth, async (req: Request, res: Response) => {
+  app.patch(`${apiRouter}/deliverables/:id`, requireAuth, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       const updateData = req.body;
@@ -1213,7 +1213,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Deliverable approval endpoint - triggers automated payment
-  app.post(`${apiRouter}/milestones/:id/approve`, requireAuth, async (req: Request, res: Response) => {
+  app.post(`${apiRouter}/deliverables/:id/approve`, requireAuth, async (req: Request, res: Response) => {
     try {
       const deliverableId = parseInt(req.params.id);
       const approvedBy = req.user?.id;

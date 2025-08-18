@@ -96,7 +96,7 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
           
       await apiRequest(
         'POST',
-        '/api/milestones',
+        '/api/deliverables',
         {
           contractId: contractId,
           name: finalDeliverables,
@@ -132,8 +132,8 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
       queryClient.invalidateQueries({ queryKey: ['/api/contracts'] });
       queryClient.invalidateQueries({ queryKey: ['/api/contracts', contractId] });
       queryClient.invalidateQueries({ queryKey: ['/api/budget'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/milestones'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/milestones', { contractId }] });
+      queryClient.invalidateQueries({ queryKey: ['/api/deliverables'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/deliverables', { contractId }] });
       
       // Show success message
       toast({

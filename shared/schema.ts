@@ -244,10 +244,10 @@ export const insertContractSchema = baseContractSchema.extend({
   endDate: z.string().transform((val) => new Date(val)),
 });
 
-// Create base milestone schema - make it very permissive
-const baseMilestoneSchema = createInsertSchema(milestones).omit({ id: true });
+// Create base deliverable schema - make it very permissive
+const baseDeliverableSchema = createInsertSchema(milestones).omit({ id: true });
 // Extend it to handle date strings properly and make fields more permissive
-export const insertMilestoneSchema = baseMilestoneSchema.extend({
+export const insertDeliverableSchema = baseDeliverableSchema.extend({
   // Handle date strings from frontend forms - allow any valid date format
   dueDate: z.union([z.string(), z.date()]).transform((val) => {
     if (typeof val === 'string') {
@@ -301,8 +301,8 @@ export type Invite = typeof invites.$inferSelect;
 export type InsertContract = z.infer<typeof insertContractSchema>;
 export type Contract = typeof contracts.$inferSelect;
 
-export type InsertMilestone = z.infer<typeof insertMilestoneSchema>;
-export type Milestone = typeof milestones.$inferSelect;
+export type InsertDeliverable = z.infer<typeof insertDeliverableSchema>;
+export type Deliverable = typeof milestones.$inferSelect;
 
 export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 export type Payment = typeof payments.$inferSelect;
