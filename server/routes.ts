@@ -13,6 +13,7 @@ import {
   insertInviteSchema,
   insertContractSchema,
   insertMilestoneSchema,
+  insertDeliverableSchema,
   insertPaymentSchema,
   insertDocumentSchema,
   insertWorkRequestSchema,
@@ -1272,6 +1273,235 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Error approving milestone" });
     }
   });
+
+  // ================ DELIVERABLE ENDPOINTS (NEW TERMINOLOGY) ================
+  // These endpoints use "deliverable" terminology but operate on the same data as milestones
+  // for backward compatibility. They accept both deliverableId and milestoneId parameters.
+
+  // Get deliverables (alias for milestones endpoint)
+  app.get(`${apiRouter}/deliverables`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
+    try {
+      const contractId = req.query.contractId ? parseInt(req.query.contractId as string) : null;
+      const upcoming = req.query.upcoming === 'true';
+      const userId = req.user?.id;
+      const userRole = req.user?.role || 'business';
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      let deliverables;
+      if (contractId) {
+        // SECURITY: Check if the contract belongs to the authenticated user
+        const contract = await storage.getContract(contractId);
+        if (!contract) {
+          return res.status(404).json({ message: "Contract not found" });
+        }
+        
+        // Verify user has access to this contract
+        if (userRole === 'business' && contract.businessId !== userId) {
+          return res.status(403).json({ message: "Access denied: Cannot access other business data" });
+        }
+        if (userRole === 'contractor' && contract.contractorId !== userId) {
+          return res.status(403).json({ message: "Access denied: Cannot access other contractor data" });
+        }
+        
+        if (contract.status === 'deleted') {
+          return res.json([]); // Return empty array for deleted contracts
+        }
+        deliverables = await storage.getMilestonesByContractId(contractId); // Use same storage method
+      } else if (upcoming) {
+        // SECURITY: Only get deliverables for user's contracts
+        let userContractIds = [];
+        if (userRole === 'business') {
+          const userContracts = await storage.getContractsByBusinessId(userId);
+          userContractIds = userContracts
+            .filter(contract => contract.status !== 'deleted')
+            .map(contract => contract.id);
+        } else if (userRole === 'contractor') {
+          const userContracts = await storage.getContractsByContractorId(userId);
+          userContractIds = userContracts
+            .filter(contract => contract.status !== 'deleted')
+            .map(contract => contract.id);
+        }
+        
+        // Get upcoming deliverables only for user's contracts
+        const allDeliverables = await storage.getUpcomingMilestones(50); // Use same storage method
+        deliverables = allDeliverables
+          .filter(deliverable => userContractIds.includes(deliverable.contractId))
+          .slice(0, 5); // Limit to 5 for dashboard
+      } else {
+        // Default behavior - return empty for security
+        deliverables = [];
+      }
+      
+      res.json(deliverables);
+    } catch (error) {
+      console.error("Error fetching deliverables:", error);
+      res.status(500).json({ message: "Error fetching deliverables" });
+    }
+  });
+
+  // Create deliverable (alias for milestone creation)
+  app.post(`${apiRouter}/deliverables`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      const userRole = req.user?.role || 'business';
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      // Accept either deliverable or milestone schema
+      const deliverableInput = insertDeliverableSchema.parse(req.body);
+      
+      // SECURITY: Verify user has access to create deliverables for this contract
+      const contract = await storage.getContract(deliverableInput.contractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contract not found" });
+      }
+      
+      if (userRole === 'business' && contract.businessId !== userId) {
+        return res.status(403).json({ message: "Access denied: Cannot create deliverables for other business contracts" });
+      }
+      if (userRole === 'contractor' && contract.contractorId !== userId) {
+        return res.status(403).json({ message: "Access denied: Cannot create deliverables for other contractor contracts" });
+      }
+      
+      const newDeliverable = await storage.createMilestone(deliverableInput); // Use same storage method
+      res.status(201).json(newDeliverable);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid deliverable data", errors: error.errors });
+      }
+      console.error("Error creating deliverable:", error);
+      res.status(500).json({ message: "Error creating deliverable" });
+    }
+  });
+
+  // Update deliverable (supports both deliverableId and milestoneId params)
+  app.patch(`${apiRouter}/deliverables/:id`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updateData = req.body;
+      const userId = req.user?.id;
+      const userRole = req.user?.role || 'business';
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      // SECURITY: Verify user has access to update this deliverable
+      const existingDeliverable = await storage.getMilestone(id); // Use same storage method
+      if (!existingDeliverable) {
+        return res.status(404).json({ message: "Deliverable not found" });
+      }
+      
+      const contract = await storage.getContract(existingDeliverable.contractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contract not found" });
+      }
+      
+      if (userRole === 'business' && contract.businessId !== userId) {
+        return res.status(403).json({ message: "Access denied: Cannot update other business deliverables" });
+      }
+      if (userRole === 'contractor' && contract.contractorId !== userId) {
+        return res.status(403).json({ message: "Access denied: Cannot update other contractor deliverables" });
+      }
+      
+      const updatedDeliverable = await storage.updateMilestone(id, updateData); // Use same storage method
+      
+      if (!updatedDeliverable) {
+        return res.status(404).json({ message: "Deliverable not found" });
+      }
+
+      // Create notification when contractor submits work (marks deliverable as completed)
+      if (updateData.status === 'completed' && userRole === 'contractor') {
+        try {
+          await notificationService.createWorkSubmission(
+            contract.businessId,
+            updatedDeliverable.name,
+            contract.contractName || "Project",
+            userId
+          );
+        } catch (notificationError) {
+          console.error('Error creating work submission notification:', notificationError);
+        }
+      }
+      
+      res.json(updatedDeliverable);
+    } catch (error) {
+      console.error("Error updating deliverable:", error);
+      res.status(500).json({ message: "Error updating deliverable" });
+    }
+  });
+
+  // Deliverable approval endpoint - triggers automated payment (supports both deliverableId and milestoneId)
+  app.post(`${apiRouter}/deliverables/:id/approve`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const deliverableId = parseInt(req.params.id);
+      const approvedBy = req.user?.id;
+      const { approvalNotes } = req.body;
+
+      if (!approvedBy) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Update deliverable status to approved
+      const updatedDeliverable = await storage.updateMilestone(deliverableId, { // Use same storage method
+        status: 'approved',
+        approvedAt: new Date(),
+        approvalNotes: approvalNotes || null
+      });
+
+      if (!updatedDeliverable) {
+        return res.status(404).json({ message: "Deliverable not found" });
+      }
+
+      // Create notification for deliverable approval
+      try {
+        const contract = await storage.getContract(updatedDeliverable.contractId);
+        if (contract) {
+          await notificationService.createMilestoneApproval(
+            contract.contractorId,
+            updatedDeliverable.name,
+            `£${parseFloat(updatedDeliverable.paymentAmount).toFixed(2)}`
+          );
+        }
+      } catch (notificationError) {
+        console.error('Error creating deliverable approval notification:', notificationError);
+      }
+
+      // Trigger automated payment processing using the deliverableId
+      const paymentResult = await automatedPaymentService.processMilestoneApproval(deliverableId, approvedBy);
+
+      if (paymentResult.success) {
+        res.json({
+          message: "Deliverable approved and payment processed automatically",
+          deliverable: updatedDeliverable,
+          payment: {
+            id: paymentResult.paymentId,
+            transferId: paymentResult.transferId,
+            logId: paymentResult.logId
+          }
+        });
+      } else {
+        // Deliverable was approved but payment failed - still return success for approval
+        console.error('Automated payment failed:', paymentResult.error);
+        res.json({
+          message: "Deliverable approved, but automated payment failed",
+          deliverable: updatedDeliverable,
+          paymentError: paymentResult.error
+        });
+      }
+
+    } catch (error) {
+      console.error("Error approving deliverable:", error);
+      res.status(500).json({ message: "Error approving deliverable" });
+    }
+  });
+
+  // ================ END DELIVERABLE ENDPOINTS ================
 
   // Payment Method Management Routes
   app.get(`${apiRouter}/payment-methods`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {

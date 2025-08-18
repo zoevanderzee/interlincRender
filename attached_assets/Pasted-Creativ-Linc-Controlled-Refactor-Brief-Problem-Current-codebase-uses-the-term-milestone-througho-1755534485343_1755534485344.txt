@@ -1,0 +1,47 @@
+Creativ Linc — Controlled Refactor Brief
+Problem
+Current codebase uses the term “milestone” throughout the project/payout flow.
+The actual business terminology is “deliverable.”
+This mismatch causes validation errors (e.g., “invalid deliverables”).
+A naive rename caused unrelated errors in authentication and other modules.
+Goal
+Replace milestone terminology with deliverable ONLY in the project management + payout domain.
+Do not touch unrelated modules like authentication, user management, onboarding, or payments infrastructure.
+Ensure database, API, and front-end terminology is consistent and does not break existing logic.
+Step 1 — Scope of Change (Strict)
+Only update code inside:
+/models/project* or equivalent DB models
+/routes/projects, /routes/deliverables, or equivalent server routes
+/components/projects (UI components that render project tasks/deliverables)
+Payment trigger logic that references milestoneId when approving work
+Do not modify:
+Auth modules (/auth/*)
+Payment processor integration (/payments/*, /trolley/*) beyond updating payout trigger param names
+User profile/account code
+Session handling
+Step 2 — Refactor Plan
+Database Models:
+If DB field is currently milestoneId, keep it for backward compatibility, but alias it as deliverableId in code.
+Example: keep the column milestoneId in DB, but expose it in APIs as deliverableId.
+API Layer:
+Update API routes to use deliverable in request/response payloads.
+Maintain temporary backward compatibility: if a request comes in with milestoneId, accept it and map it to deliverableId.
+Frontend Components:
+Change labels/UI references from “Milestone” → “Deliverable.”
+Update props and state names to deliverable consistently.
+Payout Trigger Logic:
+When a deliverable is approved, trigger payment using deliverableId instead of milestoneId.
+Ensure the webhook/event emitter reflects this change.
+Step 3 — Testing Requirements
+Create a project with multiple deliverables → assign contractors → approve deliverable → confirm payout triggers.
+Verify no changes in authentication, onboarding, or payment processor connectivity.
+Verify both old and new payloads (milestoneId and deliverableId) are accepted for now.
+Step 4 — Migration (if needed later)
+Once stable, plan a one-time migration to rename DB fields permanently.
+Until then, keep aliases to avoid breaking existing data.
+Definition of Done
+All project/task references consistently use deliverable in UI + APIs.
+DB and code remain backward-compatible with milestoneId.
+No modifications or regressions in auth, payments, or user modules.
+Approving a deliverable successfully triggers payouts.
+Important: Apply this refactor only to the project/deliverable domain. Do not modify unrelated modules. Preserve backward compatibility until migration.

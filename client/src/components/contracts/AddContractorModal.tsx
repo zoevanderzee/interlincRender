@@ -96,7 +96,7 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
           
       await apiRequest(
         'POST',
-        '/api/milestones',
+        '/api/deliverables',
         {
           contractId: contractId,
           name: finalDeliverables,

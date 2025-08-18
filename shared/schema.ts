@@ -93,6 +93,7 @@ export const contracts = pgTable("contracts", {
 });
 
 // Deliverables table (formerly milestones - using "deliverable" terminology throughout)
+// Database table remains "milestones" for backward compatibility, but all API/UI uses "deliverable"
 export const milestones = pgTable("milestones", {
   id: serial("id").primaryKey(),
   contractId: integer("contract_id").notNull(),
@@ -111,6 +112,9 @@ export const milestones = pgTable("milestones", {
   submissionType: text("submission_type").default("digital"), // "digital" or "physical"
   approvalNotes: text("approval_notes"), // Business notes on approval/rejection
 });
+
+// Create deliverable alias for the milestones table - same table, deliverable-focused naming
+export const deliverables = milestones;
 
 // Payments table
 export const payments = pgTable("payments", {
@@ -267,6 +271,9 @@ export const insertMilestoneSchema = baseMilestoneSchema.extend({
     return val.toString();
   }),
 });
+
+// Deliverable schemas - aliases for milestone schemas but with deliverable-focused naming
+export const insertDeliverableSchema = insertMilestoneSchema;
 export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true, completedDate: true });
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, uploadedAt: true });
 export const insertBankAccountSchema = createInsertSchema(bankAccounts).omit({ id: true, createdAt: true, isVerified: true });
@@ -303,6 +310,10 @@ export type Contract = typeof contracts.$inferSelect;
 
 export type InsertMilestone = z.infer<typeof insertMilestoneSchema>;
 export type Milestone = typeof milestones.$inferSelect;
+
+// Deliverable types - aliases for milestone types with deliverable-focused naming
+export type InsertDeliverable = z.infer<typeof insertDeliverableSchema>;
+export type Deliverable = typeof deliverables.$inferSelect;
 
 export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 export type Payment = typeof payments.$inferSelect;
