@@ -85,7 +85,7 @@ export const contracts = pgTable("contracts", {
   status: text("status").notNull().default("draft"), // draft, active, completed, cancelled
   startDate: timestamp("start_date").notNull(),
   endDate: timestamp("end_date").notNull(),
-  paymentStructure: text("payment_structure").notNull().default("milestone"), // milestone, hourly, fixed
+  paymentStructure: text("payment_structure").notNull().default("deliverable"), // deliverable, hourly, fixed
   contractorFirstName: text("contractor_first_name"),
   contractorLastName: text("contractor_last_name"),
   contractorEmail: text("contractor_email"),
@@ -93,7 +93,7 @@ export const contracts = pgTable("contracts", {
   createdAt: timestamp("created_at").defaultNow()
 });
 
-// Deliverables table (renamed from milestones)
+// Deliverables table
 export const deliverables = pgTable("deliverables", {
   id: serial("id").primaryKey(),
   contractId: integer("contract_id").notNull().references(() => contracts.id),
@@ -120,7 +120,7 @@ export const deliverables = pgTable("deliverables", {
 export const payments = pgTable("payments", {
   id: serial("id").primaryKey(),
   contractId: integer("contract_id").notNull(),
-  milestoneId: integer("milestone_id").notNull().references(() => deliverables.id),
+  deliverableId: integer("deliverable_id").notNull().references(() => deliverables.id),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   applicationFee: decimal("application_fee", { precision: 10, scale: 2 }).notNull(),
   netAmount: decimal("net_amount", { precision: 10, scale: 2 }).notNull(),
@@ -145,7 +145,7 @@ export const paymentLogs = pgTable("payment_logs", {
   id: serial("id").primaryKey(),
   paymentId: integer("payment_id").notNull(),
   contractId: integer("contract_id").notNull(),
-  milestoneId: integer("milestone_id").notNull().references(() => deliverables.id),
+  deliverableId: integer("deliverable_id").notNull().references(() => deliverables.id),
   businessId: integer("business_id").notNull(),
   contractorId: integer("contractor_id").notNull(),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
@@ -296,6 +296,12 @@ export const insertWorkRequestSchema = createInsertSchema(workRequests, {
   attachmentUrls: z.array(z.string()).optional().transform(val => val || []),
 });
 
+// Work Request update schema (includes tokenHash for updates)
+export const updateWorkRequestSchema = insertWorkRequestSchema.extend({
+  tokenHash: z.string().optional(),
+  contractId: z.number().optional(),
+});
+
 // Business Onboarding Links table
 export const businessOnboardingLinks = pgTable("business_onboarding_links", {
   id: serial("id").primaryKey(),
@@ -355,7 +361,7 @@ export const workSubmissions = pgTable("work_submissions", {
   submittedAt: timestamp("submitted_at").notNull().defaultNow(),
   reviewedAt: timestamp("reviewed_at"),
   reviewNotes: text("review_notes"), // Feedback from business owner
-  milestoneId: integer("milestone_id").references(() => deliverables.id) // Optional deliverable reference
+  deliverableId: integer("deliverable_id").references(() => deliverables.id) // Optional deliverable reference
 });
 
 // Create insert schemas for remaining tables
