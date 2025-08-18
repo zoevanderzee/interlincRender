@@ -1,0 +1,103 @@
+Creativ Linc — Deliverables Fix (Scoped, Safe)
+Do NOT touch
+Auth (/auth/**)
+Payments/Trolley (/payments/**, /trolley/**)
+User profiles/session code
+All changes limited to projects / deliverables domain and the payout trigger that listens to approvals.
+Problem
+Front-end uses deliverable terminology; server/DB still expect milestone. The “Add Worker to Project” modal sends deliverable fields; backend validation rejects them → “Invalid deliverable data”.
+Goal
+Accept deliverable payloads on the API.
+Map them to current DB fields (which may still be named milestone*).
+Keep backward compatibility (old clients that still send milestone* continue to work).
+On approval, payout trigger fires exactly once.
+Implementation Plan
+1) Add a compatibility mapper (server)
+Create a tiny adapter used by all project routes/services:
+// server/projects/compat/deliverableMapper.ts
+export type DeliverableInput = {
+  deliverableId?: string;
+  title?: string;
+  description?: string;
+  dueDate?: string; // ISO
+  amount?: number;
+  currency?: string; // default from project
+  assigneeUserId?: string;
+  // legacy aliases:
+  milestoneId?: string;
+  name?: string;
+  deadline?: string;
+  price?: number;
+};
+
+export function normalizeDeliverable(input: DeliverableInput) {
+  return {
+    id: input.deliverableId ?? input.milestoneId ?? null,
+    title: input.title ?? input.name ?? "",
+    description: input.description ?? "",
+    dueDate: input.dueDate ?? input.deadline ?? null,
+    amount: input.amount ?? input.price ?? 0,
+    currency: input.currency ?? null,
+    assigneeUserId: input.assigneeUserId ?? null,
+  };
+}
+Use this in create/update/assign endpoints before validation.
+2) Validation schema (strict but friendly)
+Use Zod/Yup (or your validator) after mapping:
+import { z } from "zod";
+export const DeliverableSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  dueDate: z.string().datetime().or(z.null()),
+  amount: z.number().positive("Amount must be > 0"),
+  currency: z.string().length(3).or(z.null()),
+  assigneeUserId: z.string().uuid().or(z.null()),
+});
+Return clear 400 messages (not generic 500).
+3) API accepts both shapes (temporary)
+Update the controller to accept either deliverable* or legacy milestone* keys. Example request the UI must send:
+POST /api/projects/:projectId/deliverables/assign
+{
+  "title": "UI",
+  "dueDate": "2025-08-19T00:00:00.000Z",
+  "amount": 1,
+  "currency": "USD",
+  "assigneeUserId": "<contractor-user-id>"
+}
+Response (success):
+{
+  "ok": true,
+  "deliverableId": "<uuid>",
+  "status": "assigned"
+}
+4) DB write (no destructive migration now)
+Keep DB columns (milestone_id, milestone_title, …) as-is.
+Map normalized fields → those columns in the repository layer.
+Add DB view or model alias so reads return deliverable* to the API while still querying milestone* columns.
+5) Front-end wiring (modal)
+Ensure the modal posts the new payload above. Do not rename global types; limit to components under /components/projects/** and API client under /lib/api/projects.ts.
+6) Payout trigger (approval)
+Where you previously emitted/consumed MilestoneApproved, do this:
+Keep the event name the same internally for now if that reduces blast radius, but ensure the handler loads the record via the deliverable ID coming from the UI.
+Handler must:
+idempotency key = deliverableId + lastUpdatedAt
+only fire payout if status transitions assigned|in_review -> approved
+return success back to UI
+7) Logging & guardrails
+Log request body (keys only, no PII) when validation fails.
+Include a hint in 400 response: "expectedKeys": ["title","dueDate","amount","currency","assigneeUserId"].
+Add a unit test: mapping legacy → new, and new → DB.
+Add an integration test: POST assign → GET project → approve → payout trigger called once.
+Acceptance Criteria (must all pass)
+ The API accepts a deliverable with the payload shown and returns ok: true.
+ Creating/assigning a deliverable no longer returns “Invalid deliverable data”.
+ Legacy clients sending milestone* still work.
+ Approving a deliverable triggers the payout exactly once (idempotent).
+ No changes in auth/session/payment client code.
+ No DB migrations run in this PR (alias only).
+ E2E: Add Worker → Deliverable saved → Approve → payout trigger invoked, status updates to processing.
+Quick diagnostics to add now
+On the failing endpoint, log:
+[DELIVERABLE_VALIDATE] keys=<sorted incoming keys> projectId=<id> user=<id>
+If 400/422, include expectedKeys as above.
+If 500, include an internal error code DLV-VAL-001 so we can search logs.
+Implement exactly this scope. No renames outside projects/deliverables domain. Preserve backward compatibility. Do not modify authentication or payment integration code.

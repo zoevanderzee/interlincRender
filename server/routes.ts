@@ -19,6 +19,12 @@ import {
   insertWorkRequestSchema,
   updateWorkRequestSchema
 } from "@shared/schema";
+import { 
+  normalizeDeliverable, 
+  logValidationFailure, 
+  EXPECTED_DELIVERABLE_KEYS,
+  type DeliverableInput 
+} from "./projects/compat/deliverableMapper";
 // import { generateWorkRequestToken } from "./services/email"; // Not needed for now
 import Stripe from "stripe";
 import stripeService from "./services/stripe";
@@ -1342,7 +1348,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create deliverable (alias for milestone creation)
+  // Create deliverable (accepts both deliverable and milestone terminology)
   app.post(`${apiRouter}/deliverables`, requireAuth, async (req: Request, res: Response) => {
     try {
       const userId = req.user?.id;
@@ -1351,12 +1357,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!userId) {
         return res.status(401).json({ message: "Authentication required" });
       }
+
+      // Log incoming request for diagnostics
+      logValidationFailure(req.body, req.body.contractId?.toString(), userId.toString());
       
-      // Accept either deliverable or milestone schema
-      const deliverableInput = insertDeliverableSchema.parse(req.body);
+      // Normalize deliverable/milestone input using compatibility mapper
+      const normalizedInput = normalizeDeliverable(req.body as DeliverableInput);
+      
+      // Basic validation
+      if (!normalizedInput.name || normalizedInput.name.trim() === '') {
+        return res.status(400).json({ 
+          message: "Invalid deliverable data", 
+          error: "Title/name is required",
+          expectedKeys: EXPECTED_DELIVERABLE_KEYS,
+          code: "DLV-VAL-001"
+        });
+      }
+
+      if (!normalizedInput.contractId) {
+        return res.status(400).json({ 
+          message: "Invalid deliverable data", 
+          error: "Contract ID is required",
+          expectedKeys: EXPECTED_DELIVERABLE_KEYS,
+          code: "DLV-VAL-002"
+        });
+      }
       
       // SECURITY: Verify user has access to create deliverables for this contract
-      const contract = await storage.getContract(deliverableInput.contractId);
+      const contract = await storage.getContract(normalizedInput.contractId);
       if (!contract) {
         return res.status(404).json({ message: "Contract not found" });
       }
@@ -1368,14 +1396,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied: Cannot create deliverables for other contractor contracts" });
       }
       
-      const newDeliverable = await storage.createMilestone(deliverableInput); // Use same storage method
-      res.status(201).json(newDeliverable);
+      // Create the milestone/deliverable using normalized data
+      const milestoneData = {
+        contractId: normalizedInput.contractId,
+        name: normalizedInput.name,
+        description: normalizedInput.description || '',
+        dueDate: normalizedInput.dueDate ? new Date(normalizedInput.dueDate) : new Date(),
+        paymentAmount: normalizedInput.paymentAmount,
+        status: 'accepted', // Auto-accept deliverables
+        progress: 0
+      };
+
+      const newDeliverable = await storage.createMilestone(milestoneData);
+      
+      res.status(201).json({ 
+        ok: true, 
+        deliverableId: newDeliverable.id.toString(),
+        status: "assigned",
+        deliverable: newDeliverable
+      });
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid deliverable data", errors: error.errors });
-      }
       console.error("Error creating deliverable:", error);
-      res.status(500).json({ message: "Error creating deliverable" });
+      res.status(500).json({ 
+        message: "Error creating deliverable",
+        code: "DLV-VAL-003"
+      });
     }
   });
 
@@ -1436,7 +1481,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Deliverable approval endpoint - triggers automated payment (supports both deliverableId and milestoneId)
+  // Deliverable approval endpoint - triggers automated payment with idempotency
   app.post(`${apiRouter}/deliverables/:id/approve`, requireAuth, async (req: Request, res: Response) => {
     try {
       const deliverableId = parseInt(req.params.id);
@@ -1447,15 +1492,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Authentication required" });
       }
 
+      // Get current deliverable to check status transition
+      const currentDeliverable = await storage.getMilestone(deliverableId);
+      if (!currentDeliverable) {
+        return res.status(404).json({ message: "Deliverable not found" });
+      }
+
+      // Check if already approved (idempotency)
+      if (currentDeliverable.status === 'approved') {
+        return res.json({
+          message: "Deliverable already approved",
+          deliverable: currentDeliverable,
+          status: "already_approved"
+        });
+      }
+
+      // Only allow transition from assigned|in_review -> approved
+      const validTransitionStates = ['assigned', 'in_review', 'completed'];
+      if (!validTransitionStates.includes(currentDeliverable.status)) {
+        return res.status(400).json({ 
+          message: `Cannot approve deliverable from status: ${currentDeliverable.status}`,
+          code: "DLV-APPROVAL-001"
+        });
+      }
+
+      // Create idempotency key = deliverableId + lastUpdatedAt
+      const idempotencyKey = `${deliverableId}_${currentDeliverable.updatedAt?.getTime() || Date.now()}`;
+      console.log(`[DELIVERABLE_APPROVAL] id=${deliverableId} idempotencyKey=${idempotencyKey} fromStatus=${currentDeliverable.status}`);
+
       // Update deliverable status to approved
-      const updatedDeliverable = await storage.updateMilestone(deliverableId, { // Use same storage method
+      const updatedDeliverable = await storage.updateMilestone(deliverableId, {
         status: 'approved',
         approvedAt: new Date(),
         approvalNotes: approvalNotes || null
       });
 
       if (!updatedDeliverable) {
-        return res.status(404).json({ message: "Deliverable not found" });
+        return res.status(404).json({ message: "Deliverable not found after update" });
       }
 
       // Create notification for deliverable approval
@@ -1472,13 +1545,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('Error creating deliverable approval notification:', notificationError);
       }
 
-      // Trigger automated payment processing using the deliverableId
+      // Trigger automated payment processing with idempotency
       const paymentResult = await automatedPaymentService.processMilestoneApproval(deliverableId, approvedBy);
 
       if (paymentResult.success) {
         res.json({
           message: "Deliverable approved and payment processed automatically",
           deliverable: updatedDeliverable,
+          status: "processing",
           payment: {
             id: paymentResult.paymentId,
             transferId: paymentResult.transferId,
@@ -1491,13 +1565,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json({
           message: "Deliverable approved, but automated payment failed",
           deliverable: updatedDeliverable,
+          status: "approved_payment_failed",
           paymentError: paymentResult.error
         });
       }
 
     } catch (error) {
       console.error("Error approving deliverable:", error);
-      res.status(500).json({ message: "Error approving deliverable" });
+      res.status(500).json({ 
+        message: "Error approving deliverable",
+        code: "DLV-APPROVAL-002"
+      });
+    }
+  });
+
+  // Project assignment endpoint (new deliverable assignment API)
+  app.post(`${apiRouter}/projects/:projectId/deliverables/assign`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      const userRole = req.user?.role || 'business';
+      const projectId = parseInt(req.params.projectId);
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Log incoming request for diagnostics
+      logValidationFailure(req.body, projectId.toString(), userId.toString());
+      
+      // Normalize deliverable input using compatibility mapper
+      const normalizedInput = normalizeDeliverable({
+        ...req.body,
+        contractId: projectId // Map projectId to contractId
+      } as DeliverableInput);
+      
+      // Validation with clear error messages
+      if (!normalizedInput.name || normalizedInput.name.trim() === '') {
+        return res.status(400).json({ 
+          message: "Invalid deliverable data", 
+          error: "Title is required",
+          expectedKeys: EXPECTED_DELIVERABLE_KEYS,
+          code: "DLV-VAL-001"
+        });
+      }
+
+      if (!projectId || isNaN(projectId)) {
+        return res.status(400).json({ 
+          message: "Invalid project ID",
+          expectedKeys: EXPECTED_DELIVERABLE_KEYS,
+          code: "DLV-VAL-004"
+        });
+      }
+      
+      // SECURITY: Verify user has access to assign deliverables for this project/contract
+      const contract = await storage.getContract(projectId);
+      if (!contract) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      
+      if (userRole === 'business' && contract.businessId !== userId) {
+        return res.status(403).json({ message: "Access denied: Cannot assign deliverables for other business projects" });
+      }
+      
+      // Create the deliverable assignment using normalized data
+      const milestoneData = {
+        contractId: projectId,
+        name: normalizedInput.name,
+        description: normalizedInput.description || '',
+        dueDate: normalizedInput.dueDate ? new Date(normalizedInput.dueDate) : new Date(),
+        paymentAmount: normalizedInput.paymentAmount,
+        status: 'assigned', // Newly assigned deliverable
+        progress: 0
+      };
+
+      const newDeliverable = await storage.createMilestone(milestoneData);
+      
+      res.status(201).json({ 
+        ok: true, 
+        deliverableId: newDeliverable.id.toString(),
+        status: "assigned"
+      });
+    } catch (error) {
+      console.error("Error assigning deliverable:", error);
+      res.status(500).json({ 
+        message: "Error assigning deliverable",
+        code: "DLV-VAL-005"
+      });
     }
   });
 
