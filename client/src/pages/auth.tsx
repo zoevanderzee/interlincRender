@@ -432,7 +432,7 @@ export default function AuthPage() {
     return Object.keys(errors).length === 0;
   };
 
-  // Handle login form submission with PostgreSQL Auth (bypassing Firebase)
+  // Handle login form submission with Firebase
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -441,13 +441,10 @@ export default function AuthPage() {
     }
 
     try {
-      console.log("Attempting PostgreSQL login with:", loginForm.username);
+      console.log("Attempting Firebase login with:", loginForm.username);
       
-      // Use PostgreSQL authentication directly
-      loginMutation.mutate({
-        username: loginForm.username,
-        password: loginForm.password
-      });
+      // Use email directly since form now requires email format
+      const result = await loginUser(loginForm.username, loginForm.password);
       console.log("Firebase login result:", { success: result.success, hasUser: !!result.user, error: result.error });
       
       if (result.success && result.user) {
