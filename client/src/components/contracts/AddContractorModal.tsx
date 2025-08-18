@@ -86,8 +86,8 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
         }
       );
       
-      // Always create a deliverable (auto-accepted)
-      const finalDeliverables = deliverables || 'Work deliverable';
+      // Create a deliverable (auto-accepted) - deliverables is guaranteed to be filled
+      const finalDeliverables = deliverables;
       const finalDueDate = dueDate || new Date().toISOString().split('T')[0];
       const finalAmount = contractorValue || '1';
       
@@ -185,7 +185,16 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
       return;
     }
     
-    // Allow empty deliverables - any text is valid
+    // Deliverables field is required
+    if (!deliverables || deliverables.trim() === '') {
+      toast({
+        title: "Deliverables required",
+        description: "Please enter what the worker is expected to deliver.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     // Set defaults for optional fields
     if (!dueDate) {
       setDueDate(new Date().toISOString().split('T')[0]);
