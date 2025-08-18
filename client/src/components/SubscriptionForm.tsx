@@ -43,7 +43,7 @@ const subscriptionPlans: SubscriptionPlan[] = [
     description: "Perfect for businesses managing contractors and projects",
     features: [
       "Unlimited contractor management",
-      "Project deliverable tracking",
+      "Project milestone tracking",
       "Automated payments",
       "Budget management",
       "Data room access",

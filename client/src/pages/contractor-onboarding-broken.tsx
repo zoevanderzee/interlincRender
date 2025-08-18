@@ -197,7 +197,7 @@ export default function ContractorOnboarding() {
                 <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-white mb-2">Payment Setup Complete!</h3>
                 <p className="text-zinc-400 text-sm">
-                  You can now receive payments when deliverables are approved.
+                  You can now receive payments when milestones are approved.
                 </p>
               </div>
             </CardContent>

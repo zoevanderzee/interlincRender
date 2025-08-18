@@ -1097,7 +1097,7 @@ export default function AuthPage() {
               <div className="bg-white rounded-full h-6 w-6 flex items-center justify-center text-black mr-4 mt-1">✓</div>
               <div>
                 <h3 className="text-white font-medium text-lg">No Invoices. No Hassle.</h3>
-                <p className="text-zinc-400">Streamline payments with built-in workflows and deliverable approvals — no manual paperwork.</p>
+                <p className="text-zinc-400">Streamline payments with built-in workflows and milestone approvals — no manual paperwork.</p>
               </div>
             </div>
             <div className="flex items-start">

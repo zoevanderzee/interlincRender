@@ -1,5 +1,5 @@
 import { db } from '../server/db';
-import { users, contracts, deliverables, payments, documents, invites } from '../shared/schema';
+import { users, contracts, milestones, payments, documents, invites } from '../shared/schema';
 import { sql } from 'drizzle-orm';
 
 /**
@@ -19,8 +19,8 @@ async function main() {
     console.log('Deleting payments...');
     await db.delete(payments);
     
-    console.log('Deleting deliverables...');
-    await db.delete(deliverables);
+    console.log('Deleting milestones...');
+    await db.delete(milestones);
     
     console.log('Deleting documents...');
     await db.delete(documents);

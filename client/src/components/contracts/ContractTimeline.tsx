@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Contract, Deliverable, User } from '@shared/schema';
+import { Contract, Milestone, User } from '@shared/schema';
 import { format } from 'date-fns';
 import { CheckCircle, Circle, Clock, AlertCircle, ArrowRight, Award, DollarSign } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -12,18 +12,18 @@ import { apiRequest } from '@/lib/queryClient';
 
 interface ContractTimelineProps {
   contract: Contract | null;
-  deliverables: Deliverable[];
+  milestones: Milestone[];
   contractor?: User;
-  onDeliverableComplete?: (id: number) => void;
-  onDeliverableApprove?: (id: number) => void;
+  onMilestoneComplete?: (id: number) => void;
+  onMilestoneApprove?: (id: number) => void;
 }
 
 const ContractTimeline = ({
   contract,
-  deliverables,
+  milestones,
   contractor,
-  onDeliverableComplete,
-  onDeliverableApprove
+  onMilestoneComplete,
+  onMilestoneApprove
 }: ContractTimelineProps) => {
   const [celebrating, setCelebrating] = useState<number | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
@@ -33,16 +33,16 @@ const ContractTimeline = ({
   const { toast } = useToast();
 
   // Trolley payment mutation
-  const payDeliverableMutation = useMutation({
-    mutationFn: async ({ deliverableId, amount }: { deliverableId: number; amount: string }) => {
-      const response = await fetch('/api/trolley/pay-deliverable', {
+  const payMilestoneMutation = useMutation({
+    mutationFn: async ({ milestoneId, amount }: { milestoneId: number; amount: string }) => {
+      const response = await fetch('/api/trolley/pay-milestone', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
         body: JSON.stringify({
-          deliverableId,
+          milestoneId,
           amount: parseFloat(amount),
           currency: 'GBP'
         })
@@ -61,8 +61,8 @@ const ContractTimeline = ({
         description: `Payment of £${variables.amount} has been sent to the contractor via Trolley.`,
       });
       
-      // Refresh contract and deliverable data
-      queryClient.invalidateQueries({ queryKey: ['/api/deliverables'] });
+      // Refresh contract and milestone data
+      queryClient.invalidateQueries({ queryKey: ['/api/milestones'] });
       queryClient.invalidateQueries({ queryKey: ['/api/payments'] });
       
       setProcessingPayment(null);
@@ -77,24 +77,24 @@ const ContractTimeline = ({
     }
   });
 
-  // Sort deliverables by due date
-  const sortedDeliverables = [...deliverables]
+  // Sort milestones by due date
+  const sortedMilestones = [...milestones]
     .filter(m => m.contractId === (contract?.id || 0))
     .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
 
   // Calculate contract progress
-  const totalDeliverables = sortedDeliverables.length;
-  const completedDeliverables = sortedDeliverables.filter(
+  const totalMilestones = sortedMilestones.length;
+  const completedMilestones = sortedMilestones.filter(
     m => m.status === 'completed' || m.status === 'approved'
   ).length;
   
-  const progress = totalDeliverables > 0 
-    ? Math.round((completedDeliverables / totalDeliverables) * 100) 
+  const progress = totalMilestones > 0 
+    ? Math.round((completedMilestones / totalMilestones) * 100) 
     : 0;
 
-  // Handle deliverable celebration
-  const handleCelebration = (deliverableId: number) => {
-    setCelebrating(deliverableId);
+  // Handle milestone celebration
+  const handleCelebration = (milestoneId: number) => {
+    setCelebrating(milestoneId);
     setShowConfetti(true);
     
     // Hide celebration after 5 seconds
@@ -104,32 +104,32 @@ const ContractTimeline = ({
     }, 5000);
   };
 
-  // Handle deliverable completion
-  const handleComplete = (deliverable: Deliverable) => {
-    if (onDeliverableComplete) {
-      onDeliverableComplete(deliverable.id);
-      handleCelebration(deliverable.id);
+  // Handle milestone completion
+  const handleComplete = (milestone: Milestone) => {
+    if (onMilestoneComplete) {
+      onMilestoneComplete(milestone.id);
+      handleCelebration(milestone.id);
     }
   };
 
-  // Handle deliverable approval
-  const handleApprove = (deliverable: Deliverable) => {
-    if (onDeliverableApprove) {
-      onDeliverableApprove(deliverable.id);
-      handleCelebration(deliverable.id);
+  // Handle milestone approval
+  const handleApprove = (milestone: Milestone) => {
+    if (onMilestoneApprove) {
+      onMilestoneApprove(milestone.id);
+      handleCelebration(milestone.id);
     }
   };
 
   // Handle Trolley payment processing
-  const handlePayDeliverable = (deliverable: Deliverable) => {
-    setProcessingPayment(deliverable.id);
-    payDeliverableMutation.mutate({
-      deliverableId: deliverable.id,
-      amount: deliverable.paymentAmount.toString()
+  const handlePayMilestone = (milestone: Milestone) => {
+    setProcessingPayment(milestone.id);
+    payMilestoneMutation.mutate({
+      milestoneId: milestone.id,
+      amount: milestone.paymentAmount.toString()
     });
   };
 
-  // Get status icon based on deliverable status
+  // Get status icon based on milestone status
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'completed':
@@ -145,7 +145,7 @@ const ContractTimeline = ({
     }
   };
 
-  // Get status color based on deliverable status
+  // Get status color based on milestone status
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
@@ -228,27 +228,27 @@ const ContractTimeline = ({
 
       {/* Timeline */}
       <div className="relative pl-8 border-l-2 border-primary-200">
-        {sortedDeliverables.map((deliverable, index) => {
-          const isCelebrating = celebrating === deliverable.id;
-          const isCompleted = deliverable.status === 'completed' || deliverable.status === 'approved';
+        {sortedMilestones.map((milestone, index) => {
+          const isCelebrating = celebrating === milestone.id;
+          const isCompleted = milestone.status === 'completed' || milestone.status === 'approved';
           
           return (
-            <div key={deliverable.id} className="mb-12 relative">
+            <div key={milestone.id} className="mb-12 relative">
               {/* Timeline node */}
               <div 
                 className={`absolute left-[-16px] top-0 w-7 h-7 rounded-full flex items-center justify-center ${
                   isCelebrating ? 'bg-accent-100' : 'bg-white'
-                } border-2 ${getStatusColor(deliverable.status)} z-10`}
+                } border-2 ${getStatusColor(milestone.status)} z-10`}
               >
-                {getStatusIcon(deliverable.status)}
+                {getStatusIcon(milestone.status)}
               </div>
               
-              {/* Connect line to next deliverable */}
-              {index < sortedDeliverables.length - 1 && (
+              {/* Connect line to next milestone */}
+              {index < sortedMilestones.length - 1 && (
                 <div className="absolute left-[-2px] top-7 bottom-[-45px] w-0.5 bg-primary-200"></div>
               )}
               
-              {/* Deliverable card */}
+              {/* Milestone card */}
               <motion.div
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ 
@@ -272,54 +272,54 @@ const ContractTimeline = ({
                   <div className="flex flex-col md:flex-row md:items-center justify-between">
                     <div className="flex-1">
                       <div className="flex items-center mb-1">
-                        <h4 className="font-medium text-primary-900 mr-2">{deliverable.name}</h4>
+                        <h4 className="font-medium text-primary-900 mr-2">{milestone.name}</h4>
                         <Badge 
                           variant={
-                            deliverable.status === 'completed' ? 'success' :
-                            deliverable.status === 'approved' ? 'default' :
-                            deliverable.status === 'overdue' ? 'destructive' : 'outline'
+                            milestone.status === 'completed' ? 'success' :
+                            milestone.status === 'approved' ? 'default' :
+                            milestone.status === 'overdue' ? 'destructive' : 'outline'
                           }
                           className="ml-2"
                         >
-                          {deliverable.status.charAt(0).toUpperCase() + deliverable.status.slice(1)}
+                          {milestone.status.charAt(0).toUpperCase() + milestone.status.slice(1)}
                         </Badge>
                       </div>
                       
-                      <p className="text-sm text-primary-600 mb-2">{deliverable.description || 'No description provided'}</p>
+                      <p className="text-sm text-primary-600 mb-2">{milestone.description || 'No description provided'}</p>
                       
                       <div className="flex items-center text-sm text-primary-500">
                         <Clock className="h-4 w-4 mr-1" />
-                        <span>Due: {format(new Date(deliverable.dueDate), 'MMM d, yyyy')}</span>
+                        <span>Due: {format(new Date(milestone.dueDate), 'MMM d, yyyy')}</span>
                       </div>
                     </div>
                     
                     <div className="mt-4 md:mt-0 flex flex-col md:flex-row items-center gap-2">
-                      <div className="font-medium text-primary-900">${deliverable.paymentAmount}</div>
-                      {!isCompleted && deliverable.status === 'pending' && (
+                      <div className="font-medium text-primary-900">${milestone.paymentAmount}</div>
+                      {!isCompleted && milestone.status === 'pending' && (
                         <Button 
                           size="sm" 
-                          onClick={() => handleComplete(deliverable)}
+                          onClick={() => handleComplete(milestone)}
                         >
                           Mark Complete
                         </Button>
                       )}
-                      {deliverable.status === 'completed' && (
+                      {milestone.status === 'completed' && (
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          onClick={() => handleApprove(deliverable)}
+                          onClick={() => handleApprove(milestone)}
                         >
                           Approve
                         </Button>
                       )}
-                      {deliverable.status === 'approved' && (
+                      {milestone.status === 'approved' && (
                         <Button 
                           size="sm" 
-                          onClick={() => handlePayDeliverable(deliverable)}
-                          disabled={processingPayment === deliverable.id || payDeliverableMutation.isPending}
+                          onClick={() => handlePayMilestone(milestone)}
+                          disabled={processingPayment === milestone.id || payMilestoneMutation.isPending}
                           className="bg-green-600 hover:bg-green-700 text-white"
                         >
-                          {processingPayment === deliverable.id ? (
+                          {processingPayment === milestone.id ? (
                             <>
                               <Clock className="h-4 w-4 mr-1 animate-spin" />
                               Processing...
@@ -349,11 +349,11 @@ const ContractTimeline = ({
                             <Award className="h-6 w-6" />
                           </div>
                           <div>
-                            <h5 className="font-medium text-accent-700">Deliverable {deliverable.status === 'approved' ? 'Approved' : 'Completed'}!</h5>
+                            <h5 className="font-medium text-accent-700">Milestone {milestone.status === 'approved' ? 'Approved' : 'Completed'}!</h5>
                             <p className="text-sm text-accent-600">
-                              {deliverable.status === 'approved' 
-                                ? 'Great work! Payment for this deliverable has been processed.' 
-                                : 'Congratulations on completing this deliverable!'}
+                              {milestone.status === 'approved' 
+                                ? 'Great work! Payment for this milestone has been processed.' 
+                                : 'Congratulations on completing this milestone!'}
                             </p>
                           </div>
                         </div>
@@ -387,7 +387,7 @@ const ContractTimeline = ({
             }}
             transition={{ 
               duration: 0.5,
-              delay: sortedDeliverables.length * 0.2
+              delay: sortedMilestones.length * 0.2
             }}
           >
             <Card className={`p-4 ${progress === 100 ? 'border-success bg-success-50' : 'border-primary-100'}`}>
@@ -403,8 +403,8 @@ const ContractTimeline = ({
                   <h4 className="font-medium text-primary-900">Contract Completion</h4>
                   <p className="text-sm text-primary-600">
                     {progress === 100 
-                      ? 'All deliverables have been completed and approved!' 
-                      : `${completedDeliverables} of ${totalDeliverables} deliverables completed`
+                      ? 'All milestones have been completed and approved!' 
+                      : `${completedMilestones} of ${totalMilestones} milestones completed`
                     }
                   </p>
                 </div>

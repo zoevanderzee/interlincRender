@@ -14,19 +14,19 @@ interface PaymentProcessingResult {
 class AutomatedPaymentService {
   
   /**
-   * Triggers automatic payment when a deliverable is approved
+   * Triggers automatic payment when a milestone is approved
    * This is the core logic that replaces manual invoice generation
    */
-  async processDeliverableApproval(deliverableId: number, approvedBy: number): Promise<PaymentProcessingResult> {
+  async processMilestoneApproval(milestoneId: number, approvedBy: number): Promise<PaymentProcessingResult> {
     try {
-      // Get deliverable details
-      const deliverable = await storage.getDeliverable(deliverableId);
-      if (!deliverable) {
-        return { success: false, error: 'Deliverable not found' };
+      // Get milestone details
+      const milestone = await storage.getMilestone(milestoneId);
+      if (!milestone) {
+        return { success: false, error: 'Milestone not found' };
       }
 
       // Get contract details
-      const contract = await storage.getContract(deliverable.contractId);
+      const contract = await storage.getContract(milestone.contractId);
       if (!contract) {
         return { success: false, error: 'Contract not found' };
       }
@@ -37,16 +37,16 @@ class AutomatedPaymentService {
         return { success: false, error: 'Contractor not found' };
       }
 
-      // Check if auto-pay is enabled for this deliverable
-      if (!deliverable.autoPayEnabled) {
-        console.log(`Auto-pay disabled for deliverable ${deliverableId}, skipping automatic payment`);
-        return { success: false, error: 'Auto-pay disabled for this deliverable' };
+      // Check if auto-pay is enabled for this milestone
+      if (!milestone.autoPayEnabled) {
+        console.log(`Auto-pay disabled for milestone ${milestoneId}, skipping automatic payment`);
+        return { success: false, error: 'Auto-pay disabled for this milestone' };
       }
 
-      // Check if payment already exists for this deliverable
-      const existingPayment = await storage.getPaymentByDeliverableId(deliverableId);
+      // Check if payment already exists for this milestone
+      const existingPayment = await storage.getPaymentByMilestoneId(milestoneId);
       if (existingPayment && existingPayment.status !== 'failed') {
-        return { success: false, error: 'Payment already exists for this deliverable' };
+        return { success: false, error: 'Payment already exists for this milestone' };
       }
 
       // Check if contractor has Trolley recipient setup
@@ -61,7 +61,7 @@ class AutomatedPaymentService {
       }
 
       // Calculate payment amounts
-      const totalAmount = parseFloat(deliverable.paymentAmount);
+      const totalAmount = parseFloat(milestone.paymentAmount);
       const platformFeeRate = 0.0025; // 0.25% platform fee
       const applicationFee = totalAmount * platformFeeRate;
       const netAmount = totalAmount - applicationFee;
@@ -89,9 +89,9 @@ class AutomatedPaymentService {
         recipientId: contractor.trolleyRecipientId,
         amount: netAmount.toFixed(2),
         currency: 'USD',
-        memo: `Payment for deliverable: ${deliverable.name}`,
-        externalId: `deliverable_${deliverableId}`,
-        description: `Deliverable payment for contract ${contract.contractName}`
+        memo: `Payment for milestone: ${milestone.name}`,
+        externalId: `milestone_${milestoneId}`,
+        description: `Milestone payment for contract ${contract.contractName}`
       });
 
       if (!paymentResult) {
@@ -100,9 +100,9 @@ class AutomatedPaymentService {
 
       // Create payment record in database
       const paymentData = {
-        contractId: deliverable.contractId,
-        deliverableId: deliverableId,
-        amount: deliverable.paymentAmount,
+        contractId: milestone.contractId,
+        milestoneId: milestoneId,
+        amount: milestone.paymentAmount,
         status: 'processing' as const,
         scheduledDate: new Date(),
         triggeredBy: 'auto_approval' as const,
@@ -111,7 +111,7 @@ class AutomatedPaymentService {
         paymentProcessor: 'trolley' as const,
         trolleyBatchId: paymentResult.batch.id,
         trolleyPaymentId: paymentResult.payment.id,
-        notes: `Automatically triggered payment for approved deliverable: ${deliverable.name}`
+        notes: `Automatically triggered payment for approved milestone: ${milestone.name}`
       };
 
       const payment = await storage.createPayment(paymentData);
@@ -123,7 +123,7 @@ class AutomatedPaymentService {
       // Create compliance log
       const logId = await this.createComplianceLog(
         payment.id,
-        deliverable,
+        milestone,
         contract,
         contractor,
         totalAmount,
@@ -141,7 +141,7 @@ class AutomatedPaymentService {
       };
 
     } catch (error) {
-      console.error('Error processing deliverable approval payment:', error);
+      console.error('Error processing milestone approval payment:', error);
       return { success: false, error: String(error) };
     }
   }
@@ -155,7 +155,7 @@ class AutomatedPaymentService {
     amount: number,
     applicationFee: number,
     contractor: any,
-    deliverable: any,
+    milestone: any,
     contract: any
   ): Promise<{ success: boolean; batchId?: string; paymentId?: string; error?: string }> {
     try {
@@ -196,16 +196,16 @@ class AutomatedPaymentService {
           sourceCurrency: 'USD',
           targetCurrency: contractor.preferredCurrency || 'USD',
           purpose: 'contractor_payment',
-          memo: `Deliverable: ${deliverable.name} - Contract ${contract.contractCode}`,
+          memo: `Milestone: ${milestone.name} - Contract ${contract.contractCode}`,
           compliance: {
             category: 'contractor_services',
-            subcategory: 'deliverable_completion',
+            subcategory: 'milestone_completion',
             taxCategory: 'professional_services'
           }
         },
         platformMetadata: {
           contractId: contract.id,
-          deliverableId: deliverable.id,
+          milestoneId: milestone.id,
           contractCode: contract.contractCode,
           businessId: contract.businessId,
           platformPaymentId: paymentId,
@@ -218,7 +218,7 @@ class AutomatedPaymentService {
         companyProfile: business.trolleyCompanyProfileId,
         contractorEmail: contractor.email,
         amount: amount,
-        deliverable: deliverable.name,
+        milestone: milestone.name,
         contract: contract.contractCode
       });
 
@@ -229,7 +229,7 @@ class AutomatedPaymentService {
         recipientId: contractor.trolleyRecipientId,
         amount: amount.toString(),
         currency: 'USD',
-        memo: `Deliverable: ${deliverable.name} - Contract ${contract.contractCode}`
+        memo: `Milestone: ${milestone.name} - Contract ${contract.contractCode}`
       });
 
       if (!trolleyResult) {
@@ -256,7 +256,7 @@ class AutomatedPaymentService {
    */
   private async createComplianceLog(
     paymentId: number,
-    deliverable: any,
+    milestone: any,
     contract: any,
     contractor: any,
     amount: number,
@@ -265,14 +265,14 @@ class AutomatedPaymentService {
     stripeResult: any
   ): Promise<number> {
     const complianceData = {
-      transaction_type: 'deliverable_payment',
+      transaction_type: 'milestone_payment',
       contract_reference: contract.contractCode,
-      deliverable_reference: deliverable.name,
-      deliverable_reference: deliverable.deliverableUrl,
+      milestone_reference: milestone.name,
+      deliverable_reference: milestone.deliverableUrl,
       payment_terms: 'Net immediate upon approval',
       service_period: {
         start: contract.startDate,
-        end: deliverable.dueDate
+        end: milestone.dueDate
       },
       tax_classification: 'professional_services',
       jurisdiction: 'US',
@@ -291,7 +291,7 @@ class AutomatedPaymentService {
         net_contractor_payment: netAmount
       },
       automation_details: {
-        trigger_event: 'deliverable_approved',
+        trigger_event: 'milestone_approved',
         processing_timestamp: new Date().toISOString(),
         approval_workflow: 'automatic'
       }
@@ -300,18 +300,18 @@ class AutomatedPaymentService {
     const logData = {
       paymentId: paymentId,
       contractId: contract.id,
-      deliverableId: deliverable.id,
+      milestoneId: milestone.id,
       businessId: contract.businessId,
       contractorId: contractor.id,
       amount: amount.toFixed(2),
       applicationFee: applicationFee.toFixed(2),
       netAmount: netAmount.toFixed(2),
-      triggerEvent: 'deliverable_approved' as const,
+      triggerEvent: 'milestone_approved' as const,
       approvalTimestamp: new Date(),
       paymentTimestamp: new Date(),
       processorReference: stripeResult.paymentIntentId,
       transferReference: stripeResult.transferId,
-      deliverableReference: deliverable.deliverableUrl,
+      deliverableReference: milestone.deliverableUrl,
       complianceData: complianceData
     };
 
@@ -320,19 +320,19 @@ class AutomatedPaymentService {
   }
 
   /**
-   * Checks for completed deliverables that haven't been processed
+   * Checks for completed milestones that haven't been processed
    * Can be called periodically to catch any missed automatic payments
    */
   async processQueuedApprovals(): Promise<PaymentProcessingResult[]> {
     try {
-      // Get all approved deliverables that don't have payments yet
-      const unprocessedDeliverables = await storage.getApprovedDeliverablesWithoutPayments();
+      // Get all approved milestones that don't have payments yet
+      const unprocessedMilestones = await storage.getApprovedMilestonesWithoutPayments();
       
       const results: PaymentProcessingResult[] = [];
       
-      for (const deliverable of unprocessedDeliverables) {
-        if (deliverable.autoPayEnabled) {
-          const result = await this.processDeliverableApproval(deliverable.id, deliverable.approvedBy || 0);
+      for (const milestone of unprocessedMilestones) {
+        if (milestone.autoPayEnabled) {
+          const result = await this.processMilestoneApproval(milestone.id, milestone.approvedBy || 0);
           results.push(result);
         }
       }

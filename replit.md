@@ -10,8 +10,6 @@ This is a comprehensive contractor/freelancer management platform built with Rea
 
 **CONTRACTOR ONBOARDING REDESIGN (August 14, 2025)**: Completely eliminated Trolley widget dependency for contractors. Replaced external widget approach with native Creativ Linc payment setup interface at `/payment-setup`. Contractors now onboard through integrated form that collects payout details and creates Trolley recipients via direct API calls. This provides better user experience and maintains brand consistency.
 
-**DELIVERABLE TERMINOLOGY MIGRATION COMPLETED (August 18, 2025)**: Successfully completed comprehensive system-wide migration from "milestone" to "deliverable" terminology. Fixed critical TypeScript validation errors in shared/schema.ts that were preventing contractor assignments with "Invalid deliverable data" errors. All schema references, API endpoints, frontend components, and database relationships now consistently use deliverable terminology. System validation now works correctly for contractor assignments.
-
 # User Preferences
 
 Preferred communication style: Simple, everyday language.

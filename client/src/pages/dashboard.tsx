@@ -14,7 +14,7 @@ import {
   Settings
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Contract, User, Payment, Deliverable } from "@shared/schema";
+import { Contract, User, Payment, Milestone } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { ContractorDashboard } from "@/components/dashboard/ContractorDashboard";
@@ -32,7 +32,7 @@ interface DashboardData {
   };
   contracts: Contract[];
   contractors: User[];
-  deliverables: Deliverable[];
+  milestones: Milestone[];
   payments: Payment[];
 }
 

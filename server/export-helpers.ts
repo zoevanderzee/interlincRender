@@ -12,14 +12,14 @@ export async function generateComplianceExport(userId: number, userRole: string)
 
   try {
     if (userRole === 'business') {
-      // Business users get all their contracts, deliverables, payments
+      // Business users get all their contracts, milestones, payments
       const contracts = await storage.getContractsByBusinessId(userId);
       const payments = await storage.getPaymentsByBusinessId(userId);
-      const deliverables = [];
+      const milestones = [];
       
       for (const contract of contracts) {
-        const contractDeliverables = await storage.getDeliverablesByContractId(contract.id);
-        deliverables.push(...contractDeliverables);
+        const contractMilestones = await storage.getMilestonesByContractId(contract.id);
+        milestones.push(...contractMilestones);
       }
 
       exportData.data = {
@@ -32,7 +32,7 @@ export async function generateComplianceExport(userId: number, userRole: string)
           createdAt: c.createdAt,
           contractorId: c.contractorId
         })),
-        deliverables: deliverables.map(m => ({
+        milestones: milestones.map(m => ({
           id: m.id,
           contractId: m.contractId,
           name: m.name,
@@ -46,7 +46,7 @@ export async function generateComplianceExport(userId: number, userRole: string)
         payments: payments.map(p => ({
           id: p.id,
           contractId: p.contractId,
-          deliverableId: p.deliverableId,
+          milestoneId: p.milestoneId,
           amount: p.amount,
           status: p.status,
           scheduledDate: p.scheduledDate,
@@ -61,13 +61,13 @@ export async function generateComplianceExport(userId: number, userRole: string)
       // Contractors get their contracts and payments
       const contracts = await storage.getContractsByContractorId(userId);
       const payments = [];
-      const deliverables = [];
+      const milestones = [];
       
       for (const contract of contracts) {
         const contractPayments = await storage.getPaymentsByContractId(contract.id);
-        const contractDeliverables = await storage.getDeliverablesByContractId(contract.id);
+        const contractMilestones = await storage.getMilestonesByContractId(contract.id);
         payments.push(...contractPayments);
-        deliverables.push(...contractDeliverables);
+        milestones.push(...contractMilestones);
       }
 
       exportData.data = {
@@ -80,7 +80,7 @@ export async function generateComplianceExport(userId: number, userRole: string)
           createdAt: c.createdAt,
           businessId: c.businessId
         })),
-        deliverables: deliverables.map(m => ({
+        milestones: milestones.map(m => ({
           id: m.id,
           contractId: m.contractId,
           name: m.name,
@@ -94,7 +94,7 @@ export async function generateComplianceExport(userId: number, userRole: string)
         payments: payments.map(p => ({
           id: p.id,
           contractId: p.contractId,
-          deliverableId: p.deliverableId,
+          milestoneId: p.milestoneId,
           amount: p.amount,
           status: p.status,
           scheduledDate: p.scheduledDate,
@@ -130,7 +130,7 @@ export async function generateInvoiceExport(userId: number, userRole: string) {
 
     for (const payment of payments) {
       const contract = await storage.getContract(payment.contractId);
-      const deliverable = payment.deliverableId ? await storage.getDeliverable(payment.deliverableId) : null;
+      const milestone = payment.milestoneId ? await storage.getMilestone(payment.milestoneId) : null;
       const businessUser = contract ? await storage.getUser(contract.businessId) : null;
       const contractorUser = contract ? await storage.getUser(contract.contractorId) : null;
 
@@ -138,7 +138,7 @@ export async function generateInvoiceExport(userId: number, userRole: string) {
         invoiceNumber: `INV-${payment.id}-${new Date(payment.scheduledDate).getFullYear()}`,
         paymentId: payment.id,
         contractId: payment.contractId,
-        deliverableId: payment.deliverableId,
+        milestoneId: payment.milestoneId,
         amount: payment.amount,
         currency: 'GBP',
         status: payment.status,
@@ -146,7 +146,7 @@ export async function generateInvoiceExport(userId: number, userRole: string) {
         paidDate: payment.completedDate,
         dueDate: payment.scheduledDate,
         contractName: contract?.contractName || 'Unknown Project',
-        deliverableName: deliverable?.name || 'Payment',
+        milestoneName: milestone?.name || 'Payment',
         businessName: businessUser?.username || 'Unknown Business',
         contractorName: contractorUser?.username || 'Unknown Contractor',
         businessEmail: businessUser?.email,
@@ -192,12 +192,12 @@ export async function generatePaymentExport(userId: number, userRole: string) {
     
     for (const payment of payments) {
       const contract = await storage.getContract(payment.contractId);
-      const deliverable = payment.deliverableId ? await storage.getDeliverable(payment.deliverableId) : null;
+      const milestone = payment.milestoneId ? await storage.getMilestone(payment.milestoneId) : null;
       
       enrichedPayments.push({
         ...payment,
         contractName: contract?.contractName || 'Unknown',
-        deliverableName: deliverable?.name || 'Payment',
+        milestoneName: milestone?.name || 'Payment',
         businessId: contract?.businessId,
         contractorId: contract?.contractorId
       });
@@ -225,14 +225,14 @@ export async function generateCSVExport(userId: number, userRole: string, type: 
       const paymentData = await generatePaymentExport(userId, userRole);
       
       // CSV Headers
-      csvData = 'Payment ID,Contract Name,Deliverable,Amount,Status,Scheduled Date,Completed Date,Payment Processor,Transaction ID,Notes\n';
+      csvData = 'Payment ID,Contract Name,Milestone,Amount,Status,Scheduled Date,Completed Date,Payment Processor,Transaction ID,Notes\n';
       
       // CSV Rows
       for (const payment of paymentData.payments) {
         const row = [
           payment.id,
           `"${payment.contractName}"`,
-          `"${payment.deliverableName}"`,
+          `"${payment.milestoneName}"`,
           payment.amount,
           payment.status,
           payment.scheduledDate,

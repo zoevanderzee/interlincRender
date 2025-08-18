@@ -242,14 +242,14 @@ class TrolleyService {
   ): Promise<{ batch: TrolleyBatch; payment: TrolleyPayment }> {
     const path = '/batches';
     const batchData = {
-      description: `Deliverable payment: ${memo}`,
+      description: `Milestone payment: ${memo}`,
       currency,
       payments: [{
         recipient: { id: recipientId },
         amount,
         currency,
         memo,
-        externalId: `deliverable_${Date.now()}`
+        externalId: `milestone_${Date.now()}`
       }]
     };
 

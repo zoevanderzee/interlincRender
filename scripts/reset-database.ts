@@ -2,7 +2,7 @@ import { db } from '../server/db';
 import { 
   users, 
   contracts, 
-  deliverables, 
+  milestones, 
   payments, 
   documents, 
   invites, 
@@ -30,8 +30,8 @@ async function main() {
     console.log('Deleting payments...');
     await db.delete(payments);
     
-    console.log('Deleting deliverables...');
-    await db.delete(deliverables);
+    console.log('Deleting milestones...');
+    await db.delete(milestones);
     
     console.log('Deleting documents...');
     await db.delete(documents);

@@ -10,7 +10,7 @@ import { CheckCircle, Clock, AlertCircle, CreditCard, User } from "lucide-react"
 import { apiRequest } from "@/lib/queryClient";
 import { TrolleyWidget } from "@/components/trolley/TrolleyWidget";
 
-interface Deliverable {
+interface Milestone {
   id: number;
   name: string;
   description: string;
@@ -32,22 +32,22 @@ interface Contract {
   contractorId: number;
 }
 
-export default function DeliverableApproval() {
-  const [selectedDeliverable, setSelectedDeliverable] = useState<Deliverable | null>(null);
+export default function MilestoneApproval() {
+  const [selectedMilestone, setSelectedMilestone] = useState<Milestone | null>(null);
   const [approvalNotes, setApprovalNotes] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch all deliverables that are submitted and pending approval
-  const { data: deliverables = [], isLoading } = useQuery({
-    queryKey: ['/api/deliverables'],
+  // Fetch all milestones that are submitted and pending approval
+  const { data: milestones = [], isLoading } = useQuery({
+    queryKey: ['/api/milestones'],
     queryFn: async () => {
-      const response = await fetch('/api/deliverables');
+      const response = await fetch('/api/milestones');
       return response.json();
     }
   });
 
-  // Fetch contract details for each deliverable
+  // Fetch contract details for each milestone
   const { data: contracts = [] } = useQuery({
     queryKey: ['/api/contracts'],
     queryFn: async () => {
@@ -56,29 +56,29 @@ export default function DeliverableApproval() {
     }
   });
 
-  // Approve deliverable mutation with automated payment
-  const approveDeliverable = useMutation({
-    mutationFn: async ({ deliverableId, notes }: { deliverableId: number; notes: string }) => {
-      return apiRequest("POST", `/api/deliverables/${deliverableId}/approve`, {
+  // Approve milestone mutation with automated payment
+  const approveMilestone = useMutation({
+    mutationFn: async ({ milestoneId, notes }: { milestoneId: number; notes: string }) => {
+      return apiRequest("POST", `/api/milestones/${milestoneId}/approve`, {
         approvalNotes: notes
       });
     },
     onSuccess: (data) => {
       toast({
-        title: "Deliverable Approved",
+        title: "Milestone Approved",
         description: data.payment?.id 
           ? `Payment automatically processed (Transfer ID: ${data.payment.transferId})`
-          : "Deliverable approved successfully",
+          : "Milestone approved successfully",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/deliverables'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/milestones'] });
       queryClient.invalidateQueries({ queryKey: ['/api/payments'] });
-      setSelectedDeliverable(null);
+      setSelectedMilestone(null);
       setApprovalNotes("");
     },
     onError: (error: any) => {
       toast({
         title: "Approval Failed",
-        description: error.message || "Failed to approve deliverable",
+        description: error.message || "Failed to approve milestone",
         variant: "destructive",
       });
     }
@@ -104,9 +104,9 @@ export default function DeliverableApproval() {
     return contract ? `${contract.contractName} (${contract.contractCode})` : `Contract ${contractId}`;
   };
 
-  // Filter deliverables that are submitted and ready for approval
-  const pendingApprovalDeliverables = deliverables.filter(
-    (deliverable: Deliverable) => deliverable.status === 'submitted'
+  // Filter milestones that are submitted and ready for approval
+  const pendingApprovalMilestones = milestones.filter(
+    (milestone: Milestone) => milestone.status === 'submitted'
   );
 
   if (isLoading) {
@@ -121,9 +121,9 @@ export default function DeliverableApproval() {
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Deliverable Approvals</h1>
+          <h1 className="text-3xl font-bold">Milestone Approvals</h1>
           <p className="text-muted-foreground">
-            Review submitted deliverables and approve deliverables to trigger automatic payments
+            Review submitted deliverables and approve milestones to trigger automatic payments
           </p>
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -132,36 +132,36 @@ export default function DeliverableApproval() {
         </div>
       </div>
 
-      {pendingApprovalDeliverables.length === 0 ? (
+      {pendingApprovalMilestones.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <CheckCircle className="w-12 h-12 text-green-500 mb-4" />
             <h3 className="text-lg font-semibold mb-2">All Caught Up!</h3>
             <p className="text-muted-foreground text-center">
-              No deliverables are currently waiting for approval.
+              No milestones are currently waiting for approval.
             </p>
           </CardContent>
         </Card>
       ) : (
         <div className="grid gap-6">
-          {pendingApprovalDeliverables.map((deliverable: Deliverable) => (
-            <Card key={deliverable.id} className="border-2 border-yellow-200">
+          {pendingApprovalMilestones.map((milestone: Milestone) => (
+            <Card key={milestone.id} className="border-2 border-yellow-200">
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div>
                     <CardTitle className="flex items-center gap-2">
-                      {deliverable.name}
-                      {getStatusBadge(deliverable.status)}
+                      {milestone.name}
+                      {getStatusBadge(milestone.status)}
                     </CardTitle>
                     <CardDescription>
-                      {getContractName(deliverable.contractId)} • Due: {new Date(deliverable.dueDate).toLocaleDateString()}
+                      {getContractName(milestone.contractId)} • Due: {new Date(milestone.dueDate).toLocaleDateString()}
                     </CardDescription>
                   </div>
                   <div className="text-right">
                     <div className="text-2xl font-bold text-green-600">
-                      ${parseFloat(deliverable.paymentAmount).toLocaleString()}
+                      ${parseFloat(milestone.paymentAmount).toLocaleString()}
                     </div>
-                    {deliverable.autoPayEnabled && (
+                    {milestone.autoPayEnabled && (
                       <div className="text-xs text-muted-foreground flex items-center gap-1">
                         <CreditCard className="w-3 h-3" />
                         Auto-pay enabled
@@ -173,14 +173,14 @@ export default function DeliverableApproval() {
               <CardContent className="space-y-4">
                 <div>
                   <h4 className="font-medium mb-2">Description</h4>
-                  <p className="text-sm text-muted-foreground">{deliverable.description}</p>
+                  <p className="text-sm text-muted-foreground">{milestone.description}</p>
                 </div>
 
-                {deliverable.deliverableUrl && (
+                {milestone.deliverableUrl && (
                   <div>
                     <h4 className="font-medium mb-2">Submitted Deliverable</h4>
                     <a 
-                      href={deliverable.deliverableUrl} 
+                      href={milestone.deliverableUrl} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="text-blue-600 hover:underline text-sm"
@@ -190,17 +190,17 @@ export default function DeliverableApproval() {
                   </div>
                 )}
 
-                {deliverable.submittedAt && (
+                {milestone.submittedAt && (
                   <div>
                     <p className="text-xs text-muted-foreground">
-                      Submitted on {new Date(deliverable.submittedAt).toLocaleString()}
+                      Submitted on {new Date(milestone.submittedAt).toLocaleString()}
                     </p>
                   </div>
                 )}
 
                 <div className="flex gap-3 pt-4">
                   <Button
-                    onClick={() => setSelectedDeliverable(deliverable)}
+                    onClick={() => setSelectedMilestone(milestone)}
                     className="bg-green-600 hover:bg-green-700"
                   >
                     <CheckCircle className="w-4 h-4 mr-2" />
@@ -217,13 +217,13 @@ export default function DeliverableApproval() {
       )}
 
       {/* Approval Modal */}
-      {selectedDeliverable && (
+      {selectedMilestone && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <Card className="w-full max-w-md">
             <CardHeader>
-              <CardTitle>Approve Deliverable</CardTitle>
+              <CardTitle>Approve Milestone</CardTitle>
               <CardDescription>
-                This will approve "{selectedDeliverable.name}" and automatically trigger payment of ${parseFloat(selectedDeliverable.paymentAmount).toLocaleString()}
+                This will approve "{selectedMilestone.name}" and automatically trigger payment of ${parseFloat(selectedMilestone.paymentAmount).toLocaleString()}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -251,15 +251,15 @@ export default function DeliverableApproval() {
               <div className="flex gap-3">
                 <Button
                   onClick={() => {
-                    approveDeliverable.mutate({
-                      deliverableId: selectedDeliverable.id,
+                    approveMilestone.mutate({
+                      milestoneId: selectedMilestone.id,
                       notes: approvalNotes
                     });
                   }}
-                  disabled={approveDeliverable.isPending}
+                  disabled={approveMilestone.isPending}
                   className="flex-1 bg-green-600 hover:bg-green-700"
                 >
-                  {approveDeliverable.isPending ? (
+                  {approveMilestone.isPending ? (
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
                   ) : (
                     <CheckCircle className="w-4 h-4 mr-2" />
@@ -269,10 +269,10 @@ export default function DeliverableApproval() {
                 <Button
                   variant="outline"
                   onClick={() => {
-                    setSelectedDeliverable(null);
+                    setSelectedMilestone(null);
                     setApprovalNotes("");
                   }}
-                  disabled={approveDeliverable.isPending}
+                  disabled={approveMilestone.isPending}
                 >
                   Cancel
                 </Button>

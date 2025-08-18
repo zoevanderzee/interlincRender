@@ -56,8 +56,8 @@ const NewContract = () => {
           </h1>
           <p className="text-zinc-400 mt-1">
             {contractId 
-              ? 'Update your project details, deliverables, and payment terms' 
-              : 'Set up a new smart contract with predefined deliverables and payments'
+              ? 'Update your project details, milestones, and payment terms' 
+              : 'Set up a new smart contract with predefined milestones and payments'
             }
           </p>
         </div>

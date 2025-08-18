@@ -26,7 +26,7 @@ interface DashboardData {
   };
   contracts: Contract[];
   contractors: User[];
-  deliverables: any[];
+  milestones: any[];
   payments: any[];
   invites: any[];
 }

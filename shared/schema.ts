@@ -1,117 +1,113 @@
-import { pgTable, serial, text, boolean, timestamp, integer, decimal, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, varchar, decimal, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Users table - unified for all user types
+// Users table
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  username: text("username").unique(),
-  email: text("email").unique().notNull(),
-  passwordHash: text("password_hash"),
-  role: text("role").notNull().default("contractor"), // "contractor", "business"
+  username: text("username").notNull().unique(),
+  password: text("password").notNull(),
   firstName: text("first_name"),
   lastName: text("last_name"),
+  email: text("email").notNull().unique(),
+  role: text("role").notNull().default("business"), // "business", "contractor", or "freelancer"
+  workerType: text("worker_type"), // "contractor" or "freelancer" for external workers
   profileImageUrl: text("profile_image_url"),
-  bio: text("bio"),
-  location: text("location"),
-  skills: text("skills"), // comma-separated for contractors
-  hourlyRate: decimal("hourly_rate", { precision: 10, scale: 2 }), // for contractors
-  
-  // Business-specific fields
-  companyName: text("company_name"), // For business users
-  industry: text("industry"), // For business users
-  companySize: text("company_size"), // "1-10", "11-50", "51-200", "201+"
-  
-  // Stripe-related fields
-  stripeCustomerId: text("stripe_customer_id"),
-  stripeSubscriptionId: text("stripe_subscription_id"),
-  stripeConnectAccountId: text("stripe_connect_account_id"),
-  payoutEnabled: boolean("payout_enabled").default(false),
-  
-  // Budget Management
-  budgetCap: decimal("budget_cap", { precision: 10, scale: 2 }), // Maximum budget allowed
-  budgetUsed: decimal("budget_used", { precision: 10, scale: 2 }).default("0.00"), // Current budget used
-  budgetPeriod: text("budget_period"), // "monthly", "quarterly", "yearly", "project"
-  budgetStartDate: timestamp("budget_start_date"),
-  budgetEndDate: timestamp("budget_end_date"),
-  
-  // Trolley fields for contractor payments
-  trolleySubmerchantId: text("trolley_submerchant_id"), // Trolley submerchant account ID
-  trolleySubmerchantStatus: text("trolley_submerchant_status"), // pending, approved, rejected
+  companyName: text("company_name"), // Company name for subcontractors
+  companyLogo: text("company_logo"), // Company logo URL
+  title: text("title"),
+  industry: text("industry"), // Industry sector the company operates in
+  foundedYear: integer("founded_year"), // Year the company was founded
+  employeeCount: integer("employee_count"), // Number of employees
+  website: text("website"), // Company website URL
+  profileCode: text("profile_code").unique(), // Unique code for easy worker identification (e.g., "JOHNSON-2025")
+  stripeCustomerId: text("stripe_customer_id"), // Stripe customer ID for payment processing
+  stripeSubscriptionId: text("stripe_subscription_id"), // Stripe subscription ID for companies
+  stripeConnectAccountId: text("stripe_connect_account_id"), // Stripe Connect account ID for contractors
+  subscriptionStatus: text("subscription_status").default("inactive"), // inactive, active, past_due, canceled, trialing
+  subscriptionPlan: text("subscription_plan"), // business_plan, contractor_plan, etc.
+  subscriptionStartDate: timestamp("subscription_start_date"), // When subscription started
+  subscriptionEndDate: timestamp("subscription_end_date"), // When subscription ends (for fixed term subscriptions)
+  subscriptionTrialEnd: timestamp("subscription_trial_end"), // Trial period end date
+  trolleyCompanyProfileId: text("trolley_company_profile_id"), // Trolley company profile ID for Embedded Payouts
   trolleyRecipientId: text("trolley_recipient_id"), // Trolley recipient ID for contractors
-  paymentMethod: text("payment_method"), // 'pre_funded', 'pay_as_you_go'
-  trolleyAccountBalance: decimal("trolley_account_balance", { precision: 10, scale: 2 }).default("0.00"),
-  
-  // Profile & Connections
-  profileCode: text("profile_code").unique(), // 6-digit code for easy sharing
-  isEmailVerified: boolean("is_email_verified").default(false),
-  emailVerificationToken: text("email_verification_token"),
-  emailVerificationExpires: timestamp("email_verification_expires"),
-  
-  // Password reset functionality
-  passwordResetToken: text("password_reset_token"),
-  passwordResetExpires: timestamp("password_reset_expires"),
-  
-  // Firebase integration
-  firebaseUID: text("firebase_uid"),
-  
-  createdAt: timestamp("created_at").defaultNow()
+  trolleySubmerchantId: text("trolley_submerchant_id"), // Trolley submerchant account ID for businesses
+  trolleySubmerchantStatus: text("trolley_submerchant_status"), // Status of submerchant onboarding
+  trolleySubmerchantAccessKey: text("trolley_submerchant_access_key"), // Trolley submerchant API access key
+  trolleySubmerchantSecretKey: text("trolley_submerchant_secret_key"), // Trolley submerchant API secret key
+  trolleyBankAccountStatus: text("trolley_bank_account_status"), // Bank account verification status (pending, verified, failed)
+  trolleyBankAccountId: text("trolley_bank_account_id"), // Trolley bank account ID for pay-as-you-go
+  trolleyBankAccountLast4: text("trolley_bank_account_last4"), // Last 4 digits of linked bank account
+  trolleyVerificationToken: text("trolley_verification_token"), // Token for Trolley business verification
+  trolleyVerificationStarted: timestamp("trolley_verification_started"), // When verification was initiated
+  trolleyVerificationStatus: text("trolley_verification_status"), // Status of Trolley verification (pending, approved, rejected)
+  trolleyVerificationCompletedAt: timestamp("trolley_verification_completed_at"), // When verification was completed
+  payoutEnabled: boolean("payout_enabled").default(false), // Whether the contractor is ready to receive payments
+  budgetCap: decimal("budget_cap", { precision: 15, scale: 2 }), // Maximum budget for outsourcing (for business accounts)
+  budgetUsed: decimal("budget_used", { precision: 15, scale: 2 }).default("0"), // Amount of budget already allocated to projects
+  budgetPeriod: text("budget_period").default("yearly"), // Budget period: monthly, quarterly, yearly
+  budgetStartDate: timestamp("budget_start_date"), // When the current budget period began
+  budgetEndDate: timestamp("budget_end_date"), // When the current budget period ends
+  budgetResetEnabled: boolean("budget_reset_enabled").default(false), // Whether budget should automatically reset at the end of period
+  paymentMethod: text("payment_method").default("pay_as_you_go"), // "pre_funded" or "pay_as_you_go"
+  trolleyAccountBalance: decimal("trolley_account_balance", { precision: 15, scale: 2 }).default("0"), // Balance for pre-funded accounts
+  resetPasswordToken: text("reset_password_token"), // Token for password reset
+  resetPasswordExpires: timestamp("reset_password_expires"), // Expiration time for password reset token
+  emailVerified: boolean("email_verified").default(false), // Whether user's email is verified
+  emailVerificationToken: text("email_verification_token"), // Token for email verification
+  emailVerificationExpires: timestamp("email_verification_expires"), // Expiration time for email verification token
+  firebaseUid: text("firebase_uid") // Firebase user ID for linking accounts
 });
 
-// Invites table
+// Project Invites table
 export const invites = pgTable("invites", {
   id: serial("id").primaryKey(),
-  businessId: integer("business_id").notNull().references(() => users.id),
   email: text("email").notNull(),
-  firstName: text("first_name"),
-  lastName: text("last_name"),
-  workerType: text("worker_type").notNull().default("contractor"), // contractor, employee
-  role: text("role").notNull().default("contractor"), // matches user role
-  status: text("status").notNull().default("pending"), // pending, accepted, expired
-  token: text("token").notNull().unique(),
-  expiresAt: timestamp("expires_at").notNull(),
-  acceptedAt: timestamp("accepted_at"),
-  createdAt: timestamp("created_at").defaultNow()
+  projectName: text("project_name").notNull(),
+  status: text("status").notNull().default("pending"), // pending, accepted, declined, expired
+  workerType: text("worker_type").notNull().default("contractor"), // contractor or freelancer
+  businessId: integer("business_id").notNull(), // The business that sent the invite
+  projectId: integer("project_id"), // Optional project ID if the project already exists
+  contractDetails: text("contract_details"), // JSON string with contract details
+  message: text("message"), // Custom message to the contractor
+  paymentAmount: text("payment_amount"), // Payment amount for the worker
+  token: text("token"), // Token used for invite authentication
+  createdAt: timestamp("created_at").defaultNow(),
+  expiresAt: timestamp("expires_at"), // When the invite expires
 });
 
-// Contracts table
+// Smart Contracts table
 export const contracts = pgTable("contracts", {
   id: serial("id").primaryKey(),
-  businessId: integer("business_id").notNull().references(() => users.id),
-  contractorId: integer("contractor_id").references(() => users.id), // Optional during creation
   contractName: text("contract_name").notNull(),
-  description: text("description").notNull(),
-  totalBudget: decimal("total_budget", { precision: 10, scale: 2 }).notNull(),
-  status: text("status").notNull().default("draft"), // draft, active, completed, cancelled
-  startDate: timestamp("start_date").notNull(),
-  endDate: timestamp("end_date").notNull(),
-  paymentStructure: text("payment_structure").notNull().default("deliverable"), // deliverable, hourly, fixed
-  contractorFirstName: text("contractor_first_name"),
-  contractorLastName: text("contractor_last_name"),
-  contractorEmail: text("contractor_email"),
-  contractUrl: text("contract_url"), // URL to the signed contract document
-  createdAt: timestamp("created_at").defaultNow()
+  contractCode: text("contract_code").notNull().unique(),
+  businessId: integer("business_id").notNull(),
+  contractorId: integer("contractor_id"), // Made optional for initial project creation
+  description: text("description"),
+  status: text("status").notNull().default("draft"), // draft, active, completed, terminated, deleted
+  value: decimal("value", { precision: 10, scale: 2 }).notNull(),
+  contractorBudget: decimal("contractor_budget", { precision: 10, scale: 2 }), // Budget allocated to the contractor for this project
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Deliverables table
-export const deliverables = pgTable("deliverables", {
+// Deliverables table (formerly milestones - using "deliverable" terminology throughout)
+export const milestones = pgTable("milestones", {
   id: serial("id").primaryKey(),
-  contractId: integer("contract_id").notNull().references(() => contracts.id),
+  contractId: integer("contract_id").notNull(),
   name: text("name").notNull(),
-  description: text("description").notNull(),
+  description: text("description"),
   dueDate: timestamp("due_date").notNull(),
+  status: text("status").notNull().default("pending"), // pending, submitted, completed, approved, rejected
   paymentAmount: decimal("payment_amount", { precision: 10, scale: 2 }).notNull(),
-  status: text("status").notNull().default("pending"), // pending, accepted, completed, approved
-  approvalDate: timestamp("approval_date"),
-  approvedBy: integer("approved_by").references(() => users.id),
-  completionDate: timestamp("completion_date"),
-  deliverableUrl: text("deliverable_url"), // URL to deliverable files
-  workSubmissionId: integer("work_submission_id"), // Link to work submission if any
-  
-  // File attachment fields  
-  attachmentUrls: jsonb("attachment_urls"), // Array of file URLs
-  attachmentNames: jsonb("attachment_names"), // Array of file names
-  attachmentSizes: jsonb("attachment_sizes"), // Array of file sizes
+  progress: integer("progress").notNull().default(0), // 0-100 percentage
+  submittedAt: timestamp("submitted_at"), // When contractor submitted the deliverable
+  approvedAt: timestamp("approved_at"), // When business approved the deliverable
+  autoPayEnabled: boolean("auto_pay_enabled").default(true), // Whether payment should be automatically triggered on approval
+  deliverableUrl: text("deliverable_url"), // URL or path to submitted deliverable (legacy)
+  deliverableFiles: jsonb("deliverable_files"), // Array of file objects {url, name, type, size}
+  deliverableDescription: text("deliverable_description"), // Description for physical work that cannot be digitally evidenced
   submissionType: text("submission_type").default("digital"), // "digital" or "physical"
   approvalNotes: text("approval_notes"), // Business notes on approval/rejection
 });
@@ -120,22 +116,20 @@ export const deliverables = pgTable("deliverables", {
 export const payments = pgTable("payments", {
   id: serial("id").primaryKey(),
   contractId: integer("contract_id").notNull(),
-  deliverableId: integer("deliverable_id").notNull().references(() => deliverables.id),
+  milestoneId: integer("milestone_id").notNull(),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
-  applicationFee: decimal("application_fee", { precision: 10, scale: 2 }).notNull(),
-  netAmount: decimal("net_amount", { precision: 10, scale: 2 }).notNull(),
-  currency: text("currency").default("USD"),
-  status: text("status").notNull().default("pending"), // pending, processing, completed, failed
+  status: text("status").notNull().default("scheduled"), // scheduled, processing, completed, failed, auto_triggered
   scheduledDate: timestamp("scheduled_date").notNull(),
   completedDate: timestamp("completed_date"),
-  stripePaymentIntentId: text("stripe_payment_intent_id"),
-  stripeTransferId: text("stripe_transfer_id"),
-  trolleyPaymentId: text("trolley_payment_id"), // Trolley payment reference
-  trolleyBatchId: text("trolley_batch_id"), // Trolley batch reference  
-  failureReason: text("failure_reason"),
-  contractorId: integer("contractor_id").notNull().references(() => users.id),
-  businessId: integer("business_id").notNull().references(() => users.id),
-  paymentMethod: text("payment_method").default("trolley"), // stripe, trolley, manual
+  notes: text("notes"),
+  stripePaymentIntentId: text("stripe_payment_intent_id"), // Stripe Payment Intent ID
+  stripePaymentIntentStatus: text("stripe_payment_intent_status"), // Stripe Payment Intent Status
+  stripeTransferId: text("stripe_transfer_id"), // Stripe Transfer ID for Connect payouts
+  trolleyBatchId: text("trolley_batch_id"), // Trolley batch ID for Embedded Payouts
+  trolleyPaymentId: text("trolley_payment_id"), // Trolley payment ID for tracking
+  stripeTransferStatus: text("stripe_transfer_status"), // Status of the Stripe Transfer
+  paymentProcessor: text("payment_processor").default("stripe"), // Payment processor used
+  applicationFee: decimal("application_fee", { precision: 10, scale: 2 }).default("0"), // Platform fee
   triggeredBy: text("triggered_by").default("manual"), // manual, auto_approval, scheduled
   triggeredAt: timestamp("triggered_at"), // When the payment was automatically triggered
 });
@@ -145,61 +139,63 @@ export const paymentLogs = pgTable("payment_logs", {
   id: serial("id").primaryKey(),
   paymentId: integer("payment_id").notNull(),
   contractId: integer("contract_id").notNull(),
-  deliverableId: integer("deliverable_id").notNull().references(() => deliverables.id),
+  milestoneId: integer("milestone_id").notNull(),
   businessId: integer("business_id").notNull(),
   contractorId: integer("contractor_id").notNull(),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   applicationFee: decimal("application_fee", { precision: 10, scale: 2 }).notNull(),
   netAmount: decimal("net_amount", { precision: 10, scale: 2 }).notNull(), // Amount after platform fee
   currency: text("currency").default("USD"),
-  triggerEvent: text("trigger_event").notNull(), // "deliverable_approved", "manual_payment", "scheduled_payment"
+  triggerEvent: text("trigger_event").notNull(), // "milestone_approved", "manual_payment", "scheduled_payment"
   approvalTimestamp: timestamp("approval_timestamp").notNull(),
   paymentTimestamp: timestamp("payment_timestamp").notNull(),
   processorReference: text("processor_reference"), // Stripe payment intent ID
   transferReference: text("transfer_reference"), // Stripe transfer ID
-  trolleyPaymentReference: text("trolley_payment_reference"), // Trolley payment reference
-  trolleyBatchReference: text("trolley_batch_reference"), // Trolley batch reference
-  businessName: text("business_name"),
-  contractorName: text("contractor_name"),
-  contractorEmail: text("contractor_email"),
-  deliverableName: text("deliverable_name"),
-  deliverableDescription: text("deliverable_description"),
-  createdAt: timestamp("created_at").defaultNow()
+  deliverableReference: text("deliverable_reference"), // Reference to submitted deliverable
+  complianceData: jsonb("compliance_data"), // Structured data for tax/audit purposes
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Documents table
 export const documents = pgTable("documents", {
   id: serial("id").primaryKey(),
-  contractId: integer("contract_id").notNull().references(() => contracts.id),
-  name: text("name").notNull(),
-  url: text("url").notNull(),
-  type: text("type").notNull(), // contract, deliverable, invoice, etc.
-  uploadedBy: integer("uploaded_by").notNull().references(() => users.id),
-  uploadedAt: timestamp("uploaded_at").defaultNow()
+  contractId: integer("contract_id").notNull(),
+  fileName: text("file_name").notNull(),
+  fileType: text("file_type").notNull(),
+  filePath: text("file_path").notNull(),
+  uploadedBy: integer("uploaded_by").notNull(),
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+  description: text("description"),
 });
 
-// Bank Accounts table
+// Bank Accounts table for ACH Payments
 export const bankAccounts = pgTable("bank_accounts", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
-  bankName: text("bank_name").notNull(),
-  accountName: text("account_name").notNull(),
-  accountNumber: text("account_number").notNull(),
-  routingNumber: text("routing_number").notNull(),
-  accountType: text("account_type").notNull().default("checking"), // checking, savings
-  isVerified: boolean("is_verified").default(false),
-  plaidAccessToken: text("plaid_access_token"),
-  plaidItemId: text("plaid_item_id"),
-  createdAt: timestamp("created_at").defaultNow()
+  userId: integer("user_id").notNull(),
+  accountId: text("account_id").notNull(), // Plaid account ID
+  accountName: text("account_name").notNull(), // User-friendly name for the account
+  accountType: text("account_type").notNull(), // checking, savings, etc.
+  accountSubtype: text("account_subtype"), // personal, business, etc.
+  accountMask: text("account_mask"), // Last 4 digits of account number
+  institutionName: text("institution_name"), // Bank name
+  plaidAccessToken: text("plaid_access_token").notNull(), // Plaid access token for this account
+  plaidItemId: text("plaid_item_id").notNull(), // Plaid item ID
+  stripeBankAccountId: text("stripe_bank_account_id"), // Stripe bank account ID
+  isVerified: boolean("is_verified").default(false), // Whether the account is verified
+  isDefault: boolean("is_default").default(false), // Whether this is the default account
+  createdAt: timestamp("created_at").defaultNow(),
+  metadata: jsonb("metadata"), // Additional metadata
 });
 
-// Work Requests table - for posting available work
+// Work Requests table
 export const workRequests = pgTable("work_requests", {
   id: serial("id").primaryKey(),
-  businessId: integer("business_id").notNull().references(() => users.id),
   title: text("title").notNull(),
   description: text("description").notNull(),
-  status: text("status").notNull().default("open"), // open, in_progress, completed, cancelled
+  businessId: integer("business_id").notNull(), // Business that sent the request
+  recipientEmail: text("recipient_email"), // Email of the recipient - optional for shareable links
+  contractorId: integer("contractor_id"), // Assigned contractor for this work request
+  status: text("status").notNull().default("pending"), // pending, accepted, declined, expired
   budgetMin: decimal("budget_min", { precision: 10, scale: 2 }), // Minimum budget amount
   budgetMax: decimal("budget_max", { precision: 10, scale: 2 }), // Maximum budget amount
   dueDate: timestamp("due_date"), // When the work is due
@@ -228,72 +224,65 @@ export const workRequestSubmissions = pgTable("work_request_submissions", {
   reviewNotes: text("review_notes"), // Feedback from business owner
 });
 
-// Insert schemas  
-export const insertUserSchema = createInsertSchema(users, {
-  id: z.number().optional(),
-});
-
-export const insertInviteSchema = createInsertSchema(invites, {
-  id: z.number().optional(),
-  createdAt: z.date().optional(),
-  expiresAt: z.union([z.string(), z.date()]).transform(val => 
-    typeof val === 'string' ? new Date(val) : val
-  ),
+// Insert schemas
+export const insertUserSchema = createInsertSchema(users).omit({ id: true });
+const baseInviteSchema = createInsertSchema(invites).omit({ id: true, createdAt: true });
+export const insertInviteSchema = baseInviteSchema.extend({
+  // Make expiresAt transform string dates
+  expiresAt: z.string().optional().transform(val => val ? new Date(val) : undefined),
+  // Ensure workerType is always provided with a default
   workerType: z.string().default("contractor")
 });
 
-export const insertContractSchema = createInsertSchema(contracts, {
-  id: z.number().optional(),
-  createdAt: z.date().optional(),
-  contractorId: z.number().optional(),
-  startDate: z.union([z.string(), z.date()]).transform(val => 
-    typeof val === 'string' ? new Date(val) : val
-  ),
-  endDate: z.union([z.string(), z.date()]).transform(val => 
-    typeof val === 'string' ? new Date(val) : val
-  ),
+// Make contractorId optional in the insert schema and properly handle date strings
+const baseContractSchema = createInsertSchema(contracts).omit({ id: true, createdAt: true });
+export const insertContractSchema = baseContractSchema.extend({
+  // Make contractorId optional
+  contractorId: baseContractSchema.shape.contractorId.optional(),
+  // Handle date strings from frontend forms
+  startDate: z.string().transform((val) => new Date(val)),
+  endDate: z.string().transform((val) => new Date(val)),
 });
 
-export const insertDeliverableSchema = createInsertSchema(deliverables, {
-  id: z.number().optional(),
-  dueDate: z.union([z.string(), z.date()]).transform(val => 
-    typeof val === 'string' ? new Date(val) : val
-  ),
+// Create base milestone schema - make it very permissive
+const baseMilestoneSchema = createInsertSchema(milestones).omit({ id: true });
+// Extend it to handle date strings properly and make fields more permissive
+export const insertMilestoneSchema = baseMilestoneSchema.extend({
+  // Handle date strings from frontend forms - allow any valid date format
+  dueDate: z.union([z.string(), z.date()]).transform((val) => {
+    if (typeof val === 'string') {
+      return new Date(val);
+    }
+    return val;
+  }),
+  // Make name very permissive - accept any non-empty string
   name: z.string().min(1, "Name is required"),
+  // Make description optional and permissive
   description: z.string().optional(),
-  paymentAmount: z.union([z.string(), z.number()]).transform(val => 
-    typeof val === 'number' ? val.toString() : val
-  ),
+  // Make payment amount permissive - accept string or number
+  paymentAmount: z.union([z.string(), z.number()]).transform((val) => {
+    if (typeof val === 'string') {
+      return val;
+    }
+    return val.toString();
+  }),
 });
+export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true, completedDate: true });
+export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, uploadedAt: true });
+export const insertBankAccountSchema = createInsertSchema(bankAccounts).omit({ id: true, createdAt: true, isVerified: true });
 
-export const insertPaymentSchema = createInsertSchema(payments, {
-  id: z.number().optional(),
-  completedDate: z.date().optional(),
+// Work Request schema with proper date handling
+const baseWorkRequestSchema = createInsertSchema(workRequests).omit({ 
+  id: true, 
+  createdAt: true, 
+  tokenHash: true, 
+  contractId: true 
 });
-
-export const insertDocumentSchema = createInsertSchema(documents, {
-  id: z.number().optional(),
-  uploadedAt: z.date().optional(),
-});
-
-export const insertBankAccountSchema = createInsertSchema(bankAccounts, {
-  id: z.number().optional(),
-  createdAt: z.date().optional(),
-  isVerified: z.boolean().optional(),
-});
-
-export const insertWorkRequestSchema = createInsertSchema(workRequests, {
-  id: z.number().optional(),
-  createdAt: z.date().optional(),
-  tokenHash: z.string().optional(),
-  contractId: z.number().optional(),
-  dueDate: z.union([z.string(), z.date()]).optional().transform(val => 
-    val ? (typeof val === 'string' ? new Date(val) : val) : undefined
-  ),
-  expiresAt: z.union([z.string(), z.date()]).optional().transform(val => 
-    val ? (typeof val === 'string' ? new Date(val) : val) : undefined
-  ),
-  attachmentUrls: z.array(z.string()).optional().transform(val => val || []),
+export const insertWorkRequestSchema = baseWorkRequestSchema.extend({
+  // Handle date strings from frontend forms
+  dueDate: z.string().optional().transform(val => val ? new Date(val) : undefined),
+  expiresAt: z.string().optional().transform(val => val ? new Date(val) : undefined),
+  attachmentUrls: z.array(z.string()).optional().transform(val => val ? val : []),
 });
 
 // Work Request update schema (includes tokenHash for updates)
@@ -302,16 +291,40 @@ export const updateWorkRequestSchema = insertWorkRequestSchema.extend({
   contractId: z.number().optional(),
 });
 
-// Business Onboarding Links table
+// Types
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type User = typeof users.$inferSelect;
+
+export type InsertInvite = z.infer<typeof insertInviteSchema>;
+export type Invite = typeof invites.$inferSelect;
+
+export type InsertContract = z.infer<typeof insertContractSchema>;
+export type Contract = typeof contracts.$inferSelect;
+
+export type InsertMilestone = z.infer<typeof insertMilestoneSchema>;
+export type Milestone = typeof milestones.$inferSelect;
+
+export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+export type Payment = typeof payments.$inferSelect;
+
+export type InsertDocument = z.infer<typeof insertDocumentSchema>;
+export type Document = typeof documents.$inferSelect;
+
+export type InsertBankAccount = z.infer<typeof insertBankAccountSchema>;
+export type BankAccount = typeof bankAccounts.$inferSelect;
+
+export type InsertWorkRequest = z.infer<typeof insertWorkRequestSchema>;
+export type WorkRequest = typeof workRequests.$inferSelect;
+
+// Business Onboarding Links table - for contractor/freelancer registration
 export const businessOnboardingLinks = pgTable("business_onboarding_links", {
   id: serial("id").primaryKey(),
   businessId: integer("business_id").notNull().references(() => users.id),
-  token: text("token").notNull().unique(),
-  workerType: text("worker_type").notNull().default("contractor"), // contractor, employee
-  isActive: boolean("is_active").notNull().default(true),
+  token: text("token").notNull().unique(), // Unique token for this business's onboarding link
+  workerType: text("worker_type").notNull().default("contractor"), // Default type of worker to invite
   createdAt: timestamp("created_at").notNull().defaultNow(),
-  usageCount: integer("usage_count").notNull().default(0),
-  maxUsage: integer("max_usage") // null means unlimited
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  active: boolean("active").notNull().default(true)
 });
 
 // Track which users registered via business onboarding links
@@ -322,6 +335,10 @@ export const businessOnboardingUsage = pgTable("business_onboarding_usage", {
   token: text("token").notNull(), // The token that was used
   registeredAt: timestamp("registered_at").notNull().defaultNow()
 });
+
+// Create insert schemas
+export const insertBusinessOnboardingLinkSchema = createInsertSchema(businessOnboardingLinks);
+export const insertBusinessOnboardingUsageSchema = createInsertSchema(businessOnboardingUsage);
 
 // Connection Requests table
 export const connectionRequests = pgTable("connection_requests", {
@@ -334,6 +351,18 @@ export const connectionRequests = pgTable("connection_requests", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow()
 });
+
+// Create connection request schema
+export const insertConnectionRequestSchema = createInsertSchema(connectionRequests).omit({ 
+  id: true, 
+  createdAt: true,
+  updatedAt: true,
+  contractorId: true // Will be added conditionally
+});
+
+// Types for connection requests
+export type InsertConnectionRequest = z.infer<typeof insertConnectionRequestSchema>;
+export type ConnectionRequest = typeof connectionRequests.$inferSelect;
 
 // Notifications table
 export const notifications = pgTable("notifications", {
@@ -361,76 +390,44 @@ export const workSubmissions = pgTable("work_submissions", {
   submittedAt: timestamp("submitted_at").notNull().defaultNow(),
   reviewedAt: timestamp("reviewed_at"),
   reviewNotes: text("review_notes"), // Feedback from business owner
-  deliverableId: integer("deliverable_id").references(() => deliverables.id) // Optional deliverable reference
+  milestoneId: integer("milestone_id").references(() => milestones.id) // Optional milestone reference
 });
 
-// Create insert schemas for remaining tables
-export const insertBusinessOnboardingLinkSchema = createInsertSchema(businessOnboardingLinks);
-export const insertBusinessOnboardingUsageSchema = createInsertSchema(businessOnboardingUsage);
-
-export const insertConnectionRequestSchema = createInsertSchema(connectionRequests, {
-  id: z.number().optional(),
-  createdAt: z.date().optional(),
-  updatedAt: z.date().optional(),
-  contractorId: z.number().optional(),
+// Create notification schema
+export const insertNotificationSchema = createInsertSchema(notifications).omit({ 
+  id: true, 
+  createdAt: true 
 });
 
-export const insertNotificationSchema = createInsertSchema(notifications, {
-  id: z.number().optional(),
-  createdAt: z.date().optional(),
+// Create work submission schema
+export const insertWorkSubmissionSchema = createInsertSchema(workSubmissions).omit({ 
+  id: true, 
+  submittedAt: true,
+  reviewedAt: true 
 });
 
-export const insertWorkSubmissionSchema = createInsertSchema(workSubmissions, {
-  id: z.number().optional(),
-  submittedAt: z.date().optional(),
-  reviewedAt: z.date().optional(),
+// Create work request submission schema
+export const insertWorkRequestSubmissionSchema = createInsertSchema(workRequestSubmissions).omit({ 
+  id: true, 
+  submittedAt: true,
+  reviewedAt: true 
 });
 
-export const insertWorkRequestSubmissionSchema = createInsertSchema(workRequestSubmissions, {
-  id: z.number().optional(),
-  submittedAt: z.date().optional(),
-  reviewedAt: z.date().optional(),
-});
+// Types for notifications
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type Notification = typeof notifications.$inferSelect;
 
-// Types
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
+// Types for work submissions
+export type InsertWorkSubmission = z.infer<typeof insertWorkSubmissionSchema>;
+export type WorkSubmission = typeof workSubmissions.$inferSelect;
 
-export type InsertInvite = z.infer<typeof insertInviteSchema>;
-export type Invite = typeof invites.$inferSelect;
+// Types for work request submissions
+export type InsertWorkRequestSubmission = z.infer<typeof insertWorkRequestSubmissionSchema>;
+export type WorkRequestSubmission = typeof workRequestSubmissions.$inferSelect;
 
-export type InsertContract = z.infer<typeof insertContractSchema>;
-export type Contract = typeof contracts.$inferSelect;
-
-export type InsertDeliverable = z.infer<typeof insertDeliverableSchema>;
-export type Deliverable = typeof deliverables.$inferSelect;
-
-export type InsertPayment = z.infer<typeof insertPaymentSchema>;
-export type Payment = typeof payments.$inferSelect;
-
-export type InsertDocument = z.infer<typeof insertDocumentSchema>;
-export type Document = typeof documents.$inferSelect;
-
-export type InsertBankAccount = z.infer<typeof insertBankAccountSchema>;
-export type BankAccount = typeof bankAccounts.$inferSelect;
-
-export type InsertWorkRequest = z.infer<typeof insertWorkRequestSchema>;
-export type WorkRequest = typeof workRequests.$inferSelect;
-
+// Create types
 export type InsertBusinessOnboardingLink = z.infer<typeof insertBusinessOnboardingLinkSchema>;
 export type BusinessOnboardingLink = typeof businessOnboardingLinks.$inferSelect;
 
 export type InsertBusinessOnboardingUsage = z.infer<typeof insertBusinessOnboardingUsageSchema>;
 export type BusinessOnboardingUsage = typeof businessOnboardingUsage.$inferSelect;
-
-export type InsertConnectionRequest = z.infer<typeof insertConnectionRequestSchema>;
-export type ConnectionRequest = typeof connectionRequests.$inferSelect;
-
-export type InsertNotification = z.infer<typeof insertNotificationSchema>;
-export type Notification = typeof notifications.$inferSelect;
-
-export type InsertWorkSubmission = z.infer<typeof insertWorkSubmissionSchema>;
-export type WorkSubmission = typeof workSubmissions.$inferSelect;
-
-export type InsertWorkRequestSubmission = z.infer<typeof insertWorkRequestSubmissionSchema>;
-export type WorkRequestSubmission = typeof workRequestSubmissions.$inferSelect;

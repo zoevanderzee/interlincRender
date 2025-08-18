@@ -43,7 +43,7 @@ type Contract = {
   contractorId: number;
 };
 
-type Deliverable = {
+type Milestone = {
   id: number;
   name: string;
   description: string;
@@ -80,8 +80,8 @@ export default function ContractDetailPage() {
 
   const contract = contracts.find((c: Contract) => c.id === parseInt(contractId || '0'));
 
-  const { data: deliverables = [], isLoading: isLoadingDeliverables } = useQuery({
-    queryKey: ['/api/deliverables'],
+  const { data: milestones = [], isLoading: isLoadingMilestones } = useQuery({
+    queryKey: ['/api/milestones'],
   });
 
   const { data: users = [] } = useQuery({
@@ -135,42 +135,42 @@ export default function ContractDetailPage() {
     }
   });
 
-  // Deliverable mutations
+  // Milestone mutations
   const completeMutation = useMutation({
-    mutationFn: async (deliverableId: number) => {
-      const response = await apiRequest('PATCH', `/api/deliverables/${deliverableId}`, { status: 'completed' });
+    mutationFn: async (milestoneId: number) => {
+      const response = await apiRequest('PATCH', `/api/milestones/${milestoneId}`, { status: 'completed' });
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to complete deliverable');
+        throw new Error(errorData.message || 'Failed to complete milestone');
       }
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/deliverables'] });
-      toast({ title: 'Deliverable marked as complete' });
+      queryClient.invalidateQueries({ queryKey: ['/api/milestones'] });
+      toast({ title: 'Milestone marked as complete' });
     }
   });
 
   const approveMutation = useMutation({
-    mutationFn: async (deliverableId: number) => {
-      const response = await apiRequest('POST', `/api/deliverables/${deliverableId}/approve`);
+    mutationFn: async (milestoneId: number) => {
+      const response = await apiRequest('POST', `/api/milestones/${milestoneId}/approve`);
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to approve deliverable');
+        throw new Error(errorData.message || 'Failed to approve milestone');
       }
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/deliverables'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/milestones'] });
       queryClient.invalidateQueries({ queryKey: ['/api/payments'] });
-      toast({ title: 'Deliverable approved and payment initiated' });
+      toast({ title: 'Milestone approved and payment initiated' });
     }
   });
 
   // Computed values
-  const contractDeliverables = useMemo(() => 
-    deliverables.filter((m: Deliverable) => m.contractId === parseInt(contractId || '0')),
-    [deliverables, contractId]
+  const contractMilestones = useMemo(() => 
+    milestones.filter((m: Milestone) => m.contractId === parseInt(contractId || '0')),
+    [milestones, contractId]
   );
 
   const getAssociatedContractors = () => {
@@ -182,23 +182,23 @@ export default function ContractDetailPage() {
 
   const totalContractValue = parseFloat(contract?.value || '0');
   const totalPaid = payments
-    .filter((p: any) => contractDeliverables.some((m: Deliverable) => m.id === p.deliverableId))
+    .filter((p: any) => contractMilestones.some((m: Milestone) => m.id === p.milestoneId))
     .reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
   const remainingAmount = totalContractValue - totalPaid;
   const progress = totalContractValue > 0 ? ((totalContractValue - remainingAmount) / totalContractValue) * 100 : 0;
 
-  const getDeliverablesByContractor = () => {
+  const getMilestonesByContractor = () => {
     const contractorMap = new Map();
     
     getAssociatedContractors().forEach((contractor: User) => {
-      const contractorDeliverables = contractDeliverables.filter((m: Deliverable) => 
+      const contractorMilestones = contractMilestones.filter((m: Milestone) => 
         m.contractId === contract?.id
       );
       
-      if (contractorDeliverables.length > 0) {
+      if (contractorMilestones.length > 0) {
         contractorMap.set(contractor.id, {
           contractor,
-          deliverables: contractorDeliverables
+          milestones: contractorMilestones
         });
       }
     });
@@ -207,12 +207,12 @@ export default function ContractDetailPage() {
   };
 
   // Handlers
-  const handleDeliverableComplete = (deliverableId: number) => {
-    completeMutation.mutate(deliverableId);
+  const handleMilestoneComplete = (milestoneId: number) => {
+    completeMutation.mutate(milestoneId);
   };
 
-  const handleDeliverableApprove = (deliverableId: number) => {
-    approveMutation.mutate(deliverableId);
+  const handleMilestoneApprove = (milestoneId: number) => {
+    approveMutation.mutate(milestoneId);
   };
 
   const handleDeleteContract = () => {
@@ -292,7 +292,7 @@ export default function ContractDetailPage() {
         <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="deliverables">Deliverables</TabsTrigger>
+            <TabsTrigger value="milestones">Milestones</TabsTrigger>
             <TabsTrigger value="submissions">Work Submitted</TabsTrigger>
             <TabsTrigger value="documents">Documents</TabsTrigger>
             <TabsTrigger value="payments">Payment History</TabsTrigger>
@@ -489,12 +489,12 @@ export default function ContractDetailPage() {
             </div>
           </TabsContent>
 
-          <TabsContent value="deliverables" className="mt-6">
+          <TabsContent value="milestones" className="mt-6">
             <ContractTimeline 
               contract={contract}
-              deliverables={contractDeliverables}
-              onDeliverableComplete={handleDeliverableComplete}
-              onDeliverableApprove={handleDeliverableApprove}
+              milestones={contractMilestones}
+              onMilestoneComplete={handleMilestoneComplete}
+              onMilestoneApprove={handleMilestoneApprove}
             />
           </TabsContent>
 
@@ -615,13 +615,13 @@ export default function ContractDetailPage() {
                 {payments.length > 0 ? (
                   <div className="space-y-3">
                     {payments.map((payment: any) => {
-                      const deliverable = deliverables.find((m: Deliverable) => m.id === payment.deliverableId);
+                      const milestone = milestones.find((m: Milestone) => m.id === payment.milestoneId);
                       return (
                         <div key={payment.id} className="flex items-center justify-between p-3 border rounded-lg">
                           <div>
                             <p className="font-medium">${parseFloat(payment.amount).toFixed(2)}</p>
                             <p className="text-sm text-muted-foreground">
-                              {deliverable ? deliverable.name : 'Project Payment'}
+                              {milestone ? milestone.name : 'Project Payment'}
                             </p>
                           </div>
                           <Badge variant={

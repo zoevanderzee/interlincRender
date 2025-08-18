@@ -16,7 +16,7 @@ import {
   Search,
   Filter
 } from "lucide-react";
-import { Contract, User, Deliverable, Payment } from "@shared/schema";
+import { Contract, User, Milestone, Payment } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -26,7 +26,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 interface ProjectsOverviewProps {
   contracts: Contract[];
   contractors: User[];
-  deliverables: Deliverable[];
+  milestones: Milestone[];
   payments: Payment[];
   onViewProject?: (id: number) => void;
 }
@@ -34,7 +34,7 @@ interface ProjectsOverviewProps {
 const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({ 
   contracts, 
   contractors, 
-  deliverables, 
+  milestones, 
   payments,
   onViewProject
 }) => {
@@ -75,11 +75,11 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
   
   // Calculate contract progress
   const calculateProgress = (contractId: number) => {
-    const contractDeliverables = deliverables.filter(d => d.contractId === contractId);
-    if (contractDeliverables.length === 0) return 0;
+    const contractMilestones = milestones.filter(m => m.contractId === contractId);
+    if (contractMilestones.length === 0) return 0;
     
-    const completedDeliverables = contractDeliverables.filter(d => d.status === 'completed').length;
-    return Math.round((completedDeliverables / contractDeliverables.length) * 100);
+    const completedMilestones = contractMilestones.filter(m => m.status === 'completed').length;
+    return Math.round((completedMilestones / contractMilestones.length) * 100);
   };
   
   // Format date
@@ -93,9 +93,9 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
     }).format(date);
   };
   
-  // Get contract deliverables
-  const getContractDeliverables = (contractId: number) => {
-    return deliverables.filter(d => d.contractId === contractId);
+  // Get contract milestones
+  const getContractMilestones = (contractId: number) => {
+    return milestones.filter(m => m.contractId === contractId);
   };
   
   // Get contract payments
@@ -249,10 +249,10 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
                               Contract Details
                             </TabsTrigger>
                             <TabsTrigger
-                              value="deliverables"
+                              value="milestones"
                               className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 rounded-none py-2 text-xs data-[state=active]:border-white data-[state=active]:shadow-none data-[state=active]:text-white"
                             >
-                              Deliverables
+                              Milestones
                             </TabsTrigger>
                             <TabsTrigger
                               value="payments"
@@ -311,40 +311,40 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
                           </div>
                         </TabsContent>
                         
-                        <TabsContent value="deliverables" className="mt-0">
+                        <TabsContent value="milestones" className="mt-0">
                           <div className="space-y-2">
-                            {getContractDeliverables(contract.id).length === 0 ? (
+                            {getContractMilestones(contract.id).length === 0 ? (
                               <div className="text-center py-4 text-zinc-400">
-                                <p>No deliverables found for this contract</p>
+                                <p>No milestones found for this contract</p>
                               </div>
                             ) : (
-                              getContractDeliverables(contract.id).map(deliverable => (
-                                <div key={deliverable.id} className="p-3 bg-zinc-900 rounded-md border border-zinc-800">
+                              getContractMilestones(contract.id).map(milestone => (
+                                <div key={milestone.id} className="p-3 bg-zinc-900 rounded-md border border-zinc-800">
                                   <div className="flex justify-between items-start">
                                     <div className="flex items-center">
                                       <div className={`h-8 w-8 rounded-md flex items-center justify-center 
-                                        ${deliverable.status === 'completed' ? 'bg-green-900 text-green-500' : 
-                                          deliverable.status === 'in_progress' ? 'bg-blue-900 text-blue-500' : 
+                                        ${milestone.status === 'completed' ? 'bg-green-900 text-green-500' : 
+                                          milestone.status === 'in_progress' ? 'bg-blue-900 text-blue-500' : 
                                           'bg-amber-900 text-amber-500'}`}>
-                                        {deliverable.status === 'completed' ? 
+                                        {milestone.status === 'completed' ? 
                                           <CheckCircle className="h-4 w-4" /> : 
                                           <Clock className="h-4 w-4" />
                                         }
                                       </div>
                                       <div className="ml-3">
-                                        <h4 className="text-sm font-medium">{deliverable.name}</h4>
+                                        <h4 className="text-sm font-medium">{milestone.name}</h4>
                                         <p className="text-xs text-zinc-400">
-                                          Due: {formatDate(deliverable.dueDate)}
+                                          Due: {formatDate(milestone.dueDate)}
                                         </p>
                                       </div>
                                     </div>
                                     <Badge className={`${
-                                      deliverable.status === 'completed' ? 'bg-green-500 hover:bg-green-600' : 
-                                      deliverable.status === 'in_progress' ? 'bg-blue-500 hover:bg-blue-600' : 
+                                      milestone.status === 'completed' ? 'bg-green-500 hover:bg-green-600' : 
+                                      milestone.status === 'in_progress' ? 'bg-blue-500 hover:bg-blue-600' : 
                                       'bg-amber-500 hover:bg-amber-600'
                                     } text-white`}>
-                                      {deliverable.status === 'completed' ? 'Completed' : 
-                                       deliverable.status === 'in_progress' ? 'In Progress' : 
+                                      {milestone.status === 'completed' ? 'Completed' : 
+                                       milestone.status === 'in_progress' ? 'In Progress' : 
                                        'Pending'}
                                     </Badge>
                                   </div>
@@ -374,8 +374,8 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
                                       <div className="ml-3">
                                         <h4 className="text-sm font-medium">Payment #{payment.id}</h4>
                                         <p className="text-xs text-zinc-400">
-                                          {payment.notes || `Deliverable: ${
-                                            deliverables.find(d => d.id === payment.deliverableId)?.name || 'Unknown'
+                                          {payment.notes || `Milestone: ${
+                                            milestones.find(m => m.id === payment.milestoneId)?.name || 'Unknown'
                                           }`}
                                         </p>
                                       </div>

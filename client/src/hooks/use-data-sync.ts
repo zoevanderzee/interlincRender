@@ -17,11 +17,11 @@ export function useDataSync() {
     console.log('✅ Financial data cache invalidated across all pages');
   }, [queryClient]);
 
-  // Invalidate all project-related data when contracts/deliverables change
+  // Invalidate all project-related data when contracts/milestones change
   const invalidateProjectData = useCallback(async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['/api/contracts'] }),
-      queryClient.invalidateQueries({ queryKey: ['/api/deliverables'] }),
+      queryClient.invalidateQueries({ queryKey: ['/api/milestones'] }),
       queryClient.invalidateQueries({ queryKey: ['/api/payments'] }),
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] }),
       queryClient.invalidateQueries({ queryKey: ['/api/budget'] }),
@@ -50,7 +50,7 @@ export function useDataSync() {
     budgetUsed?: string;
     walletBalance?: number;
     contractCount?: number;
-    deliverableCount?: number;
+    milestoneCount?: number;
   }) => {
     // Update budget data
     if (updates.budgetUsed !== undefined) {
@@ -69,13 +69,13 @@ export function useDataSync() {
     }
 
     // Update dashboard stats
-    if (updates.contractCount !== undefined || updates.deliverableCount !== undefined) {
+    if (updates.contractCount !== undefined || updates.milestoneCount !== undefined) {
       queryClient.setQueryData(['/api/dashboard'], (oldData: any) => ({
         ...oldData,
         stats: {
           ...oldData?.stats,
           ...(updates.contractCount !== undefined && { activeContractsCount: updates.contractCount }),
-          ...(updates.deliverableCount !== undefined && { pendingApprovalsCount: updates.deliverableCount }),
+          ...(updates.milestoneCount !== undefined && { pendingApprovalsCount: updates.milestoneCount }),
         }
       }));
     }

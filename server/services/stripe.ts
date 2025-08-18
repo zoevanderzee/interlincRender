@@ -79,21 +79,21 @@ export async function retrievePaymentIntent(id: string) {
 }
 
 /**
- * Processes a deliverable payment
+ * Processes a milestone payment
  * Creates a payment intent and returns the client secret for the frontend
  */
-export async function processDeliverablePayment(payment: Payment): Promise<PaymentIntentResponse> {
+export async function processMilestonePayment(payment: Payment): Promise<PaymentIntentResponse> {
   // Convert payment amount to cents (Stripe uses smallest currency unit)
   const amount = Math.round(parseFloat(payment.amount) * 100);
   
   return createPaymentIntent({
     amount,
     currency: 'usd', // Default to USD
-    description: `Payment for deliverable ID: ${payment.deliverableId}`,
+    description: `Payment for milestone ID: ${payment.milestoneId}`,
     metadata: {
       paymentId: payment.id.toString(),
       contractId: payment.contractId.toString(),
-      deliverableId: payment.deliverableId ? payment.deliverableId.toString() : '',
+      milestoneId: payment.milestoneId ? payment.milestoneId.toString() : '',
     },
   });
 }
@@ -158,11 +158,11 @@ export async function processDirectPayment(payment: Payment, contractorConnectId
   return createPaymentIntent({
     amount,
     currency: 'usd', // Default to USD
-    description: `Payment for deliverable ID: ${payment.deliverableId}`,
+    description: `Payment for milestone ID: ${payment.milestoneId}`,
     metadata: {
       paymentId: payment.id.toString(),
       contractId: payment.contractId.toString(),
-      deliverableId: payment.deliverableId ? payment.deliverableId.toString() : '',
+      milestoneId: payment.milestoneId ? payment.milestoneId.toString() : '',
       connectAccountId: contractorConnectId
     },
     transferData: {
@@ -183,11 +183,11 @@ export async function createTransfer(payment: Payment, contractorConnectId: stri
       amount,
       currency: 'usd',
       destination: contractorConnectId,
-      description: `Payment for contract #${payment.contractId}, deliverable #${payment.deliverableId}`,
+      description: `Payment for contract #${payment.contractId}, milestone #${payment.milestoneId}`,
       metadata: {
         paymentId: payment.id.toString(),
         contractId: payment.contractId.toString(),
-        deliverableId: payment.deliverableId ? payment.deliverableId.toString() : '',
+        milestoneId: payment.milestoneId ? payment.milestoneId.toString() : '',
       },
     });
     
@@ -258,7 +258,7 @@ export async function processACHPayment(
 ): Promise<PaymentIntentResponse> {
   // Convert payment amount to cents
   const amount = Math.round(parseFloat(payment.amount) * 100);
-  const description = `ACH Payment for contract #${payment.contractId}, deliverable #${payment.deliverableId}`;
+  const description = `ACH Payment for contract #${payment.contractId}, milestone #${payment.milestoneId}`;
   
   try {
     // Create the charge options
@@ -271,7 +271,7 @@ export async function processACHPayment(
       metadata: {
         paymentId: payment.id.toString(),
         contractId: payment.contractId.toString(),
-        deliverableId: payment.deliverableId ? payment.deliverableId.toString() : '',
+        milestoneId: payment.milestoneId ? payment.milestoneId.toString() : '',
       }
     };
     
@@ -304,7 +304,7 @@ export async function processACHPayment(
 export default {
   createPaymentIntent,
   retrievePaymentIntent,
-  processDeliverablePayment,
+  processMilestonePayment,
   updatePaymentStatus,
   createConnectAccount,
   processDirectPayment,
