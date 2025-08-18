@@ -146,6 +146,23 @@ class TrolleyService {
   }
 
   /**
+   * Search for recipients by email address
+   */
+  async searchRecipientByEmail(email: string): Promise<TrolleyRecipient[]> {
+    this.ensureClient();
+    
+    try {
+      const recipients = await this.client.recipient.search({
+        email: email
+      });
+      return recipients || [];
+    } catch (error) {
+      console.error('Error searching recipients by email:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Add bank account to existing recipient
    */
   async addBankAccount(recipientId: string, bankAccountData: {

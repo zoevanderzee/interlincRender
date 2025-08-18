@@ -81,6 +81,36 @@ export default function PaymentSetup() {
   // Debug logging
   console.log('Current selected country:', selectedCountry);
 
+  // Auto-sync existing Trolley account mutation
+  const autoSyncMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/trolley/auto-sync', {});
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.success) {
+        toast({
+          title: "Account Synced!",
+          description: data.message
+        });
+        queryClient.invalidateQueries({ queryKey: ['/api/trolley/contractor-status'] });
+      } else {
+        toast({
+          title: "No Account Found",
+          description: data.message,
+          variant: "default"
+        });
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Sync Failed",
+        description: error.message || "Failed to find existing Trolley account",
+        variant: "destructive"
+      });
+    }
+  });
+
   const paymentSetupMutation = useMutation({
     mutationFn: async (data: PaymentSetupFormData) => {
       const requestData: any = {
@@ -174,6 +204,37 @@ export default function PaymentSetup() {
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-2xl mx-auto">
+        {/* Sync existing account option */}
+        <Card className="mb-6 border-dashed border-blue-200 bg-blue-50/30">
+          <CardContent className="pt-6">
+            <div className="flex items-start space-x-4">
+              <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <h3 className="font-medium text-blue-900">Already have a Trolley account?</h3>
+                <p className="text-sm text-blue-700 mt-1">
+                  If you manually created your Trolley account, click below to link it automatically.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => autoSyncMutation.mutate()}
+                  disabled={autoSyncMutation.isPending}
+                  className="mt-3 border-blue-200 text-blue-700 hover:bg-blue-100"
+                >
+                  {autoSyncMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Searching...
+                    </>
+                  ) : (
+                    'Link My Existing Account'
+                  )}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             {/* Personal Information Card */}

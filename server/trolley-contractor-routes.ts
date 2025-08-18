@@ -45,6 +45,108 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
     }
   });
 
+  // Auto-detect existing Trolley account by email
+  app.post(`${apiRouter}/trolley/auto-sync`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as any).user?.id || req.headers['x-user-id'];
+      if (!userId) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+
+      const user = await storage.getUser(Number(userId));
+      if (!user || user.role !== 'contractor') {
+        return res.status(403).json({ message: 'Access denied: Contractors only' });
+      }
+
+      console.log(`🔍 Searching for existing Trolley recipient for ${user.email}`);
+      
+      // Try to find existing recipient by email using Trolley search API
+      try {
+        // Use Trolley search API to find recipient by email
+        const searchResult = await trolleyService.searchRecipientByEmail(user.email);
+        
+        if (searchResult && searchResult.length > 0) {
+          const recipient = searchResult[0];
+          
+          // Update user with the found recipient ID
+          await storage.updateUserTrolleyRecipientId(Number(userId), recipient.id);
+          
+          console.log(`✅ Auto-synced existing Trolley account ${recipient.id} for user ${userId}`);
+          
+          res.json({
+            success: true,
+            message: 'Existing Trolley account found and linked automatically',
+            recipientId: recipient.id,
+            status: recipient.status,
+            payoutEnabled: recipient.status === 'active'
+          });
+        } else {
+          res.json({
+            success: false,
+            message: 'No existing Trolley account found with your email. You may need to complete payment setup or provide your recipient ID manually.',
+            email: user.email
+          });
+        }
+      } catch (error: any) {
+        console.error('Error searching for recipient:', error);
+        res.status(500).json({ 
+          message: 'Error searching for existing Trolley account',
+          error: error.message 
+        });
+      }
+    } catch (error) {
+      console.error('Error in auto-sync:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Sync existing Trolley account with database
+  app.post(`${apiRouter}/trolley/sync-existing`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as any).user?.id || req.headers['x-user-id'];
+      if (!userId) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+
+      const user = await storage.getUser(Number(userId));
+      if (!user || user.role !== 'contractor') {
+        return res.status(403).json({ message: 'Access denied: Contractors only' });
+      }
+
+      const { recipientId } = req.body;
+      if (!recipientId) {
+        return res.status(400).json({ message: 'Recipient ID is required' });
+      }
+
+      // Verify the recipient exists and is accessible
+      try {
+        const recipient = await trolleyService.getRecipient(recipientId);
+        
+        // Update user with the verified recipient ID
+        await storage.updateUserTrolleyRecipientId(Number(userId), recipientId);
+        
+        console.log(`✅ Synced existing Trolley account ${recipientId} for user ${userId}`);
+        
+        res.json({
+          success: true,
+          message: 'Trolley account successfully linked',
+          recipientId: recipientId,
+          status: recipient.status,
+          payoutEnabled: recipient.status === 'active'
+        });
+      } catch (error: any) {
+        console.error('Error verifying recipient:', error);
+        res.status(400).json({ 
+          message: 'Could not verify Trolley recipient ID. Please check that the ID is correct and accessible.',
+          error: error.message 
+        });
+      }
+    } catch (error) {
+      console.error('Error syncing Trolley account:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
   // Debug endpoint to test Trolley API directly
   app.get(`${apiRouter}/trolley/debug-api`, requireAuth, async (req: Request, res: Response) => {
     try {
