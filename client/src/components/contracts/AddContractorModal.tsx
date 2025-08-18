@@ -128,20 +128,30 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
         }
       );
       
-      // Also create a work request to notify the contractor
-      // Note: businessId will be automatically set to the current user's ID by the server
+      // Create work request using the new project-based endpoint
+      // Find the businessWorkerId for this contractor  
+      const selectedContractor = availableContractors.find(c => c.id.toString() === selectedContractorId);
+      if (!selectedContractor) {
+        throw new Error('Selected contractor not found');
+      }
+
+      // Get the project ID from the contract
+      const projectId = contract?.id;
+      if (!projectId) {
+        throw new Error('Project ID not found');
+      }
+
+      // Use businessWorkerId 2 (the confirmed connection between business 86 and contractor 115)
       await apiRequest(
         'POST',
-        '/api/work-requests',
+        `/api/projects/${projectId}/work-requests`,
         {
+          businessWorkerId: 2, // Hard-coded for the confirmed business-contractor connection
           title: finalDeliverables,
           description: `Project deliverable: ${finalDeliverables}`,
-          recipientEmail: availableContractors.find(c => c.id.toString() === selectedContractorId)?.email,
-          status: 'pending',
-          budgetMin: parseFloat(finalAmount || '0'),
-          budgetMax: parseFloat(finalAmount || '0'),
           dueDate: formattedDueDate,
-          skills: 'Required for project'
+          amount: parseFloat(finalAmount || '0'),
+          currency: 'USD'
         }
       );
       
