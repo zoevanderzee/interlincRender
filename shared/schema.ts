@@ -191,24 +191,37 @@ export const bankAccounts = pgTable("bank_accounts", {
   metadata: jsonb("metadata"), // Additional metadata
 });
 
-// Work Requests table
+// Business Workers table (join table for businesses and contractors)
+export const businessWorkers = pgTable("business_workers", {
+  id: serial("id").primaryKey(),
+  businessId: integer("business_id").notNull().references(() => users.id),
+  contractorUserId: integer("contractor_user_id").notNull().references(() => users.id),
+  joinedAt: timestamp("joined_at").notNull().defaultNow(),
+  status: text("status").notNull().default("active"), // active, inactive
+});
+
+// Projects table
+export const projects = pgTable("projects", {
+  id: serial("id").primaryKey(),
+  businessId: integer("business_id").notNull().references(() => users.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  status: text("status").notNull().default("active"), // active, completed, archived
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Work Requests table (updated to follow specification)
 export const workRequests = pgTable("work_requests", {
   id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id),
+  businessWorkerId: integer("business_worker_id").notNull().references(() => businessWorkers.id),
   title: text("title").notNull(),
   description: text("description").notNull(),
-  businessId: integer("business_id").notNull(), // Business that sent the request
-  recipientEmail: text("recipient_email"), // Email of the recipient - optional for shareable links
-  contractorId: integer("contractor_id"), // Assigned contractor for this work request
-  status: text("status").notNull().default("pending"), // pending, accepted, declined, expired
-  budgetMin: decimal("budget_min", { precision: 10, scale: 2 }), // Minimum budget amount
-  budgetMax: decimal("budget_max", { precision: 10, scale: 2 }), // Maximum budget amount
-  dueDate: timestamp("due_date"), // When the work is due
-  skills: text("skills"), // Required skills for the work (comma-separated)
-  attachmentUrls: jsonb("attachment_urls"), // URLs to any attachments
-  tokenHash: text("token_hash"), // Hash for secure access to the work request
+  dueDate: timestamp("due_date"),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  currency: text("currency").notNull().default("USD"),
+  status: text("status").notNull().default("assigned"), // assigned, in_review, approved, paid, canceled
   createdAt: timestamp("created_at").defaultNow(),
-  expiresAt: timestamp("expires_at"), // When the request expires
-  contractId: integer("contract_id") // If a contract was created from this request
 });
 
 // Work Request Submissions table
@@ -278,29 +291,49 @@ export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true,
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, uploadedAt: true });
 export const insertBankAccountSchema = createInsertSchema(bankAccounts).omit({ id: true, createdAt: true, isVerified: true });
 
-// Work Request schema with proper date handling
+// Business Workers schema
+export const insertBusinessWorkerSchema = createInsertSchema(businessWorkers).omit({ 
+  id: true, 
+  joinedAt: true 
+});
+
+// Projects schema  
+export const insertProjectSchema = createInsertSchema(projects).omit({ 
+  id: true, 
+  createdAt: true 
+});
+
+// Work Request schema with proper date handling (updated for specification)
 const baseWorkRequestSchema = createInsertSchema(workRequests).omit({ 
   id: true, 
-  createdAt: true, 
-  tokenHash: true, 
-  contractId: true 
+  createdAt: true
 });
 export const insertWorkRequestSchema = baseWorkRequestSchema.extend({
   // Handle date strings from frontend forms
   dueDate: z.string().optional().transform(val => val ? new Date(val) : undefined),
-  expiresAt: z.string().optional().transform(val => val ? new Date(val) : undefined),
-  attachmentUrls: z.array(z.string()).optional().transform(val => val ? val : []),
+  // Convert amount to proper decimal format
+  amount: z.union([z.string(), z.number()]).transform((val) => {
+    if (typeof val === 'string') {
+      return val;
+    }
+    return val.toString();
+  }),
 });
 
-// Work Request update schema (includes tokenHash for updates)
-export const updateWorkRequestSchema = insertWorkRequestSchema.extend({
-  tokenHash: z.string().optional(),
-  contractId: z.number().optional(),
+// Work Request update schema (for status updates)
+export const updateWorkRequestSchema = z.object({
+  status: z.enum(["assigned", "in_review", "approved", "paid", "canceled"]).optional(),
 });
 
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+
+export type InsertBusinessWorker = z.infer<typeof insertBusinessWorkerSchema>;
+export type BusinessWorker = typeof businessWorkers.$inferSelect;
+
+export type InsertProject = z.infer<typeof insertProjectSchema>;
+export type Project = typeof projects.$inferSelect;
 
 export type InsertInvite = z.infer<typeof insertInviteSchema>;
 export type Invite = typeof invites.$inferSelect;

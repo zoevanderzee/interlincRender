@@ -1,0 +1,83 @@
+Creativ Linc — “Add Contractor to Project” (Final, Non-Negotiable Contract)
+Scope (do not touch outside)
+Only modify:
+/server/business-workers/**
+/server/projects/**
+/web/components/projects/**
+/web/lib/api/** (endpoints in this brief)
+Do not change auth, sessions, payments, or Trolley clients.
+1) Data Model (must exist)
+Tables
+users(id, …)
+businesses(id, ownerUserId, …)
+projects(id, businessId, …)
+business_workers(id, businessId, contractorUserId, joinedAt, status) ← join table
+work_requests(id, projectId, businessWorkerId, title, description, dueDate, amount, currency, status)
+status ∈ { assigned, in_review, approved, paid, canceled }
+Rules
+A contractor can be added to a project only if a row exists in business_workers for that business.
+Projects can only reference workers via business_workers.id (not raw user id).
+2) The Only Valid Flow (3 steps)
+Step A — Contractor joins business (via code)
+POST /api/businesses/:businessId/workers/join
+{ "contractorUserId": "uuid", "inviteCode": "string" }
+Server:
+Validate code belongs to businessId.
+Upsert business_workers { businessId, contractorUserId, status:'active' }.
+Return { ok:true, businessWorkerId: "uuid" }.
+Step B — Add worker to project (create work request)
+POST /api/projects/:projectId/work-requests
+{
+  "businessWorkerId": "uuid",
+  "title": "UI",
+  "description": "Build UI screens",
+  "dueDate": "2025-08-19T00:00:00.000Z",
+  "amount": 1,
+  "currency": "USD"
+}
+Server:
+Load project and verify project.businessId === business_workers.businessId.
+Create work_requests row.
+Return { ok:true, workRequestId:"uuid", status:"assigned" }.
+Step C — Approve deliverable (later triggers payout)
+POST /api/work-requests/:id/approve
+Transition status: assigned|in_review → approved (idempotent).
+Emit event WorkRequestApproved(id) used by payout service.
+3) Validation (server side)
+On Step B:
+403 if businessWorkerId doesn’t belong to project.businessId.
+422 with clear errors if fields missing/invalid.
+Idempotency: header Idempotency-Key: <projectId>:<businessWorkerId>:<title>:<dueDate> → return existing row if duplicate.
+4) Frontend Calls (one function each)
+// join worker to business after code entry
+POST /api/businesses/:businessId/workers/join -> { businessWorkerId }
+
+// create work request (from modal)
+POST /api/projects/:projectId/work-requests -> { workRequestId, status }
+
+// approve (from project screen)
+POST /api/work-requests/:id/approve -> { ok:true, status:"approved" }
+The modal must send businessWorkerId, not contractorUserId. Populate the dropdown from
+GET /api/businesses/:businessId/workers which returns { businessWorkerId, contractorUserId, name }.
+5) Diagnostics (add these logs)
+On join:
+[JOIN] business=<businessId> contractor=<userId> code=<prefix> result=<ok|error>
+On create work request:
+[WR_CREATE] project=<projectId> business=<project.businessId> businessWorker=<id> contractor=<userId>
+If 403, log current project.businessId and business_workers.businessId.
+On 422, return:
+{ "ok": false, "code": "WR_VALIDATION", "message": "Invalid work request data", "details": { ... } }
+No generic 500s unless truly unexpected; include internal code WR-SERVER-001.
+6) Quick Integrity Checks (run once)
+SQL or ORM equivalents:
+Verify a project’s business matches the worker’s business:
+SELECT p.businessId, bw.businessId FROM projects p JOIN business_workers bw ON bw.id=? WHERE p.id=?;
+Ensure UI dropdown only lists business_workers for the current business:
+SELECT id as businessWorkerId, contractorUserId FROM business_workers WHERE businessId=? AND status='active';
+7) Acceptance Criteria (must all pass)
+ Contractor enters code → receives { businessWorkerId }.
+ Modal submits businessWorkerId + deliverable data → { workRequestId }.
+ Approve request → status becomes approved and emits WorkRequestApproved.
+ Trying to add a contractor not joined to the business returns 403 with message:
+"Contractor is not part of this business"
+ No changes to auth, sessions, payments, or unrelated modules.

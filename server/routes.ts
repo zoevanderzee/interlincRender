@@ -43,6 +43,8 @@ import { registerFirebaseRoutes } from "./firebase-routes";
 import { registerSyncUserRoutes } from "./routes/sync-user";
 import { setupSyncEmailVerification } from "./routes/sync-email-verification";
 import { registerSyncFirebaseUserRoutes } from "./routes/sync-firebase-user";
+import { registerBusinessWorkerRoutes } from "./business-workers/index";
+import { registerProjectRoutes } from "./projects/index";
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
@@ -3399,6 +3401,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register email verification sync routes
   setupSyncEmailVerification(app);
+  
+  // Register business worker routes
+  registerBusinessWorkerRoutes(app, requireAuth);
+
+  // Register project routes
+  registerProjectRoutes(app);
   
   // Budget Management Routes
   

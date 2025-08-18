@@ -1,6 +1,7 @@
 import { 
   users, invites, contracts, milestones, payments, paymentLogs, documents, bankAccounts, workRequests,
   businessOnboardingLinks, businessOnboardingUsage, connectionRequests, notifications, workSubmissions, workRequestSubmissions,
+  businessWorkers, projects,
   type User, type InsertUser, 
   type Invite, type InsertInvite,
   type Contract, type InsertContract,
@@ -14,7 +15,9 @@ import {
   type ConnectionRequest, type InsertConnectionRequest,
   type Notification, type InsertNotification,
   type WorkSubmission, type InsertWorkSubmission,
-  type WorkRequestSubmission, type InsertWorkRequestSubmission
+  type WorkRequestSubmission, type InsertWorkRequestSubmission,
+  type BusinessWorker, type InsertBusinessWorker,
+  type Project, type InsertProject
 } from "@shared/schema";
 import { eq, and, desc, lte, gte, sql, or, inArray, isNotNull } from "drizzle-orm";
 import { db, pool } from "./db";
@@ -192,6 +195,21 @@ export interface IStorage {
     subscriptionEndDate: Date;
     subscriptionTrialEnd: Date | null;
   }>): Promise<User | undefined>;
+
+  // Business Workers (new specification)
+  upsertBusinessWorker(data: InsertBusinessWorker): Promise<BusinessWorker>;
+  getBusinessWorker(id: number): Promise<BusinessWorker | undefined>;
+  getBusinessWorkers(businessId: number): Promise<Array<BusinessWorker & { contractorName?: string }>>;
+
+  // Projects (new specification)
+  getProject(id: number): Promise<Project | undefined>;
+  createProject(project: InsertProject): Promise<Project>;
+  
+  // Work Requests (updated specification)
+  createWorkRequest(workRequest: Omit<InsertWorkRequest, 'createdAt'>): Promise<WorkRequest>;
+  getWorkRequest(id: number): Promise<WorkRequest | undefined>;
+  getProjectWorkRequests(projectId: number): Promise<WorkRequest[]>;
+  updateWorkRequestStatus(id: number, status: string): Promise<WorkRequest | undefined>;
 }
 
 // In-memory storage implementation
@@ -2864,6 +2882,109 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId))
       .returning();
     
+    return updated;
+  }
+
+  // Business Workers (new specification)
+  async upsertBusinessWorker(data: InsertBusinessWorker): Promise<BusinessWorker> {
+    // Try to find existing record
+    const existing = await db
+      .select()
+      .from(businessWorkers)
+      .where(and(
+        eq(businessWorkers.businessId, data.businessId),
+        eq(businessWorkers.contractorUserId, data.contractorUserId)
+      ))
+      .limit(1);
+
+    if (existing.length > 0) {
+      // Update existing record
+      const [updated] = await db
+        .update(businessWorkers)
+        .set({ ...data, updatedAt: new Date() })
+        .where(eq(businessWorkers.id, existing[0].id))
+        .returning();
+      return updated;
+    } else {
+      // Create new record
+      const [created] = await db
+        .insert(businessWorkers)
+        .values(data)
+        .returning();
+      return created;
+    }
+  }
+
+  async getBusinessWorker(id: number): Promise<BusinessWorker | undefined> {
+    const [result] = await db
+      .select()
+      .from(businessWorkers)
+      .where(eq(businessWorkers.id, id));
+    return result;
+  }
+
+  async getBusinessWorkers(businessId: number): Promise<Array<BusinessWorker & { contractorName?: string }>> {
+    const results = await db
+      .select({
+        id: businessWorkers.id,
+        businessId: businessWorkers.businessId,
+        contractorUserId: businessWorkers.contractorUserId,
+        status: businessWorkers.status,
+        role: businessWorkers.role,
+        createdAt: businessWorkers.createdAt,
+        updatedAt: businessWorkers.updatedAt,
+        contractorName: users.username
+      })
+      .from(businessWorkers)
+      .leftJoin(users, eq(businessWorkers.contractorUserId, users.id))
+      .where(eq(businessWorkers.businessId, businessId));
+    
+    return results;
+  }
+
+  // Projects (new specification)
+  async getProject(id: number): Promise<Project | undefined> {
+    const [result] = await db
+      .select()
+      .from(projects)
+      .where(eq(projects.id, id));
+    return result;
+  }
+
+  async createProject(project: InsertProject): Promise<Project> {
+    const [created] = await db
+      .insert(projects)
+      .values(project)
+      .returning();
+    return created;
+  }
+  
+  // Work Requests (updated specification)
+  async createWorkRequest(workRequest: Omit<InsertWorkRequest, 'createdAt'>): Promise<WorkRequest> {
+    const [created] = await db
+      .insert(workRequests)
+      .values({
+        ...workRequest,
+        createdAt: new Date()
+      })
+      .returning();
+    return created;
+  }
+
+  async getProjectWorkRequests(projectId: number): Promise<WorkRequest[]> {
+    return db
+      .select()
+      .from(workRequests)
+      .where(eq(workRequests.projectId, projectId))
+      .orderBy(desc(workRequests.createdAt));
+  }
+
+  async updateWorkRequestStatus(id: number, status: string): Promise<WorkRequest | undefined> {
+    const [updated] = await db
+      .update(workRequests)
+      .set({ status })
+      .where(eq(workRequests.id, id))
+      .returning();
     return updated;
   }
 }

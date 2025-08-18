@@ -47,6 +47,7 @@ import ContractorOnboarding from "@/pages/contractor-onboarding";
 import ContractorPaymentSetup from "@/pages/contractor-payment-setup";
 import BusinessSetup from "@/pages/business-setup";
 import PaymentSetup from "@/pages/payment-setup";
+import TestProjectPage from "@/pages/TestProjectPage";
 
 function Router() {
   console.log("Router rendering, current path:", window.location.pathname + window.location.search);
@@ -104,6 +105,10 @@ function Router() {
       
       <Route path="/test-login">
         <TestLogin />
+      </Route>
+      
+      <Route path="/test-project">
+        <TestProjectPage />
       </Route>
       
       <Route path="/payment-test">
