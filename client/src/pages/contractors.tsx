@@ -181,10 +181,12 @@ const Contractors = () => {
     });
   };
 
-  // Get contract count for a contractor
+  // Get work request count for a contractor (updated for new business_workers system)
   const getContractCount = (userId: number) => {
-    if (!contracts || !Array.isArray(contracts)) return 0;
-    return contracts.filter(c => c.contractorId === userId || c.businessId === userId).length;
+    // Note: The new system uses work_requests with businessWorkerId instead of contracts with contractorId
+    // Since work requests are not included in dashboard data yet, return 0
+    // TODO: Add work_requests to dashboard data and update this function
+    return 0;
   };
 
   // Format date for display

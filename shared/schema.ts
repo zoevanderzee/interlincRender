@@ -206,8 +206,10 @@ export const projects = pgTable("projects", {
   businessId: integer("business_id").notNull().references(() => users.id),
   name: text("name").notNull(),
   description: text("description"),
+  budget: decimal("budget", { precision: 15, scale: 2 }),
   status: text("status").notNull().default("active"), // active, completed, archived
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Work Requests table (updated to follow specification)
