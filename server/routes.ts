@@ -985,6 +985,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Failed to update contract" });
       }
       
+      
+      // Automatically activate any draft contract that has a contractor assigned
+      if (existingContract.status.toLowerCase() === 'draft' && (existingContract.contractorId || updateData.contractorId)) {
+        updateData.status = 'active';
+        console.log("Contract status changed from draft to active - contractor is assigned");
+      }
+      
       console.log(`✅ Contract updated successfully:`, JSON.stringify(updatedContract));
       res.json(updatedContract);
     } catch (error) {
@@ -993,28 +1000,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Error updating contract",
         error: error instanceof Error ? error.message : "Unknown error"
       });
-    }
-  });
-
-      // Automatically activate any draft contract that has a contractor assigned
-      console.log("Current contract status:", existingContract.status);
-      console.log("Has contractor:", !!existingContract.contractorId, "or assigning contractor:", !!updateData.contractorId);
-      
-      if (existingContract.status.toLowerCase() === 'draft' && (existingContract.contractorId || updateData.contractorId)) {
-        updateData.status = 'active';
-        console.log("Contract status changed from draft to active - contractor is assigned");
-      }
-      
-      const updatedContract = await storage.updateContract(id, updateData);
-      
-      if (!updatedContract) {
-        return res.status(404).json({ message: "Contract not found" });
-      }
-      
-      res.json(updatedContract);
-    } catch (error) {
-      console.error("Error updating contract:", error);
-      res.status(500).json({ message: "Error updating contract" });
     }
   });
   
