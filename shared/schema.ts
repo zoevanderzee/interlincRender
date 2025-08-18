@@ -82,6 +82,7 @@ export const contracts = pgTable("contracts", {
   contractName: text("contract_name").notNull(),
   contractCode: text("contract_code").notNull().unique(),
   businessId: integer("business_id").notNull(),
+  projectId: integer("project_id").references(() => projects.id), // Link contract to project
   contractorId: integer("contractor_id"), // Made optional for initial project creation
   description: text("description"),
   status: text("status").notNull().default("draft"), // draft, active, completed, terminated, deleted

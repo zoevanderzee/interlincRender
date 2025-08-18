@@ -135,10 +135,10 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
         throw new Error('Selected contractor not found');
       }
 
-      // Get the project ID from the contract
-      const projectId = contract?.id;
+      // Get the project ID from the contract's projectId field
+      const projectId = contract?.projectId;
       if (!projectId) {
-        throw new Error('Project ID not found');
+        throw new Error('Contract is not linked to a project. Please ensure contracts are created within projects.');
       }
 
       // Use businessWorkerId 2 (the confirmed connection between business 86 and contractor 115)
