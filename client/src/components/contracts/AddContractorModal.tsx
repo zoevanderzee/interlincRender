@@ -114,49 +114,7 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
       // Format dates properly for the server
       const formattedDueDate = new Date(finalDueDate).toISOString();
           
-      await apiRequest(
-        'POST',
-        '/api/deliverables',
-        {
-          contractId: contractId,
-          name: finalDeliverables,
-          description: `Due: ${finalDueDate}`,
-          dueDate: formattedDueDate,
-          status: 'accepted', // Auto-accept all deliverables
-          paymentAmount: finalAmount,
-          progress: 0
-        }
-      );
-      
-      // Create work request using the new project-based endpoint
-      // Find the businessWorkerId for this contractor  
-      const selectedContractor = availableContractors.find(c => c.id.toString() === selectedContractorId);
-      if (!selectedContractor) {
-        throw new Error('Selected contractor not found');
-      }
-
-      // Get the project ID from the contract's projectId field
-      const projectId = contract?.projectId;
-      if (!projectId) {
-        throw new Error('Contract is not linked to a project. Please ensure contracts are created within projects.');
-      }
-
-      // Find businessWorkerId from the contractors in dashboard data
-      // Since contractors come from dashboard, they should have the relationship data
-      const businessWorkerId = 2; // Use the known businessWorkerId from database query
-
-      await apiRequest(
-        'POST',
-        `/api/projects/${projectId}/work-requests`,
-        {
-          businessWorkerId: businessWorkerId, // Use the businessWorkerId from contractor data
-          title: finalDeliverables,
-          description: `Project deliverable: ${finalDeliverables}`,
-          dueDate: formattedDueDate,
-          amount: parseFloat(finalAmount || '0'),
-          currency: 'USD'
-        }
-      );
+      // That's it - just the contract update. No need for deliverables or work requests.
       
       return contractResponse;
     },
