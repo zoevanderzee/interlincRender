@@ -244,12 +244,28 @@ export const insertContractSchema = baseContractSchema.extend({
   endDate: z.string().transform((val) => new Date(val)),
 });
 
-// Create base milestone schema
+// Create base milestone schema - make it very permissive
 const baseMilestoneSchema = createInsertSchema(milestones).omit({ id: true });
-// Extend it to handle date strings properly
+// Extend it to handle date strings properly and make fields more permissive
 export const insertMilestoneSchema = baseMilestoneSchema.extend({
-  // Handle date strings from frontend forms
-  dueDate: z.string().transform((val) => new Date(val)),
+  // Handle date strings from frontend forms - allow any valid date format
+  dueDate: z.union([z.string(), z.date()]).transform((val) => {
+    if (typeof val === 'string') {
+      return new Date(val);
+    }
+    return val;
+  }),
+  // Make name very permissive - accept any non-empty string
+  name: z.string().min(1, "Name is required"),
+  // Make description optional and permissive
+  description: z.string().optional(),
+  // Make payment amount permissive - accept string or number
+  paymentAmount: z.union([z.string(), z.number()]).transform((val) => {
+    if (typeof val === 'string') {
+      return val;
+    }
+    return val.toString();
+  }),
 });
 export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true, completedDate: true });
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, uploadedAt: true });

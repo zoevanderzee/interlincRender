@@ -86,44 +86,44 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
         }
       );
       
-      // Then create a deliverable (auto-accepted)
-      if (deliverables) {
-        // Format dates properly for the server
-        const formattedDueDate = dueDate 
-          ? new Date(dueDate).toISOString()
-          : new Date().toISOString();
-            
-        await apiRequest(
-          'POST',
-          '/api/milestones',
-          {
-            contractId: contractId,
-            name: deliverables,
-            description: `Due: ${dueDate}`,
-            dueDate: formattedDueDate,
-            status: 'accepted', // Auto-accept all deliverables
-            paymentAmount: contractorValue || '0',
-            progress: 0
-          }
-        );
-        
-        // Also create a work request to notify the contractor
-        await apiRequest(
-          'POST',
-          '/api/work-requests',
-          {
-            title: deliverables,
-            description: `Project deliverable: ${deliverables}`,
-            businessId: contract?.businessId || 0,
-            recipientEmail: availableContractors.find(c => c.id.toString() === selectedContractorId)?.email,
-            status: 'pending',
-            budgetMin: contractorValue || '0', // Send as string instead of number
-            budgetMax: contractorValue || '0', // Send as string instead of number
-            dueDate: dueDate ? new Date(dueDate).toISOString() : new Date().toISOString(),
-            skills: 'Required for project'
-          }
-        );
-      }
+      // Always create a deliverable (auto-accepted)
+      const finalDeliverables = deliverables || 'Work deliverable';
+      const finalDueDate = dueDate || new Date().toISOString().split('T')[0];
+      const finalAmount = contractorValue || '1';
+      
+      // Format dates properly for the server
+      const formattedDueDate = new Date(finalDueDate).toISOString();
+          
+      await apiRequest(
+        'POST',
+        '/api/milestones',
+        {
+          contractId: contractId,
+          name: finalDeliverables,
+          description: `Due: ${finalDueDate}`,
+          dueDate: formattedDueDate,
+          status: 'accepted', // Auto-accept all deliverables
+          paymentAmount: finalAmount,
+          progress: 0
+        }
+      );
+      
+      // Also create a work request to notify the contractor
+      await apiRequest(
+        'POST',
+        '/api/work-requests',
+        {
+          title: finalDeliverables,
+          description: `Project deliverable: ${finalDeliverables}`,
+          businessId: contract?.businessId || 0,
+          recipientEmail: availableContractors.find(c => c.id.toString() === selectedContractorId)?.email,
+          status: 'pending',
+          budgetMin: finalAmount,
+          budgetMax: finalAmount,
+          dueDate: formattedDueDate,
+          skills: 'Required for project'
+        }
+      );
       
       return contractResponse;
     },
@@ -185,31 +185,14 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
       return;
     }
     
-    if (!deliverables) {
-      toast({
-        title: "Deliverables required",
-        description: "Please enter what the worker is expected to deliver.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
+    // Allow empty deliverables - any text is valid
+    // Set defaults for optional fields
     if (!dueDate) {
-      toast({
-        title: "Due date required",
-        description: "Please enter when the deliverables are due.",
-        variant: "destructive",
-      });
-      return;
+      setDueDate(new Date().toISOString().split('T')[0]);
     }
     
-    if (!contractorValue || isNaN(parseFloat(contractorValue)) || parseFloat(contractorValue) <= 0) {
-      toast({
-        title: "Invalid amount",
-        description: "Please enter a valid payment amount for this deliverable.",
-        variant: "destructive",
-      });
-      return;
+    if (!contractorValue) {
+      setContractorValue('1');
     }
     
     const contractorValueNum = parseFloat(contractorValue);
