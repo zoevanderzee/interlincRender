@@ -134,12 +134,16 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
       return { contractResponse, deliverableData, workRequestData };
     },
     onSuccess: () => {
-      // Invalidate relevant queries
+      // Invalidate relevant queries to refresh the UI
       queryClient.invalidateQueries({ queryKey: ['/api/contracts'] });
       queryClient.invalidateQueries({ queryKey: ['/api/contracts', contractId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/projects'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/projects', contract?.projectId] });
       queryClient.invalidateQueries({ queryKey: ['/api/budget'] });
       queryClient.invalidateQueries({ queryKey: ['/api/milestones'] });
       queryClient.invalidateQueries({ queryKey: ['/api/milestones', { contractId }] });
+      queryClient.invalidateQueries({ queryKey: ['/api/work-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/team-members'] });
       
       // Show success message
       toast({
