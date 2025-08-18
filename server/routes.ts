@@ -1126,7 +1126,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Authentication required" });
       }
       
+      console.log('🔍 MILESTONE INPUT DEBUG:', JSON.stringify(req.body, null, 2));
       const milestoneInput = insertMilestoneSchema.parse(req.body);
+      console.log('✅ MILESTONE VALIDATION PASSED:', JSON.stringify(milestoneInput, null, 2));
       
       // SECURITY: Verify user has access to create deliverables for this contract
       const contract = await storage.getContract(milestoneInput.contractId);
@@ -1145,6 +1147,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(newMilestone);
     } catch (error) {
       if (error instanceof z.ZodError) {
+        console.error('❌ ZOD VALIDATION FAILED:', JSON.stringify({
+          errors: error.errors,
+          input: req.body
+        }, null, 2));
         return res.status(400).json({ message: "Invalid deliverable data", errors: error.errors });
       }
       console.error("Error creating deliverable:", error);
