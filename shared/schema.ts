@@ -199,6 +199,9 @@ export const businessWorkers = pgTable("business_workers", {
   contractorUserId: integer("contractor_user_id").notNull().references(() => users.id),
   joinedAt: timestamp("joined_at").notNull().defaultNow(),
   status: text("status").notNull().default("active"), // active, inactive
+  role: text("role").default("contractor"), // contractor role
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 // Projects table
@@ -297,7 +300,9 @@ export const insertBankAccountSchema = createInsertSchema(bankAccounts).omit({ i
 // Business Workers schema
 export const insertBusinessWorkerSchema = createInsertSchema(businessWorkers).omit({ 
   id: true, 
-  joinedAt: true 
+  joinedAt: true,
+  createdAt: true,
+  updatedAt: true
 });
 
 // Projects schema  

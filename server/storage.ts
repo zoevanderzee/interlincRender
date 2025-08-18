@@ -2930,9 +2930,7 @@ export class DatabaseStorage implements IStorage {
         businessId: businessWorkers.businessId,
         contractorUserId: businessWorkers.contractorUserId,
         status: businessWorkers.status,
-        role: businessWorkers.role,
-        createdAt: businessWorkers.createdAt,
-        updatedAt: businessWorkers.updatedAt,
+        joinedAt: businessWorkers.joinedAt,
         contractorName: users.username
       })
       .from(businessWorkers)
