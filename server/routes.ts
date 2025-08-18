@@ -898,33 +898,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const contractInput = insertContractSchema.parse(contractData);
       const userId = req.user?.id;
       
-      // If creating a business contract, check budget availability
-      if (req.user?.role === 'business' && userId) {
-        const user = await storage.getUser(userId);
-        if (user?.budgetCap) {
-          // Get existing project allocations
-          const allContracts = await storage.getAllContracts();
-          const userContracts = allContracts.filter(contract => 
-            contract.businessId === userId
-          );
-          const totalProjectAllocations = userContracts.reduce((sum, contract) => {
-            return sum + parseFloat(contract.value.toString() || '0');
-          }, 0);
-          
-          const newContractValue = parseFloat(contractInput.value.toString());
-          const totalAfterNewContract = totalProjectAllocations + newContractValue;
-          const budgetLimit = parseFloat(user.budgetCap.toString());
-          
-          if (totalAfterNewContract > budgetLimit) {
-            return res.status(400).json({
-              message: `Budget exceeded. Available: $${(budgetLimit - totalProjectAllocations).toFixed(2)}, Required: $${newContractValue.toFixed(2)}`,
-              budgetExceeded: true,
-              availableBudget: (budgetLimit - totalProjectAllocations).toFixed(2),
-              requestedAmount: newContractValue.toFixed(2)
-            });
-          }
-        }
-      }
+      // Budget validation removed - account budget should not restrict project creation
       
       console.log("[Contract Creation] Validated input:", JSON.stringify(contractInput));
       const newContract = await storage.createContract(contractInput);
