@@ -107,8 +107,21 @@ export function registerTrolleyContractorRoutes(app: Express, apiRouter: string,
         return res.status(403).json({ message: 'Access denied: Contractors only' });
       }
 
+      // Allow re-setup if existing recipient was created incorrectly during registration
       if (user.trolleyRecipientId) {
-        return res.status(400).json({ message: 'Payment setup already completed' });
+        console.log(`User ${userId} already has Trolley recipient ID: ${user.trolleyRecipientId}`);
+        try {
+          // Verify the existing recipient is properly configured
+          const existingRecipient = await trolleyService.getRecipient(user.trolleyRecipientId);
+          if (existingRecipient.status === 'active') {
+            return res.status(400).json({ message: 'Payment setup already completed' });
+          }
+          console.log(`Existing recipient ${user.trolleyRecipientId} is not active, allowing re-setup`);
+        } catch (error) {
+          console.log(`Existing recipient ${user.trolleyRecipientId} not found, will create new one`);
+          // Clear invalid recipient ID
+          await storage.updateUserTrolleyRecipientId(Number(userId), null);
+        }
       }
 
       const { 
