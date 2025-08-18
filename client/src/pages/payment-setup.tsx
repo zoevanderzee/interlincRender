@@ -82,7 +82,37 @@ export default function PaymentSetup() {
   // Debug logging
   console.log('Current selected country:', selectedCountry);
 
-  // Manual sync existing Trolley account mutation
+  // Auto-sync existing Trolley account mutation
+  const autoSyncMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/trolley/auto-sync', {});
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.success) {
+        toast({
+          title: "Account Found & Linked!",
+          description: data.message
+        });
+        queryClient.invalidateQueries({ queryKey: ['/api/trolley/contractor-status'] });
+      } else {
+        toast({
+          title: "No Account Found",
+          description: data.message,
+          variant: "default"
+        });
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Auto-Sync Failed",
+        description: error.message || "Failed to find existing Trolley account",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Manual sync existing Trolley account mutation  
   const manualSyncMutation = useMutation({
     mutationFn: async (recipientId: string) => {
       const response = await apiRequest('POST', '/api/trolley/sync-existing', { recipientId });
@@ -205,40 +235,61 @@ export default function PaymentSetup() {
               <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
               <div className="flex-1">
                 <h3 className="font-medium text-blue-900">Already have a Trolley account?</h3>
-                <p className="text-sm text-blue-700 mt-1">
-                  If you already have a Trolley recipient account, enter your Recipient ID below to link it:
+                <p className="text-sm text-blue-700 mt-1 mb-3">
+                  The system can automatically find and link your existing Trolley account.
                 </p>
-                <div className="mt-3 flex gap-2">
-                  <Input
-                    placeholder="R-1234567890 (your Trolley recipient ID)"
-                    value={recipientIdInput}
-                    onChange={(e) => setRecipientIdInput(e.target.value)}
-                    className="flex-1 border-blue-200"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      if (recipientIdInput.trim()) {
-                        manualSyncMutation.mutate(recipientIdInput.trim());
-                      }
-                    }}
-                    disabled={manualSyncMutation.isPending || !recipientIdInput.trim()}
-                    className="border-blue-200 text-blue-700 hover:bg-blue-100 whitespace-nowrap"
-                  >
-                    {manualSyncMutation.isPending ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Linking...
-                      </>
-                    ) : (
-                      'Link Account'
-                    )}
-                  </Button>
-                </div>
-                <p className="text-xs text-blue-600 mt-2">
-                  Find your Recipient ID in your Trolley dashboard under "My Profile" or "Account Settings"
-                </p>
+                
+                {/* Auto-sync button (primary option) */}
+                <Button
+                  type="button"
+                  onClick={() => autoSyncMutation.mutate()}
+                  disabled={autoSyncMutation.isPending}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white mb-3"
+                >
+                  {autoSyncMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Searching for your account...
+                    </>
+                  ) : (
+                    'Find My Trolley Account Automatically'
+                  )}
+                </Button>
+
+                {/* Manual sync option (fallback) */}
+                <details className="text-sm">
+                  <summary className="text-blue-600 hover:text-blue-700 cursor-pointer">
+                    Or link manually if you know your Recipient ID
+                  </summary>
+                  <div className="mt-3 flex gap-2">
+                    <Input
+                      placeholder="R-1234567890 (your Trolley recipient ID)"
+                      value={recipientIdInput}
+                      onChange={(e) => setRecipientIdInput(e.target.value)}
+                      className="flex-1 border-blue-200"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        if (recipientIdInput.trim()) {
+                          manualSyncMutation.mutate(recipientIdInput.trim());
+                        }
+                      }}
+                      disabled={manualSyncMutation.isPending || !recipientIdInput.trim()}
+                      className="border-blue-200 text-blue-700 hover:bg-blue-100 whitespace-nowrap"
+                    >
+                      {manualSyncMutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Linking...
+                        </>
+                      ) : (
+                        'Link Account'
+                      )}
+                    </Button>
+                  </div>
+                </details>
               </div>
             </div>
           </CardContent>

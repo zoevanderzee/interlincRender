@@ -104,12 +104,14 @@ class TrolleyService {
   private getAuthHeaders(method: string, path: string, body?: string): Record<string, string> {
     const timestamp = Math.floor(Date.now() / 1000).toString();
     
-    const message = `${method}${path}${body || ''}${timestamp}`;
-    const signature = crypto.createHmac('sha256', this.apiSecret).update(message).digest('hex');
+    // Build message for signature according to Trolley API spec
+    const message = `${method.toUpperCase()}\n${path}\n${body || ''}\n${timestamp}`;
+    const signature = crypto.createHmac('sha256', this.apiSecret).update(message).digest('base64');
     
     return {
       'Content-Type': 'application/json',
-      'Authorization': `prsign=${signature}; timestamp=${timestamp}; key=${this.apiKey}`,
+      'X-PR-Timestamp': timestamp,
+      'Authorization': `prsign=${this.apiKey}:${signature}`,
     };
   }
 
@@ -146,33 +148,39 @@ class TrolleyService {
   }
 
   /**
-   * Search for recipients by email address using direct API call
+   * Search for recipients by email address using SDK
    */
   async searchRecipientByEmail(email: string): Promise<TrolleyRecipient[]> {
-    const path = `/recipients`;
+    this.ensureClient();
     
     try {
-      console.log(`🔍 Making direct Trolley API search for email: ${email}`);
+      console.log(`🔍 Searching for recipient with email: ${email}`);
       
-      const response = await fetch(`${this.API_BASE}${path}?email=${encodeURIComponent(email)}`, {
-        method: 'GET',
-        headers: this.getAuthHeaders('GET', path)
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`Trolley API search failed: ${response.status} ${response.statusText}`, errorText);
-        throw new Error(`Search API failed: ${response.status} ${response.statusText}`);
+      // Use SDK search method
+      const result = await this.client.recipient.search();
+      console.log(`SDK search returned:`, result);
+      
+      const recipients = result?.recipients || [];
+      console.log(`Found ${recipients.length} total recipients via SDK search`);
+      
+      if (!Array.isArray(recipients)) {
+        console.log('Recipients is not an array:', recipients);
+        return [];
       }
-
-      const data = await response.json();
-      console.log('Trolley search response:', data);
       
-      // Return recipients array, or empty array if none found
-      return data.recipients || data || [];
+      // Filter recipients by email
+      const matchingRecipients = recipients.filter((recipient: any) => 
+        recipient.email && recipient.email.toLowerCase() === email.toLowerCase()
+      );
+      
+      console.log(`Found ${matchingRecipients.length} recipients matching email ${email}`);
+      return matchingRecipients;
     } catch (error) {
-      console.error('Error searching recipients by email:', error);
-      throw error;
+      console.error('Error searching recipients by email via SDK:', error);
+      
+      // Return empty array instead of throwing - this makes auto-sync non-blocking
+      console.log('No matching recipients found due to search error');
+      return [];
     }
   }
 
