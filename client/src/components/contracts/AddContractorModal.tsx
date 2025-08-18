@@ -93,11 +93,11 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
     }
   }, [contract, contractorValue]);
 
-  // Mutation to update contract with contractor
+  // Simple form submission - just update the contract locally
   const updateContractMutation = useMutation({
     mutationFn: async () => {
-      // First update the contract with the contractor
-      const contractResponse = await apiRequest(
+      // Update the contract with the contractor - simple PATCH request
+      return await apiRequest(
         'PATCH', 
         `/api/contracts/${contractId}`, 
         { 
@@ -105,18 +105,6 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
           contractorValue: contractorValue ? parseFloat(contractorValue) : undefined
         }
       );
-      
-      // Create a deliverable (auto-accepted) - deliverables is guaranteed to be filled
-      const finalDeliverables = deliverables;
-      const finalDueDate = dueDate || new Date().toISOString().split('T')[0];
-      const finalAmount = contractorValue || '1';
-      
-      // Format dates properly for the server
-      const formattedDueDate = new Date(finalDueDate).toISOString();
-          
-      // That's it - just the contract update. No need for deliverables or work requests.
-      
-      return contractResponse;
     },
     onSuccess: () => {
       // Invalidate relevant queries
