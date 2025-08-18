@@ -157,9 +157,6 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
       }
     },
     onError: (error) => {
-      console.error('🚨 CONTRACTOR ASSIGNMENT ERROR:', error);
-      
-      // Extract detailed error information
       let errorMessage = "There was a problem assigning the contractor. Please try again.";
       if (error?.data?.error) {
         errorMessage = error.data.error;
@@ -168,13 +165,6 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
       } else if (error?.message) {
         errorMessage = error.message;
       }
-      
-      console.error('🚨 DETAILED ERROR:', {
-        fullError: error,
-        message: errorMessage,
-        status: error?.status,
-        data: error?.data
-      });
       
       toast({
         title: "Error adding contractor",

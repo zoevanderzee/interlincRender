@@ -976,6 +976,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
           updateData.contractorBudget = contractorValue;
         }
       }
+      
+      // Update the contract
+      console.log(`🔥 Updating contract with data:`, JSON.stringify(updateData));
+      const updatedContract = await storage.updateContract(id, updateData);
+      
+      if (!updatedContract) {
+        return res.status(404).json({ message: "Failed to update contract" });
+      }
+      
+      console.log(`✅ Contract updated successfully:`, JSON.stringify(updatedContract));
+      res.json(updatedContract);
+    } catch (error) {
+      console.error(`❌ PATCH /contracts error:`, error);
+      res.status(500).json({ 
+        message: "Error updating contract",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
 
       // Automatically activate any draft contract that has a contractor assigned
       console.log("Current contract status:", existingContract.status);
