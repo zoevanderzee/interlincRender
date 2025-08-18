@@ -1126,12 +1126,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Authentication required" });
       }
       
-      console.log('🔍 MILESTONE INPUT DEBUG:', JSON.stringify(req.body, null, 2));
-      const milestoneInput = insertMilestoneSchema.parse(req.body);
-      console.log('✅ MILESTONE VALIDATION PASSED:', JSON.stringify(milestoneInput, null, 2));
+      const deliverableInput = insertMilestoneSchema.parse(req.body);
       
       // SECURITY: Verify user has access to create deliverables for this contract
-      const contract = await storage.getContract(milestoneInput.contractId);
+      const contract = await storage.getContract(deliverableInput.contractId);
       if (!contract) {
         return res.status(404).json({ message: "Contract not found" });
       }
@@ -1143,14 +1141,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied: Cannot create deliverables for other contractor contracts" });
       }
       
-      const newMilestone = await storage.createMilestone(milestoneInput);
-      res.status(201).json(newMilestone);
+      const newDeliverable = await storage.createMilestone(deliverableInput);
+      res.status(201).json(newDeliverable);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        console.error('❌ ZOD VALIDATION FAILED:', JSON.stringify({
-          errors: error.errors,
-          input: req.body
-        }, null, 2));
+
         return res.status(400).json({ message: "Invalid deliverable data", errors: error.errors });
       }
       console.error("Error creating deliverable:", error);
