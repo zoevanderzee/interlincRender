@@ -146,16 +146,30 @@ class TrolleyService {
   }
 
   /**
-   * Search for recipients by email address
+   * Search for recipients by email address using direct API call
    */
   async searchRecipientByEmail(email: string): Promise<TrolleyRecipient[]> {
-    this.ensureClient();
+    const path = `/recipients`;
     
     try {
-      const recipients = await this.client.recipient.search({
-        email: email
+      console.log(`🔍 Making direct Trolley API search for email: ${email}`);
+      
+      const response = await fetch(`${this.API_BASE}${path}?email=${encodeURIComponent(email)}`, {
+        method: 'GET',
+        headers: this.getAuthHeaders('GET', path)
       });
-      return recipients || [];
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Trolley API search failed: ${response.status} ${response.statusText}`, errorText);
+        throw new Error(`Search API failed: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('Trolley search response:', data);
+      
+      // Return recipients array, or empty array if none found
+      return data.recipients || data || [];
     } catch (error) {
       console.error('Error searching recipients by email:', error);
       throw error;

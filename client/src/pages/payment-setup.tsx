@@ -46,6 +46,7 @@ export default function PaymentSetup() {
   const queryClient = useQueryClient();
   const [showBankForm, setShowBankForm] = useState(false);
   const [showPayPalForm, setShowPayPalForm] = useState(false);
+  const [recipientIdInput, setRecipientIdInput] = useState('');
 
   // Get contractor status
   const { data: status, isLoading: statusLoading } = useQuery({
@@ -81,31 +82,24 @@ export default function PaymentSetup() {
   // Debug logging
   console.log('Current selected country:', selectedCountry);
 
-  // Auto-sync existing Trolley account mutation
-  const autoSyncMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest('POST', '/api/trolley/auto-sync', {});
+  // Manual sync existing Trolley account mutation
+  const manualSyncMutation = useMutation({
+    mutationFn: async (recipientId: string) => {
+      const response = await apiRequest('POST', '/api/trolley/sync-existing', { recipientId });
       return response.json();
     },
     onSuccess: (data) => {
-      if (data.success) {
-        toast({
-          title: "Account Synced!",
-          description: data.message
-        });
-        queryClient.invalidateQueries({ queryKey: ['/api/trolley/contractor-status'] });
-      } else {
-        toast({
-          title: "No Account Found",
-          description: data.message,
-          variant: "default"
-        });
-      }
+      toast({
+        title: "Account Linked!",
+        description: data.message || "Trolley account successfully linked"
+      });
+      setRecipientIdInput(''); // Clear the input
+      queryClient.invalidateQueries({ queryKey: ['/api/trolley/contractor-status'] });
     },
     onError: (error: any) => {
       toast({
-        title: "Sync Failed",
-        description: error.message || "Failed to find existing Trolley account",
+        title: "Link Failed",
+        description: error.message || "Failed to link Trolley account",
         variant: "destructive"
       });
     }
@@ -212,24 +206,39 @@ export default function PaymentSetup() {
               <div className="flex-1">
                 <h3 className="font-medium text-blue-900">Already have a Trolley account?</h3>
                 <p className="text-sm text-blue-700 mt-1">
-                  If you manually created your Trolley account, click below to link it automatically.
+                  If you already have a Trolley recipient account, enter your Recipient ID below to link it:
                 </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => autoSyncMutation.mutate()}
-                  disabled={autoSyncMutation.isPending}
-                  className="mt-3 border-blue-200 text-blue-700 hover:bg-blue-100"
-                >
-                  {autoSyncMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Searching...
-                    </>
-                  ) : (
-                    'Link My Existing Account'
-                  )}
-                </Button>
+                <div className="mt-3 flex gap-2">
+                  <Input
+                    placeholder="R-1234567890 (your Trolley recipient ID)"
+                    value={recipientIdInput}
+                    onChange={(e) => setRecipientIdInput(e.target.value)}
+                    className="flex-1 border-blue-200"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      if (recipientIdInput.trim()) {
+                        manualSyncMutation.mutate(recipientIdInput.trim());
+                      }
+                    }}
+                    disabled={manualSyncMutation.isPending || !recipientIdInput.trim()}
+                    className="border-blue-200 text-blue-700 hover:bg-blue-100 whitespace-nowrap"
+                  >
+                    {manualSyncMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Linking...
+                      </>
+                    ) : (
+                      'Link Account'
+                    )}
+                  </Button>
+                </div>
+                <p className="text-xs text-blue-600 mt-2">
+                  Find your Recipient ID in your Trolley dashboard under "My Profile" or "Account Settings"
+                </p>
               </div>
             </div>
           </CardContent>
