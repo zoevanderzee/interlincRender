@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { useLocation } from 'wouter';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useBudget } from '@/hooks/use-budget';
 import { useDataSync } from '@/hooks/use-data-sync';
-import { Wallet, Plus, DollarSign, History, CreditCard, Building2 } from 'lucide-react';
+import { Wallet, Plus, DollarSign, History, CreditCard, Building2, AlertCircle, ArrowRight } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface WalletBalance {
@@ -38,6 +39,7 @@ interface BudgetData {
 }
 
 export default function WalletPage() {
+  const [, navigate] = useLocation();
   const [fundAmount, setFundAmount] = useState('');
   const [budgetAmount, setBudgetAmount] = useState('');
   const [budgetPeriod, setBudgetPeriod] = useState<'monthly' | 'yearly'>('yearly');
@@ -100,6 +102,13 @@ export default function WalletPage() {
   const { data: userData } = useQuery({
     queryKey: ['/api/user'],
   });
+
+  // Role-based access control - redirect contractors to their payment setup
+  useEffect(() => {
+    if (userData?.role === 'contractor' || userData?.role === 'freelancer') {
+      navigate('/payment-setup');
+    }
+  }, [userData?.role, navigate]);
 
 
 
@@ -242,6 +251,51 @@ export default function WalletPage() {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="animate-spin w-8 h-8 border-4 border-white border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  // Show access denied for non-business users
+  if (userData && userData.role !== 'business') {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
+        <Card className="w-full max-w-md bg-zinc-900 border-zinc-800">
+          <CardHeader className="text-center">
+            <AlertCircle className="h-12 w-12 text-orange-400 mx-auto mb-4" />
+            <CardTitle className="text-white">Access Restricted</CardTitle>
+            <CardDescription className="text-zinc-400">
+              Business payment management is only available to business accounts.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-zinc-800 p-4 rounded-lg">
+              <p className="text-sm text-zinc-300 mb-3">
+                You currently have a <strong>{userData.role}</strong> account. 
+                {userData.role === 'contractor' || userData.role === 'freelancer' 
+                  ? " For contractor payment setup, use the link below." 
+                  : " To manage business payments, you need a business account."}
+              </p>
+            </div>
+            
+            {(userData.role === 'contractor' || userData.role === 'freelancer') && (
+              <Button 
+                onClick={() => navigate('/payment-setup')}
+                className="w-full"
+              >
+                Go to Contractor Payment Setup
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            )}
+            
+            <Button 
+              onClick={() => navigate('/dashboard')}
+              variant="outline"
+              className="w-full border-zinc-600"
+            >
+              Return to Dashboard
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
