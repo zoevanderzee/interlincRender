@@ -57,6 +57,26 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
   // Use all contractors from the dashboard data without additional filtering
   // The backend already handles the proper filtering for connected contractors
   const availableContractors = contractors.filter(c => c.role === 'contractor');
+  
+  // DEBUG: Log contractor data to identify role issues
+  console.log('🔍 CONTRACTOR SELECTION DEBUG:', {
+    allContractorsFromProps: contractors.map(c => ({ 
+      id: c.id, 
+      email: c.email, 
+      username: c.username, 
+      role: c.role,
+      firstName: c.firstName,
+      lastName: c.lastName 
+    })),
+    filteredAvailableContractors: availableContractors.map(c => ({ 
+      id: c.id, 
+      email: c.email, 
+      username: c.username, 
+      role: c.role,
+      firstName: c.firstName,
+      lastName: c.lastName 
+    }))
+  });
 
   // Check if adding this contractor would exceed the project budget
   useEffect(() => {
@@ -225,6 +245,16 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
       });
       return;
     }
+    
+    // DEBUG: Log the selected contractor before API calls
+    const selectedContractor = availableContractors.find(c => c.id.toString() === selectedContractorId);
+    console.log('🔍 SELECTED CONTRACTOR DEBUG:', {
+      selectedContractorId,
+      selectedContractor,
+      selectedContractorEmail: selectedContractor?.email,
+      selectedContractorRole: selectedContractor?.role,
+      isContractorRole: selectedContractor?.role === 'contractor'
+    });
     
     // All checks passed, proceed with contractor assignment
     updateContractMutation.mutate();
