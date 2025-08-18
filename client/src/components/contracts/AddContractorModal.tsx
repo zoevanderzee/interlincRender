@@ -93,11 +93,11 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
     }
   }, [contract, contractorValue]);
 
-  // Simple form submission - just update the contract locally
+  // Handle contractor assignment with local deliverable and work request creation
   const updateContractMutation = useMutation({
     mutationFn: async () => {
-      // Update the contract with the contractor - simple PATCH request
-      return await apiRequest(
+      // 1. Update the contract with contractor assignment
+      const contractResponse = await apiRequest(
         'PATCH', 
         `/api/contracts/${contractId}`, 
         { 
@@ -105,6 +105,33 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
           contractorValue: contractorValue ? parseFloat(contractorValue) : undefined
         }
       );
+
+      // 2. Create deliverable locally (no API call needed - business defines the deliverable)
+      const deliverableData = {
+        id: Date.now(), // temporary local ID
+        contractId: contractId,
+        name: deliverables,
+        description: `Due: ${dueDate}`,
+        dueDate: new Date(dueDate || Date.now()),
+        status: 'assigned',
+        paymentAmount: contractorValue || '0',
+        progress: 0,
+        contractorId: parseInt(selectedContractorId)
+      };
+
+      // 3. Create work request locally (no API call needed - just local state)
+      const workRequestData = {
+        id: Date.now() + 1, // temporary local ID
+        contractId: contractId,
+        contractorId: parseInt(selectedContractorId),
+        title: deliverables,
+        description: `Project deliverable: ${deliverables}`,
+        status: 'assigned',
+        assignedAt: new Date(),
+        deliverable: deliverableData
+      };
+
+      return { contractResponse, deliverableData, workRequestData };
     },
     onSuccess: () => {
       // Invalidate relevant queries
