@@ -93,7 +93,7 @@ export const contracts = pgTable("contracts", {
 });
 
 // Deliverables table (formerly milestones - using "deliverable" terminology throughout)
-export const milestones = pgTable("milestones", {
+export const deliverables = pgTable("milestones", {
   id: serial("id").primaryKey(),
   contractId: integer("contract_id").notNull(),
   name: text("name").notNull(),
@@ -116,7 +116,7 @@ export const milestones = pgTable("milestones", {
 export const payments = pgTable("payments", {
   id: serial("id").primaryKey(),
   contractId: integer("contract_id").notNull(),
-  milestoneId: integer("milestone_id").notNull(),
+  milestoneId: integer("milestone_id").notNull().references(() => deliverables.id),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   status: text("status").notNull().default("scheduled"), // scheduled, processing, completed, failed, auto_triggered
   scheduledDate: timestamp("scheduled_date").notNull(),
@@ -139,7 +139,7 @@ export const paymentLogs = pgTable("payment_logs", {
   id: serial("id").primaryKey(),
   paymentId: integer("payment_id").notNull(),
   contractId: integer("contract_id").notNull(),
-  milestoneId: integer("milestone_id").notNull(),
+  milestoneId: integer("milestone_id").notNull().references(() => deliverables.id),
   businessId: integer("business_id").notNull(),
   contractorId: integer("contractor_id").notNull(),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
@@ -224,7 +224,7 @@ export const workRequestSubmissions = pgTable("work_request_submissions", {
   reviewNotes: text("review_notes"), // Feedback from business owner
 });
 
-// Insert schemas
+// Insert schemas  
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
 const baseInviteSchema = createInsertSchema(invites).omit({ id: true, createdAt: true });
 export const insertInviteSchema = baseInviteSchema.extend({
@@ -245,7 +245,7 @@ export const insertContractSchema = baseContractSchema.extend({
 });
 
 // Create base deliverable schema - make it very permissive
-const baseDeliverableSchema = createInsertSchema(milestones).omit({ id: true });
+const baseDeliverableSchema = createInsertSchema(deliverables).omit({ id: true });
 // Extend it to handle date strings properly and make fields more permissive
 export const insertDeliverableSchema = baseDeliverableSchema.extend({
   // Handle date strings from frontend forms - allow any valid date format
@@ -302,7 +302,7 @@ export type InsertContract = z.infer<typeof insertContractSchema>;
 export type Contract = typeof contracts.$inferSelect;
 
 export type InsertDeliverable = z.infer<typeof insertDeliverableSchema>;
-export type Deliverable = typeof milestones.$inferSelect;
+export type Deliverable = typeof deliverables.$inferSelect;
 
 export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 export type Payment = typeof payments.$inferSelect;
@@ -390,7 +390,7 @@ export const workSubmissions = pgTable("work_submissions", {
   submittedAt: timestamp("submitted_at").notNull().defaultNow(),
   reviewedAt: timestamp("reviewed_at"),
   reviewNotes: text("review_notes"), // Feedback from business owner
-  milestoneId: integer("milestone_id").references(() => milestones.id) // Optional deliverable reference
+  milestoneId: integer("milestone_id").references(() => deliverables.id) // Optional deliverable reference
 });
 
 // Create notification schema
