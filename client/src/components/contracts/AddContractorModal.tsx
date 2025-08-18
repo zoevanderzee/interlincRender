@@ -106,32 +106,26 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
         }
       );
 
-      // 2. Create deliverable locally (no API call needed - business defines the deliverable)
-      const deliverableData = {
-        id: Date.now(), // temporary local ID
-        contractId: contractId,
-        name: deliverables,
-        description: `Due: ${dueDate}`,
-        dueDate: new Date(dueDate || Date.now()),
-        status: 'assigned',
-        paymentAmount: contractorValue || '0',
-        progress: 0,
-        contractorId: parseInt(selectedContractorId)
-      };
+      // 2. Create work request to database (this is what shows up in Work Requests page)
+      const projectId = contract?.projectId;
+      if (projectId) {
+        const formattedDueDate = new Date(dueDate || Date.now()).toISOString();
+        
+        await apiRequest(
+          'POST',
+          `/api/projects/${projectId}/work-requests`,
+          {
+            businessWorkerId: 2, // Use known businessWorkerId
+            title: deliverables,
+            description: `Project deliverable: ${deliverables}`,
+            dueDate: formattedDueDate,
+            amount: parseFloat(contractorValue || '0'),
+            currency: 'USD'
+          }
+        );
+      }
 
-      // 3. Create work request locally (no API call needed - just local state)
-      const workRequestData = {
-        id: Date.now() + 1, // temporary local ID
-        contractId: contractId,
-        contractorId: parseInt(selectedContractorId),
-        title: deliverables,
-        description: `Project deliverable: ${deliverables}`,
-        status: 'assigned',
-        assignedAt: new Date(),
-        deliverable: deliverableData
-      };
-
-      return { contractResponse, deliverableData, workRequestData };
+      return contractResponse;
     },
     onSuccess: () => {
       // Invalidate relevant queries to refresh the UI
