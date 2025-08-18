@@ -96,4 +96,34 @@ export function registerBusinessWorkerRoutes(app: Express, requireAuth: any) {
       });
     }
   });
+
+  // Get business worker ID for a specific contractor
+  app.get("/api/businesses/:contractorId/business-worker", requireAuth, async (req, res) => {
+    try {
+      const contractorId = parseInt(req.params.contractorId);
+      const businessId = req.user?.id;
+      
+      if (!businessId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+      
+      // Find the business_workers record for this business and contractor
+      const businessWorkers = await storage.getBusinessWorkers(businessId);
+      const businessWorker = businessWorkers.find(bw => bw.contractorUserId === contractorId);
+      
+      if (!businessWorker) {
+        return res.status(404).json({ error: "Contractor not found in business roster" });
+      }
+      
+      res.json({
+        businessWorkerId: businessWorker.id,
+        contractorUserId: businessWorker.contractorUserId,
+        status: businessWorker.status
+      });
+
+    } catch (error) {
+      console.error("Error fetching business worker:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
 }

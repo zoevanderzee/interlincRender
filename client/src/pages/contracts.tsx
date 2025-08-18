@@ -84,11 +84,9 @@ const Contracts = () => {
   
   const contracts = dashboardData?.contracts || [];
 
-  // Fetch contractors with businessWorkerId
-  const { data: contractors = [], isLoading: isLoadingContractors } = useQuery<User[]>({
-    queryKey: ['/api/business-workers/contractors'],
-    enabled: !isContractor, // Only fetch contractors list if user is not a contractor
-  });
+  // Get contractors from dashboard data (they're already there)
+  const contractors = dashboardData?.contractors || [];
+  const isLoadingContractors = isLoadingContracts;
 
   // Filter contracts by search term and status
   const filteredContracts = contracts.filter((contract) => {
