@@ -1077,8 +1077,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(milestones);
     } catch (error) {
-      console.error("Error fetching milestones:", error);
-      res.status(500).json({ message: "Error fetching milestones" });
+      console.error("Error fetching deliverables:", error);
+      res.status(500).json({ message: "Error fetching deliverables" });
     }
   });
   
@@ -1094,10 +1094,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const milestone = await storage.getMilestone(id);
       if (!milestone) {
-        return res.status(404).json({ message: "Milestone not found" });
+        return res.status(404).json({ message: "Deliverable not found" });
       }
       
-      // SECURITY: Verify user has access to this milestone's contract
+      // SECURITY: Verify user has access to this deliverable's contract
       const contract = await storage.getContract(milestone.contractId);
       if (!contract) {
         return res.status(404).json({ message: "Contract not found" });
@@ -1112,8 +1112,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(milestone);
     } catch (error) {
-      console.error("Error fetching milestone:", error);
-      res.status(500).json({ message: "Error fetching milestone" });
+      console.error("Error fetching deliverable:", error);
+      res.status(500).json({ message: "Error fetching deliverable" });
     }
   });
   
@@ -1128,17 +1128,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const milestoneInput = insertMilestoneSchema.parse(req.body);
       
-      // SECURITY: Verify user has access to create milestones for this contract
+      // SECURITY: Verify user has access to create deliverables for this contract
       const contract = await storage.getContract(milestoneInput.contractId);
       if (!contract) {
         return res.status(404).json({ message: "Contract not found" });
       }
       
       if (userRole === 'business' && contract.businessId !== userId) {
-        return res.status(403).json({ message: "Access denied: Cannot create milestones for other business contracts" });
+        return res.status(403).json({ message: "Access denied: Cannot create deliverables for other business contracts" });
       }
       if (userRole === 'contractor' && contract.contractorId !== userId) {
-        return res.status(403).json({ message: "Access denied: Cannot create milestones for other contractor contracts" });
+        return res.status(403).json({ message: "Access denied: Cannot create deliverables for other contractor contracts" });
       }
       
       const newMilestone = await storage.createMilestone(milestoneInput);
@@ -1147,8 +1147,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid deliverable data", errors: error.errors });
       }
-      console.error("Error creating milestone:", error);
-      res.status(500).json({ message: "Error creating milestone" });
+      console.error("Error creating deliverable:", error);
+      res.status(500).json({ message: "Error creating deliverable" });
     }
   });
   
@@ -1163,10 +1163,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Authentication required" });
       }
       
-      // SECURITY: Verify user has access to update this milestone
+      // SECURITY: Verify user has access to update this deliverable
       const existingMilestone = await storage.getMilestone(id);
       if (!existingMilestone) {
-        return res.status(404).json({ message: "Milestone not found" });
+        return res.status(404).json({ message: "Deliverable not found" });
       }
       
       const contract = await storage.getContract(existingMilestone.contractId);
@@ -1175,19 +1175,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       if (userRole === 'business' && contract.businessId !== userId) {
-        return res.status(403).json({ message: "Access denied: Cannot update other business milestones" });
+        return res.status(403).json({ message: "Access denied: Cannot update other business deliverables" });
       }
       if (userRole === 'contractor' && contract.contractorId !== userId) {
-        return res.status(403).json({ message: "Access denied: Cannot update other contractor milestones" });
+        return res.status(403).json({ message: "Access denied: Cannot update other contractor deliverables" });
       }
       
       const updatedMilestone = await storage.updateMilestone(id, updateData);
       
       if (!updatedMilestone) {
-        return res.status(404).json({ message: "Milestone not found" });
+        return res.status(404).json({ message: "Deliverable not found" });
       }
 
-      // Create notification when contractor submits work (marks milestone as completed)
+      // Create notification when contractor submits work (marks deliverable as completed)
       if (updateData.status === 'completed' && userRole === 'contractor') {
         try {
           await notificationService.createWorkSubmission(
@@ -1203,12 +1203,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(updatedMilestone);
     } catch (error) {
-      console.error("Error updating milestone:", error);
-      res.status(500).json({ message: "Error updating milestone" });
+      console.error("Error updating deliverable:", error);
+      res.status(500).json({ message: "Error updating deliverable" });
     }
   });
 
-  // Milestone approval endpoint - triggers automated payment
+  // Deliverable approval endpoint - triggers automated payment
   app.post(`${apiRouter}/milestones/:id/approve`, requireAuth, async (req: Request, res: Response) => {
     try {
       const milestoneId = parseInt(req.params.id);
