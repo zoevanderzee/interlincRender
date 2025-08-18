@@ -936,111 +936,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       const updateData = req.body;
       
+      console.log(`🔥 PATCH /contracts/${id} - updateData:`, JSON.stringify(updateData));
+      
       // Get the existing contract first
       const existingContract = await storage.getContract(id);
       if (!existingContract) {
         return res.status(404).json({ message: "Project not found" });
       }
 
-      // If a contractor is being assigned and a contractor value is provided
-      if (updateData.contractorId && updateData.contractorValue) {
-        console.log(`Assigning contractor ${updateData.contractorId} to contract ${id} with value ${updateData.contractorValue}`);
+      // If a contractor is being assigned
+      if (updateData.contractorId) {
+        console.log(`🔥 Assigning contractor ${updateData.contractorId} to contract ${id}`);
         
-        // Get the business user who owns the contract
-        const businessUser = await storage.getUser(existingContract.businessId);
-        if (!businessUser) {
-          return res.status(404).json({ message: "Business user not found" });
-        }
-        
-        // Verify contractor exists and is linked to this business
+        // Verify contractor exists and is a contractor
         const contractor = await storage.getUser(updateData.contractorId);
         if (!contractor || contractor.role !== 'contractor') {
+          console.log(`❌ Invalid contractor: ${updateData.contractorId}`);
           return res.status(400).json({ message: "Invalid contractor" });
         }
         
-        // Check if the contractor is linked to this business
-        const isLinkedContractor = await storage.isContractorLinkedToBusiness(
-          existingContract.businessId, 
-          updateData.contractorId
-        );
+        console.log(`✅ Valid contractor found: ${contractor.username} (${contractor.email})`);
         
-        if (!isLinkedContractor) {
-          console.log(`Contractor ${updateData.contractorId} is not linked to business ${existingContract.businessId}`);
-          return res.status(400).json({ 
-            message: "Contractor is not linked to this business",
-            error: "This contractor is not connected to your business. Please establish a connection first."
-          });
-        }
-        
-        // HIERARCHICAL BUDGET VALIDATION:
-        // 1. Contractor allocation should be within project budget
-        // 2. Project budget should be within total account budget
-        const contractorValue = parseFloat(updateData.contractorValue.toString());
-        const projectBudget = parseFloat(existingContract.value || '0');
-        
-        console.log(`🔍 HIERARCHICAL VALIDATION:`, {
-          contractorValue,
-          projectBudget,
-          businessId: existingContract.businessId
-        });
-        
-        // STEP 1: Validate contractor allocation against project budget
-        if (contractorValue > projectBudget) {
-          console.log(`❌ CONTRACTOR > PROJECT: $${contractorValue} > $${projectBudget}`);
-          return res.status(400).json({
-            message: "Budget exceeded",
-            error: `The contractor value ($${contractorValue}) exceeds the project budget ($${projectBudget}). Please adjust the amount.`,
-            budgetExceeded: true,
-            availableBudget: projectBudget.toFixed(2),
-            requestedAmount: contractorValue.toFixed(2)
-          });
-        }
-        
-        console.log(`✅ STEP 1 PASSED: Contractor allocation $${contractorValue} within project budget $${projectBudget}`);
-        
-        // STEP 2: Validate project budget against total account budget (only check if account has budget cap)
-        const budgetInfo = await storage.getBudget(existingContract.businessId);
-        if (budgetInfo && budgetInfo.budgetCap) {
-          const budgetCap = parseFloat(budgetInfo.budgetCap);
-          const budgetUsed = parseFloat(budgetInfo.budgetUsed || '0');
-          const budgetRemaining = budgetCap - budgetUsed;
+        // Simple budget validation - only check contractor value vs project budget
+        if (updateData.contractorValue) {
+          const contractorValue = parseFloat(updateData.contractorValue.toString());
+          const projectBudget = parseFloat(existingContract.value || '0');
           
-          console.log(`🔍 ACCOUNT BUDGET CHECK:`, {
-            budgetCap,
-            budgetUsed,
-            budgetRemaining,
-            projectBudget
-          });
+          console.log(`🔥 Budget check: contractor $${contractorValue} vs project $${projectBudget}`);
           
-          if (projectBudget > budgetRemaining) {
-            console.log(`❌ PROJECT > ACCOUNT: $${projectBudget} > $${budgetRemaining}`);
+          if (contractorValue > projectBudget) {
+            console.log(`❌ Contractor value exceeds project budget`);
             return res.status(400).json({
               message: "Budget exceeded",
-              error: `The project budget ($${projectBudget}) exceeds the remaining account budget ($${budgetRemaining.toFixed(2)}). Please increase your account budget.`,
-              budgetExceeded: true,
-              availableBudget: budgetRemaining.toFixed(2),
-              requestedAmount: projectBudget.toFixed(2)
+              error: `The contractor value ($${contractorValue}) exceeds the project budget ($${projectBudget}).`
             });
           }
           
-          console.log(`✅ STEP 2 PASSED: Project budget $${projectBudget} within account budget (remaining: $${budgetRemaining})`);
-        } else {
-          console.log(`⚠️ NO ACCOUNT BUDGET CAP - Skipping account-level validation`);
-        }
-        
-        // All checks passed, proceed with the update
-        console.log("Budget validation passed, updating contract with contractor");
-        
-        // Map contractorValue to contractorBudget for database storage
-        updateData.contractorBudget = contractorValue;
-        console.log(`Setting contractor budget to: $${contractorValue}`);
-        
-        // CRITICAL: Deduct budget from business user when contractor is assigned
-        // Only deduct if this is a new contractor assignment (not an update)
-        if (!existingContract.contractorId && updateData.contractorId) {
-          console.log(`Deducting budget for contractor assignment: $${contractorValue}`);
-          await storage.increaseBudgetUsed(existingContract.businessId, contractorValue);
-          console.log(`Budget deducted successfully from business user ${existingContract.businessId}`);
+          console.log(`✅ Budget validation passed`);
+          updateData.contractorBudget = contractorValue;
         }
       }
 
