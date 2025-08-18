@@ -84,9 +84,9 @@ const Contracts = () => {
   
   const contracts = dashboardData?.contracts || [];
 
-  // Fetch contractors
+  // Fetch contractors with businessWorkerId
   const { data: contractors = [], isLoading: isLoadingContractors } = useQuery<User[]>({
-    queryKey: ['/api/users', { role: 'contractor' }],
+    queryKey: ['/api/business-workers/contractors'],
     enabled: !isContractor, // Only fetch contractors list if user is not a contractor
   });
 

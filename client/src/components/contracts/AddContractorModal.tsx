@@ -141,12 +141,10 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
         throw new Error('Contract is not linked to a project. Please ensure contracts are created within projects.');
       }
 
-      // Find the businessWorkerId for the selected contractor
-      const businessWorkerResponse = await apiRequest('GET', `/api/business-workers?contractorId=${selectedContractor.id}`);
-      const businessWorkers = businessWorkerResponse.data;
-      const businessWorker = businessWorkers.find((bw: any) => bw.contractorUserId === selectedContractor.id);
+      // The businessWorkerId should already be included in the contractor data
+      const businessWorkerId = (selectedContractor as any).businessWorkerId;
       
-      if (!businessWorker) {
+      if (!businessWorkerId) {
         throw new Error('Selected contractor is not connected to this business. Please ensure the contractor is added to your business roster first.');
       }
 
@@ -154,7 +152,7 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
         'POST',
         `/api/projects/${projectId}/work-requests`,
         {
-          businessWorkerId: businessWorker.id, // Dynamic lookup of the business-contractor connection
+          businessWorkerId: businessWorkerId, // Use the businessWorkerId from contractor data
           title: finalDeliverables,
           description: `Project deliverable: ${finalDeliverables}`,
           dueDate: formattedDueDate,

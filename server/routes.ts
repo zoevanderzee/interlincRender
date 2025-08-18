@@ -44,6 +44,7 @@ import { registerSyncUserRoutes } from "./routes/sync-user";
 import { setupSyncEmailVerification } from "./routes/sync-email-verification";
 import { registerSyncFirebaseUserRoutes } from "./routes/sync-firebase-user";
 import { registerBusinessWorkerRoutes } from "./business-workers/index";
+import { registerContractorsWithIdsRoutes } from "./business-workers/contractors-with-ids";
 import { registerProjectRoutes } from "./projects/index";
 
 if (!process.env.STRIPE_SECRET_KEY) {
@@ -3378,6 +3379,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register business worker routes
   registerBusinessWorkerRoutes(app, requireAuth);
+
+  // Register contractors with IDs routes
+  registerContractorsWithIdsRoutes(app);
 
   // Register project routes
   registerProjectRoutes(app);
