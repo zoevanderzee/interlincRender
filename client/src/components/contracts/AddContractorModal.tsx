@@ -246,14 +246,34 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
       return;
     }
     
-    // DEBUG: Log the selected contractor before API calls
+    // DEBUG: Log the selected contractor and all API call data
     const selectedContractor = availableContractors.find(c => c.id.toString() === selectedContractorId);
-    console.log('🔍 SELECTED CONTRACTOR DEBUG:', {
+    console.log('🔍 COMPLETE API CALL DEBUG:', {
       selectedContractorId,
       selectedContractor,
       selectedContractorEmail: selectedContractor?.email,
       selectedContractorRole: selectedContractor?.role,
-      isContractorRole: selectedContractor?.role === 'contractor'
+      isContractorRole: selectedContractor?.role === 'contractor',
+      contractDetails: contract,
+      deliverablePayload: {
+        contractId: contractId,
+        name: deliverables,
+        description: `Due: ${dueDate || new Date().toISOString().split('T')[0]}`,
+        dueDate: new Date(dueDate || new Date().toISOString().split('T')[0]).toISOString(),
+        status: 'accepted',
+        paymentAmount: contractorValue || '1',
+        progress: 0
+      },
+      workRequestPayload: {
+        title: deliverables,
+        description: `Project deliverable: ${deliverables}`,
+        recipientEmail: selectedContractor?.email,
+        status: 'pending',
+        budgetMin: contractorValue || '1',
+        budgetMax: contractorValue || '1',
+        dueDate: new Date(dueDate || new Date().toISOString().split('T')[0]).toISOString(),
+        skills: 'Required for project'
+      }
     });
     
     // All checks passed, proceed with contractor assignment
