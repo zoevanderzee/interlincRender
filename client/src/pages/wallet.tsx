@@ -246,8 +246,15 @@ export default function WalletPage() {
     );
   }
 
-  // Check if user needs Trolley onboarding - show only if user doesn't have verified accounts
-  const needsOnboarding = !(userData as any)?.trolleyCompanyProfileId && !(userData as any)?.trolleyRecipientId;
+  // Check if user needs Trolley onboarding
+  const userRole = (userData as any)?.role;
+  const hasCompanyProfile = (userData as any)?.trolleyCompanyProfileId;
+  const hasSubmerchant = (userData as any)?.trolleySubmerchantId;
+  const hasRecipientId = (userData as any)?.trolleyRecipientId;
+  
+  const needsOnboarding = userRole === 'business' 
+    ? !hasCompanyProfile && !hasSubmerchant && !hasRecipientId  // Business can have any of these three
+    : !hasRecipientId; // Contractors need trolleyRecipientId
 
   if (needsOnboarding) {
     return (
