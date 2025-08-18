@@ -1145,7 +1145,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(newMilestone);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid milestone data", errors: error.errors });
+        return res.status(400).json({ message: "Invalid deliverable data", errors: error.errors });
       }
       console.error("Error creating milestone:", error);
       res.status(500).json({ message: "Error creating milestone" });

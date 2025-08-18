@@ -86,7 +86,7 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
         }
       );
       
-      // Then create a milestone for the deliverable
+      // Then create a deliverable (auto-accepted)
       if (deliverables) {
         // Format dates properly for the server
         const formattedDueDate = dueDate 
@@ -101,7 +101,7 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
             name: deliverables,
             description: `Due: ${dueDate}`,
             dueDate: formattedDueDate,
-            status: 'pending',
+            status: 'accepted', // Auto-accept all deliverables
             paymentAmount: contractorValue || '0',
             progress: 0
           }
@@ -156,7 +156,7 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
         onSuccess();
       }
     },
-    onError: (error) => {
+    onError: (error: any) => {
       let errorMessage = "There was a problem assigning the contractor. Please try again.";
       if (error?.data?.error) {
         errorMessage = error.data.error;
