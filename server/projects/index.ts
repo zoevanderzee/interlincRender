@@ -40,7 +40,7 @@ export function registerProjectRoutes(app: Express) {
   });
 
   // Step B: Add worker to project (create work request)
-  app.post("/api/projects/:projectId/work-requests", async (req, res) => {
+  app.post("/api/projects/:projectId/work-requests", requireAuth, async (req, res) => {
     try {
       const projectId = parseInt(req.params.projectId);
       const workRequestData = req.body;

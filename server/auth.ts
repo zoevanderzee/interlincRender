@@ -53,11 +53,12 @@ export function setupAuth(app: Express) {
     name: 'creativlinc.sid',
     rolling: false, // Don't extend session on each request to avoid issues
     cookie: {
-      secure: false, // Must be false for development
+      secure: process.env.NODE_ENV === 'production', // true in production, false in development
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
-      httpOnly: false, // Allow JS access for debugging
-      sameSite: 'lax', // Standard for same-origin requests
+      httpOnly: true, // Security: prevent JS access
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' for production cross-origin
       path: '/', // Available for entire site
+      domain: process.env.NODE_ENV === 'production' ? '.creativlinc.app' : undefined, // Cross-subdomain in production
     },
     // Use the storage implementation's session store
     store: storage.sessionStore
@@ -85,21 +86,24 @@ export function setupAuth(app: Express) {
   // This is needed for cookies to work properly in Replit
   app.set("trust proxy", 1);
   
-  // Add CORS headers for cookie support - only for development cross-origin requests
-  if (process.env.NODE_ENV === 'development') {
-    app.use((req, res, next) => {
-      res.header('Access-Control-Allow-Origin', req.headers.origin);
+  // Add CORS headers for cookie support - for cross-origin requests
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin === 'https://creativlinc.app' || process.env.NODE_ENV === 'development') {
+      res.header('Access-Control-Allow-Origin', origin);
       res.header('Access-Control-Allow-Credentials', 'true');
       res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-      res.header('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization');
+      res.header('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization,X-User-ID,X-Firebase-UID,X-CSRF-Token');
       
       if (req.method === 'OPTIONS') {
         res.sendStatus(200);
       } else {
         next();
       }
-    });
-  }
+    } else {
+      next();
+    }
+  });
 
   // Setup session middleware
   app.use(session(sessionSettings));
