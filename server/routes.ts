@@ -936,69 +936,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       const updateData = req.body;
       
-      console.log(`🔥 PATCH /contracts/${id} - updateData:`, JSON.stringify(updateData));
+      console.log(`PATCH /contracts/${id} - Adding contractor:`, updateData.contractorId);
       
-      // Get the existing contract first
       const existingContract = await storage.getContract(id);
       if (!existingContract) {
         return res.status(404).json({ message: "Project not found" });
       }
 
-      // If a contractor is being assigned
-      if (updateData.contractorId) {
-        console.log(`🔥 Assigning contractor ${updateData.contractorId} to contract ${id}`);
-        
-        // Verify contractor exists and is a contractor
-        const contractor = await storage.getUser(updateData.contractorId);
-        if (!contractor || contractor.role !== 'contractor') {
-          console.log(`❌ Invalid contractor: ${updateData.contractorId}`);
-          return res.status(400).json({ message: "Invalid contractor" });
-        }
-        
-        console.log(`✅ Valid contractor found: ${contractor.username} (${contractor.email})`);
-        
-        // Simple budget validation - only check contractor value vs project budget
-        if (updateData.contractorValue) {
-          const contractorValue = parseFloat(updateData.contractorValue.toString());
-          const projectBudget = parseFloat(existingContract.value || '0');
-          
-          console.log(`🔥 Budget check: contractor $${contractorValue} vs project $${projectBudget}`);
-          
-          if (contractorValue > projectBudget) {
-            console.log(`❌ Contractor value exceeds project budget`);
-            return res.status(400).json({
-              message: "Budget exceeded",
-              error: `The contractor value ($${contractorValue}) exceeds the project budget ($${projectBudget}).`
-            });
-          }
-          
-          console.log(`✅ Budget validation passed`);
-          updateData.contractorBudget = contractorValue;
-        }
-      }
-      
-      // Update the contract
-      console.log(`🔥 Updating contract with data:`, JSON.stringify(updateData));
+      // Just assign the contractor - no complex validation
       const updatedContract = await storage.updateContract(id, updateData);
       
       if (!updatedContract) {
         return res.status(404).json({ message: "Failed to update contract" });
       }
       
-      
-      // Automatically activate any draft contract that has a contractor assigned
-      if (existingContract.status.toLowerCase() === 'draft' && (existingContract.contractorId || updateData.contractorId)) {
-        updateData.status = 'active';
-        console.log("Contract status changed from draft to active - contractor is assigned");
-      }
-      
-      console.log(`✅ Contract updated successfully:`, JSON.stringify(updatedContract));
+      console.log(`✅ Contractor assigned successfully`);
       res.json(updatedContract);
     } catch (error) {
-      console.error(`❌ PATCH /contracts error:`, error);
+      console.error(`Error updating contract:`, error);
       res.status(500).json({ 
-        message: "Error updating contract",
-        error: error instanceof Error ? error.message : "Unknown error"
+        message: "Error updating contract"
       });
     }
   });
