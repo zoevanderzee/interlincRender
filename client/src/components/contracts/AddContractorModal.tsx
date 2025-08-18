@@ -109,13 +109,13 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
       );
       
       // Also create a work request to notify the contractor
+      // Note: businessId will be automatically set to the current user's ID by the server
       await apiRequest(
         'POST',
         '/api/work-requests',
         {
           title: finalDeliverables,
           description: `Project deliverable: ${finalDeliverables}`,
-          businessId: contract?.businessId || 0,
           recipientEmail: availableContractors.find(c => c.id.toString() === selectedContractorId)?.email,
           status: 'pending',
           budgetMin: finalAmount,

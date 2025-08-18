@@ -3813,10 +3813,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Parse and validate the input
       const workRequestInput = insertWorkRequestSchema.parse(req.body);
       
-      // Make sure the businessId matches the current user
-      if (workRequestInput.businessId !== currentUser.id) {
-        return res.status(403).json({ message: "Cannot create work requests for other businesses" });
-      }
+      // Automatically set businessId to the current user's ID (security measure)
+      workRequestInput.businessId = currentUser.id;
       
       // Generate a secure token for this work request
       const { token, tokenHash } = generateWorkRequestToken();
