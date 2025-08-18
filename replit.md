@@ -10,6 +10,8 @@ This is a comprehensive contractor/freelancer management platform built with Rea
 
 **CONTRACTOR ONBOARDING REDESIGN (August 14, 2025)**: Completely eliminated Trolley widget dependency for contractors. Replaced external widget approach with native Creativ Linc payment setup interface at `/payment-setup`. Contractors now onboard through integrated form that collects payout details and creates Trolley recipients via direct API calls. This provides better user experience and maintains brand consistency.
 
+**CONTRACTOR ASSIGNMENT ISSUES RESOLVED (August 18, 2025)**: Fixed critical data validation bug in work request creation where budget values were sent as strings instead of numbers, causing "Invalid work request data" errors. Implemented proper parseFloat() conversion for budgetMin/budgetMax fields. Also resolved authentication session separation between development and production environments.
+
 # User Preferences
 
 Preferred communication style: Simple, everyday language.
