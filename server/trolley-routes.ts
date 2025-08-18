@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { Request, Response } from "express";
 import { db } from "./db";
-import { users, milestones, payments, contracts } from "../shared/schema";
+import { users, deliverables, payments, contracts } from "../shared/schema";
 import { eq, and } from "drizzle-orm";
 import { trolleyService, type TrolleyRecipient, type CreateRecipientRequest } from "./trolley-service";
 import { trolleySdk } from "./trolley-sdk-service";
@@ -404,7 +404,7 @@ export default function trolleyRoutes(app: Express, apiPath: string, authMiddlew
     }
   });
 
-  // Process milestone payment automatically
+  // Process deliverable payment automatically
   app.post(`${trolleyBasePath}/payments`, authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user?.id;
@@ -412,20 +412,20 @@ export default function trolleyRoutes(app: Express, apiPath: string, authMiddlew
         return res.status(401).json({ message: 'User not authenticated' });
       }
 
-      const { milestoneId, contractId } = req.body;
-      if (!milestoneId || !contractId) {
-        return res.status(400).json({ message: 'Milestone ID and Contract ID are required' });
+      const { deliverableId, contractId } = req.body;
+      if (!deliverableId || !contractId) {
+        return res.status(400).json({ message: 'Deliverable ID and Contract ID are required' });
       }
 
-      // Get milestone details
-      const milestone = await db.select().from(milestones).where(eq(milestones.id, milestoneId)).limit(1);
-      if (!milestone.length) {
-        return res.status(404).json({ message: 'Milestone not found' });
+      // Get deliverable details
+      const deliverable = await db.select().from(deliverables).where(eq(deliverables.id, deliverableId)).limit(1);
+      if (!deliverable.length) {
+        return res.status(404).json({ message: 'Deliverable not found' });
       }
 
-      const milestoneData = milestone[0];
-      if (milestoneData.status !== 'approved') {
-        return res.status(400).json({ message: 'Milestone must be approved before payment' });
+      const deliverableData = deliverable[0];
+      if (deliverableData.status !== 'approved') {
+        return res.status(400).json({ message: 'Deliverable must be approved before payment' });
       }
 
       // Get contract and contractor details
@@ -453,18 +453,18 @@ export default function trolleyRoutes(app: Express, apiPath: string, authMiddlew
       // Create and process payment
       const paymentResult = await trolleyService.createAndProcessPayment({
         recipientId: contractorData.trolleyRecipientId,
-        amount: milestoneData.paymentAmount,
+        amount: deliverableData.paymentAmount,
         currency: 'USD',
-        memo: `Payment for milestone: ${milestoneData.name}`,
-        externalId: `milestone_${milestoneId}`,
-        description: `Milestone payment for contract ${contractData.contractName}`
+        memo: `Payment for deliverable: ${deliverableData.name}`,
+        externalId: `deliverable_${deliverableId}`,
+        description: `Deliverable payment for contract ${contractData.contractName}`
       });
 
       // Create payment record in database
       const paymentRecord = await db.insert(payments).values({
         contractId: contractId,
-        milestoneId: milestoneId,
-        amount: milestoneData.paymentAmount,
+        deliverableId: deliverableId,
+        amount: deliverableData.paymentAmount,
         status: 'processing',
         scheduledDate: new Date(),
         notes: `Trolley batch: ${paymentResult.batch.id}`,

@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Payment, Contract, User, Milestone } from "@shared/schema";
+import { Payment, Contract, User, Deliverable } from "@shared/schema";
 
 // Define interface for dashboard data (matches server/routes.ts dashboard endpoint)
 interface DashboardData {
@@ -25,7 +25,7 @@ interface DashboardData {
   };
   contracts: Contract[];
   contractors: User[];
-  milestones: any[];
+  deliverables: any[];
   payments: any[];
   invites: any[];
 }

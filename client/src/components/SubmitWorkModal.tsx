@@ -21,15 +21,15 @@ import { Upload, FileText } from "lucide-react";
 interface SubmitWorkModalProps {
   isOpen: boolean;
   onClose: () => void;
-  milestoneId: number;
-  milestoneName: string;
+  deliverableId: number;
+  deliverableName: string;
 }
 
 export function SubmitWorkModal({
   isOpen,
   onClose,
-  milestoneId,
-  milestoneName,
+  deliverableId,
+  deliverableName,
 }: SubmitWorkModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -50,7 +50,7 @@ export function SubmitWorkModal({
       deliverableFiles?: any[];
       deliverableDescription?: string;
     }) => {
-      const response = await apiRequest("PATCH", `/milestones/${milestoneId}`, data);
+      const response = await apiRequest("PATCH", `/deliverables/${deliverableId}`, data);
       return response.json();
     },
     onSuccess: () => {
@@ -58,7 +58,7 @@ export function SubmitWorkModal({
         title: "Work Submitted",
         description: "Your deliverable has been submitted for approval.",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/milestones"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/deliverables"] });
       queryClient.invalidateQueries({ queryKey: ["/api/contracts"] });
       onClose();
     },
@@ -130,7 +130,7 @@ export function SubmitWorkModal({
         <DialogHeader>
           <DialogTitle>Submit Deliverable</DialogTitle>
           <DialogDescription>
-            Submit your work for "{milestoneName}" to get approval and payment.
+            Submit your work for "{deliverableName}" to get approval and payment.
           </DialogDescription>
         </DialogHeader>
 

@@ -97,7 +97,7 @@ const PaymentsList: React.FC<PaymentsListProps> = ({
                     <p className="text-xs text-zinc-400">
                       <span className="mr-2">{getContractTitle(payment.contractId)}</span>
                       <span>&#8226;</span>
-                      <span className="ml-2">{getDeliverableTitle(payment.milestoneId)}</span>
+                      <span className="ml-2">{getDeliverableTitle(payment.deliverableId)}</span>
                     </p>
                   </div>
                   <Badge 

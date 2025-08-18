@@ -615,7 +615,7 @@ export default function ContractorInvitePage() {
               <CheckCircle2 className="h-5 w-5 text-green-500 mr-2 mt-1" />
               <div>
                 <h3 className="text-white font-medium">Smart Contract Automation</h3>
-                <p className="text-zinc-500">No more invoicing. Get paid automatically when milestones are completed.</p>
+                <p className="text-zinc-500">No more invoicing. Get paid automatically when deliverables are completed.</p>
               </div>
             </div>
             

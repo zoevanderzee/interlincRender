@@ -220,7 +220,7 @@ const DataRoom = () => {
               <CardTitle>Complete Compliance Data</CardTitle>
             </div>
             <CardDescription>
-              Export all contracts, milestones, and payment records in comprehensive JSON format for legal compliance
+              Export all contracts, deliverables, and payment records in comprehensive JSON format for legal compliance
             </CardDescription>
           </CardHeader>
           <CardContent>

@@ -170,7 +170,7 @@ class TrolleySubmerchantService {
       // Create batch for the submerchant using live API
       const batch = await (trolleySdk as any).client.batch.create({
         sourceAccountId: paymentData.submerchantId,
-        description: paymentData.memo || 'Milestone payment'
+        description: paymentData.memo || 'Deliverable payment'
       });
 
       // Add payment to the batch

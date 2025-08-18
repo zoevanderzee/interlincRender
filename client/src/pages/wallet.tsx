@@ -723,7 +723,7 @@ export default function WalletPage() {
                           <span className="text-sm text-zinc-300 font-medium">Ready for pay-as-you-go payments</span>
                         </div>
                         <p className="text-sm text-zinc-400">
-                          🔴 LIVE MODE: Your real business bank account is verified. Milestone approvals will automatically charge this account with REAL MONEY.
+                          🔴 LIVE MODE: Your real business bank account is verified. Deliverable approvals will automatically charge this account with REAL MONEY.
                         </p>
                       </div>
                     </div>

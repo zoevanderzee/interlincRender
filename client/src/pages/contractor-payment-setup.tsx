@@ -208,7 +208,7 @@ export default function ContractorPaymentSetup() {
       <div>
         <h1 className="text-3xl font-bold text-white mb-2">Payment Setup</h1>
         <p className="text-zinc-400">
-          Set up your payment details to receive direct bank transfers from approved milestones.
+          Set up your payment details to receive direct bank transfers from approved deliverables.
         </p>
       </div>
 
@@ -274,7 +274,7 @@ export default function ContractorPaymentSetup() {
             </CardTitle>
             <CardDescription>
               {isSetupComplete 
-                ? 'You can now receive payments from approved milestones'
+                ? 'You can now receive payments from approved deliverables'
                 : 'Complete your Trolley setup to start receiving payments'
               }
             </CardDescription>
@@ -285,7 +285,7 @@ export default function ContractorPaymentSetup() {
                 <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-white mb-2">All Set!</h3>
                 <p className="text-zinc-400 text-sm">
-                  You'll receive payments directly to your bank account when milestones are approved.
+                  You'll receive payments directly to your bank account when deliverables are approved.
                 </p>
               </div>
             ) : (
@@ -354,7 +354,7 @@ export default function ContractorPaymentSetup() {
               </div>
               <h4 className="font-medium text-white mb-1">Work on Projects</h4>
               <p className="text-sm text-zinc-400">
-                Complete assigned milestones and submit your work
+                Complete assigned deliverables and submit your work
               </p>
             </div>
 
@@ -364,7 +364,7 @@ export default function ContractorPaymentSetup() {
               </div>
               <h4 className="font-medium text-white mb-1">Get Paid</h4>
               <p className="text-sm text-zinc-400">
-                Receive automatic payments when milestones are approved
+                Receive automatic payments when deliverables are approved
               </p>
             </div>
           </div>
@@ -375,7 +375,7 @@ export default function ContractorPaymentSetup() {
               <li>• Payments processed through business Trolley submerchant accounts</li>
               <li>• Direct bank transfers to your verified account</li>
               <li>• International payments supported with competitive rates</li>
-              <li>• Automatic processing when milestones are approved</li>
+              <li>• Automatic processing when deliverables are approved</li>
               <li>• Full payment tracking and history available</li>
             </ul>
           </div>

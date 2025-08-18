@@ -16,13 +16,13 @@ export class NotificationService {
     return await storage.createNotification(notification);
   }
 
-  // Create notification for milestone approval
-  static async createMilestoneApproval(contractorId: number, milestoneTitle: string, paymentAmount: string) {
+  // Create notification for deliverable approval
+  static async createDeliverableApproval(contractorId: number, deliverableTitle: string, paymentAmount: string) {
     const notification: InsertNotification = {
       userId: contractorId,
-      title: "Milestone Approved",
-      message: `Your milestone "${milestoneTitle}" has been approved. Payment of ${paymentAmount} is being processed.`,
-      type: "milestone_approved",
+      title: "Deliverable Approved",
+      message: `Your deliverable "${deliverableTitle}" has been approved. Payment of ${paymentAmount} is being processed.`,
+      type: "deliverable_approved",
       relatedId: null,
       isRead: false
     };
@@ -159,9 +159,9 @@ export class NotificationService {
 
       notifications.push({
         userId: userId,
-        title: "Milestone Approved",
-        message: "Your milestone 'Initial Design Phase' has been approved. Payment of £500.00 is being processed.",
-        type: "milestone_approved",
+        title: "Deliverable Approved",
+        message: "Your deliverable 'Initial Design Phase' has been approved. Payment of £500.00 is being processed.",
+        type: "deliverable_approved",
         relatedId: null,
         isRead: false
       });

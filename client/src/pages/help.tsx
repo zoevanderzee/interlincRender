@@ -110,15 +110,15 @@ const Help = () => {
         },
         {
           question: "How do I view my active projects?",
-          answer: "Your contractor dashboard shows all active projects, pending earnings, and total earnings. Navigate to 'My Assignments' to see detailed project information, milestones, and deadlines for each contract."
+          answer: "Your contractor dashboard shows all active projects, pending earnings, and total earnings. Navigate to 'My Assignments' to see detailed project information, deliverables, and deadlines for each contract."
         },
         {
-          question: "How do I submit work for milestone approval?",
-          answer: "Go to your assigned contract, find the milestone you've completed, and upload your deliverables or provide progress updates. The business will review and approve your work, which automatically triggers payment."
+          question: "How do I submit work for deliverable approval?",
+          answer: "Go to your assigned contract, find the deliverable you've completed, and upload your deliverables or provide progress updates. The business will review and approve your work, which automatically triggers payment."
         },
         {
           question: "When will I receive payment?",
-          answer: "Payments are processed automatically when businesses approve your completed milestones. Depending on your location, payments are processed through Stripe (domestic) or Trolley (international) and typically take 1-3 business days to complete."
+          answer: "Payments are processed automatically when businesses approve your completed deliverables. Depending on your location, payments are processed through Stripe (domestic) or Trolley (international) and typically take 1-3 business days to complete."
         },
         {
           question: "How do connection requests work?",
@@ -265,7 +265,7 @@ const Help = () => {
                 </div>
                 <h3 className="text-lg font-medium mb-2">Work Submission Guide</h3>
                 <p className="text-primary-500 mb-4">
-                  Documentation on submitting work for milestones and tracking your earnings.
+                  Documentation on submitting work for deliverables and tracking your earnings.
                 </p>
                 <Button variant="outline" className="w-full">
                   View Guide
@@ -291,14 +291,14 @@ const Help = () => {
                   <div className="grid gap-3">
                     <Button variant="outline" className="justify-start h-auto p-4 text-left">
                       <div>
-                        <div className="font-medium">How do I submit work for a milestone?</div>
+                        <div className="font-medium">How do I submit work for a deliverable?</div>
                         <div className="text-sm text-primary-500">Go to My Assignments → Select Contract → Upload deliverables → Submit for approval</div>
                       </div>
                     </Button>
                     <Button variant="outline" className="justify-start h-auto p-4 text-left">
                       <div>
                         <div className="font-medium">When will I get paid?</div>
-                        <div className="text-sm text-primary-500">Payments are processed within 24 hours of milestone approval</div>
+                        <div className="text-sm text-primary-500">Payments are processed within 24 hours of deliverable approval</div>
                       </div>
                     </Button>
                     <Button variant="outline" className="justify-start h-auto p-4 text-left">
@@ -359,7 +359,7 @@ const Help = () => {
                                 <option value="">Select category...</option>
                                 <option value="billing">Billing & Subscription</option>
                                 <option value="payments">Payments & Wallet</option>
-                                <option value="contracts">Contracts & Milestones</option>
+                                <option value="contracts">Contracts & Deliverables</option>
                                 <option value="account">Account & Profile</option>
                                 <option value="technical">Technical Issues</option>
                                 <option value="general">General Questions</option>

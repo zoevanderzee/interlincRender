@@ -146,7 +146,7 @@ export const paymentLogs = pgTable("payment_logs", {
   applicationFee: decimal("application_fee", { precision: 10, scale: 2 }).notNull(),
   netAmount: decimal("net_amount", { precision: 10, scale: 2 }).notNull(), // Amount after platform fee
   currency: text("currency").default("USD"),
-  triggerEvent: text("trigger_event").notNull(), // "milestone_approved", "manual_payment", "scheduled_payment"
+  triggerEvent: text("trigger_event").notNull(), // "deliverable_approved", "manual_payment", "scheduled_payment"
   approvalTimestamp: timestamp("approval_timestamp").notNull(),
   paymentTimestamp: timestamp("payment_timestamp").notNull(),
   processorReference: text("processor_reference"), // Stripe payment intent ID

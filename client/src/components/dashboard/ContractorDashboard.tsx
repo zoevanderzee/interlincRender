@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
-import { Contract, Payment, Milestone } from '@shared/schema';
+import { Contract, Payment, Deliverable } from '@shared/schema';
 import { DollarSign, FileText, Calendar, Clock, AlertTriangle, CheckCircle, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,7 +16,7 @@ interface DashboardData {
     pendingInvitesCount: number;
   };
   contracts: Contract[];
-  milestones: Milestone[];
+  deliverables: Deliverable[];
   payments: Payment[];
 }
 

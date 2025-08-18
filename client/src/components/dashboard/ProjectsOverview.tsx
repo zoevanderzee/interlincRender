@@ -375,7 +375,7 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
                                         <h4 className="text-sm font-medium">Payment #{payment.id}</h4>
                                         <p className="text-xs text-zinc-400">
                                           {payment.notes || `Deliverable: ${
-                                            deliverables.find(d => d.id === payment.milestoneId)?.name || 'Unknown'
+                                            deliverables.find(d => d.id === payment.deliverableId)?.name || 'Unknown'
                                           }`}
                                         </p>
                                       </div>

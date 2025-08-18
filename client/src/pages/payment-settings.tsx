@@ -341,7 +341,7 @@ export default function PaymentSettings() {
               <ul className="text-sm text-muted-foreground space-y-1">
                 <li>• All payment data is encrypted and processed by Stripe</li>
                 <li>• We never store your full card numbers</li>
-                <li>• Automated payments are processed only when you approve milestones</li>
+                <li>• Automated payments are processed only when you approve deliverables</li>
                 <li>• You can remove payment methods at any time</li>
               </ul>
             </div>

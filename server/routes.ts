@@ -1030,7 +1030,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Authentication required" });
       }
       
-      let milestones;
+      let deliverables;
       if (contractId) {
         // SECURITY: Check if the contract belongs to the authenticated user
         const contract = await storage.getContract(contractId);
@@ -1049,9 +1049,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (contract.status === 'deleted') {
           return res.json([]); // Return empty array for deleted contracts
         }
-        milestones = await storage.getMilestonesByContractId(contractId);
+        deliverables = await storage.getDeliverablesByContractId(contractId);
       } else if (upcoming) {
-        // SECURITY: Only get milestones for user's contracts
+        // SECURITY: Only get deliverables for user's contracts
         let userContractIds = [];
         if (userRole === 'business') {
           const userContracts = await storage.getContractsByBusinessId(userId);
@@ -1065,17 +1065,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .map(contract => contract.id);
         }
         
-        // Get upcoming milestones only for user's contracts
-        const allMilestones = await storage.getUpcomingMilestones(50); // Get more to filter
-        milestones = allMilestones
+        // Get upcoming deliverables only for user's contracts
+        const allDeliverables = await storage.getUpcomingDeliverables(50); // Get more to filter
+        deliverables = allDeliverables
           .filter(deliverable => userContractIds.includes(deliverable.contractId))
           .slice(0, 5); // Limit to 5 for dashboard
       } else {
         // Default behavior - return empty for security
-        milestones = [];
+        deliverables = [];
       }
       
-      res.json(milestones);
+      res.json(deliverables);
     } catch (error) {
       console.error("Error fetching deliverables:", error);
       res.status(500).json({ message: "Error fetching deliverables" });
@@ -1092,7 +1092,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Authentication required" });
       }
       
-      const deliverable = await storage.getMilestone(id);
+      const deliverable = await storage.getDeliverable(id);
       if (!deliverable) {
         return res.status(404).json({ message: "Deliverable not found" });
       }
@@ -1143,7 +1143,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied: Cannot create deliverables for other contractor contracts" });
       }
       
-      const newDeliverable = await storage.createMilestone(deliverableInput);
+      const newDeliverable = await storage.createDeliverable(deliverableInput);
       res.status(201).json(newDeliverable);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -1168,7 +1168,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // SECURITY: Verify user has access to update this deliverable
-      const existingDeliverable = await storage.getMilestone(id);
+      const existingDeliverable = await storage.getDeliverable(id);
       if (!existingDeliverable) {
         return res.status(404).json({ message: "Deliverable not found" });
       }
@@ -1185,7 +1185,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied: Cannot update other contractor deliverables" });
       }
       
-      const updatedDeliverable = await storage.updateMilestone(id, updateData);
+      const updatedDeliverable = await storage.updateDeliverable(id, updateData);
       
       if (!updatedDeliverable) {
         return res.status(404).json({ message: "Deliverable not found" });
@@ -1224,7 +1224,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Update deliverable status to approved
-      const updatedDeliverable = await storage.updateMilestone(deliverableId, {
+      const updatedDeliverable = await storage.updateDeliverable(deliverableId, {
         status: 'approved',
         approvedAt: new Date(),
         approvalNotes: approvalNotes || null
@@ -1238,7 +1238,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const contract = await storage.getContract(updatedDeliverable.contractId);
         if (contract) {
-          await notificationService.createMilestoneApproval(
+          await notificationService.createDeliverableApproval(
             contract.contractorId,
             updatedDeliverable.name,
             `£${parseFloat(updatedDeliverable.paymentAmount).toFixed(2)}`
@@ -1249,7 +1249,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Trigger automated payment processing
-      const paymentResult = await automatedPaymentService.processMilestoneApproval(deliverableId, approvedBy);
+      const paymentResult = await automatedPaymentService.processDeliverableApproval(deliverableId, approvedBy);
 
       if (paymentResult.success) {
         res.json({
@@ -1775,7 +1775,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
           contracts: [], // Empty - contractors should not see contracts
           contractors: [], // Empty - contractors don't need to see other contractors
-          milestones: [], // Empty - contractors should not see milestones
+          deliverables: [], // Empty - contractors should not see deliverables
           payments: [], // Empty - contractors should not see payment details
           invites: [] // Empty - contractors don't manage invites
         };
@@ -1808,11 +1808,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       upcomingPayments = upcomingPayments.filter(payment => 
         activeContractIds.includes(payment.contractId));
       
-      // Get the upcoming milestones (5 most recent)
-      let upcomingMilestones = await storage.getUpcomingMilestones(5);
+      // Get the upcoming deliverables (5 most recent)
+      let upcomingDeliverables = await storage.getUpcomingDeliverables(5);
       
-      // Filter out milestones for deleted contracts using the activeContractIds
-      upcomingMilestones = upcomingMilestones.filter(deliverable => 
+      // Filter out deliverables for deleted contracts using the activeContractIds
+      upcomingDeliverables = upcomingDeliverables.filter(deliverable => 
         activeContractIds.includes(deliverable.contractId));
       
       // For each active contract, ensure there are payments that reflect the contract value
@@ -1835,7 +1835,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return {
             id: -contract.id, // Use a negative ID to indicate this is a virtual payment
             contractId: contract.id,
-            milestoneId: 0, // No deliverable associated yet
+            deliverableId: 0, // No deliverable associated yet
             amount: remainingAmount.toFixed(2),
             status: 'pending',
             scheduledDate: contract.startDate || new Date(),
@@ -1903,7 +1903,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         contracts: userContracts.filter(contract => contract.status !== 'deleted'),
         contractors: allContractors,  // Add contractors data
-        milestones: upcomingMilestones,
+        deliverables: upcomingDeliverables,
         payments: allUpcomingPayments, // Include virtual payments
         // Only include minimal invite data to prevent errors
         invites: pendingInvites.map(item => ({
@@ -2001,7 +2001,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Create a new payment intent
-      const paymentIntent = await stripeService.processMilestonePayment(payment);
+      const paymentIntent = await stripeService.processDeliverablePayment(payment);
       
       // Update payment with Stripe payment intent details
       await storage.updatePaymentStripeDetails(
@@ -2542,11 +2542,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get only deliverables related to the user's contracts
-      let milestones = await storage.getAllMilestones();
+      let deliverables = await storage.getAllDeliverables();
       if (contractIds.length > 0) {
-        milestones = milestones.filter(deliverable => contractIds.includes(deliverable.contractId));
+        deliverables = deliverables.filter(deliverable => contractIds.includes(deliverable.contractId));
       } else {
-        milestones = []; // No contracts means no deliverables
+        deliverables = []; // No contracts means no deliverables
       }
       
       // Get contractors associated with the user's contracts
@@ -4890,28 +4890,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Process Trolley payment for approved milestone
-  app.post(`${apiRouter}/trolley/pay-milestone`, requireAuth, async (req: Request, res: Response) => {
+  // Process Trolley payment for approved deliverable
+  app.post(`${apiRouter}/trolley/pay-deliverable`, requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user;
       if (!user || user.role !== 'business') {
         return res.status(403).json({ message: "Only business accounts can process payments" });
       }
 
-      const { milestoneId, amount, currency = 'GBP' } = req.body;
+      const { deliverableId, amount, currency = 'GBP' } = req.body;
 
-      if (!milestoneId || !amount) {
-        return res.status(400).json({ message: "Milestone ID and amount are required" });
+      if (!deliverableId || !amount) {
+        return res.status(400).json({ message: "Deliverable ID and amount are required" });
       }
 
-      // Get milestone details
-      const milestone = await storage.getMilestone(milestoneId);
-      if (!milestone) {
-        return res.status(404).json({ message: "Milestone not found" });
+      // Get deliverable details
+      const deliverable = await storage.getDeliverable(deliverableId);
+      if (!deliverable) {
+        return res.status(404).json({ message: "Deliverable not found" });
       }
 
       // Get contract to verify ownership and get contractor
-      const contract = await storage.getContract(milestone.contractId);
+      const contract = await storage.getContract(deliverable.contractId);
       if (!contract || contract.businessId !== user.id) {
         return res.status(403).json({ message: "Access denied" });
       }
@@ -4933,8 +4933,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         recipientId: contractor.trolleyRecipientId,
         amount: amount.toString(),
         currency,
-        description: `Payment for milestone: ${milestone.name} - ${contract.contractName}`,
-        externalId: `milestone_${milestoneId}_${Date.now()}`
+        description: `Payment for deliverable: ${deliverable.name} - ${contract.contractName}`,
+        externalId: `deliverable_${deliverableId}_${Date.now()}`
       };
 
       const result = await trolleyApi.createPayment(paymentData);
@@ -4945,8 +4945,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Log payment in database
       const paymentRecord = await storage.createPayment({
-        contractId: milestone.contractId,
-        milestoneId: milestoneId,
+        contractId: deliverable.contractId,
+        deliverableId: deliverableId,
         amount: amount.toString(),
         status: 'processing',
         scheduledDate: new Date(),
@@ -4957,12 +4957,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         triggeredAt: new Date()
       });
 
-      // Update milestone status to indicate payment processed
-      await storage.updateMilestone(milestoneId, {
+      // Update deliverable status to indicate payment processed
+      await storage.updateDeliverable(deliverableId, {
         status: 'paid'
       });
 
-      console.log(`Created Trolley payment ${result.paymentId} for milestone ${milestoneId}`);
+      console.log(`Created Trolley payment ${result.paymentId} for deliverable ${deliverableId}`);
       
       res.json({ 
         success: true, 
@@ -4972,7 +4972,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
     } catch (error) {
-      console.error("Error processing Trolley milestone payment:", error);
+      console.error("Error processing Trolley deliverable payment:", error);
       res.status(500).json({ message: "Error processing payment" });
     }
   });
@@ -5040,13 +5040,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         notes: `${paymentRecord.notes || ''} - Webhook update: ${event}`
       });
 
-      // If payment completed, update milestone status to 'paid'
-      if (event === 'payment.completed' && paymentRecord.milestoneId) {
-        await storage.updateMilestone(paymentRecord.milestoneId, {
+      // If payment completed, update deliverable status to 'paid'
+      if (event === 'payment.completed' && paymentRecord.deliverableId) {
+        await storage.updateDeliverable(paymentRecord.deliverableId, {
           status: 'paid'
         });
         
-        console.log(`Updated milestone ${paymentRecord.milestoneId} to 'paid' status`);
+        console.log(`Updated deliverable ${paymentRecord.deliverableId} to 'paid' status`);
       }
 
       console.log(`Updated payment ${paymentRecord.id} status to ${newStatus}`);
@@ -5526,7 +5526,7 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
   });
 
   /**
-   * Process milestone payment through submerchant
+   * Process deliverable payment through submerchant
    */
   app.post(`${basePath}/process-payment`, requireAuth, async (req: Request, res: Response) => {
     try {
@@ -5539,9 +5539,9 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
         return res.status(404).json({ message: 'No submerchant account found. Please create one first.' });
       }
 
-      const { milestoneId, contractorId, amount, currency = 'USD', memo } = req.body;
+      const { deliverableId, contractorId, amount, currency = 'USD', memo } = req.body;
 
-      if (!milestoneId || !contractorId || !amount || amount <= 0) {
+      if (!deliverableId || !contractorId || !amount || amount <= 0) {
         return res.status(400).json({ message: 'Missing required payment details' });
       }
 
@@ -5572,8 +5572,8 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
         recipientId: contractor.trolleyRecipientId,
         amount,
         currency,
-        memo: memo || `Milestone ${milestoneId} payment`,
-        reference: `milestone_${milestoneId}_contract_${user.id}_${contractorId}`
+        memo: memo || `Deliverable ${deliverableId} payment`,
+        reference: `deliverable_${deliverableId}_contract_${user.id}_${contractorId}`
       });
 
       if (!paymentResult.success) {
@@ -5602,7 +5602,7 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
         amount,
         currency,
         contractorId,
-        milestoneId
+        deliverableId
       });
 
     } catch (error) {

@@ -3,7 +3,7 @@
  */
 
 import { db } from '../server/db';
-import { users, contracts, milestones, payments } from '../shared/schema';
+import { users, contracts, deliverables, payments } from '../shared/schema';
 import { eq } from 'drizzle-orm';
 
 async function main() {
@@ -59,25 +59,25 @@ async function main() {
     console.log(`Found existing contract with ID: ${contractId}`);
   }
   
-  // Create a milestone
-  console.log('Creating milestone...');
-  const [milestone] = await db.insert(milestones).values({
+  // Create a deliverable
+  console.log('Creating deliverable...');
+  const [deliverable] = await db.insert(deliverables).values({
     contractId,
     name: 'Connect Payment Test',
-    description: 'Test milestone for Connect payment',
+    description: 'Test deliverable for Connect payment',
     status: 'pending',
     paymentAmount: '1000',
     dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
     progress: 100
   }).returning();
   
-  console.log(`Created milestone with ID: ${milestone.id}`);
+  console.log(`Created deliverable with ID: ${deliverable.id}`);
   
   // Create a payment
   console.log('Creating payment...');
   const [payment] = await db.insert(payments).values({
     contractId,
-    milestoneId: milestone.id,
+    deliverableId: deliverable.id,
     amount: '1000',
     status: 'scheduled',
     scheduledDate: new Date(),

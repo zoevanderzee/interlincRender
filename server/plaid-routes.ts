@@ -153,7 +153,7 @@ export default function plaidRoutes(app: Express, apiPath: string, authMiddlewar
     }
   });
 
-  // Initiate an ACH payment for a milestone payment
+  // Initiate an ACH payment for a deliverable payment
   app.post(`${plaidBasePath}/payments/:id/pay-via-ach`, authMiddleware, async (req: Request, res: Response) => {
     try {
       const paymentId = parseInt(req.params.id);

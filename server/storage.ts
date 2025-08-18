@@ -1,10 +1,10 @@
 import { 
-  users, invites, contracts, milestones, payments, paymentLogs, documents, bankAccounts, workRequests,
+  users, invites, contracts, deliverables, payments, paymentLogs, documents, bankAccounts, workRequests,
   businessOnboardingLinks, businessOnboardingUsage, connectionRequests, notifications, workSubmissions, workRequestSubmissions,
   type User, type InsertUser, 
   type Invite, type InsertInvite,
   type Contract, type InsertContract,
-  type Milestone, type InsertMilestone,
+  type Deliverable, type InsertDeliverable,
   type Payment, type InsertPayment,
   type Document, type InsertDocument,
   type BankAccount, type InsertBankAccount,
@@ -107,22 +107,22 @@ export interface IStorage {
   deleteContract(id: number): Promise<boolean>;
   permanentlyDeleteContract(id: number): Promise<boolean>;
   
-  // Milestones
-  getMilestone(id: number): Promise<Milestone | undefined>;
-  getMilestonesByContractId(contractId: number): Promise<Milestone[]>;
-  getAllMilestones(): Promise<Milestone[]>;
-  getUpcomingMilestones(limit: number): Promise<Milestone[]>;
-  createMilestone(milestone: InsertMilestone): Promise<Milestone>;
-  updateMilestone(id: number, milestone: Partial<InsertMilestone>): Promise<Milestone | undefined>;
+  // Deliverables
+  getDeliverable(id: number): Promise<Deliverable | undefined>;
+  getDeliverablesByContractId(contractId: number): Promise<Deliverable[]>;
+  getAllDeliverables(): Promise<Deliverable[]>;
+  getUpcomingDeliverables(limit: number): Promise<Deliverable[]>;
+  createDeliverable(deliverable: InsertDeliverable): Promise<Deliverable>;
+  updateDeliverable(id: number, deliverable: Partial<InsertDeliverable>): Promise<Deliverable | undefined>;
   
   // Payments
   getPayment(id: number): Promise<Payment | undefined>;
   getPaymentsByContractId(contractId: number): Promise<Payment[]>;
-  getPaymentByMilestoneId(milestoneId: number): Promise<Payment | undefined>;
+  getPaymentByDeliverableId(deliverableId: number): Promise<Payment | undefined>;
   getPaymentByTrolleyId(trolleyPaymentId: string): Promise<Payment | undefined>;
   getAllPayments(contractId: number | null): Promise<Payment[]>;
   getUpcomingPayments(limit: number): Promise<Payment[]>;
-  getApprovedMilestonesWithoutPayments(): Promise<Milestone[]>;
+  getApprovedDeliverablesWithoutPayments(): Promise<Deliverable[]>;
   createPayment(payment: InsertPayment): Promise<Payment>;
   updatePayment(id: number, payment: Partial<InsertPayment>): Promise<Payment | undefined>;
   updatePaymentStripeDetails(id: number, stripePaymentIntentId: string, stripePaymentIntentStatus: string): Promise<Payment | undefined>;
@@ -199,7 +199,7 @@ export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private invites: Map<number, Invite>;
   private contracts: Map<number, Contract>;
-  private milestones: Map<number, Milestone>;
+  private deliverables: Map<number, Deliverable>;
   private payments: Map<number, Payment>;
   private documents: Map<number, Document>;
   private bankAccounts: Map<number, BankAccount>;
@@ -211,7 +211,7 @@ export class MemStorage implements IStorage {
   private userId: number;
   private inviteId: number;
   private contractId: number;
-  private milestoneId: number;
+  private deliverableId: number;
   private paymentId: number;
   private documentId: number;
   private bankAccountId: number;
@@ -225,7 +225,7 @@ export class MemStorage implements IStorage {
     this.users = new Map();
     this.invites = new Map();
     this.contracts = new Map();
-    this.milestones = new Map();
+    this.deliverables = new Map();
     this.payments = new Map();
     this.documents = new Map();
     this.bankAccounts = new Map();
@@ -237,7 +237,7 @@ export class MemStorage implements IStorage {
     this.userId = 1;
     this.inviteId = 1;
     this.contractId = 1;
-    this.milestoneId = 1;
+    this.deliverableId = 1;
     this.paymentId = 1;
     this.documentId = 1;
     this.bankAccountId = 1;
@@ -591,40 +591,40 @@ export class MemStorage implements IStorage {
     return true;
   }
   
-  // Milestone CRUD methods
-  async getMilestone(id: number): Promise<Milestone | undefined> {
-    return this.milestones.get(id);
+  // Deliverable CRUD methods
+  async getDeliverable(id: number): Promise<Deliverable | undefined> {
+    return this.deliverables.get(id);
   }
   
-  async getMilestonesByContractId(contractId: number): Promise<Milestone[]> {
-    return Array.from(this.milestones.values()).filter(
-      (milestone) => milestone.contractId === contractId
+  async getDeliverablesByContractId(contractId: number): Promise<Deliverable[]> {
+    return Array.from(this.deliverables.values()).filter(
+      (deliverable) => deliverable.contractId === contractId
     );
   }
   
-  async getAllMilestones(): Promise<Milestone[]> {
-    return Array.from(this.milestones.values());
+  async getAllDeliverables(): Promise<Deliverable[]> {
+    return Array.from(this.deliverables.values());
   }
   
-  async getUpcomingMilestones(limit: number): Promise<Milestone[]> {
+  async getUpcomingDeliverables(limit: number): Promise<Deliverable[]> {
     // For development, return empty array to clear test data
     return [];
   }
   
-  async createMilestone(insertMilestone: InsertMilestone): Promise<Milestone> {
-    const id = this.milestoneId++;
-    const milestone: Milestone = { ...insertMilestone, id };
-    this.milestones.set(id, milestone);
-    return milestone;
+  async createDeliverable(insertDeliverable: InsertDeliverable): Promise<Deliverable> {
+    const id = this.deliverableId++;
+    const deliverable: Deliverable = { ...insertDeliverable, id };
+    this.deliverables.set(id, deliverable);
+    return deliverable;
   }
   
-  async updateMilestone(id: number, milestoneData: Partial<InsertMilestone>): Promise<Milestone | undefined> {
-    const existingMilestone = this.milestones.get(id);
-    if (!existingMilestone) return undefined;
+  async updateDeliverable(id: number, deliverableData: Partial<InsertDeliverable>): Promise<Deliverable | undefined> {
+    const existingDeliverable = this.deliverables.get(id);
+    if (!existingDeliverable) return undefined;
     
-    const updatedMilestone = { ...existingMilestone, ...milestoneData };
-    this.milestones.set(id, updatedMilestone);
-    return updatedMilestone;
+    const updatedDeliverable = { ...existingDeliverable, ...deliverableData };
+    this.deliverables.set(id, updatedDeliverable);
+    return updatedDeliverable;
   }
   
   // Payment CRUD methods
@@ -923,7 +923,7 @@ export class MemStorage implements IStorage {
       endDate: new Date("2023-12-15")
     });
     
-    // Create sample milestones
+    // Create sample deliverables
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     
@@ -933,7 +933,7 @@ export class MemStorage implements IStorage {
     const inFiveDays = new Date();
     inFiveDays.setDate(inFiveDays.getDate() + 5);
     
-    this.createMilestone({
+    this.createDeliverable({
       contractId: 1,
       name: "Final Design Approval",
       description: "Approval of the final design before implementation",
@@ -943,7 +943,7 @@ export class MemStorage implements IStorage {
       progress: 85
     });
     
-    this.createMilestone({
+    this.createDeliverable({
       contractId: 2,
       name: "Campaign Strategy Document",
       description: "Creation of marketing strategy document",
@@ -953,7 +953,7 @@ export class MemStorage implements IStorage {
       progress: 60
     });
     
-    this.createMilestone({
+    this.createDeliverable({
       contractId: 3,
       name: "App Architecture Planning",
       description: "Planning and documentation of app architecture",
@@ -971,7 +971,7 @@ export class MemStorage implements IStorage {
     
     this.createPayment({
       contractId: 1,
-      milestoneId: 1,
+      deliverableId: 1,
       amount: "1200",
       status: "scheduled",
       scheduledDate: aug15,
@@ -980,7 +980,7 @@ export class MemStorage implements IStorage {
     
     this.createPayment({
       contractId: 2,
-      milestoneId: 2,
+      deliverableId: 2,
       amount: "2500",
       status: "scheduled",
       scheduledDate: aug18,
@@ -989,7 +989,7 @@ export class MemStorage implements IStorage {
     
     this.createPayment({
       contractId: 3,
-      milestoneId: 3,
+      deliverableId: 3,
       amount: "4000",
       status: "scheduled",
       scheduledDate: aug25,
@@ -998,7 +998,7 @@ export class MemStorage implements IStorage {
     
     this.createPayment({
       contractId: 3,
-      milestoneId: 0,
+      deliverableId: 0,
       amount: "850",
       status: "scheduled",
       scheduledDate: sep01,
@@ -1544,14 +1544,14 @@ export class DatabaseStorage implements IStorage {
         // Continue with deletion even if some related records fail
       }
       
-      // 2. Delete associated milestones
+      // 2. Delete associated deliverables
       try {
         await db
-          .delete(milestones)
-          .where(eq(milestones.contractId, id));
-        console.log(`Deleted milestones associated with contract ${id}`);
+          .delete(deliverables)
+          .where(eq(deliverables.contractId, id));
+        console.log(`Deleted deliverables associated with contract ${id}`);
       } catch (err) {
-        console.error(`Error deleting milestones for contract ${id}:`, err);
+        console.error(`Error deleting deliverables for contract ${id}:`, err);
         // Continue with deletion even if some related records fail
       }
       
@@ -1596,40 +1596,40 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
-  // Milestone CRUD methods
-  async getMilestone(id: number): Promise<Milestone | undefined> {
-    const [milestone] = await db.select().from(milestones).where(eq(milestones.id, id));
-    return milestone;
+  // Deliverable CRUD methods
+  async getDeliverable(id: number): Promise<Deliverable | undefined> {
+    const [deliverable] = await db.select().from(deliverables).where(eq(deliverables.id, id));
+    return deliverable;
   }
   
-  async getMilestonesByContractId(contractId: number): Promise<Milestone[]> {
-    return await db.select().from(milestones).where(eq(milestones.contractId, contractId));
+  async getDeliverablesByContractId(contractId: number): Promise<Deliverable[]> {
+    return await db.select().from(deliverables).where(eq(deliverables.contractId, contractId));
   }
   
-  async getAllMilestones(): Promise<Milestone[]> {
-    return await db.select().from(milestones);
+  async getAllDeliverables(): Promise<Deliverable[]> {
+    return await db.select().from(deliverables);
   }
   
-  async getUpcomingMilestones(limit: number): Promise<Milestone[]> {
+  async getUpcomingDeliverables(limit: number): Promise<Deliverable[]> {
     return await db
       .select()
-      .from(milestones)
+      .from(deliverables)
       .where(and(
-        eq(milestones.status, 'pending'),
-        gte(milestones.dueDate, new Date())
+        eq(deliverables.status, 'pending'),
+        gte(deliverables.dueDate, new Date())
       ))
-      .orderBy(milestones.dueDate)
+      .orderBy(deliverables.dueDate)
       .limit(limit);
   }
   
-  async createMilestone(insertMilestone: InsertMilestone): Promise<Milestone> {
-    const [milestone] = await db.insert(milestones).values(insertMilestone).returning();
-    return milestone;
+  async createDeliverable(insertDeliverable: InsertDeliverable): Promise<Deliverable> {
+    const [deliverable] = await db.insert(deliverables).values(insertDeliverable).returning();
+    return deliverable;
   }
   
-  async updateMilestone(id: number, milestoneData: Partial<InsertMilestone>): Promise<Milestone | undefined> {
+  async updateDeliverable(id: number, deliverableData: Partial<InsertDeliverable>): Promise<Deliverable | undefined> {
     // Process any date fields that might come in as strings
-    const processedData = { ...milestoneData };
+    const processedData = { ...deliverableData };
     
     // Convert string dates to Date objects for timestamp fields
     if (processedData.submittedAt && typeof processedData.submittedAt === 'string') {
@@ -1642,12 +1642,12 @@ export class DatabaseStorage implements IStorage {
       processedData.dueDate = new Date(processedData.dueDate);
     }
     
-    const [updatedMilestone] = await db
-      .update(milestones)
+    const [updatedDeliverable] = await db
+      .update(deliverables)
       .set(processedData)
-      .where(eq(milestones.id, id))
+      .where(eq(deliverables.id, id))
       .returning();
-    return updatedMilestone;
+    return updatedDeliverable;
   }
   
   // Payment CRUD methods
@@ -1741,12 +1741,12 @@ export class DatabaseStorage implements IStorage {
     return updatedPayment;
   }
 
-  // Get payment by milestone ID for automated payment checks
-  async getPaymentByMilestoneId(milestoneId: number): Promise<Payment | undefined> {
+  // Get payment by deliverable ID for automated payment checks
+  async getPaymentByDeliverableId(deliverableId: number): Promise<Payment | undefined> {
     const [payment] = await db
       .select()
       .from(payments)
-      .where(eq(payments.milestoneId, milestoneId));
+      .where(eq(payments.deliverableId, deliverableId));
     return payment;
   }
 
@@ -1759,23 +1759,23 @@ export class DatabaseStorage implements IStorage {
     return payment;
   }
 
-  // Get approved milestones that don't have payments yet
-  async getApprovedMilestonesWithoutPayments(): Promise<Milestone[]> {
-    const approvedMilestones = await db
+  // Get approved deliverables that don't have payments yet
+  async getApprovedDeliverablesWithoutPayments(): Promise<Deliverable[]> {
+    const approvedDeliverables = await db
       .select()
-      .from(milestones)
-      .where(eq(milestones.status, 'approved'));
+      .from(deliverables)
+      .where(eq(deliverables.status, 'approved'));
 
-    // Filter out milestones that already have payments
-    const milestonesWithoutPayments: Milestone[] = [];
-    for (const milestone of approvedMilestones) {
-      const existingPayment = await this.getPaymentByMilestoneId(milestone.id);
+    // Filter out deliverables that already have payments
+    const deliverablesWithoutPayments: Deliverable[] = [];
+    for (const deliverable of approvedDeliverables) {
+      const existingPayment = await this.getPaymentByDeliverableId(deliverable.id);
       if (!existingPayment || existingPayment.status === 'failed') {
-        milestonesWithoutPayments.push(milestone);
+        deliverablesWithoutPayments.push(deliverable);
       }
     }
 
-    return milestonesWithoutPayments;
+    return deliverablesWithoutPayments;
   }
 
   // Create payment compliance log

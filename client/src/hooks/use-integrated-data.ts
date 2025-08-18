@@ -56,7 +56,7 @@ export function useIntegratedData() {
       queryClient.invalidateQueries({ queryKey: ['/api/trolley/funding-history'] }),
       queryClient.invalidateQueries({ queryKey: ['/api/user'] }),
       queryClient.invalidateQueries({ queryKey: ['/api/contracts'] }),
-      queryClient.invalidateQueries({ queryKey: ['/api/milestones'] }),
+      queryClient.invalidateQueries({ queryKey: ['/api/deliverables'] }),
       queryClient.invalidateQueries({ queryKey: ['/api/payments'] }),
     ]);
   };

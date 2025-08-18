@@ -171,7 +171,7 @@ export default function BusinessSetup() {
                 ) : (
                   <AlertCircle className="h-4 w-4 text-red-400" />
                 )}
-                <span className="text-sm">Process milestone payments</span>
+                <span className="text-sm">Process deliverable payments</span>
               </div>
               <div className="flex items-center gap-2">
                 {accountBalance && parseFloat(accountBalance.balance || '0') > 0 ? (
