@@ -3892,17 +3892,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post(`${apiRouter}/profile-code/generate`, requireAuth, async (req: Request, res: Response) => {
+  app.post(`${apiRouter}/profile-code/generate`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
       // Generate a new profile code for the authenticated user
-      const userId = req.user?.id;
+      let userId = req.user?.id;
+      let userRole = req.user?.role;
+      
+      // Handle fallback authentication via X-User-ID header
+      if (!userId && req.headers['x-user-id']) {
+        const fallbackUserId = parseInt(req.headers['x-user-id'] as string);
+        const fallbackUser = await storage.getUser(fallbackUserId);
+        if (fallbackUser) {
+          userId = fallbackUser.id;
+          userRole = fallbackUser.role;
+        }
+      }
       
       if (!userId) {
         return res.status(401).json({ message: "Authentication required" });
       }
       
       // Only contractors and freelancers can have profile codes
-      const userRole = req.user?.role;
       if (userRole !== 'contractor' && userRole !== 'freelancer') {
         return res.status(403).json({ message: "Only contractors and freelancers can generate profile codes" });
       }

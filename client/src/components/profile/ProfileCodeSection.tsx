@@ -26,21 +26,10 @@ export function ProfileCodeSection() {
   const { toast } = useToast();
   const [isCopied, setIsCopied] = useState(false);
 
-  // Query to fetch the user's profile code
-  const {
-    data: profileCode,
-    isLoading,
-    error,
-    refetch,
-  } = useQuery({
-    queryKey: ['/api/profile-code'],
-    retry: false,
-  });
-
   // Copy profile code to clipboard
   const copyToClipboard = () => {
-    if (profileCode?.code) {
-      navigator.clipboard.writeText(profileCode.code);
+    if (user?.profileCode) {
+      navigator.clipboard.writeText(user.profileCode);
       setIsCopied(true);
       toast({
         title: "Copied to clipboard",
@@ -55,7 +44,7 @@ export function ProfileCodeSection() {
   };
 
   // Check if we need to generate an initial profile code
-  const needsInitialCode = !isLoading && !error && (!profileCode || !profileCode.code);
+  const needsInitialCode = !user?.profileCode;
 
   // Generate initial code mutation
   const generateInitialCodeMutation = useMutation({
@@ -68,7 +57,7 @@ export function ProfileCodeSection() {
       return await response.json();
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/profile-code'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/user'] });
       toast({
         title: "Profile code generated",
         description: "Your profile code has been generated successfully.",
@@ -99,19 +88,7 @@ export function ProfileCodeSection() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {isLoading ? (
-          <div className="flex items-center justify-center py-6">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : error ? (
-          <div className="text-center py-6">
-            <p className="text-destructive mb-4">Failed to load profile code</p>
-            <Button variant="secondary" onClick={() => refetch()}>
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Retry
-            </Button>
-          </div>
-        ) : needsInitialCode ? (
+        {needsInitialCode ? (
           <div className="text-center py-6">
             <div className="flex items-center justify-center mb-4 text-muted-foreground">
               <Fingerprint className="h-12 w-12 opacity-50 mb-2" />
@@ -139,7 +116,7 @@ export function ProfileCodeSection() {
               <div className="flex items-center mt-2">
                 <Input
                   className="font-mono text-xl text-center bg-transparent border-none h-14 shadow-none"
-                  value={profileCode?.code || ""}
+                  value={user?.profileCode || ""}
                   readOnly
                 />
                 <TooltipProvider>
