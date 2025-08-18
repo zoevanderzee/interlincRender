@@ -390,7 +390,7 @@ export const workSubmissions = pgTable("work_submissions", {
   submittedAt: timestamp("submitted_at").notNull().defaultNow(),
   reviewedAt: timestamp("reviewed_at"),
   reviewNotes: text("review_notes"), // Feedback from business owner
-  milestoneId: integer("milestone_id").references(() => milestones.id) // Optional milestone reference
+  milestoneId: integer("milestone_id").references(() => milestones.id) // Optional deliverable reference
 });
 
 // Create notification schema

@@ -2,20 +2,20 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Payment, Contract, Milestone } from "@shared/schema";
+import { Payment, Contract, Deliverable } from "@shared/schema";
 import { DollarSign, Calendar, AlertCircle, CheckCircle, Link, ExternalLink } from "lucide-react";
 
 interface PaymentsListProps {
   payments: Payment[];
   contracts: Contract[];
-  milestones: Milestone[];
+  deliverables: Deliverable[];
   onViewPayment?: (id: number) => void;
 }
 
 const PaymentsList: React.FC<PaymentsListProps> = ({
   payments,
   contracts,
-  milestones,
+  deliverables,
   onViewPayment
 }) => {
   // Sort payments by scheduled date (most recent first)
@@ -52,10 +52,10 @@ const PaymentsList: React.FC<PaymentsListProps> = ({
     return contract ? contract.contractName : 'Unknown Contract';
   };
 
-  // Get milestone title
-  const getMilestoneTitle = (milestoneId: number) => {
-    const milestone = milestones.find(m => m.id === milestoneId);
-    return milestone ? milestone.name : 'Unknown Milestone';
+  // Get deliverable title
+  const getDeliverableTitle = (deliverableId: number) => {
+    const deliverable = deliverables.find(d => d.id === deliverableId);
+    return deliverable ? deliverable.name : 'Unknown Deliverable';
   };
 
   // Check if payment is due soon (within 3 days)
@@ -97,7 +97,7 @@ const PaymentsList: React.FC<PaymentsListProps> = ({
                     <p className="text-xs text-zinc-400">
                       <span className="mr-2">{getContractTitle(payment.contractId)}</span>
                       <span>&#8226;</span>
-                      <span className="ml-2">{getMilestoneTitle(payment.milestoneId)}</span>
+                      <span className="ml-2">{getDeliverableTitle(payment.milestoneId)}</span>
                     </p>
                   </div>
                   <Badge 
