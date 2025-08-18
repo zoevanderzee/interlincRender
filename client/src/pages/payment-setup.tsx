@@ -215,9 +215,7 @@ export default function PaymentSetup() {
               <p className="text-muted-foreground">
                 Your payment information is configured and ready to receive payments.
               </p>
-              <p className="text-sm text-muted-foreground">
-                Recipient ID: {(status as any)?.recipientId}
-              </p>
+
             </div>
           </CardContent>
         </Card>

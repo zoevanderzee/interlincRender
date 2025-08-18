@@ -118,12 +118,7 @@ export default function ContractorOnboarding() {
               )}
             </div>
 
-            {user.trolleyRecipientId && (
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-zinc-400">Recipient ID</span>
-                <span className="text-xs font-mono text-zinc-300">{user.trolleyRecipientId}</span>
-              </div>
-            )}
+
           </CardContent>
         </Card>
 
