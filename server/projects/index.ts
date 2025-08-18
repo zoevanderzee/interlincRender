@@ -2,8 +2,10 @@ import type { Express } from "express";
 import { storage } from "../storage";
 import { z } from "zod";
 import { insertWorkRequestSchema, updateWorkRequestSchema } from "@shared/schema";
+import { setupAuth } from "../auth";
 
 export function registerProjectRoutes(app: Express) {
+  const { requireAuth } = setupAuth(app);
   // Create a new project
   app.post("/api/projects", async (req, res) => {
     try {
