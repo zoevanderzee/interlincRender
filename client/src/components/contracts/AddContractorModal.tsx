@@ -108,6 +108,7 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
 
       // 2. Create work request to database (this is what shows up in Work Requests page)
       const projectId = contract?.projectId;
+      console.log('🔍 PROJECT DEBUG:', { contract, projectId, hasProjectId: !!projectId });
       if (projectId) {
         const formattedDueDate = new Date(dueDate || Date.now()).toISOString();
         
