@@ -312,11 +312,10 @@ export const insertProjectSchema = createInsertSchema(projects).omit({
 });
 
 // Work Request schema with proper date handling (updated for specification)
-const baseWorkRequestSchema = createInsertSchema(workRequests).omit({ 
+export const insertWorkRequestSchema = createInsertSchema(workRequests).omit({ 
   id: true, 
   createdAt: true
-});
-export const insertWorkRequestSchema = baseWorkRequestSchema.extend({
+}).extend({
   // Handle date strings from frontend forms
   dueDate: z.string().optional().transform(val => val ? new Date(val) : undefined),
   // Convert amount to proper decimal format
@@ -328,6 +327,8 @@ export const insertWorkRequestSchema = baseWorkRequestSchema.extend({
   }),
   // Allow contractorUserId as alternative to businessWorkerId
   contractorUserId: z.number().optional(),
+  // Make businessWorkerId optional since we can derive it from contractorUserId
+  businessWorkerId: z.number().optional(),
 }).refine(
   (data) => data.businessWorkerId || data.contractorUserId,
   {

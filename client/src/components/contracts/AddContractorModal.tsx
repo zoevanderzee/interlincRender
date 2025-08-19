@@ -111,19 +111,24 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
       if (projectId) {
         const formattedDueDate = new Date(dueDate || Date.now()).toISOString();
         
-        const workRequestResponse = await apiRequest(
-          'POST',
-          `/api/projects/${projectId}/work-requests`,
-          {
-            contractorUserId: parseInt(selectedContractorId),
-            title: deliverables,
-            description: `Project deliverable: ${deliverables}`,
-            dueDate: formattedDueDate,
-            amount: parseFloat(contractorValue || '0'),
-            currency: 'USD'
-          }
-        );
-        console.log('Work request creation result:', workRequestResponse);
+        try {
+          const workRequestResponse = await apiRequest(
+            'POST',
+            `/api/projects/${projectId}/work-requests`,
+            {
+              contractorUserId: parseInt(selectedContractorId),
+              title: deliverables,
+              description: `Project deliverable: ${deliverables}`,
+              dueDate: formattedDueDate,
+              amount: parseFloat(contractorValue || '0'),
+              currency: 'USD'
+            }
+          );
+          console.log('✅ Work request created successfully:', workRequestResponse);
+        } catch (workRequestError) {
+          console.error('❌ Work request creation failed:', workRequestError);
+          // Continue anyway since contract update succeeded
+        }
       }
 
       return contractResponse;
