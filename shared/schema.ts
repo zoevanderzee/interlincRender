@@ -223,6 +223,7 @@ export const workRequests = pgTable("work_requests", {
   contractorUserId: integer("contractor_user_id").notNull().references(() => users.id),
   title: text("title").notNull(),
   description: text("description").notNull(),
+  deliverableDescription: text("deliverable_description"),
   dueDate: timestamp("due_date"),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   currency: text("currency").notNull().default("USD"),

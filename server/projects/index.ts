@@ -119,7 +119,7 @@ export function registerProjectRoutes(app: Express) {
         });
       }
 
-      const { contractorUserId, title, description, dueDate, amount, currency } = validation.data;
+      const { contractorUserId, title, description, deliverableDescription, dueDate, amount, currency } = validation.data;
 
       // Load project and verify permissions
       const project = await storage.getProject(projectId);
@@ -147,6 +147,7 @@ export function registerProjectRoutes(app: Express) {
         contractorUserId,
         title,
         description,
+        deliverableDescription,
         dueDate,
         amount: amount.toString(),
         currency: currency || "USD",
@@ -349,13 +350,27 @@ export function registerProjectRoutes(app: Express) {
       // Link work request to contract
       await storage.updateWorkRequestContract(workRequestId, contract.id);
 
-      console.log(`[WORK_REQUEST_ACCEPTED] workRequestId=${workRequestId} contractorId=${currentUserId} contractId=${contract.id} amount=${workRequest.amount}`);
+      // Create a deliverable/milestone automatically when work request is accepted
+      const milestone = await storage.createMilestone({
+        contractId: contract.id,
+        name: workRequest.title,
+        description: workRequest.deliverableDescription || workRequest.description || `Deliverable for: ${workRequest.title}`,
+        dueDate: workRequest.dueDate ? new Date(workRequest.dueDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        paymentAmount: workRequest.amount,
+        status: 'assigned',
+        progress: 0,
+        autoPayEnabled: true,
+        submissionType: 'digital'
+      });
+
+      console.log(`[WORK_REQUEST_ACCEPTED] workRequestId=${workRequestId} contractorId=${currentUserId} contractId=${contract.id} milestoneId=${milestone.id} amount=${workRequest.amount}`);
 
       res.json({
         ok: true,
         status: "accepted",
         message: "Work request accepted successfully",
-        contractId: contract.id
+        contractId: contract.id,
+        milestoneId: milestone.id
       });
 
     } catch (error) {

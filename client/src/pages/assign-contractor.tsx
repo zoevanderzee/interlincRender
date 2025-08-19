@@ -27,6 +27,7 @@ const workRequestSchema = z.object({
   contractorUserId: z.number(),
   title: z.string().min(1, "Title is required"),
   description: z.string().min(1, "Description is required"),
+  deliverableDescription: z.string().min(1, "Deliverable description is required"),
   dueDate: z.string().min(1, "Due date is required"),
   amount: z.number().min(0.01, "Amount must be greater than 0"),
   currency: z.string().default("USD")
@@ -396,6 +397,19 @@ export default function AssignContractor() {
               />
               {errors.description && (
                 <p className="text-red-400 text-sm">{errors.description.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="deliverableDescription" className="text-white">Expected Deliverable *</Label>
+              <Textarea
+                id="deliverableDescription"
+                {...register('deliverableDescription')}
+                className="bg-gray-900 border-gray-700 text-white min-h-[80px]"
+                placeholder="Describe what the contractor should deliver (e.g., PSD files, code repository, design mockups)..."
+              />
+              {errors.deliverableDescription && (
+                <p className="text-red-400 text-sm">{errors.deliverableDescription.message}</p>
               )}
             </div>
 
