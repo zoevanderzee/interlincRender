@@ -47,6 +47,7 @@ export default function ProjectDetails() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   // Fetch project details
   const { data: project, isLoading: isLoadingProject } = useQuery<Project>({
@@ -110,8 +111,6 @@ export default function ProjectDetails() {
       </div>
     );
   }
-
-  const { toast } = useToast();
 
   const getContractorName = (workRequest: any): string => {
     // Use contractor name from work request data if available
