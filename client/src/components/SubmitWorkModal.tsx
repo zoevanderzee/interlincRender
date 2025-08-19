@@ -50,7 +50,7 @@ export function SubmitWorkModal({
       deliverableFiles?: any[];
       deliverableDescription?: string;
     }) => {
-      const response = await apiRequest("PATCH", `/deliverables/${deliverableId}`, data);
+      const response = await apiRequest("PATCH", `/api/deliverables/${deliverableId}`, data);
       return response.json();
     },
     onSuccess: () => {
