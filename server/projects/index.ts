@@ -233,4 +233,156 @@ export function registerProjectRoutes(app: Express) {
       res.status(500).json({ error: "Internal server error" });
     }
   });
+
+  // Accept work request (contractor accepts the work)
+  app.post("/api/work-requests/:id/accept", async (req, res) => {
+    try {
+      const workRequestId = parseInt(req.params.id);
+      
+      // Use the same authentication pattern as other endpoints
+      let currentUserId = req.user?.id;
+      
+      // Fallback to X-User-ID header like other endpoints in this system
+      if (!currentUserId && req.headers['x-user-id']) {
+        currentUserId = parseInt(req.headers['x-user-id'] as string);
+      }
+
+      console.log(`[ACCEPT DEBUG] Request ID: ${workRequestId}, User ID: ${currentUserId}, Headers:`, req.headers['x-user-id']);
+
+      if (!currentUserId) {
+        return res.status(401).json({
+          ok: false,
+          message: "Authentication required"
+        });
+      }
+
+      // Get work request
+      const workRequest = await storage.getWorkRequest(workRequestId);
+      if (!workRequest) {
+        return res.status(404).json({
+          ok: false,
+          message: "Work request not found"
+        });
+      }
+
+      // Verify this contractor is assigned to this work request
+      if (workRequest.contractorUserId !== currentUserId) {
+        return res.status(403).json({
+          ok: false,
+          message: "You can only accept work requests assigned to you"
+        });
+      }
+
+      // Check if already accepted
+      if (workRequest.status === "accepted") {
+        return res.json({
+          ok: true,
+          status: "accepted",
+          message: "Already accepted"
+        });
+      }
+
+      // Only allow accepting "assigned" work requests
+      if (workRequest.status !== "assigned") {
+        return res.status(400).json({
+          ok: false,
+          message: `Cannot accept work request with status: ${workRequest.status}`
+        });
+      }
+
+      // Update status to accepted
+      await storage.updateWorkRequestStatus(workRequestId, "accepted");
+
+      console.log(`[WORK_REQUEST_ACCEPTED] workRequestId=${workRequestId} contractorId=${currentUserId} amount=${workRequest.amount}`);
+
+      res.json({
+        ok: true,
+        status: "accepted",
+        message: "Work request accepted successfully"
+      });
+
+    } catch (error) {
+      console.error("Error accepting work request:", error);
+      res.status(500).json({
+        ok: false,
+        code: "WR-SERVER-002",
+        message: "Internal server error"
+      });
+    }
+  });
+
+  // Decline work request (contractor declines the work)
+  app.post("/api/work-requests/:id/decline", async (req, res) => {
+    try {
+      const workRequestId = parseInt(req.params.id);
+      
+      // Use the same authentication pattern as other endpoints
+      let currentUserId = req.user?.id;
+      
+      // Fallback to X-User-ID header like other endpoints in this system
+      if (!currentUserId && req.headers['x-user-id']) {
+        currentUserId = parseInt(req.headers['x-user-id'] as string);
+      }
+
+      if (!currentUserId) {
+        return res.status(401).json({
+          ok: false,
+          message: "Authentication required"
+        });
+      }
+
+      // Get work request
+      const workRequest = await storage.getWorkRequest(workRequestId);
+      if (!workRequest) {
+        return res.status(404).json({
+          ok: false,
+          message: "Work request not found"
+        });
+      }
+
+      // Verify this contractor is assigned to this work request
+      if (workRequest.contractorUserId !== currentUserId) {
+        return res.status(403).json({
+          ok: false,
+          message: "You can only decline work requests assigned to you"
+        });
+      }
+
+      // Check if already declined
+      if (workRequest.status === "declined") {
+        return res.json({
+          ok: true,
+          status: "declined",
+          message: "Already declined"
+        });
+      }
+
+      // Only allow declining "assigned" or "accepted" work requests
+      if (!["assigned", "accepted"].includes(workRequest.status)) {
+        return res.status(400).json({
+          ok: false,
+          message: `Cannot decline work request with status: ${workRequest.status}`
+        });
+      }
+
+      // Update status to declined
+      await storage.updateWorkRequestStatus(workRequestId, "declined");
+
+      console.log(`[WORK_REQUEST_DECLINED] workRequestId=${workRequestId} contractorId=${currentUserId} amount=${workRequest.amount}`);
+
+      res.json({
+        ok: true,
+        status: "declined",
+        message: "Work request declined successfully"
+      });
+
+    } catch (error) {
+      console.error("Error declining work request:", error);
+      res.status(500).json({
+        ok: false,
+        code: "WR-SERVER-003",
+        message: "Internal server error"
+      });
+    }
+  });
 }

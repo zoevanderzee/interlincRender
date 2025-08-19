@@ -3876,7 +3876,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // OLD ENDPOINT - DISABLED TO AVOID CONFLICTS WITH NEW CONTRACTOR ENDPOINTS
   // Endpoint for accepting a work request and linking it to a contract
+  /*
   app.post(`${apiRouter}/work-requests/:id/accept`, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
@@ -3943,6 +3945,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Error accepting work request" });
     }
   });
+  */
   
   // BRAND NEW: Completely different endpoint path to avoid all conflicts
   app.post(`${apiRouter}/contractor/decline-work/:id`, async (req: Request, res: Response) => {

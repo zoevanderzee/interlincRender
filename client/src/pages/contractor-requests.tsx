@@ -122,20 +122,8 @@ const ContractorRequests = () => {
   // Accept work request mutation
   const acceptMutation = useMutation({
     mutationFn: async (requestId: number) => {
-      // Get the token from the URL if available
-      const tokenFromUrl = new URLSearchParams(window.location.search).get('token');
-      
-      // Find the matching request and contract
-      const request = workRequests.find(req => req.id === requestId);
-      const matchingContract = request ? contracts.find(
-        c => c.contractName?.toLowerCase() === request.title?.toLowerCase()
-      ) : null;
-      
-      // Send both token and contractId when accepting the request
-      return await apiRequest('POST', `/api/work-requests/${requestId}/accept`, {
-        token: tokenFromUrl || 'auto-accept', 
-        contractId: request?.contractId || matchingContract?.id
-      });
+      // Call the new contractor accept endpoint
+      return await apiRequest('POST', `/api/work-requests/${requestId}/accept`, {});
     },
     onSuccess: () => {
       toast({
@@ -160,7 +148,8 @@ const ContractorRequests = () => {
   // Decline work request mutation
   const declineMutation = useMutation({
     mutationFn: async (requestId: number) => {
-      return await apiRequest('POST', `/api/contractor/decline-work/${requestId}`, {});
+      // Call the new contractor decline endpoint
+      return await apiRequest('POST', `/api/work-requests/${requestId}/decline`, {});
     },
     onSuccess: () => {
       toast({
