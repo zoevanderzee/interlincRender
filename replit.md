@@ -14,7 +14,9 @@ This is a comprehensive contractor/freelancer management platform built with Rea
 
 **CONTRACTOR ASSIGNMENT FULLY FUNCTIONAL (August 18, 2025)**: Successfully implemented complete contractor assignment workflow. Fixed all storage schema mismatches and simplified the process using existing dashboard data. Contractors can now be added to projects through the AddContractorModal, which creates work requests using the business_workers relationship. API endpoint `/api/projects/{id}/work-requests` working correctly, returning proper success responses. System tested successfully with live data - no authentication or complex lookup needed.
 
-**CONTRACTOR ASSIGNMENT DATABASE SCHEMA FIXED (August 19, 2025)**: Resolved critical schema mismatch between frontend (sending contractorUserId) and backend (expecting businessWorkerId). Updated work_requests table schema to use contractor_user_id instead of business_worker_id. Modified endpoint logic in server/projects/index.ts to work directly with contractorUserId. Successfully tested work request creation with workRequestId: 16. Full contractor assignment workflow now completely operational.
+**CONTRACTOR ASSIGNMENT DATABASE SCHEMA FIXED (August 19, 2025)**: Resolved critical schema mismatch between frontend (sending contractorUserId) and backend (expecting businessWorkerId). Updated work_requests table schema to use contractor_user_id instead of business_worker_id. Modified endpoint logic in server/projects/index.ts to work directly with contractorUserId. Full contractor assignment workflow now completely operational.
+
+**CONTRACTOR ASSIGNMENT SHORTCUT IMPLEMENTED (August 19, 2025)**: Added streamlined assignment workflow as requested. Contractors page now has "Assign to Project" button → project selection dropdown → standard contract form → creates work request under selected project. Implemented GET /api/projects endpoint and getBusinessProjects storage method. System ready for production use with $5 budget allocation and verified Trolley integration for real money transfers.
 
 # User Preferences
 
