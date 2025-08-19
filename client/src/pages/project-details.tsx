@@ -179,7 +179,15 @@ export default function ProjectDetails() {
 
   // Get contract details for accepted work requests
   const getContractForWorkRequest = (workRequestId: number) => {
-    return contracts.find((c: any) => c.workRequestId === workRequestId);
+    // Find work request to get contractor ID
+    const workRequest = workRequests.find(wr => wr.id === workRequestId);
+    if (!workRequest) return null;
+    
+    // Find contract by contractor ID and project ID
+    return contracts.find((c: any) => 
+      c.contractorId === workRequest.contractorUserId && 
+      c.projectId === parseInt(projectId)
+    );
   };
 
   // Get milestones for a contract
@@ -340,6 +348,16 @@ export default function ProjectDetails() {
               {acceptedWorkRequestsData.map((workRequest) => {
                 const contract = getContractForWorkRequest(workRequest.id);
                 const contractMilestones = contract ? getMilestonesForContract(contract.id) : [];
+                
+                // Debug logging
+                console.log('Debug Info:', {
+                  workRequestId: workRequest.id,
+                  workRequestContractorId: workRequest.contractorUserId,
+                  contractFound: contract ? contract.id : null,
+                  contractorIdInContract: contract ? contract.contractorId : null,
+                  milestonesFound: contractMilestones.length,
+                  milestones: contractMilestones
+                });
                 
                 return (
                   <div 

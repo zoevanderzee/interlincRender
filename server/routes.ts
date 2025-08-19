@@ -1651,6 +1651,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Milestone approval endpoint  
+  app.post(`${apiRouter}/milestones/:id/approve`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user?.id;
+      const userRole = req.user?.role || 'business';
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      // Get milestone and verify access
+      const milestone = await storage.getMilestone(id);
+      if (!milestone) {
+        return res.status(404).json({ message: "Milestone not found" });
+      }
+      
+      const contract = await storage.getContract(milestone.contractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contract not found" });
+      }
+      
+      // Only businesses can approve milestones
+      if (userRole !== 'business' || contract.businessId !== userId) {
+        return res.status(403).json({ message: "Access denied: Only contract owner can approve milestones" });
+      }
+      
+      // Update milestone status
+      const updatedMilestone = await storage.updateMilestone(id, {
+        status: 'approved',
+        approvedAt: new Date(),
+        approvedBy: userId
+      });
+      
+      res.json({ success: true, milestone: updatedMilestone });
+    } catch (error) {
+      console.error("Error approving milestone:", error);
+      res.status(500).json({ message: "Error approving milestone" });
+    }
+  });
+
+  // Milestone rejection endpoint
+  app.post(`${apiRouter}/milestones/:id/reject`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user?.id;
+      const userRole = req.user?.role || 'business';
+      const { notes } = req.body;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      // Get milestone and verify access
+      const milestone = await storage.getMilestone(id);
+      if (!milestone) {
+        return res.status(404).json({ message: "Milestone not found" });
+      }
+      
+      const contract = await storage.getContract(milestone.contractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contract not found" });
+      }
+      
+      // Only businesses can reject milestones
+      if (userRole !== 'business' || contract.businessId !== userId) {
+        return res.status(403).json({ message: "Access denied: Only contract owner can reject milestones" });
+      }
+      
+      // Update milestone status
+      const updatedMilestone = await storage.updateMilestone(id, {
+        status: 'needs_revision',
+        rejectedAt: new Date(),
+        rejectedBy: userId,
+        rejectionNotes: notes
+      });
+      
+      res.json({ success: true, milestone: updatedMilestone });
+    } catch (error) {
+      console.error("Error rejecting milestone:", error);
+      res.status(500).json({ message: "Error rejecting milestone" });
+    }
+  });
+
   // ================ END DELIVERABLE ENDPOINTS ================
 
   // Payment Method Management Routes
