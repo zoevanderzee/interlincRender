@@ -100,7 +100,7 @@ export default function Projects() {
                 <div>
                   <p className="text-sm text-gray-400">Total Value</p>
                   <p className="text-3xl font-bold text-white">
-                    ${activeAssignments.reduce((sum: number, req: any) => sum + parseFloat(req.budgetMax || req.budgetMin || 0), 0).toLocaleString()}
+                    ${activeAssignments.reduce((sum: number, req: any) => sum + parseFloat(req.amount || 0), 0).toLocaleString()}
                   </p>
                 </div>
                 <DollarSign className="h-8 w-8 text-green-500" />
@@ -145,7 +145,7 @@ export default function Projects() {
                     <div className="flex items-center space-x-4">
                       <div className="flex items-center text-gray-400">
                         <DollarSign className="mr-1 h-4 w-4" />
-                        <span>${assignment.budgetMin || assignment.budgetMax || 0}</span>
+                        <span>${assignment.amount || 0}</span>
                       </div>
                       {assignment.deadline && (
                         <div className="flex items-center text-gray-400">
