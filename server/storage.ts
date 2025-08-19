@@ -152,6 +152,7 @@ export interface IStorage {
   getWorkRequestByToken(tokenHash: string): Promise<WorkRequest | undefined>;
   getWorkRequestsByBusinessId(businessId: number): Promise<WorkRequest[]>;
   getWorkRequestsByEmail(email: string): Promise<WorkRequest[]>;
+  getWorkRequestsWithBusinessInfo(contractorUserId: number): Promise<any[]>;
   getPendingWorkRequests(): Promise<WorkRequest[]>;
   createWorkRequest(workRequest: InsertWorkRequest, tokenHash: string): Promise<WorkRequest>;
   updateWorkRequest(id: number, workRequest: Partial<InsertWorkRequest>): Promise<WorkRequest | undefined>;
@@ -1948,9 +1949,18 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(workRequests.createdAt));
   }
 
-  async getWorkRequestsByContractorId(contractorUserId: number): Promise<any[]> {
+  async getWorkRequestsByContractorId(contractorUserId: number): Promise<WorkRequest[]> {
     return db
+      .select()
+      .from(workRequests)
+      .where(eq(workRequests.contractorUserId, contractorUserId))
+      .orderBy(desc(workRequests.createdAt));
+  }
+
+  async getWorkRequestsWithBusinessInfo(contractorUserId: number): Promise<any[]> {
+    const result = await db
       .select({
+        // Work request fields
         id: workRequests.id,
         title: workRequests.title,
         description: workRequests.description,
@@ -1971,7 +1981,7 @@ export class DatabaseStorage implements IStorage {
         amount: workRequests.amount,
         currency: workRequests.currency,
         contractorUserId: workRequests.contractorUserId,
-        // Business information
+        // Business information from joined tables
         companyName: users.companyName,
         businessFirstName: users.firstName,
         businessLastName: users.lastName,
@@ -1982,6 +1992,8 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(users, eq(projects.businessId, users.id))
       .where(eq(workRequests.contractorUserId, contractorUserId))
       .orderBy(desc(workRequests.createdAt));
+    
+    return result;
   }
 
   async getPendingWorkRequests(): Promise<WorkRequest[]> {

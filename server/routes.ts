@@ -3740,7 +3740,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Find the user by email first, then get their work requests
           const contractorUser = await storage.getUserByEmail(email);
           if (contractorUser) {
-            workRequests = await storage.getWorkRequestsByContractorId(contractorUser.id);
+            workRequests = await storage.getWorkRequestsWithBusinessInfo(contractorUser.id);
           } else {
             workRequests = [];
           }
@@ -3757,7 +3757,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (currentUser.role === 'business') {
           workRequests = await storage.getWorkRequestsByBusinessId(currentUser.id);
         } else if (currentUser.role === 'contractor' || currentUser.role === 'freelancer') {
-          workRequests = await storage.getWorkRequestsByContractorId(currentUser.id);
+          workRequests = await storage.getWorkRequestsWithBusinessInfo(currentUser.id);
         }
       }
       
