@@ -1015,8 +1015,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const contractId = req.query.contractId ? parseInt(req.query.contractId as string) : null;
       const upcoming = req.query.upcoming === 'true';
-      const userId = req.user?.id;
-      const userRole = req.user?.role || 'business';
+      
+      // Get user ID from session or X-User-ID header fallback
+      let userId = req.user?.id;
+      let userRole = req.user?.role || 'business';
+      
+      // Use X-User-ID header fallback if session auth failed
+      if (!userId && req.headers['x-user-id']) {
+        userId = parseInt(req.headers['x-user-id'] as string);
+        // Get the user to determine their role
+        const user = await storage.getUser(userId);
+        if (user) {
+          userRole = user.role;
+        }
+      }
       
       if (!userId) {
         return res.status(401).json({ message: "Authentication required" });

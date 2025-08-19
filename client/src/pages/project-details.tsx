@@ -60,9 +60,23 @@ export default function ProjectDetails() {
 
   // Fetch contractor details for each work request
   const contractorIds = [...new Set(workRequests.map(wr => wr.contractorUserId))];
-  const { data: contractors = [] } = useQuery<User[]>({
+  const { data: contractors = [], isLoading: isLoadingContractors } = useQuery<User[]>({
     queryKey: ['/api/users'],
     enabled: contractorIds.length > 0
+  });
+
+  // Fetch contracts for accepted work requests to get deliverables
+  const acceptedWorkRequests = workRequests.filter(wr => wr.status === 'accepted');
+  const { data: contracts = [] } = useQuery({
+    queryKey: ['/api/contracts'],
+    enabled: acceptedWorkRequests.length > 0
+  });
+
+  // Fetch milestones for each contract individually  
+  const contractIds = contracts.map((c: any) => c.id);
+  const { data: milestones = [] } = useQuery({
+    queryKey: ['/api/milestones', { upcoming: true }],
+    enabled: contractIds.length > 0
   });
 
   if (isLoadingProject) {
@@ -88,11 +102,30 @@ export default function ProjectDetails() {
   }
 
   const getContractorName = (contractorUserId: number): string => {
+    if (isLoadingContractors) return 'Loading...';
     const contractor = contractors.find(c => c.id === contractorUserId);
-    if (!contractor) return 'Loading...';
+    if (!contractor) return 'Contractor not found';
     return contractor.firstName && contractor.lastName 
       ? `${contractor.firstName} ${contractor.lastName}`
       : contractor.username;
+  };
+
+  // Split work requests into pending and accepted
+  const pendingWorkRequests = workRequests.filter(wr => 
+    wr.status === 'assigned' || wr.status === 'pending'
+  );
+  const acceptedWorkRequestsData = workRequests.filter(wr => 
+    wr.status === 'accepted'
+  );
+
+  // Get contract details for accepted work requests
+  const getContractForWorkRequest = (workRequestId: number) => {
+    return contracts.find((c: any) => c.workRequestId === workRequestId);
+  };
+
+  // Get milestones for a contract
+  const getMilestonesForContract = (contractId: number) => {
+    return milestones.filter(m => m.contractId === contractId);
   };
 
   const getStatusColor = (status: string): string => {
@@ -171,7 +204,7 @@ export default function ProjectDetails() {
       <Card className="border-gray-800 bg-black">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-white">Work Requests ({workRequests.length})</CardTitle>
+            <CardTitle className="text-white">Work Requests ({pendingWorkRequests.length})</CardTitle>
             <Button 
               variant="outline"
               onClick={() => navigate(`/assign-contractor?projectId=${projectId}`)}
@@ -191,9 +224,9 @@ export default function ProjectDetails() {
                 </div>
               ))}
             </div>
-          ) : workRequests.length === 0 ? (
+          ) : pendingWorkRequests.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-gray-400 mb-4">No work requests yet</p>
+              <p className="text-gray-400 mb-4">No pending work requests</p>
               <Button 
                 onClick={() => navigate(`/assign-contractor?projectId=${projectId}`)}
                 className="bg-blue-600 hover:bg-blue-700"
@@ -204,7 +237,7 @@ export default function ProjectDetails() {
             </div>
           ) : (
             <div className="space-y-4">
-              {workRequests.map((workRequest) => (
+              {pendingWorkRequests.map((workRequest) => (
                 <div 
                   key={workRequest.id}
                   className="border border-gray-700 rounded-lg p-4 hover:border-gray-600 transition-colors"
@@ -243,6 +276,81 @@ export default function ProjectDetails() {
           )}
         </CardContent>
       </Card>
+
+      {/* Contractors (Accepted Work) */}
+      {acceptedWorkRequestsData.length > 0 && (
+        <Card className="border-gray-800 bg-black">
+          <CardHeader>
+            <CardTitle className="text-white">Contractors ({acceptedWorkRequestsData.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {acceptedWorkRequestsData.map((workRequest) => {
+                const contract = getContractForWorkRequest(workRequest.id);
+                const contractMilestones = contract ? getMilestonesForContract(contract.id) : [];
+                
+                return (
+                  <div 
+                    key={workRequest.id}
+                    className="border border-gray-700 rounded-lg p-6"
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex-1">
+                        <h4 className="font-medium text-white mb-1">{workRequest.title}</h4>
+                        <p className="text-sm text-gray-400 mb-2">{workRequest.description}</p>
+                        <div className="flex items-center gap-2 text-gray-400">
+                          <User className="h-4 w-4" />
+                          <span>{getContractorName(workRequest.contractorUserId)}</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <Badge className={`${getStatusColor(workRequest.status)} text-white mb-2`}>
+                          {workRequest.status}
+                        </Badge>
+                        <p className="text-sm text-gray-400">
+                          ${parseFloat(workRequest.amount).toLocaleString()} {workRequest.currency}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Deliverables Section */}
+                    {contract && (
+                      <div className="mt-4 pt-4 border-t border-gray-700">
+                        <h5 className="font-medium text-white mb-3">Deliverables</h5>
+                        {contractMilestones.length === 0 ? (
+                          <p className="text-sm text-gray-400">No deliverables submitted yet</p>
+                        ) : (
+                          <div className="space-y-3">
+                            {contractMilestones.map((milestone) => (
+                              <div 
+                                key={milestone.id}
+                                className="bg-gray-900 rounded-lg p-3 border border-gray-700"
+                              >
+                                <div className="flex items-center justify-between mb-2">
+                                  <h6 className="text-sm font-medium text-white">{milestone.name}</h6>
+                                  <Badge className={`text-xs ${getStatusColor(milestone.status)} text-white`}>
+                                    {milestone.status}
+                                  </Badge>
+                                </div>
+                                <p className="text-xs text-gray-400 mb-2">{milestone.description}</p>
+                                {milestone.deliverableFiles && milestone.deliverableFiles.length > 0 && (
+                                  <div className="text-xs text-gray-400">
+                                    {milestone.deliverableFiles.length} file(s) submitted
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
