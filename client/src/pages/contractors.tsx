@@ -662,7 +662,7 @@ const Contractors = () => {
                           variant="ghost"
                           size="sm"
                           className="text-zinc-300 hover:text-zinc-100"
-                          onClick={() => navigate(`/contracts/new?contractor=${freelancer.id}`)}
+                          onClick={() => navigate(`/assign-contractor?contractorId=${freelancer.id}`)}
                         >
                           Assign
                           <ArrowRight size={16} className="ml-1" />

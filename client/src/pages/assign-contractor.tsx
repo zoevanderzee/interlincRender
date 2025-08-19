@@ -42,15 +42,17 @@ export default function AssignContractor() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Get projectId from query params if available
+  // Get projectId and contractorId from query params if available
   const urlParams = new URLSearchParams(window.location.search);
   const projectIdFromQuery = urlParams.get('projectId');
+  const contractorIdFromQuery = urlParams.get('contractorId');
   const [selectedProjectId, setSelectedProjectId] = useState<string>(projectIdFromQuery || "");
 
-  // Fetch contractor details (only if contractorId is provided)
+  // Fetch contractor details (only if contractorId is provided via URL or query param)
+  const contractorIdToFetch = contractorId || contractorIdFromQuery;
   const { data: contractor, isLoading: isLoadingContractor } = useQuery<any>({
-    queryKey: ['/api/contractors', contractorId],
-    enabled: !!contractorId
+    queryKey: ['/api/users', contractorIdToFetch],
+    enabled: !!contractorIdToFetch
   });
 
   // Fetch connection requests to get contractors
@@ -65,7 +67,7 @@ export default function AssignContractor() {
     enabled: !!user
   });
 
-  const [selectedContractorId, setSelectedContractorId] = useState<string>("");
+  const [selectedContractorId, setSelectedContractorId] = useState<string>(contractorIdFromQuery || "");
 
   const {
     register,
@@ -76,7 +78,7 @@ export default function AssignContractor() {
   } = useForm<WorkRequestForm>({
     resolver: zodResolver(workRequestSchema),
     defaultValues: {
-      contractorUserId: parseInt(contractorId || selectedContractorId || "0"),
+      contractorUserId: parseInt(contractorId || contractorIdFromQuery || selectedContractorId || "0"),
       currency: "USD"
     }
   });
@@ -107,7 +109,7 @@ export default function AssignContractor() {
   });
 
   const onSubmit = (data: WorkRequestForm) => {
-    const contractorToUse = parseInt(contractorId || selectedContractorId || "0");
+    const contractorToUse = parseInt(contractorId || contractorIdFromQuery || selectedContractorId || "0");
     const projectToUse = parseInt(selectedProjectId || "0");
 
     if (!projectToUse) {
@@ -146,8 +148,8 @@ export default function AssignContractor() {
     );
   }
 
-  // Show contractor selection if no contractorId in URL
-  const showContractorSelection = !contractorId;
+  // Show contractor selection if no contractorId in URL params or query params
+  const showContractorSelection = !contractorId && !contractorIdFromQuery;
   const availableContractors = connectionRequests.filter((req: any) => req.status === 'accepted');
 
   const selectedProject = projects.find(p => p.id.toString() === selectedProjectId);
