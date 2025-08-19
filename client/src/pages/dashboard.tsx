@@ -188,7 +188,7 @@ const Dashboard = () => {
               </div>
             </div>
             <p className="text-3xl font-bold text-white">
-              {dashboardData.contracts.filter(c => c.status === 'Active').length}
+              {dashboardData.stats.activeContractsCount}
             </p>
             <p className="text-xs text-gray-500 mt-1">Current projects in progress</p>
           </div>

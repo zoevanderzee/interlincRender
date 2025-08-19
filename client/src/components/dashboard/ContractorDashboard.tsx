@@ -74,7 +74,7 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
               <Briefcase size={20} className="text-accent-500" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-white">{activeProjects.length}</p>
+          <p className="text-3xl font-bold text-white">{dashboardData.stats.activeContractsCount}</p>
           <p className="text-xs text-gray-500 mt-1">Current projects in progress</p>
         </div>
         
