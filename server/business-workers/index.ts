@@ -58,11 +58,11 @@ export function registerBusinessWorkerRoutes(app: Express, requireAuth: any) {
         status: "active"
       });
 
-      console.log(`[JOIN] business=${businessId} contractor=${contractorUserId} code=${inviteCode?.substring(0, 3)}... result=ok businessWorkerId=${businessWorker.id}`);
+      console.log(`[JOIN] business=${businessId} contractor=${contractorUserId} code=${inviteCode?.substring(0, 3)}... result=ok`);
 
       res.json({
         ok: true,
-        businessWorkerId: businessWorker.id
+        contractorUserId: businessWorker.contractorUserId
       });
 
     } catch (error) {
@@ -83,7 +83,6 @@ export function registerBusinessWorkerRoutes(app: Express, requireAuth: any) {
       const workers = await storage.getBusinessWorkers(businessId);
       
       res.json(workers.map(w => ({
-        businessWorkerId: w.id,
         contractorUserId: w.contractorUserId,
         name: w.contractorName || `User ${w.contractorUserId}`
       })));
@@ -116,7 +115,6 @@ export function registerBusinessWorkerRoutes(app: Express, requireAuth: any) {
       }
       
       res.json({
-        businessWorkerId: businessWorker.id,
         contractorUserId: businessWorker.contractorUserId,
         status: businessWorker.status
       });

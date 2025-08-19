@@ -1,9 +1,9 @@
 import type { Express } from "express";
 import { storage } from "../storage";
 
-// API endpoint to get contractors with their businessWorkerId included
+// API endpoint to get contractors with their contractor user ID included
 export function registerContractorsWithIdsRoutes(app: Express) {
-  // Get contractors for a business with businessWorkerId included
+  // Get contractors for a business with contractor user ID included
   app.get("/api/business-workers/contractors", async (req, res) => {
     try {
       // Get current business ID from authenticated user
@@ -24,7 +24,7 @@ export function registerContractorsWithIdsRoutes(app: Express) {
           
           return {
             ...contractor,
-            businessWorkerId: bw.id, // Include the business_workers table ID
+            // contractor user ID is already included in contractor object
           };
         })
       );
@@ -34,7 +34,7 @@ export function registerContractorsWithIdsRoutes(app: Express) {
       res.json(validContractors);
 
     } catch (error) {
-      console.error("Error fetching contractors with business worker IDs:", error);
+      console.error("Error fetching contractors:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });

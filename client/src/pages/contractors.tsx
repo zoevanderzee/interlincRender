@@ -181,9 +181,9 @@ const Contractors = () => {
     });
   };
 
-  // Get work request count for a contractor (updated for new business_workers system)
+  // Get work request count for a contractor (updated for new work_requests system)
   const getContractCount = (userId: number) => {
-    // Note: The new system uses work_requests with businessWorkerId instead of contracts with contractorId
+    // Note: The new system uses work_requests with contractorUserId instead of contracts with contractorId
     // Since work requests are not included in dashboard data yet, return 0
     // TODO: Add work_requests to dashboard data and update this function
     return 0;
