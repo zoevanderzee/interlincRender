@@ -1967,6 +1967,7 @@ export class DatabaseStorage implements IStorage {
     const enhancedRequests = [];
     for (const wr of workRequestsData) {
       let businessInfo = {};
+      let milestoneId = null;
       
       if (wr.projectId) {
         // Get project info
@@ -1982,12 +1983,31 @@ export class DatabaseStorage implements IStorage {
               projectTitle: project.name
             };
           }
+          
+          // Find corresponding milestone by matching title/name and contract linking
+          // Look for milestones that match this work request's title and are associated with a contract
+          // that belongs to the same business
+          const [milestone] = await db.select().from(milestones)
+            .innerJoin(contracts, eq(milestones.contractId, contracts.id))
+            .where(
+              and(
+                eq(milestones.name, wr.title),
+                eq(contracts.businessId, project.businessId),
+                eq(contracts.contractorId, contractorUserId)
+              )
+            )
+            .limit(1);
+            
+          if (milestone) {
+            milestoneId = milestone.milestones.id;
+          }
         }
       }
       
       enhancedRequests.push({
         ...wr,
-        ...businessInfo
+        ...businessInfo,
+        milestoneId // Add milestone ID to the work request data
       });
     }
     

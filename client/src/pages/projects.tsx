@@ -202,7 +202,7 @@ export default function Projects() {
               setSubmitWorkModalOpen(false);
               setSelectedAssignment(null);
             }}
-            deliverableId={selectedAssignment.id}
+            deliverableId={selectedAssignment.milestoneId || selectedAssignment.id}
             deliverableName={selectedAssignment.title}
           />
         )}
