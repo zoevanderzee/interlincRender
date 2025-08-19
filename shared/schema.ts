@@ -326,7 +326,15 @@ export const insertWorkRequestSchema = baseWorkRequestSchema.extend({
     }
     return val.toString();
   }),
-});
+  // Allow contractorUserId as alternative to businessWorkerId
+  contractorUserId: z.number().optional(),
+}).refine(
+  (data) => data.businessWorkerId || data.contractorUserId,
+  {
+    message: "Either businessWorkerId or contractorUserId must be provided",
+    path: ["businessWorkerId"],
+  }
+);
 
 // Work Request update schema (for status updates)
 export const updateWorkRequestSchema = z.object({

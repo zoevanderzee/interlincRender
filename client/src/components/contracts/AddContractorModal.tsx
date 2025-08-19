@@ -109,19 +109,13 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
       // 2. Create work request to database (this is what shows up in Work Requests page)
       const projectId = contract?.projectId;
       if (projectId) {
-        // Find the businessWorkerId for the selected contractor
-        const selectedContractor = availableContractors.find(c => c.id.toString() === selectedContractorId);
-        if (!selectedContractor?.businessWorkerId) {
-          throw new Error('Contractor business relationship not found');
-        }
-
         const formattedDueDate = new Date(dueDate || Date.now()).toISOString();
         
         await apiRequest(
           'POST',
           `/api/projects/${projectId}/work-requests`,
           {
-            businessWorkerId: selectedContractor.businessWorkerId,
+            contractorUserId: parseInt(selectedContractorId),
             title: deliverables,
             description: `Project deliverable: ${deliverables}`,
             dueDate: formattedDueDate,
