@@ -757,10 +757,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // CRITICAL SECURITY: Block contractors from accessing contract data entirely
-      if (userRole === 'contractor') {
-        console.log(`SECURITY BLOCK: Contractor ${userId} attempted to access contracts API`);
-        return res.status(403).json({ message: "Access denied: Contractors cannot view contract details" });
+      // SECURITY: Contractors can only access their own contracts
+      if (userRole === 'contractor' && contractorId && contractorId !== userId) {
+        console.log(`SECURITY BLOCK: Contractor ${userId} attempted to access other contractor ${contractorId} data`);
+        return res.status(403).json({ message: "Access denied: Contractors can only view their own contracts" });
       }
       
       console.log(`Fetching contracts for user ID ${userId} with role ${userRole}`);
@@ -797,6 +797,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // For business users, only show their own contracts
         console.log(`Getting contracts for business user ID: ${userId}`);
         contracts = await storage.getContractsByBusinessId(userId);
+      } else if (userRole === 'contractor') {
+        // For contractors, show their own contracts
+        console.log(`Getting contracts for contractor user ID: ${userId}`);
+        contracts = await storage.getContractsByContractorId(userId);
       } else {
         // For all other cases, return empty array for security
         console.log(`No valid access pattern for user ${userId}, returning empty array`);
@@ -833,13 +837,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // CRITICAL SECURITY: Block contractors from accessing contract details entirely
-      if (userRole === 'contractor') {
-        console.log(`SECURITY BLOCK: Contractor ${userId} attempted to access contract ${id}`);
-        return res.status(403).json({ message: "Access denied: Contractors cannot view contract details" });
+      // Get the contract first to check ownership
+      const contract = await storage.getContract(id);
+      if (!contract) {
+        return res.status(404).json({ message: "Contract not found" });
       }
       
-      const contract = await storage.getContract(id);
+      // SECURITY: Contractors can only access their own contracts
+      if (userRole === 'contractor' && contract.contractorId !== userId) {
+        console.log(`SECURITY BLOCK: Contractor ${userId} attempted to access contract ${id} owned by contractor ${contract.contractorId}`);
+        return res.status(403).json({ message: "Access denied: Contractors can only view their own contracts" });
+      }
       
       // Detailed debugging for authentication
       console.log(`GET /contracts/${id} - Request headers:`, req.headers);
