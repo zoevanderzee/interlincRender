@@ -56,21 +56,22 @@ export default function Projects() {
     );
   }
 
+  // Fetch contractor's accepted work requests
+  const { data: workRequests = [], isLoading: isLoadingAssignments } = useQuery<any[]>({
+    queryKey: ['/api/work-requests'],
+    select: (data) => {
+      // Filter to show only accepted work requests for this contractor
+      return data.filter((request: any) => 
+        (request.recipientEmail === user?.email || 
+         (user?.email && request.recipientEmail?.toLowerCase() === user.email.toLowerCase())) &&
+        request.status === 'accepted'
+      );
+    },
+    enabled: !!user?.email && isContractor
+  });
+
   // SECURITY: Contractors should see their accepted work assignments only
   if (isContractor) {
-    // Fetch contractor's accepted work requests
-    const { data: workRequests = [], isLoading: isLoadingAssignments } = useQuery<any[]>({
-      queryKey: ['/api/work-requests'],
-      select: (data) => {
-        // Filter to show only accepted work requests for this contractor
-        return data.filter((request: any) => 
-          (request.recipientEmail === user?.email || 
-           (user?.email && request.recipientEmail?.toLowerCase() === user.email.toLowerCase())) &&
-          request.status === 'accepted'
-        );
-      },
-      enabled: !!user?.email
-    });
 
     const activeAssignments = workRequests.filter((req: any) => req.status === 'accepted');
 
@@ -229,14 +230,17 @@ export default function Projects() {
         </div>
 
         {/* Submit Work Modal */}
-        <SubmitWorkModal
-          isOpen={submitWorkModalOpen}
-          onClose={() => {
-            setSubmitWorkModalOpen(false);
-            setSelectedAssignment(null);
-          }}
-          workRequest={selectedAssignment}
-        />
+        {selectedAssignment && (
+          <SubmitWorkModal
+            isOpen={submitWorkModalOpen}
+            onClose={() => {
+              setSubmitWorkModalOpen(false);
+              setSelectedAssignment(null);
+            }}
+            milestoneId={selectedAssignment.id}
+            milestoneName={selectedAssignment.title}
+          />
+        )}
       </div>
     );
   }
