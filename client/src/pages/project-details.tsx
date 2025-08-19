@@ -349,16 +349,6 @@ export default function ProjectDetails() {
                 const contract = getContractForWorkRequest(workRequest.id);
                 const contractMilestones = contract ? getMilestonesForContract(contract.id) : [];
                 
-                // Debug logging
-                console.log('Debug Info:', {
-                  workRequestId: workRequest.id,
-                  workRequestContractorId: workRequest.contractorUserId,
-                  contractFound: contract ? contract.id : null,
-                  contractorIdInContract: contract ? contract.contractorId : null,
-                  milestonesFound: contractMilestones.length,
-                  milestones: contractMilestones
-                });
-                
                 return (
                   <div 
                     key={workRequest.id}
