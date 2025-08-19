@@ -72,11 +72,10 @@ export default function ProjectDetails() {
     enabled: acceptedWorkRequests.length > 0
   });
 
-  // Fetch milestones for each contract individually  
-  const contractIds = contracts.map((c: any) => c.id);
+  // Fetch milestones for the specific contract (contract ID 31)
   const { data: milestones = [] } = useQuery({
-    queryKey: ['/api/milestones', { upcoming: true }],
-    enabled: contractIds.length > 0
+    queryKey: ['/api/milestones?contractId=31'],
+    enabled: contracts.length > 0
   });
 
   if (isLoadingProject) {
