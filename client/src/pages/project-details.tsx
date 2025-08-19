@@ -353,7 +353,7 @@ export default function ProjectDetails() {
       <Card className="border-gray-800 bg-black">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-white">Work Requests ({workRequests.length})</CardTitle>
+            <CardTitle className="text-white">Work Requests ({pendingWorkRequests.length})</CardTitle>
             <Button 
               variant="outline"
               onClick={() => navigate(`/assign-contractor?projectId=${projectId}`)}
@@ -373,13 +373,13 @@ export default function ProjectDetails() {
                 </div>
               ))}
             </div>
-          ) : workRequests.filter(wr => wr.status === 'assigned').length === 0 ? (
+          ) : pendingWorkRequests.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-400">No pending work requests</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {workRequests.filter(wr => wr.status === 'assigned').map((workRequest) => (
+              {pendingWorkRequests.map((workRequest) => (
                 <div 
                   key={workRequest.id}
                   className="border border-gray-700 rounded-lg p-4 hover:border-gray-600 transition-colors"
