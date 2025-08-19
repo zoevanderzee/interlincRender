@@ -134,6 +134,11 @@ export default function Projects() {
                     <div>
                       <CardTitle className="text-white">{assignment.title}</CardTitle>
                       <p className="text-gray-400 text-sm mt-1">{assignment.description}</p>
+                      {(assignment.companyName || assignment.businessFirstName) && (
+                        <p className="text-blue-400 text-sm mt-1">
+                          From: {assignment.companyName || `${assignment.businessFirstName} ${assignment.businessLastName}`}
+                        </p>
+                      )}
                     </div>
                     <Badge variant={assignment.status === 'accepted' ? 'default' : 'secondary'}>
                       {assignment.status}
@@ -147,10 +152,10 @@ export default function Projects() {
                         <DollarSign className="mr-1 h-4 w-4" />
                         <span>${assignment.amount || 0}</span>
                       </div>
-                      {assignment.deadline && (
+                      {assignment.dueDate && (
                         <div className="flex items-center text-gray-400">
                           <Calendar className="mr-1 h-4 w-4" />
-                          <span>{new Date(assignment.deadline).toLocaleDateString()}</span>
+                          <span>Due: {new Date(assignment.dueDate).toLocaleDateString()}</span>
                         </div>
                       )}
                     </div>

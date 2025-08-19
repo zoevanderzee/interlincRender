@@ -1948,10 +1948,38 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(workRequests.createdAt));
   }
 
-  async getWorkRequestsByContractorId(contractorUserId: number): Promise<WorkRequest[]> {
+  async getWorkRequestsByContractorId(contractorUserId: number): Promise<any[]> {
     return db
-      .select()
+      .select({
+        id: workRequests.id,
+        title: workRequests.title,
+        description: workRequests.description,
+        businessId: workRequests.businessId,
+        recipientEmail: workRequests.recipientEmail,
+        status: workRequests.status,
+        budgetMin: workRequests.budgetMin,
+        budgetMax: workRequests.budgetMax,
+        dueDate: workRequests.dueDate,
+        skills: workRequests.skills,
+        attachmentUrls: workRequests.attachmentUrls,
+        tokenHash: workRequests.tokenHash,
+        createdAt: workRequests.createdAt,
+        expiresAt: workRequests.expiresAt,
+        contractId: workRequests.contractId,
+        contractorId: workRequests.contractorId,
+        projectId: workRequests.projectId,
+        amount: workRequests.amount,
+        currency: workRequests.currency,
+        contractorUserId: workRequests.contractorUserId,
+        // Business information
+        companyName: users.companyName,
+        businessFirstName: users.firstName,
+        businessLastName: users.lastName,
+        projectTitle: projects.title
+      })
       .from(workRequests)
+      .leftJoin(projects, eq(workRequests.projectId, projects.id))
+      .leftJoin(users, eq(projects.businessId, users.id))
       .where(eq(workRequests.contractorUserId, contractorUserId))
       .orderBy(desc(workRequests.createdAt));
   }
