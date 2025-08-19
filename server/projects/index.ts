@@ -62,7 +62,7 @@ export function registerProjectRoutes(app: Express) {
         });
       }
 
-      const { businessWorkerId, contractorUserId, title, description, dueDate, amount, currency } = validation.data;
+      const { contractorUserId, title, description, dueDate, amount, currency } = validation.data;
 
       // Load project and verify permissions
       const project = await storage.getProject(projectId);
@@ -73,48 +73,21 @@ export function registerProjectRoutes(app: Express) {
         });
       }
 
-      let finalBusinessWorkerId = businessWorkerId;
-
-      // If contractorUserId is provided instead of businessWorkerId, find the business worker relationship
-      if (contractorUserId && !businessWorkerId) {
-        const businessWorkers = await storage.getBusinessWorkers(project.businessId);
-        const businessWorker = businessWorkers.find(bw => bw.contractorUserId === contractorUserId);
-        
-        if (!businessWorker) {
-          return res.status(404).json({
-            ok: false,
-            message: "Contractor is not connected to this business"
-          });
-        }
-        
-        finalBusinessWorkerId = businessWorker.id;
-      }
-
-      // Load business worker and verify it belongs to the same business
-      const businessWorker = await storage.getBusinessWorker(finalBusinessWorkerId);
-      if (!businessWorker) {
+      // Verify contractor exists
+      const contractor = await storage.getUser(contractorUserId);
+      if (!contractor) {
         return res.status(404).json({
           ok: false,
-          message: "Business worker not found"
+          message: "Contractor not found"
         });
       }
 
-      // Critical validation: business_workers.businessId must match project.businessId
-      if (project.businessId !== businessWorker.businessId) {
-        console.log(`[WR_CREATE] project=${projectId} business=${project.businessId} businessWorker=${finalBusinessWorkerId} contractor=${businessWorker.contractorUserId} - 403: business mismatch`);
-        console.log(`Project businessId: ${project.businessId}, BusinessWorker businessId: ${businessWorker.businessId}`);
-        return res.status(403).json({
-          ok: false,
-          message: "Contractor is not part of this business"
-        });
-      }
+      console.log(`[WR_CREATE] project=${projectId} business=${project.businessId} contractor=${contractorUserId}`);
 
-      console.log(`[WR_CREATE] project=${projectId} business=${project.businessId} businessWorker=${finalBusinessWorkerId} contractor=${businessWorker.contractorUserId}`);
-
-      // Create work request
+      // Create work request using the new schema
       const workRequest = await storage.createWorkRequest({
         projectId,
-        businessWorkerId: finalBusinessWorkerId,
+        contractorUserId,
         title,
         description,
         dueDate,
