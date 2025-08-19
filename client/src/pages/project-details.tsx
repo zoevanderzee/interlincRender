@@ -142,16 +142,25 @@ export default function ProjectDetails() {
 
   // Fetch contractor details for each work request
   const contractorIds = [...new Set(workRequests.map(wr => wr.contractorUserId))];
+  
+  // Split work requests into pending (assigned) and accepted
+  const pendingWorkRequests = workRequests.filter(wr => wr.status === 'assigned');
+  const acceptedWorkRequestsData = workRequests.filter(wr => wr.status === 'accepted');
+  
+  console.log("Work requests:", workRequests.map(wr => ({id: wr.id, status: wr.status, title: wr.title})));
+  console.log("Pending work requests:", pendingWorkRequests.length);
+  console.log("Current user role:", user?.role);
+  
   const { data: contractors = [], isLoading: isLoadingContractors } = useQuery<User[]>({
     queryKey: ['/api/users'],
     enabled: contractorIds.length > 0
   });
 
   // Fetch contracts for accepted work requests to get deliverables
-  const acceptedWorkRequests = workRequests.filter(wr => wr.status === 'accepted');
+  // (acceptedWorkRequestsData already defined above)
   const { data: contracts = [] } = useQuery<any[]>({
     queryKey: ['/api/contracts'],
-    enabled: acceptedWorkRequests.length > 0
+    enabled: acceptedWorkRequestsData.length > 0
   });
 
   // Fetch milestones for all contracts in this project
@@ -248,13 +257,7 @@ export default function ProjectDetails() {
     }
   };
 
-  // Split work requests into pending and accepted
-  const pendingWorkRequests = workRequests.filter(wr => 
-    wr.status === 'assigned' || wr.status === 'pending'
-  );
-  const acceptedWorkRequestsData = workRequests.filter(wr => 
-    wr.status === 'accepted'
-  );
+  // Filter work requests by status (removing duplicate declaration)
 
   // Get contract details for accepted work requests
   const getContractForWorkRequest = (workRequestId: number) => {
