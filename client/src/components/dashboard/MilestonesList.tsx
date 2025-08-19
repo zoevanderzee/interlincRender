@@ -54,6 +54,22 @@ const MilestonesList: React.FC<MilestonesListProps> = ({
     return due < today;
   };
 
+  // Calculate progress percentage based on status
+  const getProgressPercentage = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'completed':
+      case 'approved':
+        return 100;
+      case 'in_progress':
+        return 50;
+      case 'pending':
+      case 'accepted':
+      case 'assigned':
+      default:
+        return 0;
+    }
+  };
+
   return (
     <Card className="border-zinc-800 bg-zinc-900 h-full">
       <CardHeader className="pb-3">
@@ -105,7 +121,7 @@ const MilestonesList: React.FC<MilestonesListProps> = ({
                   </div>
                   <div className="flex items-center text-sm text-zinc-400">
                     <FileText className="h-4 w-4 mr-1" />
-                    <span>Progress: {milestone.progress}%</span>
+                    <span>Progress: {getProgressPercentage(milestone.status)}%</span>
                   </div>
                 </div>
                 
