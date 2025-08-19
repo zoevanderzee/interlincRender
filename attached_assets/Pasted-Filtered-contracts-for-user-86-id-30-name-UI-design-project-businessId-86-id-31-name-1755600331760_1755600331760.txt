@@ -1,0 +1,42 @@
+Filtered contracts for user 86: [{"id":30,"name":"UI design project","businessId":86},{"id":31,"name":"UI redesign ","businessId":86},{"id":28,"name":"Social media campaign","businessId":86}]
+10:44:43 AM [express] GET /api/contracts 200 in 202ms :: [{"id":31,"contractName":"UI redesign ","con…
+Filtered contracts for user 86: [{"id":30,"name":"UI design project","businessId":86},{"id":31,"name":"UI redesign ","businessId":86},{"id":28,"name":"Social media campaign","businessId":86}]
+10:44:43 AM [express] GET /api/contracts 200 in 209ms :: [{"id":31,"contractName":"UI redesign ","con…
+Auth check in requireAuth middleware: false Session ID: -rgZZRDELsNtwt9TnCXNJuhvh9uAfDmg
+API request headers in requireAuth: {
+  cookie: undefined,
+  'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.2 Safari/605.1.15',
+  'x-user-id': '86',
+  path: '/api/contracts'
+}
+Session data: {
+  isSessionDefined: true,
+  sessionID: '-rgZZRDELsNtwt9TnCXNJuhvh9uAfDmg',
+  userID: undefined,
+  passportInitialized: false,
+  passport: undefined
+}
+Using X-User-ID header fallback authentication for user ID: 86
+SUBSCRIPTION OK: User 86 (zoevdzee) has active subscription: active
+Fetching contracts for user ID 86 with role business
+Getting contracts for business user ID: 86
+Filtered contracts for user 86: [{"id":30,"name":"UI design project","businessId":86},{"id":31,"name":"UI redesign ","businessId":86},{"id":28,"name":"Social media campaign","businessId":86}]
+10:44:43 AM [express] GET /api/contracts 200 in 102ms :: [{"id":31,"contractName":"UI redesign ","con…
+Auth check in requireAuth middleware: false Session ID: kFj5IC1NPcNJWigmshX5DUTMxCwAvjbu
+API request headers in requireAuth: {
+  cookie: undefined,
+  'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.2 Safari/605.1.15',
+  'x-user-id': '86',
+  path: '/api/contracts'
+}
+Session data: {
+  isSessionDefined: true,
+  sessionID: 'kFj5IC1NPcNJWigmshX5DUTMxCwAvjbu',
+  userID: undefined,
+  passportInitialized: false,
+  passport: undefined
+}
+Auth check in requireAuth middleware: false Session ID: ogoOvekObFfWVzShm4kBtvX77nBW5qxf
+API request headers in requireAuth: {
+  cookie: undefined,
+  'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWe

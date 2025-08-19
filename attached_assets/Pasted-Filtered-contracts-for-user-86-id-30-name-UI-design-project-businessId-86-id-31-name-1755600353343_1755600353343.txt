@@ -1,0 +1,44 @@
+Filtered contracts for user 86: [{"id":30,"name":"UI design project","businessId":86},{"id":31,"name":"UI redesign ","businessId":86},{"id":28,"name":"Social media campaign","businessId":86}]
+10:44:43 AM [express] GET /api/contracts 200 in 99ms :: [{"id":31,"contractName":"UI redesign ","cont…
+Filtered contracts for user 86: [{"id":30,"name":"UI design project","businessId":86},{"id":31,"name":"UI redesign ","businessId":86},{"id":28,"name":"Social media campaign","businessId":86}]
+10:44:43 AM [express] GET /api/contracts 200 in 97ms :: [{"id":31,"contractName":"UI redesign ","cont…
+10:44:43 AM [express] GET /api/budget 200 in 123ms :: {"budgetCap":"5.00","budgetUsed":"0.00","budget…
+Using X-User-ID header fallback authentication for user ID: 86
+SUBSCRIPTION OK: User 86 (zoevdzee) has active subscription: active
+10:44:43 AM [express] GET /api/milestones 200 in 178ms :: []
+Auth check in requireAuth middleware: false Session ID: my5OIGsDvpsngcOFo75zfK4rztha-VRR
+API request headers in requireAuth: {
+  cookie: undefined,
+  'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.2 Safari/605.1.15',
+  'x-user-id': '86',
+  path: '/api/notifications/count'
+}
+Session data: {
+  isSessionDefined: true,
+  sessionID: 'my5OIGsDvpsngcOFo75zfK4rztha-VRR',
+  userID: undefined,
+  passportInitialized: false,
+  passport: undefined
+}
+Using X-User-ID header fallback authentication for user ID: 86
+SUBSCRIPTION OK: User 86 (zoevdzee) has active subscription: active
+10:44:56 AM [express] GET /api/notifications/count 200 in 102ms :: {"count":"2"}
+[2025-08-19T10:45:07.540Z] Database health check: OK
+Auth check in requireAuth middleware: false Session ID: CBqEGLleNuNb6R9XSjJE-RjxUSXMAlkT
+API request headers in requireAuth: {
+  cookie: undefined,
+  'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.2 Safari/605.1.15',
+  'x-user-id': '86',
+  path: '/api/notifications/count'
+}
+Session data: {
+  isSessionDefined: true,
+  sessionID: 'CBqEGLleNuNb6R9XSjJE-RjxUSXMAlkT',
+  userID: undefined,
+  passportInitialized: false,
+  passport: undefined
+}
+Using X-User-ID header fallback authentication for user ID: 86
+SUBSCRIPTION OK: User 86 (zoevdzee) has active subscription: active
+10:45:27 AM [express] GET /api/notifications/count 200 in 101ms :: {"count":"2"}
+[2025-08-19T10:45:37.540Z] Database health check: OK
