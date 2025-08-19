@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Plus, User, Calendar, DollarSign } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatDistanceToNow } from "date-fns";
 
 interface Project {
@@ -72,9 +74,18 @@ export default function ProjectDetails() {
     enabled: acceptedWorkRequests.length > 0
   });
 
-  // Fetch milestones for the specific contract (contract ID 31)
+  // Fetch milestones for all contracts in this project
   const { data: milestones = [] } = useQuery({
     queryKey: ['/api/milestones?contractId=31'],
+    queryFn: async () => {
+      const response = await fetch('/api/milestones?contractId=31', {
+        headers: {
+          'X-User-ID': localStorage.getItem('user_id') || '',
+        },
+      });
+      if (!response.ok) throw new Error('Failed to fetch milestones');
+      return response.json();
+    },
     enabled: contracts.length > 0
   });
 
@@ -100,6 +111,8 @@ export default function ProjectDetails() {
     );
   }
 
+  const { toast } = useToast();
+
   const getContractorName = (workRequest: any): string => {
     // Use contractor name from work request data if available
     if (workRequest.contractorName) {
@@ -113,6 +126,48 @@ export default function ProjectDetails() {
     return contractor.firstName && contractor.lastName 
       ? `${contractor.firstName} ${contractor.lastName}`
       : contractor.username;
+  };
+
+  const handleApproveMilestone = async (milestoneId: number) => {
+    try {
+      await apiRequest('POST', `/api/milestones/${milestoneId}/approve`, {});
+      
+      toast({
+        title: "Milestone Approved",
+        description: "Payment will be processed automatically",
+      });
+      
+      // Refresh milestone data
+      queryClient.invalidateQueries({ queryKey: ['/api/milestones?contractId=31'] });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to approve milestone. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleRejectMilestone = async (milestoneId: number) => {
+    try {
+      await apiRequest('POST', `/api/milestones/${milestoneId}/reject`, {
+        notes: "Please make revisions as discussed"
+      });
+      
+      toast({
+        title: "Milestone Rejected",
+        description: "Contractor has been notified to make changes",
+      });
+      
+      // Refresh milestone data
+      queryClient.invalidateQueries({ queryKey: ['/api/milestones?contractId=31'] });
+    } catch (error) {
+      toast({
+        title: "Error", 
+        description: "Failed to reject milestone. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   // Split work requests into pending and accepted
@@ -331,9 +386,56 @@ export default function ProjectDetails() {
                                   </Badge>
                                 </div>
                                 <p className="text-xs text-gray-400 mb-2">{milestone.description}</p>
+                                
+                                {/* Progress and submission info */}
+                                {milestone.submittedAt && (
+                                  <div className="text-xs text-gray-300 mb-2">
+                                    Submitted: {new Date(milestone.submittedAt).toLocaleDateString()}
+                                  </div>
+                                )}
+                                
+                                {/* Deliverable files */}
                                 {milestone.deliverableFiles && milestone.deliverableFiles.length > 0 && (
-                                  <div className="text-xs text-gray-400">
-                                    {milestone.deliverableFiles.length} file(s) submitted
+                                  <div className="space-y-2 mb-3">
+                                    <div className="text-xs text-gray-300 font-medium">
+                                      📎 {milestone.deliverableFiles.length} file(s) submitted:
+                                    </div>
+                                    {milestone.deliverableFiles.map((file: any, idx: number) => (
+                                      <div key={idx} className="bg-gray-800 rounded p-2 text-xs">
+                                        <div className="text-gray-300">{file.name}</div>
+                                        <div className="text-gray-400">
+                                          {(file.size / 1024 / 1024).toFixed(2)} MB
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                
+                                {/* Approval actions for completed milestones */}
+                                {milestone.status === 'completed' && !milestone.approvedAt && (
+                                  <div className="flex gap-2 mt-3">
+                                    <Button 
+                                      size="sm" 
+                                      className="bg-green-600 hover:bg-green-700 text-white text-xs"
+                                      onClick={() => handleApproveMilestone(milestone.id)}
+                                    >
+                                      ✓ Approve & Release Payment (${milestone.paymentAmount})
+                                    </Button>
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline" 
+                                      className="border-red-600 text-red-600 hover:bg-red-600 hover:text-white text-xs"
+                                      onClick={() => handleRejectMilestone(milestone.id)}
+                                    >
+                                      ✗ Request Changes
+                                    </Button>
+                                  </div>
+                                )}
+                                
+                                {/* Show if already approved */}
+                                {milestone.approvedAt && (
+                                  <div className="text-xs text-green-400 mt-2">
+                                    ✅ Approved on {new Date(milestone.approvedAt).toLocaleDateString()}
                                   </div>
                                 )}
                               </div>
