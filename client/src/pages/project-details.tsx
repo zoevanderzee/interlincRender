@@ -70,13 +70,13 @@ export default function ProjectDetails() {
 
   // Fetch contracts for accepted work requests to get deliverables
   const acceptedWorkRequests = workRequests.filter(wr => wr.status === 'accepted');
-  const { data: contracts = [] } = useQuery({
+  const { data: contracts = [] } = useQuery<any[]>({
     queryKey: ['/api/contracts'],
     enabled: acceptedWorkRequests.length > 0
   });
 
   // Fetch milestones for all contracts in this project
-  const { data: milestones = [] } = useQuery({
+  const { data: milestones = [] } = useQuery<any[]>({
     queryKey: ['/api/milestones?contractId=31'],
     queryFn: async () => {
       const response = await fetch('/api/milestones?contractId=31', {
