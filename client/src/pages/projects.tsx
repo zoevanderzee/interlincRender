@@ -37,12 +37,10 @@ export default function Projects() {
     select: (data) => {
       // Filter to show only accepted work requests for this contractor
       return data.filter((request: any) => 
-        (request.recipientEmail === user?.email || 
-         (user?.email && request.recipientEmail?.toLowerCase() === user.email.toLowerCase())) &&
-        request.status === 'accepted'
+        request.contractorUserId === user?.id && request.status === 'accepted'
       );
     },
-    enabled: !!user?.email && isContractor
+    enabled: !!user?.id && isContractor
   });
 
   const projects = projectsData || [];
