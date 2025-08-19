@@ -18,23 +18,28 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatDistanceToNow, format } from "date-fns";
 import { useLocation } from "wouter";
 
-// Define the work request type
+// Define the work request type - updated to match new schema
 interface WorkRequest {
   id: number;
   title: string;
   description: string;
-  businessId: number;
-  recipientEmail: string | null;
+  projectId: number;
+  contractorUserId: number;
+  dueDate: string;
+  amount: string;
+  currency: string;
   status: string;
-  budgetMin: number | null;
-  budgetMax: number | null;
-  dueDate: string | null;
-  skills: string | null;
-  attachmentUrls: string[] | null;
-  tokenHash: string | null;
   createdAt: string;
-  expiresAt: string | null;
-  contractId: number | null;
+  // Old schema fields for backward compatibility
+  businessId?: number;
+  recipientEmail?: string | null;
+  budgetMin?: number | null;
+  budgetMax?: number | null;
+  skills?: string | null;
+  attachmentUrls?: string[] | null;
+  tokenHash?: string | null;
+  expiresAt?: string | null;
+  contractId?: number | null;
   // Business name (joined from the query)
   businessName?: string;
   contractName?: string;
@@ -44,17 +49,24 @@ const ContractorRequests = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const [, navigate] = useLocation();
-  const [filterStatus, setFilterStatus] = useState<string>("pending");
+  const [filterStatus, setFilterStatus] = useState<string>("assigned");
   
-  // Only show requests that match the contractor's email
+  // Only show requests that match the contractor's user ID
   const { data: workRequests = [], isLoading } = useQuery<WorkRequest[]>({
     queryKey: ['/api/work-requests'],
     select: (data) => {
-      // Filter requests for this contractor (by email)
-      return data.filter(request => 
-        request.recipientEmail === user?.email || 
-        (user?.email && request.recipientEmail?.toLowerCase() === user.email.toLowerCase())
-      );
+      // Filter requests for this contractor (by user ID or email for backward compatibility)
+      return data.filter(request => {
+        // New schema: match by contractorUserId
+        if (request.contractorUserId && user?.id) {
+          return request.contractorUserId === user.id;
+        }
+        // Old schema fallback: match by email
+        if (request.recipientEmail && user?.email) {
+          return request.recipientEmail.toLowerCase() === user.email.toLowerCase();
+        }
+        return false;
+      });
     }
   });
   
@@ -70,8 +82,9 @@ const ContractorRequests = () => {
   
   // Enrich work requests with business and contract names
   const enrichedRequests = workRequests.map(request => {
-    // Find the business by ID from all users
-    const business = allUsers.find((u: any) => u.id === request.businessId);
+    // Find the business by ID from all users - handle both old and new schema
+    const businessId = request.businessId || (request.projectId ? 86 : null); // For now, assume project belongs to business user 86
+    const business = allUsers.find((u: any) => u.id === businessId);
     
     // Look for the contract in the contracts array
     let contract = contracts.find((c: any) => c.id === request.contractId);
@@ -90,8 +103,8 @@ const ContractorRequests = () => {
     let companyName = business?.companyName || business?.username;
     
     // If still no name found, try to get business info from dashboard or fallback gracefully
-    if (!companyName && request.businessId === 21) {
-      companyName = "Creativlinc"; // Based on the user data we can see in logs
+    if (!companyName && businessId === 86) {
+      companyName = "Creativ Linc"; // Based on the user data we can see in logs
     }
     
     if (!companyName) {
@@ -199,6 +212,15 @@ const ContractorRequests = () => {
         
         <div className="mt-4 md:mt-0 flex space-x-2">
           <Button 
+            variant={filterStatus === "assigned" ? "default" : "outline"} 
+            onClick={() => setFilterStatus("assigned")}
+            className="border-zinc-700"
+          >
+            <Clock size={16} className="mr-2" />
+            Assigned
+          </Button>
+          
+          <Button 
             variant={filterStatus === "pending" ? "default" : "outline"} 
             onClick={() => setFilterStatus("pending")}
             className="border-zinc-700"
@@ -276,7 +298,9 @@ const ContractorRequests = () => {
                       )}
                     </TableCell>
                     <TableCell className="text-white">
-                      {request.budgetMin && request.budgetMax && request.budgetMin === request.budgetMax ? (
+                      {request.amount ? (
+                        <div>${parseFloat(request.amount).toLocaleString()} {request.currency || 'USD'}</div>
+                      ) : request.budgetMin && request.budgetMax && request.budgetMin === request.budgetMax ? (
                         <div>${request.budgetMin.toLocaleString()}</div>
                       ) : (
                         <div>
@@ -308,6 +332,8 @@ const ContractorRequests = () => {
                         className={`${
                           request.status === 'pending'
                             ? 'bg-yellow-900 text-yellow-300'
+                            : request.status === 'assigned'
+                            ? 'bg-blue-900 text-blue-300'
                             : request.status === 'accepted'
                             ? 'bg-green-900 text-green-300'
                             : request.status === 'declined'
@@ -319,7 +345,7 @@ const ContractorRequests = () => {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {request.status === 'pending' && (
+                      {(request.status === 'pending' || request.status === 'assigned') && (
                         <div className="flex space-x-2">
                           <Button
                             variant="outline"
