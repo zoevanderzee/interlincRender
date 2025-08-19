@@ -212,6 +212,8 @@ export interface IStorage {
   getWorkRequest(id: number): Promise<WorkRequest | undefined>;
   getProjectWorkRequests(projectId: number): Promise<WorkRequest[]>;
   updateWorkRequestStatus(id: number, status: string): Promise<WorkRequest | undefined>;
+  updateWorkRequestContract(id: number, contractId: number): Promise<WorkRequest | undefined>;
+  getContractByWorkRequestId(workRequestId: number): Promise<Contract | undefined>;
 }
 
 // In-memory storage implementation

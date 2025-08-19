@@ -2116,24 +2116,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let userContracts = [];
       
-      // CRITICAL SECURITY: Block contractors from accessing contract data entirely
+      // Handle contractor dashboard - contractors can see their own contracts
       if (userRole === 'contractor') {
-        console.log(`SECURITY BLOCK: Contractor ${userId} attempted to access dashboard with contract data`);
-        // Return minimal dashboard data for contractors without any contract details
+        console.log(`Contractor ${userId} accessing dashboard for their own contracts`);
+        
+        // Get contractor's own contracts
+        const contractorContracts = await storage.getContractsByContractorId(userId);
+        
+        // Get contractor's own milestones
+        const contractorMilestones = [];
+        const contractorPayments = [];
+        
+        for (const contract of contractorContracts) {
+          const milestones = await storage.getMilestonesByContractId(contract.id);
+          const payments = await storage.getPaymentsByContractId(contract.id);
+          contractorMilestones.push(...milestones);
+          contractorPayments.push(...payments);
+        }
+        
+        // Active contracts are those with status 'active'
+        const activeContracts = contractorContracts.filter(contract => contract.status === 'active');
+        
         const dashboardData = {
           stats: {
-            activeContractsCount: 0,
-            pendingApprovalsCount: 0,
-            paymentsProcessed: 0,
-            totalPendingValue: 0,
-            activeContractorsCount: 0,
-            pendingInvitesCount: 0
+            activeContractsCount: activeContracts.length,
+            pendingApprovalsCount: contractorMilestones.filter(m => m.status === 'pending_approval').length,
+            paymentsProcessed: contractorPayments.filter(p => p.status === 'completed').length,
+            totalPendingValue: contractorPayments
+              .filter(p => p.status !== 'completed')
+              .reduce((sum, payment) => sum + parseFloat(payment.amount), 0),
+            activeContractorsCount: 0, // Not relevant for contractors
+            pendingInvitesCount: 0 // Not relevant for contractors
           },
-          contracts: [], // Empty - contractors should not see contracts
-          contractors: [], // Empty - contractors don't need to see other contractors
-          milestones: [], // Empty - contractors should not see milestones
-          payments: [], // Empty - contractors should not see payment details
-          invites: [] // Empty - contractors don't manage invites
+          contracts: contractorContracts, // Contractor's own contracts
+          contractors: [], // Not relevant for contractors
+          milestones: contractorMilestones, // Contractor's own milestones
+          payments: contractorPayments, // Contractor's own payments
+          invites: [] // Not relevant for contractors
         };
         return res.json(dashboardData);
       }

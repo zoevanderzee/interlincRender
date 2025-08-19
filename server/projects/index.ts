@@ -293,12 +293,45 @@ export function registerProjectRoutes(app: Express) {
       // Update status to accepted
       await storage.updateWorkRequestStatus(workRequestId, "accepted");
 
-      console.log(`[WORK_REQUEST_ACCEPTED] workRequestId=${workRequestId} contractorId=${currentUserId} amount=${workRequest.amount}`);
+      // Get project and business info for contract creation
+      const project = await storage.getProject(workRequest.projectId);
+      if (!project) {
+        throw new Error("Project not found for work request");
+      }
+
+      const business = await storage.getUser(project.businessId);
+      if (!business) {
+        throw new Error("Business not found for project");
+      }
+
+      // Create contract when work request is accepted
+      const contractCode = `WR-${workRequestId}-${Date.now().toString(36).toUpperCase()}`;
+      const contractName = `${workRequest.title} - ${business.companyName || business.firstName + ' ' + business.lastName}`;
+      
+      const contract = await storage.createContract({
+        contractName,
+        contractCode,
+        businessId: project.businessId,
+        projectId: workRequest.projectId,
+        contractorId: currentUserId,
+        description: workRequest.description || `Contract for work request: ${workRequest.title}`,
+        status: "active",
+        value: workRequest.amount,
+        contractorBudget: workRequest.amount,
+        startDate: new Date().toISOString(),
+        endDate: workRequest.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days if no due date
+      });
+
+      // Link work request to contract
+      await storage.updateWorkRequestContract(workRequestId, contract.id);
+
+      console.log(`[WORK_REQUEST_ACCEPTED] workRequestId=${workRequestId} contractorId=${currentUserId} contractId=${contract.id} amount=${workRequest.amount}`);
 
       res.json({
         ok: true,
         status: "accepted",
-        message: "Work request accepted successfully"
+        message: "Work request accepted successfully",
+        contractId: contract.id
       });
 
     } catch (error) {
