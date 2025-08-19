@@ -203,6 +203,7 @@ export interface IStorage {
 
   // Projects (new specification)
   getProject(id: number): Promise<Project | undefined>;
+  getBusinessProjects(businessId: number): Promise<Project[]>;
   createProject(project: InsertProject): Promise<Project>;
   
   // Work Requests (updated specification)
@@ -2947,6 +2948,15 @@ export class DatabaseStorage implements IStorage {
       .from(projects)
       .where(eq(projects.id, id));
     return result;
+  }
+
+  async getBusinessProjects(businessId: number): Promise<Project[]> {
+    const results = await db
+      .select()
+      .from(projects)
+      .where(eq(projects.businessId, businessId))
+      .orderBy(desc(projects.createdAt));
+    return results;
   }
 
   async createProject(project: InsertProject): Promise<Project> {

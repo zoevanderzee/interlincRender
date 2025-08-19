@@ -508,9 +508,9 @@ const Contractors = () => {
                         variant="ghost"
                         size="sm"
                         className="text-zinc-300 hover:text-zinc-100"
-                        onClick={() => navigate(`/contracts/new?contractor=${contractor.id}`)}
+                        onClick={() => navigate(`/assign-contractor/${contractor.id}`)}
                       >
-                        Assign
+                        Assign to Project
                         <ArrowRight size={16} className="ml-1" />
                       </Button>
                     </div>

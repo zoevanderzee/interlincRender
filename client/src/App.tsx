@@ -47,6 +47,7 @@ import ContractorOnboarding from "@/pages/contractor-onboarding";
 import ContractorPaymentSetup from "@/pages/contractor-payment-setup";
 import BusinessSetup from "@/pages/business-setup";
 import PaymentSetup from "@/pages/payment-setup";
+import AssignContractor from "@/pages/assign-contractor";
 
 
 function Router() {
@@ -180,6 +181,12 @@ function Router() {
       <ProtectedRoute path="/contractors">
         <Layout>
           <Contractors />
+        </Layout>
+      </ProtectedRoute>
+      
+      <ProtectedRoute path="/assign-contractor/:contractorId">
+        <Layout>
+          <AssignContractor />
         </Layout>
       </ProtectedRoute>
       

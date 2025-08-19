@@ -6,6 +6,30 @@ import { setupAuth } from "../auth";
 
 export function registerProjectRoutes(app: Express) {
   const { requireAuth } = setupAuth(app);
+  
+  // Get all projects for a business (used by Projects page)
+  app.get("/api/projects", async (req, res) => {
+    try {
+      let userId = req.user?.id;
+      
+      // Use X-User-ID header fallback if session auth failed
+      if (!userId && req.headers['x-user-id']) {
+        userId = parseInt(req.headers['x-user-id'] as string);
+      }
+      
+      if (!userId) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+
+      const projects = await storage.getBusinessProjects(userId);
+      
+      res.json(projects);
+    } catch (error) {
+      console.error("Error fetching projects:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
   // Create a new project
   app.post("/api/projects", async (req, res) => {
     try {

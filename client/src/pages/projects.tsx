@@ -15,18 +15,26 @@ export default function Projects() {
   const [submitWorkModalOpen, setSubmitWorkModalOpen] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
   
-  // Use dashboard data for consistency across all pages
-  const { data: dashboardData, isLoading } = useQuery<{
+  // Fetch projects data instead of dashboard contracts
+  const { data: projectsData, isLoading: isLoadingProjects } = useQuery<any[]>({
+    queryKey: ['/api/projects'],
+    enabled: !!user && !isContractor
+  });
+
+  // Use dashboard data for contractor view
+  const { data: dashboardData, isLoading: isLoadingDashboard } = useQuery<{
     contracts: any[];
     contractors: any[];
     stats: any;
   }>({
     queryKey: ['/api/dashboard'],
-    enabled: !!user
+    enabled: !!user && isContractor
   });
 
+  const projects = projectsData || [];
   const contracts = dashboardData?.contracts || [];
   const contractors = dashboardData?.contractors || [];
+  const isLoading = isContractor ? isLoadingDashboard : isLoadingProjects;
 
   if (isLoading) {
     return (
@@ -250,7 +258,7 @@ export default function Projects() {
         {!isContractor && (
           <Button 
             className="bg-blue-600 hover:bg-blue-700"
-            onClick={() => navigate('/contracts/new')}
+            onClick={() => navigate('/projects/new')}
           >
             <Plus className="mr-2 h-4 w-4" />
             New Project
@@ -258,97 +266,172 @@ export default function Projects() {
         )}
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="border-gray-800 bg-black">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-400">Active Projects</CardTitle>
-            <FileText className="h-4 w-4 text-blue-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">{activeContracts.length}</div>
-            <p className="text-xs text-gray-400">
-              {contracts.length} total contracts
-            </p>
-          </CardContent>
-        </Card>
+      {/* Stats Cards - Different for contractors vs businesses */}
+      {!isContractor && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <Card className="border-gray-800 bg-black">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-400">Total Projects</CardTitle>
+              <FileText className="h-4 w-4 text-blue-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-white">{projects.length}</div>
+              <p className="text-xs text-gray-400">
+                Active projects
+              </p>
+            </CardContent>
+          </Card>
 
-        <Card className="border-gray-800 bg-black">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-400">Completed</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">{completedContracts.length}</div>
-            <p className="text-xs text-gray-400">
-              Projects finished
-            </p>
-          </CardContent>
-        </Card>
+          <Card className="border-gray-800 bg-black">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-400">Total Budget</CardTitle>
+              <DollarSign className="h-4 w-4 text-yellow-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-white">
+                ${projects.reduce((sum: number, p: any) => sum + parseFloat(p.budget || 0), 0).toLocaleString()}
+              </div>
+              <p className="text-xs text-gray-400">
+                Allocated budget
+              </p>
+            </CardContent>
+          </Card>
 
-        <Card className="border-gray-800 bg-black">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-400">Total Value</CardTitle>
-            <DollarSign className="h-4 w-4 text-yellow-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">${totalValue.toLocaleString()}</div>
-            <p className="text-xs text-gray-400">
-              Portfolio value
-            </p>
-          </CardContent>
-        </Card>
+          <Card className="border-gray-800 bg-black">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-400">Work Requests</CardTitle>
+              <Users className="h-4 w-4 text-purple-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-white">-</div>
+              <p className="text-xs text-gray-400">
+                Active assignments
+              </p>
+            </CardContent>
+          </Card>
 
-        <Card className="border-gray-800 bg-black">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-400">
-              {isContractor ? "Active Clients" : "Contractors"}
-            </CardTitle>
-            <Users className="h-4 w-4 text-purple-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">
-              {isContractor ? 
-                new Set(contracts.map((c: any) => c.businessId)).size : 
-                contractors.length
-              }
-            </div>
-            <p className="text-xs text-gray-400">
-              {isContractor ? "Working relationships" : "In network"}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+          <Card className="border-gray-800 bg-black">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-400">Completion</CardTitle>
+              <TrendingUp className="h-4 w-4 text-green-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-white">-</div>
+              <p className="text-xs text-gray-400">
+                Average progress
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
-      {/* Projects List */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold text-white">
-          {isContractor ? "Your Contracts" : "Active Projects"}
-        </h2>
-        
-        {contracts.length === 0 ? (
-          <Card className="border-gray-800 bg-black p-8 text-center">
-            <FileText className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-white mb-2">No Projects Yet</h3>
-            <p className="text-gray-400 mb-4">
-              {isContractor 
-                ? "You don't have any active contracts at the moment."
-                : "Start by creating your first project and inviting contractors."
-              }
-            </p>
-            {!isContractor && (
+      {/* Projects List - Business View */}
+      {!isContractor && (
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold text-white">Your Projects</h2>
+          
+          {projects.length === 0 ? (
+            <Card className="border-gray-800 bg-black p-8 text-center">
+              <FileText className="h-12 w-12 text-gray-600 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-white mb-2">No Projects Yet</h3>
+              <p className="text-gray-400 mb-4">
+                Start by creating your first project. Then you can assign contractors to work on specific deliverables.
+              </p>
               <Button 
                 className="bg-blue-600 hover:bg-blue-700"
-                onClick={() => navigate('/contracts/new')}
+                onClick={() => navigate('/projects/new')}
               >
                 <Plus className="mr-2 h-4 w-4" />
                 Create Your First Project
               </Button>
-            )}
-          </Card>
-        ) : (
-          <div className="grid gap-4">
-            {contracts.map((contract: any) => (
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {projects.map((project: any) => (
+                <Card key={project.id} className="border-gray-800 bg-black">
+                  <CardContent className="p-6">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold text-white mb-2">{project.name}</h3>
+                        <p className="text-gray-300 mb-3">{project.description || 'No description provided'}</p>
+                      </div>
+                      <Badge 
+                        variant={project.status === 'active' ? 'default' : 'secondary'}
+                        className="ml-4 capitalize"
+                      >
+                        {project.status}
+                      </Badge>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                      <div className="flex items-center text-sm">
+                        <DollarSign className="h-4 w-4 text-yellow-400 mr-2" />
+                        <span className="text-gray-400">Budget:</span>
+                        <span className="text-white ml-2 font-medium">${parseFloat(project.budget || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="flex items-center text-sm">
+                        <Calendar className="h-4 w-4 text-blue-400 mr-2" />
+                        <span className="text-gray-400">Created:</span>
+                        <span className="text-white ml-2">
+                          {project.created_at ? new Date(project.created_at).toLocaleDateString() : 'Not set'}
+                        </span>
+                      </div>
+                      <div className="flex items-center text-sm">
+                        <Users className="h-4 w-4 text-green-400 mr-2" />
+                        <span className="text-gray-400">Contractors:</span>
+                        <span className="text-white ml-2">0</span>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="border-gray-700 text-white hover:bg-gray-800"
+                        onClick={() => navigate(`/projects/${project.id}`)}
+                      >
+                        View Details
+                      </Button>
+                      <Button 
+                        size="sm"
+                        className="bg-blue-600 hover:bg-blue-700"
+                        onClick={() => navigate(`/projects/${project.id}/add-contractor`)}
+                      >
+                        <Plus className="mr-1 h-4 w-4" />
+                        Add Contractor
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Contractor View - Show active assignments */}
+      {isContractor && (
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold text-white">Your Contracts</h2>
+          
+          {contracts.length === 0 ? (
+            <Card className="border-gray-800 bg-black p-8 text-center">
+              <FileText className="h-12 w-12 text-gray-600 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-white mb-2">No Active Contracts</h3>
+              <p className="text-gray-400 mb-4">
+                You don't have any active contracts at the moment. Check your work requests for new opportunities.
+              </p>
+              <Button 
+                variant="outline" 
+                onClick={() => navigate('/work-requests')}
+                className="border-gray-700 text-white hover:bg-gray-800"
+              >
+                View Work Requests
+              </Button>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {contracts.map((contract: any) => (
               <Card key={contract.id} className="border-gray-800 bg-black">
                 <CardContent className="p-6">
                   <div className="flex justify-between items-start mb-4">
@@ -406,10 +489,9 @@ export default function Projects() {
               </Card>
             ))}
           </div>
-        )}
-      </div>
-
-
+          )}
+        </div>
+      )}
     </div>
   );
 }
