@@ -1947,11 +1947,11 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(workRequests.createdAt));
   }
 
-  async getWorkRequestsByEmail(email: string): Promise<WorkRequest[]> {
+  async getWorkRequestsByContractorId(contractorUserId: number): Promise<WorkRequest[]> {
     return db
       .select()
       .from(workRequests)
-      .where(eq(workRequests.recipientEmail, email.toLowerCase()))
+      .where(eq(workRequests.contractorUserId, contractorUserId))
       .orderBy(desc(workRequests.createdAt));
   }
 

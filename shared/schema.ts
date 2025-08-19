@@ -220,7 +220,7 @@ export const projects = pgTable("projects", {
 export const workRequests = pgTable("work_requests", {
   id: serial("id").primaryKey(),
   projectId: integer("project_id").notNull().references(() => projects.id),
-  businessWorkerId: integer("business_worker_id").notNull().references(() => businessWorkers.id),
+  contractorUserId: integer("contractor_user_id").notNull().references(() => users.id),
   title: text("title").notNull(),
   description: text("description").notNull(),
   dueDate: timestamp("due_date"),

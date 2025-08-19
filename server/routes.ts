@@ -3733,12 +3733,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(403).json({ message: "Unauthorized to access these work requests" });
         }
       }
-      // If email is provided, get work requests for that email
+      // If email is provided, find the contractor user and get their work requests
       else if (email) {
         // Allow users to see their own work requests by email
         if (currentUser && (currentUser.email === email || currentUser.role === 'admin')) {
-          // Pass the email to the storage layer to find work requests by recipient email
-          workRequests = await storage.getWorkRequestsByEmail(email);
+          // Find the user by email first, then get their work requests
+          const contractorUser = await storage.getUserByEmail(email);
+          if (contractorUser) {
+            workRequests = await storage.getWorkRequestsByContractorId(contractorUser.id);
+          } else {
+            workRequests = [];
+          }
         } else {
           return res.status(403).json({ message: "Unauthorized to access these work requests" });
         }
@@ -3752,7 +3757,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (currentUser.role === 'business') {
           workRequests = await storage.getWorkRequestsByBusinessId(currentUser.id);
         } else if (currentUser.role === 'contractor' || currentUser.role === 'freelancer') {
-          workRequests = await storage.getWorkRequestsByEmail(currentUser.email);
+          workRequests = await storage.getWorkRequestsByContractorId(currentUser.id);
         }
       }
       
