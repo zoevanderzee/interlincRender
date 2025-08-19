@@ -1,11 +1,13 @@
+import { useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Plus, User, Calendar, DollarSign } from "lucide-react";
+import { ArrowLeft, Plus, User, Calendar, DollarSign, Upload } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { SubmitWorkModal } from "@/components/SubmitWorkModal";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatDistanceToNow } from "date-fns";
 
@@ -48,6 +50,25 @@ export default function ProjectDetails() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  
+  // State for SubmitWorkModal
+  const [submitModalOpen, setSubmitModalOpen] = useState(false);
+  const [selectedDeliverable, setSelectedDeliverable] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
+  
+  // Handle opening submit work modal
+  const handleSubmitWork = (deliverableId: number, deliverableName: string) => {
+    setSelectedDeliverable({ id: deliverableId, name: deliverableName });
+    setSubmitModalOpen(true);
+  };
+  
+  // Handle closing submit work modal
+  const handleCloseSubmitModal = () => {
+    setSubmitModalOpen(false);
+    setSelectedDeliverable(null);
+  };
 
   // Fetch project details
   const { data: project, isLoading: isLoadingProject } = useQuery<Project>({
@@ -418,6 +439,20 @@ export default function ProjectDetails() {
                                   </div>
                                 )}
                                 
+                                {/* Submit work button for contractors with assigned deliverables */}
+                                {milestone.status === 'assigned' && user?.id === workRequest.contractorUserId && (
+                                  <div className="mt-3">
+                                    <Button 
+                                      size="sm" 
+                                      className="bg-blue-600 hover:bg-blue-700 text-white text-xs"
+                                      onClick={() => handleSubmitWork(milestone.id, milestone.name)}
+                                    >
+                                      <Upload className="h-3 w-3 mr-1" />
+                                      Submit Work
+                                    </Button>
+                                  </div>
+                                )}
+
                                 {/* Approval actions for completed milestones */}
                                 {milestone.status === 'completed' && !milestone.approvedAt && (
                                   <div className="flex gap-2 mt-3">
@@ -457,6 +492,16 @@ export default function ProjectDetails() {
             </div>
           </CardContent>
         </Card>
+      )}
+      
+      {/* Submit Work Modal */}
+      {selectedDeliverable && (
+        <SubmitWorkModal
+          isOpen={submitModalOpen}
+          onClose={handleCloseSubmitModal}
+          deliverableId={selectedDeliverable.id}
+          deliverableName={selectedDeliverable.name}
+        />
       )}
     </div>
   );
