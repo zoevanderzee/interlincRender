@@ -457,4 +457,146 @@ export function registerProjectRoutes(app: Express) {
       });
     }
   });
+
+  // Business accept work request (triggers Trolley payment)
+  app.post("/api/work-requests/:id/business-accept", async (req, res) => {
+    try {
+      const workRequestId = parseInt(req.params.id);
+      const { allocatedBudget, triggerPayment } = req.body;
+
+      // Use the same authentication pattern as other endpoints
+      let currentUserId = req.user?.id;
+      
+      // Fallback to X-User-ID header like other endpoints in this system
+      if (!currentUserId && req.headers['x-user-id']) {
+        currentUserId = parseInt(req.headers['x-user-id'] as string);
+      }
+
+      if (!currentUserId) {
+        return res.status(401).json({
+          ok: false,
+          message: "Authentication required"
+        });
+      }
+
+      // Get work request
+      const workRequest = await storage.getWorkRequest(workRequestId);
+      if (!workRequest) {
+        return res.status(404).json({
+          ok: false,
+          message: "Work request not found"
+        });
+      }
+
+      // Get project and verify business ownership
+      const project = await storage.getProject(workRequest.projectId);
+      if (!project || project.businessId !== currentUserId) {
+        return res.status(403).json({
+          ok: false,
+          message: "You can only accept work requests for your own projects"
+        });
+      }
+
+      // Check if already accepted
+      if (workRequest.status === "accepted") {
+        return res.json({
+          ok: true,
+          status: "accepted",
+          message: "Already accepted"
+        });
+      }
+
+      // Only allow accepting "assigned" work requests
+      if (workRequest.status !== "assigned") {
+        return res.status(400).json({
+          ok: false,
+          message: `Cannot accept work request with status: ${workRequest.status}`
+        });
+      }
+
+      // Update status to accepted
+      await storage.updateWorkRequestStatus(workRequestId, "accepted");
+
+      // If triggerPayment is true, initiate Trolley payment process
+      if (triggerPayment) {
+        console.log(`[BUSINESS_ACCEPT] Triggering Trolley payment for work request ${workRequestId}: $${allocatedBudget}`);
+        // TODO: Emit event for Trolley payment service
+        // TODO: Create payment record in database
+      }
+
+      res.json({
+        ok: true,
+        status: "accepted",
+        allocatedBudget: allocatedBudget,
+        paymentTriggered: triggerPayment
+      });
+
+    } catch (error) {
+      console.error("Error accepting work request (business):", error);
+      res.status(500).json({
+        ok: false,
+        message: "Internal server error"
+      });
+    }
+  });
+
+  // Business reject work request
+  app.post("/api/work-requests/:id/business-reject", async (req, res) => {
+    try {
+      const workRequestId = parseInt(req.params.id);
+      const { reason } = req.body;
+
+      // Use the same authentication pattern as other endpoints
+      let currentUserId = req.user?.id;
+      
+      // Fallback to X-User-ID header like other endpoints in this system
+      if (!currentUserId && req.headers['x-user-id']) {
+        currentUserId = parseInt(req.headers['x-user-id'] as string);
+      }
+
+      if (!currentUserId) {
+        return res.status(401).json({
+          ok: false,
+          message: "Authentication required"
+        });
+      }
+
+      // Get work request
+      const workRequest = await storage.getWorkRequest(workRequestId);
+      if (!workRequest) {
+        return res.status(404).json({
+          ok: false,
+          message: "Work request not found"
+        });
+      }
+
+      // Get project and verify business ownership
+      const project = await storage.getProject(workRequest.projectId);
+      if (!project || project.businessId !== currentUserId) {
+        return res.status(403).json({
+          ok: false,
+          message: "You can only reject work requests for your own projects"
+        });
+      }
+
+      // Update status to rejected
+      await storage.updateWorkRequestStatus(workRequestId, "rejected");
+
+      // TODO: Send notification to contractor about rejection
+      console.log(`[BUSINESS_REJECT] Work request ${workRequestId} rejected by business. Reason: ${reason}`);
+
+      res.json({
+        ok: true,
+        status: "rejected",
+        reason: reason
+      });
+
+    } catch (error) {
+      console.error("Error rejecting work request (business):", error);
+      res.status(500).json({
+        ok: false,
+        message: "Internal server error"
+      });
+    }
+  });
 }

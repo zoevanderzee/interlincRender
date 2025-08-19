@@ -32,6 +32,7 @@ interface WorkRequest {
   createdAt: string;
   contractorUserId: number;
   projectId: number;
+  deliverableDescription?: string;
 }
 
 interface User {
@@ -68,6 +69,63 @@ export default function ProjectDetails() {
   const handleCloseSubmitModal = () => {
     setSubmitModalOpen(false);
     setSelectedDeliverable(null);
+  };
+
+  // Handle accepting work request (business action)
+  const handleAcceptWorkRequest = async (workRequest: WorkRequest) => {
+    try {
+      const response = await apiRequest("POST", `/api/work-requests/${workRequest.id}/business-accept`, {
+        allocatedBudget: parseFloat(workRequest.amount),
+        triggerPayment: true
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Work Request Accepted",
+          description: `Budget of $${parseFloat(workRequest.amount).toLocaleString()} allocated and Trolley payment triggered.`,
+        });
+        
+        // Refresh work requests
+        await queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/work-requests`] });
+      } else {
+        throw new Error("Failed to accept work request");
+      }
+    } catch (error) {
+      console.error("Error accepting work request:", error);
+      toast({
+        title: "Error",
+        description: "Failed to accept work request. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle rejecting work request (business action)
+  const handleRejectWorkRequest = async (workRequestId: number) => {
+    try {
+      const response = await apiRequest("POST", `/api/work-requests/${workRequestId}/business-reject`, {
+        reason: "Not suitable for current project requirements"
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Work Request Rejected",
+          description: "Work request has been rejected and contractor notified.",
+        });
+        
+        // Refresh work requests
+        await queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/work-requests`] });
+      } else {
+        throw new Error("Failed to reject work request");
+      }
+    } catch (error) {
+      console.error("Error rejecting work request:", error);
+      toast({
+        title: "Error",
+        description: "Failed to reject work request. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Fetch project details
@@ -327,13 +385,18 @@ export default function ProjectDetails() {
                     <div className="flex-1">
                       <h4 className="font-medium text-white mb-1">{workRequest.title}</h4>
                       <p className="text-sm text-gray-400 line-clamp-2">{workRequest.description}</p>
+                      {workRequest.deliverableDescription && (
+                        <p className="text-xs text-gray-300 mt-1">
+                          <strong>Deliverable:</strong> {workRequest.deliverableDescription}
+                        </p>
+                      )}
                     </div>
                     <Badge className={`ml-4 ${getStatusColor(workRequest.status)} text-white`}>
                       {workRequest.status}
                     </Badge>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-4">
                     <div className="flex items-center gap-2 text-gray-400">
                       <User className="h-4 w-4" />
                       <span>{getContractorName(workRequest)}</span>
@@ -347,6 +410,25 @@ export default function ProjectDetails() {
                       <span>Due {formatDistanceToNow(new Date(workRequest.dueDate))} from now</span>
                     </div>
                   </div>
+
+                  {/* Business Accept Button - Only show for business owners on pending requests */}
+                  {workRequest.status === 'assigned' && user?.role === 'business' && (
+                    <div className="flex gap-3 pt-3 border-t border-gray-700">
+                      <Button 
+                        className="bg-green-600 hover:bg-green-700 text-white text-sm"
+                        onClick={() => handleAcceptWorkRequest(workRequest)}
+                      >
+                        ✓ Accept & Allocate Budget (${parseFloat(workRequest.amount).toLocaleString()})
+                      </Button>
+                      <Button 
+                        variant="outline"
+                        className="border-red-600 text-red-600 hover:bg-red-600 hover:text-white text-sm"
+                        onClick={() => handleRejectWorkRequest(workRequest.id)}
+                      >
+                        ✗ Reject Request
+                      </Button>
+                    </div>
+                  )}
                   
                   <div className="mt-3 text-xs text-gray-500">
                     Created {formatDistanceToNow(new Date(workRequest.createdAt))} ago
@@ -394,9 +476,27 @@ export default function ProjectDetails() {
                       </div>
                     </div>
 
+                    {/* Progress Bar */}
+                    <div className="mt-4 pt-4 border-t border-gray-700">
+                      <div className="flex items-center justify-between mb-2">
+                        <h5 className="font-medium text-white">Progress</h5>
+                        <span className="text-sm text-gray-400">
+                          {contract ? Math.round((getMilestonesForContract(contract.id).filter(m => m.status === 'completed' || m.approvedAt).length / Math.max(getMilestonesForContract(contract.id).length, 1)) * 100) : 0}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-700 rounded-full h-2 mb-4">
+                        <div 
+                          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                          style={{ 
+                            width: `${contract ? Math.round((getMilestonesForContract(contract.id).filter(m => m.status === 'completed' || m.approvedAt).length / Math.max(getMilestonesForContract(contract.id).length, 1)) * 100) : 0}%` 
+                          }}
+                        ></div>
+                      </div>
+                    </div>
+
                     {/* Deliverables Section */}
                     {contract && (
-                      <div className="mt-4 pt-4 border-t border-gray-700">
+                      <div className="mt-4">
                         <h5 className="font-medium text-white mb-3">Deliverables</h5>
                         {contractMilestones.length === 0 ? (
                           <p className="text-sm text-gray-400">No deliverables submitted yet</p>
