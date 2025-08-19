@@ -64,19 +64,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Subscription requirement middleware
   const requireActiveSubscription = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      console.log('requireActiveSubscription middleware started for:', req.path);
-      console.log('Headers:', req.headers);
-      
       let userId = req.user?.id;
       
       // Use X-User-ID header fallback if session auth failed
       if (!userId && req.headers['x-user-id']) {
         userId = parseInt(req.headers['x-user-id'] as string);
-        console.log('Using X-User-ID fallback:', userId);
       }
       
       if (!userId) {
-        console.log('No user ID found - returning 401');
         return res.status(401).json({ message: 'Authentication required' });
       }
 
@@ -6446,8 +6441,7 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
   });
 
   // Get upload URL for object entities
-  app.post("/api/objects/upload", requireActiveSubscription, async (req, res) => {
-    console.log('Object upload endpoint reached - user authenticated successfully');
+  app.post("/api/objects/upload", requireAuth, async (req, res) => {
     try {
       const objectStorageService = new ObjectStorageService();
       const uploadURL = await objectStorageService.getObjectEntityUploadURL();
