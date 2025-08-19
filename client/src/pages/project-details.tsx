@@ -226,14 +226,7 @@ export default function ProjectDetails() {
             </div>
           ) : pendingWorkRequests.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-gray-400 mb-4">No pending work requests</p>
-              <Button 
-                onClick={() => navigate(`/assign-contractor?projectId=${projectId}`)}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Create First Assignment
-              </Button>
+              <p className="text-gray-400">No pending work requests</p>
             </div>
           ) : (
             <div className="space-y-4">
