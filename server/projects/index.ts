@@ -227,7 +227,31 @@ export function registerProjectRoutes(app: Express) {
     try {
       const projectId = parseInt(req.params.projectId);
       const workRequests = await storage.getProjectWorkRequests(projectId);
-      res.json(workRequests);
+      
+      // Enhance work requests with contractor information
+      const enhancedWorkRequests = await Promise.all(
+        workRequests.map(async (wr) => {
+          if (wr.contractorUserId) {
+            try {
+              const contractor = await storage.getUser(wr.contractorUserId);
+              if (contractor) {
+                return {
+                  ...wr,
+                  contractorName: contractor.firstName && contractor.lastName 
+                    ? `${contractor.firstName} ${contractor.lastName}`
+                    : contractor.username,
+                  contractorEmail: contractor.email
+                };
+              }
+            } catch (error) {
+              console.error(`Error fetching contractor ${wr.contractorUserId}:`, error);
+            }
+          }
+          return wr;
+        })
+      );
+      
+      res.json(enhancedWorkRequests);
     } catch (error) {
       console.error("Error fetching work requests:", error);
       res.status(500).json({ error: "Internal server error" });

@@ -101,9 +101,15 @@ export default function ProjectDetails() {
     );
   }
 
-  const getContractorName = (contractorUserId: number): string => {
+  const getContractorName = (workRequest: any): string => {
+    // Use contractor name from work request data if available
+    if (workRequest.contractorName) {
+      return workRequest.contractorName;
+    }
+    
+    // Fallback to lookup in contractors array
     if (isLoadingContractors) return 'Loading...';
-    const contractor = contractors.find(c => c.id === contractorUserId);
+    const contractor = contractors.find(c => c.id === workRequest.contractorUserId);
     if (!contractor) return 'Contractor not found';
     return contractor.firstName && contractor.lastName 
       ? `${contractor.firstName} ${contractor.lastName}`
@@ -248,7 +254,7 @@ export default function ProjectDetails() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                     <div className="flex items-center gap-2 text-gray-400">
                       <User className="h-4 w-4" />
-                      <span>{getContractorName(workRequest.contractorUserId)}</span>
+                      <span>{getContractorName(workRequest)}</span>
                     </div>
                     <div className="flex items-center gap-2 text-gray-400">
                       <DollarSign className="h-4 w-4" />
@@ -293,7 +299,7 @@ export default function ProjectDetails() {
                         <p className="text-sm text-gray-400 mb-2">{workRequest.description}</p>
                         <div className="flex items-center gap-2 text-gray-400">
                           <User className="h-4 w-4" />
-                          <span>{getContractorName(workRequest.contractorUserId)}</span>
+                          <span>{getContractorName(workRequest)}</span>
                         </div>
                       </div>
                       <div className="text-right">
