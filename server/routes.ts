@@ -2130,6 +2130,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Get contractor's own contracts
         const contractorContracts = await storage.getContractsByContractorId(userId);
+        console.log(`Debug: Found ${contractorContracts.length} contracts for contractor ${userId}:`, contractorContracts.map(c => ({ id: c.id, name: c.contractName, status: c.status })));
         
         // Get contractor's own milestones
         const contractorMilestones = [];
@@ -2142,8 +2143,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           contractorPayments.push(...payments);
         }
         
-        // Active contracts are those with status 'active'
-        const activeContracts = contractorContracts.filter(contract => contract.status === 'active');
+        // Active contracts are those with status 'Active' (case-sensitive match)
+        const activeContracts = contractorContracts.filter(contract => contract.status === 'Active');
         
         const dashboardData = {
           stats: {
