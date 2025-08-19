@@ -173,9 +173,9 @@ export function SubmitWorkModal({
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Uploaded Files:</Label>
                   {uploadedFiles.map((file, index) => (
-                    <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
-                      <FileText className="w-4 h-4" />
-                      <span className="text-sm">{file.name}</span>
+                    <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded border">
+                      <FileText className="w-4 h-4 text-gray-600" />
+                      <span className="text-sm text-gray-900">{file.name}</span>
                       <span className="text-xs text-gray-500">
                         ({(file.size / 1024 / 1024).toFixed(1)} MB)
                       </span>
