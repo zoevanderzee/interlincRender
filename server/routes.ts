@@ -36,6 +36,7 @@ import { trolleySubmerchantService, type TrolleySubmerchantData } from "./servic
 import { trolleyService } from "./trolley-service";
 import { setupAuth } from "./auth";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import { FileStorageService, uploadMiddleware } from "./fileStorage";
 import plaidRoutes from "./plaid-routes";
 import trolleyRoutes from "./trolley-routes";
 import trolleyTestRoutes from "./trolley-test-routes";
@@ -5947,6 +5948,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 // Trolley Submerchant Routes
 function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void {
+  const apiRouter = "/api";
   const basePath = '/api/trolley-submerchant';
 
   /**
@@ -6693,6 +6695,117 @@ User Agent: ${supportRequest.userAgent}
     } catch (error) {
       console.error('Error processing support request:', error);
       res.status(500).json({ message: "Error processing support request" });
+    }
+  });
+
+  // ================ FILE STORAGE ENDPOINTS ================
+  // Upload file endpoint
+  app.post(`${apiRouter}/files/upload`, requireAuth, uploadMiddleware.single('file'), async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      // Return file information in the same format as Google Cloud Storage
+      const fileInfo = {
+        url: `/api/files/view/${req.file.filename}`,
+        name: req.file.originalname,
+        size: req.file.size,
+        type: req.file.mimetype,
+        filename: req.file.filename
+      };
+
+      res.json(fileInfo);
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      res.status(500).json({ message: "Error uploading file" });
+    }
+  });
+
+  // View file endpoint - serves files for inline viewing
+  app.get(`/api/files/view/:filename`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const filename = req.params.filename;
+      
+      // Security check: prevent directory traversal
+      if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+        return res.status(400).json({ message: "Invalid filename" });
+      }
+
+      FileStorageService.serveFile(filename, res);
+    } catch (error) {
+      console.error("Error viewing file:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ message: "Error viewing file" });
+      }
+    }
+  });
+
+  // Download file endpoint - forces download with original name
+  app.get(`/api/files/download/:filename`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const filename = req.params.filename;
+      const originalName = req.query.name as string;
+      
+      // Security check: prevent directory traversal
+      if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+        return res.status(400).json({ message: "Invalid filename" });
+      }
+
+      FileStorageService.downloadFile(filename, originalName, res);
+    } catch (error) {
+      console.error("Error downloading file:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ message: "Error downloading file" });
+      }
+    }
+  });
+
+  // Get file info endpoint
+  app.get(`/api/files/info/:filename`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const filename = req.params.filename;
+      
+      // Security check: prevent directory traversal
+      if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+        return res.status(400).json({ message: "Invalid filename" });
+      }
+
+      const fileInfo = FileStorageService.getFileInfo(filename);
+      
+      if (!fileInfo) {
+        return res.status(404).json({ message: "File not found" });
+      }
+
+      res.json({
+        name: fileInfo.originalName,
+        size: fileInfo.size,
+        type: fileInfo.mimetype,
+        uploadedAt: fileInfo.uploadedAt
+      });
+    } catch (error) {
+      console.error("Error getting file info:", error);
+      res.status(500).json({ message: "Error getting file info" });
     }
   });
 

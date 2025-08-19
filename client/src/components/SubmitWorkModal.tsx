@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { ObjectUploader } from "./ObjectUploader";
+import { SimpleFileUploader } from "./SimpleFileUploader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -71,26 +71,7 @@ export function SubmitWorkModal({
     },
   });
 
-  const handleGetUploadParameters = async () => {
-    const response = await apiRequest("POST", "/api/objects/upload");
-    const data = await response.json();
-    return {
-      method: "PUT" as const,
-      url: data.uploadURL,
-    };
-  };
-
-  const handleUploadComplete = (result: any) => {
-    if (result.successful && result.successful.length > 0) {
-      const newFiles = result.successful.map((file: any) => ({
-        url: file.uploadURL,
-        name: file.name,
-        type: file.type,
-        size: file.size,
-      }));
-      setUploadedFiles([...uploadedFiles, ...newFiles]);
-    }
-  };
+  // File upload handlers removed - now handled by SimpleFileUploader
 
   const handleSubmit = () => {
     if (submissionType === "digital" && uploadedFiles.length === 0) {
@@ -156,33 +137,12 @@ export function SubmitWorkModal({
           {submissionType === "digital" ? (
             <div className="space-y-4">
               <Label className="text-base font-medium">Upload Deliverable Files</Label>
-              <ObjectUploader
-                maxNumberOfFiles={5}
-                maxFileSize={50 * 1024 * 1024} // 50MB
-                onGetUploadParameters={handleGetUploadParameters}
-                onComplete={handleUploadComplete}
-                buttonClassName="w-full"
-              >
-                <div className="flex items-center gap-2">
-                  <Upload className="w-4 h-4" />
-                  <span>Upload Files</span>
-                </div>
-              </ObjectUploader>
-              
-              {uploadedFiles.length > 0 && (
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Uploaded Files:</Label>
-                  {uploadedFiles.map((file, index) => (
-                    <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded border">
-                      <FileText className="w-4 h-4 text-gray-600" />
-                      <span className="text-sm text-gray-900">{file.name}</span>
-                      <span className="text-xs text-gray-500">
-                        ({(file.size / 1024 / 1024).toFixed(1)} MB)
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <SimpleFileUploader
+                maxFiles={5}
+                accept="*/*"
+                onFilesChanged={setUploadedFiles}
+                initialFiles={uploadedFiles}
+              />
             </div>
           ) : (
             <div className="space-y-2">
