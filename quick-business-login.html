@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quick Business Login</title>
+    <script>
+        async function loginAsBusiness() {
+            const response = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    username: 'zoevdzee',
+                    password: 'secure123'
+                })
+            });
+            
+            if (response.ok) {
+                alert('Logged in successfully!');
+                window.location.href = '/projects/3';
+            } else {
+                alert('Login failed');
+            }
+        }
+        
+        async function setLocalStorageAuth() {
+            localStorage.setItem('user_id', '86');
+            localStorage.setItem('firebase_uid', 'pQf3aNThXrdArHanQpbc7r0umQg1');
+            alert('Auth headers set in localStorage');
+            window.location.href = '/';
+        }
+    </script>
+</head>
+<body>
+    <h1>Quick Business Login for Testing</h1>
+    <button onclick="loginAsBusiness()">Login as Business (zoevdzee)</button>
+    <br><br>
+    <button onclick="setLocalStorageAuth()">Set Auth Headers</button>
+    <br><br>
+    <a href="/projects/3">Go to Project Details</a>
+</body>
+</html>
