@@ -111,7 +111,7 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
       if (projectId) {
         const formattedDueDate = new Date(dueDate || Date.now()).toISOString();
         
-        await apiRequest(
+        const workRequestResponse = await apiRequest(
           'POST',
           `/api/projects/${projectId}/work-requests`,
           {
@@ -123,6 +123,7 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
             currency: 'USD'
           }
         );
+        console.log('Work request creation result:', workRequestResponse);
       }
 
       return contractResponse;
