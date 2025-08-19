@@ -50,10 +50,15 @@ export default function AssignContractor() {
 
   // Fetch contractor details (only if contractorId is provided via URL or query param)
   const contractorIdToFetch = contractorId || contractorIdFromQuery;
+  console.log("Contractor ID to fetch:", contractorIdToFetch);
+  
   const { data: contractor, isLoading: isLoadingContractor } = useQuery<any>({
     queryKey: ['/api/users', contractorIdToFetch],
     enabled: !!contractorIdToFetch
   });
+  
+  console.log("Contractor data:", contractor);
+  console.log("Is loading contractor:", isLoadingContractor);
 
   // Fetch connection requests to get contractors
   const { data: connectionRequests = [], isLoading: isLoadingConnections } = useQuery<any[]>({
@@ -230,7 +235,19 @@ export default function AssignContractor() {
           </CardContent>
         </Card>
       ) : (
-        contractor && (
+        (isLoadingContractor ? (
+          <Card className="border-gray-800 bg-black">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-12 h-12 bg-gray-700 rounded-full animate-pulse"></div>
+                <div>
+                  <div className="h-6 bg-gray-700 rounded animate-pulse mb-2 w-32"></div>
+                  <div className="h-4 bg-gray-700 rounded animate-pulse w-24"></div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : contractor && (
           <Card className="border-gray-800 bg-black">
             <CardContent className="p-6">
               <div className="flex items-center gap-4 mb-4">
@@ -252,7 +269,7 @@ export default function AssignContractor() {
               </div>
             </CardContent>
           </Card>
-        )
+        ))
       )}
 
       {/* Assignment Form */}
