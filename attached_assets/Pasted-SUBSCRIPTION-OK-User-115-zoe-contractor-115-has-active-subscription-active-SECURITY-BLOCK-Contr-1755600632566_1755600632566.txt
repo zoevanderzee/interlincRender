@@ -1,0 +1,47 @@
+SUBSCRIPTION OK: User 115 (zoe-contractor-115) has active subscription: active
+SECURITY BLOCK: Contractor 115 attempted to access contracts API
+10:49:46 AM [express] GET /api/contracts 403 in 66ms :: {"message":"Access denied: Contractors cannot…
+Using X-User-ID header fallback authentication for user ID: 115
+SUBSCRIPTION OK: User 115 (zoe-contractor-115) has active subscription: active
+Error fetching work requests: error: syntax error at or near "="
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async NeonPreparedQuery.execute (/home/runner/workspace/node_modules/src/neon-serverless/session.ts:102:18)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:3755:26) {
+  length: 91,
+  severity: 'ERROR',
+  code: '42601',
+  detail: undefined,
+  hint: undefined,
+  position: '159',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'scan.l',
+  line: '1244',
+  routine: 'scanner_yyerror'
+}
+10:49:46 AM [express] GET /api/work-requests 500 in 97ms :: {"message":"Error fetching work requests"}
+[2025-08-19T10:50:07.542Z] Database health check: OK
+Auth check in requireAuth middleware: false Session ID: K16eBbe67AjUogVBiJpPOGuZXE23tvq6
+API request headers in requireAuth: {
+  cookie: undefined,
+  'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.2 Safari/605.1.15',
+  'x-user-id': '115',
+  path: '/api/notifications/count'
+}
+Session data: {
+  isSessionDefined: true,
+  sessionID: 'K16eBbe67AjUogVBiJpPOGuZXE23tvq6',
+  userID: undefined,
+  passportInitialized: false,
+  passport: undefined
+}
+Using X-User-ID header fallback authentication for user ID: 115
+SUBSCRIPTION OK: User 115 (zoe-contractor-115) has active subscription: active
+10:50:15 AM [express] GET /api/notifications/count 200 in 98ms :: {"count":"1"}
