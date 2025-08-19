@@ -187,15 +187,33 @@ export function SubmittedWorkReview({ businessId }: SubmittedWorkReviewProps) {
                           <Label className="text-white text-sm mb-2 block">Attachments:</Label>
                           <div className="flex flex-wrap gap-2">
                             {submission.attachmentUrls.map((url: string, index: number) => (
-                              <Button
-                                key={index}
-                                variant="outline"
-                                size="sm"
-                                className="border-gray-700 text-gray-300 hover:bg-gray-700"
-                              >
-                                <Download className="h-3 w-3 mr-1" />
-                                {url.split('/').pop()}
-                              </Button>
+                              <div key={index} className="flex gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="border-gray-700 text-gray-300 hover:bg-gray-700"
+                                  onClick={() => window.open(url, '_blank')}
+                                >
+                                  <FileText className="h-3 w-3 mr-1" />
+                                  View File
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="border-gray-700 text-gray-300 hover:bg-gray-700"
+                                  onClick={() => {
+                                    const link = document.createElement('a');
+                                    link.href = url;
+                                    link.download = url.split('/').pop() || `attachment-${index + 1}`;
+                                    document.body.appendChild(link);
+                                    link.click();
+                                    document.body.removeChild(link);
+                                  }}
+                                >
+                                  <Download className="h-3 w-3 mr-1" />
+                                  Download
+                                </Button>
+                              </div>
                             ))}
                           </div>
                         </div>

@@ -1281,6 +1281,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // These endpoints use "deliverable" terminology but operate on the same data as milestones
   // for backward compatibility. They accept both deliverableId and milestoneId parameters.
 
+  // Get submitted deliverables for business users
+  app.get(`${apiRouter}/deliverables/submitted`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
+    try {
+      const businessId = req.query.businessId ? parseInt(req.query.businessId as string) : null;
+      const userId = req.user?.id;
+      const userRole = req.user?.role || 'business';
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Ensure user can only access their own business deliverables
+      if (userRole === 'business' && businessId && businessId !== userId) {
+        return res.status(403).json({ message: "Access denied: Cannot access other business data" });
+      }
+
+      const targetBusinessId = businessId || userId;
+
+      // Get all completed milestones/deliverables for this business
+      const submittedDeliverables = await db
+        .select({
+          id: milestones.id,
+          contractId: milestones.contractId,
+          name: milestones.name,
+          description: milestones.description,
+          status: milestones.status,
+          submittedAt: milestones.submittedAt,
+          paymentAmount: milestones.paymentAmount,
+          deliverableFiles: milestones.deliverableFiles,
+          deliverableDescription: milestones.deliverableDescription,
+          submissionType: milestones.submissionType,
+          businessId: contracts.businessId,
+          contractorId: contracts.contractorId,
+          contractorName: sql<string>`COALESCE(${users.firstName} || ' ' || ${users.lastName}, ${users.username})`.as('contractorName')
+        })
+        .from(milestones)
+        .innerJoin(contracts, eq(milestones.contractId, contracts.id))
+        .innerJoin(users, eq(contracts.contractorId, users.id))
+        .where(
+          and(
+            eq(contracts.businessId, targetBusinessId),
+            or(
+              eq(milestones.status, 'completed'),
+              eq(milestones.status, 'approved'),
+              eq(milestones.status, 'rejected'),
+              eq(milestones.status, 'needs_revision')
+            )
+          )
+        )
+        .orderBy(desc(milestones.submittedAt));
+
+      res.json(submittedDeliverables);
+    } catch (error) {
+      console.error("Error fetching submitted deliverables:", error);
+      res.status(500).json({ message: "Error fetching submitted deliverables" });
+    }
+  });
+
   // Get deliverables (alias for milestones endpoint)
   app.get(`${apiRouter}/deliverables`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {

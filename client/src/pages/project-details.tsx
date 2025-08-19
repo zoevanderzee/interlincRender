@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Plus, User, Calendar, DollarSign, Upload } from "lucide-react";
+import { ArrowLeft, Plus, User, Calendar, DollarSign, Upload, FileText, Download } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { SubmitWorkModal } from "@/components/SubmitWorkModal";
@@ -533,9 +533,54 @@ export default function ProjectDetails() {
                                     </div>
                                     {milestone.deliverableFiles.map((file: any, idx: number) => (
                                       <div key={idx} className="bg-gray-800 rounded p-2 text-xs">
-                                        <div className="text-gray-300">{file.name}</div>
-                                        <div className="text-gray-400">
-                                          {(file.size / 1024 / 1024).toFixed(2)} MB
+                                        <div className="flex items-center justify-between">
+                                          <div>
+                                            <div className="text-gray-300">{file.name}</div>
+                                            <div className="text-gray-400">
+                                              {(file.size / 1024 / 1024).toFixed(2)} MB
+                                            </div>
+                                          </div>
+                                          <div className="flex gap-2">
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-6 px-2 text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-400/10"
+                                              onClick={() => window.open(file.url, '_blank')}
+                                            >
+                                              <FileText className="h-3 w-3 mr-1" />
+                                              View
+                                            </Button>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-6 px-2 text-xs text-green-400 hover:text-green-300 hover:bg-green-400/10"
+                                              onClick={() => {
+                                                const link = document.createElement('a');
+                                                link.href = file.url;
+                                                link.download = file.name;
+                                                document.body.appendChild(link);
+                                                link.click();
+                                                document.body.removeChild(link);
+                                              }}
+                                            >
+                                              <Download className="h-3 w-3 mr-1" />
+                                              Download
+                                            </Button>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-6 px-2 text-xs text-purple-400 hover:text-purple-300 hover:bg-purple-400/10"
+                                              onClick={() => {
+                                                navigator.clipboard.writeText(file.url);
+                                                toast({
+                                                  title: "URL Copied",
+                                                  description: "File URL has been copied to clipboard",
+                                                });
+                                              }}
+                                            >
+                                              Export URL
+                                            </Button>
+                                          </div>
                                         </div>
                                       </div>
                                     ))}
