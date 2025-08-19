@@ -18,6 +18,8 @@ This is a comprehensive contractor/freelancer management platform built with Rea
 
 **CONTRACTOR ASSIGNMENT SHORTCUT IMPLEMENTED (August 19, 2025)**: Added streamlined assignment workflow as requested. Contractors page now has "Assign to Project" button → project selection dropdown → standard contract form → creates work request under selected project. Implemented GET /api/projects endpoint and getBusinessProjects storage method. System ready for production use with $5 budget allocation and verified Trolley integration for real money transfers.
 
+**BUSINESS NAME DISPLAY FIXED (August 19, 2025)**: Resolved issue where work requests showed personal names instead of business names. Fixed field mapping between frontend (company) and backend (companyName) in registration logic. Enhanced work requests API to include business information via simplified approach avoiding complex JOINs. Updated existing business user 86 with "Creativ Linc" company name. All future business registrations will automatically capture and display company names correctly in contractor assignments.
+
 # User Preferences
 
 Preferred communication style: Simple, everyday language.

@@ -289,6 +289,8 @@ export function setupAuth(app: Express) {
         password: hashedPassword,
         role: role,
         workerType: workerType,
+        // Map frontend 'company' field to backend 'companyName' field
+        companyName: req.body.company || req.body.companyName || null,
         // If this was a business invite registration, record the referring business
         referredByBusinessId: businessId,
         // Ensure subscription status is set for new users
