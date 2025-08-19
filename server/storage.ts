@@ -1958,42 +1958,38 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getWorkRequestsWithBusinessInfo(contractorUserId: number): Promise<any[]> {
-    const result = await db
-      .select({
-        // Work request fields
-        id: workRequests.id,
-        title: workRequests.title,
-        description: workRequests.description,
-        businessId: workRequests.businessId,
-        recipientEmail: workRequests.recipientEmail,
-        status: workRequests.status,
-        budgetMin: workRequests.budgetMin,
-        budgetMax: workRequests.budgetMax,
-        dueDate: workRequests.dueDate,
-        skills: workRequests.skills,
-        attachmentUrls: workRequests.attachmentUrls,
-        tokenHash: workRequests.tokenHash,
-        createdAt: workRequests.createdAt,
-        expiresAt: workRequests.expiresAt,
-        contractId: workRequests.contractId,
-        contractorId: workRequests.contractorId,
-        projectId: workRequests.projectId,
-        amount: workRequests.amount,
-        currency: workRequests.currency,
-        contractorUserId: workRequests.contractorUserId,
-        // Business information from joined tables
-        companyName: users.companyName,
-        businessFirstName: users.firstName,
-        businessLastName: users.lastName,
-        projectTitle: projects.title
-      })
-      .from(workRequests)
-      .leftJoin(projects, eq(workRequests.projectId, projects.id))
-      .leftJoin(users, eq(projects.businessId, users.id))
-      .where(eq(workRequests.contractorUserId, contractorUserId))
-      .orderBy(desc(workRequests.createdAt));
+    // First get the basic work requests
+    const workRequestsData = await this.getWorkRequestsByContractorId(contractorUserId);
     
-    return result;
+    // Then enhance each with business information
+    const enhancedRequests = [];
+    for (const wr of workRequestsData) {
+      let businessInfo = {};
+      
+      if (wr.projectId) {
+        // Get project info
+        const [project] = await db.select().from(projects).where(eq(projects.id, wr.projectId));
+        if (project && project.businessId) {
+          // Get business user info
+          const [businessUser] = await db.select().from(users).where(eq(users.id, project.businessId));
+          if (businessUser) {
+            businessInfo = {
+              companyName: businessUser.companyName,
+              businessFirstName: businessUser.firstName,
+              businessLastName: businessUser.lastName,
+              projectTitle: project.name
+            };
+          }
+        }
+      }
+      
+      enhancedRequests.push({
+        ...wr,
+        ...businessInfo
+      });
+    }
+    
+    return enhancedRequests;
   }
 
   async getPendingWorkRequests(): Promise<WorkRequest[]> {
