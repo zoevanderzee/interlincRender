@@ -72,7 +72,7 @@ export function SubmitWorkModal({
   });
 
   const handleGetUploadParameters = async () => {
-    const response = await apiRequest("POST", "/objects/upload");
+    const response = await apiRequest("POST", "/api/objects/upload");
     const data = await response.json();
     return {
       method: "PUT" as const,

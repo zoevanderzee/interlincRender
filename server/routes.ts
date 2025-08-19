@@ -6414,10 +6414,15 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
   });
 
   // Get upload URL for object entities
-  app.post("/api/objects/upload", requireAuth, async (req, res) => {
-    const objectStorageService = new ObjectStorageService();
-    const uploadURL = await objectStorageService.getObjectEntityUploadURL();
-    res.json({ uploadURL });
+  app.post("/api/objects/upload", requireActiveSubscription, async (req, res) => {
+    try {
+      const objectStorageService = new ObjectStorageService();
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      res.json({ uploadURL });
+    } catch (error) {
+      console.error('Error getting upload URL:', error);
+      res.status(500).json({ error: 'Failed to get upload URL' });
+    }
   });
 
   // Update deliverable files after upload
