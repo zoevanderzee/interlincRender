@@ -15,6 +15,8 @@ export default function Projects() {
   const [submitWorkModalOpen, setSubmitWorkModalOpen] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
   
+  const isContractor = user?.role === 'contractor';
+  
   // Fetch projects data instead of dashboard contracts
   const { data: projectsData, isLoading: isLoadingProjects } = useQuery<any[]>({
     queryKey: ['/api/projects'],
@@ -54,8 +56,6 @@ export default function Projects() {
     );
   }
 
-  const isContractor = user?.role === 'contractor';
-  
   // SECURITY: Contractors should see their accepted work assignments only
   if (isContractor) {
     // Fetch contractor's accepted work requests
