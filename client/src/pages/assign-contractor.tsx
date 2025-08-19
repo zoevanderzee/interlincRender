@@ -35,18 +35,28 @@ const workRequestSchema = z.object({
 type WorkRequestForm = z.infer<typeof workRequestSchema>;
 
 export default function AssignContractor() {
-  const { contractorId } = useParams();
+  const params = useParams();
+  const contractorId = params.contractorId || null;
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
+  // Get projectId from query params if available
+  const urlParams = new URLSearchParams(window.location.search);
+  const projectIdFromQuery = urlParams.get('projectId');
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(projectIdFromQuery || "");
 
-  // Fetch contractor details
+  // Fetch contractor details (only if contractorId is provided)
   const { data: contractor, isLoading: isLoadingContractor } = useQuery<any>({
     queryKey: ['/api/contractors', contractorId],
     enabled: !!contractorId
+  });
+
+  // Fetch connection requests to get contractors
+  const { data: connectionRequests = [], isLoading: isLoadingConnections } = useQuery<any[]>({
+    queryKey: ['/api/connection-requests'],
+    enabled: !!user
   });
 
   // Fetch user's projects
@@ -54,6 +64,8 @@ export default function AssignContractor() {
     queryKey: ['/api/projects'],
     enabled: !!user
   });
+
+  const [selectedContractorId, setSelectedContractorId] = useState<string>("");
 
   const {
     register,
@@ -64,7 +76,7 @@ export default function AssignContractor() {
   } = useForm<WorkRequestForm>({
     resolver: zodResolver(workRequestSchema),
     defaultValues: {
-      contractorUserId: parseInt(contractorId || "0"),
+      contractorUserId: parseInt(contractorId || selectedContractorId || "0"),
       currency: "USD"
     }
   });
@@ -95,7 +107,10 @@ export default function AssignContractor() {
   });
 
   const onSubmit = (data: WorkRequestForm) => {
-    if (!selectedProjectId) {
+    const contractorToUse = parseInt(contractorId || selectedContractorId || "0");
+    const projectToUse = parseInt(selectedProjectId || "0");
+
+    if (!projectToUse) {
       toast({
         title: "Project Required",
         description: "Please select a project for this assignment",
@@ -104,16 +119,25 @@ export default function AssignContractor() {
       return;
     }
 
+    if (!contractorToUse) {
+      toast({
+        title: "Contractor Required",
+        description: "Please select a contractor for this assignment",
+        variant: "destructive"
+      });
+      return;
+    }
+
     const formData = {
       ...data,
-      projectId: parseInt(selectedProjectId),
-      contractorUserId: parseInt(contractorId || "0")
+      projectId: projectToUse,
+      contractorUserId: contractorToUse
     };
 
     createWorkRequestMutation.mutate(formData);
   };
 
-  if (isLoadingContractor || isLoadingProjects) {
+  if (isLoadingConnections || isLoadingProjects) {
     return (
       <div className="animate-pulse space-y-6">
         <div className="h-12 bg-gray-800 rounded w-1/3"></div>
@@ -122,18 +146,9 @@ export default function AssignContractor() {
     );
   }
 
-  if (!contractor) {
-    return (
-      <div className="text-center py-12">
-        <h2 className="text-xl font-semibold text-white mb-2">Contractor Not Found</h2>
-        <p className="text-gray-400 mb-4">The requested contractor could not be found.</p>
-        <Button onClick={() => navigate('/contractors')} variant="outline">
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Contractors
-        </Button>
-      </div>
-    );
-  }
+  // Show contractor selection if no contractorId in URL
+  const showContractorSelection = !contractorId;
+  const availableContractors = connectionRequests.filter((req: any) => req.status === 'accepted');
 
   const selectedProject = projects.find(p => p.id.toString() === selectedProjectId);
 
@@ -144,11 +159,11 @@ export default function AssignContractor() {
         <div className="flex items-center gap-4">
           <Button 
             variant="ghost" 
-            onClick={() => navigate('/contractors')}
+            onClick={() => navigate(projectIdFromQuery ? '/projects' : '/contractors')}
             className="text-gray-400 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Contractors
+            Back to {projectIdFromQuery ? 'Projects' : 'Contractors'}
           </Button>
           <div>
             <h1 className="text-3xl font-bold text-white">Assign Contractor to Project</h1>
@@ -157,28 +172,86 @@ export default function AssignContractor() {
         </div>
       </div>
 
-      {/* Contractor Details */}
-      <Card className="border-gray-800 bg-black">
-        <CardContent className="p-6">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center">
-              <User className="h-6 w-6 text-gray-300" />
+      {/* Contractor Selection/Details */}
+      {showContractorSelection ? (
+        <Card className="border-gray-800 bg-black">
+          <CardHeader>
+            <CardTitle className="text-white">Select Contractor</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <Label className="text-white">Choose Contractor *</Label>
+              <Select 
+                value={selectedContractorId} 
+                onValueChange={(value) => {
+                  setSelectedContractorId(value);
+                  setValue('contractorUserId', parseInt(value));
+                }}
+              >
+                <SelectTrigger className="bg-gray-900 border-gray-700 text-white">
+                  <SelectValue placeholder="Choose a contractor..." />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-900 border-gray-700">
+                  {availableContractors.length === 0 ? (
+                    <div className="p-4 text-center text-gray-400">
+                      <p>No contractors available</p>
+                      <Button 
+                        size="sm" 
+                        className="mt-2" 
+                        onClick={() => navigate('/contractors')}
+                      >
+                        Find Contractors
+                      </Button>
+                    </div>
+                  ) : (
+                    availableContractors.map((req: any) => (
+                      <SelectItem 
+                        key={req.contractorUserId} 
+                        value={req.contractorUserId.toString()}
+                        className="text-white hover:bg-gray-800"
+                      >
+                        <div className="flex flex-col">
+                          <span className="font-medium">
+                            {req.contractorFirstName && req.contractorLastName 
+                              ? `${req.contractorFirstName} ${req.contractorLastName}`
+                              : req.contractorUsername
+                            }
+                          </span>
+                          <span className="text-sm text-gray-400">{req.contractorEmail}</span>
+                        </div>
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
             </div>
-            <div>
-              <h3 className="text-lg font-semibold text-white">
-                {contractor.firstName && contractor.lastName 
-                  ? `${contractor.firstName} ${contractor.lastName}`
-                  : contractor.username
-                }
-              </h3>
-              <p className="text-gray-400">{contractor.email}</p>
-              <Badge variant="secondary" className="mt-1">
-                {contractor.role}
-              </Badge>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      ) : (
+        contractor && (
+          <Card className="border-gray-800 bg-black">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center">
+                  <User className="h-6 w-6 text-gray-300" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white">
+                    {contractor.firstName && contractor.lastName 
+                      ? `${contractor.firstName} ${contractor.lastName}`
+                      : contractor.username
+                    }
+                  </h3>
+                  <p className="text-gray-400">{contractor.email}</p>
+                  <Badge variant="secondary" className="mt-1">
+                    {contractor.role}
+                  </Badge>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )
+      )}
 
       {/* Assignment Form */}
       <Card className="border-gray-800 bg-black">

@@ -184,7 +184,7 @@ function Router() {
         </Layout>
       </ProtectedRoute>
       
-      <ProtectedRoute path="/assign-contractor/:contractorId">
+      <ProtectedRoute path="/assign-contractor">
         <Layout>
           <AssignContractor />
         </Layout>
