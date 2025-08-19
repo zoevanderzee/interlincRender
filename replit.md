@@ -20,6 +20,8 @@ This is a comprehensive contractor/freelancer management platform built with Rea
 
 **BUSINESS NAME DISPLAY FIXED (August 19, 2025)**: Resolved issue where work requests showed personal names instead of business names. Fixed field mapping between frontend (company) and backend (companyName) in registration logic. Enhanced work requests API to include business information via simplified approach avoiding complex JOINs. Updated existing business user 86 with "Creativ Linc" company name. All future business registrations will automatically capture and display company names correctly in contractor assignments.
 
+**DASHBOARD INTEGRATION COMPLETED (August 19, 2025)**: Fixed critical case sensitivity bug where contract status "Active" (database) vs "active" (frontend filter) caused dashboard stats to show 0 instead of 1 active project. Updated both server-side dashboard API and ContractorDashboard component to properly match database case. Contractor dashboards now correctly display active project counts when assignments are accepted. All dashboard stats calculations working correctly across all user roles.
+
 # User Preferences
 
 Preferred communication style: Simple, everyday language.

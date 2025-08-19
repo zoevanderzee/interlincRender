@@ -2130,7 +2130,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Get contractor's own contracts
         const contractorContracts = await storage.getContractsByContractorId(userId);
-        console.log(`Debug: Found ${contractorContracts.length} contracts for contractor ${userId}:`, contractorContracts.map(c => ({ id: c.id, name: c.contractName, status: c.status })));
         
         // Get contractor's own milestones
         const contractorMilestones = [];

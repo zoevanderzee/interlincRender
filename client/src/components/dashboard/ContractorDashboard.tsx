@@ -49,8 +49,8 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
            paymentDate <= thirtyDaysFromNow;
   });
   
-  // Active projects for this contractor
-  const activeProjects = dashboardData.contracts.filter(c => c.status === 'active');
+  // Active projects for this contractor - match database case 'Active'
+  const activeProjects = dashboardData.contracts.filter(c => c.status === 'Active');
   
   // Calculate total and pending earnings
   const totalEarnings = calculateTotalEarnings(dashboardData.payments);
