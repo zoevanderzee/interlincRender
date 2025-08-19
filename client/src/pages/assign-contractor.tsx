@@ -53,7 +53,7 @@ export default function AssignContractor() {
   console.log("Contractor ID to fetch:", contractorIdToFetch);
   
   const { data: contractor, isLoading: isLoadingContractor } = useQuery<any>({
-    queryKey: ['/api/users', contractorIdToFetch],
+    queryKey: [`/api/users/${contractorIdToFetch}`],
     enabled: !!contractorIdToFetch
   });
   
@@ -213,8 +213,8 @@ export default function AssignContractor() {
                   ) : (
                     availableContractors.map((req: any) => (
                       <SelectItem 
-                        key={req.contractorUserId} 
-                        value={req.contractorUserId.toString()}
+                        key={req.contractorUserId || req.id} 
+                        value={(req.contractorUserId || req.id).toString()}
                         className="text-white hover:bg-gray-800"
                       >
                         <div className="flex flex-col">
