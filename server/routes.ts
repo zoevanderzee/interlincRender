@@ -1249,26 +1249,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('Error creating milestone approval notification:', notificationError);
       }
 
-      // Trigger automated payment processing
-      const paymentResult = await automatedPaymentService.processMilestoneApproval(milestoneId, approvedBy);
+      // Get contract and contractor details for payment
+      const contract = await storage.getContract(updatedMilestone.contractId);
+      if (!contract) {
+        return res.status(404).json({ message: "Contract not found" });
+      }
 
-      if (paymentResult.success) {
-        res.json({
-          message: "Milestone approved and payment processed automatically",
-          milestone: updatedMilestone,
-          payment: {
-            id: paymentResult.paymentId,
-            transferId: paymentResult.transferId,
-            logId: paymentResult.logId
+      // Get contractor details
+      const contractor = await storage.getUser(contract.contractorId);
+      if (!contractor || !contractor.trolleyRecipientId) {
+        return res.status(400).json({ message: "Contractor not found or not set up for payments" });
+      }
+
+      // Trigger automated Trolley payment
+      try {
+        const paymentAmount = parseFloat(updatedMilestone.paymentAmount);
+        
+        // Create Trolley payment using existing payment creation logic
+        const paymentResult = await trolleyService.createAndProcessPayment(
+          contractor.trolleyRecipientId,
+          paymentAmount.toString(),
+          'GBP',
+          `Payment for milestone: ${updatedMilestone.name}`
+        );
+
+        if (paymentResult && paymentResult.batch && paymentResult.payment) {
+          // Payment succeeded - log success and send notifications
+          console.log(`Payment processed successfully for milestone ${milestoneId}:`, {
+            batchId: paymentResult.batch.id,
+            paymentId: paymentResult.payment.id,
+            amount: paymentAmount,
+            currency: 'GBP',
+            contractor: contractor.trolleyRecipientId
+          });
+
+          // Send payment success notification to contractor
+          try {
+            await notificationService.createPaymentProcessed(
+              contractor.id,
+              updatedMilestone.name,
+              `£${paymentAmount.toFixed(2)}`
+            );
+          } catch (notificationError) {
+            console.error('Error creating payment notification:', notificationError);
           }
-        });
-      } else {
-        // Milestone was approved but payment failed - still return success for approval
-        console.error('Automated payment failed:', paymentResult.error);
-        res.json({
-          message: "Milestone approved, but automated payment failed",
-          milestone: updatedMilestone,
-          paymentError: paymentResult.error
+
+          // Update budget tracking - deduct from business user's budget
+          try {
+            const currentBudgetUsed = parseFloat(await storage.getUser(approvedBy).then(u => u?.budgetUsed || '0'));
+            const newBudgetUsed = (currentBudgetUsed + paymentAmount).toFixed(2);
+            await storage.updateUser(approvedBy, { budgetUsed: newBudgetUsed });
+            console.log(`Budget updated for user ${approvedBy}: £${newBudgetUsed} used`);
+          } catch (budgetError) {
+            console.error('Error updating budget tracking:', budgetError);
+          }
+
+          res.json({
+            message: "Milestone approved and payment processed successfully",
+            milestone: updatedMilestone,
+            payment: {
+              batchId: paymentResult.batch.id,
+              paymentId: paymentResult.payment.id,
+              amount: paymentAmount,
+              currency: 'GBP',
+              status: 'completed'
+            }
+          });
+        } else {
+          // Payment failed - log error but keep milestone approved
+          console.error('Payment processing failed:', paymentResult);
+
+          return res.status(500).json({
+            message: "Payment processing failed - milestone remains approved for manual processing",
+            error: 'Failed to process Trolley payment',
+            milestone: updatedMilestone
+          });
+        }
+      } catch (paymentError) {
+        console.error('Payment processing error:', paymentError);
+
+        return res.status(500).json({
+          message: "Payment processing failed - milestone remains approved for manual processing",
+          error: paymentError instanceof Error ? paymentError.message : 'Unknown payment error',
+          milestone: updatedMilestone
         });
       }
 
@@ -1710,46 +1773,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Milestone approval endpoint  
-  app.post(`${apiRouter}/milestones/:id/approve`, requireAuth, async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      const userId = req.user?.id;
-      const userRole = req.user?.role || 'business';
-      
-      if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
-      }
-      
-      // Get milestone and verify access
-      const milestone = await storage.getMilestone(id);
-      if (!milestone) {
-        return res.status(404).json({ message: "Milestone not found" });
-      }
-      
-      const contract = await storage.getContract(milestone.contractId);
-      if (!contract) {
-        return res.status(404).json({ message: "Contract not found" });
-      }
-      
-      // Only businesses can approve milestones
-      if (userRole !== 'business' || contract.businessId !== userId) {
-        return res.status(403).json({ message: "Access denied: Only contract owner can approve milestones" });
-      }
-      
-      // Update milestone status
-      const updatedMilestone = await storage.updateMilestone(id, {
-        status: 'approved',
-        approvedAt: new Date(),
-        approvedBy: userId
-      });
-      
-      res.json({ success: true, milestone: updatedMilestone });
-    } catch (error) {
-      console.error("Error approving milestone:", error);
-      res.status(500).json({ message: "Error approving milestone" });
-    }
-  });
+  // Duplicate endpoint removed - using unified approval endpoint with payment automation
 
   // Milestone rejection endpoint
   app.post(`${apiRouter}/milestones/:id/reject`, requireAuth, async (req: Request, res: Response) => {
