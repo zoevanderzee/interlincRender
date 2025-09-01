@@ -1,6 +1,6 @@
 /**
  * Trolley Embedded Payouts Integration Service
- * Creativ Linc acts as the platform account with company sub-accounts
+ * Interlinc acts as the platform account with company sub-accounts
  * Companies fund their wallets and payments are processed through the platform
  */
 

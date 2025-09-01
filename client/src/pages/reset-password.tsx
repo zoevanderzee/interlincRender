@@ -148,7 +148,7 @@ export default function ResetPasswordPage() {
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4">
         <div className="w-full max-w-md">
           <div className="flex justify-center mb-8">
-            <img src={Logo} alt="Creativ Linc Logo" className="h-16" />
+            <img src={Logo} alt="Interlinc Logo" className="h-16" />
           </div>
           <Card className="border-zinc-700 bg-zinc-900 text-white">
             <CardContent className="flex items-center justify-center p-8">
@@ -167,7 +167,7 @@ export default function ResetPasswordPage() {
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4">
         <div className="w-full max-w-md">
           <div className="flex justify-center mb-8">
-            <img src={Logo} alt="Creativ Linc Logo" className="h-16" />
+            <img src={Logo} alt="Interlinc Logo" className="h-16" />
           </div>
           <Card className="border-zinc-700 bg-zinc-900 text-white">
             <CardHeader>
@@ -201,7 +201,7 @@ export default function ResetPasswordPage() {
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4">
         <div className="w-full max-w-md">
           <div className="flex justify-center mb-8">
-            <img src={Logo} alt="Creativ Linc Logo" className="h-16" />
+            <img src={Logo} alt="Interlinc Logo" className="h-16" />
           </div>
           <Card className="border-zinc-700 bg-zinc-900 text-white">
             <CardContent className="space-y-4">
@@ -231,7 +231,7 @@ export default function ResetPasswordPage() {
     <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-8">
-          <img src={Logo} alt="Creativ Linc Logo" className="h-16" />
+          <img src={Logo} alt="Interlinc Logo" className="h-16" />
         </div>
         
         <Card className="border-zinc-700 bg-zinc-900 text-white">

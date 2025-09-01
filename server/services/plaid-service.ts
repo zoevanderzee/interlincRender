@@ -25,7 +25,7 @@ class PlaidService {
         user: {
           client_user_id: userId.toString(),
         },
-        client_name: 'Creativ Linc Platform',
+        client_name: 'Interlinc Platform',
         products: ['auth', 'transactions'] as Products[],
         language: 'en',
         country_codes: ['US'] as CountryCode[],

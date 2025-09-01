@@ -1,7 +1,7 @@
 # Trolley Payment Integration - Complete Workflow
 
 ## Overview
-Creativ Linc implements a comprehensive contractor payment system using Trolley's affiliate/submerchant model with live production API credentials. This document outlines the complete end-to-end workflow for contractor payment setup and processing.
+Interlinc implements a comprehensive contractor payment system using Trolley's affiliate/submerchant model with live production API credentials. This document outlines the complete end-to-end workflow for contractor payment setup and processing.
 
 ## System Status: FULLY OPERATIONAL ✅
 
@@ -12,13 +12,13 @@ Creativ Linc implements a comprehensive contractor payment system using Trolley'
 
 ## 4-Step Contractor Onboarding Workflow
 
-### Step 1: Platform Setup by Creativ Linc ✅
-**Who**: Creativ Linc (System Administrator)
+### Step 1: Platform Setup by Interlinc ✅
+**Who**: Interlinc (System Administrator)
 **Action**: Master Trolley platform configuration and merchant setup
 **Status**: Complete - Live API credentials configured
 
 ### Step 2: Recipient Invitation ✅
-**Who**: Creativ Linc initiates, Contractor receives
+**Who**: Interlinc initiates, Contractor receives
 **Action**: System creates Trolley recipient account via live API
 **Implementation**: 
 - Contractor clicks "Payment Setup" in sidebar

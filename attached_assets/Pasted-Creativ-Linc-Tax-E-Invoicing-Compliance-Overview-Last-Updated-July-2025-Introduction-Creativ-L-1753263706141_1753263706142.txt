@@ -1,14 +1,14 @@
-Creativ Linc Tax & E-Invoicing Compliance Overview
+Interlinc Tax & E-Invoicing Compliance Overview
 
 Last Updated: July 2025
 
 Introduction
 
-Creativ Linc enables frictionless collaboration and payment across creative and project-based work without requiring manual invoicing. Despite eliminating traditional invoices, the platform remains fully compliant with relevant tax laws and e-invoicing standards through automation, digital audit trails, and partnerships with regulated financial providers.
+Interlinc enables frictionless collaboration and payment across creative and project-based work without requiring manual invoicing. Despite eliminating traditional invoices, the platform remains fully compliant with relevant tax laws and e-invoicing standards through automation, digital audit trails, and partnerships with regulated financial providers.
 
 1. Payment Compliance via Trolley Partnership
 
-All payments on Creativ Linc are processed via Trolley, a PCI-compliant and globally trusted payment platform. Trolley ensures that:
+All payments on Interlinc are processed via Trolley, a PCI-compliant and globally trusted payment platform. Trolley ensures that:
 
 Contractor tax forms (e.g. 1099, T4A, W-8BEN) are collected and filed.
 
@@ -20,7 +20,7 @@ Trolley’s infrastructure classifies each user as a submerchant under a master 
 
 2. Invoice-Free Workflow That Meets Compliance Standards
 
-Rather than requiring manual invoices, Creativ Linc uses milestone- and delivery-based triggers to generate payable events. These include:
+Rather than requiring manual invoices, Interlinc uses milestone- and delivery-based triggers to generate payable events. These include:
 
 Milestone completions
 
@@ -42,7 +42,7 @@ This data is logged and can be exported, meeting the requirements of invoice-equ
 
 3. e-Invoicing Compatibility
 
-While Creativ Linc does not generate traditional PDF invoices, our digital workflows are compatible with e-invoicing frameworks such as:
+While Interlinc does not generate traditional PDF invoices, our digital workflows are compatible with e-invoicing frameworks such as:
 
 Peppol BIS Billing 3.0 (EU/eIDAS)
 
@@ -86,5 +86,5 @@ These can be enabled through workflow customization or third-party integrations.
 
 Conclusion
 
-Creativ Linc is fully tax-compliant and aligned with modern e-invoicing requirements, despite removing the friction of manual invoice generation. Through automated documentation, real-time audit trails, and integration with Trolley’s regulatory infrastructure, the platform ensures every transaction is legally and financially sound.
+Interlinc is fully tax-compliant and aligned with modern e-invoicing requirements, despite removing the friction of manual invoice generation. Through automated documentation, real-time audit trails, and integration with Trolley’s regulatory infrastructure, the platform ensures every transaction is legally and financially sound.
 

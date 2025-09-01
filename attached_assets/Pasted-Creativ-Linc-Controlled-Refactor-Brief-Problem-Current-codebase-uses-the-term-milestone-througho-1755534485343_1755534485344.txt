@@ -1,4 +1,4 @@
-Creativ Linc — Controlled Refactor Brief
+Interlinc — Controlled Refactor Brief
 Problem
 Current codebase uses the term “milestone” throughout the project/payout flow.
 The actual business terminology is “deliverable.”

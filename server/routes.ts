@@ -6630,7 +6630,7 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
       // For now, we'll just log and return success
       
       const emailBody = `
-New Support Request from Creativ Linc
+New Support Request from Interlinc
 
 Name: ${name}
 Email: ${email}

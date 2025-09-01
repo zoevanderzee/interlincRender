@@ -258,7 +258,7 @@ export default function AuthPage() {
       // Project-specific invitation with data loaded
       return (
         <>
-          You've been invited to join a project on Creativ Linc
+          You've been invited to join a project on Interlinc
           <div className="mt-2 p-3 bg-zinc-800 rounded-md border border-zinc-700">
             <h4 className="text-white font-medium mb-1">Project: {inviteData.projectName}</h4>
             {inviteData.message && (
@@ -281,7 +281,7 @@ export default function AuthPage() {
             </div>
           ) : (
             <>
-              You've been invited to join a project on Creativ Linc
+              You've been invited to join a project on Interlinc
               <p className="mt-1">Complete registration to accept this invitation.</p>
             </>
           )}
@@ -293,7 +293,7 @@ export default function AuthPage() {
       // Business invite with data loaded
       return (
         <>
-          You've been invited to join a business on Creativ Linc
+          You've been invited to join a business on Interlinc
           <div className="mt-2 p-3 bg-zinc-800 rounded-md border border-zinc-700">
             <h4 className="text-white font-medium mb-1">
               Business: {businessInviteData.businessName || "A company"}
@@ -320,7 +320,7 @@ export default function AuthPage() {
             </div>
           ) : (
             <>
-              You've been invited to join a business on Creativ Linc
+              You've been invited to join a business on Interlinc
               <p className="mt-1">Complete registration to accept this invitation.</p>
             </>
           )}
@@ -329,7 +329,7 @@ export default function AuthPage() {
     }
     
     // Regular registration
-    return "Sign up to get started with Creativ Linc";
+    return "Sign up to get started with Interlinc";
   };
 
   // Form Error States
@@ -730,7 +730,7 @@ export default function AuthPage() {
             setShowSubscription(false);
             setRegisteredUser(null);
             toast({
-              title: "Welcome to Creativ Linc!",
+              title: "Welcome to Interlinc!",
               description: "Your account is ready.",
             });
             // User is now logged in via the subscription completion, redirect to dashboard
@@ -747,7 +747,7 @@ export default function AuthPage() {
       <div className="w-full md:w-1/2 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           <div className="flex justify-center mb-8">
-            <img src={Logo} alt="Creativ Linc Logo" className="h-16" />
+            <img src={Logo} alt="Interlinc Logo" className="h-16" />
           </div>
           
           <Tabs defaultValue="login" value={activeTab} onValueChange={setActiveTab}>
@@ -760,7 +760,7 @@ export default function AuthPage() {
             <TabsContent value="login">
               <Card className="border-zinc-700 bg-zinc-900 text-white">
                 <CardHeader>
-                  <CardTitle>Login to Creativ Linc</CardTitle>
+                  <CardTitle>Login to Interlinc</CardTitle>
                   <CardDescription className="text-zinc-400">
                     Enter your credentials to access your account
                   </CardDescription>
@@ -1083,7 +1083,7 @@ export default function AuthPage() {
       <div className="w-full md:w-1/2 bg-zinc-900 p-12 flex items-center">
         <div className="max-w-lg mx-auto">
           <h1 className="text-4xl font-bold text-white mb-6">
-            Creativ Linc
+            Interlinc
           </h1>
           <h2 className="text-2xl font-semibold text-white mb-4">
             Connect. Create. Collaborate.

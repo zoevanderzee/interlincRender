@@ -375,7 +375,7 @@ export default function ContractorInvitePage() {
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4">
         <div className="max-w-md w-full">
           <div className="flex justify-center mb-8">
-            <img src={Logo} alt="Creativ Linc Logo" className="h-16" />
+            <img src={Logo} alt="Interlinc Logo" className="h-16" />
           </div>
           
           <Card className="border-zinc-700 bg-zinc-900 text-white">
@@ -414,7 +414,7 @@ export default function ContractorInvitePage() {
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4">
         <div className="max-w-md w-full">
           <div className="flex justify-center mb-8">
-            <img src={Logo} alt="Creativ Linc Logo" className="h-16" />
+            <img src={Logo} alt="Interlinc Logo" className="h-16" />
           </div>
           
           <Card className="border-zinc-700 bg-zinc-900 text-white">
@@ -441,7 +441,7 @@ export default function ContractorInvitePage() {
       <div className="w-full md:w-1/2 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           <div className="flex justify-center mb-8">
-            <img src={Logo} alt="Creativ Linc Logo" className="h-16" />
+            <img src={Logo} alt="Interlinc Logo" className="h-16" />
           </div>
           
           <Card className="border-zinc-700 bg-zinc-900 text-white">
@@ -604,7 +604,7 @@ export default function ContractorInvitePage() {
       <div className="hidden md:flex md:w-1/2 bg-zinc-900 items-center justify-center p-8">
         <div className="max-w-md">
           <h1 className="text-4xl font-bold text-white mb-4">
-            Welcome to Creativ Linc
+            Welcome to Interlinc
           </h1>
           <p className="text-lg text-zinc-400 mb-6">
             Join our smart contract platform for seamless project management and automated payments.

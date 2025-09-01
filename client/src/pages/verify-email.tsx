@@ -56,7 +56,7 @@ export default function VerifyEmailPage() {
     <div className="min-h-screen bg-black flex items-center justify-center p-8">
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-8">
-          <img src={Logo} alt="Creativ Linc Logo" className="h-16" />
+          <img src={Logo} alt="Interlinc Logo" className="h-16" />
         </div>
         
         <Card className="border-zinc-700 bg-zinc-900 text-white">

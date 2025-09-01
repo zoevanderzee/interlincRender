@@ -9,10 +9,10 @@ import { eq, and, or, not, isNotNull, sql } from "drizzle-orm";
 async function main() {
   try {
     console.log("Starting user role fix script...");
-    
+
     // First, directly fix the specific user from the screenshot
     console.log("Fixing specific user by email: zoevdzee@creativlinc.co.uk");
-    
+
     // Update the user with email zoevdzee@creativlinc.co.uk
     await db.update(users)
       .set({ 
@@ -20,7 +20,7 @@ async function main() {
         workerType: null 
       })
       .where(eq(users.email, 'zoevdzee@creativlinc.co.uk'));
-      
+
     // Get all users with role 'contractor' or 'freelancer' that have creativlinc in their email
     const potentialBusinessUsers = await db.select()
       .from(users)
@@ -34,13 +34,13 @@ async function main() {
           sql`${users.email} LIKE '%creativlinc%'`
         )
       );
-    
+
     console.log(`Found ${potentialBusinessUsers.length} potential business users by email domain`);
-    
+
     // Update all detected business users
     for (const user of potentialBusinessUsers) {
       console.log(`Updating user ${user.id} (${user.username}) from ${user.role} to business`);
-      
+
       await db.update(users)
         .set({ 
           role: 'business',
@@ -48,7 +48,7 @@ async function main() {
         })
         .where(eq(users.id, user.id));
     }
-    
+
     // Also look for company names that suggest business users
     const companyNameBusinessUsers = await db.select()
       .from(users)
@@ -58,24 +58,24 @@ async function main() {
             eq(users.role, 'contractor'),
             eq(users.role, 'freelancer')
           ),
-          // Has a non-empty company name containing 'Creative' or 'Linc'
-          and(
-            isNotNull(users.companyName),
-            not(eq(users.companyName, '')),
-            or(
-              sql`${users.companyName} LIKE '%Creative%'`,
-              sql`${users.companyName} LIKE '%Linc%'`
+          // Has a non-empty company name containing 'Inter' or 'Linc'
+            and(
+              isNotNull(users.companyName),
+              not(eq(users.companyName, '')),
+              or(
+                sql`${users.companyName} LIKE '%Inter%'`,
+                sql`${users.companyName} LIKE '%Linc%'`
+              )
             )
-          )
         )
       );
-    
+
     console.log(`Found ${companyNameBusinessUsers.length} potential business users by company name`);
-    
+
     // Update these users too
     for (const user of companyNameBusinessUsers) {
       console.log(`Updating user ${user.id} (${user.username}) from ${user.role} to business`);
-      
+
       await db.update(users)
         .set({ 
           role: 'business',
@@ -83,7 +83,7 @@ async function main() {
         })
         .where(eq(users.id, user.id));
     }
-    
+
     console.log("User role fix completed successfully");
   } catch (error) {
     console.error("Error fixing user roles:", error);

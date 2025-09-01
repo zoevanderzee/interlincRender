@@ -1,4 +1,4 @@
-Creativ Linc — “Add Contractor to Project” (Final, Non-Negotiable Contract)
+Interlinc — “Add Contractor to Project” (Final, Non-Negotiable Contract)
 Scope (do not touch outside)
 Only modify:
 /server/business-workers/**

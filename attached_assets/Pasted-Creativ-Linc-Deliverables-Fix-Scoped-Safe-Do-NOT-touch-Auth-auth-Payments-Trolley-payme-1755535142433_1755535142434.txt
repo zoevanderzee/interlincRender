@@ -1,4 +1,4 @@
-Creativ Linc — Deliverables Fix (Scoped, Safe)
+Interlinc — Deliverables Fix (Scoped, Safe)
 Do NOT touch
 Auth (/auth/**)
 Payments/Trolley (/payments/**, /trolley/**)

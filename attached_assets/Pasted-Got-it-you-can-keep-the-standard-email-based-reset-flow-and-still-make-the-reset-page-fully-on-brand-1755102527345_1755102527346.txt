@@ -69,10 +69,10 @@ function Shell({ children }: { children: any }) {
     <div className="mx-auto max-w-3xl px-6 py-12">
       <a href="/" className="inline-flex items-center gap-2 mb-6">
         <div className="h-6 w-6 rounded-md bg-black" />
-        <span className="font-semibold">Creativ Linc</span>
+        <span className="font-semibold">Interlinc</span>
       </a>
       <div className="rounded-2xl bg-white p-8 shadow">{children}</div>
-      <p className="mt-8 text-xs text-neutral-500">© Creativ Linc</p>
+      <p className="mt-8 text-xs text-neutral-500">© Interlinc</p>
     </div>
   </div>;
 }

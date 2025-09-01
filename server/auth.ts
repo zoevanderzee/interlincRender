@@ -92,6 +92,8 @@ export function setupAuth(app: Express) {
     const allowedOrigins = [
       'https://interlinc.app',
       'https://www.interlinc.app',
+      'https://interlinc.co',
+      'https://www.interlinc.co',
       req.protocol + '://' + req.get('host') // Allow same-origin requests
     ];
     
@@ -369,9 +371,9 @@ export function setupAuth(app: Express) {
             
             await sendEmail({
               to: user.email,
-              subject: `Welcome to ${businessName}'s Team on Creativ Linc`,
-              text: `Welcome to Creativ Linc!\n\n${businessName} has invited you to join their team as a ${businessInfo.workerType || 'contractor'}. You can now login to view your projects and contracts.\n\nVisit ${appUrl} to get started.`,
-              html: `<h1>Welcome to Creativ Linc!</h1>
+              subject: `Welcome to ${businessName}'s Team on Interlinc`,
+              text: `Welcome to Interlinc!\n\n${businessName} has invited you to join their team as a ${businessInfo.workerType || 'contractor'}. You can now login to view your projects and contracts.\n\nVisit ${appUrl} to get started.`,
+              html: `<h1>Welcome to Interlinc!</h1>
                      <p><strong>${businessName}</strong> has invited you to join their team as a ${businessInfo.workerType || 'contractor'}.</p>
                      <p>You can now login to view your projects and contracts.</p>
                      <p><a href="${appUrl}" style="background-color: #000; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">Get Started</a></p>`

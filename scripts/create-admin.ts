@@ -51,7 +51,7 @@ async function main() {
       role: 'admin',
       workerType: null,
       profileImageUrl: null,
-      companyName: 'Creativ Linc',
+      companyName: 'Interlinc',
       title: 'Administrator',
       stripeCustomerId: null,
       stripeSubscriptionId: null

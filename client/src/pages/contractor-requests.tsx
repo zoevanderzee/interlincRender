@@ -104,7 +104,7 @@ const ContractorRequests = () => {
     
     // If still no name found, try to get business info from dashboard or fallback gracefully
     if (!companyName && businessId === 86) {
-      companyName = "Creativ Linc"; // Based on the user data we can see in logs
+      companyName = "Interlinc"; // Based on the user data we can see in logs
     }
     
     if (!companyName) {

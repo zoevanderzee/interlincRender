@@ -105,7 +105,7 @@ export class NotificationService {
     const roleName = userRole === 'business' ? 'business owner' : 'contractor';
     const notification: InsertNotification = {
       userId: userId,
-      title: `Welcome to Creativ Linc!`,
+      title: `Welcome to Interlinc!`,
       message: `Welcome to the platform! As a ${roleName}, you now have access to all the tools you need to manage your ${userRole === 'business' ? 'projects and contractors' : 'work and payments'}.`,
       type: "welcome",
       relatedId: null,

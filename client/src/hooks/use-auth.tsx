@@ -210,7 +210,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         toast({
           title: "Registration successful",
-          description: `Welcome to Creativ Linc, ${data.firstName}!`,
+          description: `Welcome to Interlinc, ${data.firstName}!`,
         });
       } else {
         console.log("Subscription or email verification required, not updating cache");
