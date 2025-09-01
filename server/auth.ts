@@ -89,7 +89,7 @@ export function setupAuth(app: Express) {
   // Add CORS headers for cookie support - for cross-origin requests
   app.use((req, res, next) => {
     const origin = req.headers.origin;
-    if (origin === 'https://creativlinc.app' || process.env.NODE_ENV === 'development') {
+    if (origin === 'https://interlinc.app' || process.env.NODE_ENV === 'development') {
       res.header('Access-Control-Allow-Origin', origin);
       res.header('Access-Control-Allow-Credentials', 'true');
       res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
@@ -544,7 +544,7 @@ export function setupAuth(app: Express) {
           console.error("Session destruction error:", destroyErr);
           return next(destroyErr);
         }
-        res.clearCookie('creativlinc.sid');
+        res.clearCookie('interlinc.sid');
         res.sendStatus(200);
       });
     });

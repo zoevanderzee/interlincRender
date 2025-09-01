@@ -112,7 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Wait for cookie to be set
       setTimeout(() => {
         console.log("Cookies after 100ms delay:", document.cookie);
-        console.log("Has creativlinc.sid cookie:", document.cookie.includes('creativlinc.sid'));
+        console.log("Has interlinc.sid cookie:", document.cookie.includes('interlinc.sid'));
       }, 100);
 
       // Get the response data

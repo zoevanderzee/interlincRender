@@ -131,7 +131,7 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
     `}>
       <div className="flex items-center justify-between p-4 border-b border-zinc-800">
         <div className="flex items-center">
-          <img src={logoImage} alt="Creativ Linc Logo" className="h-8" />
+          <img src={logoImage} alt="InterLinc Logo" className="h-8" />
         </div>
         
         <button 
