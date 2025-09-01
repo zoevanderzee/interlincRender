@@ -13,7 +13,7 @@ async function main() {
     // First, directly fix the specific user from the screenshot
     console.log("Fixing specific user by email: zoevdzee@interlinc.co");
 
-    // Update the user with email zoevdzee@creativlinc.co.uk
+    // Update the user with email zoevdzee@interlinc.co
     await db.update(users)
       .set({ 
         role: 'business',

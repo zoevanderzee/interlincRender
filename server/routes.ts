@@ -2328,7 +2328,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (userId && userRole === 'business') {
         userContracts = await storage.getContractsByBusinessId(userId);
       } else {
-        // For development/testing only when not logged in
+        // For development/testing when not logged in
         userContracts = await storage.getAllContracts();
       }
 
@@ -3091,9 +3091,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         milestones = []; // No contracts means no milestones
       }
 
-      // Get contractors associated with the user's contracts
-      const contractors = await storage.getUsersByRole('contractor');
-
       // Get the list of contractor IDs from the user's contracts
       const contractorIds = contracts
         .filter(contract => contract.contractorId !== null)
@@ -3277,19 +3274,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // If account exists but not fully set up, generate new onboarding link
         try {
-          const account = await stripeService.getConnectAccount(contractor.stripeConnectAccountId);
-
-          const accountLink = await stripe.accountLinks.create({
-            account: account.id,
+          const account = await stripe.accountLinks.create({
+            account: contractor.stripeConnectAccountId,
             refresh_url: `${process.env.FRONTEND_URL || 'http://localhost:5000'}/contractors/onboarding/refresh`,
             return_url: `${process.env.FRONTEND_URL || 'http://localhost:5000'}/contractors/onboarding/complete`,
             type: 'account_onboarding',
           });
 
           return res.json({
-            accountId: account.id,
-            accountLink: accountLink.url,
-            status: account.charges_enabled ? 'active' : 'pending'
+            accountId: contractor.stripeConnectAccountId,
+            accountLink: account.url,
+            status: 'pending'
           });
         } catch (error) {
           // If we get an error retrieving the account, create a new one
@@ -3698,7 +3693,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         budgetStartDate: user.budgetStartDate,
         budgetEndDate: user.budgetEndDate,
         budgetResetEnabled: user.budgetResetEnabled,
-        remainingBudget: user.budgetCap ? parseFloat(user.budgetCap.toString()).toFixed(2) : null
+        remainingBudget: user.budgetCap
+          ? (parseFloat(user.budgetCap.toString()) - parseFloat(user.budgetUsed?.toString() || '0')).toFixed(2)
+          : null
       });
     } catch (error) {
       console.error("Error resetting budget used:", error);
@@ -5069,7 +5066,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/work-submissions/:id/review', requireAuth, async (req: AuthenticatedRequest, res) => {
+  app.patch('/api/work-submissions/:id/review', requireAuth, async (req: Request, res: Response) => {
     try {
       const submissionId = parseInt(req.params.id);
       const { status, reviewNotes } = req.body;
@@ -5232,21 +5229,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only business accounts can access wallet" });
       }
 
-      // NO FAKE DATA - Only real Trolley API responses
       if (!user.trolleyCompanyProfileId) {
         return res.status(400).json({
           message: "No Trolley company profile found. Please complete Trolley onboarding first."
         });
       }
 
+      // Use Trolley SDK service to get recipient details with balance
       try {
-        // Check if Trolley is configured
-        if (!trolleyService.isConfigured()) {
-          return res.status(503).json({
-            message: "Payment processing not available - service not configured"
-          });
-        }
-
         // CRITICAL FIX: Use verified recipient ID instead of fake user ID
         // Your verified Trolley account: R-AeVtg3cVK1ExCDPQosEHve
         const verifiedRecipientId = user.trolleyRecipientId; // This should be R-AeVtg3cVK1ExCDPQosEHve
@@ -5458,7 +5448,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only business accounts can process payments" });
       }
 
-      const { milestoneId, amount, currency = 'GBP' } = req.body;
+      const { milestoneId, amount, currency = 'GBP', memo } = req.body;
 
       if (!milestoneId || !amount) {
         return res.status(400).json({ message: "Milestone ID and amount are required" });
@@ -6607,26 +6597,8 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
       // Log the support request for now
       console.log('Support request received:', supportRequest);
 
-      // TODO: Once SendGrid API key is available, send email to zoevdzee@creativlinc.co.uk
-      // For now, we'll just log and return success
-
-      const emailBody = `
-New Support Request from Interlinc
-
-Name: ${name}
-Email: ${email}
-Category: ${category}
-Subject: ${subject}
-
-Message:
-${message}
-
-Submitted at: ${supportRequest.timestamp}
-User Agent: ${supportRequest.userAgent}
-      `;
-
-      console.log('Email to send to zoevdzee@creativlinc.co.uk:');
-      console.log(emailBody);
+      // TODO: Once SendGrid API key is available, send email to zoevdzee@interlinc.co
+      console.log('Email to send to zoevdzee@interlinc.co:');
 
       // Return success response
       res.json({

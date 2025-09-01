@@ -248,7 +248,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem('user_id');
       localStorage.removeItem('firebase_uid');
       localStorage.removeItem('interlinc_user'); // Remove legacy key too
-      localStorage.removeItem('creativlinc_user'); // Remove old legacy key too
+      localStorage.removeItem('interlinc_user'); // Remove old legacy key too
 
       // Clear user data and invalidate all protected queries
       queryClient.setQueryData(["/api/user"], null);
@@ -270,7 +270,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem('user_id');
       localStorage.removeItem('firebase_uid');
       localStorage.removeItem('interlinc_user'); // Remove legacy key too
-      localStorage.removeItem('creativlinc_user'); // Remove old legacy key too
+      localStorage.removeItem('interlinc_user'); // Remove old legacy key too
 
       // Clear query cache data too
       queryClient.setQueryData(["/api/user"], null);
