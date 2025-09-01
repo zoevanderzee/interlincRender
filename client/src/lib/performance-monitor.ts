@@ -7,7 +7,7 @@
 const PERFORMANCE_LOGGING = import.meta.env.MODE !== 'production';
 const PERF_THRESHOLD_WARNING = 2000; // 2 seconds for warning
 const PERF_THRESHOLD_ERROR = 5000; // 5 seconds for error
-const PERF_MEASURES_PREFIX = 'creativ-linc:';
+const PERF_MEASURES_PREFIX = 'interlinc:';
 
 // Interface for performance data
 interface PerformanceData {

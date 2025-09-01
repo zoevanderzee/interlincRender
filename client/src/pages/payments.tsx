@@ -55,7 +55,7 @@ export default function Payments() {
       };
       
       // Add user ID from localStorage as fallback
-      const storedUser = localStorage.getItem('creativlinc_user');
+      const storedUser = localStorage.getItem('interlinc_user');
       if (storedUser) {
         try {
           const parsedUser = JSON.parse(storedUser);

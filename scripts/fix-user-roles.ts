@@ -11,7 +11,7 @@ async function main() {
     console.log("Starting user role fix script...");
 
     // First, directly fix the specific user from the screenshot
-    console.log("Fixing specific user by email: zoevdzee@creativlinc.co.uk");
+    console.log("Fixing specific user by email: zoevdzee@interlinc.co");
 
     // Update the user with email zoevdzee@creativlinc.co.uk
     await db.update(users)
@@ -19,7 +19,7 @@ async function main() {
         role: 'business',
         workerType: null 
       })
-      .where(eq(users.email, 'zoevdzee@creativlinc.co.uk'));
+      .where(eq(users.email, 'zoevdzee@interlinc.co'));
 
     // Get all users with role 'contractor' or 'freelancer' that have creativlinc in their email
     const potentialBusinessUsers = await db.select()
@@ -30,8 +30,8 @@ async function main() {
             eq(users.role, 'contractor'),
             eq(users.role, 'freelancer')
           ),
-          // Email contains creativlinc domain
-          sql`${users.email} LIKE '%creativlinc%'`
+          // Email contains interlinc domain
+          sql`${users.email} LIKE '%interlinc%'`
         )
       );
 
