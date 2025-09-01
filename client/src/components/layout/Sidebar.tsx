@@ -24,7 +24,7 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
     return (
       <div className="hidden md:flex flex-col bg-black border-r border-zinc-800 w-16 overflow-y-auto transition-all duration-300 ease-in-out">
         <div className="flex justify-center py-4 border-b border-zinc-800">
-          <img src={logoImage} alt="Creativ Linc Logo" className="h-8" />
+          <img src={logoImage} alt="InterLinc Logo" className="h-8" />
         </div>
         
         <nav className="py-4 flex flex-col h-full">

@@ -47,10 +47,10 @@ export function setupAuth(app: Express) {
   }
 
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET || 'creativlinc-secret-key',
+    secret: process.env.SESSION_SECRET || 'interlinc-secret-key',
     resave: false,
     saveUninitialized: false, // Don't save empty sessions
-    name: 'creativlinc.sid',
+    name: 'interlinc.sid',
     rolling: false, // Don't extend session on each request to avoid issues
     cookie: {
       secure: process.env.NODE_ENV === 'production', // true in production, false in development
@@ -58,7 +58,7 @@ export function setupAuth(app: Express) {
       httpOnly: true, // Security: prevent JS access
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' for production cross-origin
       path: '/', // Available for entire site
-      domain: process.env.NODE_ENV === 'production' ? '.creativlinc.app' : undefined, // Cross-subdomain in production
+      domain: process.env.NODE_ENV === 'production' ? '.interlinc.app' : undefined, // Cross-subdomain in production
     },
     // Use the storage implementation's session store
     store: storage.sessionStore
