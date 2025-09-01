@@ -81,7 +81,7 @@ export class TrolleyApiService {
    * Check if Trolley API is configured
    */
   isConfigured(): boolean {
-    return !!this.apiKey;
+    return !!(this.apiKey && this.apiSecret);
   }
 
   /**

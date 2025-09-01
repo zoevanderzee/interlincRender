@@ -241,39 +241,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const apiSecret = process.env.TROLLEY_API_SECRET;
 
       const status = {
-        configured: !!(apiKey && apiSecret),
-        keyPrefix: apiKey?.substring(0, 15) + '...' || 'Not configured',
-        secretLength: apiSecret?.length || 0,
+        configured: false,
+        keyPrefix: 'Not configured',
+        secretLength: 0,
         lastTest: null as any,
-        connectionStatus: 'unknown',
-        sdkVersion: 'Official Trolley SDK'
+        connectionStatus: 'disabled',
+        sdkVersion: 'Trolley SDK Disabled'
       };
 
-      if (status.configured) {
-        try {
-          const testResult = await trolleySdk.testConnection();
-
-          status.lastTest = {
-            timestamp: new Date().toISOString(),
-            success: testResult.success,
-            message: testResult.message
-          };
-
-          if (testResult.success) {
-            status.connectionStatus = 'connected';
-          } else {
-            status.connectionStatus = 'authentication_failed';
-            status.lastTest.error = testResult.message;
-          }
-        } catch (error) {
-          status.connectionStatus = 'sdk_error';
-          status.lastTest = {
-            timestamp: new Date().toISOString(),
-            success: false,
-            error: error instanceof Error ? error.message : 'SDK connection failed'
-          };
-        }
-      }
+      // Trolley is disabled, no connection test needed
+      status.lastTest = {
+        timestamp: new Date().toISOString(),
+        success: false,
+        message: 'Trolley payment processing is disabled'
+      };
 
       res.json(status);
     } catch (error) {
@@ -5259,6 +5240,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       try {
+        // Check if Trolley is configured
+        if (!trolleyService.isConfigured()) {
+          return res.status(503).json({
+            message: "Payment processing not available - service not configured"
+          });
+        }
+
         // CRITICAL FIX: Use verified recipient ID instead of fake user ID
         // Your verified Trolley account: R-AeVtg3cVK1ExCDPQosEHve
         const verifiedRecipientId = user.trolleyRecipientId; // This should be R-AeVtg3cVK1ExCDPQosEHve

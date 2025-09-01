@@ -166,10 +166,10 @@ class AutomatedPaymentService {
       }
 
       // Check if Trolley API is configured
-      if (!process.env.TROLLEY_API_KEY) {
+      if (!trolleyService.isConfigured()) {
         return { 
           success: false, 
-          error: 'Trolley API key not configured. Contact support to enable payment processing.' 
+          error: 'Payment processing not configured. Contact support to enable payment processing.' 
         };
       }
 

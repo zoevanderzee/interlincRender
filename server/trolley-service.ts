@@ -84,7 +84,9 @@ class TrolleyService {
     this.apiSecret = process.env.TROLLEY_API_SECRET || '';
     
     if (!this.apiKey || !this.apiSecret) {
-      throw new Error('LIVE Trolley API credentials required. Please configure TROLLEY_API_KEY and TROLLEY_API_SECRET');
+      console.log('Trolley API credentials not configured - payment processing will be disabled');
+      this.client = null;
+      return;
     }
 
     this.client = (trolley as any).connect({
@@ -97,8 +99,15 @@ class TrolleyService {
 
   private ensureClient() {
     if (!this.client) {
-      throw new Error('Trolley client not initialized - check API credentials');
+      throw new Error('Trolley payment processing not available - credentials not configured');
     }
+  }
+
+  /**
+   * Check if Trolley is properly configured
+   */
+  isConfigured(): boolean {
+    return !!this.client;
   }
 
   private getAuthHeaders(method: string, path: string, body?: string): Record<string, string> {
