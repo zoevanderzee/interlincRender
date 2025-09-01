@@ -1,0 +1,97 @@
+🔧 Rebrand Prompt — Creativ Linc → Interlinc (Code + UI + Config)
+Goal: Replace all brand references with Interlinc while avoiding breakage. Do this in a branch, show a dry-run diff, and only then commit.
+0) Guardrails (must follow)
+Create branch: git checkout -b chore/rebrand-interlinc
+NO global blind replace. Use controlled, case-aware rules below.
+Exclude compiled/binary files: images, fonts, PDFs, .png .jpg .pdf .ico .woff* .ttf .zip.
+Do not edit: migration hashes, checksum files, historical audit logs, or third-party licenses.
+Produce a report (markdown) listing every changed file + sample before/after lines.
+1) Replacement map (case-aware)
+Apply these exact mappings:
+Names & identifiers
+Creativ Linc → Interlinc
+CreativLinc → Interlinc (PascalCase)
+creativlinc → interlinc (lowercase identifiers, package names)
+CREATIV_LINC → INTERLINC (env keys/consts)
+Domains/URLs
+https://creativlinc.app → https://interlinc.app
+http://creativlinc.app → https://interlinc.app
+creativlinc.app → interlinc.app
+www.creativlinc.co.uk → www.interlinc.co
+creativlinc.co.uk → interlinc.co
+If email domains must remain @creativlinc.co.uk, do not change those unless instructed. If changing, map @creativlinc.co.uk → @interlinc.co and list all affected addresses.
+Assets & files
+Filenames/paths containing creativlinc → replace with interlinc (rename files and update imports).
+Copy (UI)
+Any visible text “Creativ Linc” → “Interlinc”.
+Taglines: keep content; just brand swap (no wording changes unless in separate task).
+2) Commands (discovery + safe replace)
+Discovery first (no writes):
+# list occurrences (excluding binaries and node_modules/builds)
+rg -n --hidden -S "Creativ Linc|CreativLinc|creativlinc|CREATIV_LINC|creativlinc\.app|creativlinc\.co\.uk" \
+  -g "!node_modules" -g "!dist" -g "!build" -g "!*.png" -g "!*.jpg" -g "!*.pdf" -g "!*.ico" -g "!*.woff*" -g "!*.ttf" > rebrand_hits.txt
+Prepare scripted replacements (preview):
+Use perl for case-sensitive, literal replacements and print a unified diff:
+# make a backup branch first
+git add -A && git commit -m "chore: pre-rebrand snapshot"
+
+# run replacements with preview using sd or perl; here’s perl with in-place editing and extension .bak for safety
+# Names
+perl -pi.bak -e 's/Creativ Linc/Interlinc/g' $(cat rebrand_hits.txt | cut -d: -f1 | sort -u)
+perl -pi.bak -e 's/CreativLinc/Interlinc/g' $(cat rebrand_hits.txt | cut -d: -f1 | sort -u)
+perl -pi.bak -e 's/CREATIV_LINC/INTERLINC/g' $(cat rebrand_hits.txt | cut -d: -f1 | sort -u)
+perl -pi.bak -e 's/creativlinc\.app/interlinc.app/g' $(cat rebrand_hits.txt | cut -d: -f1 | sort -u)
+perl -pi.bak -e 's/www\.creativlinc\.co\.uk/www.interlinc.co/g' $(cat rebrand_hits.txt | cut -d: -f1 | sort -u)
+perl -pi.bak -e 's/creativlinc\.co\.uk/interlinc.co/g' $(cat rebrand_hits.txt | cut -d: -f1 | sort -u)
+perl -pi.bak -e 's/\bcreativlinc\b/interlinc/g' $(cat rebrand_hits.txt | cut -d: -f1 | sort -u)
+
+# show diff for review
+git --no-pager diff --stat
+git --no-pager diff > rebrand_preview.diff
+Rename files/dirs safely:
+# rename files/dirs containing 'creativlinc' to 'interlinc'
+git ls-files | rg 'creativlinc' | while read p; do
+  newp="$(echo "$p" | sed 's/creativlinc/interlinc/g')"
+  mkdir -p "$(dirname "$newp")"
+  git mv "$p" "$newp"
+done
+Remove .bak after review:
+find . -type f -name "*.bak" -delete
+3) Update configuration (critical)
+Env vars / secrets (Replit):
+Replace any CREATIV_LINC_* with INTERLINC_*.
+Set PRIMARY_DOMAIN=https://interlinc.app
+Update NEXT_PUBLIC_BASE_URL, SITE_URL, PUBLIC_URL, API origins.
+Auth & OAuth callbacks:
+Firebase/Auth provider Authorized domains: add interlinc.app, www.interlinc.app.
+Update redirect URIs and email templates branding (no “Creativ Linc” left).
+CORS & cookies:
+Access-Control-Allow-Origin: include https://interlinc.app
+Cookie domain: .interlinc.app (SameSite=None; Secure).
+Robots & canonical:
+robots.txt, sitemap.xml, <link rel="canonical"> → https://interlinc.app.
+Assets:
+Swap logos/favicons; ensure paths updated.
+Email templates: headers/footers/links.
+4) Don’t touch (for legal integrity)
+Historical audit logs, invoice PDFs, signed contracts, and data exports that reference the old brand as a matter of record.
+3rd-party license texts.
+5) CI/test & acceptance
+Run build + tests.
+Open /health, login, forgot-password, main flows.
+curl -I https://interlinc.app returns 200 (or single 301 http→https).
+No occurrences remain:
+rg -n --hidden -S "Creativ Linc|CreativLinc|creativlinc|creativlinc\.app|creativlinc\.co\.uk"
+Post a markdown report REBRAND_REPORT.md including:
+Total files changed
+Key files renamed
+Updated envs/domains
+Items intentionally left unchanged (audit/legal)
+6) Commit & PR
+git add -A
+git commit -m "chore: rebrand Creativ Linc → Interlinc (code, UI, domains)"
+git push -u origin chore/rebrand-interlinc
+PR must include: rebrand_preview.diff (attached) + REBRAND_REPORT.md.
+Notes for the agent
+If any replacement would break identifiers (DB table names, migration IDs), list them instead of changing, and propose a follow-up migration plan.
+If email domain changes to @interlinc.co, collect all addresses you altered and output them in the report for MX/SMTP updates.
