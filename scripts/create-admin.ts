@@ -16,13 +16,13 @@ async function hashPassword(password: string) {
 async function main() {
   try {
     console.log('Creating administrator account...');
-    
+
     // First check if the admin already exists
     const existingAdmin = await db.select().from(users).where(eq(users.username, 'admin'));
-    
+
     if (existingAdmin.length > 0) {
       console.log('Admin account already exists. Updating password...');
-      
+
       // Update the existing admin's password
       const hashedPassword = await hashPassword('admin123');
       await db.update(users)
@@ -30,22 +30,22 @@ async function main() {
           password: hashedPassword
         })
         .where(eq(users.username, 'admin'));
-      
+
       console.log('✅ Admin password updated successfully!');
       console.log('You can now login with:');
       console.log('Username: admin');
       console.log('Password: admin123');
-      
+
       return;
     }
-    
+
     // Create a new admin user
     const hashedPassword = await hashPassword('admin123');
-    
+
     await db.insert(users).values({
       username: 'admin',
       password: hashedPassword,
-      email: 'admin@creativlinc.com',
+      email: 'admin@interlinc.co',
       firstName: 'System',
       lastName: 'Administrator',
       role: 'admin',
@@ -56,12 +56,12 @@ async function main() {
       stripeCustomerId: null,
       stripeSubscriptionId: null
     });
-    
+
     console.log('✅ Admin account created successfully!');
     console.log('You can now login with:');
     console.log('Username: admin');
     console.log('Password: admin123');
-    
+
   } catch (error) {
     console.error('Error creating admin account:', error);
   }

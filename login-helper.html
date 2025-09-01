@@ -15,19 +15,19 @@
 </head>
 <body>
     <div class="login-card">
-        <h2>Quick Login for zoevdzee@creativlinc.co.uk</h2>
+        <h2>Quick Login for zoevdzee@interlinc.co.uk</h2>
         <div id="status"></div>
-        
+
         <h3>Option 1: Direct Database Login</h3>
-        <button onclick="directLogin()">Login as zoevdzee@creativlinc.co.uk</button>
-        
+        <button onclick="directLogin()">Login as zoevdzee@interlinc.co.uk</button>
+
         <h3>Option 2: Manual Login</h3>
-        <input type="email" id="email" placeholder="Email" value="zoevdzee@creativlinc.co.uk">
+        <input type="email" id="email" placeholder="Email" value="zoevdzee@interlinc.co.uk">
         <input type="password" id="password" placeholder="Password">
         <button onclick="manualLogin()">Login</button>
-        
+
         <h3>Account Status</h3>
-        <p><strong>Email:</strong> zoevdzee@creativlinc.co.uk</p>
+        <p><strong>Email:</strong> zoevdzee@interlinc.co.uk</p>
         <p><strong>Role:</strong> business</p>
         <p><strong>Trolley Profile:</strong> Company ID 86 (linked)</p>
         <p><strong>Status:</strong> Active subscription</p>
@@ -36,18 +36,18 @@
     <script>
         async function directLogin() {
             const statusDiv = document.getElementById('status');
-            
+
             try {
                 statusDiv.innerHTML = '<div class="status">Creating direct login session...</div>';
-                
+
                 // Call backend to create session for this user
                 const response = await fetch('/api/admin/create-session', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
-                    body: JSON.stringify({ email: 'zoevdzee@creativlinc.co.uk' })
+                    body: JSON.stringify({ email: 'zoevdzee@interlinc.co.uk' })
                 });
-                
+
                 if (response.ok) {
                     statusDiv.innerHTML = '<div class="status success">✅ Login successful! Redirecting...</div>';
                     setTimeout(() => {
@@ -61,27 +61,27 @@
                 statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
             }
         }
-        
+
         async function manualLogin() {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const statusDiv = document.getElementById('status');
-            
+
             if (!email || !password) {
                 statusDiv.innerHTML = '<div class="status error">Please enter email and password</div>';
                 return;
             }
-            
+
             try {
                 statusDiv.innerHTML = '<div class="status">Logging in...</div>';
-                
+
                 const response = await fetch('/api/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
                     body: JSON.stringify({ email, password })
                 });
-                
+
                 if (response.ok) {
                     statusDiv.innerHTML = '<div class="status success">✅ Login successful! Redirecting...</div>';
                     setTimeout(() => {

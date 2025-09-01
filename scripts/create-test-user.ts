@@ -16,38 +16,38 @@ async function hashPassword(password: string) {
 async function main() {
   try {
     console.log('Creating test user...');
-    
+
     // Check if the user already exists
     const existingUsers = await db.select().from(users).where(
       eq(users.username, 'test_admin')
     );
-    
+
     if (existingUsers.length > 0) {
       console.log('Test user already exists.');
       process.exit(0);
     }
-    
+
     // Hash the password
     const hashedPassword = await hashPassword('test123');
-    
+
     // Create test user
     const newUser = await db.insert(users).values({
       username: 'test_admin',
       password: hashedPassword,
-      email: 'admin@creativlinc.com',
+      email: 'test@interlinc.co',
       firstName: 'Test',
       lastName: 'Admin',
       role: 'business',
       companyName: 'CreativLinc Inc.',
       title: 'Administrator'
     }).returning();
-    
+
     console.log('✅ Test user created successfully:', newUser[0].id);
   } catch (error) {
     console.error('❌ Error creating test user:', error);
     process.exit(1);
   }
-  
+
   process.exit(0);
 }
 

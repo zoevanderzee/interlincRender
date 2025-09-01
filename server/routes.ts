@@ -30,7 +30,7 @@ import Stripe from "stripe";
 import stripeService from "./services/stripe";
 import notificationService from "./services/notifications";
 import automatedPaymentService from "./services/automated-payments";
-import { generateComplianceExport, generateInvoiceExport, generatePaymentExport, generateCSVExport } from './export-helpers';
+import {generateComplianceExport, generateInvoiceExport, generatePaymentExport, generateCSVExport} from './export-helpers';
 import { trolleySdk } from "./trolley-sdk-service";
 import { trolleySubmerchantService, type TrolleySubmerchantData } from "./services/trolley-submerchant";
 import { trolleyService } from "./trolley-service";
@@ -40,13 +40,13 @@ import { FileStorageService, uploadMiddleware } from "./fileStorage";
 import plaidRoutes from "./plaid-routes";
 import trolleyRoutes from "./trolley-routes";
 import trolleyTestRoutes from "./trolley-test-routes";
-import { registerFirebaseRoutes } from "./firebase-routes";
-import { registerSyncUserRoutes } from "./routes/sync-user";
-import { setupSyncEmailVerification } from "./routes/sync-email-verification";
-import { registerSyncFirebaseUserRoutes } from "./routes/sync-firebase-user";
-import { registerBusinessWorkerRoutes } from "./business-workers/index";
-import { registerContractorsWithIdsRoutes } from "./business-workers/contractors-with-ids";
-import { registerProjectRoutes } from "./projects/index";
+import {registerFirebaseRoutes} from "./firebase-routes";
+import {registerSyncUserRoutes} from "./routes/sync-user";
+import {setupSyncEmailVerification} from "./routes/sync-email-verification";
+import {registerSyncFirebaseUserRoutes} from "./routes/sync-firebase-user";
+import {registerBusinessWorkerRoutes} from "./business-workers/index";
+import {registerContractorsWithIdsRoutes} from "./business-workers/contractors-with-ids";
+import {registerProjectRoutes} from "./projects/index";
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
@@ -2405,7 +2405,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return sum + parseFloat(contract.value.toString() || '0');
       }, 0);
 
-      // Get contractors/businesses data based on user role
+      // Get contractor/businesses data based on user role
       let allContractors = [];
       let activeContractorsCount = 0;
 
@@ -2450,7 +2450,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Only include minimal invite data to prevent errors
         invites: pendingInvites.map(item => ({
           id: typeof item.id === 'number' ? item.id : 0,
-          email: typeof item.token === 'string' ? 'company-invite@interlinc.com' : '',
+          email: typeof item.token === 'string' ? 'company-invite@interlinc.co' : '',
           status: 'active',
           workerType: item.workerType || 'contractor',
           projectName: 'Company Onboarding'
@@ -3098,7 +3098,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Filter contractors to only include those associated with the user's contracts
       const filteredContractors = contractorIds.length > 0
-        ? contractors.filter(contractor => contractorIds.includes(contractor.id))
+        ? contracts.filter(contractor => contractorIds.includes(contractor.id))
         : [];
 
       // Calculate contract status counts
@@ -4542,7 +4542,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if this contractor is already connected to this business
       const businessId = parseInt(userId.toString());
 
-      // Check for existing contracts with this contractor
+      // Check existing contracts
       const existingContracts = await storage.getContractsByBusinessId(businessId);
       const alreadyContracted = existingContracts.some(contract => contract.contractorId === contractor.id);
 
@@ -5239,7 +5239,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         // CRITICAL FIX: Use verified recipient ID instead of fake user ID
         // Your verified Trolley account: R-AeVtg3cVK1ExCDPQosEHve
-        const verifiedRecipientId = user.trolleyRecipientId; // This should be R-AeVtg3cVK1ExCDPQosEHve
+        const verifiedRecipientId = user.trolleyRecipientId;
 
         if (!verifiedRecipientId || verifiedRecipientId === '86') {
           console.log(`❌ Invalid Trolley recipient ID: ${verifiedRecipientId}. Expected R-AeVtg3cVK1ExCDPQosEHve`);
@@ -5632,7 +5632,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           currency: 'USD'
         },
         onboarding: {
-          businessWebsite: 'https://interlinc.app',
+          businessWebsite: 'https://interlinc.co',
           businessLegalName: user.company || user.username,
           businessAsName: user.company || user.username,
           businessTaxId: 'PENDING',
@@ -5705,7 +5705,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           currency: 'USD'
         },
         onboarding: {
-          businessWebsite: 'https://interlinc.app',
+          businessWebsite: 'https://interlinc.co',
           businessLegalName: user.company || user.username,
           businessAsName: user.company || user.username,
           businessTaxId: 'PENDING',
