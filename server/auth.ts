@@ -89,8 +89,14 @@ export function setupAuth(app: Express) {
   // Add CORS headers for cookie support - for cross-origin requests
   app.use((req, res, next) => {
     const origin = req.headers.origin;
-    if (origin === 'https://interlinc.app' || process.env.NODE_ENV === 'development') {
-      res.header('Access-Control-Allow-Origin', origin);
+    const allowedOrigins = [
+      'https://interlinc.app',
+      'https://www.interlinc.app',
+      req.protocol + '://' + req.get('host') // Allow same-origin requests
+    ];
+    
+    if (allowedOrigins.includes(origin) || process.env.NODE_ENV === 'development') {
+      res.header('Access-Control-Allow-Origin', origin || req.protocol + '://' + req.get('host'));
       res.header('Access-Control-Allow-Credentials', 'true');
       res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
       res.header('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization,X-User-ID,X-Firebase-UID,X-CSRF-Token');
