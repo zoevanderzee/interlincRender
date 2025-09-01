@@ -63,7 +63,7 @@ export function setupAuth(app: Express) {
     // Use the storage implementation's session store
     store: storage.sessionStore
   };
-  
+
   // Log session configuration for debugging
   console.log("Session configuration:", {
     secret: sessionSettings.secret ? "HIDDEN" : "NOT SET",
@@ -78,31 +78,32 @@ export function setupAuth(app: Express) {
     },
     storePresent: !!sessionSettings.store
   });
-  
+
   // Don't clear sessions on startup anymore to maintain user sessions
   console.log('Session store initialized, keeping existing sessions');
 
   // Configure Express to trust proxy headers in all environments
   // This is needed for cookies to work properly in Replit
   app.set("trust proxy", 1);
-  
-  // Add CORS headers for cookie support - for cross-origin requests
+
+  // Add CORS headers for cookie support
   app.use((req, res, next) => {
     const origin = req.headers.origin;
     const allowedOrigins = [
       'https://interlinc.app',
       'https://www.interlinc.app',
-      'https://interlinc.co',
+      'https://interlinc.co', 
       'https://www.interlinc.co',
       req.protocol + '://' + req.get('host') // Allow same-origin requests
     ];
-    
-    if (allowedOrigins.includes(origin) || process.env.NODE_ENV === 'development') {
+
+    // In development, allow all origins; in production, check allowlist
+    if (process.env.NODE_ENV === 'development' || allowedOrigins.includes(origin)) {
       res.header('Access-Control-Allow-Origin', origin || req.protocol + '://' + req.get('host'));
       res.header('Access-Control-Allow-Credentials', 'true');
       res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
       res.header('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization,X-User-ID,X-Firebase-UID,X-CSRF-Token');
-      
+
       if (req.method === 'OPTIONS') {
         res.sendStatus(200);
       } else {
@@ -115,7 +116,7 @@ export function setupAuth(app: Express) {
 
   // Setup session middleware
   app.use(session(sessionSettings));
-  
+
   // Initialize passport
   app.use(passport.initialize());
   app.use(passport.session());
@@ -129,9 +130,9 @@ export function setupAuth(app: Express) {
           console.log(`User not found: ${username}`);
           return done(null, false, { message: "Invalid username or password" });
         }
-        
+
         console.log(`Login attempt for user: ${username}, emailVerified: ${user.emailVerified} (type: ${typeof user.emailVerified})`);
-        
+
         // REMOVED: No placeholder passwords allowed in live production system
         if (!user.password) {
           console.log(`User has no password set: ${username}`);
@@ -141,7 +142,7 @@ export function setupAuth(app: Express) {
             email: user.email
           });
         }
-        
+
         const isValid = await comparePasswords(password, user.password);
         if (!isValid) {
           console.log(`Password validation failed for user: ${username}`);
@@ -156,7 +157,7 @@ export function setupAuth(app: Express) {
             email: user.email
           });
         }
-        
+
         return done(null, user);
       } catch (error) {
         return done(error);
@@ -169,7 +170,7 @@ export function setupAuth(app: Express) {
     console.log("Serializing user:", user.id);
     done(null, user.id);
   });
-  
+
   // Configure how users are retrieved from the session
   passport.deserializeUser(async (id: number, done) => {
     try {
@@ -178,16 +179,16 @@ export function setupAuth(app: Express) {
         console.log("Deserializing with undefined/null user ID");
         return done(null, undefined);
       }
-      
+
       console.log("Deserializing user with ID:", id);
       const user = await storage.getUser(id);
-      
+
       // If no user found, return undefined instead of null
       if (!user) {
         console.log(`No user found with ID: ${id}`);
         return done(null, undefined);
       }
-      
+
       return done(null, user);
     } catch (error) {
       console.error('Error deserializing user:', error);
@@ -196,7 +197,7 @@ export function setupAuth(app: Express) {
   });
 
   // Register authentication routes
-  
+
   // Registration route
   app.post("/api/register", async (req, res, next) => {
     try {
@@ -216,52 +217,52 @@ export function setupAuth(app: Express) {
       let invite = null;
       let businessToken = null;
       let businessInfo = null;
-      
+
       // Check if there's a specific project invite associated with this registration
       if (req.body.inviteId) {
         const inviteId = parseInt(req.body.inviteId);
         invite = await storage.getInvite(inviteId);
-        
+
         if (!invite) {
           return res.status(400).json({ error: "Invalid invitation" });
         }
-        
+
         // Make sure the email matches the invitation
         if (invite.email.toLowerCase() !== req.body.email.toLowerCase()) {
           return res.status(400).json({ error: "Email does not match the invitation" });
         }
-        
+
         // Check if the invite has expired
         if (invite.expiresAt && new Date() > new Date(invite.expiresAt)) {
           return res.status(400).json({ error: "Invitation has expired" });
         }
-        
+
         // Check if the invite is already accepted
         if (invite.status !== 'pending') {
           return res.status(400).json({ error: "Invitation has already been used" });
         }
       }
-      
+
       // Check if there's a business invite token associated with this registration
       if (req.body.token) {
         const tokenInfo = await storage.verifyOnboardingToken(req.body.token);
-        
+
         if (!tokenInfo) {
           return res.status(400).json({ error: "Invalid or expired business invite link" });
         }
-        
+
         businessToken = req.body.token;
         businessInfo = tokenInfo;
       }
 
       // Create the user
       const hashedPassword = await hashPassword(req.body.password);
-      
+
       // Determine user role and worker type based on registration source
       let role = 'business'; // Default role for direct signups
       let workerType = null; // Default worker type
       let businessId = null; // For tracking business relationship
-      
+
       // Project-specific invitation takes precedence
       if (invite) {
         role = 'contractor';
@@ -278,7 +279,7 @@ export function setupAuth(app: Express) {
       else {
         // For direct registrations (no invite), only allow business role unless explicitly requested
         const requestedRole = req.body.role;
-        
+
         // If someone is signing up directly as a contractor, require explicit confirmation
         if (requestedRole === 'contractor') {
           console.warn(`⚠️ Direct contractor registration attempted for ${req.body.email}. This is unusual - most contractors should use invite links.`);
@@ -287,10 +288,10 @@ export function setupAuth(app: Express) {
           // Default to business for all direct registrations
           role = 'business';
         }
-        
+
         workerType = req.body.workerType || null;
       }
-      
+
       // Add worker type from invite if available
       const userData = {
         ...req.body,
@@ -304,7 +305,7 @@ export function setupAuth(app: Express) {
         // Ensure subscription status is set for new users
         subscriptionStatus: invite || businessInfo ? 'active' : 'inactive'
       };
-      
+
       const user = await storage.createUser(userData);
 
       // Note: Trolley accounts are created separately during business onboarding
@@ -316,7 +317,7 @@ export function setupAuth(app: Express) {
         await storage.updateInvite(invite.id, { 
           status: 'accepted'
         });
-        
+
         // If the invite is associated with a contract, create one automatically
         if (invite.projectId && invite.contractDetails) {
           try {
@@ -337,12 +338,12 @@ export function setupAuth(app: Express) {
             // Continue with user creation even if contract creation fails
           }
         }
-        
+
         // Send a welcome email to the newly registered user
         try {
           const { sendContractCreatedEmail } = await import('./services/email');
           const appUrl = `${req.protocol}://${req.get('host')}`;
-          
+
           await sendContractCreatedEmail({
             contractName: invite.projectName,
             contractCode: `${invite.projectName.substring(0, 3).toUpperCase()}-${Date.now().toString().substring(9)}`,
@@ -355,20 +356,20 @@ export function setupAuth(app: Express) {
           // Continue with login even if email fails
         }
       }
-      
+
       // Handle business invite link registration
       if (businessToken && businessInfo) {
         try {
           // Record the onboarding link usage
           await storage.recordOnboardingUsage(businessInfo.businessId, user.id, businessToken);
-          
+
           // Send welcome email to the newly registered contractor
           try {
             const { sendEmail } = await import('./services/email');
             const business = await storage.getUser(businessInfo.businessId);
             const businessName = business ? (business.companyName || `${business.firstName || ''} ${business.lastName || ''}`).trim() : "Your client";
             const appUrl = `${req.protocol}://${req.get('host')}`;
-            
+
             await sendEmail({
               to: user.email,
               subject: `Welcome to ${businessName}'s Team on Interlinc`,
@@ -393,7 +394,7 @@ export function setupAuth(app: Express) {
       const isDirectRegistration = !invite && !businessInfo;
       const needsSubscription = isNewUser && isDirectRegistration && (user.role === 'business' || user.role === 'contractor');
       const needsEmailVerification = isDirectRegistration && !user.emailVerified;
-      
+
       console.log('Subscription check for user:', {
         userId: user.id,
         subscriptionStatus: user.subscriptionStatus,
@@ -405,17 +406,17 @@ export function setupAuth(app: Express) {
         hasInvite: !!invite,
         hasBusinessInfo: !!businessInfo
       });
-      
+
       // Email verification is required for all direct registrations
       if (needsEmailVerification) {
         console.log('User needs email verification, generating token');
         // Generate email verification token
         const verificationToken = randomBytes(16).toString('hex');
         const verificationExpires = new Date(Date.now() + 86400000); // 24 hours from now
-        
+
         // Save verification token to database
         await storage.saveEmailVerificationToken(user.id, verificationToken, verificationExpires);
-        
+
         // Send verification email
         try {
           const { sendEmailVerificationEmail } = await import('./services/email');
@@ -427,7 +428,7 @@ export function setupAuth(app: Express) {
           // Continue - user can request another verification email
         }
         console.log(`Email verification token for ${user.email}: ${verificationToken}`);
-        
+
         // Return user info with email verification required
         const { password, ...userInfo } = user;
         return res.status(201).json({
@@ -438,7 +439,7 @@ export function setupAuth(app: Express) {
           fromBusinessInvite: false
         });
       }
-      
+
       if (needsSubscription) {
         console.log('User needs subscription, returning requiresSubscription=true');
         // Don't log in the user - return subscription required
@@ -483,16 +484,16 @@ export function setupAuth(app: Express) {
       cookie: req.headers.cookie,
       'user-agent': req.headers['user-agent']
     });
-    
+
     passport.authenticate("local", (err: Error, user: Express.User, info: any) => {
       if (err) {
         console.error("Login error:", err);
         return next(err);
       }
-      
+
       if (!user) {
         console.log("Login failed:", info?.message || "Unknown error");
-        
+
         // Handle different types of authentication failures
         if (info?.requiresEmailVerification) {
           return res.status(403).json({ 
@@ -501,33 +502,33 @@ export function setupAuth(app: Express) {
             email: info.email
           });
         }
-        
+
         return res.status(401).json({ 
           error: "invalid_credentials",
           message: info?.message || "Invalid username or password" 
         });
       }
-      
+
       // Log in the user (create the session)
       req.login(user, (loginErr) => {
         if (loginErr) {
           console.error("Session creation error:", loginErr);
           return next(loginErr);
         }
-        
+
         console.log("Login successful for user:", user.id, "Session ID:", req.sessionID);
-        
+
         // Return user info without the password
         const { password, ...userInfo } = user;
-        
+
         console.log("Login successful for user:", user.id, "Session ID:", req.sessionID);
         console.log("User authenticated, session cookie will be set by Express");
-        
+
         // Check if user needs subscription and add redirect flag
         const requiresSubscription = userInfo.subscriptionStatus === 'inactive' || 
                                     userInfo.subscriptionStatus === 'past_due' ||
                                     !userInfo.subscriptionStatus;
-        
+
         return res.status(200).json({
           ...userInfo,
           emailVerified: userInfo.emailVerified,
@@ -542,10 +543,10 @@ export function setupAuth(app: Express) {
   app.post("/api/logout", (req, res, next) => {
     const sessionID = req.sessionID;
     console.log("Logging out session:", sessionID);
-    
+
     req.logout((err) => {
       if (err) return next(err);
-      
+
       // Destroy the session
       req.session.destroy((destroyErr) => {
         if (destroyErr) {
@@ -601,7 +602,7 @@ export function setupAuth(app: Express) {
   // Get current user route - Updated for Firebase Auth
   app.get("/api/user", async (req, res) => {
     console.log("Auth check for session:", req.sessionID, "Authenticated:", req.isAuthenticated());
-    
+
     // Log request headers for debugging
     console.log("User API request headers:", {
       cookie: req.headers.cookie,
@@ -609,14 +610,14 @@ export function setupAuth(app: Express) {
       'x-user-id': req.headers['x-user-id'],
       'x-firebase-uid': req.headers['x-firebase-uid']
     });
-    
+
     // Priority 1: Check if user is authenticated via PostgreSQL session
     if (req.isAuthenticated()) {
       // Return user info without the password
       const { password, ...userInfo } = req.user as Express.User;
       return res.json(userInfo);
     }
-    
+
     // Priority 2: Check for Firebase UID header (Firebase Auth)
     const firebaseUID = req.headers['x-firebase-uid'];
     if (firebaseUID) {
@@ -632,7 +633,7 @@ export function setupAuth(app: Express) {
         console.error('Error in Firebase UID auth for /api/user:', error);
       }
     }
-    
+
     // Priority 3: Fallback - Check X-User-ID header for localStorage-based authentication
     const userIdHeader = req.headers['x-user-id'];
     if (userIdHeader) {
@@ -651,7 +652,7 @@ export function setupAuth(app: Express) {
         console.error('Error in X-User-ID fallback for /api/user:', error);
       }
     }
-    
+
     // If all authentication methods fail
     return res.status(401).json({ error: "Not authenticated" });
   });
@@ -660,11 +661,11 @@ export function setupAuth(app: Express) {
   app.post("/api/forgot-password", async (req, res) => {
     try {
       const { email } = req.body;
-      
+
       if (!email) {
         return res.status(400).json({ error: "Email is required" });
       }
-      
+
       // Find user by email
       const user = await storage.getUserByEmail(email);
       if (!user) {
@@ -673,17 +674,17 @@ export function setupAuth(app: Express) {
           message: "If an account with that email exists, a password reset link has been sent." 
         });
       }
-      
+
       // Generate a reset token
       const token = randomBytes(32).toString('hex');
-      
+
       // Set token expiration (1 hour from now)
       const expires = new Date();
       expires.setHours(expires.getHours() + 1);
-      
+
       // Save token to user record
       await storage.setPasswordResetToken(email, token, expires);
-      
+
       try {
         // Send password reset email using our email service
         const { sendPasswordResetEmail } = await import('./services/email');
@@ -694,7 +695,7 @@ export function setupAuth(app: Express) {
         console.error('Error sending password reset email:', emailError);
         // Continue the process even if email fails - user can request again
       }
-      
+
       res.status(200).json({ 
         message: "If an account with that email exists, a password reset link has been sent." 
       });
@@ -703,32 +704,32 @@ export function setupAuth(app: Express) {
       res.status(500).json({ error: "An error occurred while processing your request." });
     }
   });
-  
+
   // Reset password route
   app.post("/api/reset-password", async (req, res) => {
     try {
       const { token, password } = req.body;
-      
+
       if (!token || !password) {
         return res.status(400).json({ error: "Token and password are required" });
       }
-      
+
       // Find user by reset token
       const user = await storage.getUserByResetToken(token);
       if (!user) {
         return res.status(400).json({ error: "Invalid or expired token" });
       }
-      
+
       // Hash the new password
       const hashedPassword = await hashPassword(password);
-      
+
       // Update user password and clear reset token
       await storage.updateUser(user.id, {
         password: hashedPassword,
         resetPasswordToken: null,
         resetPasswordExpires: null
       });
-      
+
       res.status(200).json({ message: "Password has been reset successfully" });
     } catch (error: any) {
       console.error('Password reset error:', error);
@@ -740,17 +741,17 @@ export function setupAuth(app: Express) {
   app.post("/api/auth/verify-email", async (req, res) => {
     try {
       const { token } = req.body;
-      
+
       if (!token) {
         return res.status(400).json({ error: "Verification token is required" });
       }
-      
+
       // Find user by verification token and verify email
       const user = await storage.verifyEmailToken(token);
       if (!user) {
         return res.status(400).json({ error: "Invalid or expired verification token" });
       }
-      
+
       res.status(200).json({ 
         message: "Email verified successfully",
         user: {
@@ -769,30 +770,30 @@ export function setupAuth(app: Express) {
   app.post("/api/auth/send-verification-email", async (req, res) => {
     try {
       const { email, userId } = req.body;
-      
+
       if (!email || !userId) {
         return res.status(400).json({ error: "Email and user ID are required" });
       }
-      
+
       // Find user by email and ID
       const user = await storage.getUser(userId);
       if (!user || user.email !== email) {
         return res.status(404).json({ error: "User not found" });
       }
-      
+
       // Generate new verification token
       const verificationToken = randomBytes(16).toString('hex');
-      
+
       // Set token expiration (24 hours from now)
       const expires = new Date();
       expires.setHours(expires.getHours() + 24);
-      
+
       // Save token to user record
       await storage.updateUser(userId, {
         emailVerificationToken: verificationToken,
         emailVerificationExpires: expires
       });
-      
+
       try {
         // Send verification email using our email service
         const { sendEmailVerificationEmail } = await import('./services/email');
@@ -804,7 +805,7 @@ export function setupAuth(app: Express) {
         // Continue the process even if email fails - user can request again
       }
       console.log(`Email verification token for ${email}: ${verificationToken}`);
-      
+
       res.status(200).json({ 
         message: "Verification email sent successfully",
         verificationToken: verificationToken
@@ -818,7 +819,7 @@ export function setupAuth(app: Express) {
   // Create middleware to check user authentication
   const requireAuth = async (req: any, res: any, next: any) => {
     console.log("Auth check in requireAuth middleware:", req.isAuthenticated(), "Session ID:", req.sessionID);
-    
+
     // Log request headers for debugging
     console.log("API request headers in requireAuth:", {
       cookie: req.headers.cookie,
@@ -826,7 +827,7 @@ export function setupAuth(app: Express) {
       'x-user-id': req.headers['x-user-id'],
       path: req.path
     });
-    
+
     // Debug session information
     console.log("Session data:", {
       isSessionDefined: !!req.session,
@@ -835,12 +836,12 @@ export function setupAuth(app: Express) {
       passportInitialized: !!req.session?.passport,
       passport: req.session?.passport
     });
-    
+
     // First check traditional session-based authentication
     if (req.isAuthenticated()) {
       return next();
     }
-    
+
     // Fallback: Check for X-User-ID header and attempt to load the user
     const userIdHeader = req.headers['x-user-id'];
     if (userIdHeader) {
@@ -859,7 +860,7 @@ export function setupAuth(app: Express) {
         console.error('Error in X-User-ID fallback authentication:', error);
       }
     }
-    
+
     // If all authentication methods fail
     return res.status(401).json({ error: "Not authenticated" });
   };
