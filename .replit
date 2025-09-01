@@ -8,7 +8,7 @@ channel = "stable-24_05"
 [deployment]
 deploymentTarget = "autoscale"
 build = ["npm", "run", "build"]
-run = ["sh", "-c", "node server/index.js"]
+run = ["sh", "-c", "npm run dev"]
 
 [workflows]
 runButton = "Start application without Trolley"
