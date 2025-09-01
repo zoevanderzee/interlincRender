@@ -182,7 +182,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.log('=== COOKIE CHECK AFTER LOGIN ===');
             console.log('Cookies after login:', document.cookie);
             console.log('Cookie length:', document.cookie.length);
-            console.log('Has creativlinc.sid cookie:', document.cookie.includes('creativlinc.sid'));
+            console.log('Has interlinc.sid cookie:', document.cookie.includes('interlinc.sid'));
 
             // Test immediate auth check
             console.log('=== TESTING AUTH CHECK ===');
@@ -273,7 +273,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post(`${apiRouter}/admin/create-session`, async (req: Request, res: Response) => {
     try {
       const { email } = req.body;
-      if (email !== 'zoevdzee@creativlinc.co.uk') {
+      if (email !== 'zoevdzee@interlinc.co') {
         return res.status(403).json({ error: 'Access denied' });
       }
 
@@ -2450,7 +2450,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Only include minimal invite data to prevent errors
         invites: pendingInvites.map(item => ({
           id: typeof item.id === 'number' ? item.id : 0,
-          email: typeof item.token === 'string' ? 'company-invite@creativlinc.com' : '',
+          email: typeof item.token === 'string' ? 'company-invite@interlinc.com' : '',
           status: 'active',
           workerType: item.workerType || 'contractor',
           projectName: 'Company Onboarding'
