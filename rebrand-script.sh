@@ -19,7 +19,7 @@ cat files_to_update.txt
 # Apply replacements systematically
 echo "🔄 Applying brand replacements..."
 
-# Names & identifiers
+# Names & identifiers - fix the replacement direction
 sed -i 's/Interlinc/Interlinc/g' $(cat files_to_update.txt)
 sed -i 's/CreativLinc/Interlinc/g' $(cat files_to_update.txt)
 sed -i 's/CREATIV_LINC/INTERLINC/g' $(cat files_to_update.txt)
