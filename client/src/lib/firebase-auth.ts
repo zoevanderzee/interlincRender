@@ -22,7 +22,7 @@ export const signUpUser = async (email: string, password: string): Promise<Fireb
 
     // Send email verification with production action URL
     await sendEmailVerification(user, {
-      url: 'https://creativlinc.app/?mode=verifyEmail',
+      url: 'https://interlinc.app/?mode=verifyEmail',
       handleCodeInApp: false
     });
     console.log("Verification email sent to:", email);
