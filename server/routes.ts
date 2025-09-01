@@ -5524,7 +5524,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         scheduledDate: new Date(),
         notes: `Trolley payment: ${result.paymentId}`,
         trolleyPaymentId: result.paymentId,
-        paymentProcessor: 'trolley,
+        paymentProcessor: 'trolley',
         triggeredBy: 'manual',
         triggeredAt: new Date()
       });
