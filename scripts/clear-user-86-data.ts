@@ -3,6 +3,10 @@ import { db } from "../server/db";
 import { users, contracts, milestones, payments, invites, businessWorkers, projects, notifications, connectionRequests } from "../shared/schema";
 import { eq, or } from "drizzle-orm";
 
+// Import work_requests from schema (we need to add this to handle the foreign key)
+// Assuming work_requests table exists based on the error
+const workRequests = "work_requests"; // We'll handle this with raw SQL if needed
+
 async function main() {
   try {
     console.log("🧹 Completely resetting user 86 data...");
@@ -41,6 +45,18 @@ async function main() {
         eq(businessWorkers.contractorUserId, userId)
       )
     );
+
+    // Get user's projects first to handle work_requests constraint
+    const userProjects = await db.select().from(projects).where(eq(projects.businessId, userId));
+    
+    // Delete work_requests for each project (handles foreign key constraint)
+    for (const project of userProjects) {
+      console.log(`Deleting work requests for project ${project.id}...`);
+      // Use raw SQL since work_requests might not be in our schema imports
+      await db.execute(`DELETE FROM work_requests WHERE project_id = ${project.id}`);
+    }
+    
+    // Now we can safely delete projects
     await db.delete(projects).where(eq(projects.businessId, userId));
     await db.delete(notifications).where(eq(notifications.userId, userId));
     await db.delete(connectionRequests).where(
