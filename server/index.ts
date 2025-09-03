@@ -11,6 +11,7 @@ import path from "path";
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import stripeConnectRoutes from './stripe-connect-routes'; // Import Stripe Connect routes
+import { setupAuth } from './auth'; // Import auth setup
 
 // ES module equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -72,6 +73,9 @@ app.use((req, res, next) => {
     res.sendFile(path.resolve(__dirname, '..', 'client', 'test-login.html'));
   });
 
+  // Setup authentication and get requireAuth middleware
+  const { requireAuth } = setupAuth(app);
+  
   const server = await registerRoutes(app);
 
   // Stripe Connect payment routes (new system)
