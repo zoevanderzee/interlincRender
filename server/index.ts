@@ -10,6 +10,7 @@ import { apiErrorHandler } from "./middleware/error-handler";
 import path from "path";
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import stripeConnectRoutes from './stripe-connect-routes'; // Import Stripe Connect routes
 
 // ES module equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -52,30 +53,37 @@ app.use((req, res, next) => {
 (async () => {
   // Initialize services
   await initializeLogger();
-  
+
   // Setup database health checks (every 5 minutes)
   setupDatabaseHealthChecks();
-  
+
   // Add the request logger middleware
   app.use(requestLogger);
-  
+
   // Temporarily disable all security enhancements to restore basic functionality
   // app.use(securityHeaders);
   // app.use(addCsrfToken);
   // app.use('/api', csrfProtection);
-  
+
   // Remove static HTML fallback routes to restore React app
-  
+
   // Serve test login HTML
   app.get('/test-login-html', (req, res) => {
     res.sendFile(path.resolve(__dirname, '..', 'client', 'test-login.html'));
   });
-  
+
   const server = await registerRoutes(app);
+
+  // Stripe Connect payment routes (new system)
+  stripeConnectRoutes(app, '/api', requireAuth);
+
+  // Legacy Trolley payment routes (keeping for migration)
+  // trolleyRoutes(app, '/api', requireAuth);
+  // trolleyContractorRoutes(app, '/api', requireAuth);
 
   // Use our error logger middleware
   app.use(errorLogger);
-  
+
   // Use standardized API error handler
   app.use(apiErrorHandler);
 
@@ -100,5 +108,3 @@ app.use((req, res, next) => {
     log(`serving on port ${port}`);
   });
 })();
-
-
