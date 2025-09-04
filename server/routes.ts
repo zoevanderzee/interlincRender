@@ -5711,9 +5711,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register Trolley submerchant routes
   // registerTrolleySubmerchantRoutes(app, requireAuth); // Removed as per change instructions
 
-  // Register Trolley contractor routes
-  const { registerTrolleyContractorRoutes } = await import('./trolley-contractor-routes');
-  registerTrolleyContractorRoutes(app, apiRouter, requireAuth);
+  // Trolley contractor routes removed - functionality integrated into main routes
 
   // Trolley status checking endpoint for contractors
   app.post(`${apiRouter}/trolley/check-status`, requireAuth, async (req: Request, res: Response) => {
