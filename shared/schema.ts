@@ -127,7 +127,7 @@ export const payments = pgTable("payments", {
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   status: text("status").notNull().default("scheduled"), // scheduled, processing, completed, failed, auto_triggered
   scheduledDate: timestamp("scheduled_date").notNull(),
-  completedDate: timestamp("completed_date"),
+  completedDate: timestamp("completedDate"),
   notes: text("notes"),
   stripePaymentIntentId: text("stripe_payment_intent_id"), // Stripe Payment Intent ID
   stripePaymentIntentStatus: text("stripe_payment_intent_status"), // Stripe Payment Intent Status

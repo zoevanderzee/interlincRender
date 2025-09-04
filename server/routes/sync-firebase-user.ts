@@ -25,11 +25,24 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
           emailVerified: emailVerified 
         });
         
-        return res.json({ 
-          success: true, 
-          message: "User metadata synced",
-          userId: existingUser.id
+        // Create session for the user
+        req.login(result || existingUser, (err) => {
+          if (err) {
+            console.error('Error creating session after Firebase sync:', err);
+            return res.status(500).json({ 
+              success: false, 
+              error: 'Failed to create session' 
+            });
+          }
+          
+          return res.json({ 
+            success: true, 
+            message: "User synced and logged in",
+            userId: (result || existingUser).id,
+            user: result || existingUser
+          });
         });
+        return;
       }
 
       // Create minimal user record for metadata storage
@@ -48,10 +61,22 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
 
       const newUser = await storage.createUser(userData);
       
-      return res.json({ 
-        success: true, 
-        message: "User metadata created",
-        userId: newUser.id
+      // Create session for the new user
+      req.login(newUser, (err) => {
+        if (err) {
+          console.error('Error creating session for new Firebase user:', err);
+          return res.status(500).json({ 
+            success: false, 
+            error: 'Failed to create session' 
+          });
+        }
+        
+        return res.json({ 
+          success: true, 
+          message: "User created and logged in",
+          userId: newUser.id,
+          user: newUser
+        });
       });
       
     } catch (error) {
