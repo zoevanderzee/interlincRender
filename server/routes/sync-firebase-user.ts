@@ -15,18 +15,35 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
     try {
       const { uid, email, emailVerified, displayName } = syncFirebaseUserSchema.parse(req.body);
       
-      // Check if user already exists by email
-      let existingUser = await storage.getUserByEmail(email);
+      // Check if user already exists by Firebase UID first
+      let existingUser = await storage.getUserByFirebaseUID(uid);
+      
+      if (!existingUser) {
+        // If not found by UID, try by email
+        existingUser = await storage.getUserByEmail(email);
+      }
       
       if (existingUser) {
-        // Update existing user with Firebase UID and verification status
-        const result = await storage.updateUser(existingUser.id, { 
-          firebaseUid: uid,
-          emailVerified: emailVerified 
-        });
+        console.log(`Firebase sync: Found existing user ${existingUser.id} for email ${email}`);
+        
+        // Update existing user with Firebase UID and verification status if needed
+        const updateData: any = {};
+        if (!existingUser.firebaseUid || existingUser.firebaseUid !== uid) {
+          updateData.firebaseUid = uid;
+        }
+        if (existingUser.emailVerified !== emailVerified) {
+          updateData.emailVerified = emailVerified;
+        }
+        
+        let finalUser = existingUser;
+        if (Object.keys(updateData).length > 0) {
+          console.log(`Updating user ${existingUser.id} with Firebase data:`, updateData);
+          const result = await storage.updateUser(existingUser.id, updateData);
+          finalUser = result || existingUser;
+        }
         
         // Create session for the user
-        req.login(result || existingUser, (err) => {
+        req.login(finalUser, (err) => {
           if (err) {
             console.error('Error creating session after Firebase sync:', err);
             return res.status(500).json({ 
@@ -35,11 +52,12 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
             });
           }
           
+          console.log(`Firebase sync successful: User ${finalUser.id} logged in`);
           return res.json({ 
             success: true, 
             message: "User synced and logged in",
-            userId: (result || existingUser).id,
-            user: result || existingUser
+            userId: finalUser.id,
+            user: finalUser
           });
         });
         return;
