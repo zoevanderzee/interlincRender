@@ -81,10 +81,6 @@ app.use((req, res, next) => {
   // Stripe Connect payment routes (new system)
   stripeConnectRoutes(app, '/api', requireAuth);
 
-  // Legacy Trolley payment routes (keeping for migration)
-  // trolleyRoutes(app, '/api', requireAuth);
-  // trolleyContractorRoutes(app, '/api', requireAuth);
-
   // Use our error logger middleware
   app.use(errorLogger);
 

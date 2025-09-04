@@ -38,8 +38,8 @@ import { setupAuth } from "./auth";
 // Legacy object storage import removed - now using custom file storage
 import { FileStorageService, uploadMiddleware } from "./fileStorage";
 import plaidRoutes from "./plaid-routes";
-import trolleyRoutes from "./trolley-routes";
-import trolleyTestRoutes from "./trolley-test-routes";
+// import trolleyRoutes from "./trolley-routes"; // Trolley routes removed
+// import trolleyTestRoutes from "./trolley-test-routes"; // Trolley test routes removed
 import {registerFirebaseRoutes} from "./firebase-routes";
 import {registerSyncUserRoutes} from "./routes/sync-user";
 import {setupSyncEmailVerification} from "./routes/sync-email-verification";
@@ -323,7 +323,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const contractorsWithContracts = await storage.getContractorsByBusinessId(currentUser.id);
           const contractorsByInvites = await storage.getContractorsByBusinessInvites(currentUser.id);
 
-          // Get contractors who accepted connection requests from this business
+          // Get contractors from accepted connection requests
           let contractorsByConnections: any[] = [];
           try {
             // Get all contractors who have accepted connection requests from this business
@@ -2405,34 +2405,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return sum + parseFloat(contract.value.toString() || '0');
       }, 0);
 
-      // Get contractor/businesses data based on user role
-      let allContractors = [];
-      let activeContractorsCount = 0;
+      // Get top contractors by payment amount
+      const contractorPayments = new Map();
+      payments.forEach(payment => {
+        const contract = contracts.find(c => c.id === payment.contractId);
+        if (contract && contract.contractorId) {
+          const contractorId = contract.contractorId;
+          const amount = parseFloat(payment.amount?.toString() || '0');
 
-      if (userRole === 'business') {
-        // For business users, get their contractors
-        allContractors = await storage.getContractorsByBusinessId(userId || 0);
-        activeContractorsCount = allContractors.length;
-      } else if (userRole === 'contractor') {
-        // For contractors, get businesses they work with
-        allContractors = await storage.getBusinessesByContractorId(userId || 0);
-        activeContractorsCount = 0; // Contractors don't have a contractor count
-      }
-
-      // Skip invites in dashboard for now - they're causing the error
-      let pendingInvites = [];
-      try {
-        // Only try to get invites if we have a business user
-        if (userRole === 'business' && userId) {
-          // Use the business onboarding link count instead of invites
-          const businessLink = await storage.getBusinessOnboardingLink(userId);
-          // We will just display this as a count for now
-          pendingInvites = businessLink ? [businessLink] : [];
+          if (contractorPayments.has(contractorId)) {
+            contractorPayments.set(contractorId, contractorPayments.get(contractorId) + amount);
+          } else {
+            contractorPayments.set(contractorId, amount);
+          }
         }
-      } catch (inviteError) {
-        console.log("Non-critical error fetching invites for dashboard:", inviteError);
-        // Continue with empty invites array
-      }
+      });
+
+      // Convert to array and sort by amount
+      const topContractorsArray = Array.from(contractorPayments.entries())
+        .map(([contractorId, amount]) => {
+          const contractor = filteredContractors.find(c => c.id === contractorId);
+          return {
+            id: contractorId,
+            name: contractor ? `${contractor.firstName} ${contractor.lastName}` : 'Unknown',
+            amount
+          };
+        })
+        .sort((a, b) => b.amount - a.amount)
+        .slice(0, 5);
+
+      // Calculate total spending amount for business metrics
+      const totalSpent = payments.reduce((sum, payment) => {
+        const amount = parseFloat(payment.amount) || 0;
+        return sum + amount;
+      }, 0);
+
+      // Generate monthly payments data for chart
+      const monthlyPayments = paymentsByMonth.map(monthData => ({
+        month: monthData.month,
+        amount: monthData.totalAmount
+      }));
+
+      // Convert contract status data for pie chart
+      const contractDistribution = [
+        { name: 'Active', value: activeContracts.length },
+        { name: 'Completed', value: completedContracts.length },
+        { name: 'Pending', value: pendingContracts.length }
+      ].filter(item => item.value > 0); // Only show categories with data
+
+      // Generate recent activity data
+      const recentActivity = payments
+        .slice(0, 10) // Get latest 10 payments
+        .map(payment => {
+          const contract = contracts.find(c => c.id === payment.contractId);
+          const contractor = filteredContractors.find(c => c.id === contract?.contractorId);
+
+          return {
+            date: payment.scheduledDate || payment.completedDate || new Date(),
+            contractor: contractor ? `${contractor.firstName} ${contractor.lastName}` : 'Unknown',
+            project: contract?.contractName || 'Unknown Project',
+            activity: payment.status === 'completed' ? 'Payment Completed' : 'Payment Scheduled',
+            amount: parseFloat(payment.amount) || 0
+          };
+        });
 
       const dashboardData = {
         stats: {
@@ -3417,7 +3452,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const paymentData = {
         recipientId: contractor.trolleyRecipientId,
         amount: payment.amount,
-        currency: 'USD',
+        currency: 'GBP',
         description: `Payment for milestone: ${payment.description || 'Contractor payment'}`,
         externalId: `payment_${paymentId}_${Date.now()}`
       };
@@ -3544,7 +3579,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register Plaid routes
   plaidRoutes(app, apiRouter, requireAuth);
-  trolleyRoutes(app, apiRouter, requireAuth);
+  // trolleyRoutes(app, apiRouter, requireAuth); // Trolley routes removed
 
   // Register Firebase auth routes
   registerFirebaseRoutes(app);
@@ -5448,6 +5483,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only business accounts can process payments" });
       }
 
+      if (!user.trolleyCompanyProfileId && !user.trolleyRecipientId) {
+        return res.status(400).json({ message: "Company profile required. Please complete Trolley onboarding first." });
+      }
+
       const { milestoneId, amount, currency = 'GBP', memo } = req.body;
 
       if (!milestoneId || !amount) {
@@ -5468,11 +5507,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get contractor details
       const contractor = await storage.getUser(contract.contractorId);
-      if (!contractor) {
-        return res.status(404).json({ message: "Contractor not found" });
-      }
-
-      if (!contractor.trolleyRecipientId) {
+      if (!contractor || !contractor.trolleyRecipientId) {
         return res.status(400).json({
           message: "Contractor must have a Trolley recipient profile to receive payments"
         });
@@ -6287,7 +6322,7 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
 
       const response: any = {
         subscriptionId: subscription.id,
-        customerId: customer.id,
+        customerId: subscription.customer,
         planType: planType
       };
 
@@ -6557,11 +6592,11 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
   (app as any).requireActiveSubscription = requireActiveSubscription;
 
   // Register Trolley routes
-  trolleyRoutes(app, "/api", requireAuth);
+  // trolleyRoutes(app, "/api", requireAuth); // Trolley routes removed
 
   // Register additional route modules
   app.use("/api/plaid", plaidRoutes);
-  app.use("/api/trolley-test", trolleyTestRoutes);
+  // app.use("/api/trolley-test", trolleyTestRoutes); // Trolley test routes removed
 
   // Legacy Object Storage Routes - REMOVED
   // These routes have been replaced by the custom file storage system
