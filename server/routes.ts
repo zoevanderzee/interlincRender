@@ -1229,91 +1229,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('Error creating milestone approval notification:', notificationError);
       }
 
-      // Get contract and contractor details for payment
-      const contract = await storage.getContract(updatedMilestone.contractId);
-      if (!contract) {
-        return res.status(404).json({ message: "Contract not found" });
-      }
+      // Payment processing temporarily disabled
+      console.log('Milestone approved - payment processing temporarily disabled');
 
-      // Get contractor details
-      const contractor = await storage.getUser(contract.contractorId);
-      if (!contractor || !contractor.trolleyRecipientId) {
-        return res.status(400).json({ message: "Contractor not found or not set up for payments" });
-      }
-
-      // Trigger automated Trolley payment
-      try {
-        const paymentAmount = parseFloat(updatedMilestone.paymentAmount);
-
-        // Create Trolley payment using existing payment creation logic
-        const paymentResult = await trolleyService.createAndProcessPayment(
-          contractor.trolleyRecipientId,
-          paymentAmount.toString(),
-          'GBP',
-          `Payment for milestone: ${updatedMilestone.name}`
-        );
-
-        if (paymentResult && paymentResult.batch && paymentResult.payment) {
-          // Payment succeeded - log success and send notifications
-          console.log(`Payment processed successfully for milestone ${milestoneId}:`, {
-            batchId: paymentResult.batch.id,
-            paymentId: paymentResult.payment.id,
-            amount: paymentAmount,
-            currency: 'GBP',
-            contractor: contractor.trolleyRecipientId
-          });
-
-          // Send payment success notification to contractor
-          try {
-            await notificationService.createPaymentProcessed(
-              contractor.id,
-              updatedMilestone.name,
-              `£${paymentAmount.toFixed(2)}`
-            );
-          } catch (notificationError) {
-            console.error('Error creating payment notification:', notificationError);
-          }
-
-          // Update budget tracking - deduct from business user's budget
-          try {
-            const currentBudgetUsed = parseFloat(await storage.getUser(approvedBy).then(u => u?.budgetUsed || '0'));
-            const newBudgetUsed = (currentBudgetUsed + paymentAmount).toFixed(2);
-            await storage.updateUser(approvedBy, { budgetUsed: newBudgetUsed });
-            console.log(`Budget updated for user ${approvedBy}: £${newBudgetUsed} used`);
-          } catch (budgetError) {
-            console.error('Error updating budget tracking:', budgetError);
-          }
-
-          res.json({
-            message: "Milestone approved and payment processed successfully",
-            milestone: updatedMilestone,
-            payment: {
-              batchId: paymentResult.batch.id,
-              paymentId: paymentResult.payment.id,
-              amount: paymentAmount,
-              currency: 'GBP',
-              status: 'completed'
-            }
-          });
-        } else {
-          // Payment failed - log error but keep milestone approved
-          console.error('Payment processing failed:', paymentResult);
-
-          return res.status(500).json({
-            message: "Payment processing failed - milestone remains approved for manual processing",
-            error: 'Failed to process Trolley payment',
-            milestone: updatedMilestone
-          });
-        }
-      } catch (paymentError) {
-        console.error('Payment processing error:', paymentError);
-
-        return res.status(500).json({
-          message: "Payment processing failed - milestone remains approved for manual processing",
-          error: paymentError instanceof Error ? paymentError.message : 'Unknown payment error',
-          milestone: updatedMilestone
-        });
-      }
+      res.json({
+        message: "Milestone approved successfully",
+        milestone: updatedMilestone,
+        note: "Payment processing temporarily disabled"
+      });
 
     } catch (error) {
       console.error("Error approving milestone:", error);
@@ -2368,7 +2291,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Check if there are any existing payments for this contract
           const existingPaymentsTotal = upcomingPayments
             .filter(payment => payment.contractId === contract.id)
-            .reduce((total, payment) => total + parseFloat(payment.amount.toString()), 0);
+            .reduce((total, payment) => total + parseFloat(payment.amount), 0);
 
           // If there are no payments or the total doesn't match the contract value,
           // create a virtual pending payment
@@ -3407,7 +3330,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Contract not found" });
       }
 
-      // Get contractor to check Connect account
+      // Get contractor details
       const contractor = await storage.getUser(contract.contractorId);
       if (!contractor) {
         return res.status(404).json({ message: "Contractor not found" });
