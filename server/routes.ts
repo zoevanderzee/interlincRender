@@ -31,9 +31,9 @@ import stripeService from "./services/stripe";
 import notificationService from "./services/notifications";
 import automatedPaymentService from "./services/automated-payments";
 import {generateComplianceExport, generateInvoiceExport, generatePaymentExport, generateCSVExport} from './export-helpers';
-import { trolleySdk } from "./trolley-sdk-service";
-import { trolleySubmerchantService, type TrolleySubmerchantData } from "./services/trolley-submerchant";
-import { trolleyService } from "./trolley-service";
+// import { trolleySdk } from "./trolley-sdk-service"; // Trolley SDK import removed
+// import { trolleySubmerchantService, type TrolleySubmerchantData } from "./services/trolley-submerchant"; // Trolley import removed
+// import { trolleyService } from "./trolley-service"; // Trolley import removed
 import { setupAuth } from "./auth";
 // Legacy object storage import removed - now using custom file storage
 import { FileStorageService, uploadMiddleware } from "./fileStorage";
@@ -1244,7 +1244,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ================ DELIVERABLE ENDPOINTS (NEW TERMINOLOGY) ================
+  // ================ END DELIVERABLE ENDPOINTS (NEW TERMINOLOGY) ================
   // These endpoints use "deliverable" terminology but operate on the same data as milestones
   // for backward compatibility. They accept both deliverableId and milestoneId parameters.
 
