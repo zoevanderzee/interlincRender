@@ -11,7 +11,7 @@ build = ["npm", "run", "build"]
 run =  ["npm", "start"]
 
 [workflows]
-runButton = "Start application without Trolley"
+runButton = "Debug Server"
 
 [[workflows.workflow]]
 name = "Project"
@@ -39,6 +39,15 @@ waitForPort = 5000
 
 [[workflows.workflow]]
 name = "Start application without Trolley"
+author = 40887157
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
+
+[[workflows.workflow]]
+name = "Debug Server"
 author = 40887157
 mode = "sequential"
 
