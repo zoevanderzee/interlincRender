@@ -5,6 +5,14 @@ import { Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
+// Utility function to check for active subscription
+const requiresSubscription = (user: any) => {
+  const hasActiveSubscription = user.subscriptionStatus === 'active' || 
+                                user.subscriptionStatus === 'trialing' || 
+                                !!user.stripe_subscription_id;
+  return !hasActiveSubscription && !user.invited;
+};
+
 type ProtectedRouteProps = {
   path: string;
   children: ReactNode;
@@ -20,7 +28,7 @@ export function ProtectedRoute({ path, children }: ProtectedRouteProps) {
     if (!isLoading && !user) {
       console.log("Force redirecting to /auth");
       setLocation("/auth");
-    } else if (!isLoading && user && user.subscriptionStatus === 'inactive' && location !== '/subscribe') {
+    } else if (!isLoading && user && requiresSubscription(user) && location !== '/subscribe') {
       console.log("Force redirecting to /subscribe - subscription required");
       setLocation("/subscribe");
     }
@@ -37,7 +45,7 @@ export function ProtectedRoute({ path, children }: ProtectedRouteProps) {
         </div>
       ) : user ? (
         // Check if user has active subscription (unless on subscription page)
-        user.subscriptionStatus === 'inactive' && path !== '/subscribe' ? (
+        requiresSubscription(user) && path !== '/subscribe' ? (
           <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
             <Card className="max-w-md w-full bg-black text-white border border-gray-800">
               <CardHeader>

@@ -30,6 +30,7 @@ import { EmailVerificationForm } from "@/components/auth/EmailVerificationForm";
 import SubscriptionForm from "@/components/SubscriptionForm";
 import Logo from "@assets/CD_icon_light@2x.png";
 import { signUpUser, loginUser } from "@/lib/firebase-auth";
+import { requiresSubscription } from "@/lib/utils";
 
 export default function AuthPage() {
   console.log("AuthPage component rendering");
@@ -58,14 +59,14 @@ export default function AuthPage() {
     role: string;
   } | null>(null);
   const { toast } = useToast();
-  
+
   // Forgot password form state
   const [forgotPasswordForm, setForgotPasswordForm] = useState({
     email: "",
   });
   const [forgotPasswordError, setForgotPasswordError] = useState("");
   const [forgotPasswordSuccess, setForgotPasswordSuccess] = useState(false);
-  
+
   // Forgot password mutation
   const forgotPasswordMutation = useMutation({
     mutationFn: async (email: string) => {
@@ -88,13 +89,13 @@ export default function AuthPage() {
   // Get invite parameters from URL
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
-    
+
     // Handle subscription redirect after email verification
     const showSubscriptionParam = searchParams.get('showSubscription');
     const userIdParam = searchParams.get('userId');
     const roleParam = searchParams.get('role');
     const emailParam = searchParams.get('email');
-    
+
     if (showSubscriptionParam === 'true' && userIdParam && roleParam && emailParam) {
       console.log(`Processing subscription redirect after email verification: UserID=${userIdParam}, Role=${roleParam}, Email=${emailParam}`);
       setShowSubscription(true);
@@ -106,16 +107,16 @@ export default function AuthPage() {
       });
       return; // Exit early to avoid other URL handling
     }
-    
+
     // Handle project-specific invites (legacy system)
     const inviteParam = searchParams.get('invite');
     const inviteEmailParam = searchParams.get('email');
-    
+
     // Handle business onboarding links
     const tokenParam = searchParams.get('token');
     const businessIdParam = searchParams.get('businessId');
     const workerParam = searchParams.get('worker');
-    
+
     if (inviteParam && inviteEmailParam) {
       // Project-specific invitation with email
       console.log(`Processing project invitation: ID=${inviteParam}, Email=${inviteEmailParam}`);
@@ -129,7 +130,7 @@ export default function AuthPage() {
       setBusinessToken(tokenParam);
       setBusinessId(parseInt(businessIdParam));
       const workerTypeParam = searchParams.get('workerType');
-      
+
       // Handle direct worker type parameter
       if (workerTypeParam) {
         setRegisterForm(prev => ({
@@ -138,7 +139,7 @@ export default function AuthPage() {
           workerType: workerTypeParam
         }));
       }
-      
+
       setIsWorker(true); // Always set as worker with the simplified format
       setActiveTab("register"); // Automatically switch to register tab for invites
     }
@@ -164,7 +165,7 @@ export default function AuthPage() {
     },
     enabled: !!inviteId
   });
-  
+
   // Fetch business invite token info
   const { data: businessInviteData, isLoading: isBusinessInviteLoading } = useQuery({
     queryKey: ['/api/business/verify-token', businessToken, businessId],
@@ -211,7 +212,7 @@ export default function AuthPage() {
     businessToken: businessToken || null,
     businessId: businessId || null,
   });
-  
+
   // Update register form when invite data is loaded
   useEffect(() => {
     if (inviteEmail) {
@@ -223,7 +224,7 @@ export default function AuthPage() {
       }));
     }
   }, [inviteEmail, inviteId]);
-  
+
   // Further update form when full invite data is loaded
   useEffect(() => {
     if (inviteData) {
@@ -237,7 +238,7 @@ export default function AuthPage() {
       }));
     }
   }, [inviteData]);
-  
+
   // Update form when business invite data is loaded
   useEffect(() => {
     if (businessInviteData && businessInviteData.valid) {
@@ -251,7 +252,7 @@ export default function AuthPage() {
       }));
     }
   }, [businessInviteData, businessToken, businessId]);
-  
+
   // Helper function to render the appropriate registration description
   const renderRegistrationDescription = () => {
     if (inviteData) {
@@ -269,7 +270,7 @@ export default function AuthPage() {
         </>
       );
     } 
-    
+
     if (inviteId) {
       // Project invitation with ID only, waiting for data
       return (
@@ -288,7 +289,7 @@ export default function AuthPage() {
         </>
       );
     }
-    
+
     if (businessInviteData && businessInviteData.valid) {
       // Business invite with data loaded
       return (
@@ -308,7 +309,7 @@ export default function AuthPage() {
         </>
       );
     }
-    
+
     if (businessToken && businessId) {
       // Business invite with token only, waiting for data
       return (
@@ -327,7 +328,7 @@ export default function AuthPage() {
         </>
       );
     }
-    
+
     // Regular registration
     return "Sign up to get started with Interlinc";
   };
@@ -377,17 +378,17 @@ export default function AuthPage() {
   // Validate login form
   const validateLoginForm = () => {
     const errors: Record<string, string> = {};
-    
+
     if (!loginForm.username.trim()) {
       errors.username = "Email is required";
     } else if (!/\S+@\S+\.\S+/.test(loginForm.username)) {
       errors.username = "Please enter a valid email address";
     }
-    
+
     if (!loginForm.password) {
       errors.password = "Password is required";
     }
-    
+
     setLoginErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -395,39 +396,39 @@ export default function AuthPage() {
   // Validate register form
   const validateRegisterForm = () => {
     const errors: Record<string, string> = {};
-    
+
     if (!registerForm.username.trim()) {
       errors.username = "Username is required";
     }
-    
+
     if (!registerForm.password) {
       errors.password = "Password is required";
     } else if (registerForm.password.length < 6) {
       errors.password = "Password must be at least 6 characters";
     }
-    
+
     if (registerForm.password !== registerForm.confirmPassword) {
       errors.confirmPassword = "Passwords do not match";
     }
-    
+
     if (!registerForm.email.trim()) {
       errors.email = "Email is required";
     } else if (!/\S+@\S+\.\S+/.test(registerForm.email)) {
       errors.email = "Email is invalid";
     }
-    
+
     if (!registerForm.firstName.trim()) {
       errors.firstName = "First name is required";
     }
-    
+
     if (!registerForm.lastName.trim()) {
       errors.lastName = "Last name is required";
     }
-    
+
     if (registerForm.role === "business" && !registerForm.company.trim()) {
       errors.company = "Company name is required for business accounts";
     }
-    
+
     setRegisterErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -435,21 +436,21 @@ export default function AuthPage() {
   // Handle login form submission with Firebase
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateLoginForm()) {
       return;
     }
 
     try {
       console.log("Attempting Firebase login with:", loginForm.username);
-      
+
       // Use email directly since form now requires email format
       const result = await loginUser(loginForm.username, loginForm.password);
       console.log("Firebase login result:", { success: result.success, hasUser: !!result.user, error: result.error });
-      
+
       if (result.success && result.user) {
         console.log("Firebase login successful, syncing with backend...");
-        
+
         // After successful Firebase login, get the user data from our backend
         try {
           const syncResponse = await fetch("/api/sync-firebase-user", {
@@ -463,11 +464,11 @@ export default function AuthPage() {
             }),
             credentials: 'include'
           });
-          
+
           if (syncResponse.ok) {
             const syncData = await syncResponse.json();
             console.log("Backend sync successful:", syncData);
-            
+
             // Now fetch the user data using Firebase UID header
             const userResponse = await fetch('/api/user', {
               headers: {
@@ -476,25 +477,25 @@ export default function AuthPage() {
               },
               credentials: 'include'
             });
-            
+
             if (userResponse.ok) {
               const userData = await userResponse.json();
               console.log("User data retrieved:", userData);
-              
+
               // Store authentication data in localStorage for future requests
               localStorage.setItem('user_id', userData.id.toString());
               localStorage.setItem('firebase_uid', result.user.uid);
               console.log("Authentication data stored:");
               console.log("- user_id:", userData.id);
               console.log("- firebase_uid:", result.user.uid);
-              
+
               toast({
                 title: "Login Successful",
                 description: "Welcome back!",
               });
-              
-              // Check if user has active subscription
-              if (!userData.stripe_subscription_id && !userData.invited) {
+
+              // Check if user requires subscription using centralized logic
+              if (requiresSubscription(userData)) {
                 console.log("User needs subscription, showing subscription form");
                 // Show subscription form directly without redirect
                 setShowSubscription(true);
@@ -549,14 +550,14 @@ export default function AuthPage() {
     try {
       // Create user with Firebase Auth
       const result = await signUpUser(registerData.email, registerData.password);
-      
+
       if (result.success && result.user) {
         // Firebase user created successfully - email verification sent
         toast({
           title: "Account Created!",
           description: "Please check your email to verify your address.",
         });
-        
+
         // Show email verification form
         setVerificationData({
           email: registerData.email,
@@ -586,18 +587,18 @@ export default function AuthPage() {
   // Handle register form submission
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (validateRegisterForm()) {
       // Omit confirmPassword as it's not needed for the API
       const { confirmPassword, ...registerData } = registerForm;
-      
+
       // Handle business invite link registration
       if (businessToken && businessId) {
         // Include business token information
         (registerData as any).token = businessToken;
         (registerData as any).businessId = businessId;
         registerData.role = 'contractor'; // Always contractor for business invites
-        
+
         // Set worker type from business invite data
         if (businessInviteData && businessInviteData.workerType) {
           registerData.workerType = businessInviteData.workerType;
@@ -612,7 +613,7 @@ export default function AuthPage() {
         if (inviteId && !registerData.inviteId) {
           registerData.inviteId = inviteId;
         }
-        
+
         // If this is an invite registration, make sure the email matches the invited email
         if (inviteEmail && registerData.email !== inviteEmail) {
           setRegisterErrors({
@@ -621,9 +622,9 @@ export default function AuthPage() {
           });
           return;
         }
-        
+
         registerData.role = 'contractor';
-        
+
         // Make sure workerType is set properly from invite data
         if (inviteData && inviteData.workerType) {
           registerData.workerType = inviteData.workerType;
@@ -632,7 +633,7 @@ export default function AuthPage() {
           registerData.workerType = 'contractor';
         }
       }
-      
+
       // If this is a business user direct registration, make sure company name is provided
       if (registerData.role === 'business' && !registerData.company) {
         setRegisterErrors({
@@ -641,12 +642,12 @@ export default function AuthPage() {
         });
         return;
       }
-      
+
       // Register user with Firebase authentication
       handleFirebaseRegistration(registerData);
     }
   };
-  
+
   // Handle forgot password form input change
   const handleForgotPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForgotPasswordForm({
@@ -655,7 +656,7 @@ export default function AuthPage() {
     });
     setForgotPasswordError("");
   };
-  
+
   // Validate forgot password form
   const validateForgotPasswordForm = () => {
     if (!forgotPasswordForm.email.trim()) {
@@ -667,11 +668,11 @@ export default function AuthPage() {
     }
     return true;
   };
-  
+
   // Handle forgot password form submission
   const handleForgotPassword = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (validateForgotPasswordForm()) {
       forgotPasswordMutation.mutate(forgotPasswordForm.email);
     }
@@ -749,13 +750,13 @@ export default function AuthPage() {
           <div className="flex justify-center mb-8">
             <img src={Logo} alt="Interlinc Logo" className="h-16" />
           </div>
-          
+
           <Tabs defaultValue="login" value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid w-full grid-cols-2 bg-zinc-900">
               <TabsTrigger value="login" className="text-white">Login</TabsTrigger>
               <TabsTrigger value="register" className="text-white">Register</TabsTrigger>
             </TabsList>
-            
+
             {/* Login Form */}
             <TabsContent value="login">
               <Card className="border-zinc-700 bg-zinc-900 text-white">
@@ -826,7 +827,7 @@ export default function AuthPage() {
                 </form>
               </Card>
             </TabsContent>
-            
+
             {/* Register Form */}
             <TabsContent value="register">
               <Card className="border-zinc-700 bg-zinc-900 text-white">
@@ -868,7 +869,7 @@ export default function AuthPage() {
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="space-y-2">
                       <Label htmlFor="email" className="text-white">Email</Label>
                       <Input
@@ -884,7 +885,7 @@ export default function AuthPage() {
                         <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.email}</p>
                       )}
                     </div>
-                    
+
                     <div className="space-y-2">
                       <Label htmlFor="username" className="text-white">Username</Label>
                       <Input
@@ -899,7 +900,7 @@ export default function AuthPage() {
                         <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.username}</p>
                       )}
                     </div>
-                    
+
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="password" className="text-white">Password</Label>
@@ -932,7 +933,7 @@ export default function AuthPage() {
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="space-y-2">
                       <Label htmlFor="role" className="text-white">Account Type</Label>
                       <Select 
@@ -948,7 +949,7 @@ export default function AuthPage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    
+
                     {registerForm.role === "business" && (
                       <div className="space-y-2">
                         <Label htmlFor="company" className="text-white">Company Name</Label>
@@ -965,7 +966,7 @@ export default function AuthPage() {
                         )}
                       </div>
                     )}
-                    
+
                     <div className="space-y-2">
                       <Label htmlFor="position" className="text-white">Position Title</Label>
                       <Input
@@ -997,7 +998,7 @@ export default function AuthPage() {
                 </form>
               </Card>
             </TabsContent>
-            
+
             {/* Forgot Password Form */}
             <TabsContent value="forgot-password">
               <Card className="border-zinc-700 bg-zinc-900 text-white">
@@ -1078,7 +1079,7 @@ export default function AuthPage() {
           </Tabs>
         </div>
       </div>
-      
+
       {/* Hero Section */}
       <div className="w-full md:w-1/2 bg-zinc-900 p-12 flex items-center">
         <div className="max-w-lg mx-auto">
