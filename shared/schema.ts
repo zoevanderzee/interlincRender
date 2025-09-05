@@ -248,8 +248,61 @@ export const workRequestSubmissions = pgTable("work_request_submissions", {
   reviewNotes: text("review_notes"), // Feedback from business owner
 });
 
-// Insert schemas
-export const insertUserSchema = createInsertSchema(users).omit({ id: true });
+// Insert schemas - manually defined to include all fields
+export const insertUserSchema = z.object({
+  username: z.string().min(1),
+  password: z.string().min(1),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  email: z.string().email(),
+  role: z.string().default("business"),
+  workerType: z.string().optional(),
+  profileImageUrl: z.string().optional(),
+  companyName: z.string().optional(),
+  companyLogo: z.string().optional(),
+  title: z.string().optional(),
+  industry: z.string().optional(),
+  foundedYear: z.number().optional(),
+  employeeCount: z.number().optional(),
+  website: z.string().optional(),
+  profileCode: z.string().optional(),
+  stripeCustomerId: z.string().optional(),
+  stripeSubscriptionId: z.string().optional(),
+  stripeConnectAccountId: z.string().optional(),
+  subscriptionStatus: z.string().default("inactive"),
+  subscriptionPlan: z.string().optional(),
+  subscriptionStartDate: z.date().optional(),
+  subscriptionEndDate: z.date().optional(),
+  subscriptionTrialEnd: z.date().optional(),
+  trolleyCompanyProfileId: z.string().optional(),
+  trolleyRecipientId: z.string().optional(),
+  trolleySubmerchantId: z.string().optional(),
+  trolleySubmerchantStatus: z.string().optional(),
+  trolleySubmerchantAccessKey: z.string().optional(),
+  trolleySubmerchantSecretKey: z.string().optional(),
+  trolleyBankAccountStatus: z.string().optional(),
+  trolleyBankAccountId: z.string().optional(),
+  trolleyBankAccountLast4: z.string().optional(),
+  trolleyVerificationToken: z.string().optional(),
+  trolleyVerificationStarted: z.date().optional(),
+  trolleyVerificationStatus: z.string().optional(),
+  trolleyVerificationCompletedAt: z.date().optional(),
+  payoutEnabled: z.boolean().default(false),
+  budgetCap: z.string().optional(),
+  budgetUsed: z.string().default("0"),
+  budgetPeriod: z.string().default("yearly"),
+  budgetStartDate: z.date().optional(),
+  budgetEndDate: z.date().optional(),
+  budgetResetEnabled: z.boolean().default(false),
+  paymentMethod: z.string().default("pay_as_you_go"),
+  trolleyAccountBalance: z.string().default("0"),
+  resetPasswordToken: z.string().optional(),
+  resetPasswordExpires: z.date().optional(),
+  emailVerified: z.boolean().default(false),
+  emailVerificationToken: z.string().optional(),
+  emailVerificationExpires: z.date().optional(),
+  firebaseUid: z.string().optional(),
+});
 const baseInviteSchema = createInsertSchema(invites).omit({ id: true, createdAt: true });
 export const insertInviteSchema = baseInviteSchema.extend({
   // Make expiresAt transform string dates
