@@ -116,26 +116,6 @@ export function setupAuth(app: Express) {
 
   // Setup session middleware
   app.use(session(sessionSettings));
-  
-  // Force session cookie transmission
-  app.use((req, res, next) => {
-    const originalJson = res.json;
-    res.json = function(body) {
-      if (req.session && req.sessionID) {
-        console.log(`Session ${req.sessionID} - Ensuring cookie transmission`);
-        // Force set the session cookie explicitly
-        this.cookie('interlinc.sid', req.sessionID, {
-          maxAge: 604800000,
-          httpOnly: true,
-          sameSite: 'lax',
-          secure: false,
-          path: '/'
-        });
-      }
-      return originalJson.call(this, body);
-    };
-    next();
-  });
 
   // Initialize passport
   app.use(passport.initialize());
