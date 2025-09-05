@@ -87,6 +87,19 @@ export function setupAuth(app: Express) {
 
   // Setup session middleware
   app.use(session(sessionSettings));
+  
+  // Debug Set-Cookie headers being sent
+  app.use((req, res, next) => {
+    const originalSend = res.send;
+    res.send = function(body) {
+      console.log(`Response for ${req.method} ${req.path}:`);
+      console.log('Set-Cookie headers:', res.getHeaders()['set-cookie']);
+      console.log('Session ID:', req.sessionID);
+      console.log('Session exists:', !!req.session);
+      return originalSend.call(this, body);
+    };
+    next();
+  });
 
   // Initialize passport
   app.use(passport.initialize());
