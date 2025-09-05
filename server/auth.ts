@@ -49,18 +49,15 @@ export function setupAuth(app: Express) {
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || 'interlinc-secret-key',
     resave: false,
-    saveUninitialized: false, // Don't save empty sessions
+    saveUninitialized: false,
     name: 'interlinc.sid',
-    rolling: false, // Don't extend session on each request to avoid issues
     cookie: {
-      secure: process.env.NODE_ENV === 'production', // true in production, false in development
+      secure: false,
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
-      httpOnly: true, // Security: prevent JS access
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' for production cross-origin
-      path: '/', // Available for entire site
-      domain: process.env.NODE_ENV === 'production' ? '.interlinc.app' : undefined, // Cross-subdomain in production
+      httpOnly: true,
+      sameSite: 'lax',
+      path: '/'
     },
-    // Use the storage implementation's session store
     store: storage.sessionStore
   };
 
@@ -82,36 +79,10 @@ export function setupAuth(app: Express) {
   // Don't clear sessions on startup anymore to maintain user sessions
   console.log('Session store initialized, keeping existing sessions');
 
-  // Configure Express to trust proxy headers in all environments
-  // This is needed for cookies to work properly in Replit
-  app.set("trust proxy", 1);
-
-  // Add CORS headers for cookie support
+  // Simple CORS for sessions
   app.use((req, res, next) => {
-    const origin = req.headers.origin;
-    const allowedOrigins = [
-      'https://interlinc.app',
-      'https://www.interlinc.app',
-      'https://interlinc.co', 
-      'https://www.interlinc.co',
-      req.protocol + '://' + req.get('host') // Allow same-origin requests
-    ];
-
-    // In development, allow all origins; in production, check allowlist
-    if (process.env.NODE_ENV === 'development' || allowedOrigins.includes(origin)) {
-      res.header('Access-Control-Allow-Origin', origin || req.protocol + '://' + req.get('host'));
-      res.header('Access-Control-Allow-Credentials', 'true');
-      res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-      res.header('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization,X-User-ID,X-Firebase-UID,X-CSRF-Token');
-
-      if (req.method === 'OPTIONS') {
-        res.sendStatus(200);
-      } else {
-        next();
-      }
-    } else {
-      next();
-    }
+    res.header('Access-Control-Allow-Credentials', 'true');
+    next();
   });
 
   // Setup session middleware
