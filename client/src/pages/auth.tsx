@@ -452,6 +452,9 @@ export default function AuthPage() {
         
         // The sync is now handled in firebase-auth.ts, so we can directly check user status  
         try {
+          // Small delay to ensure session cookie is processed by the browser
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
           // Check if user session was established by the sync
           const userResponse = await fetch('/api/user', {
             method: 'GET',
