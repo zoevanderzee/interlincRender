@@ -59,12 +59,11 @@ export const loginUser = async (email: string, password: string): Promise<Fireba
       // Don't sign out - allow the login to proceed
     }
 
-    // Sync user metadata to backend (required for session)
+    // Sync user metadata to backend (optional)
     try {
-      const syncResponse = await fetch("/api/sync-firebase-user", {
+      await fetch("/api/sync-firebase-user", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include", // Important: include cookies for session
         body: JSON.stringify({
           uid: user.uid,
           email: user.email,
@@ -72,15 +71,8 @@ export const loginUser = async (email: string, password: string): Promise<Fireba
           displayName: user.displayName || ""
         }),
       });
-      
-      if (!syncResponse.ok) {
-        throw new Error(`Backend sync failed: ${syncResponse.status} ${syncResponse.statusText}`);
-      }
-      
-      console.log("Backend sync successful");
     } catch (syncError) {
-      console.error("Backend sync failed:", syncError);
-      throw syncError; // Re-throw to fail the login if sync fails
+      console.warn("Backend sync failed, but login succeeded:", syncError);
     }
 
     return {

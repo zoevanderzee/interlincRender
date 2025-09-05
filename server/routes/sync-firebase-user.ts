@@ -15,52 +15,21 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
     try {
       const { uid, email, emailVerified, displayName } = syncFirebaseUserSchema.parse(req.body);
       
-      // Check if user already exists by Firebase UID first
-      let existingUser = await storage.getUserByFirebaseUID(uid);
-      
-      if (!existingUser) {
-        // If not found by UID, try by email
-        existingUser = await storage.getUserByEmail(email);
-      }
+      // Check if user already exists by email
+      let existingUser = await storage.getUserByEmail(email);
       
       if (existingUser) {
-        console.log(`Firebase sync: Found existing user ${existingUser.id} for email ${email}`);
-        
-        // Update existing user with Firebase UID and verification status if needed
-        const updateData: any = {};
-        if (!existingUser.firebaseUid || existingUser.firebaseUid !== uid) {
-          updateData.firebaseUid = uid;
-        }
-        if (existingUser.emailVerified !== emailVerified) {
-          updateData.emailVerified = emailVerified;
-        }
-        
-        let finalUser = existingUser;
-        if (Object.keys(updateData).length > 0) {
-          console.log(`Updating user ${existingUser.id} with Firebase data:`, updateData);
-          const result = await storage.updateUserAuthFields(existingUser.id, updateData);
-          finalUser = result || existingUser;
-        }
-        
-        // Create session for the user
-        req.login(finalUser, (err) => {
-          if (err) {
-            console.error('Error creating session after Firebase sync:', err);
-            return res.status(500).json({ 
-              success: false, 
-              error: 'Failed to create session' 
-            });
-          }
-          
-          console.log(`Firebase sync successful: User ${finalUser.id} logged in`);
-          return res.json({ 
-            success: true, 
-            message: "User synced and logged in",
-            userId: finalUser.id,
-            user: finalUser
-          });
+        // Update existing user with Firebase UID and verification status
+        const result = await storage.updateUser(existingUser.id, { 
+          firebaseUid: uid,
+          emailVerified: emailVerified 
         });
-        return;
+        
+        return res.json({ 
+          success: true, 
+          message: "User metadata synced",
+          userId: existingUser.id
+        });
       }
 
       // Create minimal user record for metadata storage
@@ -79,22 +48,10 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
 
       const newUser = await storage.createUser(userData);
       
-      // Create session for the new user
-      req.login(newUser, (err) => {
-        if (err) {
-          console.error('Error creating session for new Firebase user:', err);
-          return res.status(500).json({ 
-            success: false, 
-            error: 'Failed to create session' 
-          });
-        }
-        
-        return res.json({ 
-          success: true, 
-          message: "User created and logged in",
-          userId: newUser.id,
-          user: newUser
-        });
+      return res.json({ 
+        success: true, 
+        message: "User metadata created",
+        userId: newUser.id
       });
       
     } catch (error) {

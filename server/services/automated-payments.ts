@@ -1,5 +1,5 @@
 import { storage } from '../storage';
-import { stripeConnectService } from './stripe-connect';
+import { trolleyService } from '../trolley-service';
 
 interface PaymentProcessingResult {
   success: boolean;
@@ -165,19 +165,19 @@ class AutomatedPaymentService {
         return { success: false, error: 'Business user not found' };
       }
 
-      // Check if business has Stripe customer account
-      if (!business.stripeCustomerId) {
-        return {
-          success: false,
-          error: 'Business must complete Stripe payment setup before processing payments. Please visit Payment Setup.'
+      // Check if Trolley API is configured
+      if (!trolleyService.isConfigured()) {
+        return { 
+          success: false, 
+          error: 'Payment processing not configured. Contact support to enable payment processing.' 
         };
       }
 
-      // Check if contractor has Stripe Connect account
-      if (!contractor.stripeConnectAccountId) {
+      // Check if business has Trolley company profile
+      if (!business.trolleyCompanyProfileId) {
         return {
           success: false,
-          error: 'Contractor must complete Stripe Connect onboarding before receiving payments.'
+          error: 'Company must complete Trolley onboarding before processing payments. Please visit Payment Setup.'
         };
       }
 

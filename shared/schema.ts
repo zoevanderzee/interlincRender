@@ -24,8 +24,6 @@ export const users = pgTable("users", {
   stripeCustomerId: text("stripe_customer_id"), // Stripe customer ID for payment processing
   stripeSubscriptionId: text("stripe_subscription_id"), // Stripe subscription ID for companies
   stripeConnectAccountId: text("stripe_connect_account_id"), // Stripe Connect account ID for contractors
-  stripeConnectStatus: text("stripe_connect_status"), // pending, active, rejected
-  stripeDefaultPaymentMethodId: text("stripe_default_payment_method_id"),
   subscriptionStatus: text("subscription_status").default("inactive"), // inactive, active, past_due, canceled, trialing
   subscriptionPlan: text("subscription_plan"), // business_plan, contractor_plan, etc.
   subscriptionStartDate: timestamp("subscription_start_date"), // When subscription started
@@ -44,21 +42,7 @@ export const users = pgTable("users", {
   emailVerified: boolean("email_verified").default(false), // Whether user's email is verified
   emailVerificationToken: text("email_verification_token"), // Token for email verification
   emailVerificationExpires: timestamp("email_verification_expires"), // Expiration time for email verification token
-  firebaseUid: text("firebase_uid"), // Firebase user ID for linking accounts
-
-  // Legacy Trolley fields (keep for migration reference)
-  trolleyRecipientId: text('trolley_recipient_id'),
-  trolleyCompanyProfileId: text('trolley_company_profile_id'),
-  trolleyVerificationStatus: text('trolley_verification_status'),
-  trolleyVerificationCompletedAt: timestamp('trolley_verification_completed_at'),
-  trolleyVerificationToken: text('trolley_verification_token'),
-  trolleySubmerchantId: text('trolley_submerchant_id'),
-  trolleySubmerchantAccessKey: text('trolley_submerchant_access_key'),
-  trolleySubmerchantSecretKey: text('trolley_submerchant_secret_key'),
-  trolleySubmerchantStatus: text('trolley_submerchant_status'),
-  trolleyBankAccountStatus: text('trolley_bank_account_status'),
-  trolleyBankAccountId: text('trolley_bank_account_id'),
-  trolleyBankAccountLast4: text('trolley_bank_account_last4'),
+  firebaseUid: text("firebase_uid") // Firebase user ID for linking accounts
 });
 
 // Project Invites table
@@ -127,7 +111,7 @@ export const payments = pgTable("payments", {
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   status: text("status").notNull().default("scheduled"), // scheduled, processing, completed, failed, auto_triggered
   scheduledDate: timestamp("scheduled_date").notNull(),
-  completedDate: timestamp("completedDate"),
+  completedDate: timestamp("completed_date"),
   notes: text("notes"),
   stripePaymentIntentId: text("stripe_payment_intent_id"), // Stripe Payment Intent ID
   stripePaymentIntentStatus: text("stripe_payment_intent_status"), // Stripe Payment Intent Status
@@ -137,11 +121,6 @@ export const payments = pgTable("payments", {
   applicationFee: decimal("application_fee", { precision: 10, scale: 2 }).default("0"), // Platform fee
   triggeredBy: text("triggered_by").default("manual"), // manual, auto_approval, scheduled
   triggeredAt: timestamp("triggered_at"), // When the payment was automatically triggered
-
-  // Legacy Trolley fields
-  trolleyBatchId: text('trolley_batch_id'),
-  trolleyPaymentId: text('trolley_payment_id'),
-  paymentProcessor: text('payment_processor'), // 'stripe_connect', 'trolley' (legacy)
 });
 
 // Payment Compliance Logs table - for audit trail and structured data compliance
@@ -304,22 +283,22 @@ export const insertDocumentSchema = createInsertSchema(documents).omit({ id: tru
 export const insertBankAccountSchema = createInsertSchema(bankAccounts).omit({ id: true, createdAt: true, isVerified: true });
 
 // Business Workers schema
-export const insertBusinessWorkerSchema = createInsertSchema(businessWorkers).omit({
-  id: true,
+export const insertBusinessWorkerSchema = createInsertSchema(businessWorkers).omit({ 
+  id: true, 
   joinedAt: true,
   createdAt: true,
   updatedAt: true
 });
 
-// Projects schema
-export const insertProjectSchema = createInsertSchema(projects).omit({
-  id: true,
-  createdAt: true
+// Projects schema  
+export const insertProjectSchema = createInsertSchema(projects).omit({ 
+  id: true, 
+  createdAt: true 
 });
 
 // Work Request schema with proper date handling (updated for specification)
-export const insertWorkRequestSchema = createInsertSchema(workRequests).omit({
-  id: true,
+export const insertWorkRequestSchema = createInsertSchema(workRequests).omit({ 
+  id: true, 
   createdAt: true
 }).extend({
   // Handle date strings from frontend forms
@@ -410,8 +389,8 @@ export const connectionRequests = pgTable("connection_requests", {
 });
 
 // Create connection request schema
-export const insertConnectionRequestSchema = createInsertSchema(connectionRequests).omit({
-  id: true,
+export const insertConnectionRequestSchema = createInsertSchema(connectionRequests).omit({ 
+  id: true, 
   createdAt: true,
   updatedAt: true,
   contractorId: true // Will be added conditionally
@@ -451,23 +430,23 @@ export const workSubmissions = pgTable("work_submissions", {
 });
 
 // Create notification schema
-export const insertNotificationSchema = createInsertSchema(notifications).omit({
-  id: true,
-  createdAt: true
+export const insertNotificationSchema = createInsertSchema(notifications).omit({ 
+  id: true, 
+  createdAt: true 
 });
 
 // Create work submission schema
-export const insertWorkSubmissionSchema = createInsertSchema(workSubmissions).omit({
-  id: true,
+export const insertWorkSubmissionSchema = createInsertSchema(workSubmissions).omit({ 
+  id: true, 
   submittedAt: true,
-  reviewedAt: true
+  reviewedAt: true 
 });
 
 // Create work request submission schema
-export const insertWorkRequestSubmissionSchema = createInsertSchema(workRequestSubmissions).omit({
-  id: true,
+export const insertWorkRequestSubmissionSchema = createInsertSchema(workRequestSubmissions).omit({ 
+  id: true, 
   submittedAt: true,
-  reviewedAt: true
+  reviewedAt: true 
 });
 
 // Types for notifications

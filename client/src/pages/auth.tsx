@@ -450,19 +450,32 @@ export default function AuthPage() {
       if (result.success && result.user) {
         console.log("Firebase login successful, syncing with backend...");
         
-        // The sync is now handled in firebase-auth.ts, so we can directly check user status  
+        // After successful Firebase login, get the user data from our backend
         try {
-          // Small delay to ensure session cookie is processed by the browser
-          await new Promise(resolve => setTimeout(resolve, 100));
-          
-          // Check if user session was established by the sync
-          const userResponse = await fetch('/api/user', {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json'
-            },
+          const syncResponse = await fetch("/api/sync-firebase-user", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              uid: result.user.uid,
+              email: result.user.email,
+              emailVerified: result.user.emailVerified,
+              displayName: result.user.displayName || ""
+            }),
             credentials: 'include'
           });
+          
+          if (syncResponse.ok) {
+            const syncData = await syncResponse.json();
+            console.log("Backend sync successful:", syncData);
+            
+            // Now fetch the user data using Firebase UID header
+            const userResponse = await fetch('/api/user', {
+              headers: {
+                'X-Firebase-UID': result.user.uid,
+                'Content-Type': 'application/json'
+              },
+              credentials: 'include'
+            });
             
             if (userResponse.ok) {
               const userData = await userResponse.json();
@@ -497,8 +510,11 @@ export default function AuthPage() {
                 window.location.href = '/';
               }
             } else {
-              throw new Error(`Backend session not established: ${userResponse.status} ${userResponse.statusText}`);
+              throw new Error("Failed to retrieve user data from backend");
             }
+          } else {
+            throw new Error("Failed to sync with backend");
+          }
         } catch (syncError) {
           console.error("Backend sync error:", syncError);
           throw new Error("Authentication succeeded but failed to sync with backend");

@@ -469,18 +469,6 @@ export class MemStorage implements IStorage {
     this.users.set(id, updatedUser);
     return updatedUser;
   }
-
-  async updateUserAuthFields(id: number, authData: {
-    firebaseUid?: string,
-    emailVerified?: boolean
-  }): Promise<User | undefined> {
-    const existingUser = this.users.get(id);
-    if (!existingUser) return undefined;
-    
-    const updatedUser = { ...existingUser, ...authData };
-    this.users.set(id, updatedUser);
-    return updatedUser;
-  }
   
   // Invite CRUD methods
   async getInvite(id: number): Promise<Invite | undefined> {
@@ -1425,48 +1413,6 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, id))
       .returning();
     return updatedUser;
-  }
-
-  /**
-   * Update ONLY Firebase authentication fields (firebaseUid and emailVerified)
-   */
-  async updateUserAuthFields(id: number, authData: {
-    firebaseUid?: string,
-    emailVerified?: boolean
-  }): Promise<User | undefined> {
-    // Build dynamic update query for only Firebase fields
-    const updates: string[] = [];
-    const values: any[] = [];
-    let paramIndex = 1;
-
-    if (authData.firebaseUid !== undefined) {
-      updates.push(`firebase_uid = $${paramIndex++}`);
-      values.push(authData.firebaseUid);
-    }
-    if (authData.emailVerified !== undefined) {
-      updates.push(`email_verified = $${paramIndex++}`);
-      values.push(authData.emailVerified);
-    }
-
-    if (updates.length === 0) {
-      return this.getUser(id);
-    }
-
-    const query = `
-      UPDATE users 
-      SET ${updates.join(', ')} 
-      WHERE id = $${paramIndex}
-      RETURNING *
-    `;
-    values.push(id);
-
-    try {
-      const result = await pool.query(query, values);
-      return result.rows[0] as User;
-    } catch (error) {
-      console.error('Firebase auth fields update error:', error);
-      throw error;
-    }
   }
   
   // Invite CRUD methods
