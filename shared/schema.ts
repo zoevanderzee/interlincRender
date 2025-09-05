@@ -29,6 +29,19 @@ export const users = pgTable("users", {
   subscriptionStartDate: timestamp("subscription_start_date"), // When subscription started
   subscriptionEndDate: timestamp("subscription_end_date"), // When subscription ends (for fixed term subscriptions)
   subscriptionTrialEnd: timestamp("subscription_trial_end"), // Trial period end date
+  trolleyCompanyProfileId: text("trolley_company_profile_id"), // Trolley company profile ID for Embedded Payouts
+  trolleyRecipientId: text("trolley_recipient_id"), // Trolley recipient ID for contractors
+  trolleySubmerchantId: text("trolley_submerchant_id"), // Trolley submerchant account ID for businesses
+  trolleySubmerchantStatus: text("trolley_submerchant_status"), // Status of submerchant onboarding
+  trolleySubmerchantAccessKey: text("trolley_submerchant_access_key"), // Trolley submerchant API access key
+  trolleySubmerchantSecretKey: text("trolley_submerchant_secret_key"), // Trolley submerchant API secret key
+  trolleyBankAccountStatus: text("trolley_bank_account_status"), // Bank account verification status (pending, verified, failed)
+  trolleyBankAccountId: text("trolley_bank_account_id"), // Trolley bank account ID for pay-as-you-go
+  trolleyBankAccountLast4: text("trolley_bank_account_last4"), // Last 4 digits of linked bank account
+  trolleyVerificationToken: text("trolley_verification_token"), // Token for Trolley business verification
+  trolleyVerificationStarted: timestamp("trolley_verification_started"), // When verification was initiated
+  trolleyVerificationStatus: text("trolley_verification_status"), // Status of Trolley verification (pending, approved, rejected)
+  trolleyVerificationCompletedAt: timestamp("trolley_verification_completed_at"), // When verification was completed
   payoutEnabled: boolean("payout_enabled").default(false), // Whether the contractor is ready to receive payments
   budgetCap: decimal("budget_cap", { precision: 15, scale: 2 }), // Maximum budget for outsourcing (for business accounts)
   budgetUsed: decimal("budget_used", { precision: 15, scale: 2 }).default("0"), // Amount of budget already allocated to projects
@@ -37,6 +50,7 @@ export const users = pgTable("users", {
   budgetEndDate: timestamp("budget_end_date"), // When the current budget period ends
   budgetResetEnabled: boolean("budget_reset_enabled").default(false), // Whether budget should automatically reset at the end of period
   paymentMethod: text("payment_method").default("pay_as_you_go"), // "pre_funded" or "pay_as_you_go"
+  trolleyAccountBalance: decimal("trolley_account_balance", { precision: 15, scale: 2 }).default("0"), // Balance for pre-funded accounts
   resetPasswordToken: text("reset_password_token"), // Token for password reset
   resetPasswordExpires: timestamp("reset_password_expires"), // Expiration time for password reset token
   emailVerified: boolean("email_verified").default(false), // Whether user's email is verified
@@ -116,6 +130,8 @@ export const payments = pgTable("payments", {
   stripePaymentIntentId: text("stripe_payment_intent_id"), // Stripe Payment Intent ID
   stripePaymentIntentStatus: text("stripe_payment_intent_status"), // Stripe Payment Intent Status
   stripeTransferId: text("stripe_transfer_id"), // Stripe Transfer ID for Connect payouts
+  trolleyBatchId: text("trolley_batch_id"), // Trolley batch ID for Embedded Payouts
+  trolleyPaymentId: text("trolley_payment_id"), // Trolley payment ID for tracking
   stripeTransferStatus: text("stripe_transfer_status"), // Status of the Stripe Transfer
   paymentProcessor: text("payment_processor").default("stripe"), // Payment processor used
   applicationFee: decimal("application_fee", { precision: 10, scale: 2 }).default("0"), // Platform fee
