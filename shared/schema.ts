@@ -303,82 +303,138 @@ export const insertUserSchema = z.object({
   emailVerificationExpires: z.date().optional(),
   firebaseUid: z.string().optional(),
 });
-const baseInviteSchema = createInsertSchema(invites).omit({ id: true, createdAt: true });
-export const insertInviteSchema = baseInviteSchema.extend({
-  // Make expiresAt transform string dates
+export const insertInviteSchema = z.object({
+  email: z.string().email(),
+  projectName: z.string().min(1),
+  status: z.string().default("pending"),
+  workerType: z.string().default("contractor"),
+  businessId: z.number(),
+  projectId: z.number().optional(),
+  contractDetails: z.string().optional(),
+  message: z.string().optional(),
+  paymentAmount: z.string().optional(),
+  token: z.string().optional(),
   expiresAt: z.string().optional().transform(val => val ? new Date(val) : undefined),
-  // Ensure workerType is always provided with a default
-  workerType: z.string().default("contractor")
 });
 
 // Make contractorId optional in the insert schema and properly handle date strings
-const baseContractSchema = createInsertSchema(contracts).omit({ id: true, createdAt: true });
-export const insertContractSchema = baseContractSchema.extend({
-  // Make contractorId optional
-  contractorId: baseContractSchema.shape.contractorId.optional(),
-  // Handle date strings from frontend forms
+export const insertContractSchema = z.object({
+  contractName: z.string().min(1),
+  contractCode: z.string().min(1),
+  businessId: z.number(),
+  projectId: z.number().optional(),
+  contractorId: z.number().optional(),
+  description: z.string().optional(),
+  status: z.string().default("draft"),
+  value: z.string(),
+  contractorBudget: z.string().optional(),
   startDate: z.string().transform((val) => new Date(val)),
   endDate: z.string().transform((val) => new Date(val)),
 });
 
-// Create base milestone schema - make it very permissive
-const baseMilestoneSchema = createInsertSchema(milestones).omit({ id: true });
-// Extend it to handle date strings properly and make fields more permissive
-export const insertMilestoneSchema = baseMilestoneSchema.extend({
-  // Handle date strings from frontend forms - allow any valid date format
+// Create milestone schema - manually defined
+export const insertMilestoneSchema = z.object({
+  contractId: z.number(),
+  name: z.string().min(1, "Name is required"),
+  description: z.string().optional(),
   dueDate: z.union([z.string(), z.date()]).transform((val) => {
     if (typeof val === 'string') {
       return new Date(val);
     }
     return val;
   }),
-  // Make name very permissive - accept any non-empty string
-  name: z.string().min(1, "Name is required"),
-  // Make description optional and permissive
-  description: z.string().optional(),
-  // Make payment amount permissive - accept string or number
+  status: z.string().default("pending"),
   paymentAmount: z.union([z.string(), z.number()]).transform((val) => {
     if (typeof val === 'string') {
       return val;
     }
     return val.toString();
   }),
+  progress: z.number().default(0),
+  autoPayEnabled: z.boolean().default(true),
+  deliverableUrl: z.string().optional(),
+  deliverableFiles: z.any().optional(),
+  deliverableDescription: z.string().optional(),
+  submissionType: z.string().default("digital"),
+  approvalNotes: z.string().optional(),
 });
 
 // Deliverable schemas - aliases for milestone schemas but with deliverable-focused naming
 export const insertDeliverableSchema = insertMilestoneSchema;
-export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true, completedDate: true });
-export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, uploadedAt: true });
-export const insertBankAccountSchema = createInsertSchema(bankAccounts).omit({ id: true, createdAt: true, isVerified: true });
+export const insertPaymentSchema = z.object({
+  contractId: z.number(),
+  milestoneId: z.number(),
+  amount: z.string(),
+  status: z.string().default("scheduled"),
+  scheduledDate: z.date(),
+  notes: z.string().optional(),
+  stripePaymentIntentId: z.string().optional(),
+  stripePaymentIntentStatus: z.string().optional(),
+  stripeTransferId: z.string().optional(),
+  stripeTransferStatus: z.string().optional(),
+  paymentProcessor: z.string().default("stripe"),
+  applicationFee: z.string().default("0"),
+  triggeredBy: z.string().default("manual"),
+});
+
+export const insertDocumentSchema = z.object({
+  contractId: z.number(),
+  fileName: z.string(),
+  fileType: z.string(),
+  filePath: z.string(),
+  uploadedBy: z.number(),
+  description: z.string().optional(),
+});
+
+export const insertBankAccountSchema = z.object({
+  userId: z.number(),
+  accountId: z.string(),
+  accountName: z.string(),
+  accountType: z.string(),
+  accountSubtype: z.string().optional(),
+  accountMask: z.string().optional(),
+  institutionName: z.string().optional(),
+  plaidAccessToken: z.string(),
+  plaidItemId: z.string(),
+  stripeBankAccountId: z.string().optional(),
+  isDefault: z.boolean().default(false),
+  metadata: z.any().optional(),
+});
 
 // Business Workers schema
-export const insertBusinessWorkerSchema = createInsertSchema(businessWorkers).omit({ 
-  id: true, 
-  joinedAt: true,
-  createdAt: true,
-  updatedAt: true
+export const insertBusinessWorkerSchema = z.object({
+  businessId: z.number(),
+  contractorUserId: z.number(),
+  status: z.string().default("active"),
+  role: z.string().default("contractor"),
 });
 
 // Projects schema  
-export const insertProjectSchema = createInsertSchema(projects).omit({ 
-  id: true, 
-  createdAt: true 
+export const insertProjectSchema = z.object({
+  businessId: z.number(),
+  name: z.string(),
+  description: z.string().optional(),
+  budget: z.string().optional(),
+  status: z.string().default("active"),
+  updatedAt: z.date().optional(),
 });
 
 // Work Request schema with proper date handling (updated for specification)
-export const insertWorkRequestSchema = createInsertSchema(workRequests).omit({ 
-  id: true, 
-  createdAt: true
-}).extend({
-  // Handle date strings from frontend forms
+export const insertWorkRequestSchema = z.object({
+  projectId: z.number(),
+  contractorUserId: z.number(),
+  title: z.string(),
+  description: z.string(),
+  deliverableDescription: z.string().optional(),
   dueDate: z.string().optional().transform(val => val ? new Date(val) : undefined),
-  // Convert amount to proper decimal format
   amount: z.union([z.string(), z.number()]).transform((val) => {
     if (typeof val === 'string') {
       return val;
     }
     return val.toString();
-  })
+  }),
+  currency: z.string().default("USD"),
+  status: z.string().default("assigned"),
 });
 
 // Work Request update schema (for status updates)
@@ -499,23 +555,41 @@ export const workSubmissions = pgTable("work_submissions", {
 });
 
 // Create notification schema
-export const insertNotificationSchema = createInsertSchema(notifications).omit({ 
-  id: true, 
-  createdAt: true 
+export const insertNotificationSchema = z.object({
+  userId: z.number(),
+  title: z.string(),
+  message: z.string(),
+  type: z.string(),
+  relatedId: z.number().optional(),
+  isRead: z.boolean().default(false),
 });
 
 // Create work submission schema
-export const insertWorkSubmissionSchema = createInsertSchema(workSubmissions).omit({ 
-  id: true, 
-  submittedAt: true,
-  reviewedAt: true 
+export const insertWorkSubmissionSchema = z.object({
+  contractId: z.number(),
+  contractorId: z.number(),
+  businessId: z.number(),
+  title: z.string(),
+  description: z.string(),
+  notes: z.string().optional(),
+  attachmentUrls: z.any().optional(),
+  status: z.string().default("pending"),
+  reviewNotes: z.string().optional(),
+  milestoneId: z.number().optional(),
 });
 
 // Create work request submission schema
-export const insertWorkRequestSubmissionSchema = createInsertSchema(workRequestSubmissions).omit({ 
-  id: true, 
-  submittedAt: true,
-  reviewedAt: true 
+export const insertWorkRequestSubmissionSchema = z.object({
+  workRequestId: z.number(),
+  contractorId: z.number(),
+  businessId: z.number(),
+  title: z.string(),
+  description: z.string(),
+  notes: z.string().optional(),
+  attachmentUrls: z.any().optional(),
+  submissionType: z.string().default("digital"),
+  status: z.string().default("pending"),
+  reviewNotes: z.string().optional(),
 });
 
 // Types for notifications
