@@ -38,7 +38,7 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
         let finalUser = existingUser;
         if (Object.keys(updateData).length > 0) {
           console.log(`Updating user ${existingUser.id} with Firebase data:`, updateData);
-          const result = await storage.updateUser(existingUser.id, updateData);
+          const result = await storage.updateUserAuthFields(existingUser.id, updateData);
           finalUser = result || existingUser;
         }
         

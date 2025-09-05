@@ -469,6 +469,21 @@ export class MemStorage implements IStorage {
     this.users.set(id, updatedUser);
     return updatedUser;
   }
+
+  async updateUserAuthFields(id: number, authData: {
+    firebaseUid?: string,
+    emailVerified?: boolean,
+    stripeCustomerId?: string,
+    stripeSubscriptionId?: string,
+    subscriptionStatus?: string
+  }): Promise<User | undefined> {
+    const existingUser = this.users.get(id);
+    if (!existingUser) return undefined;
+    
+    const updatedUser = { ...existingUser, ...authData };
+    this.users.set(id, updatedUser);
+    return updatedUser;
+  }
   
   // Invite CRUD methods
   async getInvite(id: number): Promise<Invite | undefined> {
@@ -1410,6 +1425,31 @@ export class DatabaseStorage implements IStorage {
         stripeConnectAccountId: connectAccountId,
         payoutEnabled
       })
+      .where(eq(users.id, id))
+      .returning();
+    return updatedUser;
+  }
+
+  /**
+   * Update user authentication and subscription fields only (no Stripe Connect)
+   */
+  async updateUserAuthFields(id: number, authData: {
+    firebaseUid?: string,
+    emailVerified?: boolean,
+    stripeCustomerId?: string,
+    stripeSubscriptionId?: string,
+    subscriptionStatus?: string
+  }): Promise<User | undefined> {
+    const updateFields: any = {};
+    if (authData.firebaseUid !== undefined) updateFields.firebaseUid = authData.firebaseUid;
+    if (authData.emailVerified !== undefined) updateFields.emailVerified = authData.emailVerified;
+    if (authData.stripeCustomerId !== undefined) updateFields.stripeCustomerId = authData.stripeCustomerId;
+    if (authData.stripeSubscriptionId !== undefined) updateFields.stripeSubscriptionId = authData.stripeSubscriptionId;
+    if (authData.subscriptionStatus !== undefined) updateFields.subscriptionStatus = authData.subscriptionStatus;
+    
+    const [updatedUser] = await db
+      .update(users)
+      .set(updateFields)
       .where(eq(users.id, id))
       .returning();
     return updatedUser;
