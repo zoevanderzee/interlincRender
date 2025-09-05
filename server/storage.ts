@@ -472,10 +472,7 @@ export class MemStorage implements IStorage {
 
   async updateUserAuthFields(id: number, authData: {
     firebaseUid?: string,
-    emailVerified?: boolean,
-    stripeCustomerId?: string,
-    stripeSubscriptionId?: string,
-    subscriptionStatus?: string
+    emailVerified?: boolean
   }): Promise<User | undefined> {
     const existingUser = this.users.get(id);
     if (!existingUser) return undefined;
@@ -1431,28 +1428,45 @@ export class DatabaseStorage implements IStorage {
   }
 
   /**
-   * Update user authentication and subscription fields only (no Stripe Connect)
+   * Update ONLY Firebase authentication fields (firebaseUid and emailVerified)
    */
   async updateUserAuthFields(id: number, authData: {
     firebaseUid?: string,
-    emailVerified?: boolean,
-    stripeCustomerId?: string,
-    stripeSubscriptionId?: string,
-    subscriptionStatus?: string
+    emailVerified?: boolean
   }): Promise<User | undefined> {
-    const updateFields: any = {};
-    if (authData.firebaseUid !== undefined) updateFields.firebaseUid = authData.firebaseUid;
-    if (authData.emailVerified !== undefined) updateFields.emailVerified = authData.emailVerified;
-    if (authData.stripeCustomerId !== undefined) updateFields.stripeCustomerId = authData.stripeCustomerId;
-    if (authData.stripeSubscriptionId !== undefined) updateFields.stripeSubscriptionId = authData.stripeSubscriptionId;
-    if (authData.subscriptionStatus !== undefined) updateFields.subscriptionStatus = authData.subscriptionStatus;
-    
-    const [updatedUser] = await db
-      .update(users)
-      .set(updateFields)
-      .where(eq(users.id, id))
-      .returning();
-    return updatedUser;
+    // Build dynamic update query for only Firebase fields
+    const updates: string[] = [];
+    const values: any[] = [];
+    let paramIndex = 1;
+
+    if (authData.firebaseUid !== undefined) {
+      updates.push(`firebase_uid = $${paramIndex++}`);
+      values.push(authData.firebaseUid);
+    }
+    if (authData.emailVerified !== undefined) {
+      updates.push(`email_verified = $${paramIndex++}`);
+      values.push(authData.emailVerified);
+    }
+
+    if (updates.length === 0) {
+      return this.getUser(id);
+    }
+
+    const query = `
+      UPDATE users 
+      SET ${updates.join(', ')} 
+      WHERE id = $${paramIndex}
+      RETURNING *
+    `;
+    values.push(id);
+
+    try {
+      const result = await pool.query(query, values);
+      return result.rows[0] as User;
+    } catch (error) {
+      console.error('Firebase auth fields update error:', error);
+      throw error;
+    }
   }
   
   // Invite CRUD methods
