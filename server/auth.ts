@@ -46,23 +46,19 @@ export function setupAuth(app: Express) {
     process.env.SESSION_SECRET = randomBytes(32).toString("hex");
   }
 
-  // Detect environment - check for production indicators
-  const isProduction = process.env.NODE_ENV === 'production' || 
-                      process.env.REPL_OWNER;
-
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || 'interlinc-secret-key',
     resave: false,
-    saveUninitialized: true, // Save sessions to enable cookie transmission
+    saveUninitialized: false, // Don't save empty sessions
     name: 'interlinc.sid',
-    rolling: false,
+    rolling: false, // Don't extend session on each request to avoid issues
     cookie: {
-      secure: false, // Allow cookies over HTTP in all environments to fix transmission
+      secure: process.env.NODE_ENV === 'production', // true in production, false in development
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
-      httpOnly: false, // Allow JS access to enable proper session handling
-      sameSite: 'lax', // Use 'lax' in all environments for better compatibility
+      httpOnly: true, // Security: prevent JS access
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' for production cross-origin
       path: '/', // Available for entire site
-      domain: undefined, // No domain restriction to work in all environments
+      domain: process.env.NODE_ENV === 'production' ? '.interlinc.app' : undefined, // Cross-subdomain in production
     },
     // Use the storage implementation's session store
     store: storage.sessionStore
@@ -101,15 +97,18 @@ export function setupAuth(app: Express) {
       req.protocol + '://' + req.get('host') // Allow same-origin requests
     ];
 
-    // Always allow CORS with credentials for session cookies to work properly
-    res.header('Access-Control-Allow-Origin', origin || req.protocol + '://' + req.get('host'));
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization,X-User-ID,X-Firebase-UID,X-CSRF-Token,Cookie');
-    res.header('Access-Control-Expose-Headers', 'Set-Cookie');
+    // In development, allow all origins; in production, check allowlist
+    if (process.env.NODE_ENV === 'development' || allowedOrigins.includes(origin)) {
+      res.header('Access-Control-Allow-Origin', origin || req.protocol + '://' + req.get('host'));
+      res.header('Access-Control-Allow-Credentials', 'true');
+      res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization,X-User-ID,X-Firebase-UID,X-CSRF-Token');
 
-    if (req.method === 'OPTIONS') {
-      res.sendStatus(200);
+      if (req.method === 'OPTIONS') {
+        res.sendStatus(200);
+      } else {
+        next();
+      }
     } else {
       next();
     }
