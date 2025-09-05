@@ -4,14 +4,7 @@ import { Route, useLocation } from "wouter";
 import { Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-
-// Utility function to check for active subscription
-const requiresSubscription = (user: any) => {
-  const hasActiveSubscription = user.subscriptionStatus === 'active' || 
-                                user.subscriptionStatus === 'trialing' || 
-                                !!user.stripe_subscription_id;
-  return !hasActiveSubscription && !user.invited;
-};
+import { requiresSubscription } from "@/lib/subscription-utils";
 
 type ProtectedRouteProps = {
   path: string;

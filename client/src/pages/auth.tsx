@@ -30,7 +30,7 @@ import { EmailVerificationForm } from "@/components/auth/EmailVerificationForm";
 import SubscriptionForm from "@/components/SubscriptionForm";
 import Logo from "@assets/CD_icon_light@2x.png";
 import { signUpUser, loginUser } from "@/lib/firebase-auth";
-import { requiresSubscription } from "@/lib/utils";
+import { requiresSubscription } from "@/lib/subscription-utils";
 
 export default function AuthPage() {
   console.log("AuthPage component rendering");
