@@ -275,7 +275,7 @@ export default function AuthPage() {
       // Project invitation with ID only, waiting for data
       return (
         <>
-          {isInviteLoading ? (
+          {isInviteDataLoading ? (
             <div className="flex items-center justify-center py-3">
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
               Loading invitation details...
@@ -495,8 +495,16 @@ export default function AuthPage() {
               });
 
               // Check if user requires subscription using centralized logic
-              if (requiresSubscription(userData)) {
-                console.log("User needs subscription, showing subscription form");
+              const needsSubscription = requiresSubscription(userData);
+              console.log('Subscription check after sync:', {
+                userId: userData.id,
+                subscriptionStatus: userData.subscriptionStatus,
+                invited: userData.invited,
+                needsSubscription
+              });
+
+              if (needsSubscription) {
+                console.log('User needs subscription, showing subscription form');
                 // Show subscription form directly without redirect
                 setShowSubscription(true);
                 setRegisteredUser({
