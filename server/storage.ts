@@ -1092,9 +1092,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserByFirebaseUID(firebaseUID: string): Promise<User | undefined> {
-    // Use raw SQL to avoid Drizzle ORM issues with this specific query
-    const result = await db.execute(sql`SELECT * FROM users WHERE firebase_uid = ${firebaseUID}`);
-    const user = result.rows[0] as User | undefined;
+    const [user] = await db.select().from(users).where(eq(users.firebaseUid, firebaseUID));
     return user;
   }
   
