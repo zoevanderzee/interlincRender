@@ -494,26 +494,19 @@ export default function AuthPage() {
                 description: "Welcome back!",
               });
 
-              // Debug: Log the complete userData object
-              console.log('Complete userData object:', userData);
-              console.log('userData.subscriptionStatus specifically:', userData.subscriptionStatus);
-              console.log('userData.subscription_status specifically:', userData.subscription_status);
-
-              // Check if user requires subscription using centralized logic
-              const userSubData = {
+              // Check if user requires subscription using the actual userData object
+              console.log('Checking subscription for user:', {
                 id: userData.id,
-                subscriptionStatus: userData.subscriptionStatus || userData.subscription_status,
+                subscriptionStatus: userData.subscriptionStatus,
                 invited: userData.invited,
                 role: userData.role
-              };
+              });
               
-              console.log('Data being passed to requiresSubscription:', userSubData);
-              const needsSubscription = requiresSubscription(userSubData);
+              const needsSubscription = requiresSubscription(userData);
               
               console.log('Subscription check after sync:', {
                 userId: userData.id,
                 subscriptionStatus: userData.subscriptionStatus,
-                subscription_status: userData.subscription_status,
                 invited: userData.invited,
                 role: userData.role,
                 needsSubscription
