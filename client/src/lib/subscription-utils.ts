@@ -1,4 +1,3 @@
-
 export interface UserSubscriptionData {
   subscriptionStatus?: string;
   stripe_subscription_id?: string | null;
