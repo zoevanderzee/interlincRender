@@ -495,11 +495,17 @@ export default function AuthPage() {
               });
 
               // Check if user requires subscription using centralized logic
-              const needsSubscription = requiresSubscription(userData);
+              const needsSubscription = requiresSubscription({
+                id: userData.id,
+                subscriptionStatus: userData.subscriptionStatus,
+                invited: userData.invited,
+                role: userData.role
+              });
               console.log('Subscription check after sync:', {
                 userId: userData.id,
                 subscriptionStatus: userData.subscriptionStatus,
                 invited: userData.invited,
+                role: userData.role,
                 needsSubscription
               });
 
