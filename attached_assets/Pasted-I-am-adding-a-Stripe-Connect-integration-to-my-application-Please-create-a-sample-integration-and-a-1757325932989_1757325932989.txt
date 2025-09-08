@@ -1,0 +1,145 @@
+I am adding a Stripe Connect integration to my application. Please create a sample integration and add detailed code comments explaining each step. If a value needs to be filled in (like an API key), please mark it with a placeholder comment and provide a helpful error if the value is not present.
+
+The sample integration should onboard users to Connect, create products, and have a simple storefront for their customers to make purchases.
+
+For any UI, please use clean, simple HTML with basic styling. If relevant, use the current style of my application.
+
+Use the latest version of the Stripe API (`2025-08-27.basil`)
+
+Please set up flows for the following:
+
+## Creating Connected Accounts
+When creating connected accounts, please use the following properties:
+
+```js
+     stripe.accounts.create({
+      controller: {
+        // Platform controls fee collection - connected account pays fees
+        fees: {
+          payer: 'account' as const
+        },
+        // Stripe handles payment disputes and losses
+        losses: {
+          payments: 'stripe' as const
+        },
+        // Connected account gets full access to Stripe dashboard
+        stripe_dashboard: {
+          type: 'full' as const
+        }
+      }
+    });
+```
+
+Only use controller properties when creating accounts. Never pass type at the top level. **Do not use top level type: 'express' or type: 'standard' or type 'custom'.**
+
+## Onboarding Connected Accounts
+
+Onboard the connected accounts using Stripe Account Links.
+Please make a UI where the user can click "Onboard to collect payments" and also see the current status of onboarding. You should use the accounts API directly to get the status of the account. For this demo, always get the account status from the API directly (Do not store in a database).
+
+```js
+stripe.accounts.retrieve(stripeAccountId);
+```
+
+## Create Products
+Please set up a sample endpoint and user interface to create Stripe products. This should use the `Stripe-Account` header to create products on the connected account.
+
+```js
+stripe.products.create({
+    name: name,
+    description: description,
+    default_price_data: {
+        unit_amount: priceInCents,
+        currency: currency,
+    },
+}, {
+    stripeAccount: accountId, // Use stripeAccount for the Stripe-Account header
+});
+```
+(This is just an example, code could be different depending on programming language.)
+
+
+## Display Products
+
+Please create a sample UI (a storefront) that displays the products and allows a connected account's customers to buy a product. There should be one page per connected account (you can use the connected account's ID in the URL, but add a comment telling the user they should use a different identifier in the future).
+
+Make sure to use the connected account header when retrieving products.
+
+## Process Charges
+
+Use a Direct Charge with an application fee to monetize the transaction.
+
+Use hosted checkout for simplicity.
+
+```js
+stripe.checkout.sessions.create(
+  {
+    line_items: [
+      {
+        price_data: <Price Data>
+        quantity: <Quantity>,
+      },
+    ],
+    payment_intent_data:  {
+      // Sample Application Fee
+      application_fee_amount: 123,
+    },
+    mode: 'payment',
+    success_url: '<Root URL>/success?session_id={CHECKOUT_SESSION_ID}',
+  },
+  {
+    stripeAccount: <Connected Account ID>,
+  }
+)
+```
+(This is just an example, code could be different depending on programming language.)
+
+How the connected account header is passed can differ depending on the programming language (casing or argument order can change). You can see the docs at @https://docs.stripe.com/connect/authentication.md or use any stripe docs tools that you have access to.
+
+Here are some common programming languages. Use the arguments from above with the connected account header from below
+```ruby
+Stripe::Product.list(
+  {limit: 5},
+  {stripe_account: '{{CONNECTED_ACCOUNT_ID}}'},
+)
+```
+
+```python
+products = stripe.Product.list(
+  limit=5,
+  stripe_account='{{CONNECTED_ACCOUNT_ID}}',
+)
+```
+
+```php
+$products = $stripe->products->all(
+  ['limit' => 5],
+  ['stripe_account' => '{{CONNECTED_ACCOUNT_ID}}']
+);
+```
+
+```java
+ProductListParams params = ProductListParams.builder().setLimit(5L).build();
+
+RequestOptions requestOptions =
+  RequestOptions.builder().setStripeAccount("{{CONNECTED_ACCOUNT_ID}}").build();
+
+ProductCollection products = Product.list(params, requestOptions);
+```
+
+```go
+params := &stripe.ProductListParams{};
+params.Limit = stripe.Int64(5)
+params.SetStripeAccount("{{CONNECTED_ACCOUNT_ID}}")
+result := product.List(params);
+```
+
+```dotnet
+var options = new ProductListOptions { Limit = 5 };
+var requestOptions = new RequestOptions
+{
+    StripeAccount = "{{CONNECTED_ACCOUNT_ID}}",
+};
+var service = new ProductService();
+StripeList<Product> products = service.List(options, requestOptions);
+```

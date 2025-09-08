@@ -28,6 +28,8 @@ This is a comprehensive contractor/freelancer management platform built with Rea
 
 **CUSTOM FILE STORAGE SYSTEM IMPLEMENTED (August 19, 2025)**: Completely replaced Google Cloud Storage with custom in-app file storage system to eliminate access denied errors. Created FileStorageService for secure local file management with upload, view, and download endpoints. Built SimpleFileUploader component with drag-drop interface replacing ObjectUploader. Removed all legacy Google Cloud Storage routes and dependencies. File uploads now stored securely on server filesystem with proper authentication and access control. System tested and fully operational for deliverable submissions.
 
+**AUTHENTICATION & SUBSCRIPTION ROUTING SYSTEM RESTORED (September 8, 2025)**: Successfully resolved critical authentication bug that was incorrectly redirecting ALL users to the subscription page regardless of their subscription status. Root cause identified: `getUserByFirebaseUID` method in storage layer was changed from Drizzle ORM to raw SQL, causing field name inconsistency (snake_case vs camelCase). Firebase authenticated users received `subscription_status` while server expected `subscriptionStatus`. Reverted Firebase auth method to consistent Drizzle ORM implementation matching all other user retrieval methods. Centralized server-side subscription validation in auth.ts now functions correctly for all authentication methods. Platform ready for scale with proper user routing: active subscribers → dashboard, inactive users → subscription page.
+
 # User Preferences
 
 Preferred communication style: Simple, everyday language.
