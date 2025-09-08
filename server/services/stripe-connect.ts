@@ -114,6 +114,30 @@ export async function createAccountLink(accountId: string, refreshUrl: string, r
 }
 
 /**
+ * Creates an Account Session for embedded onboarding
+ * This allows embedding Stripe's onboarding components directly in your app
+ */
+export async function createAccountSession(accountId: string): Promise<{ client_secret: string }> {
+  try {
+    const accountSession = await stripe.accountSessions.create({
+      account: accountId,
+      components: {
+        account_onboarding: {
+          enabled: true,
+        },
+      },
+    });
+
+    return {
+      client_secret: accountSession.client_secret,
+    };
+  } catch (error) {
+    console.error('Error creating account session:', error);
+    throw error;
+  }
+}
+
+/**
  * Retrieves the current status of a connected account
  * Use this to check onboarding completion and capabilities
  */
@@ -245,6 +269,7 @@ export async function linkConnectedAccountToUser(userId: number, accountId: stri
 export default {
   createConnectedAccount,
   createAccountLink,
+  createAccountSession,
   getAccountStatus,
   createProduct,
   listProducts,

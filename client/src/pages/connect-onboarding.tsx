@@ -11,6 +11,13 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import Layout from '@/components/layout/Layout';
 
+// Declare Stripe global
+declare global {
+  interface Window {
+    Stripe: any;
+  }
+}
+
 interface ConnectedAccountStatus {
   accountId: string;
   chargesEnabled: boolean;
@@ -34,6 +41,18 @@ export default function ConnectOnboarding() {
   const [accountStatus, setAccountStatus] = useState<ConnectedAccountStatus | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isLoadingStatus, setIsLoadingStatus] = useState(false);
+
+  // Load Stripe.js script
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = 'https://js.stripe.com/v3/';
+    script.async = true;
+    document.body.appendChild(script);
+
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
 
   // Check if user already has a connected account
   useEffect(() => {
@@ -119,7 +138,7 @@ export default function ConnectOnboarding() {
     if (!accountStatus?.accountId) return;
 
     try {
-      const response = await fetch(`/api/stripe-connect/accounts/${accountStatus.accountId}/onboarding-link`, {
+      const response = await fetch(`/api/stripe-connect/accounts/${accountStatus.accountId}/onboarding-session`, {
         method: 'POST',
         headers: {
           'X-User-ID': user?.id?.toString() || '',
@@ -127,9 +146,29 @@ export default function ConnectOnboarding() {
       });
 
       if (response.ok) {
-        const { onboardingUrl } = await response.json();
-        // Redirect to Stripe's onboarding flow
-        window.location.href = onboardingUrl;
+        const { client_secret } = await response.json();
+        
+        // Initialize embedded onboarding
+        if (window.Stripe) {
+          const stripe = window.Stripe(process.env.VITE_STRIPE_PUBLISHABLE_KEY);
+          const connectedAccountOnboarding = stripe.connectedAccountOnboarding({
+            clientSecret: client_secret,
+          });
+
+          // Mount the embedded component
+          const onboardingComponent = connectedAccountOnboarding.create('onboarding');
+          onboardingComponent.mount('#onboarding-container');
+
+          // Handle onboarding completion
+          connectedAccountOnboarding.on('onboarding_completed', () => {
+            toast({
+              title: 'Onboarding completed!',
+              description: 'Your account is now set up.',
+            });
+            // Refresh account status
+            checkAccountStatus(accountStatus.accountId);
+          });
+        }
       } else {
         const error = await response.json();
         throw new Error(error.message);
@@ -335,14 +374,18 @@ export default function ConnectOnboarding() {
                 <CardHeader>
                   <CardTitle>Complete Onboarding</CardTitle>
                   <CardDescription>
-                    Complete your account setup with Stripe to start receiving payments.
+                    Complete your account setup to start receiving payments.
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                   <Button onClick={startOnboarding} className="w-full">
-                    <ExternalLink className="mr-2 h-4 w-4" />
-                    Complete Onboarding with Stripe
+                    Start Identity Verification
                   </Button>
+                  
+                  {/* Embedded onboarding container */}
+                  <div id="onboarding-container" className="min-h-[400px] border rounded-lg p-4 bg-background">
+                    {/* Stripe embedded onboarding will mount here */}
+                  </div>
                 </CardContent>
               </Card>
             )}

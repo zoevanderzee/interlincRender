@@ -2550,6 +2550,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create onboarding session for embedded onboarding
+  app.post(`${apiRouter}/stripe-connect/accounts/:accountId/onboarding-session`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { accountId } = req.params;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Verify the user owns this connected account
+      const user = await storage.getUser(userId);
+      if (!user || user.stripeConnectAccountId !== accountId) {
+        return res.status(403).json({ message: "Access denied to this connected account" });
+      }
+
+      const stripeConnectService = await import('./services/stripe-connect');
+      const accountSession = await stripeConnectService.createAccountSession(accountId);
+
+      res.json(accountSession);
+    } catch (error: any) {
+      console.error('Error creating onboarding session:', error);
+      res.status(500).json({ 
+        message: "Error creating onboarding session",
+        error: error.message 
+      });
+    }
+  });
+
   // Get connected account status
   app.get(`${apiRouter}/stripe-connect/accounts/:accountId/status`, requireAuth, async (req: Request, res: Response) => {
     try {
