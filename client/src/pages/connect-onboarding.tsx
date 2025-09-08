@@ -195,9 +195,9 @@ export default function ConnectOnboarding() {
     <Layout>
       <div className="container mx-auto px-4 py-8 max-w-2xl">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold mb-2">Stripe Connect Onboarding</h1>
+          <h1 className="text-3xl font-bold mb-2">Interlinc Connect Setup</h1>
           <p className="text-muted-foreground">
-            Set up your connected account to receive payments through our platform.
+            Set up your payment account to receive payments through our platform.
           </p>
         </div>
 
@@ -207,10 +207,10 @@ export default function ConnectOnboarding() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />
-                Create Connected Account
+                Create Payment Account
               </CardTitle>
               <CardDescription>
-                We'll create a Stripe Connect account that allows you to receive payments while giving you full access to the Stripe Dashboard.
+                We'll create your payment account that allows you to receive payments while giving you full access to payment management.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -417,10 +417,10 @@ export default function ConnectOnboarding() {
         )}
 
         <div className="mt-8 p-4 bg-muted rounded-lg">
-          <h3 className="font-semibold mb-2">About Stripe Connect</h3>
+          <h3 className="font-semibold mb-2">About Interlinc Connect</h3>
           <ul className="text-sm text-muted-foreground space-y-1">
-            <li>• Full access to Stripe Dashboard for managing your payments</li>
-            <li>• Stripe handles all compliance and risk management</li>
+            <li>• Full access to payment dashboard for managing your payments</li>
+            <li>• Secure payment processing with enterprise-grade compliance</li>
             <li>• Automatic payouts to your bank account</li>
             <li>• Platform takes a small application fee per transaction</li>
             <li>• You maintain control over your customer relationships</li>

@@ -46,7 +46,7 @@ export default function ContractorConnect() {
         setOnboardingUrl(data.accountLink);
         window.open(data.accountLink, '_blank');
         toast({
-          title: 'Stripe Connect account created',
+          title: 'Interlinc Connect account created',
           description: 'Complete the onboarding process in the new window',
         });
         // Invalidate queries
@@ -140,7 +140,7 @@ export default function ContractorConnect() {
 
         <Card className="bg-black border border-gray-800">
           <CardHeader>
-            <CardTitle className="text-xl font-bold text-white">Stripe Connect Status</CardTitle>
+            <CardTitle className="text-xl font-bold text-white">Interlinc Connect Status</CardTitle>
             <CardDescription className="text-gray-400">
               Direct payment capabilities
             </CardDescription>
@@ -149,7 +149,7 @@ export default function ContractorConnect() {
             {connectStatus?.status === 'not_created' && (
               <div className="flex items-center space-x-2">
                 <AlertCircle className="h-5 w-5 text-yellow-500" />
-                <span className="text-white">No Stripe Connect account</span>
+                <span className="text-white">No Interlinc Connect account</span>
               </div>
             )}
             {connectStatus?.status === 'pending' && (

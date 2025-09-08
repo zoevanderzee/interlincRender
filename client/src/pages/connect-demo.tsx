@@ -70,9 +70,9 @@ export default function ConnectDemo() {
           // Demo/Info Page
           <div>
             <div className="mb-6">
-              <h1 className="text-3xl font-bold mb-2">Stripe Connect Integration</h1>
+              <h1 className="text-3xl font-bold mb-2">Interlinc Connect Integration</h1>
               <p className="text-muted-foreground">
-                Complete Stripe Connect implementation with onboarding, products, and payments.
+                Complete payment integration with onboarding, products, and payments.
               </p>
             </div>
 
@@ -86,8 +86,8 @@ export default function ConnectDemo() {
                 </CardHeader>
                 <CardContent>
                   <ol className="list-decimal list-inside space-y-2 text-sm">
-                    <li>Complete the onboarding process to create your connected account</li>
-                    <li>Verify your identity and business information with Stripe</li>
+                    <li>Complete the onboarding process to create your payment account</li>
+                    <li>Verify your identity and business information</li>
                     <li>Create products with prices for your customers</li>
                     <li>Share your storefront URL with customers</li>
                     <li>Start receiving payments with automatic platform fees</li>
@@ -116,9 +116,9 @@ export default function ConnectDemo() {
                     </p>
                   </div>
                   <div>
-                    <h4 className="font-semibold mb-2">Full Stripe Dashboard Access</h4>
+                    <h4 className="font-semibold mb-2">Full Payment Dashboard Access</h4>
                     <p className="text-sm text-muted-foreground">
-                      You get complete access to the Stripe Dashboard to manage payments, 
+                      You get complete access to the payment dashboard to manage payments, 
                       view analytics, handle refunds, and manage your account settings.
                     </p>
                   </div>
@@ -136,7 +136,7 @@ export default function ConnectDemo() {
                 <CardHeader>
                   <CardTitle>🔧 Technical Implementation</CardTitle>
                   <CardDescription>
-                    Built following Stripe Connect best practices
+                    Built following modern payment processing best practices
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -147,7 +147,7 @@ export default function ConnectDemo() {
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-green-500 mt-0.5">✓</span>
-                      <span>Stripe-Account header for all connected account operations</span>
+                      <span>Secure account headers for all connected account operations</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-green-500 mt-0.5">✓</span>
@@ -159,7 +159,7 @@ export default function ConnectDemo() {
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-green-500 mt-0.5">✓</span>
-                      <span>Stripe Checkout for secure payment processing</span>
+                      <span>Secure checkout for payment processing</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-green-500 mt-0.5">✓</span>
@@ -175,7 +175,7 @@ export default function ConnectDemo() {
                 </CardHeader>
                 <CardContent className="text-amber-700 text-sm space-y-2">
                   <p>
-                    <strong>Environment Variables:</strong> Make sure your STRIPE_SECRET_KEY is set in your environment.
+                    <strong>Environment Variables:</strong> Make sure your payment processing keys are set in your environment.
                   </p>
                   <p>
                     <strong>Account ID in URL:</strong> In production, replace the account ID in storefront URLs 

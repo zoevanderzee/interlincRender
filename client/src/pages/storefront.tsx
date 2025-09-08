@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useRoute } from 'wouter';
 import { Button } from '@/components/ui/button';
@@ -24,7 +23,7 @@ export default function Storefront() {
   // Extract accountId from URL path like /connect-storefront/:accountId
   const [match, params] = useRoute('/connect-storefront/:accountId');
   const accountId = params?.accountId;
-  
+
   const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -192,7 +191,7 @@ export default function Storefront() {
                       />
                     </div>
                   )}
-                  
+
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <CardTitle>{product.name}</CardTitle>
@@ -204,7 +203,7 @@ export default function Storefront() {
                       <CardDescription>{product.description}</CardDescription>
                     )}
                   </CardHeader>
-                  
+
                   <CardContent className="flex-1 flex flex-col justify-between">
                     <div className="mb-4">
                       <div className="text-2xl font-bold">
@@ -216,7 +215,7 @@ export default function Storefront() {
                         </div>
                       )}
                     </div>
-                    
+
                     <Button
                       onClick={() => handlePurchase(product)}
                       disabled={purchasingProductId === product.id}
@@ -260,9 +259,9 @@ export default function Storefront() {
           </div>
           <div className="mt-4 pt-4 border-t text-xs text-muted-foreground">
             <p>
-              This storefront is powered by Stripe Connect. 
-              In a real application, you would replace the account ID with a custom domain or business name.
-            </p>
+                This storefront is powered by Interlinc Connect. 
+                In a real application, you would replace the account ID with a custom domain or business name.
+              </p>
           </div>
         </div>
       </main>

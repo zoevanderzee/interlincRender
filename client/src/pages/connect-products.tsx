@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
@@ -115,7 +114,7 @@ export default function ConnectProducts() {
       if (response.ok) {
         const product = await response.json();
         setProducts(prev => [...prev, product]);
-        
+
         // Reset form
         setProductName('');
         setProductDescription('');
@@ -303,7 +302,7 @@ export default function ConnectProducts() {
                     <DollarSign className="h-5 w-5" />
                     {formatPrice(product.defaultPrice)}
                   </div>
-                  
+
                   <div className="mt-4 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className={`h-2 w-2 rounded-full ${product.active ? 'bg-green-500' : 'bg-gray-400'}`} />
@@ -319,15 +318,15 @@ export default function ConnectProducts() {
         )}
 
         <div className="mt-8 p-4 bg-muted rounded-lg">
-          <h3 className="font-semibold mb-2">About Your Products</h3>
-          <ul className="text-sm text-muted-foreground space-y-1">
-            <li>• Products are created directly in your Stripe Connect account</li>
-            <li>• Customers will see your business name on receipts and statements</li>
-            <li>• The platform charges a small application fee per transaction</li>
-            <li>• You can manage products in the Stripe Dashboard as well</li>
-            <li>• Share your storefront link with customers to start selling</li>
-          </ul>
-        </div>
+            <h3 className="font-semibold mb-2">About Your Products</h3>
+            <ul className="text-sm text-muted-foreground space-y-1">
+              <li>• Products are created directly in your Interlinc Connect account</li>
+              <li>• Customers will see your business name on receipts and statements</li>
+              <li>• The platform charges a small application fee per transaction</li>
+              <li>• You can manage products in the payment dashboard as well</li>
+              <li>• Share your storefront link with customers to start selling</li>
+            </ul>
+          </div>
       </div>
     </Layout>
   );

@@ -279,7 +279,7 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
                   className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/connect-onboarding") ? "bg-zinc-800 text-white" : "text-white hover:bg-zinc-800"}`}
                 >
                   <CreditCard className="w-5 h-5 mr-3" /> {/* Using CreditCard icon */}
-                  <span>Stripe Connect</span>
+                  <span>Interlinc Connect</span>
                 </Link>
               </li>
             </ul>
