@@ -1,0 +1,890 @@
+# Fully embedded Connect platform integration
+
+Provide Connect features to your connected accounts through your own website.
+
+Connect embedded components let you add Stripe-managed functionality to a custom interface that you provide to your connected accounts. They can perform payment-related activities there instead of through the Stripe Dashboard. In a fully embedded integration:
+
+- Connected accounts access Stripe-related data, forms, and notifications through embedded components in your platform’s application. They don’t have access to a Stripe Dashboard.
+- Stripe manages credit and fraud risk on your connected accounts. For any risk or compliance actions, we communicate directly with connected accounts and they respond by interacting with embedded components.
+- Stripe email notifications direct your connected accounts to embedded components on your website to review information or take required action. You must provide Stripe with the URLs for those components.
+
+## View the demo site
+
+We’ve built a complete [demo site for our fictitious business, Furever](http://furever.dev). Furever is a platform providing software for pet-groomers that allows their users to collect payments. In this demo, you can interact with many embedded components, including account onboarding and account management.
+
+## Before you begin
+
+Before you can build an embedded integration, complete the following prerequisites:
+
+### Prerequisites
+
+- [ ] [Register your platform](https://dashboard.stripe.com/connect)
+
+- [ ] Add business details to [activate your account](https://dashboard.stripe.com/account/onboarding)
+
+- [ ] [Complete your platform profile](https://dashboard.stripe.com/connect/settings/profile)
+
+- [ ] [Customise brand settings](https://dashboard.stripe.com/settings/connect/stripe-dashboard/branding)
+Add a business name, icon, and brand colour.
+
+You must also decide whether your platform will own pricing, in which case Stripe collects payment fees from your platform and you bill your connected accounts. Otherwise, Stripe owns pricing and collects payment fees directly from your connected accounts.
+
+## Create a connected account
+
+The following example creates an account where Stripe [manages risk](https://docs.stripe.com/connect/risk-management.md), controls pricing, and assumes responsibility for account onboarding requirements. Your platform uses embedded components and isn’t liable for negative balances. Your connected accounts don’t have access to Stripe-hosted dashboards.
+
+> Because Stripe controls pricing in this example, you must integrate the Documents embedded component. In addition, Stripe notifies connected accounts by email when their tax invoices or 1099s are ready for download. If you create accounts where your platform controls pricing, the Documents component isn’t required, and Stripe doesn’t send notifications to connected accounts about tax invoices or 1099s.
+
+You can request additional capabilities, such as specific payment methods, after the account onboards.
+
+Call [/v1/accounts](https://docs.stripe.com/api/accounts/create.md) with the following parameters:
+
+- `country` of the account
+- `controller.stripe_dashboard.type` = `none`
+- request the `card_payments` and `transfers` capabilities
+
+```curl
+curl https://api.stripe.com/v1/accounts \
+  -u "<<YOUR_SECRET_KEY>>:" \
+  -d country=GB \
+  -d "controller[stripe_dashboard][type]"=none \
+  -d "capabilities[card_payments][requested]"=true \
+  -d "capabilities[transfers][requested]"=true
+```
+
+```cli
+stripe accounts create  \
+  --country=GB \
+  -d "controller[stripe_dashboard][type]"=none \
+  -d "capabilities[card_payments][requested]"=true \
+  -d "capabilities[transfers][requested]"=true
+```
+
+```ruby
+# Set your secret key. Remember to switch to your live secret key in production.
+# See your keys here: https://dashboard.stripe.com/apikeys
+Stripe.api_key = '<<YOUR_SECRET_KEY>>'
+
+account = Stripe::Account.create({
+  country: 'GB',
+  controller: {stripe_dashboard: {type: 'none'}},
+  capabilities: {
+    card_payments: {requested: true},
+    transfers: {requested: true},
+  },
+})
+```
+
+```ruby
+# Set your secret key. Remember to switch to your live secret key in production.
+# See your keys here: https://dashboard.stripe.com/apikeys
+client = Stripe::StripeClient.new("<<YOUR_SECRET_KEY>>")
+
+account = client.v1.accounts.create({
+  country: 'GB',
+  controller: {stripe_dashboard: {type: 'none'}},
+  capabilities: {
+    card_payments: {requested: true},
+    transfers: {requested: true},
+  },
+})
+```
+
+```python
+# Set your secret key. Remember to switch to your live secret key in production.
+# See your keys here: https://dashboard.stripe.com/apikeys
+import stripe
+stripe.api_key = "<<YOUR_SECRET_KEY>>"
+
+account = stripe.Account.create(
+  country="GB",
+  controller={"stripe_dashboard": {"type": "none"}},
+  capabilities={"card_payments": {"requested": True}, "transfers": {"requested": True}},
+)
+```
+
+```python
+# Set your secret key. Remember to switch to your live secret key in production.
+# See your keys here: https://dashboard.stripe.com/apikeys
+client = StripeClient("<<YOUR_SECRET_KEY>>")
+
+# For SDK versions 12.4.0 or lower, remove '.v1' from the following line.
+account = client.v1.accounts.create({
+  "country": "GB",
+  "controller": {"stripe_dashboard": {"type": "none"}},
+  "capabilities": {
+    "card_payments": {"requested": True},
+    "transfers": {"requested": True},
+  },
+})
+```
+
+```php
+// Set your secret key. Remember to switch to your live secret key in production.
+// See your keys here: https://dashboard.stripe.com/apikeys
+$stripe = new \Stripe\StripeClient('<<YOUR_SECRET_KEY>>');
+
+$account = $stripe->accounts->create([
+  'country' => 'GB',
+  'controller' => ['stripe_dashboard' => ['type' => 'none']],
+  'capabilities' => [
+    'card_payments' => ['requested' => true],
+    'transfers' => ['requested' => true],
+  ],
+]);
+```
+
+```java
+// Set your secret key. Remember to switch to your live secret key in production.
+// See your keys here: https://dashboard.stripe.com/apikeys
+Stripe.apiKey = "<<YOUR_SECRET_KEY>>";
+
+AccountCreateParams params =
+  AccountCreateParams.builder()
+    .setCountry("GB")
+    .setController(
+      AccountCreateParams.Controller.builder()
+        .setStripeDashboard(
+          AccountCreateParams.Controller.StripeDashboard.builder()
+            .setType(AccountCreateParams.Controller.StripeDashboard.Type.NONE)
+            .build()
+        )
+        .build()
+    )
+    .setCapabilities(
+      AccountCreateParams.Capabilities.builder()
+        .setCardPayments(
+          AccountCreateParams.Capabilities.CardPayments.builder()
+            .setRequested(true)
+            .build()
+        )
+        .setTransfers(
+          AccountCreateParams.Capabilities.Transfers.builder().setRequested(true).build()
+        )
+        .build()
+    )
+    .build();
+
+Account account = Account.create(params);
+```
+
+```java
+// Set your secret key. Remember to switch to your live secret key in production.
+// See your keys here: https://dashboard.stripe.com/apikeys
+StripeClient client = new StripeClient("<<YOUR_SECRET_KEY>>");
+
+AccountCreateParams params =
+  AccountCreateParams.builder()
+    .setCountry("GB")
+    .setController(
+      AccountCreateParams.Controller.builder()
+        .setStripeDashboard(
+          AccountCreateParams.Controller.StripeDashboard.builder()
+            .setType(AccountCreateParams.Controller.StripeDashboard.Type.NONE)
+            .build()
+        )
+        .build()
+    )
+    .setCapabilities(
+      AccountCreateParams.Capabilities.builder()
+        .setCardPayments(
+          AccountCreateParams.Capabilities.CardPayments.builder()
+            .setRequested(true)
+            .build()
+        )
+        .setTransfers(
+          AccountCreateParams.Capabilities.Transfers.builder().setRequested(true).build()
+        )
+        .build()
+    )
+    .build();
+
+// For SDK versions 29.4.0 or lower, remove '.v1()' from the following line.
+Account account = client.v1().accounts().create(params);
+```
+
+```node
+// Set your secret key. Remember to switch to your live secret key in production.
+// See your keys here: https://dashboard.stripe.com/apikeys
+const stripe = require('stripe')('<<YOUR_SECRET_KEY>>');
+
+const account = await stripe.accounts.create({
+  country: 'GB',
+  controller: {
+    stripe_dashboard: {
+      type: 'none',
+    },
+  },
+  capabilities: {
+    card_payments: {
+      requested: true,
+    },
+    transfers: {
+      requested: true,
+    },
+  },
+});
+```
+
+```go
+// Set your secret key. Remember to switch to your live secret key in production.
+// See your keys here: https://dashboard.stripe.com/apikeys
+stripe.Key = "<<YOUR_SECRET_KEY>>"
+
+params := &stripe.AccountParams{
+  Country: stripe.String("GB"),
+  Controller: &stripe.AccountControllerParams{
+    StripeDashboard: &stripe.AccountControllerStripeDashboardParams{
+      Type: stripe.String(stripe.AccountControllerStripeDashboardTypeNone),
+    },
+  },
+  Capabilities: &stripe.AccountCapabilitiesParams{
+    CardPayments: &stripe.AccountCapabilitiesCardPaymentsParams{
+      Requested: stripe.Bool(true),
+    },
+    Transfers: &stripe.AccountCapabilitiesTransfersParams{Requested: stripe.Bool(true)},
+  },
+}
+result, err := account.New(params)
+```
+
+```go
+// Set your secret key. Remember to switch to your live secret key in production.
+// See your keys here: https://dashboard.stripe.com/apikeys
+sc := stripe.NewClient("<<YOUR_SECRET_KEY>>")
+params := &stripe.AccountCreateParams{
+  Country: stripe.String("GB"),
+  Controller: &stripe.AccountCreateControllerParams{
+    StripeDashboard: &stripe.AccountCreateControllerStripeDashboardParams{
+      Type: stripe.String(stripe.AccountControllerStripeDashboardTypeNone),
+    },
+  },
+  Capabilities: &stripe.AccountCreateCapabilitiesParams{
+    CardPayments: &stripe.AccountCreateCapabilitiesCardPaymentsParams{
+      Requested: stripe.Bool(true),
+    },
+    Transfers: &stripe.AccountCreateCapabilitiesTransfersParams{
+      Requested: stripe.Bool(true),
+    },
+  },
+}
+result, err := sc.V1Accounts.Create(context.TODO(), params)
+```
+
+```dotnet
+// Set your secret key. Remember to switch to your live secret key in production.
+// See your keys here: https://dashboard.stripe.com/apikeys
+StripeConfiguration.ApiKey = "<<YOUR_SECRET_KEY>>";
+
+var options = new AccountCreateOptions
+{
+    Country = "GB",
+    Controller = new AccountControllerOptions
+    {
+        StripeDashboard = new AccountControllerStripeDashboardOptions { Type = "none" },
+    },
+    Capabilities = new AccountCapabilitiesOptions
+    {
+        CardPayments = new AccountCapabilitiesCardPaymentsOptions { Requested = true },
+        Transfers = new AccountCapabilitiesTransfersOptions { Requested = true },
+    },
+};
+var service = new AccountService();
+Account account = service.Create(options);
+```
+
+```dotnet
+// Set your secret key. Remember to switch to your live secret key in production.
+// See your keys here: https://dashboard.stripe.com/apikeys
+var options = new AccountCreateOptions
+{
+    Country = "GB",
+    Controller = new AccountControllerOptions
+    {
+        StripeDashboard = new AccountControllerStripeDashboardOptions { Type = "none" },
+    },
+    Capabilities = new AccountCapabilitiesOptions
+    {
+        CardPayments = new AccountCapabilitiesCardPaymentsOptions { Requested = true },
+        Transfers = new AccountCapabilitiesTransfersOptions { Requested = true },
+    },
+};
+var client = new StripeClient("<<YOUR_SECRET_KEY>>");
+var service = client.V1.Accounts;
+Account account = service.Create(options);
+```
+
+```json
+{
+  "id": ""{{CONNECTED_ACCOUNT_ID}}"",
+  "object": "account",
+  "controller": {
+    "type": "application",
+    "is_controller": true,
+    "losses": {"payments": "stripe"},
+    "fees": {"payer": "account"},
+    "requirement_collection": "stripe",
+    "stripe_dashboard": {
+      "type": "none",
+    },
+  },
+  "type": "none",
+  ...
+}
+```
+
+## Set up embedded components
+
+Connected accounts access their accounts, as well as core payments functionality, directly in your platform and don’t have access to a Stripe-hosted Dashboard. You must provide access to certain features through your website.
+
+Your integration must include the following embedded components:
+
+- [Account onboarding](https://docs.stripe.com/connect/supported-embedded-components/account-onboarding.md)
+- [Account management](https://docs.stripe.com/connect/supported-embedded-components/account-management.md)
+- [Notification banner](https://docs.stripe.com/connect/supported-embedded-components/notification-banner.md)
+- [Documents](https://docs.stripe.com/connect/supported-embedded-components/documents.md) (when Stripe collects Stripe fees directly from connected accounts)
+
+Your integration must also provide a way to respond to disputes with evidence on individual payments. You can implement this [using our API](https://docs.stripe.com/disputes/api.md) or an embedded component ([Payments](https://docs.stripe.com/connect/supported-embedded-components/payments.md), [Payment details](https://docs.stripe.com/connect/supported-embedded-components/payment-details.md), or [Disputes for a payment](https://docs.stripe.com/connect/supported-embedded-components/disputes-for-a-payment.md)).
+
+We recommend that you provide a way to allow connected accounts to add money if needed to avoid a negative balance and prevent business disruptions. You can implement this using an embedded component ([Balances](https://docs.stripe.com/connect/supported-embedded-components/balances.md) or [Payouts](https://docs.stripe.com/connect/supported-embedded-components/payouts.md)).
+
+You can also add [additional embedded components](https://docs.stripe.com/connect/supported-embedded-components.md) or build your own UIs using our APIs.
+
+Make sure you [set up embedded components](https://docs.stripe.com/connect/get-started-connect-embedded-components.md) before onboarding connected accounts.
+
+## Onboard connected accounts
+
+Stripe uses an [Account Session](https://docs.stripe.com/api/account_sessions.md) to express your intent to provide embedded component access to the connected account. Using an Account Session, the embedded account onboarding component collects all required information based on your requested capabilities.
+
+### Pre-fill the account
+
+The embedded account onboarding component collects all required information based on your requested capabilities.
+
+You can streamline the onboarding flow for your users by pre-filling account fields with known information before you create an Account Session. Pre-fill as much account information as possible, including company, individual, and external account information, following these steps:
+
+1. Review the [required verification information](https://docs.stripe.com/connect/required-verification-information.md) docs to learn more about how the combination of countries and capabilities you select for connected accounts affects their requirements.
+1. To determine the information that Stripe requires from a connected account, retrieve the account’s [requirements](https://docs.stripe.com/api/accounts/object.md#account_object-requirements) property.
+1. Collect pre-fillable information.
+1. Record the information on the account by calling [Update Account](https://docs.stripe.com/api/accounts/update.md).
+
+```curl
+curl https://api.stripe.com/v1/accounts/{{CONNECTEDACCOUNT_ID}} \
+  -u "<<YOUR_SECRET_KEY>>:" \
+  -d business_type=individual \
+  --data-urlencode email="jenny.rosen@example.com" \
+  -d "individual[first_name]"=Jenny \
+  -d "individual[last_name]"=Rosen \
+  --data-urlencode "individual[email]"="jenny.rosen@example.com" \
+  -d "individual[address][line1]"="354 Oyster Point Blvd" \
+  -d "individual[address][city]"="South San Francisco" \
+  -d "individual[address][state]"=CA \
+  -d "individual[address][postal_code]"=94080 \
+  -d external_account="{{BANKACCOUNTTOKEN_ID}}"
+```
+
+```cli
+stripe accounts update {{CONNECTEDACCOUNT_ID}} \
+  --business-type=individual \
+  --email="jenny.rosen@example.com" \
+  -d "individual[first_name]"=Jenny \
+  -d "individual[last_name]"=Rosen \
+  -d "individual[email]"="jenny.rosen@example.com" \
+  -d "individual[address][line1]"="354 Oyster Point Blvd" \
+  -d "individual[address][city]"="South San Francisco" \
+  -d "individual[address][state]"=CA \
+  -d "individual[address][postal_code]"=94080 \
+  --external-account="{{BANKACCOUNTTOKEN_ID}}"
+```
+
+```ruby
+# Set your secret key. Remember to switch to your live secret key in production.
+# See your keys here: https://dashboard.stripe.com/apikeys
+Stripe.api_key = '<<YOUR_SECRET_KEY>>'
+
+account = Stripe::Account.update(
+  '{{CONNECTEDACCOUNT_ID}}',
+  {
+    business_type: 'individual',
+    email: 'jenny.rosen@example.com',
+    individual: {
+      first_name: 'Jenny',
+      last_name: 'Rosen',
+      email: 'jenny.rosen@example.com',
+      address: {
+        line1: '354 Oyster Point Blvd',
+        city: 'South San Francisco',
+        state: 'CA',
+        postal_code: '94080',
+      },
+    },
+    external_account: '{{BANKACCOUNTTOKEN_ID}}',
+  },
+)
+```
+
+```ruby
+# Set your secret key. Remember to switch to your live secret key in production.
+# See your keys here: https://dashboard.stripe.com/apikeys
+client = Stripe::StripeClient.new("<<YOUR_SECRET_KEY>>")
+
+account = client.v1.accounts.update(
+  '{{CONNECTEDACCOUNT_ID}}',
+  {
+    business_type: 'individual',
+    email: 'jenny.rosen@example.com',
+    individual: {
+      first_name: 'Jenny',
+      last_name: 'Rosen',
+      email: 'jenny.rosen@example.com',
+      address: {
+        line1: '354 Oyster Point Blvd',
+        city: 'South San Francisco',
+        state: 'CA',
+        postal_code: '94080',
+      },
+    },
+    external_account: '{{BANKACCOUNTTOKEN_ID}}',
+  },
+)
+```
+
+```python
+# Set your secret key. Remember to switch to your live secret key in production.
+# See your keys here: https://dashboard.stripe.com/apikeys
+import stripe
+stripe.api_key = "<<YOUR_SECRET_KEY>>"
+
+account = stripe.Account.modify(
+  "{{CONNECTEDACCOUNT_ID}}",
+  business_type="individual",
+  email="jenny.rosen@example.com",
+  individual={
+    "first_name": "Jenny",
+    "last_name": "Rosen",
+    "email": "jenny.rosen@example.com",
+    "address": {
+      "line1": "354 Oyster Point Blvd",
+      "city": "South San Francisco",
+      "state": "CA",
+      "postal_code": "94080",
+    },
+  },
+  external_account="{{BANKACCOUNTTOKEN_ID}}",
+)
+```
+
+```python
+# Set your secret key. Remember to switch to your live secret key in production.
+# See your keys here: https://dashboard.stripe.com/apikeys
+client = StripeClient("<<YOUR_SECRET_KEY>>")
+
+# For SDK versions 12.4.0 or lower, remove '.v1' from the following line.
+account = client.v1.accounts.update(
+  "{{CONNECTEDACCOUNT_ID}}",
+  {
+    "business_type": "individual",
+    "email": "jenny.rosen@example.com",
+    "individual": {
+      "first_name": "Jenny",
+      "last_name": "Rosen",
+      "email": "jenny.rosen@example.com",
+      "address": {
+        "line1": "354 Oyster Point Blvd",
+        "city": "South San Francisco",
+        "state": "CA",
+        "postal_code": "94080",
+      },
+    },
+    "external_account": "{{BANKACCOUNTTOKEN_ID}}",
+  },
+)
+```
+
+```php
+// Set your secret key. Remember to switch to your live secret key in production.
+// See your keys here: https://dashboard.stripe.com/apikeys
+$stripe = new \Stripe\StripeClient('<<YOUR_SECRET_KEY>>');
+
+$account = $stripe->accounts->update(
+  '{{CONNECTEDACCOUNT_ID}}',
+  [
+    'business_type' => 'individual',
+    'email' => 'jenny.rosen@example.com',
+    'individual' => [
+      'first_name' => 'Jenny',
+      'last_name' => 'Rosen',
+      'email' => 'jenny.rosen@example.com',
+      'address' => [
+        'line1' => '354 Oyster Point Blvd',
+        'city' => 'South San Francisco',
+        'state' => 'CA',
+        'postal_code' => '94080',
+      ],
+    ],
+    'external_account' => '{{BANKACCOUNTTOKEN_ID}}',
+  ]
+);
+```
+
+```java
+// Set your secret key. Remember to switch to your live secret key in production.
+// See your keys here: https://dashboard.stripe.com/apikeys
+Stripe.apiKey = "<<YOUR_SECRET_KEY>>";
+
+Account resource = Account.retrieve("{{CONNECTEDACCOUNT_ID}}");
+
+AccountUpdateParams params =
+  AccountUpdateParams.builder()
+    .setBusinessType(AccountUpdateParams.BusinessType.INDIVIDUAL)
+    .setEmail("jenny.rosen@example.com")
+    .setIndividual(
+      AccountUpdateParams.Individual.builder()
+        .setFirstName("Jenny")
+        .setLastName("Rosen")
+        .setEmail("jenny.rosen@example.com")
+        .setAddress(
+          AccountUpdateParams.Individual.Address.builder()
+            .setLine1("354 Oyster Point Blvd")
+            .setCity("South San Francisco")
+            .setState("CA")
+            .setPostalCode("94080")
+            .build()
+        )
+        .build()
+    )
+    .setExternalAccount("{{BANKACCOUNTTOKEN_ID}}")
+    .build();
+
+Account account = resource.update(params);
+```
+
+```java
+// Set your secret key. Remember to switch to your live secret key in production.
+// See your keys here: https://dashboard.stripe.com/apikeys
+StripeClient client = new StripeClient("<<YOUR_SECRET_KEY>>");
+
+AccountUpdateParams params =
+  AccountUpdateParams.builder()
+    .setBusinessType(AccountUpdateParams.BusinessType.INDIVIDUAL)
+    .setEmail("jenny.rosen@example.com")
+    .setIndividual(
+      AccountUpdateParams.Individual.builder()
+        .setFirstName("Jenny")
+        .setLastName("Rosen")
+        .setEmail("jenny.rosen@example.com")
+        .setAddress(
+          AccountUpdateParams.Individual.Address.builder()
+            .setLine1("354 Oyster Point Blvd")
+            .setCity("South San Francisco")
+            .setState("CA")
+            .setPostalCode("94080")
+            .build()
+        )
+        .build()
+    )
+    .setExternalAccount("{{BANKACCOUNTTOKEN_ID}}")
+    .build();
+
+// For SDK versions 29.4.0 or lower, remove '.v1()' from the following line.
+Account account = client.v1().accounts().update("{{CONNECTEDACCOUNT_ID}}", params);
+```
+
+```node
+// Set your secret key. Remember to switch to your live secret key in production.
+// See your keys here: https://dashboard.stripe.com/apikeys
+const stripe = require('stripe')('<<YOUR_SECRET_KEY>>');
+
+const account = await stripe.accounts.update(
+  '{{CONNECTEDACCOUNT_ID}}',
+  {
+    business_type: 'individual',
+    email: 'jenny.rosen@example.com',
+    individual: {
+      first_name: 'Jenny',
+      last_name: 'Rosen',
+      email: 'jenny.rosen@example.com',
+      address: {
+        line1: '354 Oyster Point Blvd',
+        city: 'South San Francisco',
+        state: 'CA',
+        postal_code: '94080',
+      },
+    },
+    external_account: '{{BANKACCOUNTTOKEN_ID}}',
+  }
+);
+```
+
+```go
+// Set your secret key. Remember to switch to your live secret key in production.
+// See your keys here: https://dashboard.stripe.com/apikeys
+stripe.Key = "<<YOUR_SECRET_KEY>>"
+
+params := &stripe.AccountParams{
+  BusinessType: stripe.String(stripe.AccountBusinessTypeIndividual),
+  Email: stripe.String("jenny.rosen@example.com"),
+  Individual: &stripe.PersonParams{
+    FirstName: stripe.String("Jenny"),
+    LastName: stripe.String("Rosen"),
+    Email: stripe.String("jenny.rosen@example.com"),
+    Address: &stripe.PersonAddressParams{
+      Line1: stripe.String("354 Oyster Point Blvd"),
+      City: stripe.String("South San Francisco"),
+      State: stripe.String("CA"),
+      PostalCode: stripe.String("94080"),
+    },
+  },
+  ExternalAccount: stripe.String("{{BANKACCOUNTTOKEN_ID}}"),
+}
+result, err := account.Update("{{CONNECTEDACCOUNT_ID}}", params)
+```
+
+```go
+// Set your secret key. Remember to switch to your live secret key in production.
+// See your keys here: https://dashboard.stripe.com/apikeys
+sc := stripe.NewClient("<<YOUR_SECRET_KEY>>")
+params := &stripe.AccountUpdateParams{
+  BusinessType: stripe.String(stripe.AccountBusinessTypeIndividual),
+  Email: stripe.String("jenny.rosen@example.com"),
+  Individual: &stripe.PersonParams{
+    FirstName: stripe.String("Jenny"),
+    LastName: stripe.String("Rosen"),
+    Email: stripe.String("jenny.rosen@example.com"),
+    Address: &stripe.PersonCreateAddressParams{
+      Line1: stripe.String("354 Oyster Point Blvd"),
+      City: stripe.String("South San Francisco"),
+      State: stripe.String("CA"),
+      PostalCode: stripe.String("94080"),
+    },
+  },
+  ExternalAccount: stripe.String("{{BANKACCOUNTTOKEN_ID}}"),
+  Account: stripe.String("{{CONNECTEDACCOUNT_ID}}"),
+}
+result, err := sc.V1Accounts.Update(context.TODO(), params)
+```
+
+```dotnet
+// Set your secret key. Remember to switch to your live secret key in production.
+// See your keys here: https://dashboard.stripe.com/apikeys
+StripeConfiguration.ApiKey = "<<YOUR_SECRET_KEY>>";
+
+var options = new AccountUpdateOptions
+{
+    BusinessType = "individual",
+    Email = "jenny.rosen@example.com",
+    Individual = new AccountIndividualOptions
+    {
+        FirstName = "Jenny",
+        LastName = "Rosen",
+        Email = "jenny.rosen@example.com",
+        Address = new AddressOptions
+        {
+            Line1 = "354 Oyster Point Blvd",
+            City = "South San Francisco",
+            State = "CA",
+            PostalCode = "94080",
+        },
+    },
+    ExternalAccount = "{{BANKACCOUNTTOKEN_ID}}",
+};
+var service = new AccountService();
+Account account = service.Update("{{CONNECTEDACCOUNT_ID}}", options);
+```
+
+```dotnet
+// Set your secret key. Remember to switch to your live secret key in production.
+// See your keys here: https://dashboard.stripe.com/apikeys
+var options = new AccountUpdateOptions
+{
+    BusinessType = "individual",
+    Email = "jenny.rosen@example.com",
+    Individual = new AccountIndividualOptions
+    {
+        FirstName = "Jenny",
+        LastName = "Rosen",
+        Email = "jenny.rosen@example.com",
+        Address = new AddressOptions
+        {
+            Line1 = "354 Oyster Point Blvd",
+            City = "South San Francisco",
+            State = "CA",
+            PostalCode = "94080",
+        },
+    },
+    ExternalAccount = "{{BANKACCOUNTTOKEN_ID}}",
+};
+var client = new StripeClient("<<YOUR_SECRET_KEY>>");
+var service = client.V1.Accounts;
+Account account = service.Update("{{CONNECTEDACCOUNT_ID}}", options);
+```
+
+After the connected account completes onboarding through the Account Onboarding embedded component, your platform can no longer update certain information such as payout accounts or legal entity information. The connected account must make any updates to that information because the platform isn’t responsible for negative balances.
+
+### Onboard users through the embedded onboarding component
+
+Check out the [Furever demo site](https://furever.dev) for an example placement of the onboarding component.
+
+Connected accounts must go through onboarding and provide required information to enable charges and payouts. To onboard a connected account, host the [onboarding embedded component](https://docs.stripe.com/connect/supported-embedded-components/account-onboarding.md) on your site and direct new accounts there.
+
+### Create an Account Session
+
+When [creating an Account Session](https://docs.stripe.com/connect/get-started-connect-embedded-components.md), enable account management by specifying `account_onboarding` in the `components` parameter.
+
+```curl
+curl https://api.stripe.com/v1/account_sessions \
+  -u "<<YOUR_SECRET_KEY>>:" \
+  -d account="{{CONNECTEDACCOUNT_ID}}" \
+  -d "components[account_onboarding][enabled]"=true \
+  -d "components[account_onboarding][features][external_account_collection]"=true
+```
+
+```cli
+stripe account_sessions create  \
+  --account="{{CONNECTEDACCOUNT_ID}}" \
+  -d "components[account_onboarding][enabled]"=true \
+  -d "components[account_onboarding][features][external_account_collection]"=true
+```
+
+```ruby
+# Set your secret key. Remember to switch to your live secret key in production.
+# See your keys here: https://dashboard.stripe.com/apikeys
+Stripe.api_key = '<<YOUR_SECRET_KEY>>'
+
+account_session = Stripe::AccountSession.create({
+  account: '{{CONNECTEDACCOUNT_ID}}',
+  components: {
+    account_onboarding: {
+      enabled: true,
+      features: {external_account_collection: true},
+    },
+  },
+})
+```
+
+```ruby
+# Set your secret key. Remember to switch to your live secret key in production.
+# See your keys here: https://dashboard.stripe.com/apikeys
+client = Stripe::StripeClient.new("<<YOUR_SECRET_KEY>>")
+
+account_session = client.v1.account_sessions.create({
+  account: '{{CONNECTEDACCOUNT_ID}}',
+  components: {
+    account_onboarding: {
+      enabled: true,
+      features: {external_account_collection: true},
+    },
+  },
+})
+```
+
+```python
+# Set your secret key. Remember to switch to your live secret key in production.
+# See your keys here: https://dashboard.stripe.com/apikeys
+import stripe
+stripe.api_key = "<<YOUR_SECRET_KEY>>"
+
+account_session = stripe.AccountSession.create(
+  account="{{CONNECTEDACCOUNT_ID}}",
+  components={
+    "account_onboarding": {
+      "enabled": True,
+      "features": {"external_account_collection": True},
+    },
+  },
+)
+```
+
+```python
+# Set your secret key. Remember to switch to your live secret key in production.
+# See your keys here: https://dashboard.stripe.com/apikeys
+client = StripeClient("<<YOUR_SECRET_KEY>>")
+
+# For SDK versions 12.4.0 or lower, remove '.v1' from the following line.
+account_session = client.v1.account_sessions.create({
+  "account": "{{CONNECTEDACCOUNT_ID}}",
+  "components": {
+    "account_onboarding": {
+      "enabled": True,
+      "features": {"external_account_collection": True},
+    },
+  },
+})
+```
+
+```php
+// Set your secret key. Remember to switch to your live secret key in production.
+// See your keys here: https://dashboard.stripe.com/apikeys
+$stripe = new \Stripe\StripeClient('<<YOUR_SECRET_KEY>>');
+
+$accountSession = $stripe->accountSessions->create([
+  'account' => '{{CONNECTEDACCOUNT_ID}}',
+  'components' => [
+    'account_onboarding' => [
+      'enabled' => true,
+      'features' => ['external_account_collection' => true],
+    ],
+  ],
+]);
+```
+
+```java
+// Set your secret key. Remember to switch to your live secret key in production.
+// See your keys here: https://dashboard.stripe.com/apikeys
+Stripe.apiKey = "<<YOUR_SECRET_KEY>>";
+
+AccountSessionCreateParams params =
+  AccountSessionCreateParams.builder()
+    .setAccount("{{CONNECTEDACCOUNT_ID}}")
+    .setComponents(
+      AccountSessionCreateParams.Components.builder()
+        .setAccountOnboarding(
+          AccountSessionCreateParams.Components.AccountOnboarding.builder()
+            .setEnabled(true)
+            .setFeatures(
+              AccountSessionCreateParams.Components.AccountOnboarding.Features.builder()
+                .setExternalAccountCollection(true)
+                .build()
+            )
+            .build()
+        )
+        .build()
+    )
+    .build();
+
+AccountSession accountSession = AccountSession.create(params);
+```
+
+```java
+// Set your secret key. Remember to switch to your live secret key in production.
+// See your keys here: https://dashboard.stripe.com/apikeys
+StripeClient client = new StripeClient("<<YOUR_SECRET_KEY>>");
+
+AccountSessionCreateParams params =
+  AccountSessionCreateParams.builder()
+    .setAccount("{{CONNECTEDACCOUNT_ID}}")
+    .setComponents(
+      AccountSessionCreateParams.Components.builder()
+        .setAccountOnboarding(
+          AccountSessionCreateParams.Components.AccountOnboarding.builder()
+            .setEnabled(true)
+            .setFeatures(
+              AccountSessionCreateParams.Components.AccountOnboarding.Features.builder()
+                .setExternalAccountCollection(true)
+                .build()
+            )
+            .build()
+        )
+        .build()
+    )
+    .build();
+
+// For SDK versions 29.4.0 or lower, remove '.v1()' from the following line.
+AccountSession accountSession = client.v1().accountSessions().create(params);
+```
+
+```node
+// Set your secret key. Remember to switch to your live secret key in production.
+// See your keys here: https://dashboard.stripe.com/apikeys
+const stripe = require('stripe')('<<YOUR_SECRET_KEY>>');
+
+const accountSession = await stripe.accountSessions.cr
