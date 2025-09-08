@@ -1,0 +1,170 @@
+# Supported Connect embedded components
+
+Learn about available embedded components.
+
+Use Connect embedded components to build a custom dashboard for your connected accounts. They’re mobile-optimised and you can [customise them](https://docs.stripe.com/connect/customize-connect-embedded-components.md) to look like your website.
+
+Add embedded components to your page as HTML elements or as React components. Web components are responsive and work on mobile web browsers.
+
+## Onboarding and compliance
+
+Allow connected accounts to onboard, manage account details, and stay compliant.
+
+[Account management](https://docs.stripe.com/connect/supported-embedded-components/account-management.md): Show account details and allow them to be edited.
+
+[Account onboarding](https://docs.stripe.com/connect/supported-embedded-components/account-onboarding.md): Show a localised onboarding form that validates data.
+
+[Notifications banner](https://docs.stripe.com/connect/supported-embedded-components/notification-banner.md): Show a banner that lists required actions for risk interventions and onboarding requirements.
+
+## Payments
+
+Allow connected accounts to view and manage payments, refunds, and disputes.
+
+[Payments](https://docs.stripe.com/connect/supported-embedded-components/payments.md): Show a list of payments with export, refund, and dispute capabilities.
+
+[Payment details](https://docs.stripe.com/connect/supported-embedded-components/payment-details.md): Show details of a given payment and allow connected accounts to manage disputes and perform refunds.
+
+[Disputes for a payment](https://docs.stripe.com/connect/supported-embedded-components/disputes-for-a-payment.md): Allow a connected account to view and manage disputes for a payment.
+
+[Disputes list](https://docs.stripe.com/connect/supported-embedded-components/disputes-list.md): Show a list of disputes and allow your connected accounts to manage them.
+
+[Payment method settings (Preview)](https://docs.stripe.com/connect/supported-embedded-components/payment-method-settings.md): Show a list of payment methods that connected accounts can manage and accept.
+
+## Payouts
+
+Allow connected accounts to view their balance, manage payout destinations, and pay out funds.
+
+[Payouts](https://docs.stripe.com/connect/supported-embedded-components/payouts.md): Show payout and balance information and allow your connected accounts to perform payouts.
+
+[Balances](https://docs.stripe.com/connect/supported-embedded-components/balances.md): Show balance information and allow your connected accounts to perform payouts.
+
+[Payouts list](https://docs.stripe.com/connect/supported-embedded-components/payouts-list.md): Show a filterable list of payouts.
+
+[Payout Details](https://docs.stripe.com/connect/supported-embedded-components/payout-details.md): Show the details of a payout.
+
+[Instant Payouts promotion](https://docs.stripe.com/connect/supported-embedded-components/instant-payouts-promotion.md): Show promotional content to increase awareness and adoption of Instant Payouts.
+
+## Capital
+
+Allow connected accounts to apply for and manage loans.
+
+[Capital financing application (Preview)](https://docs.stripe.com/connect/supported-embedded-components/capital-financing-application.md): Show an end-to-end application flow for Capital financing.
+
+[Capital financing promotion (Preview)](https://docs.stripe.com/connect/supported-embedded-components/capital-financing-promotion.md): Show promotional content about a connected account's Capital financing offer and launch a Capital application.
+
+[Capital financing (Preview)](https://docs.stripe.com/connect/supported-embedded-components/capital-financing.md): Allow a connected account to view and manage their active Capital financing.
+
+## Tax
+
+Allow connected accounts to view and manage tax information.
+
+[Tax registrations](https://docs.stripe.com/connect/supported-embedded-components/tax-registrations.md): Show and manage tax registrations from connected accounts.
+
+[Tax settings](https://docs.stripe.com/connect/supported-embedded-components/tax-settings.md): Allow connected accounts to set up Stripe Tax.
+
+[Export tax transactions (Preview)](https://docs.stripe.com/connect/supported-embedded-components/export-tax-transactions.md): Enable connected account to generate summarised export of tax transactions.
+
+[Tax threshold monitoring (Preview)](https://docs.stripe.com/connect/supported-embedded-components/tax-threshold-monitoring.md): Show sales by tax location and whether taxability thresholds have been reached.
+
+## Treasury and issuing
+
+Allow connected accounts to manage financial accounts and issued cards. [View the integration guide](https://docs.stripe.com/baas/start-integration/integration-guides/embedded-finance.md?integration=embedded)
+
+[Financial account](https://docs.stripe.com/connect/supported-embedded-components/financial-account.md): Show details of a financial account.
+
+[Financial account transactions](https://docs.stripe.com/connect/supported-embedded-components/financial-account-transactions.md): Show a table of all transactions for a financial account.
+
+[Issuing card](https://docs.stripe.com/connect/supported-embedded-components/issuing-card.md): Show an individual issued card.
+
+[Issuing cards list](https://docs.stripe.com/connect/supported-embedded-components/issuing-cards-list.md): Show a table of all issued cards.
+
+## Reporting
+
+Allow connected accounts to view and download reports.
+
+[Documents](https://docs.stripe.com/connect/supported-embedded-components/documents.md): Show a list of documents available for download.
+
+[Reporting chart (Preview)](https://docs.stripe.com/connect/supported-embedded-components/reporting-chart.md): Display a report in chart form.
+
+## Apps
+
+Allow connected accounts to manage payments data in third-party applications. [View the integration guide](https://docs.stripe.com/stripe-apps/embedded-apps.md)
+
+[App install (Preview)](https://docs.stripe.com/connect/supported-embedded-components/app-install.md): Show a button to install an App.
+
+[App viewport (Preview)](https://docs.stripe.com/connect/supported-embedded-components/app-viewport.md): Show a view from an installed App.
+
+## Integration guides
+
+[Accounting integrations](https://docs.stripe.com/stripe-apps/embedded-apps.md): Show third-party accounting software integrations.
+
+[Fully embedded Connect platform integration](https://docs.stripe.com/connect/build-full-embedded-integration.md): Allow your connected accounts to access Stripe Connect features from your own website, without a Stripe hosted dashboard.
+
+[Embedded finance](https://docs.stripe.com/baas/start-integration/integration-guides/embedded-finance.md?integration=embedded): Use prebuilt UI components to embed Issuing and Treasury into your website.
+
+## Preview components
+
+When using preview components, use beta versions of the Stripe SDK and preview versions of the [@stripe/connect-js](https://github.com/stripe/connect-js) and [@stripe/react-connect-js](https://github.com/stripe/react-connect-js) SDKs.
+
+To create an account session with private preview components, use the Stripe beta SDKs:
+
+- [Ruby](https://github.com/stripe/stripe-ruby/#public-preview-sdks) `>=15.5.0-beta.1`
+- [Python](https://github.com/stripe/stripe-python/#public-preview-sdks) `>=12.5.0b1`
+- [PHP](https://github.com/stripe/stripe-php/#public-preview-sdks) `>=17.6.0-beta.1`
+- [Node](https://github.com/stripe/stripe-node/#public-preview-sdks) `>=18.5.0-beta.1`
+- [.NET](https://github.com/stripe/stripe-dotnet#public-preview-sdks) `>=48.5.0-beta.1`
+- [Java](https://github.com/stripe/stripe-java#public-preview-sdks) `>=29.5.0-beta.1`
+- [Go](https://github.com/stripe/stripe-go#public-preview-sdks) `>=82.5.0-beta.1`
+
+Use the client-side libraries for rendering the private preview components:
+
+#### npm
+
+Install the library:
+
+```bash
+npm install --save @stripe/connect-js@preview
+```
+
+If you’re using React in your application:
+
+```bash
+npm install --save @stripe/react-connect-js@preview
+```
+
+#### GitHub
+
+Download the [@stripe/connect-js](https://github.com/stripe/connect-js) and [@stripe/react-connect-js](https://github.com/stripe/react-connect-js) libraries source code directly from GitHub.
+
+### Migrate from the v1 preview to the v2 preview
+
+1. Update your client library.
+   - [Ruby](https://github.com/stripe/stripe-ruby/#public-preview-sdks) `>=15.5.0-beta.1`
+   - [Python](https://github.com/stripe/stripe-python/#public-preview-sdks) `>=12.5.0b1`
+   - [PHP](https://github.com/stripe/stripe-php/#public-preview-sdks) `>=17.6.0-beta.1`
+   - [Node](https://github.com/stripe/stripe-node/#public-preview-sdks) `>=18.5.0-beta.1`
+   - [.NET](https://github.com/stripe/stripe-dotnet#public-preview-sdks) `>=48.5.0-beta.1`
+   - [Java](https://github.com/stripe/stripe-java#public-preview-sdks) `>=29.5.0-beta.1`
+   - [Go](https://github.com/stripe/stripe-go#public-preview-sdks) `>=82.5.0-beta.1`
+1. Update the beta header used from `embedded_connect_beta=v1` to `embedded_connect_beta=v2`.
+1. Continue to use the preview releases of the `@stripe/connect-js` and `@stripe/react-connect-js` npm packages.
+1. Specify the list of `components` to enable as a parameter when creating an [Account Session](https://docs.stripe.com/api/account_sessions/create.md).
+
+### Migrate from the v2 preview to GA
+
+If you’re using a preview component that’s now generally available, follow these steps:
+
+1. Update your client library.
+   - [Ruby](https://github.com/stripe/stripe-ruby) `>=15.4.0`
+   - [Python](https://github.com/stripe/stripe-python) `>=12.4.0`
+   - [PHP](https://github.com/stripe/stripe-php) `>=17.5.0`
+   - [Node](https://github.com/stripe/stripe-node) `>=18.4.0`
+   - [.NET](https://github.com/stripe/stripe-dotnet) `>=48.4.0`
+   - [Java](https://github.com/stripe/stripe-java) `>=29.4.0`
+   - [Go](https://github.com/stripe/stripe-go) `>=82.4.0`
+1. Remove the `embedded_connect_beta` header.
+1. Use the GA releases of the `@stripe/connect-js` and `@stripe/react-connect-js` npm packages.
+
+Use the mobile SDK to embed components natively on iOS or Android.
+
+[Account onboarding](https://docs.stripe.com/connect/supported-embedded-components/account-onboarding.md?platform=ios): Show a localised onboarding form that validates data.
