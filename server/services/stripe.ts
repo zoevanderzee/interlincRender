@@ -107,13 +107,31 @@ export async function updatePaymentStatus(paymentIntentId: string): Promise<stri
 }
 
 /**
- * Creates a Stripe Connect account for a contractor
+ * Creates a Stripe Connect account for a contractor using the new controller properties
+ * Uses the latest Stripe API patterns without top-level type property
  */
 export async function createConnectAccount(contractor: User): Promise<ConnectAccountResponse> {
   try {
-    // Create a connected account for the contractor
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
+    }
+
+    // Create a connected account using controller properties (latest API pattern)
     const account = await stripe.accounts.create({
-      type: 'express',
+      controller: {
+        // Platform controls fee collection - connected account pays fees
+        fees: {
+          payer: 'account' as const
+        },
+        // Stripe handles payment disputes and losses
+        losses: {
+          payments: 'stripe' as const
+        },
+        // Connected account gets full access to Stripe dashboard
+        stripe_dashboard: {
+          type: 'full' as const
+        }
+      },
       country: 'US', // Default to US
       email: contractor.email,
       business_type: 'company',
@@ -132,8 +150,8 @@ export async function createConnectAccount(contractor: User): Promise<ConnectAcc
     // Create an account link for onboarding
     const accountLink = await stripe.accountLinks.create({
       account: account.id,
-      refresh_url: `${process.env.FRONTEND_URL || 'http://localhost:5000'}/contractors/onboarding/refresh`,
-      return_url: `${process.env.FRONTEND_URL || 'http://localhost:5000'}/contractors/onboarding/complete`,
+      refresh_url: `${process.env.FRONTEND_URL || 'http://0.0.0.0:5000'}/contractors/onboarding/refresh`,
+      return_url: `${process.env.FRONTEND_URL || 'http://0.0.0.0:5000'}/contractors/onboarding/complete`,
       type: 'account_onboarding',
     });
 
@@ -314,3 +332,146 @@ export default {
   createBankAccountPaymentMethod,
   processACHPayment
 };
+
+
+/**
+ * Creates a product on behalf of a connected account
+ */
+export async function createConnectProduct(
+  accountId: string, 
+  name: string, 
+  description: string, 
+  priceInCents: number, 
+  currency: string = 'usd'
+) {
+  try {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
+    }
+
+    const product = await stripe.products.create({
+      name: name,
+      description: description,
+      default_price_data: {
+        unit_amount: priceInCents,
+        currency: currency,
+      },
+    }, {
+      stripeAccount: accountId, // Use stripeAccount for the Stripe-Account header
+    });
+
+    return product;
+  } catch (error) {
+    console.error('Error creating Connect product:', error);
+    throw error;
+  }
+}
+
+/**
+ * Retrieves all products for a connected account
+ */
+export async function getConnectProducts(accountId: string) {
+  try {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
+    }
+
+    const products = await stripe.products.list({
+      limit: 100,
+      expand: ['data.default_price'],
+    }, {
+      stripeAccount: accountId,
+    });
+
+    return products;
+  } catch (error) {
+    console.error('Error retrieving Connect products:', error);
+    throw error;
+  }
+}
+
+/**
+ * Creates a checkout session for a connected account with application fee
+ */
+export async function createConnectCheckoutSession(
+  accountId: string,
+  lineItems: Array<{
+    price: string;
+    quantity: number;
+  }>,
+  applicationFeeAmount: number,
+  successUrl: string,
+  cancelUrl: string
+) {
+  try {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      line_items: lineItems,
+      payment_intent_data: {
+        // Application fee for the platform
+        application_fee_amount: applicationFeeAmount,
+      },
+      mode: 'payment',
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+    }, {
+      stripeAccount: accountId,
+    });
+
+    return session;
+  } catch (error) {
+    console.error('Error creating Connect checkout session:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get detailed account status including onboarding completion
+ */
+export async function getConnectAccountDetails(accountId: string) {
+  try {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
+    }
+
+    const account = await stripe.accounts.retrieve(accountId);
+    
+    return {
+      id: account.id,
+      charges_enabled: account.charges_enabled,
+      payouts_enabled: account.payouts_enabled,
+      details_submitted: account.details_submitted,
+      requirements: account.requirements,
+      business_profile: account.business_profile,
+    };
+  } catch (error) {
+    console.error('Error retrieving Connect account details:', error);
+    throw error;
+  }
+}
+
+/**
+ * Create a new account link for re-onboarding
+ */
+export async function createAccountLink(accountId: string, type: string = 'account_onboarding') {
+  try {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
+    }
+
+    const accountLink = await stripe.accountLinks.create({
+      account: accountId,
+      refresh_url: `${process.env.FRONTEND_URL || 'http://0.0.0.0:5000'}/contractors/onboarding/refresh`,
+      return_url: `${process.env.FRONTEND_URL || 'http://0.0.0.0:5000'}/contractors/onboarding/complete`,
+      type: type as any,
+    });
+
+    return accountLink;
+  } catch (error) {
+    console.error('Error creating account link:', error);
+    throw error;
+  }
+}
