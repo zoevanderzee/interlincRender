@@ -248,6 +248,48 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
                 Reports
               </Link>
             </li>
+            {isBusiness && (
+              <li>
+                <Link 
+                  href="/connect-onboarding" 
+                  className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/connect-onboarding") ? "bg-zinc-800 text-white" : "text-white hover:bg-zinc-800"}`}
+                >
+                  <CreditCard className="w-5 h-5 mr-3" /> {/* Using CreditCard icon */}
+                  <span>Interlinc Connect Setup</span>
+                </Link>
+              </li>
+            )}
+            {isBusiness && (
+              <li>
+                <Link 
+                  href="/connect-products" 
+                  className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/connect-products") ? "bg-zinc-800 text-white" : "text-white hover:bg-zinc-800"}`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-3" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M10 13a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"></path>
+                    <path d="M16 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"></path>
+                    <rect x="3" y="7" width="18" height="10" rx="2"></rect>
+                  </svg>
+                  Product Management
+                </Link>
+              </li>
+            )}
+            {isBusiness && (
+              <li>
+                <Link 
+                  href="/connect-demo" 
+                  className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/connect-demo") ? "bg-zinc-800 text-white" : "text-white hover:bg-zinc-800"}`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-3" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M7 17l9.23-5.42"></path>
+                    <path d="M12 19.67v-8.34"></path>
+                    <path d="M7 10.33l9.23 5.43"></path>
+                    <path d="M22 12c0 5.52-4.48 10-10 10S2 17.52 2 12 6.48 2 12 2s10 4.48 10 10z"></path>
+                  </svg>
+                  Integration Guide
+                </Link>
+              </li>
+            )}
           </ul>
         </div>
 
@@ -269,22 +311,7 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
         </div>
 
         {/* Stripe Connect for receiving payments - Added to the expanded sidebar */}
-        {isBusiness && (
-          <div className="px-4 mb-4">
-            <h2 className="text-xs font-semibold text-white uppercase tracking-wider">Payments</h2>
-            <ul className="mt-2 space-y-1">
-              <li>
-                <Link 
-                  href="/connect-onboarding" 
-                  className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/connect-onboarding") ? "bg-zinc-800 text-white" : "text-white hover:bg-zinc-800"}`}
-                >
-                  <CreditCard className="w-5 h-5 mr-3" /> {/* Using CreditCard icon */}
-                  <span>Interlinc Connect</span>
-                </Link>
-              </li>
-            </ul>
-          </div>
-        )}
+        {/* This section is no longer needed here as it's moved to Finance */}
 
         <div className="mt-auto px-4">
           <div className="pt-4 border-t border-zinc-800">
