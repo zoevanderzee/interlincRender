@@ -45,7 +45,7 @@ import { ConnectionRequestsNotification } from "@/components/notifications/Conne
 import WorkRequestRespond from "./pages/work-request-respond";
 import ContractorOnboarding from "@/pages/contractor-onboarding";
 
-import BusinessSetup from "@/pages/business-setup";
+
 
 import AssignContractor from "@/pages/assign-contractor";
 import ProjectDetails from "@/pages/project-details";
@@ -273,9 +273,7 @@ function Router() {
         <ContractorOnboarding />
       </ProtectedRoute>
       
-      <ProtectedRoute path="/business-setup">
-        <BusinessSetup />
-      </ProtectedRoute>
+      
       
       <ProtectedRoute path="/subscribe">
         <Layout>
