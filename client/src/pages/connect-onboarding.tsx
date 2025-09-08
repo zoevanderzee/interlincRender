@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
+import { loadStripe } from '@stripe/stripe-js';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -43,39 +44,7 @@ export default function ConnectOnboarding() {
   const [stripe, setStripe] = useState<any>(null); // State for Stripe instance
   const [error, setError] = useState<string | null>(null); // State for error messages
 
-  // Load Stripe.js script
-  useEffect(() => {
-    // Check if Stripe is already loaded
-    if (window.Stripe) {
-      console.log('Stripe.js already loaded');
-      return;
-    }
-
-    // Check if script is already being loaded
-    const existingScript = document.querySelector('script[src="https://js.stripe.com/v3/"]');
-    if (existingScript) {
-      console.log('Stripe.js script already exists');
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = 'https://js.stripe.com/v3/';
-    script.async = true;
-    script.onload = () => {
-      console.log('Stripe.js loaded successfully');
-    };
-    script.onerror = () => {
-      console.error('Failed to load Stripe.js');
-      setError('Failed to load Stripe.js');
-    };
-    document.head.appendChild(script);
-
-    return () => {
-      // Don't remove script to avoid conflicts
-    };
-  }, []);
-
-  // Initialize Stripe when the script is loaded and public key is available
+  // Load Stripe.js using the official loader
   useEffect(() => {
     const stripePublicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
 
@@ -85,40 +54,20 @@ export default function ConnectOnboarding() {
       return;
     }
 
-    const initStripe = () => {
-      if (window.Stripe && stripePublicKey) {
-        try {
-          const stripeInstance = window.Stripe(stripePublicKey);
+    loadStripe(stripePublicKey)
+      .then((stripeInstance) => {
+        if (stripeInstance) {
           console.log('Stripe initialized successfully');
           console.log('connectEmbeddedComponents available:', typeof stripeInstance.connectEmbeddedComponents);
           setStripe(stripeInstance);
-        } catch (err) {
-          console.error('Error initializing Stripe:', err);
+        } else {
           setError('Failed to initialize Stripe. Please refresh the page.');
         }
-      }
-    };
-
-    // Try immediate initialization
-    if (window.Stripe) {
-      initStripe();
-    } else {
-      // Wait for Stripe to load with progressive backoff
-      let attempts = 0;
-      const maxAttempts = 50; // 5 seconds with 100ms intervals
-
-      const checkStripe = setInterval(() => {
-        attempts++;
-        if (window.Stripe) {
-          clearInterval(checkStripe);
-          initStripe();
-        } else if (attempts >= maxAttempts) {
-          clearInterval(checkStripe);
-          console.error('Stripe failed to load after 5 seconds');
-          setError('Stripe failed to load. Please refresh the page.');
-        }
-      }, 100);
-    }
+      })
+      .catch((err) => {
+        console.error('Error loading Stripe:', err);
+        setError('Failed to load Stripe. Please refresh the page.');
+      });
   }, []);
 
 
@@ -242,7 +191,7 @@ export default function ConnectOnboarding() {
 
             // Mount the component to the container
             if (container) {
-              container.appendChild(accountOnboarding);
+              accountOnboarding.mount(container);
             }
 
             // Handle events
