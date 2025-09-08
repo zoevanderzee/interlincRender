@@ -1,4 +1,3 @@
-
 import Stripe from 'stripe';
 
 // Initialize Stripe with the secret key
@@ -41,8 +40,11 @@ export async function createConnectedAccount(params: CreateConnectedAccountParam
       throw new Error('STRIPE_SECRET_KEY environment variable is required');
     }
 
-    // Create connected account with controller properties (no top-level type)
-    const account = await stripe.accounts.create({
+    // Determine business type: company if businessName provided, individual otherwise
+    const businessType = params.businessName ? 'company' : 'individual';
+
+    // Prepare account data based on business type
+    const accountData: any = {
       controller: {
         // Platform controls fee collection - connected account pays fees
         fees: {
@@ -57,28 +59,36 @@ export async function createConnectedAccount(params: CreateConnectedAccountParam
           type: 'full' as const
         }
       },
-      business_type: params.businessName ? 'company' : 'individual',
+      business_type: businessType,
       country: params.country || 'US',
       email: params.email,
       capabilities: {
         card_payments: { requested: true },
         transfers: { requested: true },
-      },
-      // Add business profile information if provided
-      ...(params.businessName && {
-        business_profile: {
-          name: params.businessName,
-        }
-      }),
-      // Add individual information if provided
-      ...(params.firstName && params.lastName && {
-        individual: {
-          first_name: params.firstName,
-          last_name: params.lastName,
-          email: params.email,
-        }
-      })
-    });
+      }
+    };
+
+    // Add business-specific parameters for company accounts
+    if (businessType === 'company' && params.businessName) {
+      accountData.business_profile = {
+        name: params.businessName,
+      };
+      accountData.company = {
+        name: params.businessName,
+      };
+    }
+
+    // Add individual-specific parameters for individual accounts
+    if (businessType === 'individual' && params.firstName && params.lastName) {
+      accountData.individual = {
+        first_name: params.firstName,
+        last_name: params.lastName,
+        email: params.email,
+      };
+    }
+
+    // Create connected account
+    const account = await stripe.accounts.create(accountData);
 
     console.log(`Created Stripe Connected Account: ${account.id}`);
 
