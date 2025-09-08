@@ -223,20 +223,30 @@ export default function ConnectOnboarding() {
           container.innerHTML = '';
         }
 
-        // Initialize embedded Connect onboarding
+        // Initialize embedded Connect onboarding using the modern API
         try {
-          // For embedded Connect onboarding, we need to use the ConnectedAccountOnboarding object
-          if (stripe.connectedAccountOnboarding) {
-            const connectedAccountOnboarding = stripe.connectedAccountOnboarding({
+          // Use the modern connectEmbeddedComponents API
+          if (stripe.connectEmbeddedComponents) {
+            const stripeConnectInstance = stripe.connectEmbeddedComponents({
               clientSecret: client_secret,
             });
 
-            // Create and mount the onboarding component
-            const onboardingComponent = connectedAccountOnboarding.create('onboarding');
-            onboardingComponent.mount('#onboarding-container');
+            // Create the account onboarding component
+            const accountOnboarding = stripeConnectInstance.create('account_onboarding');
+
+            // Set collection options for upfront onboarding
+            accountOnboarding.setCollectionOptions({
+              fields: 'eventually_due',
+              futureRequirements: 'include',
+            });
+
+            // Mount the component to the container
+            if (container) {
+              accountOnboarding.mount(container);
+            }
 
             // Handle events
-            connectedAccountOnboarding.on('onboarding.completed', () => {
+            accountOnboarding.on('onboarding.completed', () => {
               toast({
                 title: 'Onboarding completed!',
                 description: 'Your account verification is complete.',
@@ -244,7 +254,7 @@ export default function ConnectOnboarding() {
               checkAccountStatus(accountStatus.accountId);
             });
 
-            connectedAccountOnboarding.on('onboarding.exited', () => {
+            accountOnboarding.on('onboarding.exited', () => {
               toast({
                 title: 'Onboarding exited',
                 description: 'You can continue verification later.',
