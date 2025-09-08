@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
@@ -41,6 +40,8 @@ export default function ConnectOnboarding() {
   const [accountStatus, setAccountStatus] = useState<ConnectedAccountStatus | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isLoadingStatus, setIsLoadingStatus] = useState(false);
+  const [stripe, setStripe] = useState<any>(null); // State for Stripe instance
+  const [error, setError] = useState<string | null>(null); // State for error messages
 
   // Load Stripe.js script
   useEffect(() => {
@@ -53,6 +54,22 @@ export default function ConnectOnboarding() {
       document.body.removeChild(script);
     };
   }, []);
+
+  // Initialize Stripe when the script is loaded and public key is available
+  useEffect(() => {
+    const stripePublicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
+
+    if (!stripePublicKey) {
+      console.error('VITE_STRIPE_PUBLIC_KEY environment variable is missing');
+      setError('Stripe configuration is missing. Please contact support.');
+      return;
+    }
+
+    if (window.Stripe && stripePublicKey) {
+      setStripe(window.Stripe(stripePublicKey));
+    }
+  }, []);
+
 
   // Check if user already has a connected account
   useEffect(() => {
@@ -113,7 +130,7 @@ export default function ConnectOnboarding() {
       if (response.ok) {
         const account = await response.json();
         setAccountStatus(account);
-        
+
         toast({
           title: 'Connected account created',
           description: 'Your Stripe Connect account has been created successfully.',
@@ -147,10 +164,9 @@ export default function ConnectOnboarding() {
 
       if (response.ok) {
         const { client_secret } = await response.json();
-        
+
         // Initialize embedded onboarding
-        if (window.Stripe) {
-          const stripe = window.Stripe(process.env.VITE_STRIPE_PUBLISHABLE_KEY);
+        if (stripe && client_secret) { // Use the initialized stripe instance
           const connectedAccountOnboarding = stripe.connectedAccountOnboarding({
             clientSecret: client_secret,
           });
@@ -168,6 +184,13 @@ export default function ConnectOnboarding() {
             // Refresh account status
             checkAccountStatus(accountStatus.accountId);
           });
+        } else {
+            console.error('Stripe not initialized or client_secret missing');
+            toast({
+              title: 'Onboarding Error',
+              description: 'Could not initialize Stripe onboarding. Please try again.',
+              variant: 'destructive'
+            });
         }
       } else {
         const error = await response.json();
@@ -200,6 +223,20 @@ export default function ConnectOnboarding() {
             Set up your payment account to receive payments through our platform.
           </p>
         </div>
+
+        {error && (
+            <Card className="mb-6">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-destructive">
+                        <AlertCircle className="h-5 w-5" />
+                        Configuration Error
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-destructive">{error}</p>
+                </CardContent>
+            </Card>
+        )}
 
         {!accountStatus ? (
           // Create Connected Account Form
@@ -354,12 +391,12 @@ export default function ConnectOnboarding() {
                       {getStatusIcon(accountStatus.detailsSubmitted)}
                       <span>Details Submitted: {accountStatus.detailsSubmitted ? 'Complete' : 'Pending'}</span>
                     </div>
-                    
+
                     <div className={`flex items-center gap-2 ${getStatusColor(accountStatus.chargesEnabled)}`}>
                       {getStatusIcon(accountStatus.chargesEnabled)}
                       <span>Charges Enabled: {accountStatus.chargesEnabled ? 'Yes' : 'No'}</span>
                     </div>
-                    
+
                     <div className={`flex items-center gap-2 ${getStatusColor(accountStatus.payoutsEnabled)}`}>
                       {getStatusIcon(accountStatus.payoutsEnabled)}
                       <span>Payouts Enabled: {accountStatus.payoutsEnabled ? 'Yes' : 'No'}</span>
@@ -378,10 +415,10 @@ export default function ConnectOnboarding() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <Button onClick={startOnboarding} className="w-full">
+                  <Button onClick={startOnboarding} className="w-full" disabled={!stripe}>
                     Start Identity Verification
                   </Button>
-                  
+
                   {/* Embedded onboarding container */}
                   <div id="onboarding-container" className="min-h-[400px] border rounded-lg p-4 bg-background">
                     {/* Stripe embedded onboarding will mount here */}
