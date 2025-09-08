@@ -90,6 +90,7 @@ export default function ConnectOnboarding() {
         try {
           const stripeInstance = window.Stripe(stripePublicKey);
           console.log('Stripe initialized successfully');
+          console.log('connectEmbeddedComponents available:', typeof stripeInstance.connectEmbeddedComponents);
           setStripe(stripeInstance);
         } catch (err) {
           console.error('Error initializing Stripe:', err);
@@ -257,7 +258,7 @@ export default function ConnectOnboarding() {
 
         } catch (embeddedError) {
           console.error('Embedded onboarding not available, using hosted flow:', embeddedError);
-          
+
           // Use hosted onboarding link as fallback
           const linkResponse = await fetch(`/api/stripe-connect/accounts/${accountStatus.accountId}/onboarding-link`, {
             method: 'POST',
@@ -268,10 +269,10 @@ export default function ConnectOnboarding() {
 
           if (linkResponse.ok) {
             const { onboardingUrl } = await linkResponse.json();
-            
+
             // Show in same window instead of popup for better UX
             window.location.href = onboardingUrl;
-            
+
             toast({
               title: 'Redirecting to verification',
               description: 'Complete your identity verification with Stripe.',

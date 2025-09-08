@@ -136,6 +136,12 @@ export async function createAccountSession(accountId: string): Promise<{ client_
         account_onboarding: {
           enabled: true,
         },
+        account_management: {
+          enabled: true,
+        },
+        notification_banner: {
+          enabled: true,
+        },
       },
     });
 
