@@ -32,7 +32,7 @@ import StripeTestSimple from "@/pages/stripe-test-simple";
 import StripeCheckout from "@/pages/stripe-checkout";
 import PaymentSimulator from "@/pages/payment-simulator";
 import PayContractor from "@/pages/pay-contractor";
-import Wallet from "@/pages/wallet";
+
 import Layout from "@/components/layout/Layout";
 import AuthPage from "@/pages/auth";
 import VerifyEmailPage from "@/pages/verify-email";
@@ -44,9 +44,9 @@ import { ConnectionRequestsNotification } from "@/components/notifications/Conne
 // Use correct import path to match the file location
 import WorkRequestRespond from "./pages/work-request-respond";
 import ContractorOnboarding from "@/pages/contractor-onboarding";
-import ContractorPaymentSetup from "@/pages/contractor-payment-setup";
+
 import BusinessSetup from "@/pages/business-setup";
-import PaymentSetup from "@/pages/payment-setup";
+
 import AssignContractor from "@/pages/assign-contractor";
 import ProjectDetails from "@/pages/project-details";
 
@@ -227,17 +227,9 @@ function Router() {
         </Layout>
       </ProtectedRoute>
       
-      <ProtectedRoute path="/contractor-payment-setup">
-        <Layout>
-          <ContractorPaymentSetup />
-        </Layout>
-      </ProtectedRoute>
       
-      <ProtectedRoute path="/payment-setup">
-        <Layout>
-          <PaymentSetup />
-        </Layout>
-      </ProtectedRoute>
+      
+      
       
       <ProtectedRoute path="/payments">
         <Layout>
@@ -245,11 +237,7 @@ function Router() {
         </Layout>
       </ProtectedRoute>
       
-      <ProtectedRoute path="/wallet">
-        <Layout>
-          <Wallet />
-        </Layout>
-      </ProtectedRoute>
+      
       
       <ProtectedRoute path="/pay-contractor/:contractorId?">
         <Layout>

@@ -217,37 +217,6 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
         <div className="px-4 mb-4">
           <h2 className="text-xs font-semibold text-white uppercase tracking-wider">Finance</h2>
           <ul className="mt-2 space-y-1">
-            {!isContractor && (
-              <li>
-                <Link 
-                  href="/wallet" 
-                  className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/wallet") ? "bg-zinc-800 text-white" : "text-white hover:bg-zinc-800"}`}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-3" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                    <line x1="8" y1="21" x2="16" y2="21"></line>
-                    <line x1="12" y1="17" x2="12" y2="21"></line>
-                  </svg>
-                  Wallet
-                </Link>
-              </li>
-            )}
-            
-            {isContractor && (
-              <li>
-                <Link 
-                  href="/payment-setup" 
-                  className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/payment-setup") ? "bg-zinc-800 text-white" : "text-white hover:bg-zinc-800"}`}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-3" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                    <line x1="8" y1="21" x2="16" y2="21"></line>
-                    <line x1="12" y1="17" x2="12" y2="21"></line>
-                  </svg>
-                  Payment Setup
-                </Link>
-              </li>
-            )}
             <li>
               <Link 
                 href="/payments" 
