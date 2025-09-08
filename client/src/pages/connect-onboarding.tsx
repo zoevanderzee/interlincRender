@@ -45,13 +45,37 @@ export default function ConnectOnboarding() {
 
   // Load Stripe.js script
   useEffect(() => {
+    // Check if Stripe is already loaded
+    if (window.Stripe) {
+      console.log('Stripe.js already loaded');
+      return;
+    }
+
+    // Check if script is already being loaded
+    const existingScript = document.querySelector('script[src="https://js.stripe.com/v3/"]');
+    if (existingScript) {
+      console.log('Stripe.js script already exists');
+      return;
+    }
+
     const script = document.createElement('script');
     script.src = 'https://js.stripe.com/v3/';
     script.async = true;
-    document.body.appendChild(script);
+    script.onload = () => {
+      console.log('Stripe.js loaded successfully');
+    };
+    script.onerror = () => {
+      console.error('Failed to load Stripe.js');
+      setError('Failed to load Stripe.js');
+    };
+    document.head.appendChild(script);
 
+    // Don't remove the script on cleanup to avoid conflicts
     return () => {
-      document.body.removeChild(script);
+      // Script removal commented out to prevent conflicts
+      // if (document.head.contains(script)) {
+      //   document.head.removeChild(script);
+      // }
     };
   }, []);
 
@@ -65,8 +89,47 @@ export default function ConnectOnboarding() {
       return;
     }
 
-    if (window.Stripe && stripePublicKey) {
-      setStripe(window.Stripe(stripePublicKey));
+    const initStripe = () => {
+      if (window.Stripe && stripePublicKey) {
+        try {
+          const stripeInstance = window.Stripe(stripePublicKey);
+          console.log('Stripe initialized successfully');
+          console.log('connectedAccountOnboarding available:', typeof stripeInstance.connectedAccountOnboarding);
+
+          // Verify that the embedded components are available
+          if (typeof stripeInstance.connectedAccountOnboarding === 'function') {
+            console.log('Embedded onboarding is available');
+            setStripe(stripeInstance);
+          } else {
+            console.warn('Embedded onboarding not available, will use fallback');
+            setStripe(stripeInstance); // Still set stripe for fallback
+          }
+        } catch (err) {
+          console.error('Error initializing Stripe:', err);
+          setError('Failed to initialize Stripe. Please refresh the page.');
+        }
+      }
+    };
+
+    // Try immediate initialization
+    if (window.Stripe) {
+      initStripe();
+    } else {
+      // Wait for Stripe to load with progressive backoff
+      let attempts = 0;
+      const maxAttempts = 50; // 5 seconds with 100ms intervals
+
+      const checkStripe = setInterval(() => {
+        attempts++;
+        if (window.Stripe) {
+          clearInterval(checkStripe);
+          initStripe();
+        } else if (attempts >= maxAttempts) {
+          clearInterval(checkStripe);
+          console.error('Stripe failed to load after 5 seconds');
+          setError('Stripe failed to load. Please refresh the page.');
+        }
+      }, 100);
     }
   }, []);
 
@@ -166,24 +229,96 @@ export default function ConnectOnboarding() {
         const { client_secret } = await response.json();
 
         // Initialize embedded onboarding
-        if (stripe && client_secret) { // Use the initialized stripe instance
-          const connectedAccountOnboarding = stripe.connectedAccountOnboarding({
-            clientSecret: client_secret,
-          });
+        if (stripe && client_secret) {
+          try {
+            // Clear any existing content in the container
+            const container = document.getElementById('onboarding-container');
+            if (container) {
+              container.innerHTML = '<div class="text-center py-4">Loading identity verification...</div>';
+            }
 
-          // Mount the embedded component
-          const onboardingComponent = connectedAccountOnboarding.create('onboarding');
-          onboardingComponent.mount('#onboarding-container');
+            // Check if connectedAccountOnboarding is available
+            if (typeof stripe.connectedAccountOnboarding !== 'function') {
+              throw new Error('connectedAccountOnboarding is not available in this Stripe.js version');
+            }
 
-          // Handle onboarding completion
-          connectedAccountOnboarding.on('onboarding_completed', () => {
-            toast({
-              title: 'Onboarding completed!',
-              description: 'Your account is now set up.',
+            console.log('Creating embedded onboarding with client secret:', client_secret.substring(0, 20) + '...');
+
+            const connectedAccountOnboarding = stripe.connectedAccountOnboarding({
+              clientSecret: client_secret,
             });
-            // Refresh account status
-            checkAccountStatus(accountStatus.accountId);
-          });
+
+            console.log('Embedded onboarding instance created');
+
+            // Create and mount the embedded component
+            const onboardingComponent = connectedAccountOnboarding.create('onboarding');
+            console.log('Onboarding component created, mounting...');
+
+            onboardingComponent.mount('#onboarding-container');
+            console.log('Onboarding component mounted successfully');
+
+            // Handle onboarding completion
+            connectedAccountOnboarding.on('onboarding_completed', () => {
+              console.log('Onboarding completed event received');
+              toast({
+                title: 'Identity verification completed!',
+                description: 'Your account is now set up and ready to receive payments.',
+              });
+              // Refresh account status
+              checkAccountStatus(accountStatus.accountId);
+            });
+
+            // Handle onboarding exit
+            connectedAccountOnboarding.on('onboarding_exited', () => {
+              console.log('Onboarding exited event received');
+              toast({
+                title: 'Verification paused',
+                description: 'You can complete your verification anytime by returning to this page.',
+              });
+            });
+
+            toast({
+              title: 'Identity verification started',
+              description: 'Please complete the verification process below.',
+            });
+
+          } catch (embeddedError) {
+            console.error('Embedded onboarding error:', embeddedError);
+
+            // Clear the container and show fallback message
+            const container = document.getElementById('onboarding-container');
+            if (container) {
+              container.innerHTML = '<div class="text-center py-4 text-muted-foreground">Embedded verification unavailable, using hosted flow...</div>';
+            }
+
+            // Fallback: Use hosted onboarding link
+            try {
+              const linkResponse = await fetch(`/api/stripe-connect/accounts/${accountStatus.accountId}/onboarding-link`, {
+                method: 'POST',
+                headers: {
+                  'X-User-ID': user?.id?.toString() || '',
+                },
+              });
+
+              if (linkResponse.ok) {
+                const { onboardingUrl } = await linkResponse.json();
+                window.open(onboardingUrl, '_blank');
+                toast({
+                  title: 'Identity verification started',
+                  description: 'Complete your verification in the new window.',
+                });
+              } else {
+                throw new Error('Failed to create onboarding link');
+              }
+            } catch (linkError) {
+              console.error('Fallback onboarding link error:', linkError);
+              toast({
+                title: 'Verification Error',
+                description: 'Could not start verification flow. Please try refreshing the page.',
+                variant: 'destructive'
+              });
+            }
+          }
         } else {
             console.error('Stripe not initialized or client_secret missing');
             toast({
@@ -440,8 +575,8 @@ export default function ConnectOnboarding() {
                     <Button onClick={() => navigate('/connect-products')} variant="default">
                       Manage Products
                     </Button>
-                    <Button 
-                      onClick={() => checkAccountStatus(accountStatus.accountId)} 
+                    <Button
+                      onClick={() => checkAccountStatus(accountStatus.accountId)}
                       variant="outline"
                     >
                       Refresh Status
