@@ -46,10 +46,10 @@ import WorkRequestRespond from "./pages/work-request-respond";
 import ContractorOnboarding from "@/pages/contractor-onboarding";
 
 // Stripe Connect Imports
-import ConnectOnboarding from "@/pages/stripe-connect/ConnectOnboarding";
-import ConnectProducts from "@/pages/stripe-connect/ConnectProducts";
-import ConnectDemo from "@/pages/stripe-connect/ConnectDemo";
-import Storefront from "@/pages/stripe-connect/Storefront";
+import ConnectOnboarding from "@/pages/connect-onboarding";
+import ConnectProducts from "@/pages/connect-products";
+import ConnectDemo from "@/pages/connect-demo";
+import Storefront from "@/pages/storefront";
 
 
 import AssignContractor from "@/pages/assign-contractor";
