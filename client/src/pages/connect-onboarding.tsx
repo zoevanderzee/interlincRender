@@ -218,7 +218,7 @@ export default function ConnectOnboarding() {
     if (!accountStatus?.accountId) return;
 
     try {
-      const response = await fetch(`/api/stripe-connect/accounts/${accountStatus.accountId}/onboarding-session`, {
+      const response = await fetch(`/api/stripe-connect/accounts/${accountStatus.accountId}/onboarding-link`, {
         method: 'POST',
         headers: {
           'X-User-ID': user?.id?.toString() || '',
@@ -226,107 +226,12 @@ export default function ConnectOnboarding() {
       });
 
       if (response.ok) {
-        const { client_secret } = await response.json();
-
-        // Initialize embedded onboarding
-        if (stripe && client_secret) {
-          try {
-            // Clear any existing content in the container
-            const container = document.getElementById('onboarding-container');
-            if (container) {
-              container.innerHTML = '<div class="text-center py-4">Loading identity verification...</div>';
-            }
-
-            // Check if connectedAccountOnboarding is available
-            if (typeof stripe.connectedAccountOnboarding !== 'function') {
-              throw new Error('connectedAccountOnboarding is not available in this Stripe.js version');
-            }
-
-            console.log('Creating embedded onboarding with client secret:', client_secret.substring(0, 20) + '...');
-
-            const connectedAccountOnboarding = stripe.connectedAccountOnboarding({
-              clientSecret: client_secret,
-            });
-
-            console.log('Embedded onboarding instance created');
-
-            // Create and mount the embedded component
-            const onboardingComponent = connectedAccountOnboarding.create('onboarding');
-            console.log('Onboarding component created, mounting...');
-
-            onboardingComponent.mount('#onboarding-container');
-            console.log('Onboarding component mounted successfully');
-
-            // Handle onboarding completion
-            connectedAccountOnboarding.on('onboarding_completed', () => {
-              console.log('Onboarding completed event received');
-              toast({
-                title: 'Identity verification completed!',
-                description: 'Your account is now set up and ready to receive payments.',
-              });
-              // Refresh account status
-              checkAccountStatus(accountStatus.accountId);
-            });
-
-            // Handle onboarding exit
-            connectedAccountOnboarding.on('onboarding_exited', () => {
-              console.log('Onboarding exited event received');
-              toast({
-                title: 'Verification paused',
-                description: 'You can complete your verification anytime by returning to this page.',
-              });
-            });
-
-            toast({
-              title: 'Identity verification started',
-              description: 'Please complete the verification process below.',
-            });
-
-          } catch (embeddedError) {
-            console.error('Embedded onboarding error:', embeddedError);
-
-            // Clear the container and show fallback message
-            const container = document.getElementById('onboarding-container');
-            if (container) {
-              container.innerHTML = '<div class="text-center py-4 text-muted-foreground">Embedded verification unavailable, using hosted flow...</div>';
-            }
-
-            // Fallback: Use hosted onboarding link
-            try {
-              const linkResponse = await fetch(`/api/stripe-connect/accounts/${accountStatus.accountId}/onboarding-link`, {
-                method: 'POST',
-                headers: {
-                  'X-User-ID': user?.id?.toString() || '',
-                },
-              });
-
-              if (linkResponse.ok) {
-                const { onboardingUrl } = await linkResponse.json();
-                window.open(onboardingUrl, '_blank');
-                toast({
-                  title: 'Identity verification started',
-                  description: 'Complete your verification in the new window.',
-                });
-              } else {
-                throw new Error('Failed to create onboarding link');
-              }
-            } catch (linkError) {
-              console.error('Fallback onboarding link error:', linkError);
-              toast({
-                title: 'Verification Error',
-                description: 'Could not start verification flow. Please try refreshing the page.',
-                variant: 'destructive'
-              });
-            }
-          }
-        } else {
-            console.error('Stripe not initialized or client_secret missing');
-            toast({
-              title: 'Onboarding Error',
-              description: 'Could not initialize Stripe onboarding. Please try again.',
-              variant: 'destructive'
-            });
-        }
+        const { onboardingUrl } = await response.json();
+        window.open(onboardingUrl, '_blank');
+        toast({
+          title: 'Identity verification started',
+          description: 'Complete your verification in the secure Stripe window.',
+        });
       } else {
         const error = await response.json();
         throw new Error(error.message);
@@ -550,13 +455,14 @@ export default function ConnectOnboarding() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <Button onClick={startOnboarding} className="w-full" disabled={!stripe}>
+                  <Button onClick={startOnboarding} className="w-full">
                     Start Identity Verification
                   </Button>
 
-                  {/* Embedded onboarding container */}
-                  <div id="onboarding-container" className="min-h-[400px] border rounded-lg p-4 bg-background">
-                    {/* Stripe embedded onboarding will mount here */}
+                  <div className="p-4 bg-muted rounded-lg text-sm text-muted-foreground">
+                    <p>✓ Secure verification handled by Stripe</p>
+                    <p>✓ Industry-standard identity verification</p>
+                    <p>✓ Complete in a few minutes</p>
                   </div>
                 </CardContent>
               </Card>
