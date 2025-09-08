@@ -2464,6 +2464,234 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Stripe Connect integration routes
+
+  // Create a connected account for a user (contractor/business)
+  app.post(`${apiRouter}/stripe-connect/accounts`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { email, firstName, lastName, businessName, country } = req.body;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      // Import the service dynamically to avoid circular dependencies
+      const stripeConnectService = await import('./services/stripe-connect');
+
+      // Create the connected account
+      const account = await stripeConnectService.createConnectedAccount({
+        email,
+        firstName,
+        lastName,
+        businessName,
+        country
+      });
+
+      // Update user with connected account ID
+      await storage.updateUser(userId, { 
+        stripeConnectAccountId: account.accountId 
+      });
+
+      res.json({
+        accountId: account.accountId,
+        chargesEnabled: account.chargesEnabled,
+        payoutsEnabled: account.payoutsEnabled,
+        detailsSubmitted: account.detailsSubmitted
+      });
+    } catch (error: any) {
+      console.error('Error creating connected account:', error);
+      res.status(500).json({ 
+        message: "Error creating connected account",
+        error: error.message 
+      });
+    }
+  });
+
+  // Create onboarding link for connected account
+  app.post(`${apiRouter}/stripe-connect/accounts/:accountId/onboarding-link`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { accountId } = req.params;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Verify the user owns this connected account
+      const user = await storage.getUser(userId);
+      if (!user || user.stripeConnectAccountId !== accountId) {
+        return res.status(403).json({ message: "Access denied to this connected account" });
+      }
+
+      const stripeConnectService = await import('./services/stripe-connect');
+
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const refreshUrl = `${baseUrl}/stripe-connect/onboarding-refresh?account=${accountId}`;
+      const returnUrl = `${baseUrl}/stripe-connect/onboarding-complete?account=${accountId}`;
+
+      const onboardingUrl = await stripeConnectService.createAccountLink(
+        accountId,
+        refreshUrl,
+        returnUrl
+      );
+
+      res.json({ onboardingUrl });
+    } catch (error: any) {
+      console.error('Error creating onboarding link:', error);
+      res.status(500).json({ 
+        message: "Error creating onboarding link",
+        error: error.message 
+      });
+    }
+  });
+
+  // Get connected account status
+  app.get(`${apiRouter}/stripe-connect/accounts/:accountId/status`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { accountId } = req.params;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Verify the user owns this connected account
+      const user = await storage.getUser(userId);
+      if (!user || user.stripeConnectAccountId !== accountId) {
+        return res.status(403).json({ message: "Access denied to this connected account" });
+      }
+
+      const stripeConnectService = await import('./services/stripe-connect');
+      const status = await stripeConnectService.getAccountStatus(accountId);
+
+      res.json(status);
+    } catch (error: any) {
+      console.error('Error getting account status:', error);
+      res.status(500).json({ 
+        message: "Error getting account status",
+        error: error.message 
+      });
+    }
+  });
+
+  // Create a product for connected account
+  app.post(`${apiRouter}/stripe-connect/accounts/:accountId/products`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { accountId } = req.params;
+      const { name, description, priceInCents, currency } = req.body;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Verify the user owns this connected account
+      const user = await storage.getUser(userId);
+      if (!user || user.stripeConnectAccountId !== accountId) {
+        return res.status(403).json({ message: "Access denied to this connected account" });
+      }
+
+      if (!name || !priceInCents || !currency) {
+        return res.status(400).json({ 
+          message: "Product name, price, and currency are required" 
+        });
+      }
+
+      const stripeConnectService = await import('./services/stripe-connect');
+      const product = await stripeConnectService.createProduct(accountId, {
+        name,
+        description,
+        priceInCents: parseInt(priceInCents),
+        currency
+      });
+
+      res.json({
+        id: product.id,
+        name: product.name,
+        description: product.description,
+        defaultPrice: product.default_price,
+        active: product.active
+      });
+    } catch (error: any) {
+      console.error('Error creating product:', error);
+      res.status(500).json({ 
+        message: "Error creating product",
+        error: error.message 
+      });
+    }
+  });
+
+  // List products for connected account
+  app.get(`${apiRouter}/stripe-connect/accounts/:accountId/products`, async (req: Request, res: Response) => {
+    try {
+      const { accountId } = req.params;
+
+      const stripeConnectService = await import('./services/stripe-connect');
+      const products = await stripeConnectService.listProducts(accountId);
+
+      res.json(products.map(product => ({
+        id: product.id,
+        name: product.name,
+        description: product.description,
+        defaultPrice: product.default_price,
+        active: product.active,
+        images: product.images
+      })));
+    } catch (error: any) {
+      console.error('Error listing products:', error);
+      res.status(500).json({ 
+        message: "Error listing products",
+        error: error.message 
+      });
+    }
+  });
+
+  // Create checkout session for direct charge
+  app.post(`${apiRouter}/stripe-connect/accounts/:accountId/checkout`, async (req: Request, res: Response) => {
+    try {
+      const { accountId } = req.params;
+      const { priceId, quantity = 1, applicationFeeAmount } = req.body;
+
+      if (!priceId) {
+        return res.status(400).json({ message: "Price ID is required" });
+      }
+
+      const stripeConnectService = await import('./services/stripe-connect');
+
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const successUrl = `${baseUrl}/stripe-connect/success?session_id={CHECKOUT_SESSION_ID}&account=${accountId}`;
+      const cancelUrl = `${baseUrl}/stripe-connect/storefront/${accountId}`;
+
+      // Default application fee of 3% if not specified
+      const feeAmount = applicationFeeAmount || Math.round(quantity * 300); // 3% fee example
+
+      const session = await stripeConnectService.createCheckoutSession(
+        accountId,
+        priceId,
+        quantity,
+        feeAmount,
+        successUrl,
+        cancelUrl
+      );
+
+      res.json({ 
+        checkoutUrl: session.url,
+        sessionId: session.id 
+      });
+    } catch (error: any) {
+      console.error('Error creating checkout session:', error);
+      res.status(500).json({ 
+        message: "Error creating checkout session",
+        error: error.message 
+      });
+    }
+  });
+
   // Stripe integration routes
 
   // Create payment intent for contractor payment

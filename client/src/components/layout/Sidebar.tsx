@@ -1,6 +1,11 @@
 import { Link, useLocation } from "wouter";
 import logoImage from "../../assets/CD_icon_light@2x.png"; // Will keep using the same image file
 import { useAuth } from "@/hooks/use-auth";
+import { ChevronUp, Home, Settings, Users, FileText, BarChart3, HelpCircle, Bell, User, UserPlus, DollarSign, Briefcase, Calculator, CreditCard } from "lucide-react"; // Added CreditCard import
+
+// Assuming SidebarMenuButton and other necessary components/types are defined elsewhere or implicitly available
+// For the sake of this example, we'll assume they are available. If not, they'd need to be imported.
+// For example: import SidebarMenuButton from './SidebarMenuButton';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -13,6 +18,7 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
   const [location] = useLocation();
   const { user } = useAuth();
   const isContractor = user?.role === "contractor";
+  const isBusiness = user?.role === "business"; // Added check for business role
 
   // Check if a nav link is active
   const isActive = (path: string) => {
@@ -26,7 +32,7 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
         <div className="flex justify-center py-4 border-b border-zinc-800">
           <img src={logoImage} alt="InterLinc Logo" className="h-8" />
         </div>
-        
+
         <nav className="py-4 flex flex-col h-full">
           <ul className="space-y-4">
             <li className="relative group">
@@ -75,7 +81,7 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
                 {isContractor ? "Companies" : "Contractors"}
               </div>
             </li>
-            
+
             <li className="relative group">
               <div className={`flex justify-center px-2 py-3 rounded-md ${isActive("/connections") ? "text-accent-600 bg-accent-50" : "text-primary-600 hover:bg-primary-50"}`}>
                 <Link href="/connections">
@@ -107,7 +113,7 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
               </div>
             </li>
           </ul>
-          
+
           <div className="mt-auto">
             <button 
               onClick={toggleSidebar}
@@ -133,7 +139,7 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
         <div className="flex items-center">
           <img src={logoImage} alt="InterLinc Logo" className="h-8" />
         </div>
-        
+
         <button 
           onClick={isMobileOpen ? closeMobileMenu : toggleSidebar}
           className="text-white hover:text-gray-400"
@@ -144,7 +150,7 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
           </svg>
         </button>
       </div>
-      
+
       <nav className="py-4 flex flex-col h-full">
         <div className="px-4 mb-4">
           <h2 className="text-xs font-semibold text-white uppercase tracking-wider">Core</h2>
@@ -192,7 +198,7 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
                 {isContractor ? "Companies" : "Contractors"}
               </Link>
             </li>
-            
+
             {isContractor && (
               <li>
                 <Link 
@@ -213,7 +219,7 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
             )}
           </ul>
         </div>
-        
+
         <div className="px-4 mb-4">
           <h2 className="text-xs font-semibold text-white uppercase tracking-wider">Finance</h2>
           <ul className="mt-2 space-y-1">
@@ -244,7 +250,7 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
             </li>
           </ul>
         </div>
-        
+
         <div className="px-4 mb-4">
           <h2 className="text-xs font-semibold text-white uppercase tracking-wider">Documents</h2>
           <ul className="mt-2 space-y-1">
@@ -261,7 +267,25 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
             </li>
           </ul>
         </div>
-        
+
+        {/* Stripe Connect for receiving payments - Added to the expanded sidebar */}
+        {isBusiness && (
+          <div className="px-4 mb-4">
+            <h2 className="text-xs font-semibold text-white uppercase tracking-wider">Payments</h2>
+            <ul className="mt-2 space-y-1">
+              <li>
+                <Link 
+                  href="/connect-onboarding" 
+                  className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/connect-onboarding") ? "bg-zinc-800 text-white" : "text-white hover:bg-zinc-800"}`}
+                >
+                  <CreditCard className="w-5 h-5 mr-3" /> {/* Using CreditCard icon */}
+                  <span>Stripe Connect</span>
+                </Link>
+              </li>
+            </ul>
+          </div>
+        )}
+
         <div className="mt-auto px-4">
           <div className="pt-4 border-t border-zinc-800">
             <Link 
