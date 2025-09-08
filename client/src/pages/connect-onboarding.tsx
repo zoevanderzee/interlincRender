@@ -70,12 +70,8 @@ export default function ConnectOnboarding() {
     };
     document.head.appendChild(script);
 
-    // Don't remove the script on cleanup to avoid conflicts
     return () => {
-      // Script removal commented out to prevent conflicts
-      // if (document.head.contains(script)) {
-      //   document.head.removeChild(script);
-      // }
+      // Don't remove script to avoid conflicts
     };
   }, []);
 
@@ -94,16 +90,7 @@ export default function ConnectOnboarding() {
         try {
           const stripeInstance = window.Stripe(stripePublicKey);
           console.log('Stripe initialized successfully');
-          console.log('connectedAccountOnboarding available:', typeof stripeInstance.connectedAccountOnboarding);
-
-          // Verify that the embedded components are available
-          if (typeof stripeInstance.connectedAccountOnboarding === 'function') {
-            console.log('Embedded onboarding is available');
-            setStripe(stripeInstance);
-          } else {
-            console.warn('Embedded onboarding not available, will use fallback');
-            setStripe(stripeInstance); // Still set stripe for fallback
-          }
+          setStripe(stripeInstance);
         } catch (err) {
           console.error('Error initializing Stripe:', err);
           setError('Failed to initialize Stripe. Please refresh the page.');
@@ -215,25 +202,70 @@ export default function ConnectOnboarding() {
   };
 
   const startOnboarding = async () => {
-    if (!accountStatus?.accountId) return;
+    if (!accountStatus?.accountId || !stripe) return;
 
     try {
-      const response = await fetch(`/api/stripe-connect/accounts/${accountStatus.accountId}/onboarding-link`, {
+      // First, create an account session for embedded onboarding
+      const sessionResponse = await fetch(`/api/stripe-connect/accounts/${accountStatus.accountId}/onboarding-session`, {
         method: 'POST',
         headers: {
           'X-User-ID': user?.id?.toString() || '',
         },
       });
 
-      if (response.ok) {
-        const { onboardingUrl } = await response.json();
-        window.open(onboardingUrl, '_blank');
-        toast({
-          title: 'Identity verification started',
-          description: 'Complete your verification in the secure Stripe window.',
-        });
+      if (sessionResponse.ok) {
+        const { client_secret } = await sessionResponse.json();
+
+        // Clear any existing content
+        const container = document.getElementById('onboarding-container');
+        if (container) {
+          container.innerHTML = '';
+        }
+
+        // Initialize embedded onboarding with account session
+        try {
+          const connectedAccountOnboarding = stripe.connectedAccountOnboarding({
+            clientSecret: client_secret,
+          });
+
+          // Mount the embedded component
+          const onboardingComponent = connectedAccountOnboarding.create('onboarding');
+          onboardingComponent.mount('#onboarding-container');
+
+          // Handle onboarding completion
+          connectedAccountOnboarding.on('onboarding_completed', () => {
+            toast({
+              title: 'Onboarding completed!',
+              description: 'Your account is now set up.',
+            });
+            // Refresh account status
+            checkAccountStatus(accountStatus.accountId);
+          });
+
+        } catch (embeddedError) {
+          console.error('Embedded onboarding error:', embeddedError);
+          
+          // Fallback: Use hosted onboarding link
+          const linkResponse = await fetch(`/api/stripe-connect/accounts/${accountStatus.accountId}/onboarding-link`, {
+            method: 'POST',
+            headers: {
+              'X-User-ID': user?.id?.toString() || '',
+            },
+          });
+
+          if (linkResponse.ok) {
+            const { onboardingUrl } = await linkResponse.json();
+            window.open(onboardingUrl, '_blank');
+            toast({
+              title: 'Identity verification started',
+              description: 'Complete your verification in the secure Stripe window.',
+            });
+          } else {
+            throw new Error('Failed to create onboarding link');
+          }
+        }
       } else {
-        const error = await response.json();
+        const error = await sessionResponse.json();
         throw new Error(error.message);
       }
     } catch (error) {
@@ -458,6 +490,11 @@ export default function ConnectOnboarding() {
                   <Button onClick={startOnboarding} className="w-full">
                     Start Identity Verification
                   </Button>
+
+                  {/* Embedded onboarding container */}
+                  <div id="onboarding-container" className="min-h-[400px] border rounded-lg p-4">
+                    {/* Stripe embedded onboarding component will mount here */}
+                  </div>
 
                   <div className="p-4 bg-muted rounded-lg text-sm text-muted-foreground">
                     <p>✓ Secure verification handled by Stripe</p>
