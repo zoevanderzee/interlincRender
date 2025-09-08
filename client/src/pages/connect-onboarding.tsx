@@ -232,7 +232,7 @@ export default function ConnectOnboarding() {
             });
 
             // Create the account onboarding component
-            const accountOnboarding = stripeConnectInstance.create('account_onboarding');
+            const accountOnboarding = stripeConnectInstance.create('account-onboarding');
 
             // Set collection options for upfront onboarding
             accountOnboarding.setCollectionOptions({
@@ -242,7 +242,7 @@ export default function ConnectOnboarding() {
 
             // Mount the component to the container
             if (container) {
-              accountOnboarding.mount(container);
+              container.appendChild(accountOnboarding);
             }
 
             // Handle events
