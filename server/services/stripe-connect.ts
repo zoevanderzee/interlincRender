@@ -57,6 +57,7 @@ export async function createConnectedAccount(params: CreateConnectedAccountParam
           type: 'full' as const
         }
       },
+      business_type: params.businessName ? 'company' : 'individual',
       country: params.country || 'US',
       email: params.email,
       capabilities: {
