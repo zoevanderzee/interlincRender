@@ -1,0 +1,431 @@
+# Embedded onboarding
+
+Provide your connected accounts a localised onboarding form that validates data.
+
+Embedded onboarding is a themeable onboarding UI with limited Stripe branding. You embed the [Account onboarding component](https://docs.stripe.com/connect/supported-embedded-components/account-onboarding.md) in your platform application, and your connected accounts interact with the embedded component without leaving your application.
+
+# Accounts v2
+
+> This is a Accounts v2 for when accounts-namespace is v2. View the full page at https://docs.stripe.com/connect/embedded-onboarding?accounts-namespace=v2.
+
+Accounts v2 don’t support [networked onboarding](https://docs.stripe.com/connect/networked-onboarding.md). Owners of multiple Stripe accounts can’t automatically share business information between them.
+
+Embedded onboarding uses the [Accounts v2 API](https://docs.stripe.com/api/v2/core/accounts.md?api-version=preview) to read the requirements and generate an onboarding form with data validation, localised for all Stripe-supported countries. In addition, embedded onboarding handles all:
+
+- Business types
+- Configurations of company representatives
+- Verification document uploading
+- Identity verification and statuses
+- International bank accounts
+- Error states
+
+This demo lets you explore the embedded onboarding component’s interface:
+
+## Create an account and pre-fill information [Server-side]
+
+For each connected account, use the Accounts v2 API to [create an Account object](https://docs.stripe.com/api/v2/core/accounts/create.md?api-version=2025-03-31.preview) with the `merchant` configuration. If you want to charge your connected accounts using subscriptions, also assign the `customer` configuration. To assign a configuration, simply include it in a create or update call. You don’t have to request any of its capabilities.
+
+If you specify the account’s country or request any capabilities for it, then the account owner can’t change its country. Otherwise, it depends on the account’s Dashboard access:
+
+- **Full Stripe Dashboard:** During onboarding, the account owner can select any acquiring country, the same as when signing up for a normal Stripe account. Stripe automatically requests a set of capabilities for the account based on the selected country.
+- **Express Dashboard:** During onboarding, the account owner can select from a list of countries that you configure in your platform Dashboard [Onboarding options](https://dashboard.stripe.com/settings/connect/onboarding-options/countries). You can also configure those options to specify the default capabilities to request for accounts in each country.
+- **No Stripe Dashboard**: If Stripe is responsible for collecting requirements, then the onboarding flow lets the account owner select any acquiring country. Otherwise, your custom onboarding flow must set the country and request capabilities.
+
+> #### Use include to populate objects in the response
+> 
+> When you create, retrieve, or update an `Account` in API v2, certain properties are only populated in the response if you specify them [in the include parameter](https://docs.stripe.com/connect/accounts-v2/api.md#include-pattern). For any of those properties that you don’t specify, the response includes them as null, regardless of their actual value.
+
+```curl
+curl -X POST https://api.stripe.com/v2/core/accounts \
+  -H "Authorization: Bearer <<YOUR_SECRET_KEY>>" \
+  -H "Stripe-Version: 2025-04-30.preview" \
+  --json '{
+    "contact_email": "furever_contact@example.com",
+    "display_name": "Furever",
+    "dashboard": "full",
+    "identity": {
+        "business_details": {
+            "registered_name": "Furever"
+        },
+        "country": "us",
+        "entity_type": "company"
+    },
+    "configuration": {
+        "customer": {},
+        "merchant": {
+            "capabilities": {
+                "card_payments": {
+                    "requested": true
+                }
+            }
+        }
+    },
+    "defaults": {
+        "currency": "usd",
+        "responsibilities": {
+            "fees_collector": "stripe",
+            "losses_collector": "stripe"
+        },
+        "locales": [
+            "en-US"
+        ]
+    },
+    "include": [
+        "configuration.customer",
+        "configuration.merchant",
+        "identity",
+        "requirements"
+    ]
+  }'
+```
+
+The response includes the ID, which you use to reference the `Account` throughout your integration.
+
+### Request capabilities
+
+You can request [capabilities](https://docs.stripe.com/connect/account-capabilities.md#creating) when creating an account by setting the desired capabilities’ `requested` property to true. For accounts with access to the Express Dashboard, you can also configure your [Onboarding options](https://dashboard.stripe.com/settings/connect/onboarding-options/countries) to automatically request certain capabilities when creating an account.
+
+Stripe’s onboarding UIs automatically collect the requirements for requested capabilities. To reduce onboarding effort, request only the capabilities you need.
+
+### Pre-fill information
+
+If you have information about the account holder (such as their name, address, or other details), you can simplify onboarding by providing it when you create or update the account. The onboarding interface asks the account holder to confirm the pre-filled information before accepting the [Connect service agreement](https://docs.stripe.com/connect/service-agreement-types.md). The account holder can edit any pre-filled information before they accept the service agreement, even if you provided the information using the Accounts API.
+
+If you onboard an account and your platform provides it with a URL, pre-fill the account’s [identity.business_details.url](https://docs.stripe.com/api/v2/core/accounts/create.md?api-version=2025-03-31.preview#v2_create_accounts-identity-business_details-url). If the business doesn’t have a URL, you can pre-fill its [identity.business_details.product_description](https://docs.stripe.com/api/v2/core/accounts/create.md?api-version=2025-03-31.preview#v2_create_accounts-identity-business_details-product_description) instead.
+
+When testing your integration, use [test data](https://docs.stripe.com/connect/testing.md) to simulate different outcomes including identity verification, business information verification, payout failures, and more.
+
+## Determine the information to collect
+
+As the platform, you must decide if you want to collect the required information from your connected accounts *up front* (Upfront onboarding is a type of onboarding where you collect all required verification information from your users at sign-up) or *incrementally* (Incremental onboarding is a type of onboarding where you gradually collect required verification information from your users. You collect a minimum amount of information at sign-up, and you collect more information as the connected account earns more revenue). Up-front onboarding collects the `eventually_due` requirements for the account, while incremental onboarding only collects the `currently_due` requirements.
+
+| Onboarding type | Advantages                                                                                                                                                                                                               |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Up-front**    | - Normally requires only one request for all information
+  - Avoids the possibility of payout and processing issues due to missed deadlines
+  - Exposes potential risk early when accounts refuse to provide information |
+| **Incremental** | - Accounts can onboard quickly because they don’t have to provide as much information                                                                                                                                    |
+
+To determine whether to use up-front or incremental onboarding, review the [requirements](https://docs.stripe.com/connect/required-verification-information.md) for your connected accounts’ locations and capabilities. While Stripe tries to minimise any impact to connected accounts, requirements might change over time.
+
+For connected accounts where you’re responsible for requirement collection, you can customise the behaviour of [future requirements](https://docs.stripe.com/connect/handle-verification-updates.md) using the `collection_options` parameter. To collect the account’s future requirements, set [`collection_options.future_requirements`](https://docs.stripe.com/api/v2/core/account-links/create.md?api-version=preview#create_account_links-collection_options-future_requirements) to `include`.
+
+## Customise the policies shown to your users
+
+Connected accounts see Stripe’s service agreement and [Privacy Policy](https://stripe.com/privacy) during embedded onboarding. Connected account users who haven’t [accepted Stripe’s services agreement](https://docs.stripe.com/connect/service-agreement-types.md#accepting-the-correct-agreement) must accept it on the final onboarding screen. Embedded onboarding also has a footer with links to Stripe’s service agreement and [Privacy Policy](https://stripe.com/privacy).
+
+For connected accounts where the platform is responsible for requirement collection, you have additional options to customise the onboarding flow, as outlined below.
+
+### Handle service agreement acceptance on your own
+
+If you’re a platform onboarding connected accounts where you’re responsible for requirement collection, you can [collect Terms of Service acceptance](https://docs.stripe.com/connect/updating-service-agreements.md#tos-acceptance) using your own process instead of using the embedded account onboarding component. If using your own process, the final onboarding screen only asks your connected accounts to confirm the information they entered, and you must secure their acceptance of Stripe’s service agreement.
+
+Embedded onboarding still has links to the terms of service (for example, in the footer) that you can replace by [linking to your own agreements and privacy policy](https://docs.stripe.com/connect/embedded-onboarding.md#link-to-your-own-agreements-and-privacy-policy).
+
+### Link to your agreements and privacy policy
+
+Connected accounts see the Stripe service agreement and [Privacy Policy](https://stripe.com/privacy) throughout embedded onboarding. For the connected accounts where you’re responsible for requirement collection, you can replace the links with your own agreements and policy. Follow the instructions to [incorporate the Stripe services agreement](https://docs.stripe.com/connect/updating-service-agreements.md#adding-stripes-service-agreement-to-your-terms-of-service) and [link to the Stripe Privacy Policy](https://docs.stripe.com/connect/updating-service-agreements.md#disclosing-how-stripe-processes-user-data).
+
+## Integrate the account onboarding component [Server-side] [Client-side]
+
+Create an [Account Session](https://docs.stripe.com/api/account_sessions.md) by specifying the ID of the connected account and `account_onboarding` as the component to enable.
+
+## Create an Account Session
+
+When [creating an Account Session](https://docs.stripe.com/api/account_sessions/create.md), enable account onboarding by specifying `account_onboarding` in the `components` parameter.
+
+```curl
+curl https://api.stripe.com/v1/account_sessions \
+  -u "<<YOUR_SECRET_KEY>>:" \
+  -d account="{{CONNECTEDACCOUNT_ID}}" \
+  -d "components[account_onboarding][enabled]"=true
+```
+
+```cli
+stripe account_sessions create  \
+  --account="{{CONNECTEDACCOUNT_ID}}" \
+  -d "components[account_onboarding][enabled]"=true
+```
+
+```ruby
+# Set your secret key. Remember to switch to your live secret key in production.
+# See your keys here: https://dashboard.stripe.com/apikeys
+Stripe.api_key = '<<YOUR_SECRET_KEY>>'
+
+account_session = Stripe::AccountSession.create({
+  account: '{{CONNECTEDACCOUNT_ID}}',
+  components: {account_onboarding: {enabled: true}},
+})
+```
+
+```ruby
+# Set your secret key. Remember to switch to your live secret key in production.
+# See your keys here: https://dashboard.stripe.com/apikeys
+client = Stripe::StripeClient.new("<<YOUR_SECRET_KEY>>")
+
+account_session = client.v1.account_sessions.create({
+  account: '{{CONNECTEDACCOUNT_ID}}',
+  components: {account_onboarding: {enabled: true}},
+})
+```
+
+```python
+# Set your secret key. Remember to switch to your live secret key in production.
+# See your keys here: https://dashboard.stripe.com/apikeys
+import stripe
+stripe.api_key = "<<YOUR_SECRET_KEY>>"
+
+account_session = stripe.AccountSession.create(
+  account="{{CONNECTEDACCOUNT_ID}}",
+  components={"account_onboarding": {"enabled": True}},
+)
+```
+
+```python
+# Set your secret key. Remember to switch to your live secret key in production.
+# See your keys here: https://dashboard.stripe.com/apikeys
+client = StripeClient("<<YOUR_SECRET_KEY>>")
+
+# For SDK versions 12.4.0 or lower, remove '.v1' from the following line.
+account_session = client.v1.account_sessions.create({
+  "account": "{{CONNECTEDACCOUNT_ID}}",
+  "components": {"account_onboarding": {"enabled": True}},
+})
+```
+
+```php
+// Set your secret key. Remember to switch to your live secret key in production.
+// See your keys here: https://dashboard.stripe.com/apikeys
+$stripe = new \Stripe\StripeClient('<<YOUR_SECRET_KEY>>');
+
+$accountSession = $stripe->accountSessions->create([
+  'account' => '{{CONNECTEDACCOUNT_ID}}',
+  'components' => ['account_onboarding' => ['enabled' => true]],
+]);
+```
+
+```java
+// Set your secret key. Remember to switch to your live secret key in production.
+// See your keys here: https://dashboard.stripe.com/apikeys
+Stripe.apiKey = "<<YOUR_SECRET_KEY>>";
+
+AccountSessionCreateParams params =
+  AccountSessionCreateParams.builder()
+    .setAccount("{{CONNECTEDACCOUNT_ID}}")
+    .setComponents(
+      AccountSessionCreateParams.Components.builder()
+        .setAccountOnboarding(
+          AccountSessionCreateParams.Components.AccountOnboarding.builder()
+            .setEnabled(true)
+            .build()
+        )
+        .build()
+    )
+    .build();
+
+AccountSession accountSession = AccountSession.create(params);
+```
+
+```java
+// Set your secret key. Remember to switch to your live secret key in production.
+// See your keys here: https://dashboard.stripe.com/apikeys
+StripeClient client = new StripeClient("<<YOUR_SECRET_KEY>>");
+
+AccountSessionCreateParams params =
+  AccountSessionCreateParams.builder()
+    .setAccount("{{CONNECTEDACCOUNT_ID}}")
+    .setComponents(
+      AccountSessionCreateParams.Components.builder()
+        .setAccountOnboarding(
+          AccountSessionCreateParams.Components.AccountOnboarding.builder()
+            .setEnabled(true)
+            .build()
+        )
+        .build()
+    )
+    .build();
+
+// For SDK versions 29.4.0 or lower, remove '.v1()' from the following line.
+AccountSession accountSession = client.v1().accountSessions().create(params);
+```
+
+```node
+// Set your secret key. Remember to switch to your live secret key in production.
+// See your keys here: https://dashboard.stripe.com/apikeys
+const stripe = require('stripe')('<<YOUR_SECRET_KEY>>');
+
+const accountSession = await stripe.accountSessions.create({
+  account: '{{CONNECTEDACCOUNT_ID}}',
+  components: {
+    account_onboarding: {
+      enabled: true,
+    },
+  },
+});
+```
+
+```go
+// Set your secret key. Remember to switch to your live secret key in production.
+// See your keys here: https://dashboard.stripe.com/apikeys
+stripe.Key = "<<YOUR_SECRET_KEY>>"
+
+params := &stripe.AccountSessionParams{
+  Account: stripe.String("{{CONNECTEDACCOUNT_ID}}"),
+  Components: &stripe.AccountSessionComponentsParams{
+    AccountOnboarding: &stripe.AccountSessionComponentsAccountOnboardingParams{
+      Enabled: stripe.Bool(true),
+    },
+  },
+}
+result, err := accountsession.New(params)
+```
+
+```go
+// Set your secret key. Remember to switch to your live secret key in production.
+// See your keys here: https://dashboard.stripe.com/apikeys
+sc := stripe.NewClient("<<YOUR_SECRET_KEY>>")
+params := &stripe.AccountSessionCreateParams{
+  Account: stripe.String("{{CONNECTEDACCOUNT_ID}}"),
+  Components: &stripe.AccountSessionCreateComponentsParams{
+    AccountOnboarding: &stripe.AccountSessionCreateComponentsAccountOnboardingParams{
+      Enabled: stripe.Bool(true),
+    },
+  },
+}
+result, err := sc.V1AccountSessions.Create(context.TODO(), params)
+```
+
+```dotnet
+// Set your secret key. Remember to switch to your live secret key in production.
+// See your keys here: https://dashboard.stripe.com/apikeys
+StripeConfiguration.ApiKey = "<<YOUR_SECRET_KEY>>";
+
+var options = new AccountSessionCreateOptions
+{
+    Account = "{{CONNECTEDACCOUNT_ID}}",
+    Components = new AccountSessionComponentsOptions
+    {
+        AccountOnboarding = new AccountSessionComponentsAccountOnboardingOptions
+        {
+            Enabled = true,
+        },
+    },
+};
+var service = new AccountSessionService();
+AccountSession accountSession = service.Create(options);
+```
+
+```dotnet
+// Set your secret key. Remember to switch to your live secret key in production.
+// See your keys here: https://dashboard.stripe.com/apikeys
+var options = new AccountSessionCreateOptions
+{
+    Account = "{{CONNECTEDACCOUNT_ID}}",
+    Components = new AccountSessionComponentsOptions
+    {
+        AccountOnboarding = new AccountSessionComponentsAccountOnboardingOptions
+        {
+            Enabled = true,
+        },
+    },
+};
+var client = new StripeClient("<<YOUR_SECRET_KEY>>");
+var service = client.V1.AccountSessions;
+AccountSession accountSession = service.Create(options);
+```
+
+After creating the Account Session and [initialising ConnectJS](https://docs.stripe.com/connect/get-started-connect-embedded-components.md#account-sessions), you can render the Account onboarding component in the front end:
+
+#### JavaScript
+
+```js
+// Include this element in your HTML
+const accountOnboarding = stripeConnectInstance.create('account-onboarding');
+accountOnboarding.setOnExit(() => {
+  console.log('User exited the onboarding flow');
+});
+container.appendChild(accountOnboarding);
+
+// Optional: make sure to follow our policy instructions above
+// accountOnboarding.setFullTermsOfServiceUrl('{{URL}}')
+// accountOnboarding.setRecipientTermsOfServiceUrl('{{URL}}')
+// accountOnboarding.setPrivacyPolicyUrl('{{URL}}')
+// accountOnboarding.setSkipTermsOfServiceCollection(false)
+// accountOnboarding.setCollectionOptions({
+//   fields: 'eventually_due',
+//   futureRequirements: 'include',
+// })
+// accountOnboarding.setOnStepChange((stepChange) => {
+//   console.log(`User entered: ${stepChange.step}`);
+// });
+```
+
+#### React
+
+```jsx
+import * as React from "react";
+import { ConnectAccountOnboarding, ConnectComponentsProvider } from "@stripe/react-connect-js";
+
+const AccountOnboardingUI = () => {
+  return (
+    <ConnectComponentsProvider connectInstance={stripeConnectInstance}>
+      <ConnectAccountOnboarding
+          onExit={() => {
+            console.log("The account has exited onboarding");
+          }}
+          // Optional: make sure to follow our policy instructions above
+          // fullTermsOfServiceUrl="{{URL}}"
+          // recipientTermsOfServiceUrl="{{URL}}"
+          // privacyPolicyUrl="{{URL}}"
+          // skipTermsOfServiceCollection={false}
+          // collectionOptions={{
+          //   fields: 'eventually_due',
+          //   futureRequirements: 'include',
+          // }}
+          // onStepChange={(stepChange) => {
+          //   console.log(`User entered: ${stepChange.step}`);
+          // }}
+        />
+    </ConnectComponentsProvider>
+  );
+}
+```
+
+#### HTML + JS
+
+| Method                            | Type                                                                                      | Description                                                                                                                                                                                                                                                                                                   | Default                                                                                    |
+| --------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `setFullTermsOfServiceUrl`        | `string`                                                                                  | Absolute URL to your [full terms of service](https://docs.stripe.com/connect/service-agreement-types.md#full) agreement.                                                                                                                                                                                      | [Stripe’s full service agreement](https://stripe.com/connect-account/legal/full)           |
+| `setRecipientTermsOfServiceUrl`   | `string`                                                                                  | Absolute URL to your [recipient terms of service](https://docs.stripe.com/connect/service-agreement-types.md#recipient) agreement.                                                                                                                                                                            | [Stripe’s recipient service agreement](https://stripe.com/connect-account/legal/recipient) |
+| `setPrivacyPolicyUrl`             | `string`                                                                                  | Absolute URL to your privacy policy.                                                                                                                                                                                                                                                                          | [Stripe’s privacy policy](https://stripe.com/privacy)                                      |
+| `setSkipTermsOfServiceCollection` | `string`                                                                                  | If true, embedded onboarding skips terms of service collection and you must [collect terms acceptance yourself](https://docs.stripe.com/connect/updating-service-agreements.md#indicating-acceptance).                                                                                                        | false                                                                                      |
+| `setCollectionOptions`            | `{ fields: 'currently_due' | 'eventually_due', future_requirements: 'omit' | 'include' }` | Customises collecting `currently_due` or `eventually_due` requirements and controls whether to include [future requirements](https://docs.stripe.com/api/accounts/object.md#account_object-future_requirements). Specifying `eventually_due` collects both `eventually_due` and `currently_due` requirements. | `{fields: 'currently_due', futureRequirements: 'omit'}`                                    |
+| `setOnExit`                       | `() => void`                                                                              | The connected account has exited the onboarding process                                                                                                                                                                                                                                                       |                                                                                            |
+| `setOnStepChange`                 | `({step}: StepChange) => void`                                                            | The connected account has navigated from one step to another within the onboarding process. Use `StepChange` to identify the current step, as described below.                                                                                                                                                |                                                                                            |
+
+To use this component to set up new accounts:
+
+1. Create a [connected account](https://docs.stripe.com/api/v2/core/accounts/create.md?api-version=2025-03-31.preview). You can pre-fill information on the `Account` object in this API call.
+1. [Initialise Connect embedded components](https://docs.stripe.com/connect/get-started-connect-embedded-components.md#account-sessions) using the ID of the connected account.
+1. Include the `account-onboarding` element to show the onboarding flow to the connected account.
+1. Listen for the `exit` event emitted from this component. Stripe sends this event when the connected account exits the onboarding process.
+1. When `exit` triggers,  retrieve the `Account` details to check the status of:
+   - Requested `merchant` configuration capabilities, such as [card_payments.status](https://docs.stripe.com/api/v2/core/accounts/retrieve.md?api-version=2025-03-31.preview#v2_retrieve_accounts-response-configuration-merchant-capabilities-card_payments-status)
+   - Requested `recipient` configuration capabilities, such as [stripe_balance.stripe_transfers.status](https://docs.stripe.com/api/v2/core/accounts/retrieve.md?api-version=2025-03-31.preview#v2_retrieve_accounts-response-configuration-recipient-capabilities-stripe_balance-stripe_transfers-status)
+If all required capabilities are enabled, you can take the connected account to the next step of your flow.
+
+#### React
+
+| React prop                     | Type                                                                                    | Description                                                                                                                                                                                                                                                                                                                                                                               | Default                                                                                    | Required or Optional |
+| ------------------------------ | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | -------------------- |
+| `onExit`                       | `() => void`                                                                            | The component executes this callback function when the connected account exits the onboarding process                                                                                                                                                                                                                                                                                     |                                                                                            | required             |
+| `fullTermsOfServiceUrl`        | `string`                                                                                | Link to your [full terms of service](https://docs.stripe.com/connect/service-agreement-types.md#full) agreement                                                                                                                                                                                                                                                                           | [Stripe’s full service agreement](https://stripe.com/connect-account/legal/full)           | optional             |
+| `recipientTermsOfServiceUrl`   | `string`                                                                                | Link to your [recipient terms of service](https://docs.stripe.com/connect/service-agreement-types.md#recipient) agreement                                                                                                                                                                                                                                                                 | [Stripe’s recipient service agreement](https://stripe.com/connect-account/legal/recipient) | optional             |
+| `privacyPolicyUrl`             | `string`                                                                                | Link to your privacy policy                                                                                                                                                                                                                                                                                                                                                               | [Stripe’s privacy policy](https://stripe.com/privacy)                                      | optional             |
+| `skipTermsOfServiceCollection` | `boolean`                                                                               | If true, embedded onboarding skips terms of service collection and you must [collect terms acceptance yourself](https://docs.stripe.com/connect/updating-service-agreements.md#indicating-acceptance)                                                                                                                                                                                     | false                                                                                      | optional             |
+| `collectionOptions`            | `{fields: 'currently_due' | 'eventually_due', futureRequirements?: 'omit' | 'include'}` | Customises collecting `currently_due` or `eventually_due` requirements and controls whether to include [future requirements](https://docs.stripe.com/api/accounts/object.md#account_object-future_requirements). Specifying `eventually_due` collects both `eventually_due` and `currently_due` requirements. You can’t update this parameter after the component has initially rendered. | `{fields: 'currently_due', futureRequirements: 'omit'}`                                    | optional             |
+| `onStepChange`                 | `({step}: StepChange) => void`                                                          | The component executes this callback function when the connected account has navigated from one step to another within the onboarding process.  Use `StepChange` to identify the current step, as described below.                                                                                                                                                                        |                                                                                            | optional             |
+
+1. Create a [connected account](https://docs.stripe.com/api/v2/core/accounts/create.md?api-version=2025-03-31.preview). You can pre-fill information on the `Account` object in this API call.
+1. [Initialise Connect embedded components](https://docs.stripe.com/connect/get-started-connect-embedded-components.md#account-sessions) using the ID of the connected account.
+1. Include the `account-onboarding` element to show the onboarding flow to the c
