@@ -21,10 +21,23 @@ export default function ConnectOnboarding() {
       // 1) Validate PK
       assertPattern("VITE_STRIPE_PUBLISHABLE_KEY", PK, /^pk_(test|live)_[A-Za-z0-9]+/);
 
-      // 2) Fetch Account Session client_secret
+      // 2) Fetch Account Session client_secret with authentication headers
+      const userId = localStorage.getItem('user_id');
+      const firebaseUid = localStorage.getItem('firebase_uid');
+      
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      
+      if (userId) {
+        headers['X-User-ID'] = userId;
+      }
+      
+      if (firebaseUid) {
+        headers['X-Firebase-UID'] = firebaseUid;
+      }
+      
       const r = await fetch("/api/connect/create-account-session", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ accountId: null, country: "GB", publishableKey: PK }),
       });
       if (!r.ok) throw new Error(`API ${r.status}: ${await r.text()}`);
