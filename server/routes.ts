@@ -6951,6 +6951,54 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
     }
   });
 
+  // Add health endpoint 
+  app.get(`${apiRouter}/connect/health`, async (_req, res) => {
+    const acct = await stripe.accounts.retrieve();
+    const sk = process.env.STRIPE_SECRET_KEY || '';
+    const mode = sk.startsWith("sk_live_") ? "live" : sk.startsWith("sk_test_") ? "test" : "unknown";
+    res.json({ platform_account_id: acct.id, mode });
+  });
+
+  /**
+   * POST /api/connect/create-account-session
+   * Body: { accountId?: string|null, country?: string, publishableKey?: string }
+   * Returns: { accountId: "acct_...", client_secret: "seti_..." }
+   */
+  app.post(`${apiRouter}/connect/create-account-session`, async (req, res) => {
+    try {
+      let { accountId = null, country = "GB", publishableKey } = req.body || {};
+
+      // Guard: PK/SK mode must match (prevents cross-account / test-live mixups)
+      const sk = process.env.STRIPE_SECRET_KEY || '';
+      const pkMode = publishableKey?.startsWith("pk_live_") ? "live"
+                   : publishableKey?.startsWith("pk_test_") ? "test" : "unknown";
+      const skMode = sk.startsWith("sk_live_") ? "live"
+                   : sk.startsWith("sk_test_") ? "test" : "unknown";
+      if (publishableKey && pkMode !== skMode) {
+        return res.status(400).json({ error: `Key mode mismatch (client=${pkMode}, server=${skMode})` });
+      }
+
+      if (!accountId) {
+        const acct = await stripe.accounts.create({
+          type: "custom",
+          country,
+          capabilities: { card_payments: { requested: true }, transfers: { requested: true } },
+        });
+        accountId = acct.id;
+      }
+
+      const session = await stripe.accountSessions.create({
+        account: accountId,
+        components: { account_onboarding: { enabled: true } },
+      });
+
+      return res.json({ accountId, client_secret: session.client_secret }); // seti_...
+    } catch (e: any) {
+      console.error("[connect] ERROR", e);
+      res.status(500).json({ error: e?.message || "Unknown error" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
