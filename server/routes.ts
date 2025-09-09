@@ -6980,7 +6980,11 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
     }
   });
 
-  // Clean Stripe Connect embedded onboarding endpoint (exactly as per guide)
+  /**
+   * POST /api/connect/create-account-session
+   * Body: { accountId?: string|null, country?: string }  // optional
+   * Returns: { accountId: string, client_secret: string } // client_secret must start with seti_
+   */
   app.post(`${apiRouter}/connect/create-account-session`, async (req, res) => {
     try {
       let { accountId = null, country = "GB" } = req.body || {};
