@@ -3,7 +3,7 @@ import { loadConnectAndInitialize } from '@stripe/connect-js';
 import { useAuth } from '@/hooks/use-auth';
 import Layout from '@/components/layout/Layout';
 
-const PUBLISHABLE_KEY = (import.meta.env.VITE_STRIPE_PUBLIC_KEY || "").trim();
+const PK = (import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "").trim();
 
 function assertPattern(name: string, value: any, re: RegExp) {
   if (typeof value !== "string") throw new Error(`${name} not a string`);
@@ -21,15 +21,12 @@ export default function ConnectOnboarding() {
     (async () => {
       try {
         // 1) Validate publishable key
-        assertPattern("PUBLISHABLE_KEY", PUBLISHABLE_KEY, /^pk_(test|live)_[A-Za-z0-9]+/);
+        assertPattern("PUBLISHABLE_KEY", PK, /^pk_(test|live)_[A-Za-z0-9]+/);
 
         // 2) Ask server for account + fresh Account Session client secret
         const resp = await fetch("/api/connect/create-account-session", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            'X-User-ID': user?.id?.toString() || '',
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ accountId: null, country: "GB" }),
         });
 
@@ -46,7 +43,7 @@ export default function ConnectOnboarding() {
 
         // 4) Initialize Connect.js (NOT @stripe/stripe-js)
         const connect = await loadConnectAndInitialize({
-          publishableKey: PUBLISHABLE_KEY,
+          publishableKey: PK,
           fetchClientSecret: async () => client_secret,
         });
 
@@ -57,22 +54,15 @@ export default function ConnectOnboarding() {
           throw new Error("Connect component not mountable (wrong library/init).");
         }
 
-        onboarding.on("ready", () => console.log("[Connect] ready for", accountId));
-        onboarding.on("onboarding.completed", () => {
-          console.log("Onboarding completed successfully!");
-        });
-        onboarding.on("onboarding.exited", () => {
-          console.log("User exited onboarding");
-        });
-
-        onboarding.mount("#onboarding-container"); // CSS selector string required
+        (onboarding as any).on("ready", () => console.log("[Connect] ready for", accountId));
+        (onboarding as any).mount("#onboarding-container"); // CSS selector string required
 
       } catch (e: any) {
         console.error("Embedded onboarding failed:", e);
         alert(e.message);
       }
     })();
-  }, [user?.id]);
+  }, []);
 
   return (
     <Layout>

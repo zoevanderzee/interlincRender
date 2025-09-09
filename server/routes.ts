@@ -1497,57 +1497,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create the milestone/deliverable using normalized data
       const milestoneData = {
-
-  // Create Account Session for embedded onboarding (no redirects)
-  app.post(`${apiRouter}/connect/create-account-session`, requireAuth, async (req: Request, res: Response) => {
-    try {
-      const userId = req.user?.id;
-      if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
-      }
-
-      let { accountId = null, country = "GB" } = req.body || {};
-
-      if (!accountId) {
-        const user = await storage.getUser(userId);
-        if (!user) {
-          return res.status(404).json({ message: "User not found" });
-        }
-
-        // Check if user already has a Connect account
-        if (user.stripeConnectAccountId) {
-          accountId = user.stripeConnectAccountId;
-        } else {
-          // Create new Connect account
-          const acct = await stripe.accounts.create({
-            type: "custom",
-            country,
-            capabilities: {
-              card_payments: { requested: true },
-              transfers: { requested: true },
-            },
-          });
-          accountId = acct.id;
-
-          // Update user with the new account ID
-          await storage.updateUser(userId, {
-            stripeConnectAccountId: accountId,
-          });
-        }
-      }
-
-      const session = await stripe.accountSessions.create({
-        account: accountId,
-        components: { account_onboarding: { enabled: true } },
-      });
-
-      res.json({ accountId, client_secret: session.client_secret });
-    } catch (e: any) {
-      console.error('create-account-session error:', e);
-      res.status(500).json({ error: e.message });
-    }
-  });
-
         contractId: normalizedInput.contractId,
         name: normalizedInput.name,
         description: normalizedInput.description || '',
@@ -7028,6 +6977,35 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
     } catch (error) {
       console.error("Error getting file info:", error);
       res.status(500).json({ message: "Error getting file info" });
+    }
+  });
+
+  // Clean Stripe Connect embedded onboarding endpoint (exactly as per guide)
+  app.post(`${apiRouter}/connect/create-account-session`, async (req, res) => {
+    try {
+      let { accountId = null, country = "GB" } = req.body || {};
+
+      if (!accountId) {
+        const acct = await stripe.accounts.create({
+          type: "custom",
+          country,
+          capabilities: {
+            card_payments: { requested: true },
+            transfers: { requested: true },
+          },
+        });
+        accountId = acct.id;
+      }
+
+      const session = await stripe.accountSessions.create({
+        account: accountId,
+        components: { account_onboarding: { enabled: true } },
+      });
+
+      return res.json({ accountId, client_secret: session.client_secret });
+    } catch (e: any) {
+      console.error("create-account-session error:", e);
+      return res.status(500).json({ error: e.message });
     }
   });
 

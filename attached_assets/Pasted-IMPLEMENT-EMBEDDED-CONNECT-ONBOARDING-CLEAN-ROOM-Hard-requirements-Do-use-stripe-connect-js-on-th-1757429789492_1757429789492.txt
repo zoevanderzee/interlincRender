@@ -1,0 +1,145 @@
+IMPLEMENT EMBEDDED CONNECT ONBOARDING — CLEAN ROOM
+Hard requirements
+Do use @stripe/connect-js on the onboarding page.
+Do use stripe.accountSessions.create({ components: { account_onboarding: { enabled: true }}}) on the server.
+Do mount the component with .mount("#onboarding-container").
+Do not import @stripe/stripe-js on this page.
+Do not call stripe.accountLinks.create anywhere in this codepath.
+Do not use stripe.connectEmbeddedComponents.
+Do not use appendChild on the component.
+Server (Express) — one endpoint only
+server.js
+import express from "express";
+import Stripe from "stripe";
+
+const app = express();
+app.use(express.json());
+
+if (!process.env.STRIPE_SECRET_KEY) {
+  throw new Error("Missing STRIPE_SECRET_KEY");
+}
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" });
+
+/**
+ * POST /api/connect/create-account-session
+ * Body: { accountId?: string|null, country?: string }  // optional
+ * Returns: { accountId: string, client_secret: string } // client_secret must start with seti_
+ */
+app.post("/api/connect/create-account-session", async (req, res) => {
+  try {
+    let { accountId = null, country = "GB" } = req.body || {};
+
+    if (!accountId) {
+      const acct = await stripe.accounts.create({
+        type: "custom",
+        country,
+        capabilities: {
+          card_payments: { requested: true },
+          transfers: { requested: true },
+        },
+      });
+      accountId = acct.id;
+    }
+
+    const session = await stripe.accountSessions.create({
+      account: accountId,
+      components: { account_onboarding: { enabled: true } },
+    });
+
+    return res.json({ accountId, client_secret: session.client_secret });
+  } catch (e) {
+    console.error("create-account-session error:", e);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.listen(3000, () => console.log("Server running on :3000"));
+Sanity curl (run once):
+curl -s -X POST http://localhost:3000/api/connect/create-account-session \
+  -H "Content-Type: application/json" \
+  -d '{"accountId": null, "country": "GB"}'
+# Must return JSON with accountId starting "acct_" and client_secret starting "seti_"
+Client (React + Vite) — minimal, single effect, guard double-run
+Install
+npm i @stripe/connect-js
+# DO NOT import or rely on @stripe/stripe-js in this page/component
+env
+VITE_STRIPE_PUBLISHABLE_KEY=pk_live_XXXXXXXXXXXXXXXXXXXXXXXX
+client/src/pages/ConnectOnboarding.tsx
+import { useEffect, useRef } from "react";
+import { loadConnectAndInitialize } from "@stripe/connect-js";
+
+const PK = (import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "").trim();
+
+function assertPattern(name: string, value: any, re: RegExp) {
+  if (typeof value !== "string") throw new Error(`${name} not a string`);
+  if (!re.test(value)) throw new Error(`${name} invalid: ${value.slice(0,24)}…`);
+}
+
+export default function ConnectOnboarding() {
+  const started = useRef(false);
+
+  useEffect(() => {
+    if (started.current) return; // guard React StrictMode/HMR double-run
+    started.current = true;
+
+    (async () => {
+      // 1) Validate publishable key
+      assertPattern("PUBLISHABLE_KEY", PK, /^pk_(test|live)_[A-Za-z0-9]+/);
+
+      // 2) Ask server for account + fresh Account Session client secret
+      const resp = await fetch("/api/connect/create-account-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accountId: null, country: "GB" }),
+      });
+      if (!resp.ok) throw new Error(await resp.text());
+      const { accountId, client_secret } = await resp.json();
+
+      // 3) Validate shapes before initializing
+      assertPattern("accountId", accountId, /^acct_[A-Za-z0-9]+/);
+      assertPattern("client_secret", client_secret, /^seti_[A-Za-z0-9_]+/);
+
+      // 4) Initialize Connect.js (NOT @stripe/stripe-js)
+      const connect = await loadConnectAndInitialize({
+        publishableKey: PK,
+        fetchClientSecret: async () => client_secret,
+      });
+
+      // 5) Create & mount embedded onboarding (no appendChild)
+      const onboarding = connect.create("account-onboarding");
+      if (typeof (onboarding as any).mount !== "function") {
+        console.error("Component:", onboarding);
+        throw new Error("Connect component not mountable (wrong library/init).");
+      }
+
+      onboarding.on("ready", () => console.log("[Connect] ready for", accountId));
+      onboarding.mount("#onboarding-container"); // CSS selector string required
+    })().catch((e) => {
+      console.error("Embedded onboarding failed:", e);
+      alert(e.message);
+    });
+  }, []);
+
+  return (
+    <div style={{ padding: 24, maxWidth: 720, margin: "0 auto" }}>
+      <h1>Embedded Connect Onboarding</h1>
+      <div id="onboarding-container" style={{ minHeight: 520 }} />
+    </div>
+  );
+}
+Acceptance checklist (must all be true)
+Network → /api/connect/create-account-session returns:
+accountId begins with acct_
+client_secret begins with seti_
+Console: Embedded Connect Onboarding renders inside #onboarding-container and you see [Connect] ready….
+No redirects to connect.stripe.com.
+No import of @stripe/stripe-js in this page.
+No accountLinks.create anywhere in this flow.
+If anything still fails, check exactly these 5 things
+SDK: Only @stripe/connect-js is imported on this page (never @stripe/stripe-js).
+API: Server uses accountSessions.create with components.account_onboarding.enabled = true.
+Secret: Client receives a fresh seti_… secret (not a URL, not undefined).
+Mount: Use .mount("#onboarding-container") (never appendChild).
+Keys: Both sides are either test or live (don’t mix pk_test with sk_live, etc).
