@@ -1,0 +1,76 @@
+With the Embedded flow, everything (including identity verification) stays inside your <div> — if you see a redirect, it means the frontend fell back to hosted onboarding. The usual reasons:
+Using the wrong library
+Embedded onboarding requires @stripe/connect-js and connect.create("account-onboarding").
+If you’re importing from @stripe/stripe-js or trying stripe.connectEmbeddedComponents, it will always fall back to hosted.
+Not enabling the component in the Account Session
+const session = await stripe.accountSessions.create({
+  account: accountId,
+  components: {
+    account_onboarding: { enabled: true },
+  },
+});
+If components.account_onboarding.enabled is missing or false, you’ll just get a redirect URL.
+Not passing a fresh client_secret to Connect.js
+Connect.js needs the client_secret from accountSessions.create every time it initializes. If it gets nothing, or you accidentally give it the wrong object, it will default back to hosted.
+The fool-proof minimal setup
+Backend (Node/Express)
+import express from "express";
+import Stripe from "stripe";
+
+const app = express();
+app.use(express.json());
+
+const stripe = new Stripe("sk_live_XXXXXXXXXXXXXXXX", { apiVersion: "2024-06-20" });
+
+app.post("/account-session", async (req, res) => {
+  const { accountId } = req.body;
+  const session = await stripe.accountSessions.create({
+    account: accountId,
+    components: {
+      account_onboarding: { enabled: true },
+    },
+  });
+  res.json({ client_secret: session.client_secret });
+});
+
+app.listen(3000, () => console.log("server listening on 3000"));
+Frontend (React)
+import { useEffect, useRef } from "react";
+import { loadConnectAndInitialize } from "@stripe/connect-js";
+
+const PUBLISHABLE_KEY = "pk_live_51R97qMF4bfRUGDn9PieolF5SKiBOF6YE9axkFFBBx4mLCA9PdhbC9bsolEvYknQ0KyHerJzsqKFW3dy900Osf9v300UKU3lUEk";
+const ACCOUNT_ID = "acct_XXXXXXXXXXXX"; // already created
+
+export default function Onboarding() {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    (async () => {
+      const connect = await loadConnectAndInitialize({
+        publishableKey: PUBLISHABLE_KEY,
+        fetchClientSecret: async () => {
+          const resp = await fetch("http://localhost:3000/account-session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ accountId: ACCOUNT_ID }),
+          });
+          const { client_secret } = await resp.json();
+          return client_secret;
+        },
+      });
+
+      const onboarding = connect.create("account-onboarding");
+      containerRef.current?.appendChild(onboarding);
+    })();
+  }, []);
+
+  return <div ref={containerRef}></div>;
+}
+Sanity check
+If the user is redirected out to Stripe.com, it means one of the three issues above.
+If the user stays in your <div>, they’re in the embedded flow.
+✅ With this setup:
+The account is created server-side.
+An accountSession is generated server-side.
+The client pulls the client_secret and feeds it into @stripe/connect-js.
+connect.create("account-onboarding") renders the full embedded flow, including ID verification.
