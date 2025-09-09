@@ -2,7 +2,7 @@ import Stripe from 'stripe';
 
 // Initialize Stripe with the secret key
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: '2023-10-16', // Using latest stable version
+  apiVersion: '2024-06-20', // Updated to match Connect onboarding requirements
 });
 
 export interface CreateConnectedAccountParams {

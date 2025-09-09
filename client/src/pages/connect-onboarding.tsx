@@ -47,7 +47,7 @@ export default function ConnectOnboarding() {
 
         // 3) Validate shapes before initializing
         assertPattern("accountId", accountId, /^acct_[A-Za-z0-9]+/);
-        assertPattern("client_secret", client_secret, /^seti_[A-Za-z0-9_]+/);
+        assertPattern("client_secret", client_secret, /^accs_[A-Za-z0-9_]+/);
 
         // 4) Initialize Connect.js (NOT @stripe/stripe-js)
         const connect = await loadConnectAndInitialize({
