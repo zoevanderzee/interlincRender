@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { loadStripe } from '@stripe/stripe-js';
+import { loadStripe } from '@stripe/stripe-js'; // This import is no longer directly used for initialization but might be for other Stripe functionalities. We will rely on the new import for connect-js.
+import { loadConnectAndInitialize } from '@stripe/connect-js'; // New import for Stripe Connect JS
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -44,7 +45,7 @@ export default function ConnectOnboarding() {
   const [stripe, setStripe] = useState<any>(null); // State for Stripe instance
   const [error, setError] = useState<string | null>(null); // State for error messages
 
-  // Load Stripe.js using the official loader
+  // Load Stripe Connect using the official loader
   useEffect(() => {
     const stripePublicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
 
@@ -54,21 +55,41 @@ export default function ConnectOnboarding() {
       return;
     }
 
-    loadStripe(stripePublicKey)
-      .then((stripeInstance) => {
-        if (stripeInstance) {
-          console.log('Stripe initialized successfully');
-          console.log('connectEmbeddedComponents available:', typeof stripeInstance.connectEmbeddedComponents);
-          setStripe(stripeInstance);
+    loadConnectAndInitialize({
+      publishableKey: stripePublicKey,
+      fetchClientSecret: async () => {
+        if (!accountStatus?.accountId) {
+          throw new Error('No account ID available');
+        }
+
+        const response = await fetch(`/api/stripe-connect/accounts/${accountStatus.accountId}/onboarding-session`, {
+          method: 'POST',
+          headers: {
+            'X-User-ID': user?.id?.toString() || '',
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch client secret');
+        }
+
+        const { client_secret } = await response.json();
+        return client_secret;
+      },
+    })
+      .then((connectInstance) => {
+        if (connectInstance) {
+          console.log('Stripe Connect initialized successfully');
+          setStripe(connectInstance);
         } else {
-          setError('Failed to initialize Stripe. Please refresh the page.');
+          setError('Failed to initialize Stripe Connect. Please refresh the page.');
         }
       })
       .catch((err) => {
-        console.error('Error loading Stripe:', err);
-        setError('Failed to load Stripe. Please refresh the page.');
+        console.error('Error loading Stripe Connect:', err);
+        setError('Failed to load Stripe Connect. Please refresh the page.');
       });
-  }, []);
+  }, [accountStatus?.accountId, user?.id]);
 
 
   // Check if user already has a connected account
@@ -155,95 +176,38 @@ export default function ConnectOnboarding() {
     if (!accountStatus?.accountId || !stripe) return;
 
     try {
-      // Create an account session for embedded onboarding
-      const sessionResponse = await fetch(`/api/stripe-connect/accounts/${accountStatus.accountId}/onboarding-session`, {
-        method: 'POST',
-        headers: {
-          'X-User-ID': user?.id?.toString() || '',
-        },
+      // Clear any existing content
+      const container = document.getElementById('onboarding-container');
+      if (container) {
+        container.innerHTML = '';
+      }
+
+      console.log('Using Stripe Connect embedded onboarding');
+
+      // Create the account onboarding component using connect-js
+      const accountOnboarding = stripe.create('account-onboarding');
+
+      // Mount the component to the container
+      if (container) {
+        container.appendChild(accountOnboarding);
+      }
+
+      // Handle events
+      accountOnboarding.on('onboarding.completed', () => {
+        toast({
+          title: 'Onboarding completed!',
+          description: 'Your account verification is complete.',
+        });
+        checkAccountStatus(accountStatus.accountId);
       });
 
-      if (sessionResponse.ok) {
-        const { client_secret } = await sessionResponse.json();
+      accountOnboarding.on('onboarding.exited', () => {
+        toast({
+          title: 'Onboarding exited',
+          description: 'You can continue verification later.',
+        });
+      });
 
-        // Clear any existing content
-        const container = document.getElementById('onboarding-container');
-        if (container) {
-          container.innerHTML = '';
-        }
-
-        // Initialize embedded Connect onboarding using the modern API
-        try {
-          // Use the modern connectEmbeddedComponents API
-          if (stripe.connectEmbeddedComponents) {
-            const stripeConnectInstance = stripe.connectEmbeddedComponents({
-              clientSecret: client_secret,
-            });
-
-            // Create the account onboarding component
-            const accountOnboarding = stripeConnectInstance.create('account-onboarding');
-
-            // Set collection options for upfront onboarding
-            accountOnboarding.setCollectionOptions({
-              fields: 'eventually_due',
-              futureRequirements: 'include',
-            });
-
-            // Mount the component to the container
-            if (container) {
-              accountOnboarding.mount(container);
-            }
-
-            // Handle events
-            accountOnboarding.on('onboarding.completed', () => {
-              toast({
-                title: 'Onboarding completed!',
-                description: 'Your account verification is complete.',
-              });
-              checkAccountStatus(accountStatus.accountId);
-            });
-
-            accountOnboarding.on('onboarding.exited', () => {
-              toast({
-                title: 'Onboarding exited',
-                description: 'You can continue verification later.',
-              });
-            });
-
-          } else {
-            // Fallback to hosted onboarding if embedded is not available
-            throw new Error('Embedded onboarding not available');
-          }
-
-        } catch (embeddedError) {
-          console.error('Embedded onboarding not available, using hosted flow:', embeddedError);
-
-          // Use hosted onboarding link as fallback
-          const linkResponse = await fetch(`/api/stripe-connect/accounts/${accountStatus.accountId}/onboarding-link`, {
-            method: 'POST',
-            headers: {
-              'X-User-ID': user?.id?.toString() || '',
-            },
-          });
-
-          if (linkResponse.ok) {
-            const { onboardingUrl } = await linkResponse.json();
-
-            // Show in same window instead of popup for better UX
-            window.location.href = onboardingUrl;
-
-            toast({
-              title: 'Redirecting to verification',
-              description: 'Complete your identity verification with Stripe.',
-            });
-          } else {
-            throw new Error('Failed to create onboarding link');
-          }
-        }
-      } else {
-        const error = await sessionResponse.json();
-        throw new Error(error.message);
-      }
     } catch (error) {
       console.error('Error starting onboarding:', error);
       toast({
