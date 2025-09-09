@@ -192,39 +192,52 @@ export default function ConnectOnboarding() {
     }
 
     try {
-      // Clear any existing content
       const container = document.getElementById('onboarding-container');
-      if (container) {
-        container.innerHTML = '';
+      if (!container) {
+        console.error('Onboarding container not found');
+        return;
       }
 
-      console.log('Creating embedded onboarding component');
+      // Clear any existing content
+      container.innerHTML = '';
+
+      console.log('Creating embedded onboarding component with Stripe Connect instance');
 
       // Create the account onboarding component
       const accountOnboarding = stripe.create('account-onboarding');
 
+      if (!accountOnboarding) {
+        throw new Error('Failed to create account onboarding component');
+      }
+
+      console.log('Account onboarding component created successfully');
+
       // Mount the component to the container
-      if (container && accountOnboarding) {
-        container.appendChild(accountOnboarding);
-      }
+      accountOnboarding.mount(container);
 
-      // Handle events if available
-      if (accountOnboarding && typeof accountOnboarding.on === 'function') {
-        accountOnboarding.on('onboarding.completed', () => {
-          toast({
-            title: 'Onboarding completed!',
-            description: 'Your account verification is complete.',
-          });
-          checkAccountStatus(accountStatus.accountId);
-        });
+      console.log('Account onboarding component mounted to container');
 
-        accountOnboarding.on('onboarding.exited', () => {
-          toast({
-            title: 'Onboarding exited',
-            description: 'You can continue verification later.',
-          });
+      // Handle events
+      accountOnboarding.on('ready', () => {
+        console.log('Account onboarding component is ready');
+      });
+
+      accountOnboarding.on('onboarding.completed', () => {
+        console.log('Onboarding completed');
+        toast({
+          title: 'Onboarding completed!',
+          description: 'Your account verification is complete.',
         });
-      }
+        checkAccountStatus(accountStatus.accountId);
+      });
+
+      accountOnboarding.on('onboarding.exited', () => {
+        console.log('Onboarding exited');
+        toast({
+          title: 'Onboarding exited',
+          description: 'You can continue verification later.',
+        });
+      });
 
     } catch (error) {
       console.error('Error starting onboarding:', error);
@@ -450,8 +463,15 @@ export default function ConnectOnboarding() {
                   </Button>
 
                   {/* Embedded onboarding container */}
-                  <div id="onboarding-container" className="min-h-[400px] border rounded-lg p-4">
+                  <div 
+                    id="onboarding-container" 
+                    className="min-h-[400px] border rounded-lg p-4 bg-white"
+                    style={{ minHeight: '400px' }}
+                  >
                     {/* Stripe embedded onboarding component will mount here */}
+                    <div className="text-center text-gray-500 py-8">
+                      Click "Start Identity Verification" to begin the embedded onboarding process
+                    </div>
                   </div>
 
                   <div className="p-4 bg-muted rounded-lg text-sm text-muted-foreground">
