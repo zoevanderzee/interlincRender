@@ -1,0 +1,115 @@
+
+Thought for 16s
+That error means you’re still not getting a real Connect component back. When mount is undefined, it’s almost always one of these:
+You’re importing the wrong library (@stripe/stripe-js instead of @stripe/connect-js) or mixing both.
+loadConnectAndInitialize didn’t actually run/resolve (e.g., bad publishable key, wrong fetchClientSecret), so connect.create(...) isn’t returning the right object.
+You’re calling .create on the wrong thing (a stray stripe from @stripe/stripe-js or a cached global).
+Here’s a minimal, “cannot-go-wrong” client + server that guarantees a component with a working .mount().
+Server (one endpoint)
+// server.js
+import express from "express";
+import Stripe from "stripe";
+
+const app = express();
+app.use(express.json());
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" });
+
+app.post("/create-account-session", async (req, res) => {
+  try {
+    let { accountId } = req.body;
+
+    if (!accountId) {
+      const account = await stripe.accounts.create({
+        type: "custom",
+        country: "US", // change if needed
+        capabilities: { card_payments: { requested: true }, transfers: { requested: true } },
+      });
+      accountId = account.id;
+    }
+
+    const session = await stripe.accountSessions.create({
+      account: accountId,
+      components: { account_onboarding: { enabled: true } },
+    });
+
+    res.json({ accountId, client_secret: session.client_secret });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.listen(3000, () => console.log("Server on 3000"));
+Client (the key parts)
+// ConnectOnboarding.tsx
+import { useEffect } from "react";
+import { loadConnectAndInitialize } from "@stripe/connect-js"; // MUST be connect-js
+
+const PUBLISHABLE_KEY = "pk_live_..."; // your live pk
+
+export default function ConnectOnboarding() {
+  useEffect(() => {
+    (async () => {
+      // 0) Clear any globals from @stripe/stripe-js if you previously used it
+      // (Don’t import or call window.Stripe anywhere on this page.)
+
+      // 1) Get a fresh client_secret
+      const r = await fetch("http://localhost:3000/create-account-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accountId: null }),
+      });
+      if (!r.ok) throw new Error(await r.text());
+      const { client_secret } = await r.json();
+      if (!client_secret || !client_secret.startsWith("seti_")) {
+        throw new Error("Did not receive an Account Session client_secret (seti_...)");
+      }
+
+      // 2) Initialize Connect.js (NOT @stripe/stripe-js)
+      const connect = await loadConnectAndInitialize({
+        publishableKey: PUBLISHABLE_KEY,
+        fetchClientSecret: async () => client_secret,
+      });
+      if (!connect) throw new Error("Connect failed to initialize");
+
+      // 3) Create & mount the embedded component
+      const accountOnboarding = connect.create("account-onboarding");
+      if (!accountOnboarding || typeof accountOnboarding.mount !== "function") {
+        console.error("accountOnboarding object:", accountOnboarding);
+        throw new Error("account-onboarding did not return a mountable component");
+      }
+
+      accountOnboarding.on("ready", () => {
+        console.log("[Connect] onboarding ready (embedded)");
+      });
+
+      // IMPORTANT: use a CSS selector string with .mount()
+      accountOnboarding.mount("#onboarding-container");
+    })().catch((e) => {
+      console.error("Error starting onboarding", e);
+      alert(`Error starting onboarding:\n${e.message}`);
+    });
+  }, []);
+
+  return (
+    <div>
+      <h1>Embedded Onboarding</h1>
+      <div id="onboarding-container" style={{ minHeight: 520 }} />
+    </div>
+  );
+}
+Non-negotiable checklist
+package.json includes @stripe/connect-js and you are importing from it (no @stripe/stripe-js on this page).
+You never call window.Stripe(...) here. Remove any import { loadStripe } from "@stripe/stripe-js" from this route/component.
+client_secret begins with seti_ (that proves it’s an Account Session secret, not a redirect link).
+You call accountOnboarding.mount("#onboarding-container") with a selector string, not appendChild.
+You only create/mount the component once (no repeated renders calling create again).
+If you still see mount is not a function, it means the object you’re calling .mount() on isn’t a Connect component. In practice that means one of:
+You accidentally imported from @stripe/stripe-js, or you still have a stripe instance from that library and you’re calling stripe.create(...) instead of connect.create(...).
+loadConnectAndInitialize didn’t resolve (log it), or you’re shadowing connect with another variable.
+Run these two logs right before create(...):
+console.log("Using library:", '@stripe/connect-js');
+console.log("Connect instance keys:", Object.keys(connect as any));
+You should see methods like create and updateAppearance. If not, you’re not using Connect.js.
+Make these changes and that specific error will go away; you’ll get a mountable component and the flow will stay embedded.

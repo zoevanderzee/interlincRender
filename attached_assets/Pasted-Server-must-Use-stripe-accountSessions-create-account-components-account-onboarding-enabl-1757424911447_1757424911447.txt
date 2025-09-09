@@ -1,0 +1,102 @@
+Server (must)
+Use stripe.accountSessions.create({ account, components: { account_onboarding: { enabled: true }}}).
+Never call accountLinks.create in this codepath.
+// server.js
+import express from "express";
+import Stripe from "stripe";
+
+const app = express();
+app.use(express.json());
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" });
+
+// One endpoint: returns { accountId, client_secret } in a single round-trip
+app.post("/create-account-session", async (req, res) => {
+  try {
+    let { accountId } = req.body;
+
+    if (!accountId) {
+      const acct = await stripe.accounts.create({
+        type: "custom",
+        country: "US", // set as needed
+        capabilities: { card_payments: { requested: true }, transfers: { requested: true } },
+      });
+      accountId = acct.id;
+    }
+
+    const session = await stripe.accountSessions.create({
+      account: accountId,
+      components: { account_onboarding: { enabled: true } },
+    });
+
+    res.json({ accountId, client_secret: session.client_secret });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.listen(3000);
+Client (must)
+Import only from @stripe/connect-js.
+Use .mount("#onboarding-container") (never appendChild).
+Initialize after you have a client_secret.
+Guard against double-invocation in dev.
+// ConnectOnboarding.tsx
+import { useEffect, useRef } from "react";
+import { loadConnectAndInitialize } from "@stripe/connect-js";
+
+const PUBLISHABLE_KEY = "pk_live_..."; // your live pk
+
+export default function ConnectOnboarding() {
+  const startedRef = useRef(false);
+
+  useEffect(() => {
+    if (startedRef.current) return; // guard against React 18 StrictMode/HMR double-run
+    startedRef.current = true;
+
+    (async () => {
+      const resp = await fetch("http://localhost:3000/create-account-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accountId: null }), // or your stored acct_…
+      });
+      if (!resp.ok) throw new Error(await resp.text());
+      const { client_secret } = await resp.json();
+
+      if (!client_secret || !client_secret.startsWith("seti_")) {
+        throw new Error("Expected Account Session client_secret (starts with seti_)");
+      }
+
+      const connect = await loadConnectAndInitialize({
+        publishableKey: PUBLISHABLE_KEY,
+        fetchClientSecret: async () => client_secret,
+      });
+
+      const onboarding = connect.create("account-onboarding");
+      onboarding.mount("#onboarding-container");
+    })().catch((e) => {
+      console.error("Embedded onboarding failed:", e);
+      alert(e.message);
+    });
+  }, []);
+
+  return (
+    <div>
+      <h1>Embedded Onboarding</h1>
+      <div id="onboarding-container" style={{ minHeight: 520 }} />
+    </div>
+  );
+}
+Hard “do nots”
+Do not import or use @stripe/stripe-js on this page.
+Do not call accountLinks.create anywhere in this flow.
+Do not use stripe.connectEmbeddedComponents.
+Do not call appendChild on the component; always use .mount("#selector").
+Sanity checks (add these logs briefly)
+Server: log the first 6 chars of the secret → seti_…
+Client: assert typeof onboarding.mount === "function".
+Keys: ensure pk_live pairs with sk_live (never mix modes).
+Typical React gotchas to neutralize
+StrictMode/HMR: guard with a useRef flag as shown so create() runs once.
+Env vars: ensure the client truly has the live PK at runtime (log the first 7 chars).
+Multiple mounts: never call create() in a component that re-renders without guards.
