@@ -6985,7 +6985,7 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
 
       // Check if user already has a Stripe Connect account
       if (!accountId) {
-        const user = await storage.getUserById(userId);
+        const user = await storage.getUser(userId);
         if (user?.stripeConnectAccountId) {
           accountId = user.stripeConnectAccountId;
           console.log(`Using existing Stripe Connect account: ${accountId}`);
