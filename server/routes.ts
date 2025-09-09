@@ -6964,9 +6964,14 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
    * Body: { accountId?: string|null, country?: string, publishableKey?: string }
    * Returns: { accountId: "acct_...", client_secret: "seti_..." }
    */
-  app.post(`${apiRouter}/connect/create-account-session`, async (req, res) => {
+  app.post(`${apiRouter}/connect/create-account-session`, requireAuth, async (req, res) => {
     try {
       let { accountId = null, country = "GB", publishableKey } = req.body || {};
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
 
       // Optional: ensure client PK mode matches server SK mode
       const sk = process.env.STRIPE_SECRET_KEY || '';
@@ -6978,13 +6983,25 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
         return res.status(400).json({ error: `Key mode mismatch (client=${pkMode}, server=${skMode})` });
       }
 
+      // Check if user already has a Stripe Connect account
       if (!accountId) {
-        const acct = await stripe.accounts.create({
-          type: "custom",
-          country,
-          capabilities: { card_payments: { requested: true }, transfers: { requested: true } },
-        });
-        accountId = acct.id;
+        const user = await storage.getUserById(userId);
+        if (user?.stripeConnectAccountId) {
+          accountId = user.stripeConnectAccountId;
+          console.log(`Using existing Stripe Connect account: ${accountId}`);
+        } else {
+          // Only create new account if user doesn't have one
+          const acct = await stripe.accounts.create({
+            type: "custom",
+            country,
+            capabilities: { card_payments: { requested: true }, transfers: { requested: true } },
+          });
+          accountId = acct.id;
+          
+          // Store the account ID in the user record
+          await storage.updateUser(userId, { stripeConnectAccountId: accountId });
+          console.log(`Created new Stripe Connect account: ${accountId} for user ${userId}`);
+        }
       }
 
       const session = await stripe.accountSessions.create({

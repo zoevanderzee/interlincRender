@@ -32,7 +32,7 @@ export default function ConnectOnboarding() {
 
       // 3) Validate response shapes (this prevents the "wrong SDK/init" symptom)
       assertPattern("accountId", accountId, /^acct_[A-Za-z0-9]+/);
-      assertPattern("client_secret", client_secret, /^seti_[A-Za-z0-9_]+/);
+      assertPattern("client_secret", client_secret, /^accs_secret_[A-Za-z0-9_]+/);
 
       // 4) Initialize Connect
       const connect = await loadConnectAndInitialize({
