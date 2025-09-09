@@ -51,7 +51,7 @@ import {registerProjectRoutes} from "./projects/index";
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
 }
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" });
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 import path from "path";
 
@@ -2545,35 +2545,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('Error creating onboarding link:', error);
       res.status(500).json({ 
         message: "Error creating onboarding link",
-        error: error.message 
-      });
-    }
-  });
-
-  // Create onboarding session for embedded onboarding
-  app.post(`${apiRouter}/stripe-connect/accounts/:accountId/onboarding-session`, requireAuth, async (req: Request, res: Response) => {
-    try {
-      const { accountId } = req.params;
-      const userId = req.user?.id;
-
-      if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
-      }
-
-      // Verify the user owns this connected account
-      const user = await storage.getUser(userId);
-      if (!user || user.stripeConnectAccountId !== accountId) {
-        return res.status(403).json({ message: "Access denied to this connected account" });
-      }
-
-      const stripeConnectService = await import('./services/stripe-connect');
-      const accountSession = await stripeConnectService.createAccountSession(accountId);
-
-      res.json(accountSession);
-    } catch (error: any) {
-      console.error('Error creating onboarding session:', error);
-      res.status(500).json({ 
-        message: "Error creating onboarding session",
         error: error.message 
       });
     }
@@ -6977,46 +6948,6 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
     } catch (error) {
       console.error("Error getting file info:", error);
       res.status(500).json({ message: "Error getting file info" });
-    }
-  });
-
-  /**
-   * POST /api/connect/create-account-session - INSTRUMENTED VERSION
-   * Body: { accountId?: string|null, country?: string }
-   * Returns: { accountId: string, client_secret: string } // client_secret must start with seti_
-   */
-  app.post(`${apiRouter}/connect/create-account-session`, async (req, res) => {
-    const started = Date.now();
-    try {
-      let { accountId = null, country = "GB" } = req.body || {};
-      console.log("[connect] req", { accountId, country });
-
-      if (!accountId) {
-        const acct = await stripe.accounts.create({
-          type: "custom",
-          country,
-          capabilities: { card_payments: { requested: true }, transfers: { requested: true } },
-        });
-        accountId = acct.id;
-        console.log("[connect] created account", accountId);
-      }
-
-      const session = await stripe.accountSessions.create({
-        account: accountId,
-        components: { account_onboarding: { enabled: true } },
-      });
-
-      const secret = session.client_secret;
-      console.log("[connect] session ok", {
-        accountId,
-        secretPrefix: secret?.slice(0, 5), // should be "seti_"
-        ms: Date.now() - started,
-      });
-
-      res.json({ accountId, client_secret: secret });
-    } catch (e: any) {
-      console.error("[connect] ERROR", { message: e?.message, stack: e?.stack });
-      res.status(500).json({ error: e?.message || "Unknown error" });
     }
   });
 

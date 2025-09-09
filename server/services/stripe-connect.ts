@@ -1,8 +1,9 @@
+
 import Stripe from 'stripe';
 
 // Initialize Stripe with the secret key
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: '2024-06-20', // Updated to match Connect onboarding requirements
+  apiVersion: '2023-10-16', // Using latest stable version
 });
 
 export interface CreateConnectedAccountParams {
@@ -40,11 +41,8 @@ export async function createConnectedAccount(params: CreateConnectedAccountParam
       throw new Error('STRIPE_SECRET_KEY environment variable is required');
     }
 
-    // Determine business type: company if businessName provided, individual otherwise
-    const businessType = params.businessName ? 'company' : 'individual';
-
-    // Prepare account data based on business type
-    const accountData: any = {
+    // Create connected account with controller properties (no top-level type)
+    const account = await stripe.accounts.create({
       controller: {
         // Platform controls fee collection - connected account pays fees
         fees: {
@@ -59,37 +57,27 @@ export async function createConnectedAccount(params: CreateConnectedAccountParam
           type: 'full' as const
         }
       },
-      business_type: businessType,
       country: params.country || 'US',
       email: params.email,
       capabilities: {
         card_payments: { requested: true },
         transfers: { requested: true },
-        payment_methods: { requested: true },
-      }
-    };
-
-    // Add business-specific parameters for company accounts
-    if (businessType === 'company' && params.businessName) {
-      accountData.business_profile = {
-        name: params.businessName,
-      };
-      accountData.company = {
-        name: params.businessName,
-      };
-    }
-
-    // Add individual-specific parameters for individual accounts
-    if (businessType === 'individual' && params.firstName && params.lastName) {
-      accountData.individual = {
-        first_name: params.firstName,
-        last_name: params.lastName,
-        email: params.email,
-      };
-    }
-
-    // Create connected account
-    const account = await stripe.accounts.create(accountData);
+      },
+      // Add business profile information if provided
+      ...(params.businessName && {
+        business_profile: {
+          name: params.businessName,
+        }
+      }),
+      // Add individual information if provided
+      ...(params.firstName && params.lastName && {
+        individual: {
+          first_name: params.firstName,
+          last_name: params.lastName,
+          email: params.email,
+        }
+      })
+    });
 
     console.log(`Created Stripe Connected Account: ${account.id}`);
 
@@ -121,33 +109,6 @@ export async function createAccountLink(accountId: string, refreshUrl: string, r
     return accountLink.url;
   } catch (error) {
     console.error('Error creating account link:', error);
-    throw error;
-  }
-}
-
-/**
- * Creates an Account Session for embedded onboarding
- * This allows embedding Stripe's onboarding components directly in your app
- */
-export async function createAccountSession(accountId: string): Promise<{ client_secret: string }> {
-  try {
-    const accountSession = await stripe.accountSessions.create({
-      account: accountId,
-      components: {
-        account_onboarding: {
-          enabled: true,
-        },
-        notification_banner: {
-          enabled: true,
-        },
-      },
-    });
-
-    return {
-      client_secret: accountSession.client_secret,
-    };
-  } catch (error) {
-    console.error('Error creating account session:', error);
     throw error;
   }
 }
@@ -284,7 +245,6 @@ export async function linkConnectedAccountToUser(userId: number, accountId: stri
 export default {
   createConnectedAccount,
   createAccountLink,
-  createAccountSession,
   getAccountStatus,
   createProduct,
   listProducts,
