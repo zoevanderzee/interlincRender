@@ -1506,9 +1506,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Authentication required" });
       }
 
-      let { accountId, country = "GB" } = req.body || {};
+      let { accountId = null, country = "GB" } = req.body || {};
 
-      // If no accountId provided, create a new account
       if (!accountId) {
         const user = await storage.getUser(userId);
         if (!user) {
@@ -1520,19 +1519,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           accountId = user.stripeConnectAccountId;
         } else {
           // Create new Connect account
-          const account = await stripe.accounts.create({
+          const acct = await stripe.accounts.create({
             type: "custom",
             country,
             capabilities: {
               card_payments: { requested: true },
               transfers: { requested: true },
             },
-            metadata: {
-              userId: userId.toString(),
-            },
           });
-          
-          accountId = account.id;
+          accountId = acct.id;
 
           // Update user with the new account ID
           await storage.updateUser(userId, {
@@ -1541,24 +1536,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Create Account Session for embedded onboarding
       const session = await stripe.accountSessions.create({
         account: accountId,
-        components: { 
-          account_onboarding: { enabled: true } 
-        },
+        components: { account_onboarding: { enabled: true } },
       });
 
-      res.json({ 
-        accountId, 
-        client_secret: session.client_secret 
-      });
-    } catch (error: any) {
-      console.error('Error creating account session:', error);
-      res.status(500).json({ 
-        message: "Error creating account session",
-        error: error.message 
-      });
+      res.json({ accountId, client_secret: session.client_secret });
+    } catch (e: any) {
+      console.error('create-account-session error:', e);
+      res.status(500).json({ error: e.message });
     }
   });
 
