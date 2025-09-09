@@ -44,11 +44,12 @@ export default function ConnectOnboarding() {
   const [isLoadingStatus, setIsLoadingStatus] = useState(false);
   const [stripe, setStripe] = useState<any>(null); // State for Stripe instance
   const [error, setError] = useState<string | null>(null); // State for error messages
+  const [onboardingComponent, setOnboardingComponent] = useState<any>(null); // Track the component instance
 
   // Initialize embedded onboarding when account is created
   useEffect(() => {
-    if (!accountStatus?.accountId || !user?.id) {
-      return;
+    if (!accountStatus?.accountId || !user?.id || stripe) {
+      return; // Don't reinitialize if already done
     }
 
     const initializeEmbeddedOnboarding = async () => {
@@ -59,6 +60,8 @@ export default function ConnectOnboarding() {
           setError('Stripe configuration is missing. Please contact support.');
           return;
         }
+
+        console.log('Initializing Stripe Connect for account:', accountStatus.accountId);
 
         // Initialize Stripe Connect.js
         const connect = await loadConnectAndInitialize({
@@ -90,6 +93,19 @@ export default function ConnectOnboarding() {
 
     initializeEmbeddedOnboarding();
   }, [accountStatus?.accountId, user?.id]);
+
+  // Cleanup function
+  useEffect(() => {
+    return () => {
+      if (onboardingComponent) {
+        try {
+          onboardingComponent.unmount();
+        } catch (err) {
+          console.log('Component cleanup:', err);
+        }
+      }
+    };
+  }, [onboardingComponent]);
 
 
   // Check if user already has a connected account
@@ -191,6 +207,12 @@ export default function ConnectOnboarding() {
       return;
     }
 
+    // Prevent creating multiple components
+    if (onboardingComponent) {
+      console.log('Onboarding component already exists');
+      return;
+    }
+
     try {
       const container = document.getElementById('onboarding-container');
       if (!container) {
@@ -212,12 +234,10 @@ export default function ConnectOnboarding() {
 
       console.log('Account onboarding component created successfully');
 
-      // Mount the component to the container
-      accountOnboarding.mount(container);
+      // Store the component instance
+      setOnboardingComponent(accountOnboarding);
 
-      console.log('Account onboarding component mounted to container');
-
-      // Handle events
+      // Handle events first, before mounting
       accountOnboarding.on('ready', () => {
         console.log('Account onboarding component is ready');
       });
@@ -229,6 +249,7 @@ export default function ConnectOnboarding() {
           description: 'Your account verification is complete.',
         });
         checkAccountStatus(accountStatus.accountId);
+        setOnboardingComponent(null); // Clear the component
       });
 
       accountOnboarding.on('onboarding.exited', () => {
@@ -237,10 +258,17 @@ export default function ConnectOnboarding() {
           title: 'Onboarding exited',
           description: 'You can continue verification later.',
         });
+        setOnboardingComponent(null); // Clear the component
       });
+
+      // Mount the component to the container
+      accountOnboarding.mount(container);
+
+      console.log('Account onboarding component mounted to container');
 
     } catch (error) {
       console.error('Error starting onboarding:', error);
+      setOnboardingComponent(null); // Clear on error
       toast({
         title: 'Error starting onboarding',
         description: error instanceof Error ? error.message : 'Failed to start onboarding flow',
