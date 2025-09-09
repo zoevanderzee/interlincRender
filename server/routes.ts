@@ -6981,24 +6981,24 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
   });
 
   /**
-   * POST /api/connect/create-account-session
-   * Body: { accountId?: string|null, country?: string }  // optional
+   * POST /api/connect/create-account-session - INSTRUMENTED VERSION
+   * Body: { accountId?: string|null, country?: string }
    * Returns: { accountId: string, client_secret: string } // client_secret must start with seti_
    */
   app.post(`${apiRouter}/connect/create-account-session`, async (req, res) => {
+    const started = Date.now();
     try {
       let { accountId = null, country = "GB" } = req.body || {};
+      console.log("[connect] req", { accountId, country });
 
       if (!accountId) {
         const acct = await stripe.accounts.create({
           type: "custom",
           country,
-          capabilities: {
-            card_payments: { requested: true },
-            transfers: { requested: true },
-          },
+          capabilities: { card_payments: { requested: true }, transfers: { requested: true } },
         });
         accountId = acct.id;
+        console.log("[connect] created account", accountId);
       }
 
       const session = await stripe.accountSessions.create({
@@ -7006,10 +7006,17 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
         components: { account_onboarding: { enabled: true } },
       });
 
-      return res.json({ accountId, client_secret: session.client_secret });
+      const secret = session.client_secret;
+      console.log("[connect] session ok", {
+        accountId,
+        secretPrefix: secret?.slice(0, 5), // should be "seti_"
+        ms: Date.now() - started,
+      });
+
+      res.json({ accountId, client_secret: secret });
     } catch (e: any) {
-      console.error("create-account-session error:", e);
-      return res.status(500).json({ error: e.message });
+      console.error("[connect] ERROR", { message: e?.message, stack: e?.stack });
+      res.status(500).json({ error: e?.message || "Unknown error" });
     }
   });
 

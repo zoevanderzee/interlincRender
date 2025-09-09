@@ -18,6 +18,14 @@ export default function ConnectOnboarding() {
     if (started.current) return; // guard React StrictMode/HMR double-run
     started.current = true;
 
+    // Global error taps (so we never see "{}" again)
+    window.addEventListener("error", (e) =>
+      console.error("[window.error]", e.message, e.error)
+    );
+    window.addEventListener("unhandledrejection", (e: any) =>
+      console.error("[unhandledrejection]", e?.reason)
+    );
+
     (async () => {
       try {
         // 1) Validate publishable key
