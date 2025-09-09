@@ -1,0 +1,34 @@
+If you’re seeing the “Add information” button bounce the user out to connect.stripe.com, that means the flow has silently fallen back to hosted onboarding. That happens if one of these three conditions isn’t satisfied:
+1. You’re not actually using @stripe/connect-js
+Embedded onboarding only works with @stripe/connect-js.
+If you accidentally installed/used @stripe/stripe-js and are calling stripe.connectEmbeddedComponents, you’ll always get a redirect.
+✅ Check your package.json and imports:
+import { loadConnectAndInitialize } from "@stripe/connect-js";
+2. The accountSession was not created with onboarding enabled
+The server must create a session like this:
+const session = await stripe.accountSessions.create({
+  account: accountId,
+  components: {
+    account_onboarding: { enabled: true },
+  },
+});
+If components.account_onboarding.enabled is missing, the client secret returned will only work with a hosted link, and you’ll see a redirect.
+3. The client isn’t really using the session secret
+loadConnectAndInitialize must be given a fetchClientSecret that returns the fresh client_secret from that accountSession.
+const connect = await loadConnectAndInitialize({
+  publishableKey: PUBLISHABLE_KEY,
+  fetchClientSecret: async () => client_secret, // from /create-account-session
+});
+If you return nothing, or an accountLink URL, or a stale secret, Connect.js won’t mount the embedded flow — it’ll bounce out.
+What the working flow looks like
+When all three are correct, Stripe renders a multi-step embedded form inside your <div>. The user never sees connect.stripe.com in their URL bar.
+First step: business details.
+Next: identity docs upload.
+Next: bank details.
+All without leaving your app.
+Quick debugging steps
+Add a console.log(client_secret) in your frontend to verify you’re really receiving a secret that looks like seti_… (that’s an Account Session secret).
+If you see a URL instead, you’re accidentally using hosted onboarding.
+Confirm components.account_onboarding.enabled is true in your backend.
+Confirm you’re using @stripe/connect-js, not @stripe/stripe-js.
+Make sure your frontend isn’t trying to open a redirect from an account_links.create call — you don’t need that at all in the embedded flow.
