@@ -1,3 +1,6 @@
+You’re super close. The “rendered:false” + black page means the component was created but never actually mounted. Fix that by mounting into a real DOM node (not a selector), and only after the node is visible (non-zero size). Also clean up on unmount so HMR/StrictMode don’t double-mount.
+Give your agent this exact patch.
+Replace your onboarding page with this (verbatim)
 // client/src/pages/ConnectOnboarding.tsx
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { loadConnectAndInitialize } from "@stripe/connect-js";
@@ -107,3 +110,17 @@ export default function ConnectOnboarding() {
     </div>
   );
 }
+Why this fixes the “rendered:false” / black page
+Mounting into a node (comp.mount(el)) avoids selector resolution quirks and “silent” failures.
+Visibility guard waits until the container actually has size; mounting into display:none / zero-width elements is a common silent fail.
+StrictMode/HMR guard + cleanup stops duplicate create()/mount() calls that leave the component in a bad state.
+No prefix assumptions for the account-session client_secret (Stripe doesn’t guarantee a specific prefix here).
+Quick server sanity (no changes if you already did this)
+Endpoint: POST /api/connect/create-account-session → returns { accountId: "acct_…", client_secret: "<string>" }.
+Uses stripe.accountSessions.create({ account, components: { account_onboarding: { enabled: true }}}).
+Final acceptance checks
+Network tab shows /api/connect/create-account-session 200.
+Console logs: [connect] ready (embedded) for acct_….
+The onboarding UI appears inside the bordered container.
+No navigation to connect.stripe.com.
+This page imports only @stripe/connect-js.
