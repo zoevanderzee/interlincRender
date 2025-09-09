@@ -1,0 +1,185 @@
+Embedded Connect Onboarding — One-Pass Fix & Checklist
+0) Hard rules (no deviations)
+Use @stripe/connect-js on this page only.
+Server must call stripe.accountSessions.create({ account, components: { account_onboarding: { enabled: true }}}).
+Client must mount with .mount("#onboarding-container").
+Never use @stripe/stripe-js, accountLinks.create, or appendChild().
+1) Server: replace the route with this instrumented version
+POST /api/connect/create-account-session
+// server/connect-routes.js
+import express from "express";
+import Stripe from "stripe";
+
+const router = express.Router();
+
+if (!process.env.STRIPE_SECRET_KEY) throw new Error("Missing STRIPE_SECRET_KEY");
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" });
+
+router.post("/connect/create-account-session", async (req, res) => {
+  const started = Date.now();
+  try {
+    let { accountId = null, country = "GB" } = req.body || {};
+    console.log("[connect] req", { accountId, country });
+
+    if (!accountId) {
+      const acct = await stripe.accounts.create({
+        type: "custom",
+        country,
+        capabilities: { card_payments: { requested: true }, transfers: { requested: true } },
+      });
+      accountId = acct.id;
+      console.log("[connect] created account", accountId);
+    }
+
+    const session = await stripe.accountSessions.create({
+      account: accountId,
+      components: { account_onboarding: { enabled: true } },
+    });
+
+    const secret = session.client_secret;
+    console.log("[connect] session ok", {
+      accountId,
+      secretPrefix: secret?.slice(0, 5), // should be "seti_"
+      ms: Date.now() - started,
+    });
+
+    res.json({ accountId, client_secret: secret });
+  } catch (e) {
+    console.error("[connect] ERROR", { message: e?.message, stack: e?.stack });
+    res.status(500).json({ error: e?.message || "Unknown error" });
+  }
+});
+
+export default router;
+Wire it in your server:
+// server/index.js
+import express from "express";
+import connectRoutes from "./connect-routes.js";
+const app = express();
+app.use(express.json());
+app.use("/api", connectRoutes);
+app.listen(3000, () => console.log("Server :3000"));
+Quick smoke test (must pass):
+curl -s -X POST http://localhost:3000/api/connect/create-account-session \
+  -H "Content-Type: application/json" \
+  -d '{"accountId": null, "country": "GB"}'
+# Expect: {"accountId":"acct_...","client_secret":"seti_..."}
+If client_secret doesn’t start with seti_, stop and fix the server (keys / API call).
+2) Client: minimal component with hard assertions and proper mount
+// client/src/pages/ConnectOnboarding.tsx
+import { useEffect, useRef } from "react";
+import { loadConnectAndInitialize } from "@stripe/connect-js";
+
+const PK = (import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "").trim();
+
+function assertPattern(name: string, val: any, re: RegExp) {
+  if (typeof val !== "string") throw new Error(`${name} not a string`);
+  if (!re.test(val)) throw new Error(`${name} invalid: ${String(val).slice(0, 24)}…`);
+}
+
+export default function ConnectOnboarding() {
+  const started = useRef(false);
+
+  useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+
+    // Global error taps (so we never see "{}" again)
+    window.addEventListener("error", (e) =>
+      console.error("[window.error]", e.message, e.error)
+    );
+    window.addEventListener("unhandledrejection", (e: any) =>
+      console.error("[unhandledrejection]", e?.reason)
+    );
+
+    (async () => {
+      // 1) Validate publishable key
+      assertPattern("VITE_STRIPE_PUBLISHABLE_KEY", PK, /^pk_(test|live)_[A-Za-z0-9]+/);
+
+      // 2) Get account + session from server
+      const resp = await fetch("/api/connect/create-account-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accountId: null, country: "GB" }),
+      });
+      if (!resp.ok) {
+        const txt = await resp.text();
+        throw new Error(`API ${resp.status}: ${txt}`);
+      }
+      const { accountId, client_secret } = await resp.json();
+
+      // 3) Validate shapes
+      assertPattern("accountId", accountId, /^acct_[A-Za-z0-9]+/);
+      assertPattern("client_secret", client_secret, /^seti_[A-Za-z0-9_]+/);
+
+      // 4) Init Connect.js (NOT @stripe/stripe-js)
+      const connect = await loadConnectAndInitialize({
+        publishableKey: PK,
+        fetchClientSecret: async () => client_secret,
+      });
+
+      // 5) Create & mount (no appendChild)
+      const comp = connect.create("account-onboarding");
+      if (typeof (comp as any).mount !== "function") {
+        console.error("component:", comp);
+        throw new Error("Connect component not mountable (wrong SDK/init).");
+      }
+      comp.on("ready", () => console.log("[connect] ready for", accountId));
+      comp.mount("#onboarding-container");
+    })().catch((e) => {
+      console.error("[onboarding failed]", e);
+      alert(String(e?.message || e));
+    });
+  }, []);
+
+  return (
+    <div style={{ padding: 24, maxWidth: 720, margin: "0 auto" }}>
+      <h1>Embedded Connect Onboarding</h1>
+      <div id="onboarding-container" style={{ minHeight: 520 }} />
+    </div>
+  );
+}
+Router & link (so “navigation missing” can’t be the cause):
+// client/src/App.tsx (React Router example)
+import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
+import ConnectOnboarding from "./pages/ConnectOnboarding";
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <nav style={{ padding: 12, borderBottom: "1px solid #eee" }}>
+        <Link to="/connect-onboarding">Connect Onboarding</Link>
+      </nav>
+      <Routes>
+        <Route path="/connect-onboarding" element={<ConnectOnboarding />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+Vite dev proxy (avoid CORS / wrong URL):
+// vite.config.ts
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    proxy: { "/api": "http://localhost:3000" },
+  },
+});
+3) Final acceptance checklist (must all be true)
+Server curl returns acct_… and seti_….
+Browser Network tab → /api/connect/create-account-session returns the same.
+Console shows [connect] ready for acct_….
+typeof comp.mount === 'function' is true.
+No connect.stripe.com navigation; onboarding stays inside #onboarding-container.
+No references to @stripe/stripe-js or accountLinks.create in this codepath.
+4) If it still fails, use this decision table
+API 500 / 404
+Fix server route path, Vite proxy, or server logs. Ensure STRIPE_SECRET_KEY exists and is live/test matching your PK.
+“String did not match expected pattern”
+One of PK / acct_… / seti_… is malformed or empty. The assertion tells you which.
+mount is not a function
+Wrong SDK (you imported @stripe/stripe-js) or loadConnectAndInitialize failed. Verify the import and the seti_… secret.
+Redirect to Stripe
+You used hosted (accountLinks) somewhere, used appendChild, or the secret isn’t a valid seti_….

@@ -1,0 +1,60 @@
+Add these to the task list (verbatim)
+0) Clean-room preflight (before coding)
+ Project-wide search confirms the onboarding codepath contains no @stripe/stripe-js, no accountLinks.create, no connectEmbeddedComponents, and no appendChild on Stripe components.
+1) Env & keys
+ Server has STRIPE_SECRET_KEY set (sk_live_* or sk_test_*).
+ Client has VITE_STRIPE_PUBLISHABLE_KEY set (pk_live_* or pk_test_*).
+ Modes match (both live or both test).
+ Log first 7 chars of both keys at startup (server & client) to verify they’re present.
+2) Server route (use the instrumented version exactly)
+ Implement POST /api/connect/create-account-session that:
+Creates a connected account if accountId is missing.
+Calls:
+await stripe.accountSessions.create({
+  account: accountId,
+  components: { account_onboarding: { enabled: true } },
+})
+Returns only:
+{ "accountId": "acct_...", "client_secret": "seti_..." }
+Logs secretPrefix: seti_ and the elapsed ms.
+ No accountLinks.create anywhere in this codepath.
+Smoke test (must pass before client work):
+curl -s -X POST http://localhost:3000/api/connect/create-account-session \
+  -H "Content-Type: application/json" \
+  -d '{"accountId": null, "country": "GB"}'
+# Expect JSON with: accountId = acct_..., client_secret = seti_...
+3) Client component (replace with error-handled version)
+ Import only from @stripe/connect-js.
+ Guard React double-run (StrictMode/HMR) with a useRef flag.
+ Assert patterns before initializing:
+pk_* for publishable key
+acct_* for accountId
+seti_* for client_secret
+ Initialize:
+const connect = await loadConnectAndInitialize({
+  publishableKey: import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY,
+  fetchClientSecret: async () => client_secret,
+})
+ Create and mount (not append):
+const onboarding = connect.create('account-onboarding')
+onboarding.mount('#onboarding-container')
+ Add global error hooks so failures aren’t swallowed:
+window.addEventListener('error', ...)
+window.addEventListener('unhandledrejection', ...)
+4) Navigation & proxy
+ Add a visible link to /connect-onboarding.
+ Ensure Vite proxy forwards /api → http://localhost:3000 to avoid CORS/URL typos.
+5) Acceptance checklist (Definition of Done)
+ Server curl returns acct_… and seti_….
+ Browser Network → /api/connect/create-account-session returns the same.
+ Console confirms:
+typeof onboarding.mount === 'function'
+[connect] ready for acct_…
+ The onboarding UI (including identity docs & bank details) renders inside #onboarding-container.
+ No navigation to connect.stripe.com.
+ Codepath contains no @stripe/stripe-js and no accountLinks.create.
+6) If anything fails, use this decision table
+API 500/404: fix route/proxy/env; ensure STRIPE_SECRET_KEY exists and matches client mode.
+“String did not match expected pattern”: wrong/missing pk_*, acct_*, or seti_* (the assertions will print which).
+mount is not a function: wrong SDK or failed loadConnectAndInitialize. Verify import and that client_secret starts with seti_.
+Redirect to Stripe: you used hosted (accountLinks) somewhere, used appendChild, or the secret isn’t a valid seti_.
