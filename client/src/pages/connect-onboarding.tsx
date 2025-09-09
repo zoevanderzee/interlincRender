@@ -45,50 +45,50 @@ export default function ConnectOnboarding() {
   const [stripe, setStripe] = useState<any>(null); // State for Stripe instance
   const [error, setError] = useState<string | null>(null); // State for error messages
 
-  // Load Stripe Connect using the official loader
+  // Initialize embedded onboarding when account is created
   useEffect(() => {
-    const stripePublicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
-
-    if (!stripePublicKey) {
-      console.error('VITE_STRIPE_PUBLIC_KEY environment variable is missing');
-      setError('Stripe configuration is missing. Please contact support.');
+    if (!accountStatus?.accountId || !user?.id) {
       return;
     }
 
-    loadConnectAndInitialize({
-      publishableKey: stripePublicKey,
-      fetchClientSecret: async () => {
-        if (!accountStatus?.accountId) {
-          throw new Error('No account ID available');
+    const initializeEmbeddedOnboarding = async () => {
+      try {
+        const stripePublicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
+
+        if (!stripePublicKey) {
+          setError('Stripe configuration is missing. Please contact support.');
+          return;
         }
 
-        const response = await fetch(`/api/stripe-connect/accounts/${accountStatus.accountId}/onboarding-session`, {
-          method: 'POST',
-          headers: {
-            'X-User-ID': user?.id?.toString() || '',
+        // Initialize Stripe Connect.js
+        const connect = await loadConnectAndInitialize({
+          publishableKey: stripePublicKey,
+          fetchClientSecret: async () => {
+            const response = await fetch(`/api/stripe-connect/accounts/${accountStatus.accountId}/onboarding-session`, {
+              method: 'POST',
+              headers: {
+                'X-User-ID': user.id.toString(),
+              },
+            });
+
+            if (!response.ok) {
+              throw new Error('Failed to fetch client secret');
+            }
+
+            const { client_secret } = await response.json();
+            return client_secret;
           },
         });
 
-        if (!response.ok) {
-          throw new Error('Failed to fetch client secret');
-        }
-
-        const { client_secret } = await response.json();
-        return client_secret;
-      },
-    })
-      .then((connectInstance) => {
-        if (connectInstance) {
-          console.log('Stripe Connect initialized successfully');
-          setStripe(connectInstance);
-        } else {
-          setError('Failed to initialize Stripe Connect. Please refresh the page.');
-        }
-      })
-      .catch((err) => {
+        setStripe(connect);
+        console.log('Stripe Connect initialized successfully for account:', accountStatus.accountId);
+      } catch (err) {
         console.error('Error loading Stripe Connect:', err);
         setError('Failed to load Stripe Connect. Please refresh the page.');
-      });
+      }
+    };
+
+    initializeEmbeddedOnboarding();
   }, [accountStatus?.accountId, user?.id]);
 
 
@@ -173,7 +173,23 @@ export default function ConnectOnboarding() {
   };
 
   const startOnboarding = async () => {
-    if (!accountStatus?.accountId || !stripe) return;
+    if (!accountStatus?.accountId) {
+      toast({
+        title: 'No account found',
+        description: 'Please create an account first.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (!stripe) {
+      toast({
+        title: 'Stripe not ready',
+        description: 'Stripe Connect is still loading. Please wait a moment.',
+        variant: 'destructive'
+      });
+      return;
+    }
 
     try {
       // Clear any existing content
@@ -182,31 +198,33 @@ export default function ConnectOnboarding() {
         container.innerHTML = '';
       }
 
-      console.log('Using Stripe Connect embedded onboarding');
+      console.log('Creating embedded onboarding component');
 
-      // Create the account onboarding component using connect-js
+      // Create the account onboarding component
       const accountOnboarding = stripe.create('account-onboarding');
 
       // Mount the component to the container
-      if (container) {
+      if (container && accountOnboarding) {
         container.appendChild(accountOnboarding);
       }
 
-      // Handle events
-      accountOnboarding.on('onboarding.completed', () => {
-        toast({
-          title: 'Onboarding completed!',
-          description: 'Your account verification is complete.',
+      // Handle events if available
+      if (accountOnboarding && typeof accountOnboarding.on === 'function') {
+        accountOnboarding.on('onboarding.completed', () => {
+          toast({
+            title: 'Onboarding completed!',
+            description: 'Your account verification is complete.',
+          });
+          checkAccountStatus(accountStatus.accountId);
         });
-        checkAccountStatus(accountStatus.accountId);
-      });
 
-      accountOnboarding.on('onboarding.exited', () => {
-        toast({
-          title: 'Onboarding exited',
-          description: 'You can continue verification later.',
+        accountOnboarding.on('onboarding.exited', () => {
+          toast({
+            title: 'Onboarding exited',
+            description: 'You can continue verification later.',
+          });
         });
-      });
+      }
 
     } catch (error) {
       console.error('Error starting onboarding:', error);
