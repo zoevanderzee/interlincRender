@@ -1497,6 +1497,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create the milestone/deliverable using normalized data
       const milestoneData = {
+
+  // Create Account Session for embedded onboarding (no redirects)
+  app.post(`${apiRouter}/connect/create-account-session`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      let { accountId, country = "GB" } = req.body || {};
+
+      // If no accountId provided, create a new account
+      if (!accountId) {
+        const user = await storage.getUser(userId);
+        if (!user) {
+          return res.status(404).json({ message: "User not found" });
+        }
+
+        // Check if user already has a Connect account
+        if (user.stripeConnectAccountId) {
+          accountId = user.stripeConnectAccountId;
+        } else {
+          // Create new Connect account
+          const account = await stripe.accounts.create({
+            type: "custom",
+            country,
+            capabilities: {
+              card_payments: { requested: true },
+              transfers: { requested: true },
+            },
+            metadata: {
+              userId: userId.toString(),
+            },
+          });
+          
+          accountId = account.id;
+
+          // Update user with the new account ID
+          await storage.updateUser(userId, {
+            stripeConnectAccountId: accountId,
+          });
+        }
+      }
+
+      // Create Account Session for embedded onboarding
+      const session = await stripe.accountSessions.create({
+        account: accountId,
+        components: { 
+          account_onboarding: { enabled: true } 
+        },
+      });
+
+      res.json({ 
+        accountId, 
+        client_secret: session.client_secret 
+      });
+    } catch (error: any) {
+      console.error('Error creating account session:', error);
+      res.status(500).json({ 
+        message: "Error creating account session",
+        error: error.message 
+      });
+    }
+  });
+
         contractId: normalizedInput.contractId,
         name: normalizedInput.name,
         description: normalizedInput.description || '',

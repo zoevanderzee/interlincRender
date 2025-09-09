@@ -1,23 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
-import { loadStripe } from '@stripe/stripe-js'; // This import is no longer directly used for initialization but might be for other Stripe functionalities. We will rely on the new import for connect-js.
-import { loadConnectAndInitialize } from '@stripe/connect-js'; // New import for Stripe Connect JS
+import { loadConnectAndInitialize } from '@stripe/connect-js';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { AlertCircle, CheckCircle, Loader2, ExternalLink, User, Building } from 'lucide-react';
+import { AlertCircle, CheckCircle, Loader2, Building, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import Layout from '@/components/layout/Layout';
 
-// Declare Stripe global
-declare global {
-  interface Window {
-    Stripe: any;
-  }
-}
+const PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLIC_KEY as string;
 
 interface ConnectedAccountStatus {
   accountId: string;
@@ -36,77 +29,17 @@ export default function ConnectOnboarding() {
   const [firstName, setFirstName] = useState(user?.firstName || '');
   const [lastName, setLastName] = useState(user?.lastName || '');
   const [businessName, setBusinessName] = useState(user?.companyName || '');
-  const [country, setCountry] = useState('US');
+  const [country, setCountry] = useState('GB');
 
   // Account state
   const [accountStatus, setAccountStatus] = useState<ConnectedAccountStatus | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isLoadingStatus, setIsLoadingStatus] = useState(false);
-  const [stripe, setStripe] = useState<any>(null); // State for Stripe instance
-  const [error, setError] = useState<string | null>(null); // State for error messages
-  const [onboardingComponent, setOnboardingComponent] = useState<any>(null); // Track the component instance
+  const [error, setError] = useState<string | null>(null);
 
-  // Initialize embedded onboarding when account is created
-  useEffect(() => {
-    if (!accountStatus?.accountId || !user?.id || stripe) {
-      return; // Don't reinitialize if already done
-    }
-
-    const initializeEmbeddedOnboarding = async () => {
-      try {
-        const stripePublicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
-
-        if (!stripePublicKey) {
-          setError('Stripe configuration is missing. Please contact support.');
-          return;
-        }
-
-        console.log('Initializing Stripe Connect for account:', accountStatus.accountId);
-
-        // Initialize Stripe Connect.js
-        const connect = await loadConnectAndInitialize({
-          publishableKey: stripePublicKey,
-          fetchClientSecret: async () => {
-            const response = await fetch(`/api/stripe-connect/accounts/${accountStatus.accountId}/onboarding-session`, {
-              method: 'POST',
-              headers: {
-                'X-User-ID': user.id.toString(),
-              },
-            });
-
-            if (!response.ok) {
-              throw new Error('Failed to fetch client secret');
-            }
-
-            const { client_secret } = await response.json();
-            return client_secret;
-          },
-        });
-
-        setStripe(connect);
-        console.log('Stripe Connect initialized successfully for account:', accountStatus.accountId);
-      } catch (err) {
-        console.error('Error loading Stripe Connect:', err);
-        setError('Failed to load Stripe Connect. Please refresh the page.');
-      }
-    };
-
-    initializeEmbeddedOnboarding();
-  }, [accountStatus?.accountId, user?.id]);
-
-  // Cleanup function
-  useEffect(() => {
-    return () => {
-      if (onboardingComponent) {
-        try {
-          onboardingComponent.unmount();
-        } catch (err) {
-          console.log('Component cleanup:', err);
-        }
-      }
-    };
-  }, [onboardingComponent]);
-
+  // Embedded onboarding state
+  const [isStartingOnboarding, setIsStartingOnboarding] = useState(false);
+  const started = useRef(false);
 
   // Check if user already has a connected account
   useEffect(() => {
@@ -188,87 +121,83 @@ export default function ConnectOnboarding() {
     }
   };
 
-  const startOnboarding = async () => {
-    if (!accountStatus?.accountId) {
-      toast({
-        title: 'No account found',
-        description: 'Please create an account first.',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    if (!stripe) {
-      toast({
-        title: 'Stripe not ready',
-        description: 'Stripe Connect is still loading. Please wait a moment.',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    // Prevent creating multiple components
-    if (onboardingComponent) {
-      console.log('Onboarding component already exists');
-      return;
-    }
+  const startEmbeddedOnboarding = async () => {
+    if (started.current) return;
+    started.current = true;
+    setIsStartingOnboarding(true);
 
     try {
-      const container = document.getElementById('onboarding-container');
-      if (!container) {
-        console.error('Onboarding container not found');
-        return;
+      const stripePublicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
+      if (!stripePublicKey) {
+        throw new Error('Stripe configuration is missing. Please contact support.');
       }
 
-      // Clear any existing content
-      container.innerHTML = '';
-
-      console.log('Creating embedded onboarding component with Stripe Connect instance');
-
-      // Create the account onboarding component
-      const accountOnboarding = stripe.create('account-onboarding');
-
-      if (!accountOnboarding) {
-        throw new Error('Failed to create account onboarding component');
-      }
-
-      console.log('Account onboarding component created successfully');
-
-      // Store the component instance
-      setOnboardingComponent(accountOnboarding);
-
-      // Handle events first, before mounting
-      accountOnboarding.on('ready', () => {
-        console.log('Account onboarding component is ready');
+      // Create account session
+      const resp = await fetch("/api/connect/create-account-session", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          'X-User-ID': user?.id?.toString() || '',
+        },
+        body: JSON.stringify({ 
+          accountId: accountStatus?.accountId || null, 
+          country 
+        }),
       });
 
-      accountOnboarding.on('onboarding.completed', () => {
+      if (!resp.ok) {
+        const errorText = await resp.text();
+        throw new Error(errorText);
+      }
+
+      const { accountId, client_secret } = await resp.json();
+
+      if (!client_secret?.startsWith("seti_")) {
+        throw new Error("Expected Account Session client_secret (starts with seti_)");
+      }
+
+      // Initialize Stripe Connect
+      const connect = await loadConnectAndInitialize({
+        publishableKey: stripePublicKey,
+        fetchClientSecret: async () => client_secret,
+      });
+
+      // Create and mount onboarding component
+      const onboarding = connect.create("account-onboarding");
+
+      // Handle events
+      onboarding.on('ready', () => {
+        console.log('Embedded onboarding ready');
+        setIsStartingOnboarding(false);
+      });
+
+      onboarding.on('onboarding.completed', () => {
         console.log('Onboarding completed');
         toast({
           title: 'Onboarding completed!',
           description: 'Your account verification is complete.',
         });
-        checkAccountStatus(accountStatus.accountId);
-        setOnboardingComponent(null); // Clear the component
+        if (accountId) {
+          checkAccountStatus(accountId);
+        }
       });
 
-      accountOnboarding.on('onboarding.exited', () => {
+      onboarding.on('onboarding.exited', () => {
         console.log('Onboarding exited');
         toast({
           title: 'Onboarding exited',
           description: 'You can continue verification later.',
         });
-        setOnboardingComponent(null); // Clear the component
       });
 
-      // Mount the component to the container
-      accountOnboarding.mount(container);
-
-      console.log('Account onboarding component mounted to container');
+      // Mount to container
+      onboarding.mount("#onboarding-container");
 
     } catch (error) {
-      console.error('Error starting onboarding:', error);
-      setOnboardingComponent(null); // Clear on error
+      console.error("Embedded onboarding failed:", error);
+      setError(error instanceof Error ? error.message : 'Failed to start onboarding');
+      setIsStartingOnboarding(false);
+      started.current = false;
       toast({
         title: 'Error starting onboarding',
         description: error instanceof Error ? error.message : 'Failed to start onboarding flow',
@@ -296,17 +225,17 @@ export default function ConnectOnboarding() {
         </div>
 
         {error && (
-            <Card className="mb-6">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-destructive">
-                        <AlertCircle className="h-5 w-5" />
-                        Configuration Error
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-destructive">{error}</p>
-                </CardContent>
-            </Card>
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-destructive">
+                <AlertCircle className="h-5 w-5" />
+                Configuration Error
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-destructive">{error}</p>
+            </CardContent>
+          </Card>
         )}
 
         {!accountStatus ? (
@@ -318,7 +247,7 @@ export default function ConnectOnboarding() {
                 Create Payment Account
               </CardTitle>
               <CardDescription>
-                We'll create your payment account that allows you to receive payments while giving you full access to payment management.
+                We'll create your payment account that allows you to receive payments.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -373,51 +302,15 @@ export default function ConnectOnboarding() {
                   onChange={(e) => setCountry(e.target.value)}
                   className="w-full px-3 py-2 border border-input rounded-md bg-background"
                 >
+                  <option value="GB">United Kingdom</option>
                   <option value="US">United States</option>
                   <option value="AU">Australia</option>
-                  <option value="AT">Austria</option>
-                  <option value="BE">Belgium</option>
-                  <option value="BG">Bulgaria</option>
-                  <option value="BR">Brazil</option>
                   <option value="CA">Canada</option>
-                  <option value="HR">Croatia</option>
-                  <option value="CY">Cyprus</option>
-                  <option value="CZ">Czech Republic</option>
-                  <option value="DK">Denmark</option>
-                  <option value="EE">Estonia</option>
-                  <option value="FI">Finland</option>
-                  <option value="FR">France</option>
                   <option value="DE">Germany</option>
-                  <option value="GI">Gibraltar</option>
-                  <option value="GR">Greece</option>
-                  <option value="HK">Hong Kong</option>
-                  <option value="HU">Hungary</option>
-                  <option value="IN">India</option>
-                  <option value="IE">Ireland</option>
+                  <option value="FR">France</option>
                   <option value="IT">Italy</option>
-                  <option value="JP">Japan</option>
-                  <option value="LV">Latvia</option>
-                  <option value="LI">Liechtenstein</option>
-                  <option value="LT">Lithuania</option>
-                  <option value="LU">Luxembourg</option>
-                  <option value="MY">Malaysia</option>
-                  <option value="MT">Malta</option>
-                  <option value="MX">Mexico</option>
-                  <option value="NL">Netherlands</option>
-                  <option value="NZ">New Zealand</option>
-                  <option value="NO">Norway</option>
-                  <option value="PL">Poland</option>
-                  <option value="PT">Portugal</option>
-                  <option value="RO">Romania</option>
-                  <option value="SG">Singapore</option>
-                  <option value="SK">Slovakia</option>
-                  <option value="SI">Slovenia</option>
                   <option value="ES">Spain</option>
-                  <option value="SE">Sweden</option>
-                  <option value="CH">Switzerland</option>
-                  <option value="TH">Thailand</option>
-                  <option value="AE">United Arab Emirates</option>
-                  <option value="GB">United Kingdom</option>
+                  <option value="NL">Netherlands</option>
                 </select>
               </div>
 
@@ -438,7 +331,7 @@ export default function ConnectOnboarding() {
             </CardContent>
           </Card>
         ) : (
-          // Account Status Display
+          // Account Status and Embedded Onboarding
           <div className="space-y-6">
             <Card>
               <CardHeader>
@@ -480,32 +373,47 @@ export default function ConnectOnboarding() {
             {!accountStatus.detailsSubmitted && (
               <Card>
                 <CardHeader>
-                  <CardTitle>Complete Onboarding</CardTitle>
+                  <CardTitle>Embedded Connect Onboarding</CardTitle>
                   <CardDescription>
-                    Complete your account setup to start receiving payments.
+                    Complete your account setup directly here - no redirects required.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <Button onClick={startOnboarding} className="w-full">
-                    Start Identity Verification
-                  </Button>
+                  {!started.current && (
+                    <Button 
+                      onClick={startEmbeddedOnboarding} 
+                      disabled={isStartingOnboarding}
+                      className="w-full"
+                    >
+                      {isStartingOnboarding ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Loading Onboarding...
+                        </>
+                      ) : (
+                        'Start Identity Verification'
+                      )}
+                    </Button>
+                  )}
 
                   {/* Embedded onboarding container */}
                   <div 
                     id="onboarding-container" 
-                    className="min-h-[400px] border rounded-lg p-4 bg-white"
-                    style={{ minHeight: '400px' }}
+                    className="min-h-[520px] border rounded-lg bg-white"
+                    style={{ minHeight: '520px' }}
                   >
-                    {/* Stripe embedded onboarding component will mount here */}
-                    <div className="text-center text-gray-500 py-8">
-                      Click "Start Identity Verification" to begin the embedded onboarding process
-                    </div>
+                    {!started.current && (
+                      <div className="flex items-center justify-center h-full text-gray-500">
+                        Click "Start Identity Verification" to begin the embedded onboarding process
+                      </div>
+                    )}
                   </div>
 
                   <div className="p-4 bg-muted rounded-lg text-sm text-muted-foreground">
                     <p>✓ Secure verification handled by Stripe</p>
                     <p>✓ Industry-standard identity verification</p>
                     <p>✓ Complete in a few minutes</p>
+                    <p>✓ No redirects - everything happens here</p>
                   </div>
                 </CardContent>
               </Card>
@@ -540,11 +448,11 @@ export default function ConnectOnboarding() {
         <div className="mt-8 p-4 bg-muted rounded-lg">
           <h3 className="font-semibold mb-2">About Interlinc Connect</h3>
           <ul className="text-sm text-muted-foreground space-y-1">
-            <li>• Full access to payment dashboard for managing your payments</li>
+            <li>• Embedded onboarding with no redirects</li>
+            <li>• Full access to payment dashboard</li>
             <li>• Secure payment processing with enterprise-grade compliance</li>
             <li>• Automatic payouts to your bank account</li>
             <li>• Platform takes a small application fee per transaction</li>
-            <li>• You maintain control over your customer relationships</li>
           </ul>
         </div>
       </div>
