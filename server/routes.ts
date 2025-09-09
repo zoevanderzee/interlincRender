@@ -6992,10 +6992,10 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
         components: { account_onboarding: { enabled: true } },
       });
 
-      const secret = session.client_secret; // MUST be the client secret (seti_...), not session ID
-      if (typeof secret !== "string" || !/^seti_/.test(secret)) {
+      const secret = session.client_secret; // MUST be the client secret (accs_secret_...), not session ID
+      if (typeof secret !== "string" || !/^accs_secret_/.test(secret)) {
         console.error("[connect] WRONG SECRET RETURNED:", { got: secret?.slice?.(0, 12) });
-        return res.status(500).json({ error: "Server did not produce an Account Session client_secret (seti_…)" });
+        return res.status(500).json({ error: "Server did not produce an Account Session client_secret (accs_secret_…)" });
       }
 
       res.json({ accountId, client_secret: secret });
