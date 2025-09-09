@@ -125,15 +125,12 @@ export default function ConnectOnboarding() {
     if (started.current) return;
     started.current = true;
     setIsStartingOnboarding(true);
-    setError(null);
 
     try {
       const stripePublicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
       if (!stripePublicKey) {
         throw new Error('Stripe configuration is missing. Please contact support.');
       }
-
-      console.log('Starting embedded onboarding for account:', accountStatus?.accountId);
 
       // Create account session
       const resp = await fetch("/api/connect/create-account-session", {
@@ -149,21 +146,14 @@ export default function ConnectOnboarding() {
       });
 
       if (!resp.ok) {
-        const errorData = await resp.json().catch(() => ({ message: 'Unknown error' }));
-        throw new Error(errorData.message || `HTTP ${resp.status}: Failed to create account session`);
+        const errorText = await resp.text();
+        throw new Error(errorText);
       }
 
       const { accountId, client_secret } = await resp.json();
 
-      console.log('Account session created:', { accountId, hasClientSecret: !!client_secret });
-
-      // Validate response format
-      if (!accountId || !accountId.startsWith("acct_")) {
-        throw new Error("Invalid account ID received from server");
-      }
-
-      if (!client_secret || !client_secret.startsWith("acct_")) {
-        throw new Error("Invalid client secret format received from server");
+      if (!client_secret?.startsWith("seti_")) {
+        throw new Error("Expected Account Session client_secret (starts with seti_)");
       }
 
       // Initialize Stripe Connect
@@ -205,13 +195,12 @@ export default function ConnectOnboarding() {
 
     } catch (error) {
       console.error("Embedded onboarding failed:", error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to start onboarding';
-      setError(errorMessage);
+      setError(error instanceof Error ? error.message : 'Failed to start onboarding');
       setIsStartingOnboarding(false);
       started.current = false;
       toast({
         title: 'Error starting onboarding',
-        description: errorMessage,
+        description: error instanceof Error ? error.message : 'Failed to start onboarding flow',
         variant: 'destructive'
       });
     }

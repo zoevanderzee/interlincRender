@@ -1508,58 +1508,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let { accountId, country = "GB" } = req.body || {};
 
-      // Get the user to check existing Connect account
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      // Use existing account ID if available, otherwise create new one
-      if (!accountId && user.stripeConnectAccountId) {
-        accountId = user.stripeConnectAccountId;
-      }
-
-      // If still no accountId, create a new Connect account
+      // If no accountId provided, create a new account
       if (!accountId) {
-        const account = await stripe.accounts.create({
-          type: "express", // Changed to express for simpler onboarding
-          country,
-          email: user.email,
-          capabilities: {
-            card_payments: { requested: true },
-            transfers: { requested: true },
-          },
-          metadata: {
-            userId: userId.toString(),
-          },
-        });
-        
-        accountId = account.id;
+        const user = await storage.getUser(userId);
+        if (!user) {
+          return res.status(404).json({ message: "User not found" });
+        }
 
-        // Update user with the new account ID
-        await storage.updateUser(userId, {
-          stripeConnectAccountId: accountId,
-        });
-      }
+        // Check if user already has a Connect account
+        if (user.stripeConnectAccountId) {
+          accountId = user.stripeConnectAccountId;
+        } else {
+          // Create new Connect account
+          const account = await stripe.accounts.create({
+            type: "custom",
+            country,
+            capabilities: {
+              card_payments: { requested: true },
+              transfers: { requested: true },
+            },
+            metadata: {
+              userId: userId.toString(),
+            },
+          });
+          
+          accountId = account.id;
 
-      // Validate accountId format
-      if (!accountId || !accountId.startsWith('acct_')) {
-        throw new Error('Invalid account ID format');
+          // Update user with the new account ID
+          await storage.updateUser(userId, {
+            stripeConnectAccountId: accountId,
+          });
+        }
       }
 
       // Create Account Session for embedded onboarding
       const session = await stripe.accountSessions.create({
         account: accountId,
         components: { 
-          account_onboarding: { enabled: true },
-          notification_banner: { enabled: true }
+          account_onboarding: { enabled: true } 
         },
       });
-
-      // Validate client secret format
-      if (!session.client_secret || !session.client_secret.startsWith('acct_')) {
-        throw new Error('Invalid client secret format received from Stripe');
-      }
 
       res.json({ 
         accountId, 
