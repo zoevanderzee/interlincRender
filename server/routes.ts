@@ -6968,7 +6968,7 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
     try {
       let { accountId = null, country = "GB", publishableKey } = req.body || {};
 
-      // Guard: PK/SK mode must match (prevents cross-account / test-live mixups)
+      // Optional: ensure client PK mode matches server SK mode
       const sk = process.env.STRIPE_SECRET_KEY || '';
       const pkMode = publishableKey?.startsWith("pk_live_") ? "live"
                    : publishableKey?.startsWith("pk_test_") ? "test" : "unknown";
@@ -6992,7 +6992,13 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
         components: { account_onboarding: { enabled: true } },
       });
 
-      return res.json({ accountId, client_secret: session.client_secret }); // seti_...
+      const secret = session.client_secret; // MUST be the client secret (seti_...), not session ID
+      if (typeof secret !== "string" || !/^seti_/.test(secret)) {
+        console.error("[connect] WRONG SECRET RETURNED:", { got: secret?.slice?.(0, 12) });
+        return res.status(500).json({ error: "Server did not produce an Account Session client_secret (seti_…)" });
+      }
+
+      res.json({ accountId, client_secret: secret });
     } catch (e: any) {
       console.error("[connect] ERROR", e);
       res.status(500).json({ error: e?.message || "Unknown error" });

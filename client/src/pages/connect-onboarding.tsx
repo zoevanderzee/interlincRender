@@ -1,93 +1,72 @@
 // client/src/pages/ConnectOnboarding.tsx
-import { useEffect, useLayoutEffect, useRef } from "react";
-import { loadConnectAndInitialize } from "@stripe/connect-js";
+import { useEffect, useRef } from "react";
+import { loadConnectAndInitialize } from "@stripe/connect-js"; // ✅ correct SDK
 
 const PK = (import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "").trim();
 
-function assertStr(name: string, val: any) {
-  if (typeof val !== "string" || !val.length) throw new Error(`${name} missing/invalid`);
+function assertPattern(name: string, val: any, re: RegExp) {
+  if (typeof val !== "string") throw new Error(`${name} not a string`);
+  if (!re.test(val)) throw new Error(`${name} invalid: ${String(val).slice(0,24)}…`);
 }
 
 export default function ConnectOnboarding() {
-  const containerRef = useRef<HTMLDivElement | null>(null);
   const started = useRef(false);
-
-  // Ensure the container ref is present before we try to mount
-  useLayoutEffect(() => {
-    if (!containerRef.current) {
-      console.error("Missing #onboarding-container node");
-    }
-  }, []);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (started.current) return; // guard StrictMode/HMR double-run
+    if (started.current) return;
     started.current = true;
 
     (async () => {
-      // 1) Basic sanity
-      assertStr("VITE_STRIPE_PUBLISHABLE_KEY", PK);
+      // 1) Validate PK
+      assertPattern("VITE_STRIPE_PUBLISHABLE_KEY", PK, /^pk_(test|live)_[A-Za-z0-9]+/);
 
-      // 2) Ask server for { accountId, client_secret }
-      const resp = await fetch("/api/connect/create-account-session", {
+      // 2) Fetch Account Session client_secret
+      const r = await fetch("/api/connect/create-account-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ accountId: null, country: "GB", publishableKey: PK }),
       });
-      if (!resp.ok) throw new Error(`API ${resp.status}: ${await resp.text()}`);
-      const { accountId, client_secret } = await resp.json();
-      assertStr("accountId", accountId);
-      assertStr("client_secret", client_secret); // don't assume a specific prefix
+      if (!r.ok) throw new Error(`API ${r.status}: ${await r.text()}`);
+      const { accountId, client_secret } = await r.json();
 
-      // 3) Init Connect.js
+      // 3) Validate response shapes (this prevents the "wrong SDK/init" symptom)
+      assertPattern("accountId", accountId, /^acct_[A-Za-z0-9]+/);
+      assertPattern("client_secret", client_secret, /^seti_[A-Za-z0-9_]+/);
+
+      // 4) Initialize Connect
       const connect = await loadConnectAndInitialize({
         publishableKey: PK,
         fetchClientSecret: async () => client_secret,
       });
-
-      // 4) Create the component
-      const comp = connect.create("account-onboarding");
-      if (typeof (comp as any).mount !== "function") {
-        console.error("Component object:", comp);
-        throw new Error("Connect component not mountable (wrong SDK/init).");
+      if (!connect || typeof connect.create !== "function") {
+        throw new Error("Connect failed to initialize (check SDK import and PK/secret mode).");
       }
 
-      // 5) Wait until the container is *visible* (non-zero size) then mount
-      const el = containerRef.current!;
-      const waitVisible = async (tries = 30) => {
-        for (let i = 0; i < tries; i++) {
-          const r = el.getBoundingClientRect();
-          const cs = getComputedStyle(el);
-          const visible =
-            r.width > 0 &&
-            r.height > 0 &&
-            cs.display !== "none" &&
-            cs.visibility !== "hidden";
-          if (visible) return;
-          await new Promise((rf) => requestAnimationFrame(rf));
-        }
-        throw new Error("Container never became visible (width/height 0 or hidden).");
-      };
-      await waitVisible();
+      // 5) Create component
+      const comp = connect.create("account-onboarding"); // ✅ correct component id
+      if (!comp || typeof (comp as any).mount !== "function") {
+        console.error("component object:", comp);
+        throw new Error("Connect component not mountable (wrong SDK/import or bad init).");
+      }
 
-      comp.on("ready", () => console.log("[connect] ready (embedded) for", accountId));
-      comp.on?.("exit", () => console.log("[connect] exit"));
+      // 6) Mount into a real, visible node (not a selector string)
+      const el = containerRef.current;
+      if (!el) throw new Error("Missing container node");
+      const rect = el.getBoundingClientRect();
+      if (!rect.width || !rect.height) {
+        // Make sure the container isn't collapsed
+        el.style.minHeight = "520px";
+        el.style.display = "block";
+        el.style.width = "100%";
+      }
 
-      // Mount *into the node* (not a selector string)
+      comp.on?.("ready", () => console.log("[connect] ready (embedded) for", accountId));
       comp.mount(el);
-
-      // 6) Cleanup for HMR/route changes
-      (window as any).__connectOnboarding = comp;
     })().catch((e) => {
       console.error("[embedded connect failed]", e);
       alert(String(e?.message || e));
     });
-
-    return () => {
-      try {
-        const comp = (window as any).__connectOnboarding;
-        if (comp?.unmount) comp.unmount();
-      } catch {}
-    };
   }, []);
 
   return (
@@ -96,13 +75,7 @@ export default function ConnectOnboarding() {
       <div
         id="onboarding-container"
         ref={containerRef}
-        style={{
-          minHeight: 520,
-          width: "100%",
-          display: "block",
-          border: "1px solid #e5e7eb",
-          background: "#fafafa",
-        }}
+        style={{ minHeight: 520, width: "100%", border: "1px solid #e5e7eb", background: "#fafafa" }}
       />
     </div>
   );
