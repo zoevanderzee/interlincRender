@@ -1,0 +1,103 @@
+Goal: Fully embedded Stripe Connect onboarding (no redirects).
+Do exactly this
+Server (Node/Express)
+Use the official stripe SDK.
+Create an Account Session with onboarding enabled.
+Return { accountId, client_secret }.
+// POST /api/connect/create-account-session
+import express from "express";
+import Stripe from "stripe";
+
+const app = express();
+app.use(express.json());
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" });
+
+app.post("/api/connect/create-account-session", async (req, res) => {
+  try {
+    let { accountId, country = "GB" } = req.body || {};
+
+    if (!accountId) {
+      const acct = await stripe.accounts.create({
+        type: "custom",
+        country,
+        capabilities: {
+          card_payments: { requested: true },
+          transfers: { requested: true },
+        },
+      });
+      accountId = acct.id;
+    }
+
+    const session = await stripe.accountSessions.create({
+      account: accountId,
+      components: { account_onboarding: { enabled: true } },
+    });
+
+    res.json({ accountId, client_secret: session.client_secret });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.listen(3000);
+Client (React)
+Import only from @stripe/connect-js.
+Initialize with loadConnectAndInitialize.
+Create the component and mount it with .mount("#onboarding-container").
+Guard against double-run.
+// ConnectOnboarding.tsx
+import { useEffect, useRef } from "react";
+import { loadConnectAndInitialize } from "@stripe/connect-js";
+
+const PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string;
+
+export default function ConnectOnboarding() {
+  const started = useRef(false);
+
+  useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+
+    (async () => {
+      const resp = await fetch("/api/connect/create-account-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accountId: null, country: "GB" }),
+      });
+      if (!resp.ok) throw new Error(await resp.text());
+      const { client_secret } = await resp.json();
+
+      if (!client_secret?.startsWith("seti_")) {
+        throw new Error("Expected Account Session client_secret (starts with seti_)");
+      }
+
+      const connect = await loadConnectAndInitialize({
+        publishableKey: PUBLISHABLE_KEY,
+        fetchClientSecret: async () => client_secret,
+      });
+
+      const onboarding = connect.create("account-onboarding");
+      onboarding.mount("#onboarding-container");
+    })().catch((e) => {
+      console.error("Embedded onboarding failed:", e);
+      alert(e.message);
+    });
+  }, []);
+
+  return (
+    <div>
+      <h1>Embedded Connect Onboarding</h1>
+      <div id="onboarding-container" style={{ minHeight: 520 }} />
+    </div>
+  );
+}
+Do NOT do these (ever, in this flow)
+Do not call stripe.accountLinks.create (that’s hosted onboarding → redirect).
+Do not import or use @stripe/stripe-js on this page.
+Do not use stripe.connectEmbeddedComponents.
+Do not use appendChild on the component; always .mount("#selector").
+Acceptance checks
+Server returns a client_secret that starts with seti_.
+In the browser console, typeof onboarding.mount === "function".
+The user never sees connect.stripe.com; onboarding stays inside #onboarding-container.
