@@ -1,5 +1,12 @@
 import type { Express, Request, Response, NextFunction } from "express";
 
+// Extend session type to include userId
+declare module 'express-session' {
+  interface SessionData {
+    userId?: number;
+  }
+}
+
 // Define AuthenticatedRequest interface
 interface AuthenticatedRequest extends Request {
   user?: any;
