@@ -63,8 +63,8 @@ export default function InterlincConnect() {
     }
   }, [publishableKey, session]);
 
-  // Create account and get session
-  const ensureAccountAndSession = async () => {
+  // Create session for embedded onboarding (no pre-created account)
+  const createOnboardingSession = async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -83,31 +83,12 @@ export default function InterlincConnect() {
         authHeaders['X-Firebase-UID'] = firebaseUid;
       }
 
-      // Create/get Express account
-      const accountResponse = await fetch('/api/connect/ensure-account', {
-        method: 'POST',
-        body: JSON.stringify({
-          country: 'GB',
-          businessType: 'company',
-        }),
-        headers: authHeaders,
-        credentials: 'include',
-      });
-
-      if (!accountResponse.ok) {
-        const errorData = await accountResponse.json();
-        throw new Error(errorData.error || 'Failed to create account');
-      }
-
-      const accountData: ConnectAccount = await accountResponse.json();
-      setAccount(accountData);
-
-      // Create account session
+      // Create session for embedded onboarding (account will be created by Stripe)
       const sessionResponse = await fetch('/api/connect/session', {
         method: 'POST',
         body: JSON.stringify({
-          accountId: accountData.accountId,
           publishableKey,
+          country: 'GB',
         }),
         headers: authHeaders,
         credentials: 'include',
@@ -130,9 +111,45 @@ export default function InterlincConnect() {
     }
   };
 
+  // Save account after successful onboarding
+  const saveAccountAfterOnboarding = async (accountId: string) => {
+    try {
+      const userId = localStorage.getItem('user_id');
+      const firebaseUid = localStorage.getItem('firebase_uid');
+      const authHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (userId) {
+        authHeaders['X-User-ID'] = userId;
+      }
+      if (firebaseUid) {
+        authHeaders['X-Firebase-UID'] = firebaseUid;
+      }
+
+      const response = await fetch('/api/connect/save-account', {
+        method: 'POST',
+        body: JSON.stringify({ accountId }),
+        headers: authHeaders,
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save account');
+      }
+
+      const accountData = await response.json();
+      setAccount(accountData);
+      setOnboardingStatus('complete');
+    } catch (err) {
+      console.error('Failed to save account:', err);
+      setError('Account created but failed to save details');
+    }
+  };
+
   // Initialize on component mount
   useEffect(() => {
-    ensureAccountAndSession();
+    createOnboardingSession();
   }, []);
 
   // Refresh session periodically to check status
@@ -228,7 +245,7 @@ export default function InterlincConnect() {
           </CardHeader>
           <CardContent>
             <p className="text-red-600 mb-4">{error}</p>
-            <Button onClick={ensureAccountAndSession} variant="outline">
+            <Button onClick={createOnboardingSession} variant="outline">
               Try Again
             </Button>
           </CardContent>
