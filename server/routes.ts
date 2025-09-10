@@ -6573,10 +6573,12 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
   // Register Trolley routes
   trolleyRoutes(app, "/api", requireAuth);
 
+  // Register Connect routes with authentication
+  connectRoutes(app, "/api", requireAuth);
+
   // Register additional route modules
   app.use("/api/plaid", plaidRoutes);
   app.use("/api/trolley-test", trolleyTestRoutes);
-  app.use("/api/connect", connectRoutes);
 
   // Legacy Object Storage Routes - REMOVED
   // These routes have been replaced by the custom file storage system
