@@ -15,6 +15,16 @@ function httpError(status, message) {
 function getUserId(req) {
   const headerId = req.headers["x-user-id"];
   const userId = req.user?.id ?? (headerId ? parseInt(headerId) : null);
+  
+  // Debug logging
+  console.log('[Connect Route] getUserId debug:', {
+    'req.user?.id': req.user?.id,
+    'x-user-id header': headerId,
+    'parsed userId': userId,
+    'all headers': Object.keys(req.headers),
+    'request path': req.path
+  });
+  
   if (!userId) throw httpError(401, "Auth required");
   return userId;
 }

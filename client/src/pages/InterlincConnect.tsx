@@ -69,6 +69,20 @@ export default function InterlincConnect() {
       setIsLoading(true);
       setError(null);
 
+      // Get authentication headers
+      const userId = localStorage.getItem('user_id');
+      const firebaseUid = localStorage.getItem('firebase_uid');
+      const authHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (userId) {
+        authHeaders['X-User-ID'] = userId;
+      }
+      if (firebaseUid) {
+        authHeaders['X-Firebase-UID'] = firebaseUid;
+      }
+
       // Create/get Express account
       const accountResponse = await fetch('/api/connect/ensure-account', {
         method: 'POST',
@@ -76,9 +90,7 @@ export default function InterlincConnect() {
           country: 'GB',
           businessType: 'company',
         }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: authHeaders,
         credentials: 'include',
       });
 
@@ -97,9 +109,7 @@ export default function InterlincConnect() {
           accountId: accountData.accountId,
           publishableKey,
         }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: authHeaders,
         credentials: 'include',
       });
 
@@ -131,15 +141,27 @@ export default function InterlincConnect() {
 
     const checkStatus = async () => {
       try {
+        // Get fresh auth headers for status check
+        const userId = localStorage.getItem('user_id');
+        const firebaseUid = localStorage.getItem('firebase_uid');
+        const authHeaders: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
+        
+        if (userId) {
+          authHeaders['X-User-ID'] = userId;
+        }
+        if (firebaseUid) {
+          authHeaders['X-Firebase-UID'] = firebaseUid;
+        }
+
         const response = await fetch('/api/connect/session', {
           method: 'POST',
           body: JSON.stringify({
             accountId: account.accountId,
             publishableKey,
           }),
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: authHeaders,
           credentials: 'include',
         });
 
