@@ -32,6 +32,7 @@ import StripeTestSimple from "@/pages/stripe-test-simple";
 import StripeCheckout from "@/pages/stripe-checkout";
 import PaymentSimulator from "@/pages/payment-simulator";
 import PayContractor from "@/pages/pay-contractor";
+import InterlincConnect from "@/pages/InterlincConnect";
 
 import Layout from "@/components/layout/Layout";
 import AuthPage from "@/pages/auth";
@@ -285,6 +286,12 @@ function Router() {
       <ProtectedRoute path="/help">
         <Layout>
           <Help />
+        </Layout>
+      </ProtectedRoute>
+
+      <ProtectedRoute path="/interlinc-connect">
+        <Layout>
+          <InterlincConnect />
         </Layout>
       </ProtectedRoute>
 
