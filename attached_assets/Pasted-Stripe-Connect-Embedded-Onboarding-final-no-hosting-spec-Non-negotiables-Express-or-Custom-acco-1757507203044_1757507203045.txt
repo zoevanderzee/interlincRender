@@ -1,0 +1,239 @@
+Stripe Connect — Embedded Onboarding (final, no-hosting spec)
+Non-negotiables
+Express or Custom accounts only (no Standard).
+Server uses accountSessions.create (NOT accountLinks.create).
+Client imports @stripe/connect-js (NOT @stripe/stripe-js) on this page.
+Create a Connect account once, persist the acct_…, and reuse it.
+Render inside #onboarding-container — no external pages.
+0) Env
+Server
+STRIPE_SECRET_KEY=sk_live_xxx   # or sk_test_xxx (must match client mode)
+PORT=3000
+Client
+VITE_STRIPE_PUBLISHABLE_KEY=pk_live_xxx  # or pk_test_xxx (SAME account + mode)
+1) Install
+npm i express stripe @stripe/connect-js
+2) Server — embedded-only routes (copy as-is)
+Uses an in-memory store for clarity; replace with your DB (TODOs marked).
+// server/connect.js
+import express from "express";
+import Stripe from "stripe";
+
+const router = express.Router();
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" });
+
+// --- TEMP STORE (replace with your DB) ---
+const store = new Map(); // userId -> { accountId, accountType }
+const getUserId = (req) => req.user?.id || "demo-user"; // integrate with your auth
+// ----------------------------------------
+
+// Guard: PK/SK mode must match (prevents test/live mixups)
+function assertKeyModesMatch(publishableKey) {
+  if (!publishableKey) return;
+  const pkMode = publishableKey.startsWith("pk_live_") ? "live"
+              : publishableKey.startsWith("pk_test_") ? "test" : "unknown";
+  const sk = process.env.STRIPE_SECRET_KEY || "";
+  const skMode = sk.startsWith("sk_live_") ? "live"
+              : sk.startsWith("sk_test_") ? "test" : "unknown";
+  if (pkMode !== skMode) {
+    const err = new Error(`Key mode mismatch (client=${pkMode}, server=${skMode})`);
+    err.status = 400; throw err;
+  }
+}
+
+/**
+ * POST /api/connect/ensure-account
+ * Idempotent: creates an **Express** account one time per user and persists it.
+ * Body: { country?: "GB", businessType?: "company"|"individual" }
+ */
+router.post("/connect/ensure-account", async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const country = req.body?.country || "GB";
+    const businessType = req.body?.businessType; // optional preselect
+
+    // 1) Already have one? reuse it.
+    const existing = store.get(userId);
+    if (existing?.accountId) {
+      const acct = await stripe.accounts.retrieve(existing.accountId);
+      if (acct.type === "standard") {
+        return res.status(409).json({ error: "standard_account", message: "Embedded requires Express/Custom." });
+      }
+      return res.json({ accountId: acct.id, accountType: acct.type });
+    }
+
+    // 2) Create the correct type (EXPRESS) — NO STANDARD
+    const acct = await stripe.accounts.create({
+      type: "express",
+      country,
+      ...(businessType ? { business_type: businessType } : {}),
+      capabilities: {
+        card_payments: { requested: true },
+        transfers:     { requested: true },
+      },
+    });
+
+    // 3) Persist mapping   (TODO: replace with your DB)
+    store.set(userId, { accountId: acct.id, accountType: acct.type });
+
+    return res.json({ accountId: acct.id, accountType: acct.type });
+  } catch (e) {
+    console.error("[ensure-account] ERROR", e);
+    res.status(e.status || 500).json({ error: e.message || "Unknown error" });
+  }
+});
+
+/**
+ * POST /api/connect/session
+ * Creates an **embedded** Account Session (onboarding + management).
+ * Body: { accountId: "acct_...", publishableKey?: "pk_..." }
+ * Returns: { client_secret: "<opaque string>", needsOnboarding: boolean }
+ */
+router.post("/connect/session", async (req, res) => {
+  try {
+    const { accountId, publishableKey } = req.body || {};
+    if (!accountId) return res.status(400).json({ error: "Missing accountId" });
+    assertKeyModesMatch(publishableKey);
+
+    const acct = await stripe.accounts.retrieve(accountId);
+    if (acct.type === "standard") {
+      return res.status(409).json({ error: "standard_account", message: "Embedded requires Express/Custom." });
+    }
+
+    const reqs = acct.requirements || {};
+    const needsOnboarding =
+      !acct.details_submitted ||
+      (Array.isArray(reqs.currently_due) && reqs.currently_due.length > 0) ||
+      (Array.isArray(reqs.past_due) && reqs.past_due.length > 0);
+
+    const session = await stripe.accountSessions.create({
+      account: accountId,
+      components: {
+        account_onboarding: { enabled: true },
+        account_management: { enabled: true },
+      },
+    });
+
+    if (!session.client_secret) throw new Error("Stripe did not return client_secret");
+    res.json({ client_secret: session.client_secret, needsOnboarding });
+  } catch (e) {
+    console.error("[connect/session] ERROR", e);
+    res.status(e.status || 500).json({ error: e.message || "Unknown error" });
+  }
+});
+
+export default router;
+Wire it:
+// server/index.js
+import express from "express";
+import connectRoutes from "./connect.js";
+
+const app = express();
+app.use(express.json());
+app.use("/api", connectRoutes);
+app.listen(process.env.PORT || 3000, () => {
+  console.log("Server listening on :" + (process.env.PORT || 3000));
+});
+Smoke tests (must pass before client)
+# Ensure/create Express account
+curl -s -X POST http://localhost:3000/api/connect/ensure-account | jq .
+
+# Create embedded session
+acct=$(curl -s -X POST http://localhost:3000/api/connect/ensure-account | jq -r .accountId)
+curl -s -X POST http://localhost:3000/api/connect/session \
+  -H "Content-Type: application/json" \
+  -d "{\"accountId\":\"$acct\",\"publishableKey\":\"$VITE_STRIPE_PUBLISHABLE_KEY\"}" | jq .
+# Expect: { client_secret: "<non-empty string>", needsOnboarding: true/false }
+3) Client — embedded component page (no hosting)
+This page must only import @stripe/connect-js. No @stripe/stripe-js here.
+// client/src/pages/ConnectOnboarding.tsx
+import { useEffect, useRef } from "react";
+import { loadConnectAndInitialize } from "@stripe/connect-js";
+
+const PK = (import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "").trim();
+
+export default function ConnectOnboarding() {
+  const started = useRef(false);
+
+  useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+
+    (async () => {
+      if (!PK.startsWith("pk_")) throw new Error("Missing/invalid publishable key");
+
+      // 1) Ensure (or fetch) user's Express account (idempotent, no duplicates)
+      const r1 = await fetch("/api/connect/ensure-account", { method: "POST" });
+      if (!r1.ok) throw new Error(await r1.text());
+      const { accountId } = await r1.json();
+
+      // 2) Get embedded Account Session
+      const r2 = await fetch("/api/connect/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accountId, publishableKey: PK }),
+      });
+      const j = await r2.json();
+      if (!r2.ok) throw new Error(j?.error || `API ${r2.status}`);
+      const { client_secret, needsOnboarding } = j;
+
+      // 3) Init Connect and mount inside the div (embedded)
+      const connect = await loadConnectAndInitialize({
+        publishableKey: PK,
+        fetchClientSecret: async () => client_secret,
+      });
+
+      const componentName = needsOnboarding ? "account-onboarding" : "account-management";
+      const comp = connect.create(componentName as any);
+      comp.on?.("ready", () => console.log(`[connect] ${componentName} ready`));
+      comp.mount("#onboarding-container");  // renders entirely inside your app
+    })().catch((e) => {
+      console.error("Embedded Connect failed:", e);
+      const box = document.getElementById("onboarding-container");
+      if (box) box.textContent = `Connect error: ${e.message}`;
+    });
+  }, []);
+
+  return (
+    <div style={{ padding: 24, maxWidth: 720, margin: "0 auto" }}>
+      <h1>Embedded Connect</h1>
+      <div id="onboarding-container" style={{ minHeight: 520, border: "1px solid #e5e7eb", borderRadius: 8 }} />
+    </div>
+  );
+}
+Vite proxy (dev)
+// vite.config.ts
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+export default defineConfig({
+  plugins: [react()],
+  server: { proxy: { "/api": "http://localhost:3000" } },
+});
+4) Anti-regression guard (bans hosting + wrong SDK)
+# scripts/guard_connect.sh
+set -euo pipefail
+TARGET="client/src/pages/ConnectOnboarding.tsx"
+if grep -E "accountLinks\.create|connectEmbeddedComponents|@stripe/stripe-js|appendChild\(" -n "$TARGET" >/dev/null; then
+  echo "❌ Hosted onboarding / wrong SDK detected in $TARGET"; exit 1
+else
+  echo "✅ Embedded-only codepath intact"
+fi
+// package.json
+{
+  "scripts": {
+    "guard:connect": "bash scripts/guard_connect.sh",
+    "build": "npm run guard:connect && vite build"
+  }
+}
+5) (If you use CSP) allow Stripe resources
+frame-src   https://connect-js.stripe.com https://js.stripe.com https://*.stripe.com;
+script-src  'self' 'unsafe-inline' https://connect-js.stripe.com https://js.stripe.com https://*.stripe.com;
+connect-src 'self' https://api.stripe.com https://connect-js.stripe.com https://*.stripe.com;
+6) Definition of Done (must ALL be true)
+POST /api/connect/ensure-account returns one stable acct_… (type express or custom) and is persisted per user.
+POST /api/connect/session returns { client_secret: "<string>", needsOnboarding: boolean }.
+On /connect-onboarding, Network shows https://connect-js.stripe.com/... requests; no redirects.
+The onboarding UI renders inside #onboarding-container (like your screenshot).
+This page imports only @stripe/connect-js.
+No accountLinks.create anywhere in this flow.
+Refreshing the page does not create additional accounts.
