@@ -53,6 +53,7 @@ import plaidRoutes from "./plaid-routes";
 import trolleyRoutes from "./trolley-routes";
 import trolleyTestRoutes from "./trolley-test-routes";
 import {registerFirebaseRoutes} from "./firebase-routes";
+import connectRoutes from "./connect.js";
 import {registerSyncUserRoutes} from "./routes/sync-user";
 import {setupSyncEmailVerification} from "./routes/sync-email-verification";
 import {registerSyncFirebaseUserRoutes} from "./routes/sync-firebase-user";
@@ -6575,6 +6576,7 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
   // Register additional route modules
   app.use("/api/plaid", plaidRoutes);
   app.use("/api/trolley-test", trolleyTestRoutes);
+  app.use("/api/connect", connectRoutes);
 
   // Legacy Object Storage Routes - REMOVED
   // These routes have been replaced by the custom file storage system
