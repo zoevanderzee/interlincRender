@@ -45,6 +45,10 @@ export interface IStorage {
   updateStripeCustomerId(id: number, stripeCustomerId: string): Promise<User | undefined>;
   updateUserStripeInfo(id: number, stripeInfo: { stripeCustomerId: string, stripeSubscriptionId: string }): Promise<User | undefined>;
   updateUserConnectAccount(id: number, connectAccountId: string, payoutEnabled?: boolean): Promise<User | undefined>;
+  
+  // Stripe Connect account management
+  getConnectForUser(userId: number): Promise<{ accountId: string, accountType: string } | null>;
+  setConnectForUser(userId: number, data: { accountId: string, accountType: string }): Promise<User | undefined>;
   getUserByResetToken(token: string): Promise<User | undefined>;
   setPasswordResetToken(email: string, token: string, expires: Date): Promise<User | undefined>;
   savePasswordResetToken(userId: number, token: string, expires: Date): Promise<User | undefined>;
@@ -3048,6 +3052,30 @@ export class DatabaseStorage implements IStorage {
       .update(workRequests)
       .set({ status })
       .where(eq(workRequests.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Stripe Connect account management
+  async getConnectForUser(userId: number): Promise<{ accountId: string, accountType: string } | null> {
+    const user = await this.getUser(userId);
+    if (!user || !user.stripeConnectAccountId || !user.stripeConnectAccountType) {
+      return null;
+    }
+    return {
+      accountId: user.stripeConnectAccountId,
+      accountType: user.stripeConnectAccountType
+    };
+  }
+
+  async setConnectForUser(userId: number, data: { accountId: string, accountType: string }): Promise<User | undefined> {
+    const [updated] = await db
+      .update(users)
+      .set({ 
+        stripeConnectAccountId: data.accountId,
+        stripeConnectAccountType: data.accountType
+      })
+      .where(eq(users.id, userId))
       .returning();
     return updated;
   }

@@ -23,6 +23,8 @@ export const users = pgTable("users", {
   profileCode: text("profile_code").unique(), // Unique code for easy worker identification (e.g., "JOHNSON-2025")
   stripeCustomerId: text("stripe_customer_id"), // Stripe customer ID for payment processing
   stripeSubscriptionId: text("stripe_subscription_id"), // Stripe subscription ID for companies
+  stripeConnectAccountId: text("stripe_connect_account_id"), // Stripe Connect account ID for embedded onboarding
+  stripeConnectAccountType: text("stripe_connect_account_type"), // Stripe Connect account type (express, custom)
   subscriptionStatus: text("subscription_status").default("inactive"), // inactive, active, past_due, canceled, trialing
   subscriptionPlan: text("subscription_plan"), // business_plan, contractor_plan, etc.
   subscriptionStartDate: timestamp("subscription_start_date"), // When subscription started
@@ -267,6 +269,8 @@ export const insertUserSchema = z.object({
   profileCode: z.string().optional(),
   stripeCustomerId: z.string().optional(),
   stripeSubscriptionId: z.string().optional(),
+  stripeConnectAccountId: z.string().optional(),
+  stripeConnectAccountType: z.string().optional(),
   subscriptionStatus: z.string().default("inactive"),
   subscriptionPlan: z.string().optional(),
   subscriptionStartDate: z.date().optional(),
