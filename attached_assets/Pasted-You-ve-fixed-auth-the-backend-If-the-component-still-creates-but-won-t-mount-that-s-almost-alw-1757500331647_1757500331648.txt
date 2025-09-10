@@ -1,3 +1,6 @@
+You’ve fixed auth + the backend. If the component still “creates” but won’t mount, that’s almost always front-end environment—not Stripe. Let’s lock this down so it mounts 100% or tells you exactly why.
+Below is a drop-in client patch, plus two environment checks that catch the last landmines: CSP/ad-block and container visibility. Hand this to your agent verbatim.
+1) Client page — mount or fail (no secret prefix assumptions)
 // client/src/pages/ConnectOnboarding.tsx
 import { useEffect, useRef } from "react";
 import { loadConnectAndInitialize } from "@stripe/connect-js"; // <- correct SDK
@@ -26,24 +29,11 @@ export default function ConnectOnboarding() {
       const node = containerRef.current;
       if (!node) throw new Error("Missing onboarding container node");
 
-      // 2) Get account session with authentication headers
-      const userId = localStorage.getItem('user_id');
-      const firebaseUid = localStorage.getItem('firebase_uid');
-      
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      
-      if (userId) {
-        headers['X-User-ID'] = userId;
-      }
-      
-      if (firebaseUid) {
-        headers['X-Firebase-UID'] = firebaseUid;
-      }
-
+      // 2) Get account session (must be 200 and return strings)
       const r = await fetch("/api/connect/create-account-session", {
         method: "POST",
-        headers,
-        body: JSON.stringify({ accountId: null, country: "GB", publishableKey: PK }), // let server use existing account
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accountId: "acct_1S55uJ2UyoOSXDOS", country: "GB", publishableKey: PK }), // reuse your acct_ if you have it
       });
       if (!r.ok) throw new Error(`API ${r.status}: ${await r.text()}`);
       const { accountId, client_secret } = await r.json();
@@ -92,7 +82,7 @@ export default function ConnectOnboarding() {
       console.log("[CONNECT] mounted");
     })().catch(e => {
       console.error("[CONNECT] FAILED", e);
-      // Show a friendly message in the container so the page isn't blank
+      // Show a friendly message in the container so the page isn’t blank
       if (containerRef.current) containerRef.current.innerHTML =
         `<div style="padding:12px;color:#b91c1c;background:#fee2e2;border:1px solid #fecaca;border-radius:8px;">
            <strong>Embedded Connect failed:</strong> ${String(e?.message || e)}
@@ -125,3 +115,39 @@ export default function ConnectOnboarding() {
     </div>
   );
 }
+Why this helps
+No fragile prefix checks (seti_ / accs_secret_) — we just require a non-empty string.
+Mount tries selector first (what Stripe’s docs show), then node as a fallback.
+It waits for visibility so mounting into a 0×0 or hidden container can’t silently fail.
+If mounting still fails, it prints the error in the box instead of leaving a black page.
+2) Allow Stripe in your CSP (common silent blocker)
+If you have a Content-Security-Policy (HTTP header or <meta>), make sure it allows Stripe’s frames, scripts, and XHR:
+Content-Security-Policy:
+  default-src 'self';
+  frame-src https://connect-js.stripe.com https://js.stripe.com https://*.stripe.com;
+  script-src 'self' 'unsafe-inline' https://connect-js.stripe.com https://js.stripe.com https://*.stripe.com;
+  connect-src 'self' https://api.stripe.com https://connect-js.stripe.com https://*.stripe.com;
+  img-src 'self' data: https://*.stripe.com;
+  style-src 'self' 'unsafe-inline';
+If you’re not setting CSP at all in dev, skip this. In prod, this is the #1 reason the component “creates but never renders.”
+Also: tell your agent to temporarily disable ad-blockers for this origin — some block connect-js.stripe.com.
+3) Sanity pings (30-second proof)
+Open /connect-onboarding, then in the browser console:
+// A) Prove the correct SDK is on the page
+import("@stripe/connect-js").then(m => console.log("connect-js load:", typeof m.loadConnectAndInitialize));
+// -> should log: "function"
+
+// B) Prove the server returns strings we expect
+fetch("/api/connect/create-account-session",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({accountId:"acct_1S55uJ2UyoOSXDOS",country:"GB"})})
+  .then(r=>r.json()).then(j=>console.log("acct:", j.accountId, "secret len:", j.client_secret?.length))
+// -> "acct: acct_1S55uJ2UyoOSXDOS secret len: <some number > 20"
+
+// C) Check Network tab: you should see requests to https://connect-js.stripe.com/... (if not, CSP/ad-block)
+4) Definition of Done (what you should see)
+Network → /api/connect/create-account-session returns 200 with { accountId: "acct_1S55uJ2UyoOSXDOS", client_secret: "<non-empty string>" }.
+Network → requests to https://connect-js.stripe.com/... appear and are 200.
+Console prints: [CONNECT] session …, [CONNECT] ready (embedded) …, [CONNECT] mounted.
+The onboarding UI renders inside the bordered container, with no redirect.
+If it still refuses to mount after this patch:
+It’s CSP/ad-block 9/10 times (no connect-js.stripe.com network requests = blocked).
+Or the container’s parent is hidden/0×0 due to routing/layout (the visibility guard will throw a clear error).
