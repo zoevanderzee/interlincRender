@@ -333,7 +333,7 @@ export default function InterlincConnect() {
               </div>
             </CardContent>
           </Card>
-        ) : stripeConnect && session && onboardingStatus !== 'complete' ? (
+        ) : stripeConnect && onboardingStatus !== 'complete' ? (
           <Card>
             <CardHeader>
               <CardTitle>Complete Account Setup</CardTitle>
