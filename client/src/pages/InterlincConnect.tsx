@@ -32,13 +32,18 @@ export default function InterlincConnect() {
   useEffect(() => {
     const initializeConnect = async () => {
       try {
+        console.log('Starting Stripe Connect initialization...');
+        console.log('Publishable key available:', !!publishableKey);
+        
         if (!publishableKey) {
           throw new Error('Stripe publishable key not configured');
         }
 
+        console.log('Creating Stripe Connect instance...');
         const connectInstance = loadConnectAndInitialize({
           publishableKey,
           fetchClientSecret: async () => {
+            console.log('fetchClientSecret called by Stripe Connect');
             // This function is called by Stripe when it needs a client secret
             const userId = localStorage.getItem('user_id');
             const firebaseUid = localStorage.getItem('firebase_uid');
@@ -53,6 +58,7 @@ export default function InterlincConnect() {
               authHeaders['X-Firebase-UID'] = firebaseUid;
             }
 
+            console.log('Making session request to backend...');
             const response = await fetch('/api/connect/session', {
               method: 'POST',
               body: JSON.stringify({
@@ -68,6 +74,7 @@ export default function InterlincConnect() {
             }
 
             const data = await response.json();
+            console.log('Session created successfully, client_secret received');
             return data.client_secret;
           },
           appearance: {
@@ -78,8 +85,10 @@ export default function InterlincConnect() {
           },
         });
 
+        console.log('Stripe Connect instance created successfully:', !!connectInstance);
         setStripeConnect(connectInstance);
         setIsLoading(false);
+        console.log('Stripe Connect state updated, isLoading set to false');
       } catch (err) {
         console.error('Failed to initialize Stripe Connect:', err);
         setError(err instanceof Error ? err.message : 'Failed to initialize');
@@ -87,6 +96,7 @@ export default function InterlincConnect() {
       }
     };
 
+    console.log('useEffect triggered, publishableKey:', !!publishableKey);
     if (publishableKey) {
       initializeConnect();
     }
@@ -324,6 +334,15 @@ export default function InterlincConnect() {
         </Card>
 
         {/* Embedded Onboarding */}
+        {(() => {
+          console.log('Render condition check:', {
+            isLoading,
+            stripeConnect: !!stripeConnect,
+            onboardingStatus,
+            shouldShowEmbedded: stripeConnect && onboardingStatus !== 'complete'
+          });
+          return null;
+        })()}
         {isLoading ? (
           <Card>
             <CardContent className="flex items-center justify-center py-8">
