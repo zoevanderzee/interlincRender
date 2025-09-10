@@ -1,0 +1,178 @@
+1) Server: make Connect routes require auth
+Replace your current server/connect.js (or TS equivalent) with this.
+Adjust the import path for requireAuth to match your app.
+// server/connect.js
+import express from "express";
+import Stripe from "stripe";
+// ⬇️ Use your existing auth middleware (adjust import path)
+import { requireAuth } from "./auth/requireAuth.js"; // <-- CHANGE THIS PATH
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" });
+const router = express.Router();
+
+// --- helpers ----------------------------------------------------
+function httpError(status, message) {
+  const e = new Error(message);
+  e.status = status;
+  return e;
+}
+
+// Mirror your app's pattern: prefer req.user.id, fallback to X-User-Id header
+function getUserId(req) {
+  const headerId = req.headers["x-user-id"];
+  const userId = req.user?.id ?? (headerId ? String(headerId) : null);
+  if (!userId) throw httpError(401, "Auth required");
+  return userId;
+}
+
+function assertKeyModesMatch(publishableKey) {
+  if (!publishableKey) return;
+  const pkMode = publishableKey.startsWith("pk_live_") ? "live"
+               : publishableKey.startsWith("pk_test_") ? "test" : "unknown";
+  const sk = process.env.STRIPE_SECRET_KEY || "";
+  const skMode = sk.startsWith("sk_live_") ? "live"
+               : sk.startsWith("sk_test_") ? "test" : "unknown";
+  if (pkMode !== skMode) throw httpError(400, `Key mode mismatch (client=${pkMode}, server=${skMode})`);
+}
+
+// TODO: replace with your DB accessors (these are placeholders)
+const db = {
+  async getConnect(userId) { /* return { accountId, accountType } or null */ },
+  async setConnect(userId, data) { /* persist { accountId, accountType } */ },
+};
+// ----------------------------------------------------------------
+
+// ✅ Apply your app’s auth middleware to ALL connect routes
+router.use(requireAuth);
+
+/**
+ * POST /api/connect/ensure-account
+ * Body: { country?: "GB", businessType?: "company"|"individual" }
+ * Idempotent: creates a single Express account and persists it for the authed user.
+ */
+router.post("/connect/ensure-account", async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const country = req.body?.country || "GB";
+    const businessType = req.body?.businessType;
+
+    const existing = await db.getConnect(userId);
+    if (existing?.accountId) {
+      const acct = await stripe.accounts.retrieve(existing.accountId);
+      if (acct.type === "standard") {
+        throw httpError(409, "Embedded requires Express/Custom (account is Standard).");
+      }
+      return res.json({ accountId: acct.id, accountType: acct.type });
+    }
+
+    const acct = await stripe.accounts.create({
+      type: "express",
+      country,
+      ...(businessType ? { business_type: businessType } : {}),
+      capabilities: { card_payments: { requested: true }, transfers: { requested: true } },
+    });
+
+    await db.setConnect(userId, { accountId: acct.id, accountType: acct.type });
+    res.json({ accountId: acct.id, accountType: acct.type });
+  } catch (e) {
+    console.error("[ensure-account]", e);
+    res.status(e.status || 500).json({ error: e.message || "Unknown error" });
+  }
+});
+
+/**
+ * POST /api/connect/session
+ * Body: { accountId: "acct_...", publishableKey?: "pk_..." }
+ * Returns: { client_secret: "<string>", needsOnboarding: boolean }
+ */
+router.post("/connect/session", async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const { accountId, publishableKey } = req.body || {};
+    if (!accountId) throw httpError(400, "Missing accountId");
+
+    assertKeyModesMatch(publishableKey);
+
+    // Optional safety: verify the account actually belongs to this user
+    const saved = await db.getConnect(userId);
+    if (!saved || saved.accountId !== accountId) {
+      throw httpError(403, "Account does not belong to authenticated user");
+    }
+
+    const acct = await stripe.accounts.retrieve(accountId);
+    if (acct.type === "standard") throw httpError(409, "Embedded requires Express/Custom.");
+
+    const reqs = acct.requirements || {};
+    const needsOnboarding =
+      !acct.details_submitted ||
+      (Array.isArray(reqs.currently_due) && reqs.currently_due.length > 0) ||
+      (Array.isArray(reqs.past_due) && reqs.past_due.length > 0);
+
+    const session = await stripe.accountSessions.create({
+      account: accountId,
+      components: {
+        account_onboarding: { enabled: true },
+        account_management: { enabled: true },
+      },
+    });
+
+    if (!session.client_secret) throw httpError(502, "Stripe did not return client_secret");
+    res.json({ client_secret: session.client_secret, needsOnboarding });
+  } catch (e) {
+    console.error("[connect/session]", e);
+    res.status(e.status || 500).json({ error: e.message || "Unknown error" });
+  }
+});
+
+export default router;
+Mount it with your app’s auth stack still in place:
+// server/index.js
+import express from "express";
+import connectRoutes from "./connect.js";
+// import your auth stack (session/JWT middleware that sets req.user)
+import { authStack } from "./auth/stack.js"; // adjust path
+
+const app = express();
+app.use(express.json());
+app.use(authStack);          // <-- make sure req.user is populated before routes
+app.use("/api", connectRoutes);
+app.listen(process.env.PORT || 3000);
+2) Client: send auth info so the server sees you
+Depending on your app’s auth, you likely need one or both:
+Cookies/session auth: include credentials with fetch
+Header fallback (dev): send X-User-Id (only if your app uses this pattern)
+// client/src/pages/InterlincConnect.tsx (or your page)
+const common = {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  credentials: "include" as const, // <-- IMPORTANT if you use cookie/session auth
+};
+
+const ensure = await fetch("/api/connect/ensure-account", common);
+const { accountId } = await ensure.json();
+
+const session = await fetch("/api/connect/session", {
+  ...common,
+  body: JSON.stringify({ accountId, publishableKey: import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY }),
+});
+// In dev (only if your app supports it), you can add:
+// headers: { "Content-Type": "application/json", "X-User-Id": "86" },
+If your front-end and API are on different origins in dev, ensure your server has CORS configured with credentials: true and origin set to your dev URL.
+3) Quick verification (before touching UI)
+A) With cookies/session
+# In an authenticated browser session: open DevTools console
+fetch("/api/connect/ensure-account",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"include"})
+ .then(r=>r.json()).then(console.log);
+# Expect: { accountId: "acct_...", accountType: "express" }
+B) With header fallback (dev only)
+curl -X POST http://localhost:3000/api/connect/ensure-account \
+  -H 'Content-Type: application/json' \
+  -H 'X-User-Id: 86'
+If either returns 401 / “Auth required”, your auth stack isn’t applied before the Connect router or the client isn’t sending credentials/headers. Fix that first.
+4) Definition of Done (auth-wise)
+req.user.id is set on Connect routes (because your auth middleware runs before them).
+Routes also accept X-User-Id (only if that’s part of your existing pattern).
+/api/connect/ensure-account returns 200 with one stable acct_….
+/api/connect/session returns 200 with { client_secret, needsOnboarding }.
+The client fetch calls include credentials: 'include' (or the header fallback in dev) so you don’t get “Auth required”.
+This fixes the “Setup Error / Auth required” without loosening security and keeps your embedded-only flow exactly as intended.
