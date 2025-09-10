@@ -105,7 +105,6 @@ export default function connectRoutes(app, apiPath, authMiddleware) {
           account: existing.accountId,
           components: {
             account_onboarding: { enabled: true },
-            account_management: { enabled: true },
           },
         });
 

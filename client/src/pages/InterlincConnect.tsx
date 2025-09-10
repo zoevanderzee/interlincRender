@@ -365,10 +365,6 @@ export default function InterlincConnect() {
                 <ConnectComponentsProvider connectInstance={stripeConnect}>
                   <ConnectAccountOnboarding
                     onExit={handleOnboardingExit}
-                    collectionOptions={{
-                      fields: 'eventually_due',
-                      futureRequirements: 'include'
-                    }}
                   />
                 </ConnectComponentsProvider>
               </div>
