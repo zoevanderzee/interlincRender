@@ -92,6 +92,7 @@ export default function ConnectOnboarding() {
 
       // 6) Mount (string selector first, then node fallback)
       comp.on?.("ready", () => console.log("[CONNECT] ready (embedded) for", accountId));
+      comp.on?.("load_error", (e: any) => console.error("[CONNECT] load_error:", e));
 
       try {
         comp.mount("#onboarding-container");        // primary (per Stripe docs)
@@ -100,6 +101,22 @@ export default function ConnectOnboarding() {
         comp.mount(node as any);                    // fallback: direct node
       }
       console.log("[CONNECT] mounted");
+
+      // Additional diagnostics: check for CSP/ad-blocker issues
+      setTimeout(() => {
+        if (!comp || !(comp as any).rendered) {
+          console.error("[CONNECT] DIAGNOSTIC: Component failed to render after 3 seconds");
+          console.error("This usually indicates:");
+          console.error("1. CSP blocking connect-js.stripe.com");
+          console.error("2. Ad-blocker blocking Stripe domains"); 
+          console.error("3. Check Network tab for failed requests to connect-js.stripe.com");
+          
+          // Check if we can make a basic request to Stripe
+          fetch("https://connect-js.stripe.com/v3.0/", { mode: 'no-cors' })
+            .then(() => console.log("[CONNECT] connect-js.stripe.com is reachable"))
+            .catch((e) => console.error("[CONNECT] connect-js.stripe.com blocked:", e));
+        }
+      }, 3000);
     })().catch(e => {
       console.error("[CONNECT] FAILED", e);
       // Show a friendly message in the container so the page isn't blank
