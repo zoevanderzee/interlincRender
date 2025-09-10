@@ -1,0 +1,614 @@
+An Account v2 object represents a company, individual, or other entity that interacts with a platform on Stripe. It contains both identifying information and properties that control its behavior and functionality. An Account can have one or more configurations that enable sets of related features, such as allowing it to act as a merchant or customer.
+The Accounts v2 API supports both the Global Payouts preview feature and the Connect-Billing integration preview feature. However, a particular Account can only access one of them.
+The Connect-Billing integration preview feature allows an Account v2 to pay subscription fees to a platform. An Account v1 required a separate Customer object to pay subscription fees.
+Learn more about calling API v2 endpoints. 
+Was this section helpful?
+Yes
+No
+ENDPOINTS
+POST
+/v2/core/accounts
+POST
+/v2/core/accounts/:id
+GET
+/v2/core/accounts/:id
+GET
+/v2/core/accounts
+POST
+/v2/core/accounts/:id/close
+The Account object 
+Ask about this section
+Copy for LLM
+
+View as Markdown
+Attributes
+
+
+id
+string
+Unique identifier for the Account.
+
+object
+string, value is "v2.core.account"
+String representing the object’s type. Objects of the same type share the same value of the object field.
+
+applied_configurations
+array of enums
+Filter only accounts that have all of the configurations specified. If omitted, returns all accounts regardless of which configurations they have.
+Possible enum values
+customer
+The Account can be used as a customer.
+merchant
+The Account can be used as a merchant.
+recipient
+The Account can be used as a recipient.
+storer
+The Account can be used as a storer.
+
+configuration
+nullable object
+An Account Configuration which allows the Account to take on a key persona across Stripe products.
+Show child attributes
+
+contact_email
+nullable string
+The default contact email address for the Account. Required when configuring the account as a merchant or recipient.
+
+created
+timestamp
+Time at which the object was created. Represented as a RFC 3339 date & time UTC value in millisecond precision, for example: 2022-09-18T13:22:18.123Z.
+
+dashboard
+nullable enum
+A value indicating the Stripe dashboard this Account has access to. This will depend on which configurations are enabled for this account.
+Possible enum values
+express
+The Account has access to the Express hosted dashboard.
+full
+The Account has access to the full Stripe hosted dashboard.
+none
+The Account does not have access to any Stripe hosted dashboard.
+
+defaults
+nullable object
+Default values to be used on Account Configurations.
+Show child attributes
+
+display_name
+nullable string
+A descriptive name for the Account. This name will be surfaced in the Stripe Dashboard and on any invoices sent to the Account.
+
+identity
+nullable object
+Information about the company, individual, and business represented by the Account.
+Show child attributes
+
+livemode
+boolean
+Has the value true if the object exists in live mode or the value false if the object exists in test mode.
+
+metadata
+nullable map
+Set of key-value pairs that you can attach to an object. This can be useful for storing additional information about the object in a structured format.
+
+requirements
+nullable object
+Information about the requirements for the Account, including what information needs to be collected, and by when.
+Show child attributes
+THE ACCOUNT OBJECT
+{
+  "id": "acct_1Nv0FGQ9RKHgCVdK",
+  "object": "v2.core.account",
+  "applied_configurations": [
+    "customer",
+    "merchant"
+  ],
+  "configuration": {
+    "customer": {
+      "automatic_indirect_tax": {
+        "exempt": "none",
+        "location_source": "identity_address"
+      },
+      "billing": {
+        "invoice": {
+          "next_sequence": 1,
+          "prefix": "5626C87C",
+          "custom_fields": []
+        }
+      },
+      "capabilities": {
+        "automatic_indirect_tax": {
+          "requested": true,
+          "status": "active"
+        }
+      }
+    },
+    "merchant": {
+      "card_payments": {
+        "decline_on": {
+          "avs_failure": false,
+          "cvc_failure": false
+        }
+      },
+      "capabilities": {
+        "card_payments": {
+          "requested": true,
+          "status": "active",
+          "status_details": []
+        },
+        "stripe_balance": {
+          "payouts": {
+            "requested": true,
+            "status": "active",
+            "status_details": []
+          }
+        }
+      }
+    }
+  },
+  "contact_email": "furever@example.com",
+  "created": "2025-03-28T19:59:16.000Z",
+  "dashboard": "full",
+  "identity": {
+    "business_details": {
+      "registered_name": "Furever"
+    },
+    "country": "US",
+    "entity_type": "company"
+  },
+  "defaults": {
+    "currency": "usd",
+    "responsibilities": {
+      "fees_collector": "stripe",
+      "losses_collector": "stripe"
+    }
+  },
+  "display_name": "Furever"
+}
+Create an Account v2
+Ask about this section
+Copy for LLM
+
+View as Markdown
+An Account is a representation of a company, individual or other entity that a user interacts with. Accounts contain identifying information about the entity, and configurations that store the features an account has access to. An account can be configured as any or all of the following configurations: Customer, Merchant and/or Recipient.
+Learn more about calling API v2 endpoints. 
+Parameters
+
+
+configuration
+object
+An Account Configuration which allows the Account to take on a key persona across Stripe products.
+Show child parameters
+
+contact_email
+string
+The default contact email address for the Account. Required when configuring the account as a merchant or recipient.
+
+dashboard
+enum
+A value indicating the Stripe dashboard this Account has access to. This will depend on which configurations are enabled for this account.
+Possible enum values
+express
+The Account has access to the Express hosted dashboard.
+full
+The Account has access to the full Stripe hosted dashboard.
+none
+The Account does not have access to any Stripe hosted dashboard.
+
+defaults
+object
+Default values to be used on Account Configurations.
+Show child parameters
+
+display_name
+string
+A descriptive name for the Account. This name will be surfaced in the Stripe Dashboard and on any invoices sent to the Account.
+
+identity
+object
+Information about the company, individual, and business represented by the Account.
+Show child parameters
+
+include
+array of enums
+Additional fields to include in the response.
+Possible enum values
+configuration.customer
+Include parameter to expose configuration.customer on an Account.
+configuration.merchant
+Include parameter to expose configuration.merchant on an Account.
+configuration.recipient
+Include parameter to expose configuration.recipient on an Account.
+configuration.storer
+Include parameter to expose configuration.storer on an Account.
+defaults
+Include parameter to expose defaults on an Account.
+identity
+Include parameter to expose identity on an Account.
+requirements
+Include parameter to expose requirements on an Account.
+
+metadata
+map
+Set of key-value pairs that you can attach to an object. This can be useful for storing additional information about the object in a structured format.
+Returns
+
+Response attributes
+
+
+id
+string
+Unique identifier for the Account.
+
+object
+string, value is "v2.core.account"
+String representing the object’s type. Objects of the same type share the same value of the object field.
+
+applied_configurations
+array of enums
+Filter only accounts that have all of the configurations specified. If omitted, returns all accounts regardless of which configurations they have.
+Possible enum values
+customer
+The Account can be used as a customer.
+merchant
+The Account can be used as a merchant.
+recipient
+The Account can be used as a recipient.
+storer
+The Account can be used as a storer.
+
+configuration
+nullable object
+An Account Configuration which allows the Account to take on a key persona across Stripe products.
+Show child attributes
+
+contact_email
+nullable string
+The default contact email address for the Account. Required when configuring the account as a merchant or recipient.
+
+created
+timestamp
+Time at which the object was created. Represented as a RFC 3339 date & time UTC value in millisecond precision, for example: 2022-09-18T13:22:18.123Z.
+
+dashboard
+nullable enum
+A value indicating the Stripe dashboard this Account has access to. This will depend on which configurations are enabled for this account.
+Possible enum values
+express
+The Account has access to the Express hosted dashboard.
+full
+The Account has access to the full Stripe hosted dashboard.
+none
+The Account does not have access to any Stripe hosted dashboard.
+
+defaults
+nullable object
+Default values to be used on Account Configurations.
+Show child attributes
+
+display_name
+nullable string
+A descriptive name for the Account. This name will be surfaced in the Stripe Dashboard and on any invoices sent to the Account.
+
+identity
+nullable object
+Information about the company, individual, and business represented by the Account.
+Show child attributes
+
+livemode
+boolean
+Has the value true if the object exists in live mode or the value false if the object exists in test mode.
+
+metadata
+nullable map
+Set of key-value pairs that you can attach to an object. This can be useful for storing additional information about the object in a structured format.
+
+requirements
+nullable object
+Information about the requirements for the Account, including what information needs to be collected, and by when.
+Show child attributes
+ERROR CODES
+400
+account_controller_express_dash_without_application_losses_or_fees
+If dashboard is express, fees_collector must be application and losses_collector must be application.
+400
+account_controller_stripe_pricing_platform_liable
+If losses_collector is application, fees_collector must also be application.
+400
+account_controller_unsupported_configuration
+Connect integration combination is not supported.
+400
+account_controller_unsupported_configuration_private_preview
+Responsibility combinations is not supported in private preview.
+400
+account_country_unsupported_currency
+Currency is not allowed for the account’s country.
+400
+account_create_activation_required
+Platform must be activated to create connected accounts.
+400
+account_creation_invalid
+Account creation is invalid.
+400
+address_characters_invalid
+Invalid characters are provided for address fields.
+400
+address_country_identity_country_mismatch
+Address country doesn’t match identity country.
+400
+address_postal_code_invalid
+Address postal code is invalid.
+400
+address_state_invalid
+Address state is invalid.
+400
+address_town_invalid
+Address town is invalid.
+400
+can_create_platform_owned_onboarding_accounts_required
+Dormant accounts cannot create accounts where requirements collector is application (this is an account takeover prevention measure).
+400
+cannot_create_connected_account
+Platform is in an invalid state and cannot create connected accounts.
+400
+cannot_create_new_account_rejected
+Platform is in a rejected state and cannot create connected accounts.
+400
+capability_cannot_be_unrequested_due_to_other_capability_requirement
+Feature cannot be unrequested due to being a requirement for another feature.
+400
+capability_not_available_for_dashboard_type
+Feature cannot be requested for the dashboard type.
+400
+capability_not_available_for_entity_type_in_country
+Requested feature is not available for the entity type in your country.
+400
+capability_not_available_in_country
+Requested capability is not available in your country.
+400
+capability_not_available_in_platform_country
+Feature cannot be requested given the platform’s country.
+400
+capability_not_available_without_other_capability
+Requested feature is not available without also requesting a different feature.
+400
+capability_not_available_without_other_capability_in_country
+Requested feature is not available without also requesting a different feature in your country.
+400
+configuration_creation_invalid
+Cannot create an account with an invalid configuration.
+400
+connect_identity_not_verified
+Platform is not verified and cannot create connected accounts.
+400
+connect_profile_not_submitted
+Platform has not completed platform questionnaire and cannot create connected accounts.
+400
+custom_account_beta
+Custom accounts cannot be created in certain countries.
+400
+date_of_birth_age_restriction
+Representative date of birth does not meet the age limit.
+400
+date_of_birth_invalid
+Representative date of birth is provided an invalid date or a future date.
+400
+default_currency_immutable
+Cannot change defaults.currency post account activation.
+400
+default_payment_method_invalid
+Default payment method provided for a customer does not exist or is otherwise invalid.
+400
+default_payment_method_invalid_type
+Specified payment method exists but its type is not allowed to be the default payment method.
+400
+document_invalid
+Provided file tokens for documents are invalid, not found, deleted, or belong to a different account.
+400
+document_purpose_invalid
+Provided file tokens for documents are of the wrong purpose.
+400
+email_domain_invalid_for_recipient
+Email contains unsupported domain.
+400
+email_invalid
+Incorrect email is provided.
+400
+entity_type_not_supported_in_country
+The identity.entity_type value is not supported in a given identity.country.
+400
+id_number_invalid
+Provided ID number is of the wrong format for the given type.
+400
+identity_country_required
+The identity.country value is required but not provided.
+400
+incorrect_id_number_for_country
+Incorrect ID number is provided for a country.
+400
+invalid_id_number_for_structure
+ID number is provided that is not permitted for the Identity’s entity type and business structure.
+400
+invalid_id_number_registrar
+The identity.business_details.id_numbers.registrar value is an invalid DE registrar.
+400
+invoice_rendering_template_invalid
+Invoice rendering template does not exist or is otherwise invalid.
+400
+ip_address_invalid
+Invalid IP address is provided.
+400
+mcc_invalid
+MCC is invalid for configuration.merchant.mcc.
+400
+non_jp_kana_kanji_address
+Kana Kanji script addresses must have JP country.
+400
+person_percent_ownership_invalid
+Error returned when relationship.owner is set to true but the ownership percentage is set to 0%.
+400
+phone_invalid
+Phone number is invalid.
+400
+platform_registration_required
+Platform has not signed up for Connect and cannot create connected accounts.
+400
+script_characters_invalid
+Provided script characters are invalid for the script.
+400
+shipping_address_required
+Shipping address is required within the shipping hash.
+400
+shipping_name_required
+Shipping name is required within the shipping hash.
+400
+statement_descriptor_invalid
+Statement descriptor is invalid.
+400
+structure_incompatible_for_entity_type_country
+The business_details.structure value is not valid for identity.country and identity.entity_type.
+400
+test_clock_disallowed_on_live_mode
+Cannot set a test clock on a livemode customer.
+400
+test_clock_invalid
+Test clock does not exist or is otherwise invalid.
+400
+test_clocks_advance_in_progress
+Cannot modify a test clock that is currently advancing.
+400
+test_clocks_customer_limit_reached
+Cannot add customer to a test clock that has already reached its customer limit.
+400
+tos_acceptance_on_behalf_not_allowed
+TOS cannot be accepted on behalf of accounts when requirement collection is stripe.
+400
+unsupported_field_for_configs
+Cannot set responsibilities on the current configurations.
+400
+unsupported_identity_field_for_configs
+Cannot set identity fields when the Account is only configured as a customer.
+400
+url_invalid
+URL is invalid.
+409
+idempotency_error
+An idempotent retry occurred with different request parameters.
+POST 
+/v2/core/accounts
+Server-side language
+
+const stripe = require('stripe')('sk_test_51S5ixV...fG00VzQhDx6wsk_test_51S5ixVBUZbA0UWSxmc1F9pIfeaRm2vJKii95ZIRp6iEbT08WFa8sUeNv5PVMUMnGoQtrDnzNsnq98q1GeiKXLifG00VzQhDx6w');
+const account = await stripe.v2.core.accounts.create({
+  contact_email: 'furever@example.com',
+  display_name: 'Furever',
+  identity: {
+    country: 'us',
+    entity_type: 'company',
+    business_details: {
+      registered_name: 'Furever',
+    },
+  },
+  configuration: {
+    customer: {
+      capabilities: {
+        automatic_indirect_tax: {
+          requested: true,
+        },
+      },
+    },
+    merchant: {
+      capabilities: {
+        card_payments: {
+          requested: true,
+        },
+      },
+    },
+  },
+  defaults: {
+    responsibilities: {
+      fees_collector: 'stripe',
+      losses_collector: 'stripe',
+    },
+  },
+  dashboard: 'full',
+  include: [
+    'configuration.merchant',
+    'configuration.customer',
+    'identity',
+    'defaults',
+  ],
+});
+RESPONSE
+{
+  "id": "acct_1Nv0FGQ9RKHgCVdK",
+  "object": "v2.core.account",
+  "applied_configurations": [
+    "customer",
+    "merchant"
+  ],
+  "configuration": {
+    "customer": {
+      "automatic_indirect_tax": {
+        "exempt": "none",
+        "location_source": "identity_address"
+      },
+      "billing": {
+        "invoice": {
+          "next_sequence": 1,
+          "prefix": "5626C87C",
+          "custom_fields": []
+        }
+      },
+      "capabilities": {
+        "automatic_indirect_tax": {
+          "requested": true,
+          "status": "active",
+          "status_details": []
+        }
+      }
+    },
+    "merchant": {
+      "card_payments": {
+        "decline_on": {
+          "avs_failure": false,
+          "cvc_failure": false
+        }
+      },
+      "capabilities": {
+        "card_payments": {
+          "requested": true,
+          "status": "active",
+          "status_details": []
+        },
+        "stripe_balance": {
+          "payouts": {
+            "requested": true,
+            "status": "active",
+            "status_details": []
+          }
+        }
+      }
+    }
+  },
+  "contact_email": "furever@example.com",
+  "created": "2025-03-28T19:59:16.000Z",
+  "dashboard": "full",
+  "identity": {
+    "business_details": {
+      "registered_name": "Furever"
+    },
+    "country": "US",
+    "entity_type": "company"
+  },
+  "livemode": false,
+  "defaults": {
+    "currency": "usd",
+    "responsibilities": {
+      "fees_collector": "stripe",
+      "losses_collector": "stripe"
+    }
+  },
+  "display_name": "Furever"
+}
+Update an Account v2

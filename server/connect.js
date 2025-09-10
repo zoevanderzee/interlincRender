@@ -112,14 +112,34 @@ export default function connectRoutes(app, apiPath, authMiddleware) {
         return res.json({ client_secret: session.client_secret, needsOnboarding, hasExistingAccount: true });
       }
 
-      // No existing account - create session for new account onboarding
+      // No existing account - create Connect account first, then session
+      // Step 1: Create basic Connect account (just gets an account ID)
+      const user = await storage.getUserById(userId);
+      const account = await stripe.accounts.create({
+        type: 'express',
+        country: country,
+        email: user.email,
+        // Minimal info - everything else collected in embedded onboarding
+      });
+
+      // Step 2: Create account session for that account
       const session = await stripe.accountSessions.create({
+        account: account.id,  // This was missing!
         components: {
           account_onboarding: { enabled: true },
         },
       });
 
-      res.json({ client_secret: session.client_secret, needsOnboarding: true, hasExistingAccount: false });
+      // Step 3: Save the new account ID to our database
+      await db.setConnect(userId, { 
+        accountId: account.id, 
+        accountType: account.type,
+        detailsSubmitted: false,
+        chargesEnabled: false,
+        payoutsEnabled: false
+      });
+
+      res.json({ client_secret: session.client_secret, needsOnboarding: true, hasExistingAccount: false, accountId: account.id });
     } catch (e) {
       console.error("[connect-session]", e);
       res.status(e.status || 500).json({ error: e.message || "Unknown error" });

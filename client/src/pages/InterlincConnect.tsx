@@ -39,10 +39,36 @@ export default function InterlincConnect() {
         const connectInstance = loadConnectAndInitialize({
           publishableKey,
           fetchClientSecret: async () => {
-            if (!session?.client_secret) {
-              throw new Error('No client secret available');
+            // This function is called by Stripe when it needs a client secret
+            const userId = localStorage.getItem('user_id');
+            const firebaseUid = localStorage.getItem('firebase_uid');
+            const authHeaders: Record<string, string> = {
+              'Content-Type': 'application/json',
+            };
+            
+            if (userId) {
+              authHeaders['X-User-ID'] = userId;
             }
-            return session.client_secret;
+            if (firebaseUid) {
+              authHeaders['X-Firebase-UID'] = firebaseUid;
+            }
+
+            const response = await fetch('/api/connect/session', {
+              method: 'POST',
+              body: JSON.stringify({
+                publishableKey,
+                country: 'GB',
+              }),
+              headers: authHeaders,
+              credentials: 'include',
+            });
+
+            if (!response.ok) {
+              throw new Error(`Failed to create session: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            return data.client_secret;
           },
           appearance: {
             overlays: 'dialog',
@@ -53,21 +79,25 @@ export default function InterlincConnect() {
         });
 
         setStripeConnect(connectInstance);
+        setIsLoading(false);
       } catch (err) {
         console.error('Failed to initialize Stripe Connect:', err);
         setError(err instanceof Error ? err.message : 'Failed to initialize');
+        setIsLoading(false);
       }
     };
 
-    if (session) {
+    if (publishableKey) {
       initializeConnect();
     }
-  }, [publishableKey, session]);
+  }, [publishableKey]);
 
-  // Handle account creation from embedded onboarding
-  const handleAccountCreated = async (event: any) => {
-    console.log('Account created via embedded onboarding:', event.account);
-    await saveAccountAfterOnboarding(event.account.id);
+  // Handle onboarding completion
+  const handleOnboardingExit = () => {
+    console.log('Onboarding completed or exited');
+    setOnboardingStatus('complete');
+    // Refresh the page or update status
+    window.location.reload();
   };
 
   // Create session for embedded onboarding (no pre-created account)
@@ -315,7 +345,7 @@ export default function InterlincConnect() {
               <div className="min-h-[400px]">
                 <ConnectComponentsProvider connectInstance={stripeConnect}>
                   <ConnectAccountOnboarding
-                    onAccountCreated={handleAccountCreated}
+                    onExit={handleOnboardingExit}
                   />
                 </ConnectComponentsProvider>
               </div>
