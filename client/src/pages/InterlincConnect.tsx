@@ -79,6 +79,7 @@ export default function InterlincConnect() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
       });
 
       if (!accountResponse.ok) {
@@ -99,6 +100,7 @@ export default function InterlincConnect() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
       });
 
       if (!sessionResponse.ok) {
@@ -138,6 +140,7 @@ export default function InterlincConnect() {
           headers: {
             'Content-Type': 'application/json',
           },
+          credentials: 'include',
         });
 
         if (response.ok) {
