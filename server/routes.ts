@@ -17,7 +17,10 @@ import {
   insertPaymentSchema,
   insertDocumentSchema,
   insertWorkRequestSchema,
-  updateWorkRequestSchema
+  updateWorkRequestSchema,
+  users,
+  contracts,
+  milestones
 } from "@shared/schema";
 import {
   normalizeDeliverable,
@@ -35,6 +38,8 @@ import { trolleySdk } from "./trolley-sdk-service";
 import { trolleySubmerchantService, type TrolleySubmerchantData } from "./services/trolley-submerchant";
 import { trolleyService } from "./trolley-service";
 import { setupAuth } from "./auth";
+import { db } from "./db";
+import { sql, eq, and, or, desc } from "drizzle-orm";
 // Legacy object storage import removed - now using custom file storage
 import { FileStorageService, uploadMiddleware } from "./fileStorage";
 import plaidRoutes from "./plaid-routes";
