@@ -46,7 +46,7 @@ import WorkRequestRespond from "./pages/work-request-respond";
 import ContractorOnboarding from "@/pages/contractor-onboarding";
 
 // Stripe Connect Imports
-import ConnectOnboarding from "@/pages/connect-onboarding";
+import InterlincConnect from "@/pages/interlinc-connect";
 import ConnectProducts from "@/pages/connect-products";
 import ConnectDemo from "@/pages/connect-demo";
 import Storefront from "@/pages/storefront";
@@ -191,8 +191,8 @@ function Router() {
       </ProtectedRoute>
 
       {/* Stripe Connect Routes */}
-      <ProtectedRoute path="/connect-onboarding">
-        <ConnectOnboarding />
+      <ProtectedRoute path="/interlinc-connect">
+        <InterlincConnect />
       </ProtectedRoute>
 
       <ProtectedRoute path="/connect-products">

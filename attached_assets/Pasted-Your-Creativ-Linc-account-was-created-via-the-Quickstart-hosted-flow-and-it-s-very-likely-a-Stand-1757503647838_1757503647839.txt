@@ -1,0 +1,82 @@
+Your “Creativ Linc” account was created via the Quickstart/hosted flow, and it’s very likely a Standard (or otherwise not platform-controlled) Connect account. Embedded components only work for Express or Custom accounts you control.
+If you pass a Standard acct_… into @stripe/connect-js, connect.create('account-onboarding') returns a non-mountable object → the exact “not mountable” error you’re seeing.
+The dashboard screenshot (“Actions required”, “Payments paused”) doesn’t change that—Standard accounts can still have requirements, but you can’t embed the onboarding for them.
+Fix (send this to your agent)
+1) Guard the server: refuse Standard accounts and tell the client what to do
+// POST /api/connect/create-account-session
+app.post("/api/connect/create-account-session", async (req, res) => {
+  try {
+    const { accountId } = req.body || {};
+    if (!accountId) return res.status(400).json({ error: "Missing accountId" });
+
+    const acct = await stripe.accounts.retrieve(accountId);
+    const type = acct.type; // "standard" | "express" | "custom"
+
+    if (type === "standard") {
+      // Embedded is not supported for Standard accounts
+      return res.status(409).json({
+        error: "embedded_not_supported_for_standard",
+        message: "Embedded Connect components require an Express or Custom account.",
+        accountType: type,
+      });
+    }
+
+    // Decide if onboarding is still needed
+    const r = acct.requirements || {};
+    const needsOnboarding =
+      !acct.details_submitted ||
+      (Array.isArray(r.currently_due) && r.currently_due.length > 0) ||
+      (Array.isArray(r.past_due) && r.past_due.length > 0);
+
+    // Create an Account Session with both components enabled
+    const session = await stripe.accountSessions.create({
+      account: accountId,
+      components: {
+        account_onboarding: { enabled: true },
+        account_management: { enabled: true },
+      },
+    });
+
+    return res.json({
+      accountId,
+      accountType: type,
+      needsOnboarding,
+      client_secret: session.client_secret, // opaque string; do not pattern-check
+    });
+  } catch (e:any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+2) Client: handle the 409 neatly and offer the two valid paths
+const r = await fetch("/api/connect/create-account-session", { /* body: { accountId } */ });
+
+if (r.status === 409) {
+  const j = await r.json();
+  if (j.error === "embedded_not_supported_for_standard") {
+    // Show a clear UI:
+    // 1) Use hosted onboarding for this existing Standard account (accountLinks.create)
+    // 2) Or create & link a new Express/Custom account for this user, then embed
+    throw new Error("This account is Standard; embedded onboarding isn’t supported.");
+  }
+}
+
+const { client_secret, needsOnboarding, accountType } = await r.json();
+// For express/custom only:
+const connect = await loadConnectAndInitialize({ publishableKey: PK, fetchClientSecret: async () => client_secret });
+const primary = needsOnboarding ? "account-onboarding" : "account-management";
+connect.create(primary as any).mount("#onboarding-container");
+Your choices for “Creativ Linc” (today)
+Keep the existing Standard account
+Use hosted onboarding (Account Links) for that one user. You can’t embed it.
+Move to Express or Custom (recommended for embedding)
+Create a new Express/Custom account (stripe.accounts.create({ type: "express" | "custom", … })) for that user.
+Persist the new acct_… on your side.
+Use the embedded flow (Account Session + @stripe/connect-js) to complete onboarding inside your app.
+Optionally disconnect the old Standard account if unused.
+Tip: add a one-time “ensureConnectAccount” helper that creates Express/Custom only if the user doesn’t already have a platform-controlled account, and never on page load. That stops the flood of duplicates.
+Also: stop creating “fake” accounts
+Persist user.connectAccountId in your DB.
+On page load, require accountId and do not create new accounts automatically.
+Allow creation only on an explicit “Set up payouts” button or a one-time setup path.
+Why it broke
+You mixed an account created via Quickstart/hosted (probably Standard) with an embedded client. The embedded components correctly refused to mount because the account isn’t Express/Custom. Once you use an Express or Custom account ID, onboarding will mount and run inside your app.
