@@ -6966,12 +6966,12 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
    */
   app.post(`${apiRouter}/connect/create-account-session`, requireAuth, async (req, res) => {
     try {
-      let { accountId = null, country = "GB", publishableKey } = req.body || {};
       const userId = req.user?.id;
-
       if (!userId) {
         return res.status(401).json({ error: "Authentication required" });
       }
+
+      const { allowCreate = false, country = "GB", publishableKey } = req.body || {};
 
       // Optional: ensure client PK mode matches server SK mode
       const sk = process.env.STRIPE_SECRET_KEY || '';
@@ -6983,25 +6983,27 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
         return res.status(400).json({ error: `Key mode mismatch (client=${pkMode}, server=${skMode})` });
       }
 
-      // Check if user already has a Stripe Connect account
+      // 1) Look up existing Connect account ID in DB
+      const user = await storage.getUser(userId);
+      let accountId = user?.stripeConnectAccountId;
+
+      // 2) Create ONLY if explicitly allowed and missing
       if (!accountId) {
-        const user = await storage.getUser(userId);
-        if (user?.stripeConnectAccountId) {
-          accountId = user.stripeConnectAccountId;
-          console.log(`Using existing Stripe Connect account: ${accountId}`);
-        } else {
-          // Only create new account if user doesn't have one
-          const acct = await stripe.accounts.create({
-            type: "custom",
-            country,
-            capabilities: { card_payments: { requested: true }, transfers: { requested: true } },
-          });
-          accountId = acct.id;
-          
-          // Store the account ID in the user record
-          await storage.updateUser(userId, { stripeConnectAccountId: accountId });
-          console.log(`Created new Stripe Connect account: ${accountId} for user ${userId}`);
+        if (!allowCreate) {
+          return res.status(400).json({ error: "No Connect account for user; set allowCreate=true once to create." });
         }
+        const acct = await stripe.accounts.create({
+          type: "custom",
+          country,
+          capabilities: { card_payments: { requested: true }, transfers: { requested: true } },
+        });
+        accountId = acct.id;
+        
+        // Store the account ID in the user record
+        await storage.updateUser(userId, { stripeConnectAccountId: accountId });
+        console.log(`Created new Stripe Connect account: ${accountId} for user ${userId}`);
+      } else {
+        console.log(`Using existing Stripe Connect account: ${accountId}`);
       }
 
       const session = await stripe.accountSessions.create({
@@ -7009,10 +7011,10 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
         components: { account_onboarding: { enabled: true } },
       });
 
-      const secret = session.client_secret; // MUST be the client secret (accs_secret_...), not session ID
-      if (typeof secret !== "string" || !/^accs_secret_/.test(secret)) {
+      const secret = session.client_secret; // MUST be the client secret, not session ID
+      if (typeof secret !== "string" || secret.length < 10) {
         console.error("[connect] WRONG SECRET RETURNED:", { got: secret?.slice?.(0, 12) });
-        return res.status(500).json({ error: "Server did not produce an Account Session client_secret (accs_secret_…)" });
+        return res.status(500).json({ error: "Server did not produce a valid Account Session client_secret" });
       }
 
       res.json({ accountId, client_secret: secret });

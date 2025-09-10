@@ -26,7 +26,7 @@ export default function ConnectOnboarding() {
       const node = containerRef.current;
       if (!node) throw new Error("Missing onboarding container node");
 
-      // 2) Get account session with authentication headers
+      // 2) Get user info and existing Connect account
       const userId = localStorage.getItem('user_id');
       const firebaseUid = localStorage.getItem('firebase_uid');
       
@@ -40,10 +40,20 @@ export default function ConnectOnboarding() {
         headers['X-Firebase-UID'] = firebaseUid;
       }
 
+      // Get user data to check for existing Connect account
+      const userResponse = await fetch("/api/user", { headers });
+      if (!userResponse.ok) throw new Error(`Failed to get user data: ${userResponse.status}`);
+      const userData = await userResponse.json();
+
       const r = await fetch("/api/connect/create-account-session", {
         method: "POST",
         headers,
-        body: JSON.stringify({ accountId: null, country: "GB", publishableKey: PK }), // let server use existing account
+        body: JSON.stringify({ 
+          accountId: userData.stripeConnectAccountId, // use existing account
+          allowCreate: !userData.stripeConnectAccountId, // only allow create if no existing account
+          country: "GB", 
+          publishableKey: PK 
+        }),
       });
       if (!r.ok) throw new Error(`API ${r.status}: ${await r.text()}`);
       const { accountId, client_secret } = await r.json();
