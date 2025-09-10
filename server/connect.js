@@ -113,7 +113,7 @@ export default function connectRoutes(app, apiPath, authMiddleware) {
 
       // No existing account - create Connect account first, then session
       // Step 1: Create basic Connect account (just gets an account ID)
-      const user = await storage.getUserById(userId);
+      const user = await db.getUserById(userId);
       const account = await stripe.accounts.create({
         type: 'express',
         country: country,

@@ -1,0 +1,474 @@
+Get started with Connect embedded components
+Learn how to embed dashboard functionality into your website.
+Ask about this page
+Copy for LLM
+
+View as Markdown
+You're integrating in Test mode. Try using a sandbox instead.
+Switch to a sandbox
+Use Connect embedded components to add connected account dashboard functionality to your website. These libraries and their supporting API allow you to grant your users access to Stripe products directly in your dashboard and mobile applications.
+
+
+Web
+
+iOS
+
+Android
+Payments
+Desktop
+English (United Kingdom)
+Default
+
+Learn more about the Payments component →
+This demo is read-only with limited functionality. Visit furever.dev for a fully functional demo.
+For an immersive version of this guide, see the Connect embedded components integration quickstart. You can also download a sample integration from there. To customise the appearance of Connect embedded components, use the appearance options when you initialise StripeConnectInstance. See the full list of appearance parameters.
+Initialize Connect.js
+Client-side
+Server-side
+Stripe uses an AccountSession to express your intent to delegate API access to your connected account.
+The AccountSessions API returns a client secret that allows an embedded component to access a connected account’s resources as if you were making the API calls for them.
+Create an AccountSession
+Server
+In a single page application, your client initiates a request to obtain the account session to your server. You can create a new endpoint on your server that returns the client secret to the browser:
+app.js
+Select a language
+Node.js
+
+
+
+const stripe = require("stripe")(
+  // This is your test secret API key.
+  'sk_test_51R97qMF4bfRUGDn9CFdhnHVCVcng7CuDYiy8ZCcGzZBoPWMdL3CHLBUVtWqCmqabSaukL9I4NDckC2bRQTqPTphE00rVMbsAsv''sk_test_51R97qMF4bfRUGDn9CF...RQTqPTphE00rVMbsAsv',
+);
+
+const express = require('express');
+const app = express();
+
+app.post('/account_session', async (req, res) => {
+  try {
+    const accountSession = await stripe.accountSessions.create({
+      account: '{{CONNECTED_ACCOUNT_ID}}',
+      components: {
+        payments: {
+          enabled: true,
+          features: {
+            refund_management: true,
+            dispute_management: true,
+            capture_payments: true,
+          }
+        },
+      }
+    });
+
+    res.json({
+      client_secret: accountSession.client_secret,
+    });
+  } catch (error) {
+    console.error('An error occurred when calling the Stripe API to create an account session', error);
+    res.status(500);
+    res.send({error: error.message});
+  }
+});
+
+app.listen(3000, () => {
+  console.log('Running on port 3000');
+});
+Create Account Session API
+The Create Account Session API determines component and feature access for Connect embedded components. Stripe enforces these parameters for any components that correspond to the account session. If your site supports multiple user roles, make sure components and features that are enabled for that account session correspond to the current user’s role. For example, you can enable refund management only for administrators of your site, but not for other users. To make sure user role access are enforced, you must map your site’s user role to account session components.
+Set up Connect.js
+Client
+We recommend setting up Connect.js with npm as shown in the following example, but it’s also possible without npm.
+
+HTML + JS
+
+React
+Install the npm package to use Connect.js as a module.
+Command Line
+
+
+
+npm install --save @stripe/connect-js
+Load and initialise Connect.js
+Client
+Call loadConnectAndInitialize with your publishable key and a function that retrieves a client secret by calling the new endpoint you created on your server. Use the returned StripeConnectInstance to create embedded components. After initialising Connect.js, you can mount components to or unmount components from the DOM at any time. That includes any elements rendered inside React or Vue portals.
+
+HTML + JS
+
+React
+To create a component, call create on the StripeConnectInstance that you created above, then pass in the component name. This returns a custom element that Connect.js registers and uses to automatically wire your DOM up to Stripe. You can then append this element to your DOM.
+Call create with payments, then add the result to your DOM to render a payments UI.
+index.html
+Select a language
+Select a language
+HTML + JS
+
+
+
+<head>
+  <script type="module" src="index.js" defer></script>
+</head>
+<body>
+  <h1>Payments</h1>
+  <div id="container"></div>
+  <div id="error" hidden>Something went wrong!</div>
+</body>
+index.js
+Select a language
+Select a language
+HTML + JS
+
+
+
+import {loadConnectAndInitialize} from '@stripe/connect-js';
+
+const fetchClientSecret = async () => {
+  // Fetch the AccountSession client secret
+  const response = await fetch('/account_session', { method: "POST" });
+  if (!response.ok) {
+    // Handle errors on the client side here
+    const {error} = await response.json();
+    console.error('An error occurred: ', error);
+    document.querySelector('#error').removeAttribute('hidden');
+    return undefined;
+  } else {
+    const {client_secret: clientSecret} = await response.json();
+    document.querySelector('#error').setAttribute('hidden', '');
+    return clientSecret;
+  }
+}
+
+const stripeConnectInstance = loadConnectAndInitialize({
+    // This is your test publishable API key.
+    publishableKey: "pk_test_51R97qMF4bfRUGDn9fs2goKaU0PUfOBxmdhbHUjZxSaZcHnB9DTo9qGx7aMOJsxCeLVsutcorlObktR9oMhwLZYyU00Z6gtTrib""pk_test_51R97qMF4bfRUGDn9fs...oMhwLZYyU00Z6gtTrib",
+    fetchClientSecret: fetchClientSecret,
+  });
+const paymentComponent = stripeConnectInstance.create("payments");
+const container = document.getElementById("container");
+container.appendChild(paymentComponent);
+See a complete list of supported embedded components →
+Configure Connect.js
+Client-side
+The loadConnectAndInitialize method on the client takes several different options to configure Connect.js.
+OPTION	DESCRIPTION	
+publishableKey	The publishable key for your integration.	required
+fetchClientSecret	The function that retrieves the client secret returned by /v1/account_sessions. This tells StripeConnectInstance which account to delegate access to. This function is also used to retrieve a client secret function to refresh the session when it expires. fetchClientSecret should always create a new account session and return a fresh client_secret.	required
+appearance	An object to customise the look of Connect embedded components.	optional
+locale	A parameter to specify the locale that Connect embedded components use. The locale defaults to the browser language. If the specified locale isn’t directly supported, we use a reasonable alternative (for example fr-be might fall back to fr-fr). See localisation for the list of supported locales.	optional
+fonts	An array of custom fonts available for use by any embedded components created from a StripeConnectInstance. You can specify fonts as CssFontSource or CustomFontSource objects.	optional
+Customise the look of Connect embedded components
+The embedded components Figma UI toolkit contains every component, common patterns, and an example application. You can use it to visualise and design embedded UIs on your website.
+We offer a set of options to customise the look and feel of Connect embedded components. These customisations affect buttons, icons, and other accents in our design system.
+Necessary pop-ups
+Some behaviour in embedded components, such as user authentication, must be presented in a pop-up. You can’t customise the embedded component to eliminate such pop-ups.
+You can set these options when initialising StripeConnectInstance by passing an Appearance to the appearance object. You can only use the Connect.js options to modify styles in Connect embedded components. The font family and background colour of Connect embedded components are inherited from the parent HTML container. You must explicitly set all other options.
+index.js
+
+
+
+const stripeConnectInstance = loadConnectAndInitialize({
+  publishableKey: "pk_test_51R97qMF4bfRUGDn9fs2goKaU0PUfOBxmdhbHUjZxSaZcHnB9DTo9qGx7aMOJsxCeLVsutcorlObktR9oMhwLZYyU00Z6gtTrib""pk_test_51R97qMF4bfRUGDn9fs...oMhwLZYyU00Z6gtTrib",
+  fetchClientSecret: fetchClientSecret,
+  fonts: [
+    {
+      cssSrc: "https://myfonts.example.com/mycssfile.css",
+    },
+    {
+      src: `url(https://my-domain.com/assets/my-font-2.woff)`,
+      family: 'My Font'
+    }
+  ],
+  appearance: {
+    // See all possible variables below
+    overlays: "dialog",
+    variables: {
+      fontFamily: 'My Font',
+      colorPrimary: "#FF0000",
+    },
+  },
+});
+See the full list of appearance variables.
+The fonts object
+The fonts object in stripeConnect.initialize takes an array of CssFontSource or CustomFontSource objects.
+If you use custom fonts on your page (for example, .woff or .tff files), you must specify the font files when initialising Connect embedded components. Doing so allows Connect embedded components to properly render the fonts. You can specify the files as:
+CssFontSource
+Use this object to pass a stylesheet URL that defines your custom fonts when creating a StripeConnectInstance. With a CssFontSource object, your CSP configuration must allow fetching the domains associated with the CSS file URLs specified as CssFontSource.
+NAME
+TYPE
+EXAMPLE VALUE
+cssSrc
+string required
+https://fonts.googleapis.com/css?family=Open+Sans
+A relative or absolute URL pointing to a CSS file with @font-face definitions. The file must be hosted on https. If you use a content security policy (CSP), the file might require additional directives.
+CustomFontSource
+Use this object to pass custom fonts when creating a StripeConnectInstance.
+NAME
+TYPE
+EXAMPLE VALUE
+family
+string required
+Avenir
+The name to give the font.
+src
+string required
+url(https://my-domain.com/assets/avenir.woff)
+A valid src value pointing to your custom font file. This is usually (though not always) a link to a file with a .woff , .otf, or .svg suffix. The file must be hosted on https.
+display
+string optional
+auto
+A valid font-display value.
+style
+string optional
+normal
+One of normal, italic, or oblique.
+unicodeRange
+string optional
+U+0-7F
+A valid unicode-range value.
+weight
+string optional
+400
+A valid font-weight. This is a string, not a number.
+Update Connect embedded components after initialisation
+The update method supports updating Connect embedded components after initialisation. You can use it to switch appearance options at runtime (without refreshing the page). To do so, use the same stripeConnectInstance object you created with initialize and call the update method on it:
+index.js
+
+
+
+stripeConnectInstance.update({
+  appearance: {
+    variables: {
+      colorPrimary: "#FF0000",
+    },
+  },
+  locale: 'en-US',
+});
+Note
+Not all options (for example, fonts) are updatable. The supported options for this method are a subset of the options offered in initialize. This supports updating the appearance and locale.
+Width and height
+Connect embedded components behave like regular block HTML elements. By default, they take 100% of the width of their parent HTML element, and grow in height according to the content rendered inside. You can control the width of Connect embedded components by specifying the width of the HTML parent. You can’t directly control the height as that depends on the rendered content, however, you can limit the height with maxHeight and overflow: scroll, the same way you can with other HTML block elements.
+Authentication
+We offer a set of APIs to manage account sessions and user credentials in Connect embedded components.
+Refresh the client secret
+On long-running sessions, the session from the initially provided client secret might expire. When it expires, we automatically use fetchClientSecret to retrieve a new client secret and refresh the session. You don’t need to pass in any additional parameters.
+index.js
+
+
+
+import { loadConnectAndInitialize } from "@stripe/connect-js";
+// Example method to retrieve the client secret from your server
+const fetchClientSecret = async () => {
+  const response = await fetch('/account_session', { method: "POST" });
+  const {client_secret: clientSecret} = await response.json();
+  return clientSecret;
+}
+
+const stripeConnectInstance = loadConnectAndInitialize({
+  publishableKey: "pk_test_51R97qMF4bfRUGDn9fs2goKaU0PUfOBxmdhbHUjZxSaZcHnB9DTo9qGx7aMOJsxCeLVsutcorlObktR9oMhwLZYyU00Z6gtTrib""pk_test_51R97qMF4bfRUGDn9fs...oMhwLZYyU00Z6gtTrib",
+  fetchClientSecret: fetchClientSecret,
+});
+Log out
+We recommend that you call logout on the stripeConnectInstance to destroy the associated account session object after a user logs out of your app. This disables all Connect embedded components that link to that stripeConnectInstance.
+index.js
+
+
+
+// Call this when your user logs out
+stripeConnectInstance.logout();
+CSP and HTTP header requirements
+If your website implements a Content Security Policy, you need to update the policy by adding the following rules:
+frame-src https://connect-js.stripe.com https://js.stripe.com
+img-src https://*.stripe.com
+script-src https://connect-js.stripe.com https://js.stripe.com
+style-src sha256-0hAheEzaMe6uXIKV4EehS9pu1am1lj/KnnzrOYqckXk= (SHA of empty style element)
+If you’re using a CSS file to load web fonts for use with Connect embedded components, its URL must be allowed by your connect-src CSP directive.
+Setting certain HTTP response headers enables the full functionality of Connect embedded components:
+Cross-Origin-Opener-Policy, unsafe-none. This (unsafe-none) is the default value of the header, so not setting this header works. Other values such as same-origin break user authentication in Connect embedded components.
+Supported browsers
+We support the same set of browsers that the Stripe Dashboard currently supports:
+The last 20 major versions of Chrome and Firefox
+The last two major versions of Safari and Edge
+The last two major versions of mobile Safari on iOS
+Connect embedded components are only supported in web browsers and can’t be used in embedded web views inside mobile or desktop applications. To use Connect embedded components in a mobile application, use the iOS or Android SDK.
+If an embedded component isn’t supported yet by our mobile SDKs, we recommend linking to a web browser where you can render the embedded components.
+Localisation
+When initialising Connect.js, you can pass a locale parameter. To match an embedded component’s locale to your website’s locale, pass the locale parameter with the locale of the UI your website renders.
+The default value of the locale parameter is determined by the browser configured locale. If the specified locale isn’t directly supported, a reasonable alternative is used (for example fr-be might fall back to fr-fr).
+Connect embedded components support the following locales:
+LANGUAGE	LOCALE CODE
+Bulgarian (Bulgaria)	bg-BG
+Chinese (Simplified)	zh-Hans
+Chinese (Traditional - Hong Kong)	zh-Hant-HK
+Chinese (Traditional - Taiwan)	zh-Hant-TW
+Croatian (Croatia)	hr-HR
+Czech (Czechia)	cs-CZ
+Danish (Denmark)	da-DK
+Dutch (Netherlands)	nl-NL
+English (Australia)	en-AU
+English (India)	en-IN
+English (Ireland)	en-IE
+English (New Zealand)	en-NZ
+English (Singapore)	en-SG
+English (United Kingdom)	en-GB
+English (United States)	en-US
+Estonian (Estonia)	et-EE
+Filipino (Philippines)	fil-PH
+Finnish (Finland)	fi-FI
+French (Canada)	fr-CA
+French (France)	fr-FR
+German (Germany)	de-DE
+Greek (Greece)	el-GR
+Hungarian (Hungary)	hu-HU
+Indonesian (Indonesia)	id-ID
+Italian (Italy)	it-IT
+Japanese (Japan)	ja-JP
+Korean (South Korea)	ko-KR
+Latvian (Latvia)	lv-LV
+Lithuanian (Lithuania)	lt-LT
+Malay (Malaysia)	ms-MY
+Maltese (Malta)	mt-MT
+Norwegian Bokmål (Norway)	nb-NO
+Polish (Poland)	pl-PL
+Portuguese (Brazil)	pt-BR
+Portuguese (Portugal)	pt-PT
+Romanian (Romania)	ro-RO
+Slovak (Slovakia)	sk-SK
+Slovenian (Slovenia)	sl-SI
+Spanish (Argentina)	es-AR
+Spanish (Brazil)	es-BR
+Spanish (Latin America)	es-419
+Spanish (Mexico)	es-MX
+Spanish (Spain)	es-ES
+Swedish (Sweden)	sv-SE
+Thai (Thailand)	th-TH
+Turkish (Türkiye)	tr-TR
+Vietnamese (Vietnam)	vi-VN
+Handle load errors
+If a component fails to load, you can react to the failure by providing a load error handler to any embedded component. Depending on the cause of failure, the load error handler can be called multiple times. Any logic triggered by a load error handler must be idempotent.
+index.js
+Select a language
+Select a language
+HTML + JS
+
+
+
+// Load errors are emitted by all components. We use Balances as an example here.
+const balances = stripeConnectInstance.create('balances');
+balances.setOnLoadError((loadError) => {
+  const componentName = loadError.elementTagName
+  const error = loadError.error
+
+  console.log(componentName + " failed to load")
+  console.log(`${error.type}: ${error.message}`);
+});
+
+container.appendChild(balances);
+
+HTML + JS
+
+React
+METHOD	DESCRIPTION	VARIABLES
+setOnLoadError	The component executes this callback function when a load failure occurs.	
+loadError.error: See the load error object
+loadError.elementTagName: The name of HTML tag used to render the component in the browser
+The load
+error
+object
+Every time there’s a load failure, an error object is passed to the load error handler with the following properties.
+NAME
+TYPE
+EXAMPLE VALUE
+type
+See types of load failures
+authentication_error
+The type of error
+message
+string | undefined
+Failed to fetch account session
+Further description about the error
+Types of load failures
+When a component fails to load, we detect the type of failure and map it to one of the types below. If the load error type can’t be determined it is marked as an api_error.
+TYPE	DESCRIPTION
+api_connection_error	Failure to connect to Stripe’s API
+authentication_error	Failure to perform the authentication flow within Connect embedded components
+account_session_create_error	Account session creation failed
+invalid_request_error	Request failed with an 4xx status code, typically caused by platform configuration issues
+rate_limit_error	Request failed because an abnormal request rate was detected
+api_error	API errors covering any other type of problem, such as a temporary problem with Stripe’s servers
+Detect the display of embedded components
+After a component is created, no UI is displayed to users until the JavaScript for the component is loaded and parsed in the browser. This can cause components to appear to pop-in after they complete loading. To avoid this, display your own loading UI before the component is created and hide the UI after the component is displayed. All embedded components can accept a callback function that is called immediately when any UI (including loading indicators) is displayed to the user.
+index.html
+Select a language
+Select a language
+HTML + JS
+
+
+
+<span id="spinner"></span>
+<div id="balances-container"></div>
+index.js
+Select a language
+Select a language
+HTML + JS
+
+
+
+// Loader start events are emitted by all components. We use Balances as an example here.
+const container = document.getElementById('balances-container');
+const balances = stripeConnectInstance.create('balances');
+
+balances.setOnLoaderStart((event) => {
+  container.getElementById("spinner").display = "none";
+  console.log(`${event.elementTagName} is visible to users`)
+});
+
+container.appendChild(balances);
+
+HTML + JS
+
+React
+METHOD	DESCRIPTION	VARIABLES
+setOnLoaderStart	The component executes this callback function when any UI (including loading indicators) is displayed to the user.	
+event.elementTagName: The name of HTML tag used to render the component in the browser
+Use Connect.js without npm
+We recommend integrating with our JavaScript and React component wrappers, which simplify the loading of Connect embedded components and provide TypeScript definitions for our supported interfaces. If your build system currently doesn’t support taking a dependency on packages, you can integrate without these packages.
+Manually add the Connect.js script tag to the <head> of each page on your site.
+
+
+
+<!-- Somewhere in your site's <head> -->
+<script src="https://connect-js.stripe.com/v1.0/connect.js" async></script>
+After Connect.js completes loading, it initialises the global window variable StripeConnect and calls StripeConnect.onLoad, if defined. You can safely initialise Connect.js by setting up an onload function and calling StripeConnect.init with the same Connect.js options as loadConnectAndInitialize. You can use the Connect instance returned by init in the same way you use the instance returned by loadConnectAndInitialize to create embedded components in an HTML + JS integration.
+index.js
+
+
+
+window.StripeConnect = window.StripeConnect || {};
+StripeConnect.onLoad = () => {
+  const stripeConnectInstance = StripeConnect.init({
+      // This is your test publishable API key.
+      publishableKey: "pk_test_51R97qMF4bfRUGDn9fs2goKaU0PUfOBxmdhbHUjZxSaZcHnB9DTo9qGx7aMOJsxCeLVsutcorlObktR9oMhwLZYyU00Z6gtTrib""pk_test_51R97qMF4bfRUGDn9fs...oMhwLZYyU00Z6gtTrib",
+      fetchClientSecret: fetchClientSecret,
+    });
+
+  const payments = stripeConnectInstance.create('payments');
+  document.body.appendChild(payments);
+};
+User authentication in Connect embedded components
+Connect embedded components typically don’t require user authentication. In some scenarios, Connect embedded components require the connected account to sign in with their Stripe account before accessing the component to provide the necessary functionality (for example, writing information to the account legal entity in the case of the account onboarding component). Other components might require authentication within the component after they initially render.
+Authentication is required for connected accounts where Stripe is responsible for collecting updated information when requirements change. For connected accounts where you’re responsible for collecting updated information when requirements are due or change, such as Custom accounts, Stripe authentication is controlled by the disable_stripe_user_authentication Account Session feature. We recommend implementing 2FA or equivalent security measures as a best practice. For account configurations that support this feature, like Custom, you assume liability for connected accounts if they can’t pay back negative balances.
+Components requiring authentication
+Authentication includes a pop-up to a Stripe-owned window. The connected account must authenticate before they can continue their workflow.
+The following components require connected accounts to authenticate in certain scenarios:
+Account Onboarding
+Account Management
+Balances
+Payouts
+Notification Banner
+Financial Account
+Issuing Cards List
+Performance best practices
+To make sure the load time of Connect embedded components is as low as possible, follow these recommendations:
+Call loadConnectAndInitialize as early as possible in your flow.
+Create a single connect instance: Create a single connect instance by only calling loadConnectAndInitialize once per session. Then reuse that instance to create and manage multiple components. A common mistake is to create one connect instance per component, or multiple connect instances per session. This causes additional resource consumption and API requests. If you’re using React, you can use a state management library or a React context to manage this instance.
+Use the latest version of the appropriate SDKs: Use the latest version of the connect-js or react-connect-js npm package SDKs. These SDKs initialise embedded components in a way that maximises performance. Performance improvements have been added to the SDKs, so we recommend upgrading if you’re using an old version.
+Load the connect.js script as soon as possible in your flow: The earliest possible place to load the script is by including this script in your HTML head. You can also use the default behaviour of our npm package SDKs, which load it when your page JavaScript first loads.

@@ -20,8 +20,6 @@ interface AccountSession {
 
 export default function InterlincConnect() {
   const [stripeConnect, setStripeConnect] = useState<any>(null);
-  const [account, setAccount] = useState<ConnectAccount | null>(null);
-  const [session, setSession] = useState<AccountSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [onboardingStatus, setOnboardingStatus] = useState<'pending' | 'complete' | 'error'>('pending');
@@ -110,139 +108,8 @@ export default function InterlincConnect() {
     window.location.reload();
   };
 
-  // Create session for embedded onboarding (no pre-created account)
-  const createOnboardingSession = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
 
-      // Get authentication headers
-      const userId = localStorage.getItem('user_id');
-      const firebaseUid = localStorage.getItem('firebase_uid');
-      const authHeaders: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      
-      if (userId) {
-        authHeaders['X-User-ID'] = userId;
-      }
-      if (firebaseUid) {
-        authHeaders['X-Firebase-UID'] = firebaseUid;
-      }
 
-      // Create session for embedded onboarding (account will be created by Stripe)
-      const sessionResponse = await fetch('/api/connect/session', {
-        method: 'POST',
-        body: JSON.stringify({
-          publishableKey,
-          country: 'GB',
-        }),
-        headers: authHeaders,
-        credentials: 'include',
-      });
-
-      if (!sessionResponse.ok) {
-        const errorData = await sessionResponse.json();
-        throw new Error(errorData.error || 'Failed to create session');
-      }
-
-      const sessionData: AccountSession = await sessionResponse.json();
-      setSession(sessionData);
-      setOnboardingStatus(sessionData.needsOnboarding ? 'pending' : 'complete');
-    } catch (err) {
-      console.error('Setup error:', err);
-      setError(err instanceof Error ? err.message : 'Setup failed');
-      setOnboardingStatus('error');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Save account after successful onboarding
-  const saveAccountAfterOnboarding = async (accountId: string) => {
-    try {
-      const userId = localStorage.getItem('user_id');
-      const firebaseUid = localStorage.getItem('firebase_uid');
-      const authHeaders: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      
-      if (userId) {
-        authHeaders['X-User-ID'] = userId;
-      }
-      if (firebaseUid) {
-        authHeaders['X-Firebase-UID'] = firebaseUid;
-      }
-
-      const response = await fetch('/api/connect/save-account', {
-        method: 'POST',
-        body: JSON.stringify({ accountId }),
-        headers: authHeaders,
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to save account');
-      }
-
-      const accountData = await response.json();
-      setAccount(accountData);
-      setOnboardingStatus('complete');
-    } catch (err) {
-      console.error('Failed to save account:', err);
-      setError('Account created but failed to save details');
-    }
-  };
-
-  // Initialize on component mount
-  useEffect(() => {
-    createOnboardingSession();
-  }, []);
-
-  // Refresh session periodically to check status
-  useEffect(() => {
-    if (!account || onboardingStatus === 'complete') return;
-
-    const checkStatus = async () => {
-      try {
-        // Get fresh auth headers for status check
-        const userId = localStorage.getItem('user_id');
-        const firebaseUid = localStorage.getItem('firebase_uid');
-        const authHeaders: Record<string, string> = {
-          'Content-Type': 'application/json',
-        };
-        
-        if (userId) {
-          authHeaders['X-User-ID'] = userId;
-        }
-        if (firebaseUid) {
-          authHeaders['X-Firebase-UID'] = firebaseUid;
-        }
-
-        const response = await fetch('/api/connect/session', {
-          method: 'POST',
-          body: JSON.stringify({
-            accountId: account.accountId,
-            publishableKey,
-          }),
-          headers: authHeaders,
-          credentials: 'include',
-        });
-
-        if (response.ok) {
-          const data: AccountSession = await response.json();
-          if (!data.needsOnboarding) {
-            setOnboardingStatus('complete');
-          }
-        }
-      } catch (err) {
-        console.error('Status check failed:', err);
-      }
-    };
-
-    const interval = setInterval(checkStatus, 5000); // Check every 5 seconds
-    return () => clearInterval(interval);
-  }, [account, onboardingStatus, publishableKey]);
 
   const getStatusIcon = () => {
     switch (onboardingStatus) {
@@ -292,7 +159,7 @@ export default function InterlincConnect() {
           </CardHeader>
           <CardContent>
             <p className="text-red-600 mb-4">{error}</p>
-            <Button onClick={createOnboardingSession} variant="outline">
+            <Button onClick={() => window.location.reload()} variant="outline">
               Try Again
             </Button>
           </CardContent>
@@ -323,26 +190,9 @@ export default function InterlincConnect() {
             </CardTitle>
             <CardDescription>{getStatusText()}</CardDescription>
           </CardHeader>
-          {account && (
-            <CardContent>
-              <div className="text-sm text-gray-600">
-                <p><strong>Account ID:</strong> {account.accountId}</p>
-                <p><strong>Account Type:</strong> {account.accountType}</p>
-              </div>
-            </CardContent>
-          )}
         </Card>
 
         {/* Embedded Onboarding */}
-        {(() => {
-          console.log('Render condition check:', {
-            isLoading,
-            stripeConnect: !!stripeConnect,
-            onboardingStatus,
-            shouldShowEmbedded: stripeConnect && onboardingStatus !== 'complete'
-          });
-          return null;
-        })()}
         {isLoading ? (
           <Card>
             <CardContent className="flex items-center justify-center py-8">
@@ -352,7 +202,7 @@ export default function InterlincConnect() {
               </div>
             </CardContent>
           </Card>
-        ) : stripeConnect && onboardingStatus !== 'complete' ? (
+        ) : stripeConnect && onboardingStatus === 'pending' ? (
           <Card>
             <CardHeader>
               <CardTitle>Complete Account Setup</CardTitle>
