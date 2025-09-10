@@ -1,0 +1,142 @@
+That exact error only happens when connect.create('account-onboarding') does not return a real Connect component. In practice, that means one of these is true:
+Wrong SDK on the page (@stripe/stripe-js got imported anywhere on this route).
+loadConnectAndInitialize didn’t truly initialize (bad/mismatched keys, or the value you pass isn’t the Account Session client_secret string).
+The Connect JS file is blocked (CSP/ad-block) so you get a stub object that can’t mount.
+Here’s a tight, one-pass fix that eliminates all three.
+A) Server (must return the client secret)
+Use accountSessions.create and return only { accountId, client_secret }:
+// POST /api/connect/create-account-session
+const session = await stripe.accountSessions.create({
+  account: accountId,                           // your existing acct_... if you have it
+  components: { account_onboarding: { enabled: true } },
+});
+res.json({ accountId, client_secret: session.client_secret }); // <-- string, not an ID/URL
+No validation of prefixes. Just a non-empty string.
+B) Client – switch to the React wrapper (it handles mounting correctly)
+This avoids the low-level .mount() path that’s failing for you.
+// client/src/pages/ConnectOnboarding.tsx
+import { useEffect, useState } from "react";
+import { loadConnectAndInitialize, type ConnectInstance } from "@stripe/connect-js";
+import { ConnectComponentsProvider, ConnectAccountOnboarding } from "@stripe/react-connect-js";
+
+const PK = (import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "").trim();
+
+function assertStr(name: string, v: any) {
+  if (typeof v !== "string" || v.length < 10) throw new Error(`${name} missing/invalid`);
+}
+
+export default function ConnectOnboarding() {
+  const [connect, setConnect] = useState<ConnectInstance | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        // 1) Key present
+        assertStr("VITE_STRIPE_PUBLISHABLE_KEY", PK);
+
+        // 2) Get a fresh Account Session client secret
+        const r = await fetch("/api/connect/create-account-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          // if you already know the user's acct_ id, pass it instead of null
+          body: JSON.stringify({ accountId: null, country: "GB", publishableKey: PK }),
+        });
+        if (!r.ok) throw new Error(`API ${r.status}: ${await r.text()}`);
+        const { accountId, client_secret } = await r.json();
+        assertStr("accountId", accountId);
+        assertStr("client_secret", client_secret);
+        console.log("[CONNECT] session", { accountId, secret_prefix: client_secret.slice(0, 6) });
+
+        // 3) Initialize the Connect instance
+        const instance = await loadConnectAndInitialize({
+          publishableKey: PK,
+          fetchClientSecret: async () => client_secret,
+        });
+        if (!instance || typeof instance.create !== "function") {
+          throw new Error("Connect failed to initialize (check SDK import / PK vs SK mode).");
+        }
+        // Sanity: creation must return a mountable object
+        const probe = instance.create("account-onboarding");
+        if (!probe || typeof (probe as any).mount !== "function") {
+          throw new Error("account-onboarding did not return a mountable component.");
+        }
+        setConnect(instance);
+      } catch (e: any) {
+        console.error("[CONNECT] early failure:", e);
+        setErr(e?.message || String(e));
+      }
+    })();
+  }, []);
+
+  if (err) {
+    return (
+      <div style={{ padding: 12, color: "#b91c1c", background: "#fee2e2", border: "1px solid #fecaca", borderRadius: 8 }}>
+        <strong>Embedded Connect failed:</strong> {err}
+      </div>
+    );
+  }
+
+  if (!connect) {
+    return (
+      <div style={{ padding: 24, maxWidth: 720, margin: "0 auto" }}>
+        <h1>Embedded Connect Onboarding</h1>
+        <div style={{ minHeight: 520, border: "1px solid #eee", background: "#fafafa", borderRadius: 8, padding: 12 }}>
+          Loading Connect…
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <ConnectComponentsProvider connectInstance={connect}>
+      <div style={{ padding: 24, maxWidth: 720, margin: "0 auto" }}>
+        <h1>Embedded Connect Onboarding</h1>
+        <div id="onboarding-container" style={{ minHeight: 520, border: "1px solid #e5e7eb", borderRadius: 8 }}>
+          <ConnectAccountOnboarding
+            onReady={() => console.log("[CONNECT] ready (embedded)")}
+            onExit={() => console.log("[CONNECT] exit")}
+          />
+        </div>
+      </div>
+    </ConnectComponentsProvider>
+  );
+}
+Important for this page:
+Don’t import @stripe/stripe-js anywhere on this route.
+No accountLinks.create in this flow.
+C) Two environment checks that usually cause “not mountable”
+Content Security Policy / ad-block
+If connect-js.stripe.com is blocked, components can’t render. In prod, allow Stripe domains:
+frame-src   https://connect-js.stripe.com https://js.stripe.com https://*.stripe.com;
+script-src  'self' 'unsafe-inline' https://connect-js.stripe.com https://js.stripe.com https://*.stripe.com;
+connect-src 'self' https://api.stripe.com https://connect-js.stripe.com https://*.stripe.com;
+Disable ad blockers while testing.
+Key/account mode mismatch
+Your client PK and server SK must be from the same Stripe account and same mode (both live or both test). Reject mismatch on the server (optional but helpful):
+const pkMode = req.body.publishableKey?.startsWith("pk_live_") ? "live" :
+               req.body.publishableKey?.startsWith("pk_test_") ? "test" : "unknown";
+const skMode = process.env.STRIPE_SECRET_KEY.startsWith("sk_live_") ? "live" :
+               process.env.STRIPE_SECRET_KEY.startsWith("sk_test_") ? "test" : "unknown";
+if (req.body.publishableKey && pkMode !== skMode) {
+  return res.status(400).json({ error: `Key mode mismatch (client=${pkMode}, server=${skMode})` });
+}
+D) 30-second browser probes (prove where it breaks)
+Open DevTools Console on /connect-onboarding:
+// 1) Correct SDK present?
+import("@stripe/connect-js").then(m => console.log("connect-js:", typeof m.loadConnectAndInitialize));
+// → should print "function"
+
+// 2) Server returns strings?
+fetch("/api/connect/create-account-session",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({accountId:null,country:"GB"})})
+  .then(r=>r.json()).then(j=>console.log("acct:", j.accountId, "secret length:", (j.client_secret||"").length));
+// → acct_..., secret length > 20
+
+// 3) Network tab shows requests to https://connect-js.stripe.com/... (if none → CSP/ad-block)
+If (1) isn’t “function”, you’re importing the wrong SDK on this route.
+If (2) doesn’t show a non-empty client_secret, fix the server return.
+If connect-js requests are missing/blocked, fix CSP / disable ad-block.
+Why this will stop the error
+The React wrapper (@stripe/react-connect-js) manages the internal mount lifecycle for you.
+We verify before rendering that the SDK loaded, the session secret is a string, and create('account-onboarding') returns a component.
+CSP/ad-block and key mismatches are the only remaining mount killers—and the checks above make them obvious.

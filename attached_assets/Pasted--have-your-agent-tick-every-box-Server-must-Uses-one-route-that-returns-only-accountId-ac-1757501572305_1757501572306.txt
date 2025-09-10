@@ -1,0 +1,93 @@
+(have your agent tick every box)
+Server (must)
+ Uses one route that returns only:
+{ "accountId": "acct_...", "client_secret": "<non-empty string>" }
+ Route calls stripe.accountSessions.create({ account, components: { account_onboarding: { enabled: true }}}).
+ Never calls accountLinks.create in this flow.
+ Persists the user’s acct_… and reuses it (don’t create a new account per page load).
+ Client PK and server SK are from the same Stripe account and same mode (both test or both live).
+Client (must)
+ On this page, import only @stripe/connect-js (or the React wrapper @stripe/react-connect-js).
+ Fetch the session, then:
+const connect = await loadConnectAndInitialize({ publishableKey: PK, fetchClientSecret: () => client_secret })
+const comp = connect.create('account-onboarding')
+comp.mount('#onboarding-container') // or mount(node)
+ Guard React effect (useRef flag) so it runs once.
+ Ensure the container exists and is visible (non-zero width/height) before mounting.
+ Do not validate the secret by prefix — just ensure it’s a non-empty string.
+Browser / hosting (must)
+ CSP allows Stripe:
+frame-src   https://connect-js.stripe.com https://js.stripe.com https://*.stripe.com;
+script-src  'self' 'unsafe-inline' https://connect-js.stripe.com https://js.stripe.com https://*.stripe.com;
+connect-src 'self' https://api.stripe.com https://connect-js.stripe.com https://*.stripe.com;
+ No ad-blockers blocking connect-js.stripe.com.
+ Network tab shows requests to https://connect-js.stripe.com/... (200s).
+One-minute proof (run in browser console on /connect-onboarding)
+// SDK present?
+import("@stripe/connect-js").then(m => console.log("connect-js:", typeof m.loadConnectAndInitialize));
+// -> "function"
+
+// Server returns strings?
+fetch("/api/connect/create-account-session",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({accountId:"<your acct_ or null>",country:"GB"})})
+  .then(r=>r.json()).then(j=>console.log("acct:", j.accountId, "secret length:", (j.client_secret||"").length));
+// -> acct_..., secret length > 20
+
+// Container visible?
+(() => { const el=document.querySelector('#onboarding-container'); const r=el?.getBoundingClientRect(); console.log('visible:', !!el && r.width>0 && r.height>0); })();
+If any of those three lines fail, that’s the exact thing to fix.
+Copy-paste client snippet (tiny + safe)
+import { useEffect, useRef } from "react";
+import { loadConnectAndInitialize } from "@stripe/connect-js";
+
+const PK = (import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "").trim();
+
+export default function ConnectOnboarding() {
+  const started = useRef(false);
+  const boxRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (started.current) return; started.current = true;
+
+    (async () => {
+      if (!PK.startsWith("pk_")) throw new Error("Missing/invalid publishable key");
+
+      const r = await fetch("/api/connect/create-account-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accountId: null, country: "GB", publishableKey: PK }),
+      });
+      if (!r.ok) throw new Error(`API ${r.status}: ${await r.text()}`);
+      const { accountId, client_secret } = await r.json();
+      if (!accountId?.startsWith("acct_") || typeof client_secret !== "string" || !client_secret.length)
+        throw new Error("Bad server response");
+
+      const connect = await loadConnectAndInitialize({
+        publishableKey: PK,
+        fetchClientSecret: async () => client_secret,
+      });
+      const comp = connect.create("account-onboarding");
+      if (typeof (comp as any).mount !== "function") throw new Error("Wrong SDK/init");
+
+      const el = boxRef.current!;
+      const ok = () => {
+        const r = el.getBoundingClientRect(), cs = getComputedStyle(el);
+        return r.width > 0 && r.height > 0 && cs.display !== "none" && cs.visibility !== "hidden";
+      };
+      let tries = 20; while (!ok() && tries--) await new Promise(r => requestAnimationFrame(r));
+      if (!ok()) throw new Error("Container not visible");
+
+      comp.on?.("ready", () => console.log("[connect] ready for", accountId));
+      comp.mount(el); // works with node or "#id"
+    })().catch(e => {
+      console.error("Embedded Connect failed:", e);
+      if (boxRef.current) boxRef.current.textContent = `Embedded Connect failed: ${e.message}`;
+    });
+  }, []);
+
+  return (
+    <div style={{ padding: 24, maxWidth: 720, margin: "0 auto" }}>
+      <h1>Embedded Connect Onboarding</h1>
+      <div id="onboarding-container" ref={boxRef} style={{ minHeight: 520, border: "1px solid #e5e7eb" }} />
+    </div>
+  );
+}
