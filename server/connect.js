@@ -37,6 +37,9 @@ const db = {
   async setConnect(userId, data) {
     return await storage.setConnectForUser(userId, data);
   },
+  async getUser(userId) {
+    return await storage.getUser(userId);
+  },
 };
 
 export default function connectRoutes(app, apiPath, authMiddleware) {
