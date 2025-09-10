@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-// Note: Using direct SDK initialization approach since embedded components require specific setup
+// Using Stripe Connect React components
 import { loadConnectAndInitialize } from '@stripe/connect-js/pure';
+import { ConnectAccountOnboarding, ConnectComponentsProvider } from '@stripe/react-connect-js';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -63,39 +64,11 @@ export default function InterlincConnect() {
     }
   }, [publishableKey, session]);
 
-  // Mount Stripe Connect component to DOM
-  useEffect(() => {
-    if (stripeConnect && session && onboardingStatus !== 'complete') {
-      const container = document.getElementById('connect-onboarding');
-      if (container) {
-        // Clear any existing content
-        container.innerHTML = '';
-        
-        try {
-          // Create the account onboarding element
-          const onboardingElement = stripeConnect.create('account-onboarding');
-          
-          // Mount the element to the container
-          onboardingElement.mount(container);
-
-          // Handle events
-          onboardingElement.on('ready', () => {
-            console.log('Stripe Connect onboarding ready');
-          });
-
-          // Cleanup function
-          return () => {
-            if (onboardingElement && onboardingElement.destroy) {
-              onboardingElement.destroy();
-            }
-          };
-        } catch (err) {
-          console.error('Failed to mount Stripe Connect onboarding:', err);
-          setError('Failed to load onboarding form');
-        }
-      }
-    }
-  }, [stripeConnect, session, onboardingStatus]);
+  // Handle account creation from embedded onboarding
+  const handleAccountCreated = async (event: any) => {
+    console.log('Account created via embedded onboarding:', event.account);
+    await saveAccountAfterOnboarding(event.account.id);
+  };
 
   // Create session for embedded onboarding (no pre-created account)
   const createOnboardingSession = async () => {
@@ -339,8 +312,12 @@ export default function InterlincConnect() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div id="connect-onboarding" className="min-h-[400px]">
-                {/* Stripe Connect embedded onboarding component will be mounted here */}
+              <div className="min-h-[400px]">
+                <ConnectComponentsProvider connectInstance={stripeConnect}>
+                  <ConnectAccountOnboarding
+                    onAccountCreated={handleAccountCreated}
+                  />
+                </ConnectComponentsProvider>
               </div>
             </CardContent>
           </Card>
