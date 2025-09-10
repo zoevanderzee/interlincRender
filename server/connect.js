@@ -43,80 +43,120 @@ export default function connectRoutes(app, apiPath, authMiddleware) {
   const connectBasePath = `${apiPath}/connect`;
 
   /**
-   * POST /api/connect/ensure-account
-   * Body: { country?: "GB", businessType?: "company"|"individual" }
-   * Idempotent: creates a single Express account and persists it for the authed user.
+   * GET /api/connect/status
+   * Returns the user's current Connect account status
    */
-  app.post(`${connectBasePath}/ensure-account`, authMiddleware, async (req, res) => {
+  app.get(`${connectBasePath}/status`, authMiddleware, async (req, res) => {
     try {
       const userId = getUserId(req);
-      const country = req.body?.country || "GB";
-      const businessType = req.body?.businessType;
-
       const existing = await db.getConnect(userId);
-      if (existing?.accountId) {
-        const acct = await stripe.accounts.retrieve(existing.accountId);
-        if (acct.type === "standard") {
-          throw httpError(409, "Embedded requires Express/Custom (account is Standard).");
-        }
-        return res.json({ accountId: acct.id, accountType: acct.type });
+      
+      if (!existing?.accountId) {
+        return res.json({ hasAccount: false, needsOnboarding: true });
       }
 
-      const acct = await stripe.accounts.create({
-        type: "express",
-        country,
-        ...(businessType ? { business_type: businessType } : {}),
-        capabilities: { card_payments: { requested: true }, transfers: { requested: true } },
-      });
-
-      await db.setConnect(userId, { accountId: acct.id, accountType: acct.type });
-      res.json({ accountId: acct.id, accountType: acct.type });
-    } catch (e) {
-      console.error("[ensure-account]", e);
-      res.status(e.status || 500).json({ error: e.message || "Unknown error" });
-    }
-  });
-
-  /**
-   * POST /api/connect/session
-   * Body: { accountId: "acct_...", publishableKey?: "pk_..." }
-   * Returns: { client_secret: "<string>", needsOnboarding: boolean }
-   */
-  app.post(`${connectBasePath}/session`, authMiddleware, async (req, res) => {
-    try {
-      const userId = getUserId(req);
-      const { accountId, publishableKey } = req.body || {};
-      if (!accountId) throw httpError(400, "Missing accountId");
-
-      assertKeyModesMatch(publishableKey);
-
-      // Optional safety: verify the account actually belongs to this user
-      const saved = await db.getConnect(userId);
-      if (!saved || saved.accountId !== accountId) {
-        throw httpError(403, "Account does not belong to authenticated user");
-      }
-
-      const acct = await stripe.accounts.retrieve(accountId);
-      if (acct.type === "standard") throw httpError(409, "Embedded requires Express/Custom.");
-
+      const acct = await stripe.accounts.retrieve(existing.accountId);
       const reqs = acct.requirements || {};
       const needsOnboarding =
         !acct.details_submitted ||
         (Array.isArray(reqs.currently_due) && reqs.currently_due.length > 0) ||
         (Array.isArray(reqs.past_due) && reqs.past_due.length > 0);
 
+      res.json({ 
+        hasAccount: true, 
+        accountId: acct.id, 
+        accountType: acct.type, 
+        needsOnboarding,
+        detailsSubmitted: acct.details_submitted 
+      });
+    } catch (e) {
+      console.error("[connect-status]", e);
+      res.status(e.status || 500).json({ error: e.message || "Unknown error" });
+    }
+  });
+
+  /**
+   * POST /api/connect/session
+   * Body: { publishableKey?: "pk_...", country?: "GB" }
+   * Creates an account session for embedded onboarding (no pre-created account)
+   * Returns: { client_secret: "<string>", needsOnboarding: true }
+   */
+  app.post(`${connectBasePath}/session`, authMiddleware, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { publishableKey, country = "GB" } = req.body || {};
+
+      assertKeyModesMatch(publishableKey);
+
+      // Check if user already has a Connect account
+      const existing = await db.getConnect(userId);
+      if (existing?.accountId) {
+        // User already has an account, create session for management
+        const acct = await stripe.accounts.retrieve(existing.accountId);
+        if (acct.type === "standard") throw httpError(409, "Embedded requires Express/Custom.");
+
+        const reqs = acct.requirements || {};
+        const needsOnboarding =
+          !acct.details_submitted ||
+          (Array.isArray(reqs.currently_due) && reqs.currently_due.length > 0) ||
+          (Array.isArray(reqs.past_due) && reqs.past_due.length > 0);
+
+        const session = await stripe.accountSessions.create({
+          account: existing.accountId,
+          components: {
+            account_onboarding: { enabled: true },
+            account_management: { enabled: true },
+          },
+        });
+
+        return res.json({ client_secret: session.client_secret, needsOnboarding, hasExistingAccount: true });
+      }
+
+      // No existing account - create session for new account onboarding
       const session = await stripe.accountSessions.create({
-        account: accountId,
         components: {
           account_onboarding: { enabled: true },
-          account_management: { enabled: true },
         },
       });
 
-      if (!session.client_secret) throw httpError(502, "Stripe did not return client_secret");
-      res.json({ client_secret: session.client_secret, needsOnboarding });
+      res.json({ client_secret: session.client_secret, needsOnboarding: true, hasExistingAccount: false });
     } catch (e) {
-      console.error("[connect/session]", e);
+      console.error("[connect-session]", e);
+      res.status(e.status || 500).json({ error: e.message || "Unknown error" });
+    }
+  });
+
+  /**
+   * POST /api/connect/save-account
+   * Body: { accountId: "acct_..." }
+   * Called after successful onboarding to save the account details
+   */
+  app.post(`${connectBasePath}/save-account`, authMiddleware, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { accountId } = req.body || {};
+      if (!accountId) throw httpError(400, "Missing accountId");
+
+      // Verify the account exists and get its details
+      const acct = await stripe.accounts.retrieve(accountId);
+      
+      // Save the account details to our database
+      await db.setConnect(userId, { 
+        accountId: acct.id, 
+        accountType: acct.type,
+        detailsSubmitted: acct.details_submitted,
+        chargesEnabled: acct.charges_enabled,
+        payoutsEnabled: acct.payouts_enabled
+      });
+
+      res.json({ 
+        success: true, 
+        accountId: acct.id, 
+        accountType: acct.type,
+        detailsSubmitted: acct.details_submitted 
+      });
+    } catch (e) {
+      console.error("[save-account]", e);
       res.status(e.status || 500).json({ error: e.message || "Unknown error" });
     }
   });
