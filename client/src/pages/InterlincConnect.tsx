@@ -51,22 +51,8 @@ export default function InterlincConnect() {
           },
         });
 
-        // Handle onboarding completion events
-        connectInstance.onLoad(() => {
-          console.log('Stripe Connect loaded successfully');
-        });
-
-        connectInstance.onAccountCreate(async (event: any) => {
-          console.log('Account created:', event.account.id);
-          await saveAccountAfterOnboarding(event.account.id);
-        });
-
-        connectInstance.onAccountUpdate(async (event: any) => {
-          console.log('Account updated:', event);
-          if (event.account?.id) {
-            await saveAccountAfterOnboarding(event.account.id);
-          }
-        });
+        // Note: Account creation is handled through the embedded onboarding flow
+        // The account ID will be available after the user completes onboarding
 
         setStripeConnect(connectInstance);
       } catch (err) {
