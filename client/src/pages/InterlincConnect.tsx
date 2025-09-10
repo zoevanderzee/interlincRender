@@ -51,9 +51,6 @@ export default function InterlincConnect() {
           },
         });
 
-        // Note: Account creation is handled through the embedded onboarding flow
-        // The account ID will be available after the user completes onboarding
-
         setStripeConnect(connectInstance);
       } catch (err) {
         console.error('Failed to initialize Stripe Connect:', err);
@@ -65,6 +62,40 @@ export default function InterlincConnect() {
       initializeConnect();
     }
   }, [publishableKey, session]);
+
+  // Mount Stripe Connect component to DOM
+  useEffect(() => {
+    if (stripeConnect && session && onboardingStatus !== 'complete') {
+      const container = document.getElementById('connect-onboarding');
+      if (container) {
+        // Clear any existing content
+        container.innerHTML = '';
+        
+        try {
+          // Create the account onboarding element
+          const onboardingElement = stripeConnect.create('account-onboarding');
+          
+          // Mount the element to the container
+          onboardingElement.mount(container);
+
+          // Handle events
+          onboardingElement.on('ready', () => {
+            console.log('Stripe Connect onboarding ready');
+          });
+
+          // Cleanup function
+          return () => {
+            if (onboardingElement && onboardingElement.destroy) {
+              onboardingElement.destroy();
+            }
+          };
+        } catch (err) {
+          console.error('Failed to mount Stripe Connect onboarding:', err);
+          setError('Failed to load onboarding form');
+        }
+      }
+    }
+  }, [stripeConnect, session, onboardingStatus]);
 
   // Create session for embedded onboarding (no pre-created account)
   const createOnboardingSession = async () => {
@@ -309,14 +340,7 @@ export default function InterlincConnect() {
             </CardHeader>
             <CardContent>
               <div id="connect-onboarding" className="min-h-[400px]">
-                {/* Stripe Connect onboarding will be embedded here */}
-                <div className="flex items-center justify-center py-8">
-                  <div className="text-center">
-                    <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                    <p>Loading account setup form...</p>
-                    <p className="text-sm text-gray-500 mt-2">This will redirect to Stripe for onboarding</p>
-                  </div>
-                </div>
+                {/* Stripe Connect embedded onboarding component will be mounted here */}
               </div>
             </CardContent>
           </Card>
