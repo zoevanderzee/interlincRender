@@ -45,11 +45,6 @@ import { ConnectionRequestsNotification } from "@/components/notifications/Conne
 import WorkRequestRespond from "./pages/work-request-respond";
 import ContractorOnboarding from "@/pages/contractor-onboarding";
 
-// Stripe Connect Imports
-import ConnectOnboarding from "@/pages/connect-onboarding";
-import ConnectProducts from "@/pages/connect-products";
-import ConnectDemo from "@/pages/connect-demo";
-import Storefront from "@/pages/storefront";
 
 
 import AssignContractor from "@/pages/assign-contractor";
@@ -190,36 +185,6 @@ function Router() {
         </Layout>
       </ProtectedRoute>
 
-      {/* Stripe Connect Routes */}
-      <ProtectedRoute path="/connect-onboarding">
-        <ConnectOnboarding />
-      </ProtectedRoute>
-
-      <ProtectedRoute path="/connect-products">
-        <ConnectProducts />
-      </ProtectedRoute>
-
-      <ProtectedRoute path="/connect-demo">
-        <ConnectDemo />
-      </ProtectedRoute>
-
-      {/* Public storefront - no auth required */}
-      <Route path="/connect-storefront/:accountId">
-        <Storefront />
-      </Route>
-
-      {/* Success/complete pages for Connect onboarding */}
-      <Route path="/stripe-connect/onboarding-complete">
-        <ConnectDemo />
-      </Route>
-
-      <Route path="/stripe-connect/onboarding-refresh">
-        <ConnectDemo />
-      </Route>
-
-      <Route path="/stripe-connect/success">
-        <ConnectDemo />
-      </Route>
 
       <ProtectedRoute path="/contractors">
         <Layout>
