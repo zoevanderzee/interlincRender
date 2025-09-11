@@ -34,6 +34,7 @@ import PaymentSimulator from "@/pages/payment-simulator";
 import PayContractor from "@/pages/pay-contractor";
 import InterlincConnect from "@/pages/InterlincConnect";
 import BudgetOversight from "@/pages/budget-oversight";
+import Calendar from "@/pages/calendar";
 
 import Layout from "@/components/layout/Layout";
 import AuthPage from "@/pages/auth";
@@ -243,6 +244,12 @@ function Router() {
       <ProtectedRoute path="/budget-oversight">
         <Layout>
           <BudgetOversight />
+        </Layout>
+      </ProtectedRoute>
+
+      <ProtectedRoute path="/calendar">
+        <Layout>
+          <Calendar />
         </Layout>
       </ProtectedRoute>
 

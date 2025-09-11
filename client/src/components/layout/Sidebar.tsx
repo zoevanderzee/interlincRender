@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import logoImage from "../../assets/CD_icon_light@2x.png"; // Will keep using the same image file
 import { useAuth } from "@/hooks/use-auth";
-import { ChevronUp, Home, Settings, Users, FileText, BarChart3, HelpCircle, Bell, User, UserPlus, DollarSign, Briefcase, Calculator, CreditCard } from "lucide-react"; // Added CreditCard import
+import { ChevronUp, Home, Settings, Users, FileText, BarChart3, HelpCircle, Bell, User, UserPlus, DollarSign, Briefcase, Calculator, CreditCard, Calendar } from "lucide-react"; // Added Calendar import
 
 // Assuming SidebarMenuButton and other necessary components/types are defined elsewhere or implicitly available
 // For the sake of this example, we'll assume they are available. If not, they'd need to be imported.
@@ -100,6 +100,17 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
               </div>
             </li>
             <li className="relative group">
+              <div className={`flex justify-center px-2 py-3 rounded-md ${isActive("/calendar") ? "text-accent-600 bg-accent-50" : "text-primary-600 hover:bg-primary-50"}`}>
+                <Link href="/calendar">
+                  <Calendar className="text-lg w-5 h-5" />
+                </Link>
+              </div>
+              <div className="invisible group-hover:visible opacity-0 group-hover:opacity-100 absolute left-full ml-2 px-2 py-1 bg-primary-800 text-white text-xs rounded transition-opacity whitespace-nowrap">
+                Calendar
+              </div>
+            </li>
+
+            <li className="relative group">
               <div className={`flex justify-center px-2 py-3 rounded-md ${isActive("/payments") ? "text-accent-600 bg-accent-50" : "text-primary-600 hover:bg-primary-50"}`}>
                 <Link href="/payments">
                   <svg xmlns="http://www.w3.org/2000/svg" className="text-lg w-5 h-5" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -183,6 +194,16 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
                   <line x1="3" y1="18" x2="3.01" y2="18"></line>
                 </svg>
                 {isContractor ? "Assignments" : "Projects"}
+              </Link>
+            </li>
+
+            <li>
+              <Link 
+                href="/calendar" 
+                className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/calendar") ? "bg-zinc-800 text-white" : "text-white hover:bg-zinc-800"}`}
+              >
+                <Calendar className="w-5 h-5 mr-3" />
+                Calendar
               </Link>
             </li>
 
