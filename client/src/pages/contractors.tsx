@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/EmptyState";
 import {
   Dialog,
   DialogContent,
@@ -322,7 +323,7 @@ const Contractors = () => {
           <h1 className="text-2xl md:text-3xl font-semibold text-white">
             {isContractor ? "Companies" : "External Workers"}
           </h1>
-          <p className="text-zinc-400 mt-1">
+          <p className="text-muted-foreground mt-1">
             {isContractor 
               ? "View companies you work with and their projects" 
               : "Manage your contractors, freelancers, and project collaborators"}
@@ -388,7 +389,7 @@ const Contractors = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {[1, 2, 3, 4, 5, 6].map((i) => (
                 <div key={i} className="animate-pulse">
-                  <Card className="p-5 h-64 bg-zinc-900 border-zinc-800"></Card>
+                  <Card className="p-5 h-64 bg-zinc-900 border-border"></Card>
                 </div>
               ))}
             </div>
@@ -399,11 +400,11 @@ const Contractors = () => {
                 filteredBusinesses.map((company) => (
                   <Card 
                     key={company.id} 
-                    className="p-5 border border-zinc-800 bg-zinc-900 hover:border-zinc-700 transition-all"
+                    className="p-5 animate-fade-in hover:animate-glow-pulse transition-all"
                   >
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex items-center">
-                        <div className="h-16 w-16 rounded-md bg-zinc-800 flex items-center justify-center text-zinc-400 mr-3 overflow-hidden">
+                        <div className="h-16 w-16 rounded-md bg-muted flex items-center justify-center text-muted-foreground mr-3 overflow-hidden">
                           {company.companyLogo ? (
                             <img 
                               src={company.companyLogo} 
@@ -418,33 +419,33 @@ const Contractors = () => {
                           <h3 className="font-semibold text-white">
                             {company.companyName || `${company.firstName} ${company.lastName}`}
                           </h3>
-                          <p className="text-sm text-zinc-400">{company.industry || "Business"}</p>
+                          <p className="text-sm text-muted-foreground">{company.industry || "Business"}</p>
                         </div>
                       </div>
-                      <div className="px-2 py-1 bg-zinc-800 rounded-md text-xs font-medium text-zinc-300">
+                      <div className="px-2 py-1 bg-zinc-800 rounded-md text-xs font-medium text-foreground">
                         {getContractCount(company.id)} {getContractCount(company.id) === 1 ? 'project' : 'projects'}
                       </div>
                     </div>
                     
                     {company.email && (
-                      <div className="flex items-center text-sm text-zinc-400 mb-3">
+                      <div className="flex items-center text-sm text-muted-foreground mb-3">
                         <Mail size={16} className="mr-2" />
                         {company.email}
                       </div>
                     )}
                     
                     {(company as any).address && (
-                      <div className="flex items-center text-sm text-zinc-400 mb-3">
+                      <div className="flex items-center text-sm text-muted-foreground mb-3">
                         <Building size={16} className="mr-2" />
                         {(company as any).address}
                       </div>
                     )}
                     
-                    <div className="border-t border-zinc-800 pt-3 mt-3">
+                    <div className="border-t border-border pt-3 mt-3">
                       <Button
                         variant="outline"
                         size="sm"
-                        className="text-zinc-300 hover:text-white w-full"
+                        className="text-foreground hover:text-white w-full"
                         onClick={() => navigate(`/contracts`)}
                       >
                         View Projects
@@ -457,11 +458,11 @@ const Contractors = () => {
                 filteredSubContractors.map((contractor) => (
                   <Card 
                     key={contractor.id} 
-                    className="p-5 border border-zinc-800 bg-zinc-900 hover:border-zinc-700 transition-all"
+                    className="p-5 border border-border bg-zinc-900 hover:border-zinc-700 transition-all"
                   >
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex items-center">
-                        <div className="h-16 w-16 rounded-md bg-zinc-800 flex items-center justify-center text-zinc-400 mr-3 overflow-hidden">
+                        <div className="h-16 w-16 rounded-md bg-muted flex items-center justify-center text-muted-foreground mr-3 overflow-hidden">
                           {contractor.companyLogo ? (
                             <img 
                               src={contractor.companyLogo} 
@@ -476,38 +477,38 @@ const Contractors = () => {
                           <h3 className="font-semibold text-white">
                             {contractor.firstName} {contractor.lastName}
                           </h3>
-                          <p className="text-sm text-zinc-400">{contractor.title || "Contractor"}</p>
+                          <p className="text-sm text-muted-foreground">{contractor.title || "Contractor"}</p>
                         </div>
                       </div>
-                      <div className="px-2 py-1 bg-zinc-800 rounded-md text-xs font-medium text-zinc-300">
+                      <div className="px-2 py-1 bg-zinc-800 rounded-md text-xs font-medium text-foreground">
                         {getContractCount(contractor.id)} {getContractCount(contractor.id) === 1 ? 'contract' : 'contracts'}
                       </div>
                     </div>
                   
                     {contractor.industry && (
-                      <div className="flex items-center text-sm text-zinc-400 mb-3">
+                      <div className="flex items-center text-sm text-muted-foreground mb-3">
                         <Briefcase size={16} className="mr-2" />
                         {contractor.industry}
                       </div>
                     )}
                   
-                    <div className="flex items-center text-sm text-zinc-400 mb-3">
+                    <div className="flex items-center text-sm text-muted-foreground mb-3">
                       <Mail size={16} className="mr-2" />
                       {contractor.email}
                     </div>
                   
                     {contractor.hourlyRate && (
-                      <div className="flex items-center text-sm text-zinc-400 mb-3">
+                      <div className="flex items-center text-sm text-muted-foreground mb-3">
                         <CreditCard size={16} className="mr-2" />
                         ${contractor.hourlyRate}/hr
                       </div>
                     )}
                   
-                    <div className="border-t border-zinc-800 pt-3 mt-3 flex justify-end">
+                    <div className="border-t border-border pt-3 mt-3 flex justify-end">
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-zinc-300 hover:text-zinc-100"
+                        className="text-foreground hover:text-zinc-100"
                         onClick={() => navigate(`/assign-contractor/${contractor.id}`)}
                       >
                         Assign to Project
@@ -520,34 +521,28 @@ const Contractors = () => {
               
               {/* Empty state for business users */}
               {!isContractor && filteredContractors.length === 0 && (
-                <div className="col-span-full bg-black text-white rounded-lg shadow-sm border border-zinc-800 p-8 text-center">
-                  <div className="mx-auto h-16 w-16 rounded-full bg-zinc-800 flex items-center justify-center text-white mb-4">
-                    <UserIcon size={32} />
-                  </div>
-                  <h3 className="text-lg font-medium text-white mb-2">No contractors found</h3>
-                  <p className="text-zinc-400 mb-6">
-                    {searchTerm ? 
-                      "No contractors match your search criteria." : 
-                      "Start by inviting contractors to join your projects."}
-                  </p>
-                  <Button onClick={() => navigate("/contractors")}>
-                    <Plus size={16} className="mr-2" />
-                    Invite Contractors
-                  </Button>
-                </div>
+                <EmptyState 
+                  icon={UserIcon}
+                  title="No contractors found"
+                  description={searchTerm ? 
+                    "No contractors match your search criteria." : 
+                    "Start by inviting contractors to join your projects."}
+                  action={
+                    <Button onClick={() => navigate("/contractors")}>
+                      <Plus size={16} className="mr-2" />
+                      Invite Contractors
+                    </Button>
+                  }
+                />
               )}
               
               {/* Empty state for contractors */}
               {isContractor && filteredBusinesses.length === 0 && (
-                <div className="col-span-full bg-black text-white rounded-lg shadow-sm border border-zinc-800 p-8 text-center">
-                  <div className="mx-auto h-16 w-16 rounded-full bg-zinc-800 flex items-center justify-center text-white mb-4">
-                    <Building size={32} />
-                  </div>
-                  <h3 className="text-lg font-medium text-white mb-2">No companies found</h3>
-                  <p className="text-zinc-400 mb-6">
-                    You are not currently working with any companies on the platform.
-                  </p>
-                </div>
+                <EmptyState 
+                  icon={Building}
+                  title="No companies found"
+                  description="You are not currently working with any companies on the platform."
+                />
               )}
             </div>
           )}
@@ -578,7 +573,7 @@ const Contractors = () => {
         <TabsContent value="freelancers">
           {/* Search for freelancers tab */}
           <div className="mb-6 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" size={18} />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={18} />
             <Input
               placeholder="Search contractors..."
               className="pl-9 bg-zinc-900 border-zinc-700 text-white"
@@ -591,7 +586,7 @@ const Contractors = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {[1, 2, 3, 4, 5, 6].map((i) => (
                 <div key={i} className="animate-pulse">
-                  <Card className="p-5 h-64 bg-zinc-900 border-zinc-800"></Card>
+                  <Card className="p-5 h-64 bg-zinc-900 border-border"></Card>
                 </div>
               ))}
             </div>
@@ -601,11 +596,11 @@ const Contractors = () => {
                 .map((freelancer) => (
                   <Card 
                     key={freelancer.id} 
-                    className="p-5 border border-zinc-800 bg-zinc-900 hover:border-zinc-700 transition-all"
+                    className="p-5 border border-border bg-zinc-900 hover:border-zinc-700 transition-all"
                   >
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex items-center">
-                        <div className="h-16 w-16 rounded-md bg-zinc-800 flex items-center justify-center text-zinc-400 mr-3 overflow-hidden">
+                        <div className="h-16 w-16 rounded-md bg-muted flex items-center justify-center text-muted-foreground mr-3 overflow-hidden">
                           {freelancer.profileImage ? (
                             <img 
                               src={freelancer.profileImage} 
@@ -620,35 +615,35 @@ const Contractors = () => {
                           <h3 className="font-semibold text-white">
                             {freelancer.firstName} {freelancer.lastName}
                           </h3>
-                          <p className="text-sm text-zinc-400">{freelancer.title || "Freelancer"}</p>
+                          <p className="text-sm text-muted-foreground">{freelancer.title || "Freelancer"}</p>
                         </div>
                       </div>
-                      <div className="px-2 py-1 bg-zinc-800 rounded-md text-xs font-medium text-zinc-300">
+                      <div className="px-2 py-1 bg-zinc-800 rounded-md text-xs font-medium text-foreground">
                         {getContractCount(freelancer.id)} {getContractCount(freelancer.id) === 1 ? 'project' : 'projects'}
                       </div>
                     </div>
                     
                     {freelancer.industry && (
-                      <div className="flex items-center text-sm text-zinc-400 mb-3">
+                      <div className="flex items-center text-sm text-muted-foreground mb-3">
                         <Briefcase size={16} className="mr-2" />
                         {freelancer.industry}
                       </div>
                     )}
                     
-                    <div className="flex items-center text-sm text-zinc-400 mb-3">
+                    <div className="flex items-center text-sm text-muted-foreground mb-3">
                       <Mail size={16} className="mr-2" />
                       {freelancer.email}
                     </div>
                     
                     {freelancer.hourlyRate && (
-                      <div className="flex items-center text-sm text-zinc-400 mb-3">
+                      <div className="flex items-center text-sm text-muted-foreground mb-3">
                         <CreditCard size={16} className="mr-2" />
                         ${freelancer.hourlyRate}/hr
                       </div>
                     )}
                     
                     {!isContractor && (
-                      <div className="border-t border-zinc-800 pt-3 mt-3 flex justify-between">
+                      <div className="border-t border-border pt-3 mt-3 flex justify-between">
                         <Button
                           variant="outline"
                           size="sm"
@@ -661,7 +656,7 @@ const Contractors = () => {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-zinc-300 hover:text-zinc-100"
+                          className="text-foreground hover:text-zinc-100"
                           onClick={() => navigate(`/assign-contractor?contractorId=${freelancer.id}`)}
                         >
                           Assign
@@ -674,12 +669,12 @@ const Contractors = () => {
                 
                 {/* Empty State for Freelancers */}
                 {freelancers.length === 0 && (
-                  <div className="col-span-full bg-black text-white rounded-lg shadow-sm border border-zinc-800 p-8 text-center">
+                  <div className="col-span-full bg-black text-white rounded-lg shadow-sm border border-border p-8 text-center">
                     <div className="mx-auto h-16 w-16 rounded-full bg-zinc-800 flex items-center justify-center text-white mb-4">
                       <UserIcon size={32} />
                     </div>
                     <h3 className="text-lg font-medium text-white mb-2">No freelancers found</h3>
-                    <p className="text-zinc-400 mb-6">
+                    <p className="text-muted-foreground mb-6">
                       {searchTerm ? 
                         "No freelancers match your search criteria." : 
                         "Start by inviting freelancers to join your projects."}
@@ -699,11 +694,11 @@ const Contractors = () => {
         {!isContractor && (
           <TabsContent value="invites">
             <div className="space-y-6">
-              <div className="bg-black rounded-lg border border-zinc-800 overflow-hidden">
+              <div className="bg-black rounded-lg border border-border overflow-hidden">
                 <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
                   <div>
                     <h3 className="text-lg font-medium text-white">Pending Invitations</h3>
-                    <p className="mt-1 max-w-2xl text-sm text-zinc-400">
+                    <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
                       These are invitations that have been sent but not yet accepted.
                     </p>
                   </div>
@@ -726,37 +721,37 @@ const Contractors = () => {
                         <tr>
                           <th
                             scope="col"
-                            className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider"
+                            className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
                           >
                             Invitation
                           </th>
                           <th
                             scope="col"
-                            className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider"
+                            className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
                           >
                             Recipient
                           </th>
                           <th
                             scope="col"
-                            className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider"
+                            className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
                           >
                             Type
                           </th>
                           <th
                             scope="col"
-                            className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider"
+                            className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
                           >
                             Status
                           </th>
                           <th
                             scope="col"
-                            className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider"
+                            className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
                           >
                             Sent
                           </th>
                           <th
                             scope="col"
-                            className="px-6 py-3 text-right text-xs font-medium text-zinc-400 uppercase tracking-wider"
+                            className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider"
                           >
                             Actions
                           </th>
@@ -765,7 +760,7 @@ const Contractors = () => {
                       <tbody className="bg-zinc-950 divide-y divide-zinc-800">
                         {allInvites.length === 0 ? (
                           <tr>
-                            <td colSpan={6} className="px-6 py-8 text-center text-sm text-zinc-400">
+                            <td colSpan={6} className="px-6 py-8 text-center text-sm text-muted-foreground">
                               No pending invitations
                             </td>
                           </tr>
@@ -786,7 +781,7 @@ const Contractors = () => {
                                   Pending
                                 </span>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-400">
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                                 {formatDate(invite.createdAt)}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -794,7 +789,7 @@ const Contractors = () => {
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => generateDirectLinkMutation.mutate({ inviteId: invite.id })}
-                                  className="text-zinc-400 hover:text-white mr-2"
+                                  className="text-muted-foreground hover:text-white mr-2"
                                 >
                                   <LinkIcon size={14} className="mr-1" />
                                   Get Link
