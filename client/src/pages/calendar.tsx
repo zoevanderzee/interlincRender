@@ -42,14 +42,12 @@ const MONTH_NAMES = [
 
 const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-// Project type colors matching your UI theme
-const PROJECT_COLORS = {
-  milestone: '#8B5CF6', // Purple
-  project: '#10B981',   // Green  
-  deadline: '#EF4444',  // Red
-  development: '#3B82F6', // Blue
-  design: '#F59E0B',    // Orange
-  marketing: '#06B6D4', // Cyan
+// Project status colors
+const STATUS_COLORS = {
+  active: '#10B981',    // Green
+  'in-progress': '#F59E0B', // Amber
+  overdue: '#EF4444',   // Red
+  completed: '#3B82F6', // Blue
 };
 
 export default function Calendar() {
@@ -73,7 +71,7 @@ export default function Calendar() {
           endDate: new Date(2025, 8, 17),
           type: 'project',
           status: 'active',
-          color: PROJECT_COLORS.design
+          color: STATUS_COLORS.active
         },
         {
           id: '2', 
@@ -83,8 +81,8 @@ export default function Calendar() {
           startDate: new Date(2025, 8, 20),
           endDate: new Date(2025, 8, 25),
           type: 'project',
-          status: 'active',
-          color: PROJECT_COLORS.development
+          status: 'in-progress',
+          color: STATUS_COLORS['in-progress']
         },
         {
           id: '3',
@@ -94,8 +92,19 @@ export default function Calendar() {
           startDate: new Date(2025, 8, 22),
           endDate: new Date(2025, 8, 24),
           type: 'milestone',
-          status: 'active',
-          color: PROJECT_COLORS.marketing
+          status: 'overdue',
+          color: STATUS_COLORS.overdue
+        },
+        {
+          id: '4',
+          title: 'Final Delivery',
+          projectName: 'Mobile App',
+          contractorName: 'Alex Kim',
+          startDate: new Date(2025, 8, 12),
+          endDate: new Date(2025, 8, 14),
+          type: 'project',
+          status: 'completed',
+          color: STATUS_COLORS.completed
         }
       ] as CalendarEvent[];
     }
@@ -310,31 +319,31 @@ export default function Calendar() {
 
       {/* Legend & Quick Stats */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Project Legend */}
+        {/* Project Status Legend */}
         <Card className="bg-black border-gray-800">
           <CardHeader>
             <CardTitle className="text-white flex items-center gap-2">
               <CalendarIcon className="h-5 w-5" />
-              Project Types
+              Project Status
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-3">
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded" style={{ backgroundColor: PROJECT_COLORS.project }}></div>
+                <div className="w-3 h-3 rounded" style={{ backgroundColor: STATUS_COLORS.active }}></div>
                 <span className="text-sm text-gray-300">Active Projects</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded" style={{ backgroundColor: PROJECT_COLORS.milestone }}></div>
-                <span className="text-sm text-gray-300">Milestones</span>
+                <div className="w-3 h-3 rounded" style={{ backgroundColor: STATUS_COLORS['in-progress'] }}></div>
+                <span className="text-sm text-gray-300">In Progress</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded" style={{ backgroundColor: PROJECT_COLORS.deadline }}></div>
-                <span className="text-sm text-gray-300">Deadlines</span>
+                <div className="w-3 h-3 rounded" style={{ backgroundColor: STATUS_COLORS.overdue }}></div>
+                <span className="text-sm text-gray-300">Overdue</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded" style={{ backgroundColor: PROJECT_COLORS.development }}></div>
-                <span className="text-sm text-gray-300">Development</span>
+                <div className="w-3 h-3 rounded" style={{ backgroundColor: STATUS_COLORS.completed }}></div>
+                <span className="text-sm text-gray-300">Completed</span>
               </div>
             </div>
           </CardContent>
