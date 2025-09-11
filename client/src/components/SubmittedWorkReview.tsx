@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
-import { CheckCircle, XCircle, AlertCircle, FileText, Calendar, User, Download } from 'lucide-react';
+import { CheckCircle, XCircle, AlertCircle, FileText, Calendar, User, Download, CheckCheck } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface WorkSubmission {
@@ -53,19 +53,34 @@ export function SubmittedWorkReview({ businessId }: SubmittedWorkReviewProps) {
 
   const reviewMutation = useMutation({
     mutationFn: async ({ submissionId, status, feedback }: { submissionId: number; status: string; feedback: string }) => {
-      return await apiRequest('PATCH', `/api/work-request-submissions/${submissionId}/review`, {
+      const response = await apiRequest('PATCH', `/api/work-request-submissions/${submissionId}/review`, {
         status,
         feedback,
       });
+      return await response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
+      // Show payment result if available
+      let description = 'Work submission has been reviewed successfully';
+      
+      if (data.paymentResult) {
+        if (data.paymentResult.success) {
+          const amount = data.paymentResult.payment?.amount || 'Unknown';
+          const contractorId = data.paymentResult.payment?.contractorId || 'contractor';
+          description = `🚀 Work approved and payment released: $${amount} to contractor ${contractorId}`;
+        } else {
+          description = `⚠️ Work approved but payment failed: ${data.paymentResult.error}`;
+        }
+      }
+      
       toast({
         title: 'Review submitted',
-        description: 'Work submission has been reviewed successfully',
+        description,
       });
       queryClient.invalidateQueries({ queryKey: ['/api/work-request-submissions/business'] });
       queryClient.invalidateQueries({ queryKey: ['/api/work-requests'] });
       queryClient.invalidateQueries({ queryKey: ['/api/contracts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/budget'] }); // Refresh budget after payment
       setSelectedSubmission(null);
       setReviewFeedback('');
     },
@@ -85,6 +100,57 @@ export function SubmittedWorkReview({ businessId }: SubmittedWorkReviewProps) {
       submissionId: selectedSubmission.id,
       status,
       feedback: reviewFeedback,
+    });
+  };
+
+  // 🚀 NEW: Bulk approval functionality
+  const bulkApproveMutation = useMutation({
+    mutationFn: async ({ projectId, submissionIds, feedback }: { projectId: number | 'all'; submissionIds: number[] | 'all'; feedback: string }) => {
+      const response = await apiRequest('POST', `/api/projects/${projectId}/submissions/bulk-approve`, {
+        submissionIds,
+        feedback,
+      });
+      return await response.json();
+    },
+    onSuccess: (data: any) => {
+      const { summary } = data;
+      const description = `🎉 Bulk approval completed: ${summary.totalProcessed} submissions, ${summary.paymentsSuccessful} payments successful ($${summary.totalPaymentAmount.toFixed(2)}), ${summary.paymentsFailed} failed`;
+      
+      toast({
+        title: 'Bulk Approval Complete',
+        description,
+      });
+      
+      queryClient.invalidateQueries({ queryKey: ['/api/work-request-submissions/business'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/work-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/contracts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/budget'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Bulk Approval Failed',
+        description: error.message || 'Failed to process bulk approval',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const handleBulkApprove = () => {
+    const pendingSubmissions = submissions.filter(sub => sub.status === 'pending');
+    if (pendingSubmissions.length === 0) {
+      toast({
+        title: 'No pending submissions',
+        description: 'There are no pending submissions to approve',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Use first submission's project context - in a real app you'd need proper project mapping
+    bulkApproveMutation.mutate({
+      projectId: 'all', // Approve all across projects for this business
+      submissionIds: 'all',
+      feedback: 'Bulk approved'
     });
   };
 
@@ -145,8 +211,18 @@ export function SubmittedWorkReview({ businessId }: SubmittedWorkReviewProps) {
   return (
     <div className="space-y-6">
       <Card className="bg-zinc-900 border-zinc-800">
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-white">Submitted Work for Review</CardTitle>
+          {submissions.filter(sub => sub.status === 'pending').length > 1 && (
+            <Button
+              onClick={handleBulkApprove}
+              disabled={bulkApproveMutation.isPending}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <CheckCheck className="h-4 w-4 mr-2" />
+              {bulkApproveMutation.isPending ? 'Processing...' : `Approve All (${submissions.filter(sub => sub.status === 'pending').length})`}
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           <div className="space-y-4">

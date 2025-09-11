@@ -841,5 +841,21 @@ export function setupAuth(app: Express) {
     return res.status(401).json({ error: "Not authenticated" });
   };
 
-  return { requireAuth };
+  // Create strict authentication middleware for payment operations (no header fallbacks)
+  const requireStrictAuth = async (req: any, res: any, next: any) => {
+    console.log("Strict auth check for payment operation:", req.isAuthenticated(), "Session ID:", req.sessionID);
+    
+    // Only allow session-based authentication for payment operations
+    if (req.isAuthenticated()) {
+      console.log(`Payment operation authorized via session for user:`, req.user?.email);
+      return next();
+    }
+
+    console.log("Payment operation blocked: No valid session authentication");
+    return res.status(401).json({ 
+      error: "Session authentication required for payment operations. Please log in again." 
+    });
+  };
+
+  return { requireAuth, requireStrictAuth };
 }
