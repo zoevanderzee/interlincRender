@@ -44,9 +44,9 @@ import {generateComplianceExport, generateInvoiceExport, generatePaymentExport, 
 import { trolleySdk } from "./trolley-sdk-service";
 import { trolleySubmerchantService, type TrolleySubmerchantData } from "./services/trolley-submerchant";
 import { trolleyService } from "./trolley-service";
-import { setupAuth } from "./auth";
-import { db } from "./db";
-import { sql, eq, and, or, desc } from "drizzle-orm";
+import {setupAuth} from "./auth";
+import {db} from "./db";
+import {sql, eq, and, or, desc, inArray} from "drizzle-orm";
 // Legacy object storage import removed - now using custom file storage
 import { FileStorageService, uploadMiddleware } from "./fileStorage";
 import plaidRoutes from "./plaid-routes";
@@ -60,6 +60,8 @@ import {registerSyncFirebaseUserRoutes} from "./routes/sync-firebase-user";
 import {registerBusinessWorkerRoutes} from "./business-workers/index";
 import {registerContractorsWithIdsRoutes} from "./business-workers/contractors-with-ids";
 import {registerProjectRoutes} from "./projects/index";
+import { generateWorkRequestToken } from "./services/email"; // Explicitly import, though commented out in use
+import { contractsTable, paymentsTable, usersTable } from "./schema"; // Import Drizzle schema tables
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
@@ -1997,89 +1999,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`SECURITY: Found ${userContracts.length} contracts for user ${userId}`);
 
         const userContractIds = userContracts
-
-
-// Budget Oversight endpoint
-app.get("/api/budget-oversight", requireAuth, async (req, res) => {
-  try {
-    const userId = req.user?.id;
-    if (!userId) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-
-    // Get all contracts for this business
-    const contracts = await db.select()
-      .from(contractsTable)
-      .where(eq(contractsTable.businessId, userId));
-
-    // Get all payments for these contracts
-    const contractIds = contracts.map(c => c.id);
-    const payments = contractIds.length > 0 ? await db.select()
-      .from(paymentsTable)
-      .where(inArray(paymentsTable.contractId, contractIds)) : [];
-
-    // Get contractors
-    const contractorIds = [...new Set(contracts.map(c => c.contractorId).filter(Boolean))];
-    const contractors = contractorIds.length > 0 ? await db.select()
-      .from(usersTable)
-      .where(inArray(usersTable.id, contractorIds)) : [];
-
-    // Calculate budget metrics
-    const totalBudget = 50000; // This should come from business settings
-    const totalUsed = payments
-      .filter(p => p.status === 'completed')
-      .reduce((sum, p) => sum + parseFloat(p.amount), 0);
-    
-    // Group by contractor categories (you can categorize based on contract types or tags)
-    const categoryMap: { [key: string]: { count: number; totalAllocated: number; totalSpent: number } } = {};
-    
-    contracts.forEach(contract => {
-      // Determine category based on contract name or add a category field to contracts
-      let category = 'Other';
-      const contractName = contract.contractName?.toLowerCase() || '';
-      
-      if (contractName.includes('ui') || contractName.includes('design')) {
-        category = 'UI Design';
-      } else if (contractName.includes('content') || contractName.includes('writing')) {
-        category = 'Content Creation';
-      } else if (contractName.includes('marketing') || contractName.includes('social')) {
-        category = 'Marketing';
-      } else if (contractName.includes('dev') || contractName.includes('code')) {
-        category = 'Development';
-      }
-
-      if (!categoryMap[category]) {
-        categoryMap[category] = { count: 0, totalAllocated: 0, totalSpent: 0 };
-      }
-
-      categoryMap[category].count += 1;
-      categoryMap[category].totalAllocated += parseFloat(contract.value || '0');
-      
-      // Calculate spent for this contract
-      const contractPayments = payments.filter(p => p.contractId === contract.id && p.status === 'completed');
-      const spent = contractPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
-      categoryMap[category].totalSpent += spent;
-    });
-
-    const contractorCategories = Object.entries(categoryMap).map(([category, data]) => ({
-      category,
-      ...data
-    }));
-
-    const budgetData = {
-      totalBudget,
-      totalUsed,
-      remaining: totalBudget - totalUsed,
-      contractors: contractorCategories
-    };
-
-    res.json(budgetData);
-  } catch (error) {
-    console.error('Budget oversight error:', error);
-    res.status(500).json({ error: "Failed to fetch budget data" });
-  }
-});
-
           .filter(contract => contract.status !== 'deleted')
           .map(contract => contract.id);
 
@@ -2242,7 +2161,7 @@ app.get("/api/budget-oversight", requireAuth, async (req, res) => {
           return res.status(403).json({ message: "Access denied: Cannot access other business documents" });
         }
         if (userRole === 'contractor' && contract.contractorId !== userId) {
-          console.log(`SECURITY BLOCK: Contractor user ${userId} attempted to access documents for contract ${contractId} assigned to contractor ${contract.contractorId}`);
+          console.log(`SECURITY BLOCK: Contractor user ${userId} attempted to access document ${id} for contract assigned to contractor ${contract.contractorId}`);
           return res.status(403).json({ message: "Access denied: Cannot access other contractor documents" });
         }
 
@@ -5332,7 +5251,7 @@ app.get("/api/budget-oversight", requireAuth, async (req, res) => {
         });
       }
 
-      // Use Trolley SDK service to get recipient details with balance
+      // Call live Trolley API to get real balance
       try {
         // CRITICAL FIX: Use verified recipient ID instead of fake user ID
         // Your verified Trolley account: R-AeVtg3cVK1ExCDPQosEHve
@@ -5597,7 +5516,7 @@ app.get("/api/budget-oversight", requireAuth, async (req, res) => {
         amount: amount.toString(),
         status: 'processing',
         scheduledDate: new Date(),
-        notes: `Trolley payment: ${result.paymentId}`,
+        notes: `notes: `Trolley payment: ${result.paymentId}`,
         trolleyPaymentId: result.paymentId,
         paymentProcessor: 'trolley',
         triggeredBy: 'manual',
@@ -6823,12 +6742,17 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
     }
   });
 
-  // Add health endpoint 
+  // Add health endpoint
   app.get(`${apiRouter}/connect/health`, async (_req, res) => {
-    const acct = await stripe.accounts.retrieve();
-    const sk = process.env.STRIPE_SECRET_KEY || '';
-    const mode = sk.startsWith("sk_live_") ? "live" : sk.startsWith("sk_test_") ? "test" : "unknown";
-    res.json({ platform_account_id: acct.id, mode });
+    try {
+      const acct = await stripe.accounts.retrieve();
+      const sk = process.env.STRIPE_SECRET_KEY || '';
+      const mode = sk.startsWith("sk_live_") ? "live" : sk.startsWith("sk_test_") ? "test" : "unknown";
+      res.json({ platform_account_id: acct.id, mode });
+    } catch (e) {
+      console.error("[connect] Stripe account retrieve failed", e);
+      res.status(500).json({ error: "Failed to retrieve Stripe account details" });
+    }
   });
 
   /**
@@ -6871,9 +6795,6 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
     }
   });
 
-  const httpServer = createServer(app);
-  return httpServer;
-}
   // Budget oversight endpoint for detailed category analysis
   app.get(`${apiRouter}/budget/oversight`, requireAuth, async (req: Request, res: Response) => {
     try {
@@ -6918,7 +6839,7 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
         // You might want to add a proper category field to contracts
         let category = 'Other';
         const contractName = contract.contractName.toLowerCase();
-        
+
         if (contractName.includes('ui') || contractName.includes('ux') || contractName.includes('design')) {
           category = 'UI/UX Design';
         } else if (contractName.includes('content') || contractName.includes('writing') || contractName.includes('copy')) {
@@ -6993,7 +6914,7 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
       // Generate alerts
       const alerts = [];
       const utilizationRate = totalBudget > 0 ? (totalAllocated / totalBudget) * 100 : 0;
-      
+
       if (utilizationRate > 90) {
         alerts.push({
           type: 'danger' as const,
