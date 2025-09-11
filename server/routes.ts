@@ -6631,6 +6631,57 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
     }
   });
 
+  // ================ OBJECT STORAGE ENDPOINTS (for mood boards) ================
+  // Get object upload URL endpoint - compatible with ObjectUploader component
+  app.post(`${apiRouter}/objects/upload`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // For compatibility with ObjectUploader, return a direct upload URL to our file service
+      // Generate a unique upload token for this user
+      const uploadToken = nodeCrypto.randomUUID();
+      const uploadURL = `/api/files/direct-upload/${uploadToken}`;
+      
+      // Store the upload token temporarily (in production, use Redis or similar)
+      // For now, we'll just return the URL and handle the upload in the direct-upload endpoint
+      res.json({ uploadURL });
+    } catch (error) {
+      console.error("Error getting upload URL:", error);
+      res.status(500).json({ message: "Error getting upload URL" });
+    }
+  });
+
+  // Direct upload endpoint for object storage compatibility
+  app.put(`${apiRouter}/files/direct-upload/:token`, requireAuth, uploadMiddleware.single('file'), async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      // Return the file URL that can be used to access the uploaded file
+      const fileURL = `/api/files/view/${req.file.filename}`;
+      
+      res.json({ 
+        url: fileURL,
+        filename: req.file.filename,
+        originalName: req.file.originalname,
+        size: req.file.size,
+        type: req.file.mimetype
+      });
+    } catch (error) {
+      console.error("Error with direct upload:", error);
+      res.status(500).json({ message: "Error with direct upload" });
+    }
+  });
+
   // ================ FILE STORAGE ENDPOINTS ================
   // Upload file endpoint
   app.post(`${apiRouter}/files/upload`, requireAuth, uploadMiddleware.single('file'), async (req: Request, res: Response) => {

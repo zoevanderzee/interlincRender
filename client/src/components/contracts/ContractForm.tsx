@@ -35,6 +35,7 @@ import { insertContractSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
+import { MoodBoardUploader } from "@/components/MoodBoardUploader";
 
 interface ContractFormProps {
   onSuccess?: () => void;
@@ -68,6 +69,10 @@ const ContractForm = ({
     value: z.string().min(1, "Value is required").regex(/^\d+(\.\d{1,2})?$/, {
       message: "Value must be a valid amount (e.g. 1000 or 1000.50)",
     }),
+    moodboard: z.object({
+      files: z.array(z.string()).default([]),
+      links: z.array(z.string()).default([]),
+    }).optional().default({ files: [], links: [] }),
   });
 
   const getDefaultValues = () => {
@@ -87,6 +92,10 @@ const ContractForm = ({
         startDate,
         endDate,
         value: contractData.value?.toString() || "",
+        moodboard: {
+          files: contractData.moodboardFiles || [],
+          links: contractData.moodboardLinks || [],
+        },
       };
     }
 
@@ -97,6 +106,10 @@ const ContractForm = ({
       startDate: new Date(),
       endDate: new Date(new Date().setMonth(new Date().getMonth() + 3)),
       value: "",
+      moodboard: {
+        files: [],
+        links: [],
+      },
     };
   };
 
@@ -115,6 +128,8 @@ const ContractForm = ({
         businessId: user?.id,
         startDate: data.startDate.toISOString(),
         endDate: data.endDate.toISOString(),
+        moodboardFiles: data.moodboard?.files || [],
+        moodboardLinks: data.moodboard?.links || [],
       };
 
       const response = await apiRequest(method, endpoint, payload);
@@ -199,6 +214,22 @@ const ContractForm = ({
               <FormDescription className="text-zinc-400">
                 A clear description of the work to be performed
               </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* Mood Board Section */}
+        <FormField
+          control={form.control}
+          name="moodboard"
+          render={({ field }) => (
+            <FormItem>
+              <MoodBoardUploader
+                value={field.value}
+                onChange={field.onChange}
+                disabled={createContractMutation.isPending}
+              />
               <FormMessage />
             </FormItem>
           )}

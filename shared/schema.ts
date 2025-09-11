@@ -334,6 +334,8 @@ export const insertContractSchema = z.object({
   contractorBudget: z.string().optional(),
   startDate: z.string().transform((val) => new Date(val)),
   endDate: z.string().transform((val) => new Date(val)),
+  moodboardFiles: z.array(z.string()).optional().default([]),
+  moodboardLinks: z.array(z.string()).optional().default([]),
 });
 
 // Create milestone schema - manually defined
