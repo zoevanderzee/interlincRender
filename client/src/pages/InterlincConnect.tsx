@@ -23,10 +23,39 @@ export default function InterlincConnect() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [onboardingStatus, setOnboardingStatus] = useState<'pending' | 'complete' | 'error'>('pending');
+  const [statusLoading, setStatusLoading] = useState(true);
 
   const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
 
-  // Initialize Stripe Connect
+  // Check account status from server first
+  useEffect(() => {
+    const checkAccountStatus = async () => {
+      try {
+        console.log('Checking account status from server...');
+        const response = await apiRequest('GET', '/api/connect/status');
+        const data = await response.json();
+        
+        console.log('Account status response:', data);
+        
+        if (data.hasAccount && !data.needsOnboarding) {
+          console.log('Account setup is complete, no onboarding needed');
+          setOnboardingStatus('complete');
+        } else {
+          console.log('Account needs onboarding');
+          setOnboardingStatus('pending');
+        }
+      } catch (error) {
+        console.error('Failed to check account status:', error);
+        setOnboardingStatus('pending'); // Default to pending on error
+      } finally {
+        setStatusLoading(false);
+      }
+    };
+    
+    checkAccountStatus();
+  }, []);
+
+  // Initialize Stripe Connect only if onboarding is needed
   useEffect(() => {
     const initializeConnect = async () => {
       try {
@@ -94,18 +123,38 @@ export default function InterlincConnect() {
       }
     };
 
-    console.log('useEffect triggered, publishableKey:', !!publishableKey);
-    if (publishableKey) {
+    // Only initialize Stripe Connect if onboarding is needed and we have the publishable key
+    console.log('Checking if Stripe Connect should be initialized:', { onboardingStatus, publishableKey: !!publishableKey, statusLoading });
+    if (onboardingStatus === 'pending' && publishableKey && !statusLoading) {
       initializeConnect();
+    } else if (onboardingStatus === 'complete') {
+      setIsLoading(false); // Don't need to initialize Stripe Connect
     }
-  }, [publishableKey]);
+  }, [onboardingStatus, publishableKey, statusLoading]);
 
   // Handle onboarding completion
-  const handleOnboardingExit = () => {
+  const handleOnboardingExit = async () => {
     console.log('Onboarding completed or exited');
-    setOnboardingStatus('complete');
-    // Refresh the page or update status
-    window.location.reload();
+    
+    try {
+      // Re-check account status from server
+      console.log('Re-checking account status after onboarding...');
+      const response = await apiRequest('GET', '/api/connect/status');
+      const data = await response.json();
+      
+      console.log('Updated account status:', data);
+      
+      if (data.hasAccount && !data.needsOnboarding) {
+        console.log('Onboarding completed successfully!');
+        setOnboardingStatus('complete');
+      } else {
+        console.log('Onboarding not yet complete');
+        setOnboardingStatus('pending');
+      }
+    } catch (error) {
+      console.error('Failed to check updated account status:', error);
+      setOnboardingStatus('error');
+    }
   };
 
 
@@ -193,7 +242,16 @@ export default function InterlincConnect() {
         </Card>
 
         {/* Embedded Onboarding */}
-        {isLoading ? (
+        {statusLoading ? (
+          <Card>
+            <CardContent className="flex items-center justify-center py-8">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                Checking account status...
+              </div>
+            </CardContent>
+          </Card>
+        ) : isLoading && onboardingStatus === 'pending' ? (
           <Card>
             <CardContent className="flex items-center justify-center py-8">
               <div className="flex items-center gap-2">
