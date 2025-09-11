@@ -374,10 +374,10 @@ const Contractors = () => {
         <TabsContent value="contractors">
           {/* Search */}
           <div className="mb-6 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" size={18} />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={18} />
             <Input
               placeholder={isContractor ? "Search companies..." : "Search contractors..."}
-              className="pl-9 bg-zinc-900 border-zinc-700 text-white"
+              className="pl-9"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
