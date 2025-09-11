@@ -79,10 +79,50 @@ export default {
             height: "0",
           },
         },
+        "fade-in": {
+          "0%": { opacity: "0", transform: "translateY(10px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "fade-out": {
+          "0%": { opacity: "1", transform: "translateY(0)" },
+          "100%": { opacity: "0", transform: "translateY(-10px)" },
+        },
+        "slide-in": {
+          "0%": { opacity: "0", transform: "translateX(-20px)" },
+          "100%": { opacity: "1", transform: "translateX(0)" },
+        },
+        "scale-in": {
+          "0%": { opacity: "0", transform: "scale(0.95)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
+        "glow-pulse": {
+          "0%, 100%": { boxShadow: "0 0 5px rgba(255, 255, 255, 0.1)" },
+          "50%": { boxShadow: "0 0 20px rgba(255, 255, 255, 0.2)" },
+        },
+        "shimmer": {
+          "0%": { backgroundPosition: "200% 0" },
+          "100%": { backgroundPosition: "-200% 0" },
+        },
+        "float": {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-5px)" },
+        },
+        "bounce-gentle": {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-2px)" },
+        },
       },
       animation: {
-        "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up 0.2s ease-out",
+        "accordion-down": "accordion-down 400ms cubic-bezier(0.4, 0, 0.2, 1)",
+        "accordion-up": "accordion-up 400ms cubic-bezier(0.4, 0, 0.2, 1)",
+        "fade-in": "fade-in 500ms cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+        "fade-out": "fade-out 300ms cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+        "slide-in": "slide-in 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+        "scale-in": "scale-in 300ms cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+        "glow-pulse": "glow-pulse 3s infinite ease-in-out",
+        "shimmer": "shimmer 2s infinite ease-in-out",
+        "float": "float 3s infinite ease-in-out",
+        "bounce-gentle": "bounce-gentle 2s infinite ease-in-out",
       },
     },
   },
