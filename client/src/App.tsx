@@ -253,6 +253,9 @@ function Router() {
         </Layout>
       </ProtectedRoute>
 
+      <Route path="/budget-oversight" component={lazy(() => import("./pages/budget-oversight"))} />
+        <Route path="/settings" component={Settings} />
+
       <ProtectedRoute path="/data-room">
         <Layout>
           <DataRoom />

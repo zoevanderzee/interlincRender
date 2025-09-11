@@ -237,12 +237,28 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
             </li>
             <li>
               <Link 
+                href="/budget-oversight" 
+                className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/budget-oversight") ? "bg-zinc-800 text-white" : "text-white hover:bg-zinc-800"}`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-3" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M12 1v6m0 6v6"></path>
+                  <path d="m15.14 8.86 4.24-4.24m0 11.31-4.24-4.24M8.86 8.86 4.62 4.62m0 11.31 4.24-4.24"></path>
+                </svg>
+                Budget Oversight
+              </Link>
+            </li>
+            <li>
+              <Link 
                 href="/reports" 
                 className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/reports") ? "bg-zinc-800 text-white" : "text-white hover:bg-zinc-800"}`}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-3" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="18" y1="20" x2="18" y2="10"></line>
-                  <line x1="12" y1="20" x2="12" y2="4"></line>
+                  <line x1="12" y1="20" x2="12" y2="4"></line></svg>
+                Reports
+              </Link>
+            </li>
                   <line x1="6" y1="20" x2="6" y2="14"></line>
                 </svg>
                 Reports

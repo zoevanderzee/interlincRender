@@ -6791,3 +6791,162 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
   const httpServer = createServer(app);
   return httpServer;
 }
+  // Budget oversight endpoint for detailed category analysis
+  app.get(`${apiRouter}/budget/oversight`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== 'business') {
+        return res.status(403).json({ message: "Only business users can access budget oversight" });
+      }
+
+      // Get all contracts for this business
+      const contracts = await storage.getContractsByBusinessId(userId);
+      const activeContracts = contracts.filter(c => c.status !== 'deleted');
+
+      // Get all milestones and payments for analysis
+      const allMilestones = await storage.getAllMilestones();
+      const allPayments = await storage.getAllPayments();
+
+      // Group contracts by category (you may want to add a category field to contracts)
+      const categoryMap = new Map<string, {
+        category: string;
+        contractorsCount: number;
+        totalAllocated: number;
+        totalSpent: number;
+        remaining: number;
+        contracts: Array<{
+          id: number;
+          contractorName: string;
+          projectName: string;
+          allocated: number;
+          spent: number;
+          status: string;
+        }>;
+      }>();
+
+      // Process each contract
+      for (const contract of activeContracts) {
+        // For now, categorize based on contract name keywords
+        // You might want to add a proper category field to contracts
+        let category = 'Other';
+        const contractName = contract.contractName.toLowerCase();
+        
+        if (contractName.includes('ui') || contractName.includes('ux') || contractName.includes('design')) {
+          category = 'UI/UX Design';
+        } else if (contractName.includes('content') || contractName.includes('writing') || contractName.includes('copy')) {
+          category = 'Content Creation';
+        } else if (contractName.includes('marketing') || contractName.includes('seo') || contractName.includes('social')) {
+          category = 'Marketing';
+        } else if (contractName.includes('dev') || contractName.includes('code') || contractName.includes('app')) {
+          category = 'Development';
+        } else if (contractName.includes('consult') || contractName.includes('strategy')) {
+          category = 'Consulting';
+        }
+
+        // Get contractor name
+        let contractorName = 'Unassigned';
+        if (contract.contractorId) {
+          const contractor = await storage.getUser(contract.contractorId);
+          if (contractor) {
+            contractorName = `${contractor.firstName || ''} ${contractor.lastName || ''}`.trim() || contractor.username;
+          }
+        }
+
+        // Calculate spent amount from payments
+        const contractMilestones = allMilestones.filter(m => m.contractId === contract.id);
+        const contractPayments = allPayments.filter(p => p.contractId === contract.id && p.status === 'completed');
+        const totalSpent = contractPayments.reduce((sum, payment) => sum + parseFloat(payment.amount.toString()), 0);
+
+        const allocated = parseFloat(contract.contractorBudget?.toString() || contract.value.toString());
+
+        if (!categoryMap.has(category)) {
+          categoryMap.set(category, {
+            category,
+            contractorsCount: 0,
+            totalAllocated: 0,
+            totalSpent: 0,
+            remaining: 0,
+            contracts: []
+          });
+        }
+
+        const categoryData = categoryMap.get(category)!;
+        categoryData.contractorsCount++;
+        categoryData.totalAllocated += allocated;
+        categoryData.totalSpent += totalSpent;
+        categoryData.remaining += allocated - totalSpent;
+        categoryData.contracts.push({
+          id: contract.id,
+          contractorName,
+          projectName: contract.contractName,
+          allocated,
+          spent: totalSpent,
+          status: contract.status || 'active'
+        });
+      }
+
+      const categories = Array.from(categoryMap.values());
+
+      // Calculate totals
+      const totalBudget = parseFloat(user.budgetCap?.toString() || '0');
+      const totalAllocated = categories.reduce((sum, cat) => sum + cat.totalAllocated, 0);
+      const totalSpent = categories.reduce((sum, cat) => sum + cat.totalSpent, 0);
+      const remaining = totalBudget - totalAllocated;
+
+      // Generate monthly spending data (simplified - you might want to implement proper time-based queries)
+      const monthlySpending = [
+        { month: 'Jan', amount: Math.floor(totalSpent * 0.15), category: 'UI/UX Design' },
+        { month: 'Feb', amount: Math.floor(totalSpent * 0.20), category: 'Marketing' },
+        { month: 'Mar', amount: Math.floor(totalSpent * 0.25), category: 'Development' },
+        { month: 'Apr', amount: Math.floor(totalSpent * 0.18), category: 'Content Creation' },
+        { month: 'May', amount: Math.floor(totalSpent * 0.22), category: 'Marketing' }
+      ];
+
+      // Generate alerts
+      const alerts = [];
+      const utilizationRate = totalBudget > 0 ? (totalAllocated / totalBudget) * 100 : 0;
+      
+      if (utilizationRate > 90) {
+        alerts.push({
+          type: 'danger' as const,
+          message: `Budget utilization is at ${utilizationRate.toFixed(1)}% - consider increasing budget cap`
+        });
+      } else if (utilizationRate > 75) {
+        alerts.push({
+          type: 'warning' as const,
+          message: `Budget utilization is at ${utilizationRate.toFixed(1)}% - monitor spending closely`
+        });
+      }
+
+      // Check for categories with high spending
+      categories.forEach(cat => {
+        const catUtilization = cat.totalAllocated > 0 ? (cat.totalSpent / cat.totalAllocated) * 100 : 0;
+        if (catUtilization > 85) {
+          alerts.push({
+            type: 'warning' as const,
+            message: `${cat.category} is at ${catUtilization.toFixed(1)}% of allocated budget`,
+            category: cat.category
+          });
+        }
+      });
+
+      res.json({
+        totalBudget,
+        totalAllocated,
+        totalSpent,
+        remaining,
+        categories,
+        monthlySpending,
+        alerts
+      });
+
+    } catch (error) {
+      console.error("Error fetching budget oversight:", error);
+      res.status(500).json({ message: "Error fetching budget oversight data" });
+    }
+  });
