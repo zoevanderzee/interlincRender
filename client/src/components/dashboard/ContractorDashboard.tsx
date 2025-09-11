@@ -67,47 +67,54 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
       {/* Primary Metrics: 3 Key Cards for contractors */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         {/* Card 1: Active Projects */}
-        <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-6 hover:shadow-lg transition-shadow">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-gray-400 text-sm font-medium">Active Projects</h3>
-            <div className="p-2 rounded-full bg-accent-500/10">
-              <Briefcase size={20} className="text-accent-500" />
+        <Card className="animate-fade-in hover:animate-glow-pulse">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-muted-foreground text-sm font-medium">Active Projects</h3>
+              <div className="p-3 rounded-xl bg-blue-500/10 backdrop-blur-sm shadow-lg transition-all duration-300 hover:scale-110">
+                <Briefcase size={20} className="text-blue-400" />
+              </div>
             </div>
-          </div>
-          <p className="text-3xl font-bold text-white">{dashboardData.stats.activeContractsCount}</p>
-          <p className="text-xs text-gray-500 mt-1">Current projects in progress</p>
-        </div>
+            <p className="text-3xl font-bold text-white tracking-tight">{dashboardData.stats.activeContractsCount}</p>
+            <p className="text-xs text-muted-foreground mt-1">Current projects in progress</p>
+          </CardContent>
+        </Card>
         
         {/* Card 2: Total Earnings */}
-        <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-6 hover:shadow-lg transition-shadow">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-gray-400 text-sm font-medium">Total Earnings</h3>
-            <div className="p-2 rounded-full bg-green-500/10">
-              <DollarSign size={20} className="text-green-500" />
+        <Card className="animate-fade-in hover:animate-glow-pulse">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-muted-foreground text-sm font-medium">Total Earnings</h3>
+              <div className="p-3 rounded-xl bg-green-500/10 backdrop-blur-sm shadow-lg transition-all duration-300 hover:scale-110">
+                <DollarSign size={20} className="text-green-400" />
+              </div>
             </div>
-          </div>
-          <p className="text-3xl font-bold text-white">${totalEarnings.toLocaleString('en-US')}</p>
-          <p className="text-xs text-gray-500 mt-1">Completed payments</p>
-        </div>
+            <p className="text-3xl font-bold text-white tracking-tight">${totalEarnings.toLocaleString('en-US')}</p>
+            <p className="text-xs text-muted-foreground mt-1">Completed payments</p>
+          </CardContent>
+        </Card>
         
         {/* Card 3: Pending Earnings */}
-        <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-6 hover:shadow-lg transition-shadow">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-gray-400 text-sm font-medium">Pending Earnings</h3>
-            <div className="p-2 rounded-full bg-yellow-500/10">
-              <Clock size={20} className="text-yellow-500" />
+        <Card className="animate-fade-in hover:animate-glow-pulse">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-muted-foreground text-sm font-medium">Pending Earnings</h3>
+              <div className="p-3 rounded-xl bg-yellow-500/10 backdrop-blur-sm shadow-lg transition-all duration-300 hover:scale-110">
+                <Clock size={20} className="text-yellow-400" />
+              </div>
             </div>
-          </div>
-          <p className="text-3xl font-bold text-white">${pendingEarnings.toLocaleString('en-US')}</p>
-          <p className="text-xs text-gray-500 mt-1">Upcoming payments</p>
-        </div>
+            <p className="text-3xl font-bold text-white tracking-tight">${pendingEarnings.toLocaleString('en-US')}</p>
+            <p className="text-xs text-muted-foreground mt-1">Upcoming payments</p>
+          </CardContent>
+        </Card>
       </div>
       
       {/* Action Buttons */}
-      <div className="flex flex-wrap gap-3 mb-8">
+      <div className="flex flex-wrap gap-4 mb-8">
         <Button 
-          className="bg-accent-500 hover:bg-accent-600 text-white"
+          size="lg"
           onClick={() => navigate('/contracts')}
+          className="animate-scale-in"
         >
           <FileText className="mr-2" size={16} />
           View All Projects
@@ -115,8 +122,9 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
         
         <Button 
           variant="outline"
-          className="text-white border-zinc-700 hover:bg-zinc-800 hover:text-white"
+          size="lg"
           onClick={() => navigate('/payments')}
+          className="animate-scale-in"
         >
           <DollarSign className="mr-2" size={16} />
           Payment History
@@ -127,40 +135,40 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         {/* Projects */}
         <Button 
-          variant="outline"
-          className="text-white border-zinc-700 hover:bg-zinc-800 hover:text-white h-auto py-3 justify-start"
+          variant="ghost"
+          className="h-auto py-4 px-6 justify-start animate-slide-in"
           onClick={() => navigate('/contracts')}
         >
           <Briefcase className="mr-3" size={18} />
           <div className="text-left">
             <div className="font-medium">My Projects</div>
-            <div className="text-xs text-gray-400">View active projects</div>
+            <div className="text-xs text-muted-foreground">View active projects</div>
           </div>
         </Button>
         
         {/* Payments */}
         <Button 
-          variant="outline"
-          className="text-white border-zinc-700 hover:bg-zinc-800 hover:text-white h-auto py-3 justify-start"
+          variant="ghost"
+          className="h-auto py-4 px-6 justify-start animate-slide-in"
           onClick={() => navigate('/payments')}
         >
           <DollarSign className="mr-3" size={18} />
           <div className="text-left">
             <div className="font-medium">Payments</div>
-            <div className="text-xs text-gray-400">View payment history</div>
+            <div className="text-xs text-muted-foreground">View payment history</div>
           </div>
         </Button>
         
         {/* Settings */}
         <Button 
-          variant="outline"
-          className="text-white border-zinc-700 hover:bg-zinc-800 hover:text-white h-auto py-3 justify-start"
+          variant="ghost"
+          className="h-auto py-4 px-6 justify-start animate-slide-in"
           onClick={() => navigate('/settings')}
         >
           <Clock className="mr-3" size={18} />
           <div className="text-left">
             <div className="font-medium">Profile</div>
-            <div className="text-xs text-gray-400">Update your information</div>
+            <div className="text-xs text-muted-foreground">Update your information</div>
           </div>
         </Button>
       </div>
