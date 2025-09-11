@@ -44,7 +44,7 @@ const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 // Project status colors
 const STATUS_COLORS = {
-  active: '#10B981',    // Green
+  active: '#22C55E',    // Green
   'in-progress': '#F59E0B', // Amber
   overdue: '#EF4444',   // Red
   completed: '#3B82F6', // Blue
@@ -365,7 +365,7 @@ export default function Calendar() {
                   <Users className="h-4 w-4" />
                   Active Projects
                 </span>
-                <Badge variant="outline" className="border-green-600 text-green-400">
+                <Badge variant="outline" className="border-green-500 text-green-400" style={{ borderColor: STATUS_COLORS.active, color: STATUS_COLORS.active }}>
                   3
                 </Badge>
               </div>
@@ -375,7 +375,7 @@ export default function Calendar() {
                   <Clock className="h-4 w-4" />
                   Upcoming Deadlines
                 </span>
-                <Badge variant="outline" className="border-yellow-600 text-yellow-400">
+                <Badge variant="outline" className="border-amber-500 text-amber-400" style={{ borderColor: STATUS_COLORS.overdue, color: STATUS_COLORS.overdue }}>
                   2
                 </Badge>
               </div>
@@ -386,7 +386,7 @@ export default function Calendar() {
                     <Users className="h-4 w-4" />
                     Active Contractors
                   </span>
-                  <Badge variant="outline" className="border-blue-600 text-blue-400">
+                  <Badge variant="outline" className="border-blue-500 text-blue-400" style={{ borderColor: STATUS_COLORS.completed, color: STATUS_COLORS.completed }}>
                     5
                   </Badge>
                 </div>
