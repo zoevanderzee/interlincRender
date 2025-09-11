@@ -307,7 +307,7 @@ export default function BudgetOversight() {
                     </Button>
                     <Button 
                       type="submit" 
-                      className="flex-1 bg-accent-600 hover:bg-accent-700"
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
                       disabled={isSettingBudget}
                     >
                       {isSettingBudget ? "Saving..." : "Save Budget"}
