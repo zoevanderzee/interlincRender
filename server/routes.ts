@@ -5163,8 +5163,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  });
-
   // Trolley Embedded Payouts API routes
 
   // Get Trolley connection status for business
