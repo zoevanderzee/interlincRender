@@ -60,8 +60,8 @@ import {registerSyncFirebaseUserRoutes} from "./routes/sync-firebase-user";
 import {registerBusinessWorkerRoutes} from "./business-workers/index";
 import {registerContractorsWithIdsRoutes} from "./business-workers/contractors-with-ids";
 import {registerProjectRoutes} from "./projects/index";
-import { generateWorkRequestToken } from "./services/email"; // Explicitly import, though commented out in use
-import { contractsTable, paymentsTable, usersTable } from "./schema"; // Import Drizzle schema tables
+// import { generateWorkRequestToken } from "./services/email"; // Not needed for now
+// Schema tables imported from shared/schema instead
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
@@ -5516,7 +5516,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         amount: amount.toString(),
         status: 'processing',
         scheduledDate: new Date(),
-        notes: `notes: `Trolley payment: ${result.paymentId}`,
+        notes: `Trolley payment: ${result.paymentId}`,
         trolleyPaymentId: result.paymentId,
         paymentProcessor: 'trolley',
         triggeredBy: 'manual',
@@ -6954,3 +6954,11 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
       res.status(500).json({ message: "Error fetching budget oversight data" });
     }
   });
+
+  // Register Stripe Connect routes
+  connectRoutes(app, apiRouter, requireAuth);
+
+  // Create and return the server
+  const server = createServer(app);
+  return server;
+}
