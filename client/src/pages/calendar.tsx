@@ -318,83 +318,58 @@ export default function Calendar() {
         </CardContent>
       </Card>
 
-      {/* Legend & Quick Stats */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Project Status Legend */}
-        <Card className="bg-black border-gray-800">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
-              <CalendarIcon className="h-5 w-5" />
-              Project Status
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-3">
+      {/* Project Status & Stats */}
+      <Card className="bg-black border-gray-800">
+        <CardHeader>
+          <CardTitle className="text-white flex items-center gap-2">
+            <Target className="h-5 w-5" />
+            Project Overview
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded" style={{ backgroundColor: STATUS_COLORS.active }}></div>
                 <span className="text-sm text-gray-300">Active Projects</span>
               </div>
+              <Badge variant="outline" style={{ borderColor: STATUS_COLORS.active, color: STATUS_COLORS.active }}>
+                3
+              </Badge>
+            </div>
+            
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded" style={{ backgroundColor: STATUS_COLORS['in-progress'] }}></div>
                 <span className="text-sm text-gray-300">In Progress</span>
               </div>
+              <Badge variant="outline" style={{ borderColor: STATUS_COLORS['in-progress'], color: STATUS_COLORS['in-progress'] }}>
+                2
+              </Badge>
+            </div>
+            
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded" style={{ backgroundColor: STATUS_COLORS.overdue }}></div>
                 <span className="text-sm text-gray-300">Overdue</span>
               </div>
+              <Badge variant="outline" style={{ borderColor: STATUS_COLORS.overdue, color: STATUS_COLORS.overdue }}>
+                1
+              </Badge>
+            </div>
+            
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded" style={{ backgroundColor: STATUS_COLORS.completed }}></div>
                 <span className="text-sm text-gray-300">Completed</span>
               </div>
+              <Badge variant="outline" style={{ borderColor: STATUS_COLORS.completed, color: STATUS_COLORS.completed }}>
+                4
+              </Badge>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Quick Stats */}
-        <Card className="bg-black border-gray-800">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
-              <Target className="h-5 w-5" />
-              This Month
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-gray-400 flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  Active Projects
-                </span>
-                <Badge variant="outline" className="border-green-500 text-green-400" style={{ borderColor: STATUS_COLORS.active, color: STATUS_COLORS.active }}>
-                  3
-                </Badge>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-gray-400 flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
-                  Upcoming Deadlines
-                </span>
-                <Badge variant="outline" className="border-amber-500 text-amber-400" style={{ borderColor: STATUS_COLORS.overdue, color: STATUS_COLORS.overdue }}>
-                  2
-                </Badge>
-              </div>
-              
-              {user?.role === 'business' && (
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400 flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    Active Contractors
-                  </span>
-                  <Badge variant="outline" className="border-blue-500 text-blue-400" style={{ borderColor: STATUS_COLORS.completed, color: STATUS_COLORS.completed }}>
-                    5
-                  </Badge>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
