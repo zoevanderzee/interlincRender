@@ -20,7 +20,7 @@ export const users = pgTable("users", {
   foundedYear: integer("founded_year"), // Year the company was founded
   employeeCount: integer("employee_count"), // Number of employees
   website: text("website"), // Company website URL
-  profileCode: text("profile_code").unique(), // Unique code for easy worker identification (e.g., "JOHNSON-2025")
+  profileCode: text("profile_code"), // Unique code for easy worker identification (e.g., "JOHNSON-2025") - temporarily removed .unique() to unblock db:push
   stripeCustomerId: text("stripe_customer_id"), // Stripe customer ID for payment processing
   stripeSubscriptionId: text("stripe_subscription_id"), // Stripe subscription ID for companies
   stripeConnectAccountId: text("stripe_connect_account_id"), // Stripe Connect account ID for embedded onboarding
