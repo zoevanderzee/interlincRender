@@ -61,10 +61,10 @@ const Contractors = () => {
     enabled: !isContractor && !!user,
   });
   
-  // Get data from dashboard
-  const externalWorkers = dashboardData?.contractors || [];
-  const businessAccounts = dashboardData?.businesses || [];
-  const contracts = dashboardData?.contracts || [];
+  // Get data from dashboard - use empty arrays as fallbacks since these properties may not exist
+  const externalWorkers = (dashboardData as any)?.contractors || [];
+  const businessAccounts = (dashboardData as any)?.businesses || [];
+  const contracts = (dashboardData as any)?.contracts || [];
   const isLoadingBusinesses = isLoadingWorkers;
   
   // Get contractor IDs from accepted connection requests
@@ -389,7 +389,7 @@ const Contractors = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {[1, 2, 3, 4, 5, 6].map((i) => (
                 <div key={i} className="animate-pulse">
-                  <Card className="p-5 h-64 bg-zinc-900 border-border"></Card>
+                  <Card className="p-5 h-64 "></Card>
                 </div>
               ))}
             </div>
@@ -586,7 +586,7 @@ const Contractors = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {[1, 2, 3, 4, 5, 6].map((i) => (
                 <div key={i} className="animate-pulse">
-                  <Card className="p-5 h-64 bg-zinc-900 border-border"></Card>
+                  <Card className="p-5 h-64 "></Card>
                 </div>
               ))}
             </div>
@@ -768,7 +768,7 @@ const Contractors = () => {
                           allInvites.map((invite) => (
                             <tr key={invite.id}>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
-                                {invite.contractId ? 'Project Invitation' : 'General Invitation'}
+                                {(invite as any).contractId ? 'Project Invitation' : 'General Invitation'}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
                                 {invite.email}
