@@ -42,13 +42,14 @@ const MONTH_NAMES = [
 
 const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-// Calendar event colors matching your UI theme
-const EVENT_COLORS = {
+// Project type colors matching your UI theme
+const PROJECT_COLORS = {
   milestone: '#8B5CF6', // Purple
-  deadline: '#EF4444',  // Red  
-  project: '#10B981',   // Green
-  review: '#F59E0B',    // Orange
-  meeting: '#06B6D4',   // Cyan
+  project: '#10B981',   // Green  
+  deadline: '#EF4444',  // Red
+  development: '#3B82F6', // Blue
+  design: '#F59E0B',    // Orange
+  marketing: '#06B6D4', // Cyan
 };
 
 export default function Calendar() {
@@ -70,9 +71,9 @@ export default function Calendar() {
           contractorName: 'Sarah Chen',
           startDate: new Date(2025, 8, 15),
           endDate: new Date(2025, 8, 17),
-          type: 'review',
+          type: 'project',
           status: 'active',
-          color: EVENT_COLORS.review
+          color: PROJECT_COLORS.design
         },
         {
           id: '2', 
@@ -83,18 +84,18 @@ export default function Calendar() {
           endDate: new Date(2025, 8, 25),
           type: 'project',
           status: 'active',
-          color: EVENT_COLORS.project
+          color: PROJECT_COLORS.development
         },
         {
           id: '3',
-          title: 'Content Strategy Deadline',
+          title: 'Content Strategy',
           projectName: 'Marketing Campaign',
           contractorName: 'Emma Davis',
           startDate: new Date(2025, 8, 22),
           endDate: new Date(2025, 8, 24),
-          type: 'deadline',
+          type: 'milestone',
           status: 'active',
-          color: EVENT_COLORS.deadline
+          color: PROJECT_COLORS.marketing
         }
       ] as CalendarEvent[];
     }
@@ -314,26 +315,26 @@ export default function Calendar() {
           <CardHeader>
             <CardTitle className="text-white flex items-center gap-2">
               <CalendarIcon className="h-5 w-5" />
-              Calendar Legend
+              Project Types
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-3">
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded" style={{ backgroundColor: EVENT_COLORS.project }}></div>
-                <span className="text-sm text-gray-300">Projects</span>
+                <div className="w-3 h-3 rounded" style={{ backgroundColor: PROJECT_COLORS.project }}></div>
+                <span className="text-sm text-gray-300">Active Projects</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded" style={{ backgroundColor: EVENT_COLORS.milestone }}></div>
+                <div className="w-3 h-3 rounded" style={{ backgroundColor: PROJECT_COLORS.milestone }}></div>
                 <span className="text-sm text-gray-300">Milestones</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded" style={{ backgroundColor: EVENT_COLORS.deadline }}></div>
+                <div className="w-3 h-3 rounded" style={{ backgroundColor: PROJECT_COLORS.deadline }}></div>
                 <span className="text-sm text-gray-300">Deadlines</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded" style={{ backgroundColor: EVENT_COLORS.review }}></div>
-                <span className="text-sm text-gray-300">Reviews</span>
+                <div className="w-3 h-3 rounded" style={{ backgroundColor: PROJECT_COLORS.development }}></div>
+                <span className="text-sm text-gray-300">Development</span>
               </div>
             </div>
           </CardContent>
