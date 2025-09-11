@@ -197,9 +197,10 @@ export default function Calendar() {
             </SelectTrigger>
             <SelectContent className="bg-gray-900 border-gray-700">
               <SelectItem value="all">All Projects</SelectItem>
-              <SelectItem value="active">Active Only</SelectItem>
-              <SelectItem value="milestones">Milestones</SelectItem>
-              <SelectItem value="deadlines">Deadlines</SelectItem>
+              <SelectItem value="active">Active Projects</SelectItem>
+              <SelectItem value="in-progress">In Progress</SelectItem>
+              <SelectItem value="overdue">Overdue</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
             </SelectContent>
           </Select>
           
