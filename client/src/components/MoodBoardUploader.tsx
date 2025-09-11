@@ -1,13 +1,11 @@
 import { useState } from "react";
-import { X, Plus, Link, Upload, Image } from "lucide-react";
-import { ObjectUploader } from "@/components/ObjectUploader";
+import { X, Plus, Link, Image } from "lucide-react";
+import { SimpleFileUploader } from "@/components/SimpleFileUploader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { UploadResult } from "@uppy/core";
 
 interface MoodBoardUploaderProps {
   value?: {
@@ -29,36 +27,18 @@ interface MoodBoardUploaderProps {
  */
 export function MoodBoardUploader({ value = { files: [], links: [] }, onChange, disabled }: MoodBoardUploaderProps) {
   const [newLink, setNewLink] = useState("");
-  const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
 
-  const handleGetUploadParameters = async () => {
-    try {
-      const response = await apiRequest("POST", "/api/objects/upload", {});
-      const data = await response.json();
-      return {
-        method: "PUT" as const,
-        url: data.uploadURL,
-      };
-    } catch (error) {
-      console.error("Failed to get upload parameters:", error);
-      throw error;
-    }
-  };
-
-  const handleUploadComplete = (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
-    if (result.successful && result.successful.length > 0) {
-      const newFiles = result.successful.map((file: any) => file.uploadURL);
-      onChange?.({
-        ...value,
-        files: [...value.files, ...newFiles]
-      });
-      setIsUploading(false);
-      toast({
-        title: "Upload Complete",
-        description: `${result.successful.length} image(s) uploaded successfully.`,
-      });
-    }
+  const handleFileUploaded = (uploadedFiles: { url: string; name: string; size: number; type: string; filename: string }[]) => {
+    const newFileUrls = uploadedFiles.map(file => file.url);
+    onChange?.({
+      ...value,
+      files: [...value.files, ...newFileUrls]
+    });
+    toast({
+      title: "Upload Complete",
+      description: `${uploadedFiles.length} image(s) uploaded successfully.`,
+    });
   };
 
   const removeFile = (index: number) => {
@@ -127,18 +107,12 @@ export function MoodBoardUploader({ value = { files: [], links: [] }, onChange, 
 
         {/* File Upload Section */}
         <div className="space-y-4">
-          <ObjectUploader
-            maxNumberOfFiles={5}
-            maxFileSize={10485760} // 10MB
-            onGetUploadParameters={handleGetUploadParameters}
-            onComplete={handleUploadComplete}
-            buttonClassName="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-3 px-6 rounded-lg font-medium transition-all duration-300 shadow-lg hover:shadow-xl"
-          >
-            <div className="flex items-center justify-center gap-2">
-              <Upload className="h-4 w-4" />
-              <span>Upload Images (PNG, JPEG)</span>
-            </div>
-          </ObjectUploader>
+          <SimpleFileUploader
+            maxFiles={5}
+            accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+            onFileUploaded={handleFileUploaded}
+            disabled={disabled}
+          />
 
           {/* Uploaded Images Preview */}
           {value.files.length > 0 && (
