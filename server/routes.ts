@@ -1997,6 +1997,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`SECURITY: Found ${userContracts.length} contracts for user ${userId}`);
 
         const userContractIds = userContracts
+
+
+// Budget Oversight endpoint
+app.get("/api/budget-oversight", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    // Get all contracts for this business
+    const contracts = await db.select()
+      .from(contractsTable)
+      .where(eq(contractsTable.businessId, userId));
+
+    // Get all payments for these contracts
+    const contractIds = contracts.map(c => c.id);
+    const payments = contractIds.length > 0 ? await db.select()
+      .from(paymentsTable)
+      .where(inArray(paymentsTable.contractId, contractIds)) : [];
+
+    // Get contractors
+    const contractorIds = [...new Set(contracts.map(c => c.contractorId).filter(Boolean))];
+    const contractors = contractorIds.length > 0 ? await db.select()
+      .from(usersTable)
+      .where(inArray(usersTable.id, contractorIds)) : [];
+
+    // Calculate budget metrics
+    const totalBudget = 50000; // This should come from business settings
+    const totalUsed = payments
+      .filter(p => p.status === 'completed')
+      .reduce((sum, p) => sum + parseFloat(p.amount), 0);
+    
+    // Group by contractor categories (you can categorize based on contract types or tags)
+    const categoryMap: { [key: string]: { count: number; totalAllocated: number; totalSpent: number } } = {};
+    
+    contracts.forEach(contract => {
+      // Determine category based on contract name or add a category field to contracts
+      let category = 'Other';
+      const contractName = contract.contractName?.toLowerCase() || '';
+      
+      if (contractName.includes('ui') || contractName.includes('design')) {
+        category = 'UI Design';
+      } else if (contractName.includes('content') || contractName.includes('writing')) {
+        category = 'Content Creation';
+      } else if (contractName.includes('marketing') || contractName.includes('social')) {
+        category = 'Marketing';
+      } else if (contractName.includes('dev') || contractName.includes('code')) {
+        category = 'Development';
+      }
+
+      if (!categoryMap[category]) {
+        categoryMap[category] = { count: 0, totalAllocated: 0, totalSpent: 0 };
+      }
+
+      categoryMap[category].count += 1;
+      categoryMap[category].totalAllocated += parseFloat(contract.value || '0');
+      
+      // Calculate spent for this contract
+      const contractPayments = payments.filter(p => p.contractId === contract.id && p.status === 'completed');
+      const spent = contractPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+      categoryMap[category].totalSpent += spent;
+    });
+
+    const contractorCategories = Object.entries(categoryMap).map(([category, data]) => ({
+      category,
+      ...data
+    }));
+
+    const budgetData = {
+      totalBudget,
+      totalUsed,
+      remaining: totalBudget - totalUsed,
+      contractors: contractorCategories
+    };
+
+    res.json(budgetData);
+  } catch (error) {
+    console.error('Budget oversight error:', error);
+    res.status(500).json({ error: "Failed to fetch budget data" });
+  }
+});
+
           .filter(contract => contract.status !== 'deleted')
           .map(contract => contract.id);
 

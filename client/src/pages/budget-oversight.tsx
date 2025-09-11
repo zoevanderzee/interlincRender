@@ -415,3 +415,291 @@ export default function BudgetOversight() {
     </div>
   );
 }
+import React, { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { 
+  DollarSign, 
+  TrendingUp, 
+  AlertTriangle, 
+  Plus,
+  Settings,
+  Target,
+  PieChart as PieChartIcon
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
+
+// Chart colors for different contractor categories
+const CHART_COLORS = [
+  '#8B5CF6', // UI
+  '#06B6D4', // Content Creation
+  '#10B981', // Marketing
+  '#F59E0B', // Development
+  '#EF4444', // Design
+  '#6366F1', // Other
+];
+
+interface BudgetData {
+  totalBudget: number;
+  totalUsed: number;
+  remaining: number;
+  contractors: {
+    category: string;
+    count: number;
+    totalAllocated: number;
+    totalSpent: number;
+  }[];
+}
+
+const BudgetOversight = () => {
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  // Fetch budget data
+  const { data: budgetData, isLoading } = useQuery<BudgetData>({
+    queryKey: ['/api/budget-oversight'],
+    queryFn: async () => {
+      // Mock data for now - replace with actual API call
+      return {
+        totalBudget: 50000,
+        totalUsed: 32000,
+        remaining: 18000,
+        contractors: [
+          { category: 'UI Design', count: 5, totalAllocated: 15000, totalSpent: 12000 },
+          { category: 'Content Creation', count: 2, totalAllocated: 8000, totalSpent: 6000 },
+          { category: 'Marketing', count: 4, totalAllocated: 12000, totalSpent: 9000 },
+          { category: 'Development', count: 3, totalAllocated: 10000, totalSpent: 5000 },
+          { category: 'Other', count: 1, totalAllocated: 5000, totalSpent: 0 }
+        ]
+      };
+    }
+  });
+
+  if (isLoading) {
+    return (
+      <div className="animate-pulse space-y-6">
+        <div className="h-12 bg-gray-800 rounded w-1/3"></div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="h-32 bg-gray-800 rounded"></div>
+          <div className="h-32 bg-gray-800 rounded"></div>
+          <div className="h-32 bg-gray-800 rounded"></div>
+        </div>
+        <div className="h-96 bg-gray-800 rounded"></div>
+      </div>
+    );
+  }
+
+  const budgetUtilization = budgetData ? (budgetData.totalUsed / budgetData.totalBudget) * 100 : 0;
+
+  // Prepare data for pie chart
+  const pieChartData = budgetData?.contractors.map((contractor, index) => ({
+    name: contractor.category,
+    value: contractor.totalSpent,
+    count: contractor.count,
+    allocated: contractor.totalAllocated,
+    color: CHART_COLORS[index % CHART_COLORS.length]
+  })) || [];
+
+  return (
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-semibold text-white">Budget Oversight</h1>
+          <p className="text-gray-400 mt-1">Monitor spending and contractor allocation across departments</p>
+        </div>
+        <div className="flex gap-2 mt-4 md:mt-0">
+          <Button variant="outline" className="border-gray-700 text-white hover:bg-gray-800">
+            <Settings className="mr-2" size={16} />
+            Budget Settings
+          </Button>
+          <Button className="bg-accent-600 hover:bg-accent-700">
+            <Plus className="mr-2" size={16} />
+            Set Budget Cap
+          </Button>
+        </div>
+      </div>
+
+      {/* Budget Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="bg-black border-gray-800">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-gray-400">Total Budget</CardTitle>
+            <Target className="h-4 w-4 text-blue-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">
+              ${budgetData?.totalBudget.toLocaleString()}
+            </div>
+            <p className="text-xs text-gray-400">Annual contractor budget</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-black border-gray-800">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-gray-400">Total Used</CardTitle>
+            <TrendingUp className="h-4 w-4 text-green-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">
+              ${budgetData?.totalUsed.toLocaleString()}
+            </div>
+            <p className="text-xs text-gray-400">
+              {budgetUtilization.toFixed(1)}% of total budget
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-black border-gray-800">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-gray-400">Remaining</CardTitle>
+            <DollarSign className="h-4 w-4 text-yellow-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">
+              ${budgetData?.remaining.toLocaleString()}
+            </div>
+            <p className="text-xs text-gray-400">Available for allocation</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Budget Progress */}
+      <Card className="bg-black border-gray-800">
+        <CardHeader>
+          <CardTitle className="text-white">Budget Utilization</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-400">Used</span>
+              <span className="text-white">{budgetUtilization.toFixed(1)}%</span>
+            </div>
+            <Progress value={budgetUtilization} className="h-2" />
+            {budgetUtilization > 80 && (
+              <div className="flex items-center text-amber-500 text-sm mt-2">
+                <AlertTriangle size={16} className="mr-2" />
+                Budget utilization is high. Consider reviewing allocations.
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Contractor Distribution Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Pie Chart */}
+        <Card className="bg-black border-gray-800">
+          <CardHeader>
+            <CardTitle className="text-white flex items-center">
+              <PieChartIcon className="mr-2" size={20} />
+              Contractor Spending by Category
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieChartData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={100}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {pieChartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#1F2937', 
+                      border: '1px solid #374151',
+                      borderRadius: '6px',
+                      color: '#F9FAFB'
+                    }}
+                    formatter={(value: number, name: string, props: any) => [
+                      `$${value.toLocaleString()}`,
+                      `${props.payload.count} contractors`
+                    ]}
+                  />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Category Breakdown Table */}
+        <Card className="bg-black border-gray-800">
+          <CardHeader>
+            <CardTitle className="text-white">Category Breakdown</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {budgetData?.contractors.map((category, index) => (
+                <div key={category.category} className="p-4 rounded-lg bg-zinc-900 border border-zinc-800">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center">
+                      <div 
+                        className="w-3 h-3 rounded-full mr-3"
+                        style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
+                      />
+                      <h4 className="font-medium text-white">{category.category}</h4>
+                    </div>
+                    <Badge variant="secondary" className="bg-zinc-800 text-white">
+                      {category.count} contractors
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-400">Allocated:</span>
+                      <div className="font-medium text-white">${category.totalAllocated.toLocaleString()}</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">Spent:</span>
+                      <div className="font-medium text-white">${category.totalSpent.toLocaleString()}</div>
+                    </div>
+                  </div>
+                  <div className="mt-2">
+                    <Progress 
+                      value={(category.totalSpent / category.totalAllocated) * 100} 
+                      className="h-1" 
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Quick Actions */}
+      <Card className="bg-black border-gray-800">
+        <CardHeader>
+          <CardTitle className="text-white">Quick Actions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Button variant="outline" className="border-gray-700 text-white hover:bg-gray-800">
+              View Detailed Reports
+            </Button>
+            <Button variant="outline" className="border-gray-700 text-white hover:bg-gray-800">
+              Export Budget Data
+            </Button>
+            <Button variant="outline" className="border-gray-700 text-white hover:bg-gray-800">
+              Set Spending Alerts
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export default BudgetOversight;

@@ -33,6 +33,7 @@ import StripeCheckout from "@/pages/stripe-checkout";
 import PaymentSimulator from "@/pages/payment-simulator";
 import PayContractor from "@/pages/pay-contractor";
 import InterlincConnect from "@/pages/InterlincConnect";
+import BudgetOversight from "@/pages/budget-oversight";
 
 import Layout from "@/components/layout/Layout";
 import AuthPage from "@/pages/auth";
@@ -236,6 +237,12 @@ function Router() {
       <ProtectedRoute path="/payments">
         <Layout>
           <Payments />
+        </Layout>
+      </ProtectedRoute>
+
+      <ProtectedRoute path="/budget-oversight">
+        <Layout>
+          <BudgetOversight />
         </Layout>
       </ProtectedRoute>
 
