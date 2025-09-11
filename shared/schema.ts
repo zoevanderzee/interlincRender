@@ -91,6 +91,8 @@ export const contracts = pgTable("contracts", {
   contractorBudget: decimal("contractor_budget", { precision: 10, scale: 2 }), // Budget allocated to the contractor for this project
   startDate: timestamp("start_date"),
   endDate: timestamp("end_date"),
+  moodboardFiles: text("moodboard_files").array().default([]), // Array of file URLs from object storage
+  moodboardLinks: text("moodboard_links").array().default([]), // Array of external inspiration links
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -483,7 +485,7 @@ export type WorkRequest = typeof workRequests.$inferSelect;
 export const businessOnboardingLinks = pgTable("business_onboarding_links", {
   id: serial("id").primaryKey(),
   businessId: integer("business_id").notNull().references(() => users.id),
-  token: text("token").notNull().unique(), // Unique token for this business's onboarding link
+  token: text("token").notNull(), // Unique token for this business's onboarding link (temporarily removed .unique() to unblock db:push)
   workerType: text("worker_type").notNull().default("contractor"), // Default type of worker to invite
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
