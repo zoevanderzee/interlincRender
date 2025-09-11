@@ -1,9 +1,14 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
+import { useBudget } from "@/hooks/use-budget";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -45,9 +50,20 @@ import {
   Settings,
   Target,
   Calendar,
-  Filter
+  Filter,
+  Edit
 } from "lucide-react";
+
+// Budget form schema
+const budgetFormSchema = z.object({
+  budgetCap: z.number().min(1, "Budget must be at least $1"),
+  budgetPeriod: z.enum(["monthly", "quarterly", "yearly"]),
+  resetEnabled: z.boolean(),
+});
 import { useState, useMemo } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 
 // Define category colors
 const CATEGORY_COLORS = {
@@ -97,12 +113,35 @@ export default function BudgetOversight() {
   const { user } = useAuth();
   const [selectedPeriod, setSelectedPeriod] = useState('current');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [budgetDialogOpen, setBudgetDialogOpen] = useState(false);
+  
+  // Budget management hook
+  const { budgetInfo, setBudget, isSettingBudget } = useBudget();
 
   // Fetch budget oversight data
   const { data: budgetData, isLoading } = useQuery<BudgetOverviewData>({
     queryKey: ['/api/budget/oversight', selectedPeriod],
     enabled: !!user && user.role === 'business'
   });
+
+  // Budget form
+  const budgetForm = useForm<z.infer<typeof budgetFormSchema>>({
+    resolver: zodResolver(budgetFormSchema),
+    defaultValues: {
+      budgetCap: budgetInfo?.budgetCap ? parseFloat(budgetInfo.budgetCap) : 10000,
+      budgetPeriod: (budgetInfo?.budgetPeriod as any) || "yearly",
+      resetEnabled: budgetInfo?.budgetResetEnabled || false,
+    }
+  });
+
+  const onBudgetSubmit = (values: z.infer<typeof budgetFormSchema>) => {
+    setBudget({
+      budgetCap: values.budgetCap,
+      budgetPeriod: values.budgetPeriod,
+      resetEnabled: values.resetEnabled,
+    });
+    setBudgetDialogOpen(false);
+  };
 
   // Calculate pie chart data
   const pieData = useMemo(() => {
@@ -180,6 +219,105 @@ export default function BudgetOversight() {
               <SelectItem value="lastyear">Last Year</SelectItem>
             </SelectContent>
           </Select>
+          <Dialog open={budgetDialogOpen} onOpenChange={setBudgetDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="border-gray-700">
+                <Settings className="mr-2" size={16} />
+                Set Budget
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-black border-gray-800">
+              <DialogHeader>
+                <DialogTitle className="text-white">Configure Budget Settings</DialogTitle>
+              </DialogHeader>
+              <Form {...budgetForm}>
+                <form onSubmit={budgetForm.handleSubmit(onBudgetSubmit)} className="space-y-4">
+                  <FormField
+                    control={budgetForm.control}
+                    name="budgetCap"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-300">Total Budget Cap</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="10000"
+                            className="bg-gray-900 border-gray-700 text-white"
+                            {...field}
+                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={budgetForm.control}
+                    name="budgetPeriod"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-300">Budget Period</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="bg-gray-900 border-gray-700">
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="bg-gray-900 border-gray-700">
+                            <SelectItem value="monthly">Monthly</SelectItem>
+                            <SelectItem value="quarterly">Quarterly</SelectItem>
+                            <SelectItem value="yearly">Yearly</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={budgetForm.control}
+                    name="resetEnabled"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border border-gray-700 p-3">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-gray-300">Auto-Reset Budget</FormLabel>
+                          <p className="text-sm text-gray-400">
+                            Automatically reset budget usage at the end of each period
+                          </p>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <div className="flex gap-3 pt-4">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      className="flex-1 border-gray-700"
+                      onClick={() => setBudgetDialogOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      type="submit" 
+                      className="flex-1 bg-accent-600 hover:bg-accent-700"
+                      disabled={isSettingBudget}
+                    >
+                      {isSettingBudget ? "Saving..." : "Save Budget"}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+          
           <Button variant="outline" className="border-gray-700">
             <Download className="mr-2" size={16} />
             Export Report
