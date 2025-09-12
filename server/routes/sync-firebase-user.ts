@@ -15,8 +15,13 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
     try {
       const { uid, email, emailVerified, displayName } = syncFirebaseUserSchema.parse(req.body);
 
-      // Check if user already exists by email
-      let existingUser = await storage.getUserByEmail(email);
+      // Check if user already exists by email (case-insensitive)
+      let existingUser = await storage.getUserByEmail(email.toLowerCase());
+      
+      // Also check by Firebase UID in case email doesn't match
+      if (!existingUser) {
+        existingUser = await storage.getUserByFirebaseUID(uid);
+      }
 
       if (existingUser) {
         // Update existing user with Firebase UID and verification status
@@ -51,15 +56,19 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
         });
       }
 
+      // CRITICAL: Log this case to prevent duplicate accounts
+      console.error(`🚨 CRITICAL: No existing user found for email ${email} or Firebase UID ${uid}`);
+      console.error('This should not happen for existing business users - check for account corruption');
+      
       // Create minimal user record for metadata storage
       // Note: This is optional - Firebase handles all authentication
       const userData = {
-        email,
-        username: email.split('@')[0],
+        email: email.toLowerCase(), // Normalize email to lowercase
+        username: email.split('@')[0].toLowerCase(),
         firstName: displayName?.split(' ')[0] || 'User',
         lastName: displayName?.split(' ').slice(1).join(' ') || '',
         password: 'firebase_managed', // Not used for authentication
-        role: 'contractor' as const,
+        role: 'contractor' as const, // Default to contractor for new accounts
         firebaseUid: uid,
         emailVerified: emailVerified,
         subscriptionStatus: 'inactive' as const
