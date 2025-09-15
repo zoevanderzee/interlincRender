@@ -353,7 +353,7 @@ export default function Projects() {
                 onClick={() => navigate('/projects/new')}
                 className="bg-blue-600 hover:bg-blue-700"
               >
-                Create Project
+                New Project
               </Button>
             </CardContent>
           </Card>
