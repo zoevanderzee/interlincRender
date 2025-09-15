@@ -806,7 +806,8 @@ export function setupAuth(app: Express) {
       // Import Firebase Admin to verify the ID token
       let decodedToken;
       try {
-        const { admin } = await import('./firebase-admin');
+        // const { admin } = await import('./firebase-admin'); // TEMPORARY FIX - module not found
+        throw new Error("Firebase admin module not configured");
         decodedToken = await admin.auth().verifyIdToken(idToken);
         console.log("✅ Firebase ID token verified for:", decodedToken.email);
       } catch (error) {
