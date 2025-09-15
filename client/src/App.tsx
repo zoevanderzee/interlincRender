@@ -8,9 +8,6 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import ErrorBoundary from "@/components/error/ErrorBoundary";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
-import Contracts from "@/pages/contracts";
-import NewContract from "@/pages/new-contract";
-import ContractDetail from "@/pages/contract-detail";
 import Projects from "@/pages/projects";
 import NewProject from "@/pages/new-project";
 import Contractors from "@/pages/contractors";
@@ -152,30 +149,6 @@ function Router() {
       </Route>
 
       {/* This is handled above in the nested route */}
-
-      <ProtectedRoute path="/contracts">
-        <Layout>
-          <Contracts />
-        </Layout>
-      </ProtectedRoute>
-
-      <ProtectedRoute path="/contracts/new">
-        <Layout>
-          <NewContract />
-        </Layout>
-      </ProtectedRoute>
-
-      <ProtectedRoute path="/contracts/:id/edit">
-        <Layout>
-          <NewContract />
-        </Layout>
-      </ProtectedRoute>
-
-      <ProtectedRoute path="/contract/:id">
-        <Layout>
-          <ContractDetail />
-        </Layout>
-      </ProtectedRoute>
 
       <ProtectedRoute path="/projects">
         <Layout>
