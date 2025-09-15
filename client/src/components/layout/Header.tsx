@@ -18,16 +18,16 @@ import { auth } from "@/lib/firebase";
 import Logo from "@assets/CD_icon_light@2x.png";
 
 export default function Header() {
-  const { user, logout } = useAuth();
+  const { user, logoutMutation } = useAuth();
   const { data: integratedData } = useIntegratedData();
 
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      await logout();
+      logoutMutation.mutate();
     } catch (error) {
       console.error('Logout error:', error);
-      await logout(); // Fallback to local logout
+      logoutMutation.mutate(); // Fallback to local logout
     }
   };
 
