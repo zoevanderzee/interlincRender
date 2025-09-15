@@ -12,6 +12,7 @@ import Contracts from "@/pages/contracts";
 import NewContract from "@/pages/new-contract";
 import ContractDetail from "@/pages/contract-detail";
 import Projects from "@/pages/projects";
+import NewProject from "@/pages/new-project";
 import Contractors from "@/pages/contractors";
 import Connections from "@/pages/connections";
 import Payments from "@/pages/payments";
@@ -179,6 +180,12 @@ function Router() {
       <ProtectedRoute path="/projects">
         <Layout>
           <Projects />
+        </Layout>
+      </ProtectedRoute>
+
+      <ProtectedRoute path="/projects/new">
+        <Layout>
+          <NewProject />
         </Layout>
       </ProtectedRoute>
 

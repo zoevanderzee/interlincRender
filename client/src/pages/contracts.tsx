@@ -77,12 +77,13 @@ const Contracts = () => {
         </div>
         {!isContractor && (
           <div className="mt-4 md:mt-0">
-            <Link href="/projects/new">
-              <Button className="w-full md:w-auto bg-blue-600 hover:bg-blue-700">
-                <Plus size={16} className="mr-2" />
-                Create Project
-              </Button>
-            </Link>
+            <Button 
+              onClick={() => navigate('/projects/new')}
+              className="w-full md:w-auto bg-blue-600 hover:bg-blue-700"
+            >
+              <Plus size={16} className="mr-2" />
+              Create Project
+            </Button>
           </div>
         )}
       </div>
@@ -171,12 +172,13 @@ const Contracts = () => {
               Clear Filters
             </Button>
           ) : !isContractor ? (
-            <Link href="/projects/new">
-              <Button className="bg-blue-600 hover:bg-blue-700">
-                <Plus size={16} className="mr-2" />
-                Create Project
-              </Button>
-            </Link>
+            <Button 
+              onClick={() => navigate('/projects/new')}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <Plus size={16} className="mr-2" />
+              Create Project
+            </Button>
           ) : null}
         </div>
       )}

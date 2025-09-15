@@ -23,7 +23,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { useNavigate } from "react-router-dom"; // Assuming you are using react-router-dom for navigation
+import { useLocation } from "wouter";
 
 interface ProjectsOverviewProps {
   contracts: Contract[];
@@ -40,7 +40,7 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
   payments,
   onViewProject
 }) => {
-  const navigate = useNavigate(); // Initialize navigate
+  const [, navigate] = useLocation();
   const [expandedProject, setExpandedProject] = useState<number | null>(contracts.length > 0 ? contracts[0].id : null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
