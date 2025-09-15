@@ -29,7 +29,16 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
       };
 
       // Check if user already exists by email (case-insensitive)
-      let existingUser = await storage.getUserByEmail(email.toLowerCase());
+      let existingUser;
+      try {
+        existingUser = await storage.getUserByEmail(email.toLowerCase());
+      } catch (dbError) {
+        console.error('Database error getting user by email:', dbError);
+        return res.status(500).json({ 
+          success: false, 
+          error: 'Database connection error' 
+        });
+      }
       
       // Also check by Firebase UID in case email doesn't match
       if (!existingUser) {
