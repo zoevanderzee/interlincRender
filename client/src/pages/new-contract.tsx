@@ -35,7 +35,7 @@ const NewContract = () => {
   // Handle successful project creation or update
   const handleSuccess = () => {
     // Navigate back to appropriate list after action
-    navigate('/contracts');
+    navigate('/projects');
   };
 
   return (
@@ -46,7 +46,7 @@ const NewContract = () => {
           variant="ghost" 
           size="sm" 
           className="mr-4 text-white hover:bg-zinc-800"
-          onClick={() => navigate('/contracts')}
+          onClick={() => navigate('/projects')}
         >
           <ArrowLeft size={16} />
         </Button>

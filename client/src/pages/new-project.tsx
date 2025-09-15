@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -51,12 +50,12 @@ export default function NewProject() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/projects'] });
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
-      
+
       toast({
         title: "Project Created",
         description: "Your new project has been created successfully.",
       });
-      
+
       navigate('/projects');
     },
     onError: (error: any) => {
