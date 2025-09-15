@@ -53,7 +53,7 @@ export function setupAuth(app: Express) {
     name: 'interlinc.sid',
     rolling: false, // Don't extend session on each request to avoid issues
     cookie: {
-      secure: process.env.NODE_ENV === 'production', // true in production, false in development
+      secure: false, // Allow cookies over HTTP for Replit compatibility
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
       httpOnly: true, // Security: prevent JS access
       sameSite: 'lax', // SECURITY FIX: Use 'lax' for better security
