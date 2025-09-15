@@ -321,7 +321,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const role = req.query.role as string;
       const currentUser = req.user;
-      console.log(`USER API REQUEST: role=${role}, currentUser ID=${currentUser?.id}`);
 
       // Special case: If this is the business user requesting contractors, force-include the Test Contractor
       if (role === "contractor" && currentUser?.id === 21) {

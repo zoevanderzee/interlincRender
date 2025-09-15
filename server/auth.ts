@@ -795,24 +795,6 @@ export function setupAuth(app: Express) {
 
   // Create middleware to check user authentication
   const requireAuth = async (req: any, res: any, next: any) => {
-    console.log("Auth check in requireAuth middleware:", req.isAuthenticated(), "Session ID:", req.sessionID);
-
-    // Log request headers for debugging
-    console.log("API request headers in requireAuth:", {
-      cookie: req.headers.cookie,
-      'user-agent': req.headers['user-agent'],
-      'x-user-id': req.headers['x-user-id'],
-      path: req.path
-    });
-
-    // Debug session information
-    console.log("Session data:", {
-      isSessionDefined: !!req.session,
-      sessionID: req.sessionID,
-      userID: req.session?.passport?.user,
-      passportInitialized: !!req.session?.passport,
-      passport: req.session?.passport
-    });
 
     // First check traditional session-based authentication
     if (req.isAuthenticated()) {
@@ -836,8 +818,6 @@ export function setupAuth(app: Express) {
       } catch (error) {
         console.error('Error in X-User-ID fallback authentication:', error);
       }
-    } else if (userIdHeader && isProduction) {
-      console.warn('X-User-ID header ignored in production for security');
     }
 
     // If all authentication methods fail
