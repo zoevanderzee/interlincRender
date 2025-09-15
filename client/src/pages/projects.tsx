@@ -1,5 +1,5 @@
+
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,47 +7,21 @@ import { Plus, Calendar, DollarSign, Users, FileText, TrendingUp } from "lucide-
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { SubmitWorkModal } from "@/components/SubmitWorkModal";
-import { SubmittedWorkReview } from "@/components/SubmittedWorkReview";
+import { useIntegratedData } from "@/hooks/use-integrated-data";
 
 export default function Projects() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const [submitWorkModalOpen, setSubmitWorkModalOpen] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
+  const { data: integratedData, isLoading } = useIntegratedData();
   
   const isContractor = user?.role === 'contractor';
   
-  // Always call all hooks at the top level - never conditionally
-  const { data: projectsData, isLoading: isLoadingProjects } = useQuery<any[]>({
-    queryKey: ['/api/projects'],
-    enabled: !!user && !isContractor
-  });
-
-  const { data: dashboardData, isLoading: isLoadingDashboard } = useQuery<{
-    contracts: any[];
-    contractors: any[];
-    stats: any;
-  }>({
-    queryKey: ['/api/dashboard'],
-    enabled: !!user && isContractor
-  });
-
-  const { data: workRequests = [], isLoading: isLoadingAssignments } = useQuery<any[]>({
-    queryKey: ['/api/work-requests'],
-    select: (data) => {
-      // Filter to show only accepted work requests for this contractor
-      return data.filter((request: any) => 
-        request.contractorUserId === user?.id && request.status === 'accepted'
-      );
-    },
-    enabled: !!user?.id && isContractor
-  });
-
-  const projects = projectsData || [];
-  const contracts = dashboardData?.contracts || [];
-  const contractors = dashboardData?.contractors || [];
-  
-  const isLoading = isContractor ? isLoadingDashboard || isLoadingAssignments : isLoadingProjects;
+  const projects = integratedData?.projects || [];
+  const contracts = integratedData?.contracts || [];
+  const contractors = integratedData?.contractors || [];
+  const workRequests = integratedData?.workRequests || [];
 
   if (isLoading) {
     return (
@@ -211,7 +185,6 @@ export default function Projects() {
   }
   
   const activeContracts = contracts.filter((contract: any) => contract.status === 'active');
-  const completedContracts = contracts.filter((contract: any) => contract.status === 'completed');
   const totalValue = contracts.reduce((sum: number, contract: any) => sum + parseFloat(contract.value || 0), 0);
 
   return (
@@ -226,7 +199,7 @@ export default function Projects() {
         </div>
         <Button 
           className="bg-blue-600 hover:bg-blue-700"
-          onClick={() => navigate('/projects/new')}
+          onClick={() => navigate('/contracts/new')}
         >
           <Plus className="mr-2 h-4 w-4" />
           New Project
@@ -240,7 +213,7 @@ export default function Projects() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-400">Total Projects</p>
-                <p className="text-3xl font-bold text-white">{projects.length}</p>
+                <p className="text-3xl font-bold text-white">{contracts.length}</p>
               </div>
               <FileText className="h-8 w-8 text-blue-500" />
             </div>
@@ -290,17 +263,17 @@ export default function Projects() {
           <h2 className="text-xl font-semibold text-white">Your Projects</h2>
         </div>
         
-        {projects.length > 0 ? (
-          projects.map((project: any) => (
-            <Card key={project.id} className="bg-zinc-900 border-zinc-800">
+        {contracts.length > 0 ? (
+          contracts.map((contract: any) => (
+            <Card key={contract.id} className="bg-zinc-900 border-zinc-800">
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <div>
-                    <CardTitle className="text-white">{project.name}</CardTitle>
-                    <p className="text-gray-400 text-sm mt-1">{project.description}</p>
+                    <CardTitle className="text-white">{contract.contractName}</CardTitle>
+                    <p className="text-gray-400 text-sm mt-1">{contract.description || 'No description available'}</p>
                   </div>
-                  <Badge variant={project.status === 'active' ? 'default' : 'secondary'}>
-                    {project.status}
+                  <Badge variant={contract.status === 'active' ? 'default' : 'secondary'}>
+                    {contract.status}
                   </Badge>
                 </div>
               </CardHeader>
@@ -309,25 +282,25 @@ export default function Projects() {
                   <div className="flex items-center space-x-4">
                     <div className="flex items-center text-gray-400">
                       <DollarSign className="mr-1 h-4 w-4" />
-                      <span>Budget: ${project.budget}</span>
+                      <span>Value: ${contract.value || 0}</span>
                     </div>
-                    {project.created_at && (
+                    {contract.createdAt && (
                       <div className="flex items-center text-gray-400">
                         <Calendar className="mr-1 h-4 w-4" />
-                        <span>Created: {new Date(project.created_at).toLocaleDateString()}</span>
+                        <span>Created: {new Date(contract.createdAt).toLocaleDateString()}</span>
                       </div>
                     )}
                   </div>
                   <div className="flex space-x-2">
                     <Button 
                       variant="outline"
-                      onClick={() => navigate(`/projects/${project.id}`)}
+                      onClick={() => navigate(`/contract/${contract.id}`)}
                       className="border-gray-700 text-white hover:bg-gray-800"
                     >
                       View Details
                     </Button>
                     <Button 
-                      onClick={() => navigate(`/assign-contractor?projectId=${project.id}`)}
+                      onClick={() => navigate(`/assign-contractor?projectId=${contract.id}`)}
                       className="bg-blue-600 hover:bg-blue-700"
                     >
                       Add Contractor
@@ -348,7 +321,7 @@ export default function Projects() {
                 Create your first project to start working with contractors.
               </p>
               <Button 
-                onClick={() => navigate('/projects/new')}
+                onClick={() => navigate('/contracts/new')}
                 className="bg-blue-600 hover:bg-blue-700"
               >
                 Create Project

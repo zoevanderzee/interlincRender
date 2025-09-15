@@ -1,7 +1,8 @@
+
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "./use-auth";
 
-// Define interfaces for integrated data across the app
+// Define comprehensive interfaces for all integrated data
 interface IntegratedStats {
   activeContractsCount: number;
   pendingApprovalsCount: number;
@@ -15,36 +16,76 @@ interface IntegratedStats {
 
 interface IntegratedData {
   stats: IntegratedStats;
+  contracts: any[];
+  contractors: any[];
+  milestones: any[];
+  payments: any[];
+  invites: any[];
+  projects: any[];
+  workRequests: any[];
   walletBalance: number;
+  budgetData: any;
   hasActiveSubscription: boolean;
   paymentMethodsEnabled: boolean;
   trolleyVerificationStatus: string;
+  notificationCount: number;
 }
 
-// Custom hook for integrated data management across all pages
+// Master hook for all data integration across the application
 export function useIntegratedData() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  // Dashboard data query
-  const { data: dashboardData, isLoading: isDashboardLoading } = useQuery({
+  // Core dashboard data - contains contracts, contractors, stats, payments, milestones
+  const { data: dashboardData, isLoading: isDashboardLoading, error: dashboardError } = useQuery({
     queryKey: ['/api/dashboard'],
-    enabled: !!user && user.role === 'business',
-    staleTime: 1 * 60 * 1000, // 1 minute - more frequent updates for critical business data
+    enabled: !!user,
+    staleTime: 30 * 1000, // 30 seconds for real-time updates
+    refetchInterval: 60 * 1000, // Auto-refresh every minute
   });
 
-  // Budget data query
+  // Budget data - financial information
   const { data: budgetData, isLoading: isBudgetLoading } = useQuery({
     queryKey: ['/api/budget'],
     enabled: !!user && user.role === 'business',
-    staleTime: 1 * 60 * 1000, // 1 minute
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000,
   });
 
-  // Wallet balance query
+  // Wallet balance - financial data
   const { data: walletData, isLoading: isWalletLoading } = useQuery({
     queryKey: ['/api/trolley/wallet-balance'],
     enabled: !!user && user.role === 'business',
-    staleTime: 30 * 1000, // 30 seconds - financial data needs frequent updates
+    staleTime: 15 * 1000, // Financial data needs frequent updates
+    refetchInterval: 30 * 1000,
+  });
+
+  // Projects data
+  const { data: projectsData, isLoading: isProjectsLoading } = useQuery({
+    queryKey: ['/api/projects'],
+    enabled: !!user,
+    staleTime: 30 * 1000,
+  });
+
+  // Work requests for contractors
+  const { data: workRequestsData, isLoading: isWorkRequestsLoading } = useQuery({
+    queryKey: ['/api/work-requests'],
+    enabled: !!user && user.role === 'contractor',
+    staleTime: 30 * 1000,
+    select: (data) => {
+      if (!user?.id || !Array.isArray(data)) return [];
+      return data.filter((request: any) => 
+        request.contractorUserId === user.id || request.businessUserId === user.id
+      );
+    }
+  });
+
+  // Notification count
+  const { data: notificationData, isLoading: isNotificationLoading } = useQuery({
+    queryKey: ['/api/notifications/count'],
+    enabled: !!user,
+    staleTime: 15 * 1000,
+    refetchInterval: 30 * 1000,
   });
 
   // Function to invalidate all related caches when data changes
@@ -58,16 +99,27 @@ export function useIntegratedData() {
       queryClient.invalidateQueries({ queryKey: ['/api/contracts'] }),
       queryClient.invalidateQueries({ queryKey: ['/api/milestones'] }),
       queryClient.invalidateQueries({ queryKey: ['/api/payments'] }),
+      queryClient.invalidateQueries({ queryKey: ['/api/projects'] }),
+      queryClient.invalidateQueries({ queryKey: ['/api/work-requests'] }),
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications/count'] }),
     ]);
   };
 
   // Function to update data optimistically across all components
-  const updateDataOptimistically = (updates: Partial<IntegratedData>) => {
+  const updateDataOptimistically = (updates: any) => {
     // Update dashboard stats
     if (updates.stats) {
       queryClient.setQueryData(['/api/dashboard'], (oldData: any) => ({
         ...oldData,
         stats: { ...oldData?.stats, ...updates.stats }
+      }));
+    }
+
+    // Update contracts
+    if (updates.contracts) {
+      queryClient.setQueryData(['/api/dashboard'], (oldData: any) => ({
+        ...oldData,
+        contracts: updates.contracts
       }));
     }
 
@@ -80,15 +132,25 @@ export function useIntegratedData() {
     }
 
     // Update budget data
-    if (updates.stats?.totalBudgetUsed) {
+    if (updates.budgetData) {
       queryClient.setQueryData(['/api/budget'], (oldData: any) => ({
         ...oldData,
-        budgetUsed: updates.stats.totalBudgetUsed
+        ...updates.budgetData
       }));
+    }
+
+    // Update projects
+    if (updates.projects) {
+      queryClient.setQueryData(['/api/projects'], updates.projects);
+    }
+
+    // Update work requests
+    if (updates.workRequests) {
+      queryClient.setQueryData(['/api/work-requests'], updates.workRequests);
     }
   };
 
-  // Aggregate integrated data from all sources
+  // Aggregate all integrated data from all sources
   const integratedData: IntegratedData = {
     stats: {
       activeContractsCount: dashboardData?.stats?.activeContractsCount || 0,
@@ -100,44 +162,72 @@ export function useIntegratedData() {
       totalBudgetUsed: budgetData?.budgetUsed || "0.00",
       remainingBudget: budgetData?.remainingBudget || null,
     },
+    contracts: dashboardData?.contracts || [],
+    contractors: dashboardData?.contractors || [],
+    milestones: dashboardData?.milestones || [],
+    payments: dashboardData?.payments || [],
+    invites: dashboardData?.invites || [],
+    projects: projectsData || [],
+    workRequests: workRequestsData || [],
     walletBalance: walletData?.balance || 0,
+    budgetData: budgetData || null,
     hasActiveSubscription: user?.subscriptionStatus === 'active',
     paymentMethodsEnabled: user?.trolleyBankAccountStatus === 'verified',
     trolleyVerificationStatus: user?.trolleySubmerchantStatus || 'pending',
+    notificationCount: parseInt(notificationData?.count || '0', 10),
   };
+
+  const isLoading = isDashboardLoading || isBudgetLoading || isWalletLoading || 
+                   isProjectsLoading || isWorkRequestsLoading || isNotificationLoading;
 
   return {
     data: integratedData,
-    isLoading: isDashboardLoading || isBudgetLoading || isWalletLoading,
+    isLoading,
+    error: dashboardError,
     invalidateAllData,
     updateDataOptimistically,
     // Individual data sources for specific use cases
     dashboardData,
     budgetData,
     walletData,
+    projectsData,
+    workRequestsData,
   };
 }
 
-// Hook specifically for financial data that needs frequent updates
+// Hook for financial data that needs frequent updates
 export function useFinancialData() {
-  const { user } = useAuth();
-  
-  return useQuery({
-    queryKey: ['/api/financial-summary'],
-    enabled: !!user && user.role === 'business',
-    staleTime: 10 * 1000, // 10 seconds - very fresh financial data
-    refetchInterval: 30 * 1000, // Auto-refresh every 30 seconds
-  });
+  const { data } = useIntegratedData();
+  return {
+    walletBalance: data.walletBalance,
+    budgetData: data.budgetData,
+    remainingBudget: data.stats.remainingBudget,
+    totalBudgetUsed: data.stats.totalBudgetUsed,
+    paymentsProcessed: data.stats.paymentsProcessed,
+    payments: data.payments,
+  };
 }
 
-// Hook for real-time project updates
-export function useProjectUpdates() {
-  const { user } = useAuth();
-  
-  return useQuery({
-    queryKey: ['/api/project-updates'],
-    enabled: !!user,
-    staleTime: 15 * 1000, // 15 seconds
-    refetchInterval: 60 * 1000, // Auto-refresh every minute
-  });
+// Hook for project-related data
+export function useProjectData() {
+  const { data } = useIntegratedData();
+  return {
+    contracts: data.contracts,
+    projects: data.projects,
+    milestones: data.milestones,
+    contractors: data.contractors,
+    activeContractsCount: data.stats.activeContractsCount,
+    pendingApprovalsCount: data.stats.pendingApprovalsCount,
+  };
+}
+
+// Hook for contractor-specific data
+export function useContractorData() {
+  const { data } = useIntegratedData();
+  return {
+    workRequests: data.workRequests,
+    payments: data.payments,
+    contracts: data.contracts,
+    milestones: data.milestones,
+  };
 }

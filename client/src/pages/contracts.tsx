@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,31 +11,15 @@ import {
 } from "@/components/ui/select";
 import ContractsTable from "@/components/dashboard/ContractsTable";
 import { Plus, Search, FilterX } from "lucide-react";
-import { Contract, User } from "@shared/schema";
-
-// Define interface for dashboard data (matches server/routes.ts dashboard endpoint)
-interface DashboardData {
-  stats: {
-    activeContractsCount: number;
-    pendingApprovalsCount: number;
-    paymentsProcessed: number;
-    totalPendingValue: number;
-    activeContractorsCount: number;
-    pendingInvitesCount: number;
-  };
-  contracts: Contract[];
-  contractors: User[];
-  milestones: any[];
-  payments: any[];
-  invites: any[];
-}
 import { useAuth } from "@/hooks/use-auth";
+import { useIntegratedData } from "@/hooks/use-integrated-data";
 
 const Contracts = () => {
   const [_, navigate] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const { user } = useAuth();
+  const { data: integratedData, isLoading } = useIntegratedData();
   const isContractor = user?.role === 'contractor';
 
   // Block contractors from accessing this page entirely
@@ -45,57 +28,17 @@ const Contracts = () => {
     return null;
   }
 
-  // Use dashboard data for contracts with fallback authentication
-  const { data: dashboardData, isLoading: isLoadingContracts } = useQuery<DashboardData>({
-    queryKey: ['/api/dashboard'],
-    queryFn: async () => {
-      const headers: HeadersInit = {
-        "Accept": "application/json",
-        "Cache-Control": "no-cache"
-      };
-      
-      // Add user ID from localStorage as fallback
-      const storedUser = localStorage.getItem('interlinc_user');
-      if (storedUser) {
-        try {
-          const parsedUser = JSON.parse(storedUser);
-          if (parsedUser && parsedUser.id) {
-            headers['X-User-ID'] = parsedUser.id.toString();
-          }
-        } catch (e) {
-          console.error("Error parsing stored user:", e);
-        }
-      }
-      
-      const res = await fetch("/api/dashboard", {
-        method: "GET",
-        credentials: "include",
-        headers
-      });
-      
-      if (!res.ok) {
-        throw new Error("Could not load dashboard data");
-      }
-      
-      return await res.json();
-    },
-    enabled: !!user,
-  });
-  
-  const contracts = dashboardData?.contracts || [];
-
-  // Get contractors from dashboard data (they're already there)
-  const contractors = dashboardData?.contractors || [];
-  const isLoadingContractors = isLoadingContracts;
+  const contracts = integratedData?.contracts || [];
+  const contractors = integratedData?.contractors || [];
 
   // Filter contracts by search term and status
   const filteredContracts = contracts.filter((contract) => {
     const matchesSearch = searchTerm === "" || 
       contract.contractName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       contract.contractCode.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesStatus = statusFilter === "all" || contract.status === statusFilter;
-    
+
     return matchesSearch && matchesStatus;
   });
 
@@ -105,10 +48,9 @@ const Contracts = () => {
     setStatusFilter("all");
   };
 
-  // Handle view contract - contractors get read-only view
+  // Handle view contract
   const handleViewContract = (id: number) => {
     if (isContractor) {
-      // Contractors shouldn't access full contract details
       return;
     }
     navigate(`/contract/${id}`);
@@ -182,7 +124,7 @@ const Contracts = () => {
       </div>
 
       {/* Contracts Table */}
-      {isLoadingContracts || isLoadingContractors ? (
+      {isLoading ? (
         <div className="bg-black rounded-lg shadow-sm border border-zinc-800 p-8">
           <div className="animate-pulse flex flex-col space-y-4">
             <div className="h-4 bg-zinc-800 rounded w-3/4"></div>
@@ -202,7 +144,7 @@ const Contracts = () => {
       )}
 
       {/* Empty State */}
-      {filteredContracts.length === 0 && !isLoadingContracts && (
+      {filteredContracts.length === 0 && !isLoading && (
         <div className="bg-black text-white rounded-lg shadow-sm border border-zinc-800 p-8 text-center">
           <div className="flex justify-center mb-4">
             <div className="h-16 w-16 rounded-full bg-zinc-800 flex items-center justify-center text-white">

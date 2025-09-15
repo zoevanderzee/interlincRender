@@ -1,6 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
+import { useIntegratedData } from "@/hooks/use-integrated-data";
 import {
   Table,
   TableBody,
@@ -11,24 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Payment, Contract, User, Milestone } from "@shared/schema";
-
-// Define interface for dashboard data (matches server/routes.ts dashboard endpoint)
-interface DashboardData {
-  stats: {
-    activeContractsCount: number;
-    pendingApprovalsCount: number;
-    paymentsProcessed: number;
-    totalPendingValue: number;
-    activeContractorsCount: number;
-    pendingInvitesCount: number;
-  };
-  contracts: Contract[];
-  contractors: User[];
-  milestones: any[];
-  payments: any[];
-  invites: any[];
-}
+import { Payment, Contract } from "@shared/schema";
 import { 
   DollarSign, 
   Calendar, 
@@ -42,50 +26,14 @@ import {
 export default function Payments() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
+  const { data: integratedData, isLoading } = useIntegratedData();
   
   const isContractor = user?.role === 'contractor';
 
-  // Use dashboard data for payments and contracts with fallback authentication
-  const { data: dashboardData, isLoading: paymentsLoading } = useQuery<DashboardData>({
-    queryKey: ['/api/dashboard'],
-    queryFn: async () => {
-      const headers: HeadersInit = {
-        "Accept": "application/json",
-        "Cache-Control": "no-cache"
-      };
-      
-      // Add user ID from localStorage as fallback
-      const storedUser = localStorage.getItem('interlinc_user');
-      if (storedUser) {
-        try {
-          const parsedUser = JSON.parse(storedUser);
-          if (parsedUser && parsedUser.id) {
-            headers['X-User-ID'] = parsedUser.id.toString();
-          }
-        } catch (e) {
-          console.error("Error parsing stored user:", e);
-        }
-      }
-      
-      const res = await fetch("/api/dashboard", {
-        method: "GET",
-        credentials: "include",
-        headers
-      });
-      
-      if (!res.ok) {
-        throw new Error("Could not load dashboard data");
-      }
-      
-      return await res.json();
-    },
-    enabled: !!user
-  });
+  const payments = integratedData?.payments || [];
+  const contracts = integratedData?.contracts || [];
 
-  const payments = dashboardData?.payments || [];
-  const contracts = dashboardData?.contracts || [];
-
-  if (paymentsLoading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">

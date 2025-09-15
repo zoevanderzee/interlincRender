@@ -1,3 +1,4 @@
+
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 
@@ -13,6 +14,7 @@ export function useDataSync() {
       queryClient.invalidateQueries({ queryKey: ['/api/trolley/funding-history'] }),
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] }),
       queryClient.invalidateQueries({ queryKey: ['/api/user'] }),
+      queryClient.invalidateQueries({ queryKey: ['/api/payments'] }),
     ]);
     console.log('✅ Financial data cache invalidated across all pages');
   }, [queryClient]);
@@ -25,6 +27,8 @@ export function useDataSync() {
       queryClient.invalidateQueries({ queryKey: ['/api/payments'] }),
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] }),
       queryClient.invalidateQueries({ queryKey: ['/api/budget'] }),
+      queryClient.invalidateQueries({ queryKey: ['/api/projects'] }),
+      queryClient.invalidateQueries({ queryKey: ['/api/work-requests'] }),
     ]);
     console.log('✅ Project data cache invalidated across all pages');
   }, [queryClient]);
@@ -35,6 +39,7 @@ export function useDataSync() {
       queryClient.invalidateQueries({ queryKey: ['/api/user'] }),
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] }),
       queryClient.invalidateQueries({ queryKey: ['/api/trolley/wallet-balance'] }),
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications/count'] }),
     ]);
     console.log('✅ User data cache invalidated across all pages');
   }, [queryClient]);
@@ -51,6 +56,8 @@ export function useDataSync() {
     walletBalance?: number;
     contractCount?: number;
     milestoneCount?: number;
+    paymentCount?: number;
+    notificationCount?: number;
   }) => {
     // Update budget data
     if (updates.budgetUsed !== undefined) {
@@ -69,19 +76,49 @@ export function useDataSync() {
     }
 
     // Update dashboard stats
-    if (updates.contractCount !== undefined || updates.milestoneCount !== undefined) {
+    if (updates.contractCount !== undefined || updates.milestoneCount !== undefined || updates.paymentCount !== undefined) {
       queryClient.setQueryData(['/api/dashboard'], (oldData: any) => ({
         ...oldData,
         stats: {
           ...oldData?.stats,
           ...(updates.contractCount !== undefined && { activeContractsCount: updates.contractCount }),
           ...(updates.milestoneCount !== undefined && { pendingApprovalsCount: updates.milestoneCount }),
+          ...(updates.paymentCount !== undefined && { paymentsProcessed: updates.paymentCount }),
         }
+      }));
+    }
+
+    // Update notification count
+    if (updates.notificationCount !== undefined) {
+      queryClient.setQueryData(['/api/notifications/count'], (oldData: any) => ({
+        ...oldData,
+        count: updates.notificationCount.toString()
       }));
     }
 
     console.log('✅ Optimistic updates applied across components', updates);
   }, [queryClient]);
+
+  // Auto-sync when user performs actions
+  const syncAfterAction = useCallback(async (actionType: 'payment' | 'contract' | 'budget' | 'user' | 'all') => {
+    switch (actionType) {
+      case 'payment':
+        await invalidateFinancialData();
+        break;
+      case 'contract':
+        await invalidateProjectData();
+        break;
+      case 'budget':
+        await invalidateFinancialData();
+        break;
+      case 'user':
+        await invalidateUserData();
+        break;
+      case 'all':
+        await invalidateAllData();
+        break;
+    }
+  }, [invalidateFinancialData, invalidateProjectData, invalidateUserData, invalidateAllData]);
 
   return {
     invalidateFinancialData,
@@ -89,6 +126,7 @@ export function useDataSync() {
     invalidateUserData,
     invalidateAllData,
     updateOptimistically,
+    syncAfterAction,
   };
 }
 
@@ -105,8 +143,10 @@ export function useAutoDataSync() {
   }, [invalidateAllData]);
 
   // Set up event listener for visibility changes
-  useCallback(() => {
+  const setupAutoSync = useCallback(() => {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [handleVisibilityChange]);
+
+  return { setupAutoSync };
 }
