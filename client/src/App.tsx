@@ -10,6 +10,7 @@ import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import Projects from "@/pages/projects";
 import NewProject from "@/pages/new-project";
+import NewContract from "@/pages/new-contract"; // Assuming this is the correct component to import
 import Contractors from "@/pages/contractors";
 import Connections from "@/pages/connections";
 import Payments from "@/pages/payments";
@@ -158,7 +159,7 @@ function Router() {
 
       <ProtectedRoute path="/projects/new">
         <Layout>
-          <NewProject />
+          <NewContract />
         </Layout>
       </ProtectedRoute>
 
