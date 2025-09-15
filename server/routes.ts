@@ -82,9 +82,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       let userId = req.user?.id;
 
-      // Use X-User-ID header fallback ONLY in development for security
-      const isProduction = process.env.NODE_ENV === 'production' || process.env.REPLIT_ENVIRONMENT === 'production';
-      if (!userId && req.headers['x-user-id'] && !isProduction) {
+      // Use X-User-ID header fallback if session auth failed
+      if (!userId && req.headers['x-user-id']) {
         userId = parseInt(req.headers['x-user-id'] as string);
       }
 
@@ -119,10 +118,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Direct login test removed due to __dirname issue
 
-  // Debug browser login page (DEVELOPMENT ONLY)
-  const isProduction = process.env.NODE_ENV === 'production' || process.env.REPLIT_ENVIRONMENT === 'production';
-  if (!isProduction) {
-    app.get('/debug-login', (req, res) => {
+  // Debug browser login page
+  app.get('/debug-login', (req, res) => {
     res.send(`<!DOCTYPE html>
 <html>
 <head>
@@ -229,8 +226,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     </script>
 </body>
 </html>`);
-    });
-  } // Close debug route gating to development only
+  });
 
   // Public health check endpoint - no auth required
   app.get(`${apiRouter}/health`, async (req: Request, res: Response) => {
@@ -325,6 +321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const role = req.query.role as string;
       const currentUser = req.user;
+      console.log(`USER API REQUEST: role=${role}, currentUser ID=${currentUser?.id}`);
 
       // Special case: If this is the business user requesting contractors, force-include the Test Contractor
       if (role === "contractor" && currentUser?.id === 21) {
@@ -490,9 +487,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Company ID is required" });
       }
 
-      // Get user ID from session or X-User-ID header fallback (DEVELOPMENT ONLY)
-      const isProduction = process.env.NODE_ENV === 'production' || process.env.REPLIT_ENVIRONMENT === 'production';
-      const userId = req.user?.id || (!isProduction && req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
+      // Get user ID from session or X-User-ID header fallback
+      const userId = req.user?.id || (req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
 
       if (!userId) {
         console.log("No user ID found when accessing contractors");
@@ -747,15 +743,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let userId = req.user?.id;
       let userRole = req.user?.role || 'business';
 
-      // Use X-User-ID header fallback ONLY in development for security
-      const isProduction = process.env.NODE_ENV === 'production' || process.env.REPLIT_ENVIRONMENT === 'production';
-      if (!userId && req.headers['x-user-id'] && !isProduction) {
+      // Use X-User-ID header fallback if session auth failed
+      if (!userId && req.headers['x-user-id']) {
         userId = parseInt(req.headers['x-user-id'] as string);
         // Get the user to determine their role
         const user = await storage.getUser(userId);
         if (user) {
           userRole = user.role;
-          console.log(`Using X-User-ID header fallback authentication for user ID: ${userId} with role: ${userRole} (development only)`);
+          console.log(`Using X-User-ID header fallback authentication for user ID: ${userId} with role: ${userRole}`);
         }
       }
 
@@ -830,9 +825,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let userId = req.user?.id;
       let userRole = req.user?.role || 'business';
 
-      // Use X-User-ID header fallback ONLY in development for security
-      const isProduction = process.env.NODE_ENV === 'production' || process.env.REPLIT_ENVIRONMENT === 'production';
-      if (!userId && req.headers['x-user-id'] && !isProduction) {
+      // Use X-User-ID header fallback if session auth failed
+      if (!userId && req.headers['x-user-id']) {
         userId = parseInt(req.headers['x-user-id'] as string);
         const user = await storage.getUser(userId);
         if (user) {
@@ -852,6 +846,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied: Contractors can only view their own contracts" });
       }
 
+      // Detailed debugging for authentication
+      console.log(`GET /contracts/${id} - Request headers:`, req.headers);
+      console.log(`GET /contracts/${id} - Cookie:`, req.headers.cookie);
+      console.log(`GET /contracts/${id} - X-User-ID:`, req.headers['x-user-id']);
+      console.log(`GET /contracts/${id} - User from session:`, req.user);
 
       if (!contract) {
         return res.status(404).json({ message: "Contract not found" });
@@ -959,9 +958,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Project not found" });
       }
 
-      // Get user ID from session or X-User-ID header (DEVELOPMENT ONLY)
-      const isProduction = process.env.NODE_ENV === 'production' || process.env.REPLIT_ENVIRONMENT === 'production';
-      const userId = req.user?.id || (!isProduction && req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
+      // Get user ID from session or X-User-ID header
+      const userId = req.user?.id || (req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
 
       if (!userId) {
         console.log("No user ID found when deleting contract");

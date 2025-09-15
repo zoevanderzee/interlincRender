@@ -46,9 +46,6 @@ export function setupAuth(app: Express) {
     process.env.SESSION_SECRET = randomBytes(32).toString("hex");
   }
 
-  // Detect if we're running in a secure context (production)
-  const isProduction = process.env.NODE_ENV === 'production' || process.env.REPLIT_ENVIRONMENT === 'production';
-  
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || 'interlinc-secret-key',
     resave: false,
@@ -56,12 +53,12 @@ export function setupAuth(app: Express) {
     name: 'interlinc.sid',
     rolling: false, // Don't extend session on each request to avoid issues
     cookie: {
-      secure: false, // FIXED: Disable secure cookies to work in development (non-HTTPS)
+      secure: process.env.NODE_ENV === 'production', // true in production, false in development
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
-      httpOnly: true, // Prevent XSS attacks - cookies only accessible via HTTP(S)
-      sameSite: 'lax', // FIXED: Use lax instead of none to work without HTTPS
+      httpOnly: true, // Security: prevent JS access
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' for production cross-origin
       path: '/', // Available for entire site
-      domain: undefined, // Let browser handle domain automatically
+      domain: process.env.NODE_ENV === 'production' ? '.interlinc.app' : undefined, // Cross-subdomain in production
     },
     // Use the storage implementation's session store
     store: storage.sessionStore
@@ -89,31 +86,23 @@ export function setupAuth(app: Express) {
   // This is needed for cookies to work properly in Replit
   app.set("trust proxy", 1);
 
-  // Add CORS headers for cookie support - simplified for Replit deployment consistency
+  // Add CORS headers for cookie support
   app.use((req, res, next) => {
     const origin = req.headers.origin;
-    const currentHost = req.protocol + '://' + req.get('host');
-    
-    // Allow current origin and all Replit domains for deployment consistency
     const allowedOrigins = [
       'https://interlinc.app',
       'https://www.interlinc.app',
       'https://interlinc.co', 
       'https://www.interlinc.co',
-      currentHost
+      req.protocol + '://' + req.get('host') // Allow same-origin requests
     ];
 
-    // Allow *.replit.app domains ONLY in development for security
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.REPLIT_ENVIRONMENT === 'production';
-    const isReplitDomain = !isProduction && origin && origin.includes('.replit.app');
-    const isAllowedOrigin = origin && (allowedOrigins.includes(origin) || isReplitDomain);
-
-    // In development or for allowed origins, set CORS headers
-    if (!isProduction || isAllowedOrigin || !origin) {
-      res.header('Access-Control-Allow-Origin', origin || currentHost);
+    // In development, allow all origins; in production, check allowlist
+    if (process.env.NODE_ENV === 'development' || allowedOrigins.includes(origin)) {
+      res.header('Access-Control-Allow-Origin', origin || req.protocol + '://' + req.get('host'));
       res.header('Access-Control-Allow-Credentials', 'true');
       res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-      res.header('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization,X-User-ID,X-Firebase-UID,X-CSRF-Token,Cache-Control');
+      res.header('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization,X-User-ID,X-Firebase-UID,X-CSRF-Token');
 
       if (req.method === 'OPTIONS') {
         res.sendStatus(200);
@@ -127,28 +116,6 @@ export function setupAuth(app: Express) {
 
   // Setup session middleware
   app.use(session(sessionSettings));
-
-  // CSRF Token Issuance Middleware
-  app.use((req: any, res: any, next: any) => {
-    // Issue CSRF token per session if not exists
-    if (!req.session.csrfToken) {
-      req.session.csrfToken = randomBytes(32).toString('hex');
-    }
-    
-    // For GET requests, expose CSRF token via header for frontend to read
-    if (req.method === 'GET') {
-      res.header('X-CSRF-Token', req.session.csrfToken);
-    }
-    
-    next();
-  });
-
-  // CSRF Validation Middleware - DISABLED to restore login functionality
-  // TODO: Re-implement with proper exemptions for auth endpoints
-  // app.use((req: any, res: any, next: any) => {
-  //   // CSRF validation logic was here but broke login - needs auth endpoint exemptions
-  //   next();
-  // });
 
   // Initialize passport
   app.use(passport.initialize());
@@ -610,14 +577,6 @@ export function setupAuth(app: Express) {
 
   // Get current user route - Updated for Firebase Auth
   app.get("/api/user", async (req, res) => {
-    // Set cache headers to prevent stale user data across environments
-    res.set({
-      'Cache-Control': 'no-store, no-cache, must-revalidate, private',
-      'Pragma': 'no-cache',
-      'Expires': '0',
-      'Vary': 'Cookie, Authorization, X-Firebase-UID'
-    });
-
     console.log("Auth check for session:", req.sessionID, "Authenticated:", req.isAuthenticated());
 
     // Log request headers for debugging
@@ -651,7 +610,24 @@ export function setupAuth(app: Express) {
       }
     }
 
-    // X-User-ID header fallback removed for security - only use session or Firebase auth
+    // Priority 3: Fallback - Check X-User-ID header for localStorage-based authentication
+    const userIdHeader = req.headers['x-user-id'];
+    if (userIdHeader) {
+      try {
+        const userId = parseInt(userIdHeader as string);
+        if (!isNaN(userId)) {
+          const user = await storage.getUser(userId);
+          if (user) {
+            console.log(`Authenticating /api/user request via X-User-ID header: ${userId}`);
+            // Return user info without the password
+            const { password, ...userInfo } = user;
+            return res.json(userInfo);
+          }
+        }
+      } catch (error) {
+        console.error('Error in X-User-ID fallback for /api/user:', error);
+      }
+    }
 
     // If all authentication methods fail
     return res.status(401).json({ error: "Not authenticated" });
@@ -818,21 +794,39 @@ export function setupAuth(app: Express) {
 
   // Create middleware to check user authentication
   const requireAuth = async (req: any, res: any, next: any) => {
+    console.log("Auth check in requireAuth middleware:", req.isAuthenticated(), "Session ID:", req.sessionID);
+
+    // Log request headers for debugging
+    console.log("API request headers in requireAuth:", {
+      cookie: req.headers.cookie,
+      'user-agent': req.headers['user-agent'],
+      'x-user-id': req.headers['x-user-id'],
+      path: req.path
+    });
+
+    // Debug session information
+    console.log("Session data:", {
+      isSessionDefined: !!req.session,
+      sessionID: req.sessionID,
+      userID: req.session?.passport?.user,
+      passportInitialized: !!req.session?.passport,
+      passport: req.session?.passport
+    });
 
     // First check traditional session-based authentication
     if (req.isAuthenticated()) {
       return next();
     }
 
-    // Fallback: Check for X-User-ID header (DEVELOPMENT ONLY for security)
+    // Fallback: Check for X-User-ID header and attempt to load the user
     const userIdHeader = req.headers['x-user-id'];
-    if (userIdHeader && !isProduction) {
+    if (userIdHeader) {
       try {
         const userId = parseInt(userIdHeader);
         if (!isNaN(userId)) {
           const user = await storage.getUser(userId);
           if (user) {
-            console.log(`Using X-User-ID header fallback authentication for user ID: ${userId} (development only)`);
+            console.log(`Using X-User-ID header fallback authentication for user ID: ${userId}`);
             // Manually set user on request object
             req.user = user;
             return next();
