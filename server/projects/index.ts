@@ -7,6 +7,19 @@ import { setupAuth } from "../auth";
 export function registerProjectRoutes(app: Express) {
   const { requireAuth } = setupAuth(app);
   
+  // Handle /projects/new specifically before the parameterized route
+  app.get("/api/projects/new", async (req, res) => {
+    // This is not a valid API endpoint - new project creation should be POST /api/projects
+    // Return an appropriate response
+    res.status(404).json({ error: "Route not found. Use POST /api/projects to create a new project." });
+  });
+
+  // Handle /projects/new/work-requests specifically 
+  app.get("/api/projects/new/work-requests", async (req, res) => {
+    // This is not a valid API endpoint
+    res.status(404).json({ error: "Route not found. Work requests require a valid project ID." });
+  });
+
   // Get all projects for a business (used by Projects page)
   app.get("/api/projects", async (req, res) => {
     try {
@@ -45,6 +58,11 @@ export function registerProjectRoutes(app: Express) {
       }
 
       const projectId = parseInt(req.params.id);
+      
+      // Validate that projectId is a valid number
+      if (isNaN(projectId)) {
+        return res.status(400).json({ error: "Invalid project ID. Must be a number." });
+      }
       const project = await storage.getProject(projectId);
       
       if (!project) {
@@ -227,6 +245,11 @@ export function registerProjectRoutes(app: Express) {
   app.get("/api/projects/:projectId/work-requests", async (req, res) => {
     try {
       const projectId = parseInt(req.params.projectId);
+      
+      // Validate that projectId is a valid number
+      if (isNaN(projectId)) {
+        return res.status(400).json({ error: "Invalid project ID. Must be a number." });
+      }
       const workRequests = await storage.getProjectWorkRequests(projectId);
       
       // Enhance work requests with contractor information
