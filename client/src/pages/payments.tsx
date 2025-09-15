@@ -1,4 +1,3 @@
-
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { useIntegratedData } from "@/hooks/use-integrated-data";
@@ -13,11 +12,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Payment, Contract } from "@shared/schema";
-import { 
-  DollarSign, 
-  Calendar, 
-  Clock, 
-  CheckCircle, 
+import {
+  DollarSign,
+  Calendar,
+  Clock,
+  CheckCircle,
   Download,
   TrendingUp,
   CreditCard
@@ -27,11 +26,16 @@ export default function Payments() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const { data: integratedData, isLoading } = useIntegratedData();
-  
+
   const isContractor = user?.role === 'contractor';
 
   const payments = integratedData?.payments || [];
   const contracts = integratedData?.contracts || [];
+
+  // Filter out payments that do not have a corresponding contract
+  const safePayments = payments.filter((payment: Payment) =>
+    contracts.some((contract: Contract) => contract.id === payment.contractId)
+  );
 
   if (isLoading) {
     return (
@@ -45,9 +49,9 @@ export default function Payments() {
   }
 
   // Calculate payment totals
-  const completedPayments = payments.filter((p: Payment) => p.status === 'completed');
-  const pendingPayments = payments.filter((p: Payment) => p.status === 'scheduled' || p.status === 'pending');
-  const processingPayments = payments.filter((p: Payment) => p.status === 'processing');
+  const completedPayments = safePayments.filter((p: Payment) => p.status === 'completed');
+  const pendingPayments = safePayments.filter((p: Payment) => p.status === 'scheduled' || p.status === 'pending');
+  const processingPayments = safePayments.filter((p: Payment) => p.status === 'processing');
 
   const totalEarned = completedPayments.reduce((sum: number, p: Payment) => sum + parseFloat(p.amount), 0);
   const totalPending = pendingPayments.reduce((sum: number, p: Payment) => sum + parseFloat(p.amount), 0);
@@ -69,7 +73,7 @@ export default function Payments() {
             <h1 className="text-2xl md:text-3xl font-semibold text-white">My Earnings</h1>
             <p className="text-gray-400 mt-1">Track your payment history and upcoming earnings</p>
           </div>
-          <Button 
+          <Button
             variant="outline"
             className="mt-4 md:mt-0 border-gray-700 text-white hover:bg-gray-800"
           >
@@ -120,7 +124,7 @@ export default function Payments() {
             <CardTitle className="text-white">Payment History</CardTitle>
           </CardHeader>
           <CardContent>
-            {payments.length === 0 ? (
+            {safePayments.length === 0 ? (
               <div className="text-center py-8">
                 <DollarSign className="h-12 w-12 text-gray-600 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-400 mb-2">No payments yet</h3>
@@ -137,7 +141,7 @@ export default function Payments() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {payments.map((payment: Payment) => (
+                  {safePayments.map((payment: Payment) => (
                     <TableRow key={payment.id} className="border-gray-800">
                       <TableCell className="text-white">
                         {new Date(payment.scheduledDate).toLocaleDateString()}
@@ -150,13 +154,13 @@ export default function Payments() {
                       </TableCell>
                       <TableCell>
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          payment.status === 'completed' 
+                          payment.status === 'completed'
                             ? 'bg-green-900/30 text-green-400'
                             : payment.status === 'processing'
                             ? 'bg-blue-900/30 text-blue-400'
                             : 'bg-yellow-900/30 text-yellow-400'
                         }`}>
-                          {payment.status === 'completed' ? 'Paid' : 
+                          {payment.status === 'completed' ? 'Paid' :
                            payment.status === 'processing' ? 'Processing' : 'Pending'}
                         </span>
                       </TableCell>
@@ -180,7 +184,7 @@ export default function Payments() {
           <p className="text-gray-400 mt-1">Manage payments to contractors and track expenses</p>
         </div>
         <div className="flex gap-2 mt-4 md:mt-0">
-          <Button 
+          <Button
             onClick={() => navigate('/pay-contractor')}
             className="bg-green-600 hover:bg-green-700"
           >
@@ -247,7 +251,7 @@ export default function Payments() {
           <CardTitle className="text-white">Payment History & Management</CardTitle>
         </CardHeader>
         <CardContent>
-          {payments.length === 0 ? (
+          {safePayments.length === 0 ? (
             <div className="text-center py-8">
               <DollarSign className="mx-auto h-12 w-12 text-gray-600 mb-4" />
               <h3 className="text-lg font-medium text-white mb-2">No Payments Yet</h3>
@@ -266,7 +270,7 @@ export default function Payments() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {payments.map((payment: Payment) => (
+                {safePayments.map((payment: Payment) => (
                   <TableRow key={payment.id} className="border-gray-800">
                     <TableCell className="text-white">
                       {payment.contractId ? `Contract #${payment.contractId}` : 'Contract'}
