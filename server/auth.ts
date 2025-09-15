@@ -53,12 +53,12 @@ export function setupAuth(app: Express) {
     name: 'interlinc.sid',
     rolling: false, // Don't extend session on each request to avoid issues
     cookie: {
-      secure: process.env.NODE_ENV === 'production', // true in production, false in development
+      secure: false, // Allow cookies over HTTP and HTTPS for reliability
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
       httpOnly: true, // Security: prevent JS access
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' for production cross-origin
+      sameSite: 'lax', // Use 'lax' for consistent behavior across environments
       path: '/', // Available for entire site
-      domain: process.env.NODE_ENV === 'production' ? '.interlinc.app' : undefined, // Cross-subdomain in production
+      domain: undefined, // Let browser handle domain automatically
     },
     // Use the storage implementation's session store
     store: storage.sessionStore
@@ -610,24 +610,7 @@ export function setupAuth(app: Express) {
       }
     }
 
-    // Priority 3: Fallback - Check X-User-ID header for localStorage-based authentication
-    const userIdHeader = req.headers['x-user-id'];
-    if (userIdHeader) {
-      try {
-        const userId = parseInt(userIdHeader as string);
-        if (!isNaN(userId)) {
-          const user = await storage.getUser(userId);
-          if (user) {
-            console.log(`Authenticating /api/user request via X-User-ID header: ${userId}`);
-            // Return user info without the password
-            const { password, ...userInfo } = user;
-            return res.json(userInfo);
-          }
-        }
-      } catch (error) {
-        console.error('Error in X-User-ID fallback for /api/user:', error);
-      }
-    }
+    // X-User-ID header fallback removed for security - only use session or Firebase auth
 
     // If all authentication methods fail
     return res.status(401).json({ error: "Not authenticated" });
