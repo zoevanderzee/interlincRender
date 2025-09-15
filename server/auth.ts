@@ -47,7 +47,7 @@ export function setupAuth(app: Express) {
   }
 
   // Detect if we're running in a secure context (production)
-  const isProduction = process.env.NODE_ENV === 'production' || process.env.REPL_ID;
+  const isProduction = process.env.NODE_ENV === 'production' || !!process.env.REPL_ID;
   
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || 'interlinc-secret-key',
@@ -103,16 +103,17 @@ export function setupAuth(app: Express) {
       currentHost
     ];
 
-    // Also allow all *.replit.app domains for deployment
-    const isReplitDomain = origin && origin.includes('.replit.app');
+    // Allow *.replit.app domains ONLY in development for security
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.REPLIT_ENVIRONMENT === 'production';
+    const isReplitDomain = !isProduction && origin && origin.includes('.replit.app');
     const isAllowedOrigin = origin && (allowedOrigins.includes(origin) || isReplitDomain);
 
     // In development or for allowed origins, set CORS headers
-    if (process.env.NODE_ENV === 'development' || isAllowedOrigin || !origin) {
+    if (!isProduction || isAllowedOrigin || !origin) {
       res.header('Access-Control-Allow-Origin', origin || currentHost);
       res.header('Access-Control-Allow-Credentials', 'true');
       res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-      res.header('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization,X-User-ID,X-Firebase-UID,X-CSRF-Token');
+      res.header('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization,X-User-ID,X-Firebase-UID,X-CSRF-Token,Cache-Control');
 
       if (req.method === 'OPTIONS') {
         res.sendStatus(200);
@@ -126,6 +127,65 @@ export function setupAuth(app: Express) {
 
   // Setup session middleware
   app.use(session(sessionSettings));
+
+  // CSRF Token Issuance Middleware
+  app.use((req: any, res: any, next: any) => {
+    // Issue CSRF token per session if not exists
+    if (!req.session.csrfToken) {
+      req.session.csrfToken = randomBytes(32).toString('hex');
+    }
+    
+    // For GET requests, expose CSRF token via header for frontend to read
+    if (req.method === 'GET') {
+      res.header('X-CSRF-Token', req.session.csrfToken);
+    }
+    
+    next();
+  });
+
+  // CSRF Validation Middleware (for state-changing requests)
+  app.use((req: any, res: any, next: any) => {
+    // Only validate CSRF for state-changing methods
+    const stateMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
+    if (!stateMethods.includes(req.method)) {
+      return next();
+    }
+
+    // Validate CSRF token
+    const headerToken = req.headers['x-csrf-token'];
+    const sessionToken = req.session?.csrfToken;
+    
+    if (!headerToken || !sessionToken || headerToken !== sessionToken) {
+      console.log(`CSRF validation failed: headerToken=${headerToken}, sessionToken exists=${!!sessionToken}`);
+      return res.status(403).json({ message: 'Invalid CSRF token' });
+    }
+
+    // Validate Origin/Referer for CSRF protection
+    const currentHost = req.protocol + '://' + req.get('host');
+    const origin = req.headers.origin;
+    const refererOrigin = req.headers.referer ? new URL(req.headers.referer).origin : null;
+    const requestOrigin = origin || refererOrigin;
+
+    // Allow current host and explicitly whitelisted origins
+    const allowedOrigins = [
+      'https://interlinc.app',
+      'https://www.interlinc.app', 
+      'https://interlinc.co',
+      'https://www.interlinc.co',
+      currentHost
+    ];
+
+    // In development, also allow replit domains
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.REPLIT_ENVIRONMENT === 'production';
+    const isReplitDomain = !isProduction && requestOrigin && requestOrigin.includes('.replit.app');
+    
+    if (requestOrigin && !allowedOrigins.includes(requestOrigin) && !isReplitDomain) {
+      console.log(`Origin validation failed: origin=${requestOrigin}, allowed=${allowedOrigins}`);
+      return res.status(403).json({ message: 'Invalid origin' });
+    }
+
+    next();
+  });
 
   // Initialize passport
   app.use(passport.initialize());

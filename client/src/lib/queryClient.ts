@@ -60,6 +60,9 @@ export async function apiRequest(
     // Normalize method name to uppercase
     const normalizedMethod = method.toUpperCase();
     
+    // Make sure the URL is always lowercase to match server routes
+    const normalizedUrl = url.toLowerCase();
+    
     // Content-Type is only needed for methods with a body (POST, PUT, PATCH)
     const defaultHeaders: Record<string, string> = 
       data && ['POST', 'PUT', 'PATCH'].includes(normalizedMethod) 
@@ -71,32 +74,20 @@ export async function apiRequest(
       defaultHeaders['X-CSRF-Token'] = csrfToken;
     }
     
-    // Add authentication headers required by backend
-    const userId = localStorage.getItem('user_id');
+    // Add authentication headers - ONLY for /api/user endpoint (Firebase auth)
+    // Other endpoints use session authentication via cookies
     const firebaseUid = localStorage.getItem('firebase_uid');
     
-    console.log('Authentication headers check:');
-    console.log('user_id from localStorage:', userId);
-    console.log('firebase_uid from localStorage:', firebaseUid);
-    
-    if (userId) {
-      defaultHeaders['X-User-ID'] = userId;
-      console.log('Added X-User-ID header:', userId);
-    }
-    
-    if (firebaseUid) {
+    if (normalizedUrl === '/api/user' && firebaseUid) {
       defaultHeaders['X-Firebase-UID'] = firebaseUid;
-      console.log('Added X-Firebase-UID header:', firebaseUid);
-    }
-    
-    if (!userId && !firebaseUid) {
-      console.log('No authentication headers available - user not logged in');
+      console.log('Added Firebase UID header for /api/user:', firebaseUid);
+    } else if (normalizedUrl === '/api/user') {
+      console.log('No Firebase UID available for /api/user endpoint');
+    } else {
+      console.log(`Using session authentication for ${normalizedUrl}`);
     }
     
     const headers: Record<string, string> = { ...defaultHeaders, ...(customHeaders || {}) };
-    
-    // Make sure the URL is always lowercase to match server routes
-    const normalizedUrl = url.toLowerCase();
     
     // Log the fetch request for debugging
     console.log(`API Request: ${normalizedMethod} ${normalizedUrl}`, { headers, hasCookies: document.cookie.length > 0 });
@@ -150,29 +141,27 @@ export const getQueryFn: <T>(options: {
       const endpoint = (queryKey[0] as string).toLowerCase();
       console.log(`Fetching data from ${endpoint}`);
       
-      // Add authentication headers - use the same logic as apiRequest
-      const userId = localStorage.getItem('user_id');
+      // Authentication logic: Firebase headers ONLY for /api/user, session cookies for others
       const firebaseUid = localStorage.getItem('firebase_uid');
       
       // Log the fetch request for debugging
       console.log(`Query Request: GET ${endpoint}`, { 
         hasCookies: document.cookie.length > 0,
         cookieString: document.cookie,
-        hasUserInStorage: !!userId
+        authMethod: endpoint === '/api/user' ? 'firebase' : 'session'
       });
       
-      // Use header-based authentication with localStorage
+      // Setup headers - Firebase UID only for /api/user endpoint
       const headers: HeadersInit = {
         'Accept': 'application/json',
         'Cache-Control': 'no-cache'
       };
       
-      if (userId) {
-        headers['X-User-ID'] = userId;
-      }
-      
-      if (firebaseUid) {
+      if (endpoint === '/api/user' && firebaseUid) {
         headers['X-Firebase-UID'] = firebaseUid;
+        console.log('Using Firebase authentication for /api/user');
+      } else if (endpoint !== '/api/user') {
+        console.log(`Using session authentication for ${endpoint}`);
       }
       
       const res = await fetch(endpoint, {
