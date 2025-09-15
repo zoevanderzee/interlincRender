@@ -12,6 +12,7 @@ interface IntegratedStats {
   pendingInvitesCount: number;
   totalBudgetUsed: string;
   remainingBudget: string | null;
+  totalProjectsCount: number;
 }
 
 interface IntegratedData {
@@ -60,11 +61,12 @@ export function useIntegratedData() {
     refetchInterval: 30 * 1000,
   });
 
-  // Projects data
+  // Projects data - separate from contracts
   const { data: projectsData, isLoading: isProjectsLoading } = useQuery({
     queryKey: ['/api/projects'],
     enabled: !!user,
     staleTime: 30 * 1000,
+    select: (data) => data || [],
   });
 
   // Work requests for contractors
@@ -161,13 +163,14 @@ export function useIntegratedData() {
       pendingInvitesCount: dashboardData?.stats?.pendingInvitesCount || 0,
       totalBudgetUsed: budgetData?.budgetUsed || "0.00",
       remainingBudget: budgetData?.remainingBudget || null,
+      totalProjectsCount: dashboardData?.stats?.totalProjectsCount || projectsData?.length || 0,
     },
     contracts: dashboardData?.contracts || [],
     contractors: dashboardData?.contractors || [],
     milestones: dashboardData?.milestones || [],
     payments: dashboardData?.payments || [],
     invites: dashboardData?.invites || [],
-    projects: projectsData || [],
+    projects: projectsData || [], // Use actual projects data, not contracts
     workRequests: workRequestsData || [],
     walletBalance: walletData?.balance || 0,
     budgetData: budgetData || null,

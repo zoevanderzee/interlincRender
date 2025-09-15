@@ -2449,6 +2449,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Continue with empty invites array
       }
 
+      // Get actual projects count for dashboard stats
+      const userProjects = await storage.getBusinessProjects(userId || 0);
+
       const dashboardData = {
         stats: {
           activeContractsCount: activeContracts.length,
@@ -2456,12 +2459,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           paymentsProcessed: totalPaymentsValue,
           totalPendingValue: totalPendingValue, // Add total pending value from contracts
           activeContractorsCount: activeContractorsCount, // Use the proper active contractors count
-          pendingInvitesCount: pendingInvites.length
+          pendingInvitesCount: pendingInvites.length,
+          totalProjectsCount: userProjects.length // Add actual projects count
         },
         contracts: userContracts.filter(contract => contract.status !== 'deleted'),
         contractors: allContractors,  // Add contractors data
         milestones: upcomingMilestones,
         payments: allUpcomingPayments, // Include virtual payments
+        projects: userProjects, // Include projects data in dashboard
         // Only include minimal invite data to prevent errors
         invites: pendingInvites.map(item => ({
           id: typeof item.id === 'number' ? item.id : 0,
@@ -2976,64 +2981,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error deactivating business invite link:", error);
       res.status(500).json({ message: "Error deactivating business invite link" });
-    }
-  });
-
-  // Verify business invite token
-  app.post(`${apiRouter}/business/verify-invite`, async (req: Request, res: Response) => {
-    try {
-      const { token } = req.body;
-
-      if (!token) {
-        return res.status(400).json({ message: "Token is required" });
-      }
-
-      // Check for the fallback token format: "fallback-token-{userId}" or "permanent-link-{userId}"
-      if (token.startsWith('fallback-token-') || token.startsWith('permanent-link-')) {
-        // Extract the user ID from the token
-        const userId = parseInt(token.split('-').pop() || '0');
-
-        if (!userId) {
-          return res.status(400).json({ message: "Invalid fallback token format" });
-        }
-
-        // Get the business user's info
-        const business = await storage.getUser(userId);
-
-        if (!business || business.role !== 'business') {
-          return res.status(404).json({ message: "Invalid business user ID in token" });
-        }
-
-        console.log("Using fallback token verification for business ID:", userId);
-
-        // Return the business info with default worker type
-        return res.json({
-          valid: true,
-          businessId: business.id,
-          businessName: business.company || `${business.firstName || ''} ${business.lastName || ''}`.trim(),
-          workerType: 'contractor'
-        });
-      }
-
-      // Standard token verification
-      const linkInfo = await storage.verifyOnboardingToken(token);
-
-      if (!linkInfo) {
-        return res.status(404).json({ message: "Invalid or expired invite link" });
-      }
-
-      // Get the business name to show in the registration page
-      const business = await storage.getUser(linkInfo.businessId);
-
-      res.json({
-        valid: true,
-        businessId: linkInfo.businessId,
-        businessName: business ? (business.companyName || `${business.firstName || ''} ${business.lastName || ''}`).trim() : "Unknown Business",
-        workerType: linkInfo.workerType
-      });
-    } catch (error: any) {
-      console.error("Error verifying business invite link:", error);
-      res.status(500).json({ message: "Error verifying business invite link" });
     }
   });
 
@@ -5142,7 +5089,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       let paymentResult = null;
-      
+
       // If approved, update work request, activate contract, AND attempt payment
       if (status === 'approved') {
         await storage.updateWorkRequest(submission.workRequestId, {
@@ -5160,14 +5107,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           try {
             const milestones = await storage.getMilestonesByContractId(workRequest.contractId);
             const autoPayMilestone = milestones.find(m => m.autoPayEnabled && m.status !== 'completed');
-            
+
             if (autoPayMilestone) {
               console.log(`[APPROVAL_PAYMENT] Attempting payment for milestone ${autoPayMilestone.id} after work approval`);
               paymentResult = await automatedPaymentService.processApprovedWorkPayment(autoPayMilestone.id, req.user!.id);
-              
+
               if (paymentResult.success) {
                 console.log(`[APPROVAL_PAYMENT] ✅ Payment successful: $${paymentResult.payment?.amount} to contractor ${paymentResult.payment?.contractorId}`);
-                
+
                 // Mark milestone as completed since payment was processed
                 await storage.updateMilestone(autoPayMilestone.id, { status: 'completed' });
               } else {
@@ -5195,18 +5142,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 🚀 NEW: Bulk approval endpoint for multiple work request submissions
-  app.post('/api/projects/:projectId/submissions/bulk-approve', requireStrictAuth, async (req: AuthenticatedRequest, res) => {
+  app.post(`${apiRouter}/projects/:projectId/submissions/bulk-approve`, requireStrictAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const projectIdParam = req.params.projectId;
       const { submissionIds, feedback } = req.body; // submissionIds can be array or 'all'
-      
+
       // Only businesses can approve submissions
       if (req.user!.role !== 'business') {
         return res.status(403).json({ message: 'Only businesses can approve work submissions' });
       }
 
       let targetSubmissions = [];
-      
+
       // Handle 'all' projects case
       if (projectIdParam === 'all') {
         // Get all pending submissions for this business across all projects
@@ -5224,16 +5171,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!project || project.businessId !== req.user!.id) {
           return res.status(403).json({ message: 'Access denied to this project' });
         }
-        
+
         // Get submissions for specific project
         const allSubmissions = await storage.getWorkRequestSubmissionsByBusinessId(req.user!.id);
         targetSubmissions = allSubmissions.filter(sub => 
           sub.status === 'pending' && 
           // Need to filter by project through work request relationship
+          // This is a simplified approach - in production you'd need proper JOIN
           true // For now filter by business only - would need JOIN in production
         );
       }
-      
+
       if (submissionIds === 'all') {
         // Get all pending submissions for this project
         const allSubmissions = await storage.getWorkRequestSubmissionsByBusinessId(req.user!.id);
@@ -5289,7 +5237,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           // 🚀 STEP 1: APPROVE WORK FIRST (always, regardless of payment issues)
           console.log(`[BULK_APPROVAL] Approving work for submission ${submission.id}`);
-          
+
           const updatedSubmission = await storage.updateWorkRequestSubmission(submission.id, {
             status: 'approved',
             reviewNotes: feedback || 'Bulk approved',
@@ -5312,16 +5260,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           // 🚀 STEP 2: ATTEMPT PAYMENT (non-blocking - approval already done)
           let paymentResult = null;
-          
+
           if (workRequest.contractId) {
             try {
               const milestones = await storage.getMilestonesByContractId(workRequest.contractId);
               const autoPayMilestone = milestones.find(m => m.autoPayEnabled && m.status !== 'completed');
-              
+
               if (autoPayMilestone) {
                 console.log(`[BULK_APPROVAL] Attempting payment for submission ${submission.id}`);
                 paymentResult = await automatedPaymentService.processApprovedWorkPayment(autoPayMilestone.id, req.user!.id);
-                
+
                 if (paymentResult.success) {
                   console.log(`[BULK_APPROVAL] ✅ Payment successful for submission ${submission.id}: $${autoPayMilestone.paymentAmount}`);
                   totalPaymentsSuccessful++;
@@ -5361,8 +5309,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const approvedCount = results.filter(r => r.status === 'approved').length;
       const errorCount = results.filter(r => r.status === 'error').length;
-      
-      console.log(`[BULK_APPROVAL] 🎉 Completed: ${approvedCount} approved, ${errorCount} errors, ${totalPaymentsSuccessful} payments successful, ${totalPaymentsFailed} payments failed`);
+
+      console.log(`[BULK_APPROVAL] Completed: ${approvedCount} approved, ${errorCount} errors, ${totalPaymentsSuccessful} payments successful, ${totalPaymentsFailed} payments failed`);
 
       res.json({
         success: true,
@@ -6865,7 +6813,7 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
       // Generate a unique upload token for this user
       const uploadToken = nodeCrypto.randomUUID();
       const uploadURL = `/api/files/direct-upload/${uploadToken}`;
-      
+
       // Store the upload token temporarily (in production, use Redis or similar)
       // For now, we'll just return the URL and handle the upload in the direct-upload endpoint
       res.json({ uploadURL });
@@ -6889,7 +6837,7 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
 
       // Return the file URL that can be used to access the uploaded file
       const fileURL = `/api/files/view/${req.file.filename}`;
-      
+
       res.json({ 
         url: fileURL,
         filename: req.file.filename,

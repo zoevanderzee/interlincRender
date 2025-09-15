@@ -214,7 +214,7 @@ export default function Projects() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-400">Total Projects</p>
-                <p className="text-3xl font-bold text-white">{projects.length}</p>
+                <p className="text-3xl font-bold text-white">{integratedData?.stats?.totalProjectsCount || projects.length}</p>
               </div>
               <FileText className="h-8 w-8 text-blue-500" />
             </div>
