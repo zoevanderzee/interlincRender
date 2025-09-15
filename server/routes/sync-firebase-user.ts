@@ -33,26 +33,23 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
         // User found and synced successfully  
         console.log(`User metadata synced for user ID ${existingUser.id} (${existingUser.username})`);
 
-        // Ensure session is properly set
-        req.session.userId = existingUser.id;
-        req.session.user = existingUser;
+        // SECURITY FIX: Use Passport.js session instead of manual session
+        req.login(existingUser, (err) => {
+          if (err) {
+            console.error('Passport login error:', err);
+            return res.status(500).json({ 
+              success: false, 
+              error: 'Failed to create secure session' 
+            });
+          }
 
-        await new Promise<void>((resolve, reject) => {
-          req.session.save((err) => {
-            if (err) {
-              console.error('Session save error:', err);
-              reject(err);
-            } else {
-              console.log(`Session saved for user ${existingUser.id}`);
-              resolve();
-            }
+          console.log(`✅ Secure Passport session created for user ${existingUser.id}`);
+          
+          return res.json({ 
+            success: true, 
+            message: "User metadata synced",
+            userId: existingUser.id
           });
-        });
-
-        return res.json({ 
-          success: true, 
-          message: "User metadata synced",
-          userId: existingUser.id
         });
       }
 
@@ -79,26 +76,23 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
       // User created and synced successfully
       console.log(`User metadata created for user ID ${newUser.id} (${newUser.username})`);
 
-      // Ensure session is properly set
-      req.session.userId = newUser.id;
-      req.session.user = newUser;
+      // SECURITY FIX: Use Passport.js session instead of manual session  
+      req.login(newUser, (err) => {
+        if (err) {
+          console.error('Passport login error:', err);
+          return res.status(500).json({ 
+            success: false, 
+            error: 'Failed to create secure session' 
+          });
+        }
 
-      await new Promise<void>((resolve, reject) => {
-        req.session.save((err) => {
-          if (err) {
-            console.error('Session save error:', err);
-            reject(err);
-          } else {
-            console.log(`Session saved for user ${newUser.id}`);
-            resolve();
-          }
+        console.log(`✅ Secure Passport session created for user ${newUser.id}`);
+        
+        return res.json({ 
+          success: true, 
+          message: "User metadata created",
+          userId: newUser.id
         });
-      });
-
-      return res.json({ 
-        success: true, 
-        message: "User metadata created",
-        userId: newUser.id
       });
 
     } catch (error) {
