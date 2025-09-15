@@ -46,6 +46,9 @@ export function setupAuth(app: Express) {
     process.env.SESSION_SECRET = randomBytes(32).toString("hex");
   }
 
+  // Detect if we're running in a secure context (production)
+  const isProduction = process.env.NODE_ENV === 'production' || process.env.REPL_ID;
+  
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || 'interlinc-secret-key',
     resave: false,
@@ -53,10 +56,10 @@ export function setupAuth(app: Express) {
     name: 'interlinc.sid',
     rolling: false, // Don't extend session on each request to avoid issues
     cookie: {
-      secure: false, // Allow cookies over HTTP and HTTPS for reliability
+      secure: isProduction, // Use secure cookies in production for HTTPS
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
-      httpOnly: false, // Allow JS access to fix cookie delivery issues
-      sameSite: 'lax', // Use 'lax' for Replit compatibility (none requires secure=true)
+      httpOnly: true, // Prevent XSS attacks - cookies only accessible via HTTP(S)
+      sameSite: isProduction ? 'none' : 'lax', // 'none' required for secure cookies across origins
       path: '/', // Available for entire site
       domain: undefined, // Let browser handle domain automatically
     },
@@ -584,6 +587,14 @@ export function setupAuth(app: Express) {
 
   // Get current user route - Updated for Firebase Auth
   app.get("/api/user", async (req, res) => {
+    // Set cache headers to prevent stale user data across environments
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'Vary': 'Cookie, Authorization, X-Firebase-UID'
+    });
+
     console.log("Auth check for session:", req.sessionID, "Authenticated:", req.isAuthenticated());
 
     // Log request headers for debugging
@@ -808,15 +819,15 @@ export function setupAuth(app: Express) {
       return next();
     }
 
-    // Fallback: Check for X-User-ID header and attempt to load the user
+    // Fallback: Check for X-User-ID header (DEVELOPMENT ONLY for security)
     const userIdHeader = req.headers['x-user-id'];
-    if (userIdHeader) {
+    if (userIdHeader && !isProduction) {
       try {
         const userId = parseInt(userIdHeader);
         if (!isNaN(userId)) {
           const user = await storage.getUser(userId);
           if (user) {
-            console.log(`Using X-User-ID header fallback authentication for user ID: ${userId}`);
+            console.log(`Using X-User-ID header fallback authentication for user ID: ${userId} (development only)`);
             // Manually set user on request object
             req.user = user;
             return next();
@@ -825,6 +836,8 @@ export function setupAuth(app: Express) {
       } catch (error) {
         console.error('Error in X-User-ID fallback authentication:', error);
       }
+    } else if (userIdHeader && isProduction) {
+      console.warn('X-User-ID header ignored in production for security');
     }
 
     // If all authentication methods fail
