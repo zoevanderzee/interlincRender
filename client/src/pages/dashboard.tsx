@@ -162,6 +162,14 @@ const Dashboard = () => {
     );
   }
 
+  // DEBUG: Log rendering decision
+  console.log("Dashboard rendering debug:");
+  console.log("- user:", user);
+  console.log("- user.role:", user?.role);
+  console.log("- dashboardData exists:", !!dashboardData);
+  console.log("- contractor condition:", user && user.role === 'contractor' && dashboardData);
+  console.log("- will render:", user && user.role === 'contractor' && dashboardData ? "CONTRACTOR" : "BUSINESS");
+
   // If user is a contractor, show a specialized contractor interface
   if (user && user.role === 'contractor' && dashboardData) {
     return (
