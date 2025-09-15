@@ -184,8 +184,9 @@ export default function Projects() {
     );
   }
   
-  const activeContracts = contracts.filter((contract: any) => contract.status === 'active');
-  const totalValue = contracts.reduce((sum: number, contract: any) => sum + parseFloat(contract.value || 0), 0);
+  const activeProjects = projects.filter((project: any) => project.status === 'active');
+  const assignedProjects = projects.filter((project: any) => contracts.some((contract: any) => contract.projectId === project.id));
+  const totalValue = projects.reduce((sum: number, project: any) => sum + parseFloat(project.budget || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -199,7 +200,7 @@ export default function Projects() {
         </div>
         <Button 
           className="bg-blue-600 hover:bg-blue-700"
-          onClick={() => navigate('/contracts/new')}
+          onClick={() => navigate('/projects/new')}
         >
           <Plus className="mr-2 h-4 w-4" />
           New Project
@@ -213,7 +214,7 @@ export default function Projects() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-400">Total Projects</p>
-                <p className="text-3xl font-bold text-white">{contracts.length}</p>
+                <p className="text-3xl font-bold text-white">{projects.length}</p>
               </div>
               <FileText className="h-8 w-8 text-blue-500" />
             </div>
@@ -224,8 +225,8 @@ export default function Projects() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-400">Active Contracts</p>
-                <p className="text-3xl font-bold text-white">{activeContracts.length}</p>
+                <p className="text-sm text-gray-400">Assigned Projects</p>
+                <p className="text-3xl font-bold text-white">{assignedProjects.length}</p>
               </div>
               <Users className="h-8 w-8 text-green-500" />
             </div>
@@ -263,53 +264,65 @@ export default function Projects() {
           <h2 className="text-xl font-semibold text-white">Your Projects</h2>
         </div>
         
-        {contracts.length > 0 ? (
-          contracts.map((contract: any) => (
-            <Card key={contract.id} className="bg-zinc-900 border-zinc-800">
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-white">{contract.contractName}</CardTitle>
-                    <p className="text-gray-400 text-sm mt-1">{contract.description || 'No description available'}</p>
-                  </div>
-                  <Badge variant={contract.status === 'active' ? 'default' : 'secondary'}>
-                    {contract.status}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center space-x-4">
-                    <div className="flex items-center text-gray-400">
-                      <DollarSign className="mr-1 h-4 w-4" />
-                      <span>Value: ${contract.value || 0}</span>
+        {projects.length > 0 ? (
+          projects.map((project: any) => {
+            const projectContracts = contracts.filter((contract: any) => contract.projectId === project.id);
+            const isAssigned = projectContracts.length > 0;
+            
+            return (
+              <Card key={project.id} className="bg-zinc-900 border-zinc-800">
+                <CardHeader>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="text-white">{project.name}</CardTitle>
+                      <p className="text-gray-400 text-sm mt-1">{project.description || 'No description available'}</p>
+                      {isAssigned && (
+                        <p className="text-blue-400 text-sm mt-1">
+                          {projectContracts.length} contractor{projectContracts.length !== 1 ? 's' : ''} assigned
+                        </p>
+                      )}
                     </div>
-                    {contract.createdAt && (
+                    <Badge variant={isAssigned ? 'default' : 'secondary'}>
+                      {isAssigned ? 'Assigned' : 'Unassigned'}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center space-x-4">
                       <div className="flex items-center text-gray-400">
-                        <Calendar className="mr-1 h-4 w-4" />
-                        <span>Created: {new Date(contract.createdAt).toLocaleDateString()}</span>
+                        <DollarSign className="mr-1 h-4 w-4" />
+                        <span>Budget: ${project.budget || 0}</span>
                       </div>
-                    )}
+                      {project.createdAt && (
+                        <div className="flex items-center text-gray-400">
+                          <Calendar className="mr-1 h-4 w-4" />
+                          <span>Created: {new Date(project.createdAt).toLocaleDateString()}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex space-x-2">
+                      {isAssigned && (
+                        <Button 
+                          variant="outline"
+                          onClick={() => navigate(`/project/${project.id}`)}
+                          className="border-gray-700 text-white hover:bg-gray-800"
+                        >
+                          View Details
+                        </Button>
+                      )}
+                      <Button 
+                        onClick={() => navigate(`/assign-contractor?projectId=${project.id}`)}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        {isAssigned ? 'Add More Contractors' : 'Assign Contractor'}
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex space-x-2">
-                    <Button 
-                      variant="outline"
-                      onClick={() => navigate(`/contract/${contract.id}`)}
-                      className="border-gray-700 text-white hover:bg-gray-800"
-                    >
-                      View Details
-                    </Button>
-                    <Button 
-                      onClick={() => navigate(`/assign-contractor?projectId=${contract.id}`)}
-                      className="bg-blue-600 hover:bg-blue-700"
-                    >
-                      Add Contractor
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
+                </CardContent>
+              </Card>
+            );
+          })
         ) : (
           <Card className="bg-zinc-900 border-zinc-800">
             <CardContent className="pt-6 pb-6 text-center">
@@ -321,7 +334,7 @@ export default function Projects() {
                 Create your first project to start working with contractors.
               </p>
               <Button 
-                onClick={() => navigate('/contracts/new')}
+                onClick={() => navigate('/projects/new')}
                 className="bg-blue-600 hover:bg-blue-700"
               >
                 Create Project
