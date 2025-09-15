@@ -53,12 +53,12 @@ export function setupAuth(app: Express) {
     name: 'interlinc.sid',
     rolling: false, // Don't extend session on each request to avoid issues
     cookie: {
-      secure: false, // Allow cookies over HTTP for Replit compatibility
+      secure: process.env.NODE_ENV === 'production', // true in production, false in development
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
       httpOnly: true, // Security: prevent JS access
-      sameSite: 'lax', // SECURITY FIX: Use 'lax' for better security
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' for production cross-origin
       path: '/', // Available for entire site
-      domain: undefined, // SECURITY FIX: Let browser handle domain automatically
+      domain: process.env.NODE_ENV === 'production' ? '.interlinc.app' : undefined, // Cross-subdomain in production
     },
     // Use the storage implementation's session store
     store: storage.sessionStore
@@ -792,76 +792,17 @@ export function setupAuth(app: Express) {
     }
   });
 
-  // EMERGENCY: Secure session bootstrap endpoint using Firebase ID token verification
-  app.post("/api/session-login", async (req, res) => {
-    try {
-      const { idToken } = req.body;
-      
-      if (!idToken) {
-        return res.status(400).json({ error: "Firebase ID token required" });
-      }
-
-      console.log("🔐 Session bootstrap: Verifying Firebase ID token");
-
-      // Import Firebase Admin to verify the ID token
-      let decodedToken;
-      try {
-        // const { admin } = await import('./firebase-admin'); // TEMPORARY FIX - module not found
-        throw new Error("Firebase admin module not configured");
-        decodedToken = await admin.auth().verifyIdToken(idToken);
-        console.log("✅ Firebase ID token verified for:", decodedToken.email);
-      } catch (error) {
-        console.error("❌ Firebase token verification failed:", error);
-        return res.status(401).json({ error: "Invalid Firebase ID token" });
-      }
-
-      // Require verified email
-      if (!decodedToken.email_verified) {
-        console.log("❌ Email not verified for:", decodedToken.email);
-        return res.status(401).json({ error: "Email verification required" });
-      }
-
-      // Find user by email
-      const user = await storage.getUserByEmail(decodedToken.email.toLowerCase());
-      if (!user) {
-        console.log("❌ User not found for email:", decodedToken.email);
-        return res.status(404).json({ error: "User account not found" });
-      }
-
-      // Check subscription status (matching current logic)
-      if (!user.subscriptionStatus || !['active', 'trialing'].includes(user.subscriptionStatus)) {
-        console.log("❌ User subscription inactive:", user.subscriptionStatus);
-        return res.status(402).json({ error: "Active subscription required" });
-      }
-
-      // Create secure session using Passport
-      req.login(user, (err) => {
-        if (err) {
-          console.error("❌ Session creation failed:", err);
-          return res.status(500).json({ error: "Failed to create session" });
-        }
-
-        console.log(`✅ Secure session created for user ${user.id} (${user.username})`);
-        
-        // Return sanitized user data (exclude password/sensitive fields)
-        const { password, resetPasswordToken, resetPasswordExpires, emailVerificationToken, emailVerificationExpires, ...sanitizedUser } = user;
-        
-        res.json({
-          success: true,
-          message: "Session authentication established",
-          user: sanitizedUser
-        });
-      });
-
-    } catch (error) {
-      console.error("🚨 Session bootstrap error:", error);
-      res.status(500).json({ error: "Session bootstrap failed" });
-    }
-  });
-
-  // Create middleware to check user authentication (SESSION ONLY - NO HEADER FALLBACKS)
+  // Create middleware to check user authentication
   const requireAuth = async (req: any, res: any, next: any) => {
     console.log("Auth check in requireAuth middleware:", req.isAuthenticated(), "Session ID:", req.sessionID);
+
+    // Log request headers for debugging
+    console.log("API request headers in requireAuth:", {
+      cookie: req.headers.cookie,
+      'user-agent': req.headers['user-agent'],
+      'x-user-id': req.headers['x-user-id'],
+      path: req.path
+    });
 
     // Debug session information
     console.log("Session data:", {
@@ -872,17 +813,32 @@ export function setupAuth(app: Express) {
       passport: req.session?.passport
     });
 
-    // SECURITY: Only allow session-based authentication - no header fallbacks
+    // First check traditional session-based authentication
     if (req.isAuthenticated()) {
-      // Store authenticated user ID in res.locals for downstream use
-      res.locals.userId = req.user.id;
-      res.locals.userRole = req.user.role;
       return next();
     }
 
-    // CRITICAL: No header fallbacks - this prevents authentication bypass attacks
-    console.log("Authentication failed: No valid session found");
-    return res.status(401).json({ error: "Session authentication required. Please log in." });
+    // Fallback: Check for X-User-ID header and attempt to load the user
+    const userIdHeader = req.headers['x-user-id'];
+    if (userIdHeader) {
+      try {
+        const userId = parseInt(userIdHeader);
+        if (!isNaN(userId)) {
+          const user = await storage.getUser(userId);
+          if (user) {
+            console.log(`Using X-User-ID header fallback authentication for user ID: ${userId}`);
+            // Manually set user on request object
+            req.user = user;
+            return next();
+          }
+        }
+      } catch (error) {
+        console.error('Error in X-User-ID fallback authentication:', error);
+      }
+    }
+
+    // If all authentication methods fail
+    return res.status(401).json({ error: "Not authenticated" });
   };
 
   // Create strict authentication middleware for payment operations (no header fallbacks)

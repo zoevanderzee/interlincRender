@@ -73,7 +73,6 @@ export const loginUser = async (email: string, password: string): Promise<Fireba
       });
     } catch (syncError) {
       console.warn("Backend sync failed, but login succeeded:", syncError);
-      // Continue with login even if sync fails - user can still access the app
     }
 
     return {

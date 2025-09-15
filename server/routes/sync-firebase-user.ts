@@ -15,30 +15,8 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
     try {
       const { uid, email, emailVerified, displayName } = syncFirebaseUserSchema.parse(req.body);
 
-      // Helper to promisify req.login
-      const loginAsync = (user: any): Promise<void> => {
-        return new Promise<void>((resolve, reject) => {
-          req.login(user, (err) => {
-            if (err) {
-              reject(err);
-            } else {
-              resolve();
-            }
-          });
-        });
-      };
-
       // Check if user already exists by email (case-insensitive)
-      let existingUser;
-      try {
-        existingUser = await storage.getUserByEmail(email.toLowerCase());
-      } catch (dbError) {
-        console.error('Database error getting user by email:', dbError);
-        return res.status(500).json({ 
-          success: false, 
-          error: 'Database connection error' 
-        });
-      }
+      let existingUser = await storage.getUserByEmail(email.toLowerCase());
       
       // Also check by Firebase UID in case email doesn't match
       if (!existingUser) {
@@ -47,81 +25,81 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
 
       if (existingUser) {
         // Update existing user with Firebase UID and verification status
-        await storage.updateUser(existingUser.id, { 
+        const result = await storage.updateUser(existingUser.id, { 
           firebaseUid: uid,
           emailVerified: emailVerified 
         });
 
+        // User found and synced successfully  
         console.log(`User metadata synced for user ID ${existingUser.id} (${existingUser.username})`);
-        
-        await loginAsync(existingUser);
-        console.log(`✅ Secure Passport session created for user ${existingUser.id}`);
-        
+
+        // Ensure session is properly set
+        req.session.userId = existingUser.id;
+        req.session.user = existingUser;
+
+        await new Promise<void>((resolve, reject) => {
+          req.session.save((err) => {
+            if (err) {
+              console.error('Session save error:', err);
+              reject(err);
+            } else {
+              console.log(`Session saved for user ${existingUser.id}`);
+              resolve();
+            }
+          });
+        });
+
         return res.json({ 
           success: true, 
           message: "User metadata synced",
           userId: existingUser.id
         });
-      } else {
-        console.log(`🚨 CRITICAL: No existing user found for email ${email} or Firebase UID ${uid}`);
-        console.log(`This should not happen for existing business users - check for account corruption`);
-        
-        // Try to find by username before creating
-        const existingByUsername = await storage.getUserByUsername(email.split('@')[0].toLowerCase());
-        
-        if (existingByUsername) {
-          // User exists but without Firebase UID, update it
-          await storage.updateUser(existingByUsername.id, { 
-            firebaseUid: uid,
-            emailVerified: emailVerified 
-          });
-          
-          console.log(`User metadata synced for existing username ${existingByUsername.id} (${existingByUsername.username})`);
-          
-          await loginAsync(existingByUsername);
-          console.log(`✅ Secure Passport session created for user ${existingByUsername.id}`);
-          
-          return res.json({ 
-            success: true, 
-            message: "User metadata synced",
-            userId: existingByUsername.id
-          });
-        }
-
-        // Create minimal user record for metadata storage with unique username
-        let username = email.split('@')[0].toLowerCase();
-        let counter = 1;
-        
-        // Ensure unique username by appending counter if needed
-        while (await storage.getUserByUsername(username)) {
-          username = `${email.split('@')[0].toLowerCase()}${counter}`;
-          counter++;
-        }
-
-        const userData = {
-          email: email.toLowerCase(),
-          username: username,
-          firstName: displayName?.split(' ')[0] || 'User',
-          lastName: displayName?.split(' ').slice(1).join(' ') || '',
-          password: 'firebase_managed',
-          role: 'contractor' as const,
-          firebaseUid: uid,
-          emailVerified: emailVerified,
-          subscriptionStatus: 'inactive' as const
-        };
-
-        const newUser = await storage.createUser(userData);
-        console.log(`User metadata created for user ID ${newUser.id} (${newUser.username})`);
-        
-        await loginAsync(newUser);
-        console.log(`✅ Secure Passport session created for user ${newUser.id}`);
-        
-        return res.json({ 
-          success: true, 
-          message: "User metadata created",
-          userId: newUser.id
-        });
       }
+
+      // CRITICAL: Log this case to prevent duplicate accounts
+      console.error(`🚨 CRITICAL: No existing user found for email ${email} or Firebase UID ${uid}`);
+      console.error('This should not happen for existing business users - check for account corruption');
+      
+      // Create minimal user record for metadata storage
+      // Note: This is optional - Firebase handles all authentication
+      const userData = {
+        email: email.toLowerCase(), // Normalize email to lowercase
+        username: email.split('@')[0].toLowerCase(),
+        firstName: displayName?.split(' ')[0] || 'User',
+        lastName: displayName?.split(' ').slice(1).join(' ') || '',
+        password: 'firebase_managed', // Not used for authentication
+        role: 'contractor' as const, // Default to contractor for new accounts
+        firebaseUid: uid,
+        emailVerified: emailVerified,
+        subscriptionStatus: 'inactive' as const
+      };
+
+      const newUser = await storage.createUser(userData);
+
+      // User created and synced successfully
+      console.log(`User metadata created for user ID ${newUser.id} (${newUser.username})`);
+
+      // Ensure session is properly set
+      req.session.userId = newUser.id;
+      req.session.user = newUser;
+
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((err) => {
+          if (err) {
+            console.error('Session save error:', err);
+            reject(err);
+          } else {
+            console.log(`Session saved for user ${newUser.id}`);
+            resolve();
+          }
+        });
+      });
+
+      return res.json({ 
+        success: true, 
+        message: "User metadata created",
+        userId: newUser.id
+      });
 
     } catch (error) {
       console.error('Sync Firebase user error:', error);

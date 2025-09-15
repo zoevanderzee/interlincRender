@@ -57,9 +57,7 @@ export const users = pgTable("users", {
   emailVerified: boolean("email_verified").default(false), // Whether user's email is verified
   emailVerificationToken: text("email_verification_token"), // Token for email verification
   emailVerificationExpires: timestamp("email_verification_expires"), // Expiration time for email verification token
-  firebaseUid: text("firebase_uid"), // Firebase user ID for linking accounts
-  updatedAt: timestamp("updated_at").defaultNow(), // When user was last updated
-  company: text("company") // Company field alias for companyName for backward compatibility
+  firebaseUid: text("firebase_uid") // Firebase user ID for linking accounts
 });
 
 // Project Invites table
@@ -111,8 +109,6 @@ export const milestones = pgTable("milestones", {
   progress: integer("progress").notNull().default(0), // 0-100 percentage
   submittedAt: timestamp("submitted_at"), // When contractor submitted the deliverable
   approvedAt: timestamp("approved_at"), // When business approved the deliverable
-  rejectedAt: timestamp("rejected_at"), // When business rejected the deliverable
-  updatedAt: timestamp("updated_at").notNull().defaultNow(), // When milestone was last updated
   autoPayEnabled: boolean("auto_pay_enabled").default(true), // Whether payment should be automatically triggered on approval
   deliverableUrl: text("deliverable_url"), // URL or path to submitted deliverable (legacy)
   deliverableFiles: jsonb("deliverable_files"), // Array of file objects {url, name, type, size}
@@ -134,7 +130,6 @@ export const payments = pgTable("payments", {
   scheduledDate: timestamp("scheduled_date").notNull(),
   completedDate: timestamp("completed_date"),
   notes: text("notes"),
-  description: text("description"), // Payment description
   stripePaymentIntentId: text("stripe_payment_intent_id"), // Stripe Payment Intent ID
   stripePaymentIntentStatus: text("stripe_payment_intent_status"), // Stripe Payment Intent Status
   stripeTransferId: text("stripe_transfer_id"), // Stripe Transfer ID for Connect payouts
@@ -229,7 +224,6 @@ export const workRequests = pgTable("work_requests", {
   id: serial("id").primaryKey(),
   projectId: integer("project_id").notNull().references(() => projects.id),
   contractorUserId: integer("contractor_user_id").notNull().references(() => users.id),
-  businessId: integer("business_id").notNull().references(() => users.id), // The business that created the work request
   title: text("title").notNull(),
   description: text("description").notNull(),
   deliverableDescription: text("deliverable_description"),
@@ -238,11 +232,6 @@ export const workRequests = pgTable("work_requests", {
   currency: text("currency").notNull().default("USD"),
   status: text("status").notNull().default("assigned"), // assigned, in_review, approved, paid, canceled
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-  recipientEmail: text("recipient_email"), // Email of the recipient contractor
-  tokenHash: text("token_hash"), // Hashed token for secure access
-  expiresAt: timestamp("expires_at"), // When the work request expires
-  contractId: integer("contract_id"), // Optional contract ID if linked to a contract
 });
 
 // Work Request Submissions table
@@ -260,7 +249,6 @@ export const workRequestSubmissions = pgTable("work_request_submissions", {
   submittedAt: timestamp("submitted_at").notNull().defaultNow(),
   reviewedAt: timestamp("reviewed_at"),
   reviewNotes: text("review_notes"), // Feedback from business owner
-  feedback: text("feedback"), // Additional feedback field
 });
 
 // Insert schemas - manually defined to include all fields
@@ -375,8 +363,6 @@ export const insertMilestoneSchema = z.object({
   deliverableDescription: z.string().optional(),
   submissionType: z.string().default("digital"),
   approvalNotes: z.string().optional(),
-  rejectedAt: z.date().optional(),
-  updatedAt: z.date().optional(),
 });
 
 // Deliverable schemas - aliases for milestone schemas but with deliverable-focused naming
@@ -443,7 +429,6 @@ export const insertProjectSchema = z.object({
 export const insertWorkRequestSchema = z.object({
   projectId: z.number(),
   contractorUserId: z.number(),
-  businessId: z.number(),
   title: z.string(),
   description: z.string(),
   deliverableDescription: z.string().optional(),
@@ -456,11 +441,6 @@ export const insertWorkRequestSchema = z.object({
   }),
   currency: z.string().default("USD"),
   status: z.string().default("assigned"),
-  updatedAt: z.date().optional(),
-  recipientEmail: z.string().optional(),
-  tokenHash: z.string().optional(),
-  expiresAt: z.date().optional(),
-  contractId: z.number().optional(),
 });
 
 // Work Request update schema (for status updates)
