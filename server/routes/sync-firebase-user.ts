@@ -51,6 +51,7 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
             userId: existingUser.id
           });
         });
+        return; // BUGFIX: Prevent duplicate user creation
       }
 
       // CRITICAL: Log this case to prevent duplicate accounts
