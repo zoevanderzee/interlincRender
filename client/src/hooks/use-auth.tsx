@@ -58,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const userData = await res.json();
         console.log("User authenticated:", userData?.username);
+        console.log("User role:", userData?.role); // Debug: Log the role to verify correct data
 
         // Store authentication data for headers
         localStorage.setItem('user_id', userData.id.toString());
@@ -70,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     },
     retry: false,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0, // Force fresh data fetch every time to prevent environment inconsistencies
   });
 
   // Login mutation
