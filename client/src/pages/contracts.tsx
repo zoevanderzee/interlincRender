@@ -77,10 +77,10 @@ const Contracts = () => {
         </div>
         {!isContractor && (
           <div className="mt-4 md:mt-0">
-            <Link href="/contracts/new">
-              <Button className="w-full md:w-auto">
+            <Link href="/projects/new">
+              <Button className="w-full md:w-auto bg-blue-600 hover:bg-blue-700">
                 <Plus size={16} className="mr-2" />
-                New Project
+                Create Project
               </Button>
             </Link>
           </div>
@@ -171,8 +171,8 @@ const Contracts = () => {
               Clear Filters
             </Button>
           ) : !isContractor ? (
-            <Link href="/contracts/new">
-              <Button>
+            <Link href="/projects/new">
+              <Button className="bg-blue-600 hover:bg-blue-700">
                 <Plus size={16} className="mr-2" />
                 Create Project
               </Button>

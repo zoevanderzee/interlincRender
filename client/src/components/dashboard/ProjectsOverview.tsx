@@ -14,7 +14,8 @@ import {
   ArrowRight,
   AlertCircle,
   Search,
-  Filter
+  Filter,
+  Plus // Import Plus icon
 } from "lucide-react";
 import { Contract, User, Milestone, Payment } from "@shared/schema";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useNavigate } from "react-router-dom"; // Assuming you are using react-router-dom for navigation
 
 interface ProjectsOverviewProps {
   contracts: Contract[];
@@ -38,21 +40,22 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
   payments,
   onViewProject
 }) => {
+  const navigate = useNavigate(); // Initialize navigate
   const [expandedProject, setExpandedProject] = useState<number | null>(contracts.length > 0 ? contracts[0].id : null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
-  
+
   // Toggle project expansion
   const toggleProject = (id: number) => {
     setExpandedProject(expandedProject === id ? null : id);
   };
-  
+
   // Get contractor name by ID
   const getContractorName = (id: number) => {
     const contractor = contractors.find(c => c.id === id);
     return contractor ? `${contractor.firstName || ''} ${contractor.lastName || ''}` : 'Unknown Contractor';
   };
-  
+
   // Get contract status
   const getContractStatus = (contract: Contract) => {
     if (contract.status === 'completed') return 'Completed';
@@ -72,16 +75,16 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
       default: return 'bg-zinc-500 hover:bg-zinc-600';
     }
   };
-  
+
   // Calculate contract progress
   const calculateProgress = (contractId: number) => {
     const contractMilestones = milestones.filter(m => m.contractId === contractId);
     if (contractMilestones.length === 0) return 0;
-    
+
     const completedMilestones = contractMilestones.filter(m => m.status === 'completed').length;
     return Math.round((completedMilestones / contractMilestones.length) * 100);
   };
-  
+
   // Format date
   const formatDate = (dateString: string | Date | null) => {
     if (!dateString) return "Not set";
@@ -92,12 +95,12 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
       day: 'numeric' 
     }).format(date);
   };
-  
+
   // Get contract milestones
   const getContractMilestones = (contractId: number) => {
     return milestones.filter(m => m.contractId === contractId);
   };
-  
+
   // Get contract payments
   const getContractPayments = (contractId: number) => {
     return payments.filter(p => p.contractId === contractId);
@@ -108,17 +111,17 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
     const matchesSearch = searchTerm === "" || 
       contract.contractName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       getContractorName(contract.contractorId).toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesStatus = filterStatus === null || contract.status === filterStatus;
-    
+
     return matchesSearch && matchesStatus;
   });
-  
+
   // Get project details for the expanded project
   const projectContracts = expandedProject 
     ? contracts.filter(c => c.id === expandedProject)
     : [];
-  
+
   return (
     <Card className="border-zinc-800 bg-zinc-900 overflow-hidden divide-y divide-zinc-800">
       <div className="p-4 flex flex-col md:flex-row justify-between gap-3">
@@ -131,7 +134,7 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="text-white border-zinc-700 hover:bg-zinc-800 hover:text-white">
@@ -175,8 +178,17 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {/* This is the Create Project button */}
+        <Button 
+          onClick={() => navigate('/projects/new')}
+          className="bg-blue-600 hover:bg-blue-700"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Create Project
+        </Button>
       </div>
-      
+
       <div className="overflow-y-auto max-h-[500px]">
         {filteredProjects.length === 0 ? (
           <div className="p-8 text-center">
@@ -191,7 +203,7 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
               const progress = calculateProgress(contract.id);
               const status = getContractStatus(contract);
               const statusColor = getStatusColor(status);
-              
+
               return (
                 <div key={contract.id} className="text-white">
                   <div 
@@ -210,7 +222,7 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
                         </p>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-4">
                       <div className="hidden md:block">
                         <div className="flex items-center">
@@ -223,11 +235,11 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
                           <span className="text-xs text-zinc-400">{progress}%</span>
                         </div>
                       </div>
-                      
+
                       <Badge className={`${statusColor} text-white px-2 py-1 font-normal rounded-md`}>
                         {status}
                       </Badge>
-                      
+
                       <div className="text-zinc-400">
                         {isExpanded ? 
                           <ChevronDown className="h-5 w-5" /> : 
@@ -236,7 +248,7 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
                       </div>
                     </div>
                   </div>
-                  
+
                   {isExpanded && (
                     <div className="px-4 pb-4 text-white">
                       <Tabs defaultValue="details" className="w-full">
@@ -262,7 +274,7 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
                             </TabsTrigger>
                           </TabsList>
                         </div>
-                        
+
                         <TabsContent value="details" className="mt-0">
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="p-3 bg-zinc-900 rounded-md border border-zinc-800">
@@ -272,7 +284,7 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
                               </div>
                               <p className="text-sm">{formatDate(contract.startDate)}</p>
                             </div>
-                            
+
                             <div className="p-3 bg-zinc-900 rounded-md border border-zinc-800">
                               <div className="flex items-center mb-2">
                                 <Calendar className="h-4 w-4 mr-2 text-blue-500" />
@@ -280,7 +292,7 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
                               </div>
                               <p className="text-sm">{formatDate(contract.endDate)}</p>
                             </div>
-                            
+
                             <div className="p-3 bg-zinc-900 rounded-md border border-zinc-800">
                               <div className="flex items-center mb-2">
                                 <DollarSign className="h-4 w-4 mr-2 text-green-500" />
@@ -288,7 +300,7 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
                               </div>
                               <p className="text-sm">${Number(contract.value).toLocaleString()}</p>
                             </div>
-                            
+
                             <div className="p-3 bg-zinc-900 rounded-md border border-zinc-800 md:col-span-3">
                               <div className="flex items-center mb-2">
                                 <FileText className="h-4 w-4 mr-2 text-yellow-500" />
@@ -297,7 +309,7 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
                               <p className="text-sm">{contract.description}</p>
                             </div>
                           </div>
-                          
+
                           <div className="mt-4 flex justify-end">
                             <Button
                               variant="outline"
@@ -310,7 +322,7 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
                             </Button>
                           </div>
                         </TabsContent>
-                        
+
                         <TabsContent value="milestones" className="mt-0">
                           <div className="space-y-2">
                             {getContractMilestones(contract.id).length === 0 ? (
@@ -353,7 +365,7 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
                             )}
                           </div>
                         </TabsContent>
-                        
+
                         <TabsContent value="payments" className="mt-0">
                           <div className="space-y-2">
                             {getContractPayments(contract.id).length === 0 ? (
