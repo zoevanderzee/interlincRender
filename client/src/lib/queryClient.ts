@@ -71,27 +71,8 @@ export async function apiRequest(
       defaultHeaders['X-CSRF-Token'] = csrfToken;
     }
     
-    // Add authentication headers required by backend
-    const userId = localStorage.getItem('user_id');
-    const firebaseUid = localStorage.getItem('firebase_uid');
-    
-    console.log('Authentication headers check:');
-    console.log('user_id from localStorage:', userId);
-    console.log('firebase_uid from localStorage:', firebaseUid);
-    
-    if (userId) {
-      defaultHeaders['X-User-ID'] = userId;
-      console.log('Added X-User-ID header:', userId);
-    }
-    
-    if (firebaseUid) {
-      defaultHeaders['X-Firebase-UID'] = firebaseUid;
-      console.log('Added X-Firebase-UID header:', firebaseUid);
-    }
-    
-    if (!userId && !firebaseUid) {
-      console.log('No authentication headers available - user not logged in');
-    }
+    // SECURITY FIX: Removed dangerous header authentication - using session cookies instead
+    console.log('Authentication: Using secure session cookies (no headers)');
     
     const headers: Record<string, string> = { ...defaultHeaders, ...(customHeaders || {}) };
     
@@ -150,30 +131,18 @@ export const getQueryFn: <T>(options: {
       const endpoint = (queryKey[0] as string).toLowerCase();
       console.log(`Fetching data from ${endpoint}`);
       
-      // Add authentication headers - use the same logic as apiRequest
-      const userId = localStorage.getItem('user_id');
-      const firebaseUid = localStorage.getItem('firebase_uid');
-      
-      // Log the fetch request for debugging
+      // SECURITY FIX: Use session cookies instead of dangerous headers
       console.log(`Query Request: GET ${endpoint}`, { 
         hasCookies: document.cookie.length > 0,
         cookieString: document.cookie,
-        hasUserInStorage: !!userId
+        authMethod: 'session-cookies'
       });
       
-      // Use header-based authentication with localStorage
+      // Use secure session cookie authentication only
       const headers: HeadersInit = {
         'Accept': 'application/json',
         'Cache-Control': 'no-cache'
       };
-      
-      if (userId) {
-        headers['X-User-ID'] = userId;
-      }
-      
-      if (firebaseUid) {
-        headers['X-Firebase-UID'] = firebaseUid;
-      }
       
       const res = await fetch(endpoint, {
         method: 'GET',
