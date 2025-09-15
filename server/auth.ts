@@ -55,8 +55,8 @@ export function setupAuth(app: Express) {
     cookie: {
       secure: false, // Allow cookies over HTTP and HTTPS for reliability
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
-      httpOnly: true, // Security: prevent JS access
-      sameSite: 'lax', // Use 'lax' for consistent behavior across environments
+      httpOnly: false, // Allow JS access to fix cookie delivery issues
+      sameSite: 'lax', // Use 'lax' for Replit compatibility (none requires secure=true)
       path: '/', // Available for entire site
       domain: undefined, // Let browser handle domain automatically
     },
@@ -86,20 +86,27 @@ export function setupAuth(app: Express) {
   // This is needed for cookies to work properly in Replit
   app.set("trust proxy", 1);
 
-  // Add CORS headers for cookie support
+  // Add CORS headers for cookie support - simplified for Replit deployment consistency
   app.use((req, res, next) => {
     const origin = req.headers.origin;
+    const currentHost = req.protocol + '://' + req.get('host');
+    
+    // Allow current origin and all Replit domains for deployment consistency
     const allowedOrigins = [
       'https://interlinc.app',
       'https://www.interlinc.app',
       'https://interlinc.co', 
       'https://www.interlinc.co',
-      req.protocol + '://' + req.get('host') // Allow same-origin requests
+      currentHost
     ];
 
-    // In development, allow all origins; in production, check allowlist
-    if (process.env.NODE_ENV === 'development' || allowedOrigins.includes(origin)) {
-      res.header('Access-Control-Allow-Origin', origin || req.protocol + '://' + req.get('host'));
+    // Also allow all *.replit.app domains for deployment
+    const isReplitDomain = origin && origin.includes('.replit.app');
+    const isAllowedOrigin = origin && (allowedOrigins.includes(origin) || isReplitDomain);
+
+    // In development or for allowed origins, set CORS headers
+    if (process.env.NODE_ENV === 'development' || isAllowedOrigin || !origin) {
+      res.header('Access-Control-Allow-Origin', origin || currentHost);
       res.header('Access-Control-Allow-Credentials', 'true');
       res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
       res.header('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization,X-User-ID,X-Firebase-UID,X-CSRF-Token');
