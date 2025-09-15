@@ -56,10 +56,10 @@ export function setupAuth(app: Express) {
     name: 'interlinc.sid',
     rolling: false, // Don't extend session on each request to avoid issues
     cookie: {
-      secure: isProduction, // Use secure cookies in production for HTTPS
+      secure: false, // FIXED: Disable secure cookies to work in development (non-HTTPS)
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
       httpOnly: true, // Prevent XSS attacks - cookies only accessible via HTTP(S)
-      sameSite: isProduction ? 'none' : 'lax', // 'none' required for secure cookies across origins
+      sameSite: 'lax', // FIXED: Use lax instead of none to work without HTTPS
       path: '/', // Available for entire site
       domain: undefined, // Let browser handle domain automatically
     },
