@@ -954,6 +954,7 @@ export default function AuthPage() {
                     <div className="space-y-2">
                       <Label htmlFor="role" className="text-white">Account Type</Label>
                       <Select 
+                        key={`role-select-${registerForm.role}`}
                         value={registerForm.role} 
                         onValueChange={handleRoleChange}
                       >
