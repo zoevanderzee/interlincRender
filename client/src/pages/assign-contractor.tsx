@@ -61,10 +61,13 @@ export default function AssignContractor() {
   console.log("Contractor data:", contractor);
   console.log("Is loading contractor:", isLoadingContractor);
 
-  // Fetch connection requests to get contractors
-  const { data: connectionRequests = [], isLoading: isLoadingConnections } = useQuery<any[]>({
+  // Fetch connection requests to get contractors with error handling
+  const { data: connectionRequests = [], isLoading: isLoadingConnections, error: connectionError } = useQuery<any[]>({
     queryKey: ['/api/connection-requests'],
-    enabled: !!user
+    enabled: !!user,
+    retry: 3,
+    retryDelay: 1000,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   // Fetch user's projects
@@ -154,9 +157,40 @@ export default function AssignContractor() {
     );
   }
 
+  // Handle connection error
+  if (connectionError) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button 
+              variant="ghost" 
+              onClick={() => navigate('/contractors')}
+              className="text-gray-400 hover:text-white"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Contractors
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold text-white">Assign Contractor to Project</h1>
+              <p className="text-red-400 mt-1">Failed to load contractors. Please refresh the page.</p>
+            </div>
+          </div>
+        </div>
+        <div className="text-center">
+          <Button onClick={() => window.location.reload()} className="bg-blue-600 hover:bg-blue-700">
+            Refresh Page
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   // Show contractor selection if no contractorId in URL params or query params
   const showContractorSelection = !contractorId && !contractorIdFromQuery;
-  const availableContractors = connectionRequests.filter((req: any) => req.status === 'accepted');
+  const availableContractors = Array.isArray(connectionRequests) 
+    ? connectionRequests.filter((req: any) => req?.status === 'accepted')
+    : [];
 
   const selectedProject = projects.find(p => p.id.toString() === selectedProjectId);
 

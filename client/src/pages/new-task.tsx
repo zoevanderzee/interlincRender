@@ -1,6 +1,5 @@
 
-import React from "react";
-import { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -32,14 +31,17 @@ const taskFormSchema = z.object({
 
 type TaskFormData = z.infer<typeof taskFormSchema>;
 
-export default function NewTask() {
+function NewTaskContent() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch connection requests to get contractors
-  const { data: connectionRequests = [], isLoading: isLoadingConnections } = useQuery<any[]>({
+  // Fetch connection requests to get contractors with error handling
+  const { data: connectionRequests = [], isLoading: isLoadingConnections, error: connectionError } = useQuery<any[]>({
     queryKey: ['/api/connection-requests'],
+    retry: 3,
+    retryDelay: 1000,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   const form = useForm<TaskFormData>({
@@ -55,6 +57,21 @@ export default function NewTask() {
       }
     },
   });
+
+  // Handle connection error
+  const handleConnectionError = useCallback(() => {
+    if (connectionError) {
+      toast({
+        title: "Connection Error",
+        description: "Failed to load contractors. Please refresh the page.",
+        variant: "destructive",
+      });
+    }
+  }, [connectionError, toast]);
+
+  React.useEffect(() => {
+    handleConnectionError();
+  }, [handleConnectionError]);
 
   const createTaskMutation = useMutation({
     mutationFn: async (data: TaskFormData) => {
@@ -105,16 +122,55 @@ export default function NewTask() {
     createTaskMutation.mutate(data);
   };
 
+  // Show loading state
   if (isLoadingConnections) {
     return (
-      <div className="animate-pulse space-y-6">
-        <div className="h-12 bg-gray-800 rounded w-1/3"></div>
-        <div className="h-64 bg-gray-800 rounded"></div>
+      <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900 p-6">
+        <div className="animate-pulse space-y-6">
+          <div className="h-12 bg-gray-800 rounded w-1/3"></div>
+          <div className="h-64 bg-gray-800 rounded"></div>
+        </div>
       </div>
     );
   }
 
-  const availableContractors = connectionRequests.filter((req: any) => req.status === 'accepted');
+  // Show error state
+  if (connectionError) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900 p-6">
+        <div className="flex items-center mb-6">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="mr-4 text-white hover:bg-zinc-800"
+            onClick={() => navigate('/projects')}
+          >
+            <ArrowLeft size={16} />
+          </Button>
+          <div>
+            <h1 className="text-2xl md:text-3xl font-semibold text-white">
+              Create New Task
+            </h1>
+            <p className="text-red-400 mt-1">
+              Failed to load contractors. Please refresh the page and try again.
+            </p>
+          </div>
+        </div>
+        <Card className="bg-zinc-900/50 backdrop-blur-xl p-6 rounded-lg shadow-sm border border-zinc-800">
+          <CardContent className="text-center">
+            <Button onClick={() => window.location.reload()} className="bg-blue-600 hover:bg-blue-700">
+              Refresh Page
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Safely filter contractors
+  const availableContractors = Array.isArray(connectionRequests) 
+    ? connectionRequests.filter((req: any) => req?.status === 'accepted')
+    : [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900 p-6">
@@ -247,23 +303,35 @@ export default function NewTask() {
                               </Button>
                             </div>
                           ) : (
-                            availableContractors.map((req: any) => (
-                              <SelectItem 
-                                key={req.contractorUserId || req.id} 
-                                value={(req.contractorUserId || req.id).toString()}
-                                className="text-white hover:bg-gray-800"
-                              >
-                                <div className="flex flex-col">
-                                  <span className="font-medium">
-                                    {req.contractorFirstName && req.contractorLastName 
-                                      ? `${req.contractorFirstName} ${req.contractorLastName}`
-                                      : req.contractorUsername
-                                    }
-                                  </span>
-                                  <span className="text-sm text-gray-400">{req.contractorEmail}</span>
-                                </div>
-                              </SelectItem>
-                            ))
+                            availableContractors.map((req: any) => {
+                              const contractorId = req?.contractorUserId || req?.id;
+                              const firstName = req?.contractorFirstName;
+                              const lastName = req?.contractorLastName;
+                              const username = req?.contractorUsername;
+                              const email = req?.contractorEmail;
+                              
+                              if (!contractorId) return null;
+                              
+                              return (
+                                <SelectItem 
+                                  key={contractorId} 
+                                  value={contractorId.toString()}
+                                  className="text-white hover:bg-gray-800"
+                                >
+                                  <div className="flex flex-col">
+                                    <span className="font-medium">
+                                      {firstName && lastName 
+                                        ? `${firstName} ${lastName}`
+                                        : username || 'Contractor'
+                                      }
+                                    </span>
+                                    {email && (
+                                      <span className="text-sm text-gray-400">{email}</span>
+                                    )}
+                                  </div>
+                                </SelectItem>
+                              );
+                            })
                           )}
                         </SelectContent>
                       </Select>
@@ -302,5 +370,17 @@ export default function NewTask() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function NewTask() {
+  return (
+    <React.Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900 p-6 flex items-center justify-center">
+        <div className="text-white">Loading...</div>
+      </div>
+    }>
+      <NewTaskContent />
+    </React.Suspense>
   );
 }
