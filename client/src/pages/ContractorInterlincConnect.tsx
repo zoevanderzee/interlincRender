@@ -252,9 +252,9 @@ export default function ContractorInterlincConnect() {
   return (
     <div className="max-w-4xl mx-auto p-6">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Payment Setup</h1>
+        <h1 className="text-3xl font-bold mb-2">Individual Payment Setup</h1>
         <p className="text-gray-600">
-          Set up your payment account to receive payments from clients securely.
+          Set up your personal payment account as an individual contractor to receive payments from clients securely.
         </p>
       </div>
 
@@ -295,9 +295,9 @@ export default function ContractorInterlincConnect() {
         ) : stripeConnect && onboardingStatus === 'pending' ? (
           <Card>
             <CardHeader>
-              <CardTitle>Complete Payment Setup</CardTitle>
+              <CardTitle>Complete Individual Account Setup</CardTitle>
               <CardDescription>
-                Please provide the required information to start receiving payments from clients.
+                Please provide your personal information as an individual contractor to start receiving payments from clients.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -314,9 +314,9 @@ export default function ContractorInterlincConnect() {
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-8">
               <CheckCircle className="w-12 h-12 text-green-600 mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Payment Setup Complete!</h3>
+              <h3 className="text-lg font-semibold mb-2">Individual Account Setup Complete!</h3>
               <p className="text-gray-600 text-center">
-                Your payment account is ready to receive payments from clients.
+                Your personal payment account is ready to receive payments from clients as an individual contractor.
               </p>
             </CardContent>
           </Card>
@@ -325,38 +325,38 @@ export default function ContractorInterlincConnect() {
         {/* Information Card */}
         <Card>
           <CardHeader>
-            <CardTitle>How Contractor Payments Work</CardTitle>
+            <CardTitle>Individual Contractor Payment Setup</CardTitle>
             <CardDescription>
-              Understanding your payment process with Interlinc
+              Understanding how individual contractor payments work with Interlinc
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-start gap-3">
               <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-sm font-semibold text-blue-600 mt-0.5">1</div>
               <div>
-                <h4 className="font-medium">Secure Payment Processing</h4>
-                <p className="text-sm text-gray-600">All payments are processed securely through Stripe with bank-level security.</p>
+                <h4 className="font-medium">Individual Express Account</h4>
+                <p className="text-sm text-gray-600">You'll set up a personal Stripe Express account designed for individual contractors, not businesses.</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-sm font-semibold text-blue-600 mt-0.5">2</div>
               <div>
-                <h4 className="font-medium">Direct Bank Transfers</h4>
-                <p className="text-sm text-gray-600">Payments are automatically transferred to your connected bank account.</p>
+                <h4 className="font-medium">Personal Information Required</h4>
+                <p className="text-sm text-gray-600">You'll provide your personal details, tax information, and bank account as an individual.</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-sm font-semibold text-blue-600 mt-0.5">3</div>
               <div>
-                <h4 className="font-medium">Individual Account Setup</h4>
-                <p className="text-sm text-gray-600">Set up as an individual contractor to receive payments directly to your personal account.</p>
+                <h4 className="font-medium">Direct Personal Payments</h4>
+                <p className="text-sm text-gray-600">Payments are transferred directly to your personal bank account as an individual contractor.</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-sm font-semibold text-blue-600 mt-0.5">4</div>
               <div>
-                <h4 className="font-medium">Transparent Fees</h4>
-                <p className="text-sm text-gray-600">Standard payment processing fees apply as set by Stripe.</p>
+                <h4 className="font-medium">Secure & Compliant</h4>
+                <p className="text-sm text-gray-600">All processing meets banking regulations with standard Stripe processing fees.</p>
               </div>
             </div>
           </CardContent>
