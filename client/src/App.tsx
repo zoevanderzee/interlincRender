@@ -33,6 +33,7 @@ import StripeCheckout from "@/pages/stripe-checkout";
 import PaymentSimulator from "@/pages/payment-simulator";
 import PayContractor from "@/pages/pay-contractor";
 import InterlincConnect from "@/pages/InterlincConnect";
+import ContractorInterlincConnect from "@/pages/ContractorInterlincConnect";
 import BudgetOversight from "@/pages/budget-oversight";
 import Calendar from "@/pages/calendar";
 
@@ -281,6 +282,12 @@ function Router() {
       <ProtectedRoute path="/interlinc-connect">
         <Layout>
           <InterlincConnect />
+        </Layout>
+      </ProtectedRoute>
+
+      <ProtectedRoute path="/contractor-payment-setup">
+        <Layout>
+          <ContractorInterlincConnect />
         </Layout>
       </ProtectedRoute>
 

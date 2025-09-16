@@ -283,7 +283,7 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
                 Reports
               </Link>
             </li>
-            {!isContractor && (
+            {!isContractor ? (
               <li>
                 <Link 
                   href="/interlinc-connect" 
@@ -296,6 +296,21 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
                     <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
                   </svg>
                   Interlinc Connect
+                </Link>
+              </li>
+            ) : (
+              <li>
+                <Link 
+                  href="/contractor-payment-setup" 
+                  className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/contractor-payment-setup") ? "bg-zinc-800 text-white" : "text-white hover:bg-zinc-800"}`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-3" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 12l2 2 4-4"></path>
+                    <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+                    <path d="M21 5c0 1.66-4 3-9 3S3 6.66 3 5"></path>
+                    <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+                  </svg>
+                  Payment Setup
                 </Link>
               </li>
             )}
