@@ -1,9 +1,9 @@
-import { 
-  createUserWithEmailAndPassword, 
-  sendEmailVerification, 
+import {
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
   signInWithEmailAndPassword,
   signOut,
-  User 
+  User
 } from "firebase/auth";
 import { auth } from "./firebase";
 import { handleFirebaseError } from "./firebase-errors";
@@ -22,7 +22,7 @@ export const signUpUser = async (email: string, password: string): Promise<Fireb
 
     // Send email verification with production action URL
     await sendEmailVerification(user, {
-      url: 'https://interlinc.app/?mode=verifyEmail',
+      url: 'https://www.interlinc.app/auth',
       handleCodeInApp: false
     });
     console.log("Verification email sent to:", email);
@@ -49,9 +49,9 @@ export const loginUser = async (email: string, password: string): Promise<Fireba
 
     // Force refresh the user's token to get latest verification status
     await user.reload();
-    
+
     console.log("Firebase emailVerified status:", user.emailVerified);
-    
+
     // TEMPORARY FIX: For existing users, bypass email verification check
     // since we know the account exists in Firebase and our database shows verified
     if (!user.emailVerified) {
@@ -115,7 +115,7 @@ export const resendEmailVerification = async (): Promise<boolean> => {
 
   try {
     await sendEmailVerification(user, {
-      url: window.location.origin + '/?mode=verifyEmail', // This will ensure proper routing
+      url: 'https://www.interlinc.app/auth',
       handleCodeInApp: false
     });
     console.log("Verification email resent");
