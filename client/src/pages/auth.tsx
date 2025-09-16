@@ -953,18 +953,16 @@ export default function AuthPage() {
 
                     <div className="space-y-2">
                       <Label htmlFor="role" className="text-white">Account Type</Label>
-                      <Select 
-                        value={registerForm.role} 
-                        onValueChange={handleRoleChange}
+                      <select
+                        id="role"
+                        name="role"
+                        value={registerForm.role}
+                        onChange={(e) => handleRoleChange(e.target.value)}
+                        className="flex h-10 w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-zinc-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white">
-                          <SelectValue placeholder="Select account type" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-zinc-800 border-zinc-700 text-white">
-                          <SelectItem value="business">Business</SelectItem>
-                          <SelectItem value="contractor">Contractor</SelectItem>
-                        </SelectContent>
-                      </Select>
+                        <option value="business">Business</option>
+                        <option value="contractor">Contractor</option>
+                      </select>
                     </div>
 
                     {registerForm.role === "business" && (
