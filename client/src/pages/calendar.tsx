@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// Mock data structure - replace with real API calls
+// Calendar event interface matching API response
 interface CalendarEvent {
   id: string;
   title: string;
@@ -31,7 +31,7 @@ interface CalendarEvent {
   startDate: Date;
   endDate: Date;
   type: 'milestone' | 'project' | 'deadline';
-  status: 'active' | 'completed' | 'overdue';
+  status: 'active' | 'completed' | 'overdue' | 'pending' | 'approved' | 'needs_revision';
   color: string;
 }
 
@@ -56,58 +56,39 @@ export default function Calendar() {
   const [selectedView, setSelectedView] = useState('month');
   const [filterBy, setFilterBy] = useState('all');
 
-  // Mock calendar events - replace with real API call
+  // Real calendar events from API
   const { data: events = [], isLoading } = useQuery({
-    queryKey: ['/api/calendar', currentDate.getMonth(), currentDate.getFullYear()],
+    queryKey: ['/api/calendar/events', currentDate.getMonth(), currentDate.getFullYear(), filterBy],
     queryFn: async () => {
-      // Mock data for demonstration
-      return [
-        {
-          id: '1',
-          title: 'Logo Design Review',
-          projectName: 'Brand Identity',
-          contractorName: 'Sarah Chen',
-          startDate: new Date(2025, 8, 15),
-          endDate: new Date(2025, 8, 17),
-          type: 'project',
-          status: 'active',
-          color: STATUS_COLORS.active
-        },
-        {
-          id: '2', 
-          title: 'Website Development',
-          projectName: 'E-commerce Site',
-          contractorName: 'Mike Johnson',
-          startDate: new Date(2025, 8, 20),
-          endDate: new Date(2025, 8, 25),
-          type: 'project',
-          status: 'in-progress',
-          color: STATUS_COLORS['in-progress']
-        },
-        {
-          id: '3',
-          title: 'Content Strategy',
-          projectName: 'Marketing Campaign',
-          contractorName: 'Emma Davis',
-          startDate: new Date(2025, 8, 22),
-          endDate: new Date(2025, 8, 24),
-          type: 'milestone',
-          status: 'overdue',
-          color: STATUS_COLORS.overdue
-        },
-        {
-          id: '4',
-          title: 'Final Delivery',
-          projectName: 'Mobile App',
-          contractorName: 'Alex Kim',
-          startDate: new Date(2025, 8, 12),
-          endDate: new Date(2025, 8, 14),
-          type: 'project',
-          status: 'completed',
-          color: STATUS_COLORS.completed
+      const params = new URLSearchParams({
+        month: currentDate.getMonth().toString(),
+        year: currentDate.getFullYear().toString(),
+        type: filterBy === 'all' ? 'both' : 
+              filterBy === 'projects' ? 'projects' : 
+              filterBy === 'tasks' ? 'tasks' : 'both'
+      });
+      
+      const response = await fetch(`/api/calendar/events?${params}`, {
+        credentials: 'include',
+        headers: {
+          'X-User-ID': user?.id?.toString() || ''
         }
-      ] as CalendarEvent[];
-    }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch calendar events');
+      }
+      
+      const data = await response.json();
+      
+      // Convert date strings back to Date objects
+      return data.map((event: any) => ({
+        ...event,
+        startDate: new Date(event.startDate),
+        endDate: new Date(event.endDate)
+      }));
+    },
+    enabled: !!user
   });
 
   // Calendar navigation
@@ -146,9 +127,21 @@ export default function Calendar() {
     return days;
   }, [currentDate]);
 
-  // Get events for a specific day
+  // Get events for a specific day with filtering
   const getEventsForDay = (date: Date) => {
-    return events.filter(event => {
+    let filteredEvents = events;
+    
+    // Apply status-based filtering
+    if (filterBy === 'active') {
+      filteredEvents = events.filter(event => event.status === 'active');
+    } else if (filterBy === 'completed') {
+      filteredEvents = events.filter(event => event.status === 'completed' || event.status === 'approved');
+    } else if (filterBy === 'overdue') {
+      filteredEvents = events.filter(event => event.status === 'overdue');
+    }
+    // Note: projects/tasks filtering is handled in the API query
+    
+    return filteredEvents.filter(event => {
       const eventStart = new Date(event.startDate);
       const eventEnd = new Date(event.endDate);
       return date >= eventStart && date <= eventEnd;
@@ -196,11 +189,12 @@ export default function Calendar() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="bg-gray-900 border-gray-700">
-              <SelectItem value="all">All Projects</SelectItem>
-              <SelectItem value="active">Active Projects</SelectItem>
-              <SelectItem value="in-progress">In Progress</SelectItem>
-              <SelectItem value="overdue">Overdue</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="all">Both Projects & Tasks</SelectItem>
+              <SelectItem value="projects">Projects Only</SelectItem>
+              <SelectItem value="tasks">Tasks Only</SelectItem>
+              <SelectItem value="active">Active Only</SelectItem>
+              <SelectItem value="completed">Completed Only</SelectItem>
+              <SelectItem value="overdue">Overdue Only</SelectItem>
             </SelectContent>
           </Select>
           

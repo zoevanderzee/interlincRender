@@ -3530,6 +3530,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register project routes
   registerProjectRoutes(app);
 
+  // Calendar events endpoint - unified data for projects and tasks
+  app.get(`${apiRouter}/calendar/events`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      const userRole = req.user?.role || 'business';
+
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const { month, year, type = 'both' } = req.query;
+      
+      // Get user's contracts/projects
+      let userContracts = [];
+      if (userRole === 'business') {
+        userContracts = await storage.getContractsByBusinessId(userId);
+      } else if (userRole === 'contractor') {
+        userContracts = await storage.getContractsByContractorId(userId);
+      }
+
+      // Filter out deleted contracts
+      const activeContracts = userContracts.filter(contract => contract.status !== 'deleted');
+
+      // Get milestones/deliverables for these contracts
+      const calendarEvents = [];
+      
+      for (const contract of activeContracts) {
+        // Get milestones for this contract
+        const milestones = await storage.getMilestonesByContractId(contract.id);
+        
+        // Get contractor name
+        let contractorName = 'Unknown Contractor';
+        if (contract.contractorId) {
+          const contractor = await storage.getUser(contract.contractorId);
+          if (contractor) {
+            contractorName = contractor.firstName && contractor.lastName 
+              ? `${contractor.firstName} ${contractor.lastName}`
+              : contractor.username;
+          }
+        }
+
+        // Add contract as a project event
+        if (type === 'both' || type === 'projects') {
+          calendarEvents.push({
+            id: `contract_${contract.id}`,
+            title: contract.contractName,
+            projectName: contract.contractName,
+            contractorName,
+            startDate: contract.startDate || contract.createdAt,
+            endDate: contract.deadline || contract.startDate || contract.createdAt,
+            type: 'project',
+            status: contract.status === 'active' ? 'active' : 
+                   contract.status === 'completed' ? 'completed' : 'pending',
+            color: contract.status === 'active' ? '#22C55E' : 
+                   contract.status === 'completed' ? '#3B82F6' : '#F59E0B'
+          });
+        }
+
+        // Add milestones as task events
+        if (type === 'both' || type === 'tasks') {
+          milestones.forEach(milestone => {
+            calendarEvents.push({
+              id: `milestone_${milestone.id}`,
+              title: milestone.name,
+              projectName: contract.contractName,
+              contractorName,
+              startDate: milestone.dueDate || milestone.createdAt,
+              endDate: milestone.dueDate || milestone.createdAt,
+              type: 'milestone',
+              status: milestone.status,
+              color: milestone.status === 'completed' ? '#22C55E' : 
+                     milestone.status === 'approved' ? '#3B82F6' :
+                     milestone.status === 'overdue' ? '#EF4444' : '#F59E0B'
+            });
+          });
+        }
+      }
+
+      // Filter by month/year if provided
+      let filteredEvents = calendarEvents;
+      if (month && year) {
+        const targetMonth = parseInt(month as string);
+        const targetYear = parseInt(year as string);
+        
+        filteredEvents = calendarEvents.filter(event => {
+          const eventDate = new Date(event.startDate);
+          return eventDate.getMonth() === targetMonth && eventDate.getFullYear() === targetYear;
+        });
+      }
+
+      res.json(filteredEvents);
+    } catch (error) {
+      console.error("Error fetching calendar events:", error);
+      res.status(500).json({ message: "Error fetching calendar events" });
+    }
+  });
+
   // Budget Management Routes
 
   // Get budget information for the current user
