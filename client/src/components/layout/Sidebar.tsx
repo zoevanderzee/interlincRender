@@ -256,18 +256,20 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
                 Payments
               </Link>
             </li>
-            <li>
-              <Link 
-                href="/budget-oversight" 
-                className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/budget-oversight") ? "bg-zinc-800 text-white" : "text-white hover:bg-zinc-800"}`}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-3" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <path d="M8 12l2 2 4-4"></path>
-                </svg>
-                Budget Oversight
-              </Link>
-            </li>
+            {!isContractor && (
+              <li>
+                <Link 
+                  href="/budget-oversight" 
+                  className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/budget-oversight") ? "bg-zinc-800 text-white" : "text-white hover:bg-zinc-800"}`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-3" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M8 12l2 2 4-4"></path>
+                  </svg>
+                  Budget Oversight
+                </Link>
+              </li>
+            )}
             <li>
               <Link 
                 href="/reports" 
