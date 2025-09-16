@@ -3186,6 +3186,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+
   // Update payment status from Stripe
   app.post(`${apiRouter}/payments/:id/update-status`, async (req: Request, res: Response) => {
     try {
@@ -3380,7 +3381,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const paymentData = {
         recipientId: contractor.trolleyRecipientId,
         amount: payment.amount,
-        currency: 'USD',
+        currency: 'GBP',
         description: `Payment for milestone: ${payment.description || 'Contractor payment'}`,
         externalId: `payment_${paymentId}_${Date.now()}`
       };
@@ -3541,7 +3542,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { month, year, type = 'both' } = req.query;
-      
+
       // Get user's contracts/projects
       let userContracts = [];
       if (userRole === 'business') {
@@ -3555,17 +3556,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get milestones/deliverables for these contracts
       const calendarEvents = [];
-      
+
       for (const contract of activeContracts) {
         // Get milestones for this contract
         const milestones = await storage.getMilestonesByContractId(contract.id);
-        
+
         // Get contractor name
         let contractorName = 'Unknown Contractor';
         if (contract.contractorId) {
           const contractor = await storage.getUser(contract.contractorId);
           if (contractor) {
-            contractorName = contractor.firstName && contractor.lastName 
+            contractorName = contractor.firstName && contractor.lastName
               ? `${contractor.firstName} ${contractor.lastName}`
               : contractor.username;
           }
@@ -3581,9 +3582,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             startDate: contract.startDate || contract.createdAt,
             endDate: contract.deadline || contract.startDate || contract.createdAt,
             type: 'project',
-            status: contract.status === 'active' ? 'active' : 
+            status: contract.status === 'active' ? 'active' :
                    contract.status === 'completed' ? 'completed' : 'pending',
-            color: contract.status === 'active' ? '#22C55E' : 
+            color: contract.status === 'active' ? '#22C55E' :
                    contract.status === 'completed' ? '#3B82F6' : '#F59E0B'
           });
         }
@@ -3600,7 +3601,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               endDate: milestone.dueDate || milestone.createdAt,
               type: 'milestone',
               status: milestone.status,
-              color: milestone.status === 'completed' ? '#22C55E' : 
+              color: milestone.status === 'completed' ? '#22C55E' :
                      milestone.status === 'approved' ? '#3B82F6' :
                      milestone.status === 'overdue' ? '#EF4444' : '#F59E0B'
             });
@@ -3613,7 +3614,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (month && year) {
         const targetMonth = parseInt(month as string);
         const targetYear = parseInt(year as string);
-        
+
         filteredEvents = calendarEvents.filter(event => {
           const eventDate = new Date(event.startDate);
           return eventDate.getMonth() === targetMonth && eventDate.getFullYear() === targetYear;
@@ -4894,7 +4895,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.status(201).json({
         token: link.token,
-        workerType: link.workerType,
+        workerType:        link.workerType,
         inviteUrl,
         createdAt: link.createdAt
       });
@@ -5271,8 +5272,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Get submissions for specific project
         const allSubmissions = await storage.getWorkRequestSubmissionsByBusinessId(req.user!.id);
-        targetSubmissions = allSubmissions.filter(sub => 
-          sub.status === 'pending' && 
+        targetSubmissions = allSubmissions.filter(sub =>
+          sub.status === 'pending' &&
           // Need to filter by project through work request relationship
           // This is a simplified approach - in production you'd need proper JOIN
           true // For now filter by business only - would need JOIN in production
@@ -5282,8 +5283,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (submissionIds === 'all') {
         // Get all pending submissions for this project
         const allSubmissions = await storage.getWorkRequestSubmissionsByBusinessId(req.user!.id);
-        targetSubmissions = allSubmissions.filter(sub => 
-          sub.status === 'pending' && 
+        targetSubmissions = allSubmissions.filter(sub =>
+          sub.status === 'pending' &&
           // Filter by project - need to cross-reference through work request
           // This is a simplified approach - in production you'd need proper JOIN
           true // For now, approve all pending submissions for this business
@@ -5326,7 +5327,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!contract) {
           results.push({
             submissionId: submission.id,
-            status: 'error', 
+            status: 'error',
             error: 'Contract not found - cannot approve'
           });
           continue;
@@ -5435,8 +5436,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get(`${apiRouter}/trolley/status`, requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user;
-      if (!user) {
-        return res.status(401).json({ message: "Not authenticated" });
+      if (!user || user.role !== 'business') {
+        return res.status(403).json({ message: "Only business accounts can access wallet" });
       }
 
       const trolleyStatus = {
@@ -5696,7 +5697,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             `   • Account Number: ${fundingInstructions.accountNumber}`,
             `   • Sort Code: ${fundingInstructions.sortCode}`,
             `   • Reference: ${user.trolleyRecipientId || 'Your Recipient ID'}`,
-            `3. Send a bank transfer of £${amount}`,
+            '3. Send a bank transfer of £${amount}',
             '4. Your Trolley balance will update within 1-3 business days',
             '5. You can then pay contractors directly from your wallet'
           ],
@@ -6750,9 +6751,8 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
       if (!user.subscriptionStatus ||
           !['active', 'trialing'].includes(user.subscriptionStatus)) {
         return res.status(402).json({
-          message: 'Active subscription required',
-          subscriptionStatus: user.subscriptionStatus || 'inactive',
-          code: 'SUBSCRIPTION_REQUIRED'
+          message: 'Active subscription required for payment features',
+          subscriptionStatus: user.subscriptionStatus || 'inactive'
         });
       }
 
@@ -6935,7 +6935,7 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
       // Return the file URL that can be used to access the uploaded file
       const fileURL = `/api/files/view/${req.file.filename}`;
 
-      res.json({ 
+      res.json({
         url: fileURL,
         filename: req.file.filename,
         originalName: req.file.originalname,

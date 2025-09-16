@@ -10,14 +10,17 @@ import {
   Loader2,
   Clock,
   Calendar,
-  Settings
+  Settings,
+  Wallet // Added Wallet icon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"; // Added CardHeader and CardTitle
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useIntegratedData } from "@/hooks/use-integrated-data";
 import { Contract, User, Payment, Milestone } from "@shared/schema";
+import { useQuery } from "@tanstack/react-query"; // Import useQuery
+import { apiRequest } from "@/lib/api"; // Assuming apiRequest is available
 
 // Define interface for dashboard data (this is now implicitly handled by useIntegratedData)
 // Keep for clarity if needed, but the hook should provide typed data.
@@ -54,6 +57,21 @@ const Dashboard = () => {
   // Use the integrated data hook
   const { data: integratedData, isLoading: isDashboardLoading, error: dashboardError } = useIntegratedData();
   const { toast } = useToast();
+
+  // Get Stripe Connect account status for payment readiness
+  const { data: connectStatus } = useQuery({
+    queryKey: ['/api/connect/status'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/connect/status');
+      if (!response.ok) {
+        return { hasAccount: false, needsOnboarding: true, accountId: null };
+      }
+      return response.json();
+    },
+    refetchInterval: 30000,
+    retry: false,
+    staleTime: 10000
+  });
 
   // Format the remaining budget as currency
   const formatCurrency = (value: string | null): string => {
@@ -325,6 +343,30 @@ const Dashboard = () => {
             </div>
             <p className="text-3xl font-bold text-white tracking-tight">{integratedData.stats.activeContractorsCount}</p>
             <p className="text-xs text-muted-foreground mt-1">Working professionals</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Wallet Balance Card - Replaced with Stripe Connect Status */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Payment Account</CardTitle>
+            <Wallet className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {connectStatus?.hasAccount && !connectStatus?.needsOnboarding ?
+                'Connected' :
+                'Setup Required'
+              }
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {connectStatus?.hasAccount && !connectStatus?.needsOnboarding ?
+                'Stripe Connect ready' :
+                'Complete account setup'
+              }
+            </p>
           </CardContent>
         </Card>
       </div>

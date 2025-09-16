@@ -1,6 +1,8 @@
 import React, { ReactNode } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowDown, ArrowUp, Wallet } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/api";
 
 interface StatsCardProps {
   title: string;
@@ -21,6 +23,21 @@ const StatsCard = ({
   changeValue = 0,
   changeText = "" 
 }: StatsCardProps) => {
+  // Get Stripe Connect account status instead of Trolley wallet balance
+  const { data: connectStatus } = useQuery({
+    queryKey: ['/api/connect/status'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/connect/status');
+      if (!response.ok) {
+        return { hasAccount: false, needsOnboarding: true, accountId: null };
+      }
+      return response.json();
+    },
+    refetchInterval: 30000,
+    retry: false,
+    staleTime: 10000
+  });
+
   return (
     <Card className="overflow-hidden animate-fade-in hover:animate-glow-pulse">
       <CardContent className="p-6">
@@ -39,7 +56,7 @@ const StatsCard = ({
               </p>
             )}
           </div>
-          
+
           <div className={`${iconBgColor} h-12 w-12 rounded-xl flex items-center justify-center shadow-lg backdrop-blur-sm transition-all duration-300 hover:scale-110`}>
             <span className={iconColor}>
               {icon}
@@ -47,6 +64,28 @@ const StatsCard = ({
           </div>
         </div>
       </CardContent>
+
+      {/* This section is updated to display Stripe Connect status */}
+      <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Payment Account</CardTitle>
+            <Wallet className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {connectStatus?.hasAccount && !connectStatus?.needsOnboarding ? 
+                'Connected' : 
+                'Setup Required'
+              }
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {connectStatus?.hasAccount && !connectStatus?.needsOnboarding ? 
+                'Stripe Connect ready' : 
+                'Complete account setup'
+              }
+            </p>
+          </CardContent>
+        </Card>
     </Card>
   );
 };
