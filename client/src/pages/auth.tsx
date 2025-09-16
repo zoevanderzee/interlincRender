@@ -501,9 +501,9 @@ export default function AuthPage() {
                 invited: userData.invited,
                 role: userData.role
               });
-              
+
               const needsSubscription = requiresSubscription(userData);
-              
+
               console.log('Subscription check after sync:', {
                 userId: userData.id,
                 subscriptionStatus: userData.subscriptionStatus,
