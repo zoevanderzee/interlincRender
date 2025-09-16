@@ -111,14 +111,16 @@ export async function updatePaymentStatus(paymentIntentId: string): Promise<stri
  */
 export async function createConnectAccount(contractor: User): Promise<ConnectAccountResponse> {
   try {
-    // Create a connected account for the contractor
+    // Create a connected account for the contractor as an individual
     const account = await stripe.accounts.create({
       type: 'express',
-      country: 'US', // Default to US
+      country: 'GB', // Default to GB to match your setup
       email: contractor.email,
-      business_type: 'company',
-      company: {
-        name: contractor.companyName || `${contractor.firstName} ${contractor.lastName}`,
+      business_type: 'individual',
+      individual: {
+        first_name: contractor.firstName,
+        last_name: contractor.lastName,
+        email: contractor.email,
       },
       capabilities: {
         transfers: { requested: true },
@@ -126,6 +128,7 @@ export async function createConnectAccount(contractor: User): Promise<ConnectAcc
       },
       metadata: {
         userId: contractor.id.toString(),
+        role: 'contractor',
       },
     });
 

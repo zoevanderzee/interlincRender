@@ -53,7 +53,7 @@ export default function connectRoutes(app, apiPath, authMiddleware) {
     try {
       const userId = getUserId(req);
       const existing = await db.getConnect(userId);
-      
+
       if (!existing?.accountId) {
         return res.json({ hasAccount: false, needsOnboarding: true });
       }
@@ -117,31 +117,65 @@ export default function connectRoutes(app, apiPath, authMiddleware) {
       // No existing account - create Connect account first, then session
       // Step 1: Create basic Connect account (just gets an account ID)
       const user = await db.getUser(userId);
-      const account = await stripe.accounts.create({
-        type: 'express',
-        country: country,
-        email: user.email,
-        // Minimal info - everything else collected in embedded onboarding
-      });
+      
+      // Create account for new users
+      if (!existing?.accountId) {
+        console.log('Creating new Stripe Connect account for user:', userId);
 
-      // Step 2: Create account session for that account
-      const session = await stripe.accountSessions.create({
-        account: account.id,  // This was missing!
-        components: {
-          account_onboarding: { enabled: true },
-        },
-      });
+        // Check if user is a contractor to create individual account
+        const isContractor = user.role === 'contractor';
 
-      // Step 3: Save the new account ID to our database
-      await db.setConnect(userId, { 
-        accountId: account.id, 
-        accountType: account.type,
-        detailsSubmitted: false,
-        chargesEnabled: false,
-        payoutsEnabled: false
-      });
+        const accountConfig = {
+          type: 'express',
+          country: country || 'GB',
+          email: user.email,
+          capabilities: {
+            transfers: { requested: true },
+            card_payments: { requested: true },
+          },
+          metadata: {
+            userId: userId.toString(),
+            role: user.role || 'business',
+          },
+        };
 
-      res.json({ client_secret: session.client_secret, needsOnboarding: true, hasExistingAccount: false, accountId: account.id });
+        if (isContractor) {
+          // Individual account for contractors
+          accountConfig.business_type = 'individual';
+          accountConfig.individual = {
+            first_name: user.firstName,
+            last_name: user.lastName,
+            email: user.email,
+          };
+        } else {
+          // Company account for businesses
+          accountConfig.business_type = 'company';
+          accountConfig.company = {
+            name: user.companyName || `${user.firstName} ${user.lastName}`,
+          };
+        }
+
+        const account = await stripe.accounts.create(accountConfig);
+
+        // Step 2: Create account session for that account
+        const session = await stripe.accountSessions.create({
+          account: account.id,  // This was missing!
+          components: {
+            account_onboarding: { enabled: true },
+          },
+        });
+
+        // Step 3: Save the new account ID to our database
+        await db.setConnect(userId, { 
+          accountId: account.id, 
+          accountType: account.type,
+          detailsSubmitted: false,
+          chargesEnabled: false,
+          payoutsEnabled: false
+        });
+
+        res.json({ client_secret: session.client_secret, needsOnboarding: true, hasExistingAccount: false, accountId: account.id });
+      }
     } catch (e) {
       console.error("[connect-session]", e);
       res.status(e.status || 500).json({ error: e.message || "Unknown error" });
@@ -161,7 +195,7 @@ export default function connectRoutes(app, apiPath, authMiddleware) {
 
       // Verify the account exists and get its details
       const acct = await stripe.accounts.retrieve(accountId);
-      
+
       // Save the account details to our database
       await db.setConnect(userId, { 
         accountId: acct.id, 
