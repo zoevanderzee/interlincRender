@@ -312,23 +312,23 @@ export default function Calendar() {
         </CardContent>
       </Card>
 
-      {/* Project Status & Stats */}
+      {/* Project & Task Overview */}
       <Card className="bg-black border-gray-800">
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
             <Target className="h-5 w-5" />
-            Project Overview
+            Projects & Tasks Overview
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded" style={{ backgroundColor: STATUS_COLORS.active }}></div>
-                <span className="text-sm text-gray-300">Active Projects</span>
+                <span className="text-sm text-gray-300">Active</span>
               </div>
               <Badge variant="outline" style={{ borderColor: STATUS_COLORS.active, color: STATUS_COLORS.active }}>
-                3
+                {events.filter(event => event.status === 'active').length}
               </Badge>
             </div>
             
@@ -338,7 +338,7 @@ export default function Calendar() {
                 <span className="text-sm text-gray-300">In Progress</span>
               </div>
               <Badge variant="outline" style={{ borderColor: STATUS_COLORS['in-progress'], color: STATUS_COLORS['in-progress'] }}>
-                2
+                {events.filter(event => event.status === 'pending' || event.status === 'needs_revision').length}
               </Badge>
             </div>
             
@@ -348,7 +348,7 @@ export default function Calendar() {
                 <span className="text-sm text-gray-300">Overdue</span>
               </div>
               <Badge variant="outline" style={{ borderColor: STATUS_COLORS.overdue, color: STATUS_COLORS.overdue }}>
-                1
+                {events.filter(event => event.status === 'overdue').length}
               </Badge>
             </div>
             
@@ -358,8 +358,15 @@ export default function Calendar() {
                 <span className="text-sm text-gray-300">Completed</span>
               </div>
               <Badge variant="outline" style={{ borderColor: STATUS_COLORS.completed, color: STATUS_COLORS.completed }}>
-                4
+                {events.filter(event => event.status === 'completed' || event.status === 'approved').length}
               </Badge>
+            </div>
+          </div>
+          
+          <div className="mt-4 pt-4 border-t border-gray-700">
+            <div className="flex items-center justify-between text-sm text-gray-400">
+              <span>Total Projects & Tasks</span>
+              <span className="font-medium text-white">{events.length}</span>
             </div>
           </div>
         </CardContent>
