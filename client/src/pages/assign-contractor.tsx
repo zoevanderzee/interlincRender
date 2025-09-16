@@ -52,12 +52,12 @@ export default function AssignContractor() {
   // Fetch contractor details (only if contractorId is provided via URL or query param)
   const contractorIdToFetch = contractorId || contractorIdFromQuery;
   console.log("Contractor ID to fetch:", contractorIdToFetch);
-  
+
   const { data: contractor, isLoading: isLoadingContractor } = useQuery<any>({
     queryKey: [`/api/users/${contractorIdToFetch}`],
     enabled: !!contractorIdToFetch
   });
-  
+
   console.log("Contractor data:", contractor);
   console.log("Is loading contractor:", isLoadingContractor);
 
@@ -246,23 +246,30 @@ export default function AssignContractor() {
                       </Button>
                     </div>
                   ) : (
-                    availableContractors.map((req: any) => (
-                      <SelectItem 
-                        key={req.contractorUserId || req.id} 
-                        value={(req.contractorUserId || req.id).toString()}
-                        className="text-white hover:bg-gray-800"
-                      >
-                        <div className="flex flex-col">
-                          <span className="font-medium">
-                            {req.contractorFirstName && req.contractorLastName 
-                              ? `${req.contractorFirstName} ${req.contractorLastName}`
-                              : req.contractorUsername
-                            }
-                          </span>
-                          <span className="text-sm text-gray-400">{req.contractorEmail}</span>
-                        </div>
-                      </SelectItem>
-                    ))
+                    availableContractors.map((req: any) => {
+                      try {
+                        return (
+                          <SelectItem 
+                            key={req.contractorUserId || req.id} 
+                            value={(req.contractorUserId || req.id).toString()}
+                            className="text-white hover:bg-gray-800"
+                          >
+                            <div className="flex flex-col">
+                              <span className="font-medium">
+                                {req.contractorFirstName && req.contractorLastName 
+                                  ? `${req.contractorFirstName} ${req.contractorLastName}`
+                                  : req.contractorUsername
+                                }
+                              </span>
+                              <span className="text-sm text-gray-400">{req.contractorEmail}</span>
+                            </div>
+                          </SelectItem>
+                        );
+                      } catch (error) {
+                        console.error('Error rendering contractor option:', error, req);
+                        return null;
+                      }
+                    })
                   )}
                 </SelectContent>
               </Select>

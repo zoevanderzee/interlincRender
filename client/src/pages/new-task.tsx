@@ -304,15 +304,16 @@ function NewTaskContent() {
                             </div>
                           ) : (
                             availableContractors.map((req: any) => {
-                              const contractorId = req?.contractorUserId || req?.id;
-                              const firstName = req?.contractorFirstName;
-                              const lastName = req?.contractorLastName;
-                              const username = req?.contractorUsername;
-                              const email = req?.contractorEmail;
-                              
-                              if (!contractorId) return null;
-                              
-                              return (
+                              try {
+                                const contractorId = req?.contractorUserId || req?.id;
+                                const firstName = req?.contractorFirstName;
+                                const lastName = req?.contractorLastName;
+                                const username = req?.contractorUsername;
+                                const email = req?.contractorEmail;
+                                
+                                if (!contractorId) return null;
+                                
+                                return (
                                 <SelectItem 
                                   key={contractorId} 
                                   value={contractorId.toString()}
@@ -322,7 +323,7 @@ function NewTaskContent() {
                                     <span className="font-medium">
                                       {firstName && lastName 
                                         ? `${firstName} ${lastName}`
-                                        : username || 'Contractor'
+                                        : username || req?.contractorName || req?.name || 'Contractor'
                                       }
                                     </span>
                                     {email && (
@@ -330,7 +331,11 @@ function NewTaskContent() {
                                     )}
                                   </div>
                                 </SelectItem>
-                              );
+                                );
+                              } catch (error) {
+                                console.error('Error rendering contractor option:', error, req);
+                                return null;
+                              }
                             })
                           )}
                         </SelectContent>
