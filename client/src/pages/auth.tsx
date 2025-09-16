@@ -369,10 +369,10 @@ export default function AuthPage() {
 
   // Handle role selection in register form
   const handleRoleChange = (value: string) => {
-    setRegisterForm({
-      ...registerForm,
+    setRegisterForm(prev => ({
+      ...prev,
       role: value,
-    });
+    }));
   };
 
   // Validate login form
