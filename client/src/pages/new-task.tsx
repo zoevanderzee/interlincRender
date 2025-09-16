@@ -15,16 +15,19 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { MoodBoardUploader } from "@/components/MoodBoardUploader";
 
 const taskFormSchema = z.object({
-  title: z.string().min(1, "Task title is required"),
-  description: z.string().min(1, "Task description is required"),
-  deliverableDescription: z.string().min(1, "Deliverable description is required"),
-  amount: z.string().min(1, "Amount is required").refine((val) => !isNaN(parseFloat(val)), {
-    message: "Amount must be a valid number",
+  name: z.string().min(1, "Task name is required"),
+  description: z.string().optional(),
+  budget: z.string().min(1, "Budget is required").refine((val) => !isNaN(parseFloat(val)), {
+    message: "Budget must be a valid number",
   }),
-  dueDate: z.string().min(1, "Due date is required"),
   contractorUserId: z.number().min(1, "Please select a contractor"),
+  moodboard: z.object({
+    files: z.array(z.string()),
+    links: z.array(z.string())
+  }).optional()
 });
 
 type TaskFormData = z.infer<typeof taskFormSchema>;
@@ -42,12 +45,14 @@ export default function NewTask() {
   const form = useForm<TaskFormData>({
     resolver: zodResolver(taskFormSchema),
     defaultValues: {
-      title: "",
+      name: "",
       description: "",
-      deliverableDescription: "",
-      amount: "",
-      dueDate: "",
+      budget: "",
       contractorUserId: 0,
+      moodboard: {
+        files: [],
+        links: []
+      }
     },
   });
 
@@ -55,9 +60,9 @@ export default function NewTask() {
     mutationFn: async (data: TaskFormData) => {
       // First create a project for this task
       const projectResponse = await apiRequest("POST", "/api/projects", {
-        name: data.title,
+        name: data.name,
         description: data.description,
-        budget: data.amount,
+        budget: data.budget,
         status: "active"
       });
       const project = await projectResponse.json();
@@ -66,11 +71,11 @@ export default function NewTask() {
       const workRequestResponse = await apiRequest("POST", `/api/projects/${project.id}/work-requests`, {
         projectId: project.id,
         contractorUserId: data.contractorUserId,
-        title: data.title,
+        title: data.name,
         description: data.description,
-        deliverableDescription: data.deliverableDescription,
-        dueDate: data.dueDate,
-        amount: parseFloat(data.amount),
+        deliverableDescription: data.description,
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Default 30 days
+        amount: parseFloat(data.budget),
         currency: "USD"
       });
 
@@ -144,7 +149,7 @@ export default function NewTask() {
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <FormField
                   control={form.control}
-                  name="title"
+                  name="name"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-white">Task Name</FormLabel>
@@ -165,7 +170,7 @@ export default function NewTask() {
                   name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-white">Task Description</FormLabel>
+                      <FormLabel className="text-white">Description</FormLabel>
                       <FormControl>
                         <Textarea 
                           placeholder="Describe what this task involves"
@@ -179,17 +184,33 @@ export default function NewTask() {
                   )}
                 />
 
+                {/* Mood Board Section */}
                 <FormField
                   control={form.control}
-                  name="deliverableDescription"
+                  name="moodboard"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-white">Expected Deliverable</FormLabel>
+                      <MoodBoardUploader
+                        value={field.value}
+                        onChange={field.onChange}
+                        disabled={createTaskMutation.isPending}
+                      />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="budget"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-white">Budget ($)</FormLabel>
                       <FormControl>
-                        <Textarea 
-                          placeholder="Describe what the contractor should deliver"
+                        <Input 
+                          type="number"
+                          placeholder="0.00"
                           className="bg-zinc-900 border-zinc-700 text-white"
-                          rows={3}
                           {...field} 
                         />
                       </FormControl>
@@ -197,45 +218,6 @@ export default function NewTask() {
                     </FormItem>
                   )}
                 />
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FormField
-                    control={form.control}
-                    name="amount"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-white">Task Value ($)</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number"
-                            placeholder="0.00"
-                            className="bg-zinc-900 border-zinc-700 text-white"
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="dueDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-white">Due Date</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="date"
-                            className="bg-zinc-900 border-zinc-700 text-white"
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
 
                 <FormField
                   control={form.control}
