@@ -75,13 +75,33 @@ function NewTaskContent() {
 
   const createTaskMutation = useMutation({
     mutationFn: async (data: TaskFormData) => {
-      // First create a project for this task
+      // Get current user data from API to get businessId
+      const userResponse = await apiRequest("GET", "/api/user");
+      if (!userResponse.ok) {
+        throw new Error("Authentication required - please log in again");
+      }
+      
+      const currentUser = await userResponse.json();
+      const businessId = currentUser.id;
+
+      if (!businessId) {
+        throw new Error("User ID not found - authentication required");
+      }
+
+      // First create a project for this task with proper businessId
       const projectResponse = await apiRequest("POST", "/api/projects", {
         name: data.name,
+        businessId: businessId, // Now properly set!
         description: data.description,
         budget: data.budget,
         status: "active"
       });
+
+      if (!projectResponse.ok) {
+        const errorData = await projectResponse.json();
+        throw new Error(errorData.message || "Failed to create project");
+      }
+
       const project = await projectResponse.json();
 
       // Then create a work request for the task
@@ -95,6 +115,11 @@ function NewTaskContent() {
         amount: parseFloat(data.budget),
         currency: "USD"
       });
+
+      if (!workRequestResponse.ok) {
+        const errorData = await workRequestResponse.json();
+        throw new Error(errorData.message || "Failed to create work request");
+      }
 
       return workRequestResponse.json();
     },
