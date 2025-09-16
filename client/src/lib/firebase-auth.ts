@@ -20,7 +20,7 @@ export const signUpUser = async (email: string, password: string): Promise<Fireb
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user: User = userCredential.user;
 
-    // Send email verification with production action URL
+    // Send email verification
     await sendEmailVerification(user, {
       url: 'https://www.interlinc.app/auth',
       handleCodeInApp: false
@@ -118,9 +118,9 @@ export const resendEmailVerification = async (): Promise<boolean> => {
       url: 'https://www.interlinc.app/auth',
       handleCodeInApp: false
     });
-    console.log("Verification email resent");
+    console.log("Verification email resent to:", user.email);
     return true;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Failed to resend verification email:", error);
     return false;
   }

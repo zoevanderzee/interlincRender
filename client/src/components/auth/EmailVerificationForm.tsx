@@ -46,9 +46,9 @@ export function EmailVerificationForm({
             emailVerified: true,
             ...registrationData
           };
-          
+
           const syncResponse = await apiRequest('POST', '/api/sync-user', syncPayload);
-          
+
           if (syncResponse.ok) {
             const syncData = await syncResponse.json();
             toast({
@@ -71,7 +71,7 @@ export function EmailVerificationForm({
     setIsResending(true);
     try {
       const success = await resendEmailVerification();
-      
+
       if (success) {
         setEmailSent(true);
         toast({
@@ -99,7 +99,7 @@ export function EmailVerificationForm({
 
   const handleCheckVerification = async () => {
     setIsVerifying(true);
-    
+
     try {
       // Force refresh the current user to check if email is verified
       if (auth.currentUser) {
@@ -112,9 +112,9 @@ export function EmailVerificationForm({
             emailVerified: true,
             ...registrationData
           };
-          
+
           const syncResponse = await apiRequest('POST', '/api/sync-user', syncPayload);
-          
+
           if (syncResponse.ok) {
             const syncData = await syncResponse.json();
             toast({
@@ -178,7 +178,7 @@ export function EmailVerificationForm({
               <p className="text-zinc-400">
                 We've sent a verification link to your email address. Click the link in the email to verify your account.
               </p>
-              
+
               <div className="w-full space-y-3 pt-4">
                 <p className="text-zinc-400 text-sm">
                   Check your email inbox and click the verification link, then click the button below.
