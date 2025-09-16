@@ -210,10 +210,14 @@ export default function Projects() {
       </div>
 
       <Tabs defaultValue="projects" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 bg-zinc-800">
+        <TabsList className="grid w-full grid-cols-3 bg-zinc-800">
           <TabsTrigger value="projects" className="data-[state=active]:bg-zinc-700 text-white">
             <FileText className="mr-2 h-4 w-4" />
             Projects Overview
+          </TabsTrigger>
+          <TabsTrigger value="tasks" className="data-[state=active]:bg-zinc-700 text-white">
+            <Plus className="mr-2 h-4 w-4" />
+            Tasks
           </TabsTrigger>
           <TabsTrigger value="contracts" className="data-[state=active]:bg-zinc-700 text-white">
             <Briefcase className="mr-2 h-4 w-4" />
@@ -359,6 +363,155 @@ export default function Projects() {
           </Card>
         )}
       </div>
+        </TabsContent>
+
+        <TabsContent value="tasks" className="mt-6">
+          <div className="space-y-6">
+            {/* Tasks Header */}
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-semibold text-white">Quick Tasks</h2>
+                <p className="text-gray-400 mt-1">Individual task assignments for contractors</p>
+              </div>
+              <Button 
+                className="bg-green-600 hover:bg-green-700"
+                onClick={() => navigate('/tasks/new')}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                New Task
+              </Button>
+            </div>
+
+            {/* Tasks Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <Card className="bg-zinc-900 border-zinc-800">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-400">Active Tasks</p>
+                      <p className="text-3xl font-bold text-white">
+                        {workRequests.filter((wr: any) => wr.status === 'assigned').length}
+                      </p>
+                    </div>
+                    <Plus className="h-8 w-8 text-green-500" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-zinc-900 border-zinc-800">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-400">Completed Tasks</p>
+                      <p className="text-3xl font-bold text-white">
+                        {workRequests.filter((wr: any) => wr.status === 'paid').length}
+                      </p>
+                    </div>
+                    <FileText className="h-8 w-8 text-blue-500" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-zinc-900 border-zinc-800">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-400">Total Task Value</p>
+                      <p className="text-3xl font-bold text-white">
+                        ${workRequests.reduce((sum: number, wr: any) => sum + parseFloat(wr.amount || 0), 0).toLocaleString()}
+                      </p>
+                    </div>
+                    <DollarSign className="h-8 w-8 text-yellow-500" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-zinc-900 border-zinc-800">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-400">In Review</p>
+                      <p className="text-3xl font-bold text-white">
+                        {workRequests.filter((wr: any) => wr.status === 'in_review').length}
+                      </p>
+                    </div>
+                    <Users className="h-8 w-8 text-purple-500" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Tasks List */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-white">Recent Tasks</h3>
+              {workRequests.length > 0 ? (
+                workRequests.slice(0, 10).map((task: any) => (
+                  <Card key={task.id} className="bg-zinc-900 border-zinc-800">
+                    <CardHeader>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle className="text-white">{task.title}</CardTitle>
+                          <p className="text-gray-400 text-sm mt-1">{task.description}</p>
+                          <p className="text-blue-400 text-sm mt-1">
+                            Assigned to: {task.contractorFirstName} {task.contractorLastName}
+                          </p>
+                        </div>
+                        <Badge variant={
+                          task.status === 'assigned' ? 'default' : 
+                          task.status === 'in_review' ? 'secondary' :
+                          task.status === 'paid' ? 'default' : 'secondary'
+                        }>
+                          {task.status.replace('_', ' ')}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center space-x-4">
+                          <div className="flex items-center text-gray-400">
+                            <DollarSign className="mr-1 h-4 w-4" />
+                            <span>${task.amount || 0}</span>
+                          </div>
+                          {task.dueDate && (
+                            <div className="flex items-center text-gray-400">
+                              <Calendar className="mr-1 h-4 w-4" />
+                              <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>
+                            </div>
+                          )}
+                        </div>
+                        <Button 
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/project/${task.projectId}`)}
+                          className="border-gray-700 text-white hover:bg-gray-800"
+                        >
+                          View Details
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <Card className="bg-zinc-900 border-zinc-800">
+                  <CardContent className="pt-6 pb-6 text-center">
+                    <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-zinc-800">
+                      <Plus className="h-6 w-6 text-green-500" />
+                    </div>
+                    <h3 className="mb-2 text-lg font-medium text-white">No Tasks Yet</h3>
+                    <p className="text-sm text-gray-400 mb-4">
+                      Create your first task to assign quick jobs to contractors.
+                    </p>
+                    <Button 
+                      onClick={() => navigate('/tasks/new')}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      Create Task
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="contracts" className="mt-6">

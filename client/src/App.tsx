@@ -10,6 +10,7 @@ import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import Projects from "@/pages/projects";
 import NewProject from "@/pages/new-project";
+import NewTask from "@/pages/new-task";
 import NewContract from "@/pages/new-contract"; // Assuming this is the correct component to import
 import Contractors from "@/pages/contractors";
 import Connections from "@/pages/connections";
@@ -157,17 +158,9 @@ function Router() {
         </Layout>
       </ProtectedRoute>
 
-      <ProtectedRoute path="/projects/new">
-        <Layout>
-          <NewContract />
-        </Layout>
-      </ProtectedRoute>
-
-      <ProtectedRoute path="/projects/:id">
-        <Layout>
-          <ProjectDetails />
-        </Layout>
-      </ProtectedRoute>
+      <ProtectedRoute path="/projects/new" component={NewProject} />
+      <Route path="/tasks/new" component={NewTask} />
+      <Route path="/projects/:id" component={ProjectDetails} />
 
 
       <ProtectedRoute path="/contractors">
