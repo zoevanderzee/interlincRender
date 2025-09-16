@@ -117,7 +117,7 @@ export default function NewTask() {
   const availableContractors = connectionRequests.filter((req: any) => req.status === 'accepted');
 
   return (
-    <>
+    <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900 p-6">
       {/* Page Header */}
       <div className="flex items-center mb-6">
         <Button 
@@ -139,12 +139,12 @@ export default function NewTask() {
       </div>
 
       {/* Content */}
-      <div className="bg-black p-6 rounded-lg shadow-sm border border-zinc-800">
+      <div className="bg-zinc-900/50 backdrop-blur-xl p-6 rounded-lg shadow-sm border border-zinc-800">
         <Card className="bg-transparent border-0">
           <CardHeader>
             <CardTitle className="text-white">Task Details</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="bg-transparent">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <FormField
@@ -301,6 +301,6 @@ export default function NewTask() {
           </CardContent>
         </Card>
       </div>
-    </>
+    </div>
   );
 }
