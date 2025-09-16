@@ -1,0 +1,80 @@
+[vite] connecting...
+[vite] connected.
+Stripe public key in component: pk_live_51R97qMF4bfRUGDn9PieolF5SKiBOF6YE9axkFFBBx4mLCA9PdhbC9bsolEvYknQ0KyHerJzsqKFW3dy900Osf9v300UKU3lUEk
+Starts with pk_test_: false
+Starts with pk_live_: true
+[2025-09-16T14:05:54.806Z]  @firebase/analytics: Analytics: Firebase Analytics is not supported in this environment. Wrap initialization of analytics in analytics.isSupported() to prevent initialization in unsupported environments. Details: (1) Cookies are not available. (analytics/invalid-analytics-context).
+Router rendering, current path: /
+ProtectedRoute: 
+Object {path: "/", isLoading: true, hasUser: false}
+Fetching current user data...
+Authentication headers check:
+user_id from localStorage: null
+firebase_uid from localStorage: null
+No authentication headers available - user not logged in
+API Request: GET /api/user 
+Object {headers: {…}, hasCookies: false}
+API Response: GET /api/user 
+Object {status: 401, setCookie: null, contentType: "application/json; charset=utf-8"}
+Error fetching user data: 
+Error {status: 401, statusText: "Unauthorized", data: {…}, isApiError: true}
+
+ProtectedRoute: 
+Object {path: "/", isLoading: false, hasUser: false}
+Force redirecting to /auth
+AuthPage component rendering
+ResizeObserver loop completed with undelivered notifications.
+Runtime error: null
+DOMException {line: 8462, column: 34, sourceURL: "https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/work…"}
+
+Runtime error: 
+DOMException {line: 8462, column: 34, sourceURL: "https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/work…"}
+
+The above error occurred in the <SelectContentImpl> component:
+
+SelectContentImpl@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-select.js:322:11
+SelectContent@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-select.js:301:57
+SlotClone@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-DKHUMOWT.js:52:9
+Slot@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-DKHUMOWT.js:33:9
+Primitive.div@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-CPFL7ZFD.js:41:11
+Portal@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-HHTAIDPU.js:260:9
+SelectPortal
+_c7@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/src/components/ui/select.tsx:122:10
+SelectProvider@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-JJS7DLG7.js:38:13
+SelectCollectionProviderProvider@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OKX5DAGM.js:28:13
+SelectCollectionProvider@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OKX5DAGM.js:90:29
+SelectProvider@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-JJS7DLG7.js:38:13
+PopperProvider@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-PSLAEUKM.js:1915:13
+Popper@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-PSLAEUKM.js:1973:37
+Select@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-select.js:104:37
+div
+div
+_c9@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/src/components/ui/card.tsx:114:10
+form
+div
+_c@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/src/components/ui/card.tsx:20:9
+div
+Primitive.div@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-CPFL7ZFD.js:41:11
+Presence@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-S7EWQZ7Q.js:25:31
+TabsContent@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tabs.js:173:80
+_c5@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/src/components/ui/tabs.tsx:72:10
+div
+Primitive.div@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-CPFL7ZFD.js:41:11
+TabsProvider@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-JJS7DLG7.js:38:13
+Tabs@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tabs.js:50:11
+div
+div
+div
+commitMutationEffectsOnFiber@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17699:49
+Route@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js:191:14
+Switch@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js:248:27
+Router
+AuthProvider@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/src/hooks/use-auth.tsx:27:5
+QueryClientProvider@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js:2805:9
+ErrorBoundary@
+App
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
+
+Deployment Error
+Error: NotFoundError: The object can not be found here.
