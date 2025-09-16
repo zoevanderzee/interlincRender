@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Calendar, DollarSign, Users, FileText, TrendingUp, Eye, Briefcase } from "lucide-react";
+import { Plus, Calendar, DollarSign, Users, FileText, TrendingUp, Eye, Briefcase, User } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { SubmitWorkModal } from "@/components/SubmitWorkModal";
@@ -212,11 +212,11 @@ export default function Projects() {
       <Tabs defaultValue="projects" className="w-full">
         <TabsList className="grid w-full grid-cols-3 bg-zinc-800">
           <TabsTrigger value="projects" className="data-[state=active]:bg-zinc-700 text-white">
-            <FileText className="mr-2 h-4 w-4" />
+            <Users className="mr-2 h-4 w-4" />
             Projects Overview
           </TabsTrigger>
           <TabsTrigger value="tasks" className="data-[state=active]:bg-zinc-700 text-white">
-            <Plus className="mr-2 h-4 w-4" />
+            <User className="mr-2 h-4 w-4" />
             Tasks
           </TabsTrigger>
           <TabsTrigger value="contracts" className="data-[state=active]:bg-zinc-700 text-white">
@@ -377,7 +377,7 @@ export default function Projects() {
                 className="bg-green-600 hover:bg-green-700"
                 onClick={() => navigate('/tasks/new')}
               >
-                <Plus className="mr-2 h-4 w-4" />
+                <User className="mr-2 h-4 w-4" />
                 New Task
               </Button>
             </div>
@@ -393,7 +393,7 @@ export default function Projects() {
                         {workRequests.filter((wr: any) => wr.status === 'assigned').length}
                       </p>
                     </div>
-                    <Plus className="h-8 w-8 text-green-500" />
+                    <User className="h-8 w-8 text-green-500" />
                   </div>
                 </CardContent>
               </Card>
@@ -495,7 +495,7 @@ export default function Projects() {
                 <Card className="bg-zinc-900 border-zinc-800">
                   <CardContent className="pt-6 pb-6 text-center">
                     <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-zinc-800">
-                      <Plus className="h-6 w-6 text-green-500" />
+                      <User className="h-6 w-6 text-green-500" />
                     </div>
                     <h3 className="mb-2 text-lg font-medium text-white">No Tasks Yet</h3>
                     <p className="text-sm text-gray-400 mb-4">
@@ -505,6 +505,7 @@ export default function Projects() {
                       onClick={() => navigate('/tasks/new')}
                       className="bg-green-600 hover:bg-green-700"
                     >
+                      <User className="mr-2 h-4 w-4" />
                       Create Task
                     </Button>
                   </CardContent>
