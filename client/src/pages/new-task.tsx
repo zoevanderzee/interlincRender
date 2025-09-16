@@ -43,18 +43,6 @@ function NewTaskContent() {
     retryDelay: 1000,
     staleTime: 5 * 60 * 1000, // 5 minutes
     enabled: true, // Always try to fetch - let the backend handle auth via headers
-    queryFn: async () => {
-      console.log("Fetching connection requests...");
-      const response = await apiRequest("GET", "/api/connection-requests");
-      if (!response.ok) {
-        const error = await response.json();
-        console.error("Connection requests fetch failed:", error);
-        throw new Error(error.message || "Failed to load contractors");
-      }
-      const data = await response.json();
-      console.log("Connection requests loaded:", data.length, "contractors");
-      return data;
-    }
   });
 
   const form = useForm<TaskFormData>({
