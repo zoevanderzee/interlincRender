@@ -57,7 +57,7 @@ export default function Header() {
       <div className="flex items-center space-x-4">
         <Link href="/">
           <div className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
-            <img src={Logo} alt="Interlinc" className="h-8 w-8" />
+            <img src={Logo} alt="Interlinc" className="h-8 w-auto object-contain" />
             <span className="font-semibold text-xl text-white">Interlinc</span>
           </div>
         </Link>
