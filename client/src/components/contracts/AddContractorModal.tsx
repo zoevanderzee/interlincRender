@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Contract, User } from '@shared/schema';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
@@ -27,11 +28,10 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface AddContractorModalProps {
   contractId: number;
-  contractors: User[];
   onSuccess?: () => void;
 }
 
-export default function AddContractorModal({ contractId, contractors, onSuccess }: AddContractorModalProps) {
+export default function AddContractorModal({ contractId, onSuccess }: AddContractorModalProps) {
   const [selectedContractorId, setSelectedContractorId] = useState<string>('');
   const [contractorValue, setContractorValue] = useState<string>('');
   const [isOpen, setIsOpen] = useState(false);
@@ -39,30 +39,33 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Fetch connected contractors from database
+  const { data: contractorsData, isLoading: isLoadingContractors } = useQuery<User[]>({
+    queryKey: ['/api/contractors'],
+    enabled: isOpen,
+  });
+
   // Fetch the current contract details
   const { data: contract } = useQuery<Contract>({
     queryKey: ['/api/contracts', contractId],
     enabled: isOpen,
   });
 
-  // Use contractors from props - these come from /api/contractors endpoint
-  // which already filters for connected contractors from the User database
-  const availableContractors = contractors.filter(c => c.role === 'contractor');
+  // Filter contractors to only show those with Stripe Connect accounts
+  const availableContractors = (contractorsData || []).filter(contractor => 
+    contractor.role === 'contractor' && contractor.stripeConnectAccountId
+  );
 
-  console.log('Available contractors from User database:', {
-    totalContractors: contractors.length,
-    filteredContractors: availableContractors.length,
-    contractorData: availableContractors.map(c => ({ 
-      id: c.id, 
-      email: c.email, 
-      firstName: c.firstName,
-      lastName: c.lastName,
-      role: c.role
+  console.log('Connected contractors with Stripe Connect:', {
+    total: contractorsData?.length || 0,
+    withStripeConnect: availableContractors.length,
+    contractors: availableContractors.map(c => ({
+      id: c.id,
+      name: `${c.firstName} ${c.lastName}`,
+      email: c.email,
+      hasStripeConnect: !!c.stripeConnectAccountId
     }))
   });
-
-  // Debug: Log all contractors to see what's coming in
-  console.log('All contractors received:', contractors);
 
   // Check if adding this contractor would exceed the project budget
   useEffect(() => {
@@ -78,16 +81,15 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
     }
   }, [contract, contractorValue]);
 
-  // Simple contractor assignment - just update the contract with the selected contractor
+  // Assign contractor to contract
   const updateContractMutation = useMutation({
     mutationFn: async () => {
-      console.log('Assigning contractor from User database:', {
+      console.log('Assigning contractor to contract:', {
         contractId,
         selectedContractorId,
         contractorValue
       });
 
-      // Simply update the contract with contractor assignment
       return await apiRequest(
         'PATCH', 
         `/api/contracts/${contractId}`, 
@@ -98,21 +100,17 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
       );
     },
     onSuccess: () => {
-      // Invalidate relevant queries to refresh the UI
       queryClient.invalidateQueries({ queryKey: ['/api/contracts'] });
       queryClient.invalidateQueries({ queryKey: ['/api/contracts', contractId] });
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
 
       toast({
-        title: "Worker added successfully",
-        description: "The worker has been assigned to this project.",
+        title: "Contractor assigned successfully",
+        description: "The contractor has been assigned to this project.",
       });
 
-      // Reset form fields
       setSelectedContractorId('');
       setContractorValue('');
-
-      // Close modal
       setIsOpen(false);
 
       if (onSuccess) {
@@ -128,7 +126,7 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
       }
 
       toast({
-        title: "Error adding contractor",
+        title: "Error assigning contractor",
         description: errorMessage,
         variant: "destructive",
       });
@@ -171,46 +169,56 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
-          Add Worker
+          Assign Contractor
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Add Worker to Project</DialogTitle>
+          <DialogTitle>Assign Contractor to Project</DialogTitle>
           <DialogDescription>
-            Assign a connected contractor to this project.
+            Select a connected contractor with payment setup to assign to this project.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="contractor">Select Worker</Label>
-              <Select
-                value={selectedContractorId}
-                onValueChange={setSelectedContractorId}
-              >
-                <SelectTrigger id="contractor">
-                  <SelectValue placeholder="Select a contractor" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableContractors.length > 0 ? (
-                    availableContractors.map((contractor) => (
-                      <SelectItem key={contractor.id} value={contractor.id.toString()}>
-                        {contractor.firstName && contractor.lastName 
-                          ? `${contractor.firstName} ${contractor.lastName}`
-                          : contractor.username || contractor.email
-                        } 
-                        {contractor.companyName ? ` (${contractor.companyName})` : ''}
-                        {contractor.email ? ` - ${contractor.email}` : ''}
+              <Label htmlFor="contractor">Select Contractor</Label>
+              {isLoadingContractors ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                  <span className="ml-2">Loading contractors...</span>
+                </div>
+              ) : (
+                <Select
+                  value={selectedContractorId}
+                  onValueChange={setSelectedContractorId}
+                >
+                  <SelectTrigger id="contractor">
+                    <SelectValue placeholder="Choose a contractor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableContractors.length > 0 ? (
+                      availableContractors.map((contractor) => (
+                        <SelectItem key={contractor.id} value={contractor.id.toString()}>
+                          {contractor.firstName && contractor.lastName 
+                            ? `${contractor.firstName} ${contractor.lastName}`
+                            : contractor.username || contractor.email
+                          }
+                          {contractor.companyName ? ` (${contractor.companyName})` : ''}
+                          <span className="ml-2 text-xs text-green-500">✓ Payment Ready</span>
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="none" disabled>
+                        No contractors available. Contractors need Stripe Connect setup.
                       </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="none" disabled>
-                      No connected contractors found. Check your contractor connections.
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
+                    )}
+                  </SelectContent>
+                </Select>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Only showing contractors with completed payment setup
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -258,10 +266,10 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
               {updateContractMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Adding...
+                  Assigning...
                 </>
               ) : (
-                'Add to Project'
+                'Assign to Project'
               )}
             </Button>
           </DialogFooter>

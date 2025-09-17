@@ -534,18 +534,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
-      console.log(`Returning ${linkedContractors.length} contractors from User database for business ${userId}`);
-      console.log('Contractor details:', linkedContractors.map(c => ({
+      // Filter to only include contractors with Stripe Connect accounts
+      const contractorsWithStripeConnect = linkedContractors.filter(contractor => 
+        contractor.stripeConnectAccountId
+      );
+
+      console.log(`Returning ${contractorsWithStripeConnect.length} contractors with Stripe Connect from ${linkedContractors.length} total for business ${userId}`);
+      console.log('Contractor details:', contractorsWithStripeConnect.map(c => ({
         id: c.id,
         username: c.username,
         email: c.email,
         firstName: c.firstName,
         lastName: c.lastName,
         role: c.role,
-        companyName: c.companyName
+        companyName: c.companyName,
+        hasStripeConnect: !!c.stripeConnectAccountId
       })));
 
-      res.json(linkedContractors);
+      res.json(contractorsWithStripeConnect);
     } catch (error) {
       console.error("Error fetching contractors:", error);
       res.status(500).json({ message: "Error fetching contractors" });
