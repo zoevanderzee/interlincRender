@@ -50,8 +50,6 @@ import {sql, eq, and, or, desc, inArray} from "drizzle-orm";
 // Legacy object storage import removed - now using custom file storage
 import { FileStorageService, uploadMiddleware } from "./fileStorage";
 import plaidRoutes from "./plaid-routes";
-import trolleyRoutes from "./trolley-routes";
-import trolleyTestRoutes from "./trolley-test-routes";
 import {registerFirebaseRoutes} from "./firebase-routes";
 import connectRoutes from "./connect.js";
 import {registerSyncUserRoutes} from "./routes/sync-user";
@@ -60,8 +58,6 @@ import {registerSyncFirebaseUserRoutes} from "./routes/sync-firebase-user";
 import {registerBusinessWorkerRoutes} from "./business-workers/index";
 import {registerContractorsWithIdsRoutes} from "./business-workers/contractors-with-ids";
 import {registerProjectRoutes} from "./projects/index";
-// import { generateWorkRequestToken } from "./services/email"; // Not needed for now
-// Schema tables imported from shared/schema instead
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
@@ -3511,7 +3507,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register Plaid routes
   plaidRoutes(app, apiRouter, requireAuth);
-  trolleyRoutes(app, apiRouter, requireAuth);
 
   // Register Firebase auth routes
   registerFirebaseRoutes(app);
