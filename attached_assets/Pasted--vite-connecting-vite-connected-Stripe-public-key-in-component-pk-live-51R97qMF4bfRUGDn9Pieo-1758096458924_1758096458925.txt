@@ -1,0 +1,119 @@
+[vite] connecting...
+[vite] connected.
+Stripe public key in component: pk_live_51R97qMF4bfRUGDn9PieolF5SKiBOF6YE9axkFFBBx4mLCA9PdhbC9bsolEvYknQ0KyHerJzsqKFW3dy900Osf9v300UKU3lUEk
+Starts with pk_test_: false
+Starts with pk_live_: true
+[2025-09-17T08:05:40.579Z]  @firebase/analytics: Analytics: Firebase Analytics is not supported in this environment. Wrap initialization of analytics in analytics.isSupported() to prevent initialization in unsupported environments. Details: (1) Cookies are not available. (analytics/invalid-analytics-context).
+Router rendering, current path: /
+ProtectedRoute: 
+Object {path: "/", isLoading: true, hasUser: false}
+Fetching current user data...
+Authentication headers check:
+user_id from localStorage: 86
+firebase_uid from localStorage: K1L54cjRphbhPRntEzvGW3kQUjh2
+Added X-User-ID header: 86
+Added X-Firebase-UID header: K1L54cjRphbhPRntEzvGW3kQUjh2
+API Request: GET /api/user 
+Object {headers: {…}, hasCookies: false}
+API Response: GET /api/user 
+Object {status: 200, setCookie: null, contentType: "application/json; charset=utf-8"}
+User authenticated: zoevdzee
+ProtectedRoute: 
+Object {path: "/", isLoading: false, hasUser: true}
+Fetching data from /api/dashboard
+Query Request: GET /api/dashboard 
+Object {hasCookies: false, cookieString: "", hasUserInStorage: true}
+Fetching data from /api/budget
+Query Request: GET /api/budget 
+Object {hasCookies: false, cookieString: "", hasUserInStorage: true}
+Fetching data from /api/trolley/wallet-balance
+Query Request: GET /api/trolley/wallet-balance 
+Object {hasCookies: false, cookieString: "", hasUserInStorage: true}
+Fetching data from /api/projects
+Query Request: GET /api/projects 
+Object {hasCookies: false, cookieString: "", hasUserInStorage: true}
+Fetching data from /api/notifications/count
+Query Request: GET /api/notifications/count 
+Object {hasCookies: false, cookieString: "", hasUserInStorage: true}
+Fetching data from /api/connect/status
+Query Request: GET /api/connect/status 
+Object {hasCookies: false, cookieString: "", hasUserInStorage: true}
+Query Response: GET /api/trolley/wallet-balance 
+Object {status: 400, setCookie: null, contentType: "application/json; charset=utf-8"}
+Error fetching data from /api/trolley/wallet-balance: 
+Error {status: 400, statusText: "Bad Request", data: {…}, isApiError: true}
+
+Query Response: GET /api/projects 
+Object {status: 200, setCookie: null, contentType: "application/json; charset=utf-8"}
+Query Response: GET /api/notifications/count 
+Object {status: 200, setCookie: null, contentType: "application/json; charset=utf-8"}
+Query Response: GET /api/budget 
+Object {status: 200, setCookie: null, contentType: "application/json; charset=utf-8"}
+Query Response: GET /api/dashboard 
+Object {status: 200, setCookie: null, contentType: "application/json; charset=utf-8"}
+Query Response: GET /api/connect/status 
+Object {status: 200, setCookie: null, contentType: "application/json; charset=utf-8"}
+Fetching data from /api/trolley/wallet-balance
+
+Deployment Error
+Error: NotFoundError: The object can not be found here.
+File: https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=200c7cd0
+Line: 16670
+removeChild@[native code]
+removeChildFromContainer@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:8462:34
+commitDeletionEffectsOnFiber@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17508:45
+recursivelyTraverseDeletionEffects@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17486:41
+commitDeletionEffectsOnFiber@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17577:49
+recursivelyTraverseDeletionEffects@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17486:41
+commitDeletionEffectsOnFiber@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17577:49
+recursivelyTraverseDeletionEffects@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17486:41
+commitDeletionEffectsOnFiber@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17577:49
+recursivelyTraverseDeletionEffects@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17486:41
+commitDeletionEffectsOnFiber@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17577:49
+recursivelyTraverseDeletionEffects@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17486:41
+commitDeletionEffectsOnFiber@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17577:49
+recursivelyTraverseDeletionEffects@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17486:41
+commitDeletionEffectsOnFiber@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17577:49
+recursivelyTraverseDeletionEffects@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17486:41
+commitDeletionEffectsOnFiber@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17577:49
+recursivelyTraverseDeletionEffects@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17486:41
+commitDeletionEffectsOnFiber@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17577:49
+recursivelyTraverseDeletionEffects@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17486:41
+commitDeletionEffectsOnFiber@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17577:49
+recursivelyTraverseDeletionEffects@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17486:41
+commitDeletionEffectsOnFiber@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17577:49
+recursivelyTraverseDeletionEffects@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17486:41
+commitDeletionEffectsOnFiber@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17577:49
+recursivelyTraverseDeletionEffects@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17486:41
+commitDeletionEffectsOnFiber@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17577:49
+recursivelyTraverseDeletionEffects@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17486:41
+commitDeletionEffectsOnFiber@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17577:49
+recursivelyTraverseDeletionEffects@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17486:41
+commitDeletionEffectsOnFiber@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17577:49
+recursivelyTraverseDeletionEffects@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17486:41
+commitDeletionEffectsOnFiber@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17610:49
+recursivelyTraverseDeletionEffects@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17486:41
+commitDeletionEffectsOnFiber@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17577:49
+recursivelyTraverseDeletionEffects@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17486:41
+commitDeletionEffectsOnFiber@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17577:49
+commitDeletionEffects@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17477:41
+recursivelyTraverseMutationEffects@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17674:38
+commitMutationEffectsOnFiber@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17699:49
+recursivelyTraverseMutationEffects@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17685:43
+commitMutationEffectsOnFiber@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17699:49
+recursivelyTraverseMutationEffects@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17685:43
+commitMutationEffectsOnFiber@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17699:49
+recursivelyTraverseMutationEffects@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17685:43
+commitMutationEffectsOnFiber@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17699:49
+recursivelyTraverseMutationEffects@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17685:43
+commitMutationEffectsOnFiber@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17813:49
+recursivelyTraverseMutationEffects@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17685:43
+commitMutationEffectsOnFiber@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17699:49
+recursivelyTraverseMutationEffects@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17685:43
+commitMutationEffectsOnFiber@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17699:49
+recursivelyTraverseMutationEffects@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17685:43
+commitMutationEffectsOnFiber@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17699:49
+recursivelyTraverseMutationEffects@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17685:43
+commitMutationEffectsOnFiber@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17896:49
+recursivelyTraverseMutationEffects@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17685:43
+commit
