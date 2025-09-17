@@ -52,12 +52,12 @@ export function useIntegratedData() {
     refetchInterval: 60 * 1000,
   });
 
-  // Wallet balance - financial data
-  const { data: walletData, isLoading: isWalletLoading } = useQuery({
-    queryKey: ['/api/trolley/wallet-balance'],
+  // Stripe Connect account status - replaces Trolley wallet balance
+  const { data: stripeConnectData, isLoading: isStripeConnectLoading } = useQuery({
+    queryKey: ['/api/connect/status'],
     enabled: !!user && user.role === 'business',
-    staleTime: 15 * 1000, // Financial data needs frequent updates
-    refetchInterval: 30 * 1000,
+    staleTime: 30 * 1000, // Financial data needs frequent updates
+    refetchInterval: 60 * 1000,
   });
 
   // Projects data - separate from contracts
@@ -94,8 +94,8 @@ export function useIntegratedData() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] }),
       queryClient.invalidateQueries({ queryKey: ['/api/budget'] }),
-      queryClient.invalidateQueries({ queryKey: ['/api/trolley/wallet-balance'] }),
-      queryClient.invalidateQueries({ queryKey: ['/api/trolley/funding-history'] }),
+      queryClient.invalidateQueries({ queryKey: ['/api/connect/status'] }), // Invalidates Stripe Connect status
+      queryClient.invalidateQueries({ queryKey: ['/api/trolley/funding-history'] }), // Trolley related query, kept for potential future use or if other parts of the app still use it
       queryClient.invalidateQueries({ queryKey: ['/api/user'] }),
       queryClient.invalidateQueries({ queryKey: ['/api/contracts'] }),
       queryClient.invalidateQueries({ queryKey: ['/api/milestones'] }),
@@ -124,11 +124,11 @@ export function useIntegratedData() {
       }));
     }
 
-    // Update wallet balance
-    if (updates.walletBalance !== undefined) {
-      queryClient.setQueryData(['/api/trolley/wallet-balance'], (oldData: any) => ({
+    // Update Stripe Connect status if relevant updates are provided
+    if (updates.stripeConnectStatus) {
+      queryClient.setQueryData(['/api/connect/status'], (oldData: any) => ({
         ...oldData,
-        balance: updates.walletBalance
+        ...updates.stripeConnectStatus
       }));
     }
 
@@ -171,15 +171,15 @@ export function useIntegratedData() {
     invites: dashboardData?.invites || [],
     projects: projectsData || [], // Use actual projects data, not contracts
     workRequests: workRequestsData || [],
-    walletBalance: walletData?.balance || 0,
+    walletBalance: 0, // Stripe Connect doesn't have a wallet balance concept
     budgetData: budgetData || null,
     hasActiveSubscription: user?.subscriptionStatus === 'active',
-    paymentMethodsEnabled: user?.trolleyBankAccountStatus === 'verified',
-    trolleyVerificationStatus: user?.trolleySubmerchantStatus || 'pending',
+    paymentMethodsEnabled: stripeConnectData?.hasAccount && !stripeConnectData?.needsOnboarding,
+    trolleyVerificationStatus: user?.trolleySubmerchantStatus || 'pending', // Kept for potential future use or if other parts of the app still use it
     notificationCount: parseInt(notificationData?.count || '0', 10),
   };
 
-  const isLoading = isDashboardLoading || isBudgetLoading || isWalletLoading || 
+  const isLoading = isDashboardLoading || isBudgetLoading || isStripeConnectLoading || 
                    isProjectsLoading || isWorkRequestsLoading || isNotificationLoading;
 
   return {
@@ -191,7 +191,7 @@ export function useIntegratedData() {
     // Individual data sources for specific use cases
     dashboardData,
     budgetData,
-    walletData,
+    stripeConnectData,
     projectsData,
     workRequestsData,
   };
