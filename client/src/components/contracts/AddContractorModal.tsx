@@ -41,7 +41,7 @@ export default function AddContractorModal({ contractId, onSuccess }: AddContrac
 
   // Fetch connected contractors from database
   const { data: contractorsData, isLoading: isLoadingContractors } = useQuery<User[]>({
-    queryKey: ['/api/contractors'],
+    queryKey: ['/api/users', { role: 'contractor' }],
     enabled: isOpen,
   });
 
@@ -51,19 +51,18 @@ export default function AddContractorModal({ contractId, onSuccess }: AddContrac
     enabled: isOpen,
   });
 
-  // Filter contractors to only show those with Stripe Connect accounts
+  // Show all connected contractors from the database
   const availableContractors = (contractorsData || []).filter(contractor => 
-    contractor.role === 'contractor' && contractor.stripeConnectAccountId
+    contractor.role === 'contractor'
   );
 
-  console.log('Connected contractors with Stripe Connect:', {
+  console.log('Connected contractors from database:', {
     total: contractorsData?.length || 0,
-    withStripeConnect: availableContractors.length,
+    available: availableContractors.length,
     contractors: availableContractors.map(c => ({
       id: c.id,
       name: `${c.firstName} ${c.lastName}`,
-      email: c.email,
-      hasStripeConnect: !!c.stripeConnectAccountId
+      email: c.email
     }))
   });
 
@@ -205,19 +204,18 @@ export default function AddContractorModal({ contractId, onSuccess }: AddContrac
                             : contractor.username || contractor.email
                           }
                           {contractor.companyName ? ` (${contractor.companyName})` : ''}
-                          <span className="ml-2 text-xs text-green-500">✓ Payment Ready</span>
                         </SelectItem>
                       ))
                     ) : (
                       <SelectItem value="none" disabled>
-                        No contractors available. Contractors need Stripe Connect setup.
+                        No connected contractors available. Please connect with contractors first.
                       </SelectItem>
                     )}
                   </SelectContent>
                 </Select>
               )}
               <p className="text-xs text-muted-foreground">
-                Only showing contractors with completed payment setup
+                Select from your connected contractors
               </p>
             </div>
 
