@@ -476,17 +476,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   /**
    * Dedicated endpoint for retrieving contractors linked to a company
-   * This solves the problem of contractors not appearing in project creation dropdowns
+   * Simple User database query - no Trolley logic involved
    */
   app.get(`${apiRouter}/contractors`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
-      const companyId = req.query.companyId ? parseInt(req.query.companyId as string) :
-                        req.query.companyid ? parseInt(req.query.companyid as string) : null;
-
-      if (!companyId) {
-        return res.status(400).json({ message: "Company ID is required" });
-      }
-
       // Get user ID from session or X-User-ID header fallback
       const userId = req.user?.id || (req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
 
@@ -495,37 +488,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Authentication required" });
       }
 
-      // Verify the requesting user has access to this company's contractors
-      // This serves as permission check - users can only see contractors for their own company
       const user = await storage.getUser(userId);
-
-      if (!user || (user.id !== companyId && user.role !== 'admin')) {
-        return res.status(403).json({ message: "You don't have permission to view these contractors" });
+      if (!user || user.role !== 'business') {
+        return res.status(403).json({ message: "Only business users can access contractors" });
       }
 
-      console.log(`Getting contractors for company ID: ${companyId}`);
+      console.log(`Getting connected contractors for business user: ${userId}`);
 
-      // Get all contractors linked to this company through various means
-      const contractorsWithContracts = await storage.getContractorsByBusinessId(companyId);
-      const contractorsByInvites = await storage.getContractorsByBusinessInvites(companyId);
-
+      // Get contractors linked to this business through contracts
+      const contractorsWithContracts = await storage.getContractorsByBusinessId(userId);
+      
       // Get contractors from accepted connection requests
       let contractorsByConnections: any[] = [];
       try {
         const connections = await storage.getConnectionRequests({
-          businessId: companyId,
+          businessId: userId,
           status: 'accepted'
         });
 
-        console.log(`Found ${connections.length} accepted connection requests for business ID: ${companyId}`);
+        console.log(`Found ${connections.length} accepted connection requests for business ID: ${userId}`);
 
-        if (connections && connections.length > 0) {
-          for (const connection of connections) {
-            if (connection.contractorId) {
-              const contractor = await storage.getUser(connection.contractorId);
-              if (contractor) {
-                contractorsByConnections.push(contractor);
-              }
+        for (const connection of connections) {
+          if (connection.contractorId) {
+            const contractor = await storage.getUser(connection.contractorId);
+            if (contractor && contractor.role === 'contractor') {
+              contractorsByConnections.push(contractor);
             }
           }
         }
@@ -533,26 +520,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error fetching connected contractors:", error);
       }
 
-      // Combine all sources and remove duplicates
+      // Combine and deduplicate contractors from User database
       const contractorIds = new Set();
       const linkedContractors: any[] = [];
 
-      // Removed hardcoded test contractor addition for proper data isolation
-
-      // Combine all contractor sources - include any user who can be a worker
-      [...contractorsWithContracts, ...contractorsByInvites, ...contractorsByConnections].forEach(contractor => {
-        if (!contractorIds.has(contractor.id)) {
-          // Include any user with contractor role OR any user who isn't the company itself
-          if (contractor.role === 'contractor' || contractor.id !== companyId) {
-            contractorIds.add(contractor.id);
-            linkedContractors.push(contractor);
-          }
+      [...contractorsWithContracts, ...contractorsByConnections].forEach(contractor => {
+        if (!contractorIds.has(contractor.id) && contractor.role === 'contractor') {
+          contractorIds.add(contractor.id);
+          linkedContractors.push(contractor);
         }
       });
 
-      // Removed automatic contractor addition - users must be explicitly connected through invites or contracts
-
-      console.log(`Returning ${linkedContractors.length} contractors linked to company ID ${companyId}`);
+      console.log(`Returning ${linkedContractors.length} contractors from User database for business ${userId}`);
 
       res.json(linkedContractors);
     } catch (error) {

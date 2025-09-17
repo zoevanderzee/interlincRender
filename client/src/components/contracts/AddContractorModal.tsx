@@ -36,45 +36,28 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
   const [contractorValue, setContractorValue] = useState<string>('');
   const [isOpen, setIsOpen] = useState(false);
   const [budgetWarning, setBudgetWarning] = useState<string | null>(null);
-  const [deliverables, setDeliverables] = useState<string>('');
-  const [dueDate, setDueDate] = useState<string>('');
-  const [amount, setAmount] = useState<string>('');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // Fetch the current contract details
   const { data: contract } = useQuery<Contract>({
     queryKey: ['/api/contracts', contractId],
-    enabled: isOpen, // Only fetch when modal is open
+    enabled: isOpen,
   });
 
-  // Fetch company budget info
-  const { data: budgetData } = useQuery({
-    queryKey: ['/api/budget'],
-    enabled: isOpen, // Only fetch when modal is open
-  });
-
-  // Use all contractors from the dashboard data without additional filtering
-  // The backend already handles the proper filtering for connected contractors
+  // Use contractors from props - these come from /api/contractors endpoint
+  // which already filters for connected contractors from the User database
   const availableContractors = contractors.filter(c => c.role === 'contractor');
-  
-  // DEBUG: Log contractor data to identify role issues
-  console.log('🔍 CONTRACTOR SELECTION DEBUG:', {
-    allContractorsFromProps: contractors.map(c => ({ 
+
+  console.log('Available contractors from User database:', {
+    totalContractors: contractors.length,
+    filteredContractors: availableContractors.length,
+    contractorData: availableContractors.map(c => ({ 
       id: c.id, 
       email: c.email, 
-      username: c.username, 
-      role: c.role,
       firstName: c.firstName,
-      lastName: c.lastName 
-    })),
-    filteredAvailableContractors: availableContractors.map(c => ({ 
-      id: c.id, 
-      email: c.email, 
-      username: c.username, 
-      role: c.role,
-      firstName: c.firstName,
-      lastName: c.lastName 
+      lastName: c.lastName,
+      role: c.role
     }))
   });
 
@@ -83,8 +66,7 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
     if (contract && contractorValue) {
       const contractorValueNum = parseFloat(contractorValue);
       const contractValueNum = parseFloat(contract.value || '0');
-      
-      // Only show warning if contract value is greater than 0 and contractor value exceeds it
+
       if (contractValueNum > 0 && contractorValueNum > contractValueNum) {
         setBudgetWarning(`Warning: The contractor value ($${contractorValueNum}) exceeds the total project budget ($${contractValueNum}).`);
       } else {
@@ -93,90 +75,55 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
     }
   }, [contract, contractorValue]);
 
-  // Handle contractor assignment with local deliverable and work request creation
+  // Simple contractor assignment - just update the contract with the selected contractor
   const updateContractMutation = useMutation({
     mutationFn: async () => {
-      // 1. Update the contract with contractor assignment
-      const contractResponse = await apiRequest(
+      console.log('Assigning contractor from User database:', {
+        contractId,
+        selectedContractorId,
+        contractorValue
+      });
+
+      // Simply update the contract with contractor assignment
+      return await apiRequest(
         'PATCH', 
         `/api/contracts/${contractId}`, 
         { 
           contractorId: parseInt(selectedContractorId),
-          contractorValue: contractorValue ? parseFloat(contractorValue) : undefined
+          contractorBudget: contractorValue ? parseFloat(contractorValue) : undefined
         }
       );
-
-      // 2. Create work request to database (this is what shows up in Work Requests page)
-      const projectId = Array.isArray(contract) ? contract[0]?.projectId : contract?.projectId;
-      console.log('🔍 PROJECT DEBUG:', { contract, projectId, hasProjectId: !!projectId, isArray: Array.isArray(contract) });
-      if (projectId) {
-        const formattedDueDate = new Date(dueDate || Date.now()).toISOString();
-        
-        try {
-          const workRequestResponse = await apiRequest(
-            'POST',
-            `/api/projects/${projectId}/work-requests`,
-            {
-              contractorUserId: parseInt(selectedContractorId),
-              title: deliverables,
-              description: `Project deliverable: ${deliverables}`,
-              dueDate: formattedDueDate,
-              amount: parseFloat(contractorValue || '0'),
-              currency: 'USD'
-            }
-          );
-          console.log('✅ Work request created successfully:', workRequestResponse);
-        } catch (workRequestError) {
-          console.error('❌ Work request creation failed:', workRequestError);
-          // Continue anyway since contract update succeeded
-        }
-      }
-
-      return contractResponse;
     },
     onSuccess: () => {
       // Invalidate relevant queries to refresh the UI
       queryClient.invalidateQueries({ queryKey: ['/api/contracts'] });
       queryClient.invalidateQueries({ queryKey: ['/api/contracts', contractId] });
-      queryClient.invalidateQueries({ queryKey: ['/api/projects'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/projects', contract?.projectId] });
-      queryClient.invalidateQueries({ queryKey: ['/api/budget'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/milestones'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/milestones', { contractId }] });
-      queryClient.invalidateQueries({ queryKey: ['/api/work-requests'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/team-members'] });
-      
-      // Show success message
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
+
       toast({
         title: "Worker added successfully",
-        description: "The worker has been assigned to this project with deliverables.",
+        description: "The worker has been assigned to this project.",
       });
-      
+
       // Reset form fields
       setSelectedContractorId('');
       setContractorValue('');
-      setDeliverables('');
-      setDueDate('');
-      setAmount('');
-      
+
       // Close modal
       setIsOpen(false);
-      
-      // Optional callback
+
       if (onSuccess) {
         onSuccess();
       }
     },
     onError: (error: any) => {
       let errorMessage = "There was a problem assigning the contractor. Please try again.";
-      if (error?.data?.error) {
-        errorMessage = error.data.error;
-      } else if (error?.data?.message) {
+      if (error?.data?.message) {
         errorMessage = error.data.message;
       } else if (error?.message) {
         errorMessage = error.message;
       }
-      
+
       toast({
         title: "Error adding contractor",
         description: errorMessage,
@@ -185,8 +132,9 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
     },
   });
 
-  // Function to handle contractor assignment with required fields checks
-  const assignContractorToProject = () => {
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
     if (!selectedContractorId) {
       toast({
         title: "Please select a contractor",
@@ -195,39 +143,15 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
       });
       return;
     }
-    
-    // Deliverables field is required
-    if (!deliverables || deliverables.trim() === '') {
-      toast({
-        title: "Deliverables required",
-        description: "Please enter what the worker is expected to deliver.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    // Set defaults for optional fields
-    if (!dueDate) {
-      setDueDate(new Date().toISOString().split('T')[0]);
-    }
-    
+
     if (!contractorValue) {
-      setContractorValue('1');
+      setContractorValue('0');
     }
-    
-    const contractorValueNum = parseFloat(contractorValue);
+
+    const contractorValueNum = parseFloat(contractorValue || '0');
     const contractValueNum = parseFloat(contract?.value || '0');
-    
-    console.log('🔍 CLIENT VALIDATION DEBUG:', {
-      contract,
-      contractorValue,
-      contractorValueNum,
-      contractValueNum,
-      contractId,
-      willExceed: contractorValueNum > contractValueNum
-    });
-    
-    // Budget check: Verify contractor value doesn't exceed project budget
+
+    // Budget validation
     if (contractValueNum > 0 && contractorValueNum > contractValueNum) {
       toast({
         title: "Budget exceeded",
@@ -236,44 +160,8 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
       });
       return;
     }
-    
-    // DEBUG: Log the selected contractor and all API call data
-    const selectedContractor = availableContractors.find(c => c.id.toString() === selectedContractorId);
-    console.log('🔍 COMPLETE API CALL DEBUG:', {
-      selectedContractorId,
-      selectedContractor,
-      selectedContractorEmail: selectedContractor?.email,
-      selectedContractorRole: selectedContractor?.role,
-      isContractorRole: selectedContractor?.role === 'contractor',
-      contractDetails: contract,
-      deliverablePayload: {
-        contractId: contractId,
-        name: deliverables,
-        description: `Due: ${dueDate || new Date().toISOString().split('T')[0]}`,
-        dueDate: new Date(dueDate || new Date().toISOString().split('T')[0]).toISOString(),
-        status: 'accepted',
-        paymentAmount: contractorValue || '1',
-        progress: 0
-      },
-      workRequestPayload: {
-        title: deliverables,
-        description: `Project deliverable: ${deliverables}`,
-        recipientEmail: selectedContractor?.email,
-        status: 'pending',
-        budgetMin: contractorValue || '1',
-        budgetMax: contractorValue || '1',
-        dueDate: new Date(dueDate || new Date().toISOString().split('T')[0]).toISOString(),
-        skills: 'Required for project'
-      }
-    });
-    
-    // All checks passed, proceed with contractor assignment
-    updateContractMutation.mutate();
-  };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    assignContractorToProject();
+    updateContractMutation.mutate();
   };
 
   return (
@@ -287,7 +175,7 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
         <DialogHeader>
           <DialogTitle>Add Worker to Project</DialogTitle>
           <DialogDescription>
-            Assign a freelancer or sub contractor to this project from your onboarded workers.
+            Assign a connected contractor to this project.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
@@ -299,52 +187,30 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
                 onValueChange={setSelectedContractorId}
               >
                 <SelectTrigger id="contractor">
-                  <SelectValue placeholder="Select a freelancer or contractor" />
+                  <SelectValue placeholder="Select a contractor" />
                 </SelectTrigger>
                 <SelectContent>
                   {availableContractors.length > 0 ? (
                     availableContractors.map((contractor) => (
                       <SelectItem key={contractor.id} value={contractor.id.toString()}>
-                        {contractor.firstName} {contractor.lastName} {contractor.companyName ? `(${contractor.companyName})` : ''}
+                        {contractor.firstName && contractor.lastName 
+                          ? `${contractor.firstName} ${contractor.lastName}`
+                          : contractor.username
+                        } 
+                        {contractor.companyName ? ` (${contractor.companyName})` : ''}
                       </SelectItem>
                     ))
                   ) : (
                     <SelectItem value="none" disabled>
-                      No workers available. Please invite freelancers or contractors first.
+                      No connected contractors available. Please connect with contractors first.
                     </SelectItem>
                   )}
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="space-y-2">
-              <Label htmlFor="deliverables">Deliverables</Label>
-              <Input
-                id="deliverables"
-                placeholder="Website design, logo, etc."
-                value={deliverables}
-                onChange={(e) => setDeliverables(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                What the worker is expected to deliver
-              </p>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="dueDate">Due Date</Label>
-              <Input
-                id="dueDate"
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                When the deliverables are due
-              </p>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="contractorValue">Amount ($)</Label>
+              <Label htmlFor="contractorValue">Budget Allocation ($)</Label>
               <div className="flex relative">
                 <DollarSign className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -357,10 +223,10 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                Payment amount for this deliverable
+                Budget allocated to this contractor for this project
               </p>
             </div>
-            
+
             {budgetWarning && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
@@ -371,7 +237,7 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
               </Alert>
             )}
           </div>
-          
+
           <DialogFooter>
             <Button 
               type="button" 
@@ -383,7 +249,7 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
             </Button>
             <Button 
               type="submit" 
-              disabled={!selectedContractorId || !contractorValue || updateContractMutation.isPending}
+              disabled={!selectedContractorId || updateContractMutation.isPending}
             >
               {updateContractMutation.isPending ? (
                 <>
