@@ -62,7 +62,7 @@ import {registerContractorsWithIdsRoutes} from "./business-workers/contractors-w
 import {registerProjectRoutes} from "./projects/index";
 // import { generateWorkRequestToken } from "./services/email"; // Not needed for now
 // Schema tables imported from shared/schema instead
-import { registerContractorAssignmentRoutes } from "./contractor-assignment-routes";
+import { registerContractorAssignmentRoutes } from "./contractor-assignment";
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
