@@ -1,6 +1,12 @@
-import { createRoot } from "react-dom/client";
-import App from "./App";
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import App from "./App.tsx";
 import "./index.css";
+import { Toaster } from "@/components/ui/toaster";
+import { PerformanceMonitor } from "@/lib/performance-monitor";
+import { suppressCommonErrors } from "@/lib/error-suppression";
 
 // Add error boundary for deployment debugging
 window.addEventListener('error', (e) => {
@@ -19,7 +25,24 @@ try {
   if (!rootElement) {
     throw new Error("Root element not found");
   }
-  createRoot(rootElement).render(<App />);
+  // Initialize performance monitoring
+  PerformanceMonitor.initialize();
+
+  // Suppress common UI library errors that don't affect functionality
+  suppressCommonErrors();
+
+  const queryClient = new QueryClient({
+  });
+
+  ReactDOM.createRoot(rootElement).render(
+    <React.StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <App />
+        <Toaster />
+        <ReactQueryDevtools initialIsOpen={false} />
+      </QueryClientProvider>
+    </React.StrictMode>
+  );
 } catch (error) {
   console.error('Failed to render app:', error);
   document.body.innerHTML = `<div style="color: white; background: #1a1a1a; padding: 20px; font-family: Arial;">
