@@ -1,7 +1,7 @@
 
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getAnalytics } from "firebase/analytics";
+import { getAnalytics, isSupported } from "firebase/analytics";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyBJJgw-5LbtcWg5dsga3nQxhk6rL2rep6o",
@@ -19,7 +19,18 @@ const app = initializeApp(firebaseConfig);
 // Initialize Firebase Authentication and get a reference to the service
 export const auth = getAuth(app);
 
-// Initialize Analytics (optional)
-export const analytics = getAnalytics(app);
+// Initialize Analytics only if supported
+let analytics: any = null;
+isSupported().then((supported) => {
+  if (supported) {
+    analytics = getAnalytics(app);
+  } else {
+    console.log('Firebase Analytics not supported in this environment');
+  }
+}).catch((error) => {
+  console.warn('Firebase Analytics support check failed:', error);
+});
+
+export { analytics };
 
 export default app;
