@@ -1,7 +1,6 @@
 import React, { ReactNode } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowDown, ArrowUp, Wallet } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { Card, CardContent } from "@/components/ui/card";
+import { ArrowDown, ArrowUp } from "lucide-react";
 
 interface StatsCardProps {
   title: string;
@@ -22,14 +21,6 @@ const StatsCard = ({
   changeValue = 0,
   changeText = "" 
 }: StatsCardProps) => {
-  // Get Stripe Connect account status instead of Trolley wallet balance
-  const { data: connectStatus } = useQuery({
-    queryKey: ['/api/connect/status'],
-    refetchInterval: 30000,
-    retry: false,
-    staleTime: 10000
-  });
-
   return (
     <Card className="overflow-hidden animate-fade-in hover:animate-glow-pulse">
       <CardContent className="p-6">
@@ -48,7 +39,7 @@ const StatsCard = ({
               </p>
             )}
           </div>
-
+          
           <div className={`${iconBgColor} h-12 w-12 rounded-xl flex items-center justify-center shadow-lg backdrop-blur-sm transition-all duration-300 hover:scale-110`}>
             <span className={iconColor}>
               {icon}
@@ -56,8 +47,6 @@ const StatsCard = ({
           </div>
         </div>
       </CardContent>
-
-      
     </Card>
   );
 };

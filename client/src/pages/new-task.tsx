@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,7 +15,6 @@ import { useLocation } from "wouter";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { MoodBoardUploader } from "@/components/MoodBoardUploader";
-import ErrorBoundary from "@/components/error/ErrorBoundary";
 
 const taskFormSchema = z.object({
   name: z.string().min(1, "Task name is required"),
@@ -42,7 +42,6 @@ function NewTaskContent() {
     retry: 3,
     retryDelay: 1000,
     staleTime: 5 * 60 * 1000, // 5 minutes
-    enabled: true, // Always try to fetch - let the backend handle auth via headers
   });
 
   const form = useForm<TaskFormData>({
@@ -76,33 +75,13 @@ function NewTaskContent() {
 
   const createTaskMutation = useMutation({
     mutationFn: async (data: TaskFormData) => {
-      // Get current user data from API to get businessId
-      const userResponse = await apiRequest("GET", "/api/user");
-      if (!userResponse.ok) {
-        throw new Error("Authentication required - please log in again");
-      }
-
-      const currentUser = await userResponse.json();
-      const businessId = currentUser.id;
-
-      if (!businessId) {
-        throw new Error("User ID not found - authentication required");
-      }
-
-      // First create a project for this task with proper businessId
+      // First create a project for this task
       const projectResponse = await apiRequest("POST", "/api/projects", {
         name: data.name,
-        businessId: businessId, // Now properly set!
         description: data.description,
         budget: data.budget,
         status: "active"
       });
-
-      if (!projectResponse.ok) {
-        const errorData = await projectResponse.json();
-        throw new Error(errorData.message || "Failed to create project");
-      }
-
       const project = await projectResponse.json();
 
       // Then create a work request for the task
@@ -116,11 +95,6 @@ function NewTaskContent() {
         amount: parseFloat(data.budget),
         currency: "USD"
       });
-
-      if (!workRequestResponse.ok) {
-        const errorData = await workRequestResponse.json();
-        throw new Error(errorData.message || "Failed to create work request");
-      }
 
       return workRequestResponse.json();
     },
@@ -165,9 +139,9 @@ function NewTaskContent() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900 p-6">
         <div className="flex items-center mb-6">
-          <Button
-            variant="ghost"
-            size="sm"
+          <Button 
+            variant="ghost" 
+            size="sm" 
             className="mr-4 text-white hover:bg-zinc-800"
             onClick={() => navigate('/projects')}
           >
@@ -194,7 +168,7 @@ function NewTaskContent() {
   }
 
   // Safely filter contractors
-  const availableContractors = Array.isArray(connectionRequests)
+  const availableContractors = Array.isArray(connectionRequests) 
     ? connectionRequests.filter((req: any) => req?.status === 'accepted')
     : [];
 
@@ -202,9 +176,9 @@ function NewTaskContent() {
     <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900 p-6">
       {/* Page Header */}
       <div className="flex items-center mb-6">
-        <Button
-          variant="ghost"
-          size="sm"
+        <Button 
+          variant="ghost" 
+          size="sm" 
           className="mr-4 text-white hover:bg-zinc-800"
           onClick={() => navigate('/projects')}
         >
@@ -236,10 +210,10 @@ function NewTaskContent() {
                     <FormItem>
                       <FormLabel className="text-white">Task Name</FormLabel>
                       <FormControl>
-                        <Input
+                        <Input 
                           placeholder="Enter task name"
                           className="bg-zinc-900 border-zinc-700 text-white"
-                          {...field}
+                          {...field} 
                         />
                       </FormControl>
                       <FormMessage />
@@ -254,11 +228,11 @@ function NewTaskContent() {
                     <FormItem>
                       <FormLabel className="text-white">Description</FormLabel>
                       <FormControl>
-                        <Textarea
+                        <Textarea 
                           placeholder="Describe what this task involves"
                           className="bg-zinc-900 border-zinc-700 text-white"
                           rows={4}
-                          {...field}
+                          {...field} 
                         />
                       </FormControl>
                       <FormMessage />
@@ -289,11 +263,11 @@ function NewTaskContent() {
                     <FormItem>
                       <FormLabel className="text-white">Budget ($)</FormLabel>
                       <FormControl>
-                        <Input
+                        <Input 
                           type="number"
                           placeholder="0.00"
                           className="bg-zinc-900 border-zinc-700 text-white"
-                          {...field}
+                          {...field} 
                         />
                       </FormControl>
                       <FormMessage />
@@ -307,60 +281,67 @@ function NewTaskContent() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-white">Assign to Contractor</FormLabel>
-                      <ErrorBoundary fallback={<div>Error loading contractor selection</div>}>
-                        <Select
-                          onValueChange={(value) => field.onChange(parseInt(value))}
-                          value={field.value ? field.value.toString() : ""}
-                        >
-                          <FormControl>
-                            <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
-                              <SelectValue placeholder="Choose a contractor..." />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent className="bg-zinc-900 border-zinc-700">
-                            {availableContractors.length === 0 ? (
-                              <div className="p-4 text-center text-gray-400">
-                                <p>No contractors available</p>
-                                <Button
-                                  size="sm"
-                                  className="mt-2"
-                                  onClick={() => navigate('/contractors')}
-                                >
-                                  Find Contractors
-                                </Button>
-                              </div>
-                            ) : (
-                              availableContractors.map((contractor: any) => (
-                                <SelectItem
-                                  key={contractor.id}
-                                  value={contractor.id.toString()}
+                      <Select 
+                        onValueChange={(value) => field.onChange(parseInt(value))} 
+                        value={field.value ? field.value.toString() : ""}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
+                            <SelectValue placeholder="Choose a contractor..." />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                          {availableContractors.length === 0 ? (
+                            <div className="p-4 text-center text-gray-400">
+                              <p>No contractors available</p>
+                              <Button 
+                                size="sm" 
+                                className="mt-2" 
+                                onClick={() => navigate('/contractors')}
+                              >
+                                Find Contractors
+                              </Button>
+                            </div>
+                          ) : (
+                            availableContractors.map((req: any) => {
+                              const contractorId = req?.contractorUserId || req?.id;
+                              const firstName = req?.contractorFirstName;
+                              const lastName = req?.contractorLastName;
+                              const username = req?.contractorUsername;
+                              const email = req?.contractorEmail;
+                              
+                              if (!contractorId) return null;
+                              
+                              return (
+                                <SelectItem 
+                                  key={contractorId} 
+                                  value={contractorId.toString()}
                                   className="text-white hover:bg-gray-800"
                                 >
                                   <div className="flex flex-col">
                                     <span className="font-medium">
-                                      {contractor.firstName && contractor.lastName
-                                        ? `${contractor.firstName} ${contractor.lastName}`
-                                        : contractor.username || 'Contractor'
+                                      {firstName && lastName 
+                                        ? `${firstName} ${lastName}`
+                                        : username || 'Contractor'
                                       }
                                     </span>
-                                    <span className="text-sm text-gray-400">{contractor.email}</span>
-                                    {contractor.stripeConnectAccountId && (
-                                      <span className="text-xs text-green-400">Payment Ready</span>
+                                    {email && (
+                                      <span className="text-sm text-gray-400">{email}</span>
                                     )}
                                   </div>
                                 </SelectItem>
-                              ))
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </ErrorBoundary>
+                              );
+                            })
+                          )}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
                 <div className="flex space-x-4 pt-4">
-                  <Button
+                  <Button 
                     type="button"
                     variant="outline"
                     onClick={() => navigate('/projects')}
@@ -368,7 +349,7 @@ function NewTaskContent() {
                   >
                     Cancel
                   </Button>
-                  <Button
+                  <Button 
                     type="submit"
                     disabled={createTaskMutation.isPending}
                     className="bg-blue-600 hover:bg-blue-700"

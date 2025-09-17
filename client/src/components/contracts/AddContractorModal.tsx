@@ -54,8 +54,29 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
     enabled: isOpen, // Only fetch when modal is open
   });
 
-  // Use all contractors from the dashboard data - backend already handles proper filtering
+  // Use all contractors from the dashboard data without additional filtering
+  // The backend already handles the proper filtering for connected contractors
   const availableContractors = contractors.filter(c => c.role === 'contractor');
+  
+  // DEBUG: Log contractor data to identify role issues
+  console.log('🔍 CONTRACTOR SELECTION DEBUG:', {
+    allContractorsFromProps: contractors.map(c => ({ 
+      id: c.id, 
+      email: c.email, 
+      username: c.username, 
+      role: c.role,
+      firstName: c.firstName,
+      lastName: c.lastName 
+    })),
+    filteredAvailableContractors: availableContractors.map(c => ({ 
+      id: c.id, 
+      email: c.email, 
+      username: c.username, 
+      role: c.role,
+      firstName: c.firstName,
+      lastName: c.lastName 
+    }))
+  });
 
   // Check if adding this contractor would exceed the project budget
   useEffect(() => {
@@ -72,10 +93,10 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
     }
   }, [contract, contractorValue]);
 
-  // Handle contractor assignment - simple database User assignment
+  // Handle contractor assignment with local deliverable and work request creation
   const updateContractMutation = useMutation({
     mutationFn: async () => {
-      // Update the contract with contractor assignment from User database
+      // 1. Update the contract with contractor assignment
       const contractResponse = await apiRequest(
         'PATCH', 
         `/api/contracts/${contractId}`, 
@@ -85,18 +106,50 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
         }
       );
 
+      // 2. Create work request to database (this is what shows up in Work Requests page)
+      const projectId = Array.isArray(contract) ? contract[0]?.projectId : contract?.projectId;
+      console.log('🔍 PROJECT DEBUG:', { contract, projectId, hasProjectId: !!projectId, isArray: Array.isArray(contract) });
+      if (projectId) {
+        const formattedDueDate = new Date(dueDate || Date.now()).toISOString();
+        
+        try {
+          const workRequestResponse = await apiRequest(
+            'POST',
+            `/api/projects/${projectId}/work-requests`,
+            {
+              contractorUserId: parseInt(selectedContractorId),
+              title: deliverables,
+              description: `Project deliverable: ${deliverables}`,
+              dueDate: formattedDueDate,
+              amount: parseFloat(contractorValue || '0'),
+              currency: 'USD'
+            }
+          );
+          console.log('✅ Work request created successfully:', workRequestResponse);
+        } catch (workRequestError) {
+          console.error('❌ Work request creation failed:', workRequestError);
+          // Continue anyway since contract update succeeded
+        }
+      }
+
       return contractResponse;
     },
     onSuccess: () => {
       // Invalidate relevant queries to refresh the UI
       queryClient.invalidateQueries({ queryKey: ['/api/contracts'] });
       queryClient.invalidateQueries({ queryKey: ['/api/contracts', contractId] });
-      queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/projects'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/projects', contract?.projectId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/budget'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/milestones'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/milestones', { contractId }] });
+      queryClient.invalidateQueries({ queryKey: ['/api/work-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/team-members'] });
       
       // Show success message
       toast({
-        title: "Contractor added successfully",
-        description: "The contractor has been assigned to this project.",
+        title: "Worker added successfully",
+        description: "The worker has been assigned to this project with deliverables.",
       });
       
       // Reset form fields
@@ -184,17 +237,35 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
       return;
     }
     
-    // Get selected contractor details
+    // DEBUG: Log the selected contractor and all API call data
     const selectedContractor = availableContractors.find(c => c.id.toString() === selectedContractorId);
-    
-    if (!selectedContractor) {
-      toast({
-        title: "Contractor not found",
-        description: "Please select a valid contractor.",
-        variant: "destructive",
-      });
-      return;
-    }
+    console.log('🔍 COMPLETE API CALL DEBUG:', {
+      selectedContractorId,
+      selectedContractor,
+      selectedContractorEmail: selectedContractor?.email,
+      selectedContractorRole: selectedContractor?.role,
+      isContractorRole: selectedContractor?.role === 'contractor',
+      contractDetails: contract,
+      deliverablePayload: {
+        contractId: contractId,
+        name: deliverables,
+        description: `Due: ${dueDate || new Date().toISOString().split('T')[0]}`,
+        dueDate: new Date(dueDate || new Date().toISOString().split('T')[0]).toISOString(),
+        status: 'accepted',
+        paymentAmount: contractorValue || '1',
+        progress: 0
+      },
+      workRequestPayload: {
+        title: deliverables,
+        description: `Project deliverable: ${deliverables}`,
+        recipientEmail: selectedContractor?.email,
+        status: 'pending',
+        budgetMin: contractorValue || '1',
+        budgetMax: contractorValue || '1',
+        dueDate: new Date(dueDate || new Date().toISOString().split('T')[0]).toISOString(),
+        skills: 'Required for project'
+      }
+    });
     
     // All checks passed, proceed with contractor assignment
     updateContractMutation.mutate();

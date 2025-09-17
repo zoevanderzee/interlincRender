@@ -52,13 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const res = await apiRequest("GET", "/api/user");
 
         if (!res.ok) {
-          console.log("User not authenticated, status:", res.status);
-          // Don't clear localStorage on 401 if we have user_id - this allows header fallback to work
-          const storedUserId = localStorage.getItem('user_id');
-          if (storedUserId) {
-            console.log("Authentication failed but user_id exists in localStorage:", storedUserId);
-            console.log("This may be a session/cookie issue, but header fallback should work for API calls");
-          }
+          console.log("User not authenticated");
           return null;
         }
 
