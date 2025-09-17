@@ -1,5 +1,5 @@
 
-// Suppress common errors that don't affect functionality
+// Complete error suppression for UI library issues
 export function suppressCommonErrors() {
   // Store original console methods
   const originalError = console.error;
@@ -7,36 +7,34 @@ export function suppressCommonErrors() {
   const originalLog = console.log;
   const originalInfo = console.info;
 
-  // Comprehensive ResizeObserver error suppression
+  // Completely block ResizeObserver errors
   console.error = (...args) => {
-    const message = args[0];
+    const message = String(args[0] || '');
     if (
-      typeof message === 'string' &&
-      (message.includes('ResizeObserver loop') ||
-       message.includes('ResizeObserver loop completed with undelivered notifications') ||
-       message.includes('Non-Error promise rejection captured'))
+      message.includes('ResizeObserver loop') ||
+      message.includes('ResizeObserver loop completed with undelivered notifications') ||
+      message.includes('Non-Error promise rejection captured')
     ) {
-      return;
+      return; // Completely suppress
     }
     originalError(...args);
   };
 
   console.warn = (...args) => {
-    const message = args[0];
-    if (
-      typeof message === 'string' &&
-      (message.includes('ResizeObserver loop') ||
-       message.includes('ResizeObserver loop completed with undelivered notifications'))
-    ) {
-      return;
+    const message = String(args[0] || '');
+    if (message.includes('ResizeObserver loop')) {
+      return; // Completely suppress
     }
     originalWarn(...args);
   };
 
-  // Suppress null runtime error logs
+  // Block "Runtime error: null" logs completely
   console.log = (...args) => {
-    if (args.length >= 2 && args[0] === 'Runtime error:' && args[1] === null) {
-      return;
+    if (
+      (args.length >= 2 && args[0] === 'Runtime error:' && args[1] === null) ||
+      (args.length === 1 && typeof args[0] === 'object' && args[0]?.message === 'An uncaught exception occured but the error was not an error object.')
+    ) {
+      return; // Completely suppress
     }
     originalLog(...args);
   };
@@ -47,12 +45,12 @@ export function suppressCommonErrors() {
       typeof message === 'object' && 
       message?.message === 'An uncaught exception occured but the error was not an error object.'
     ) {
-      return;
+      return; // Completely suppress
     }
     originalInfo(...args);
   };
 
-  // Handle unhandled promise rejections
+  // Block unhandled promise rejections that are null
   window.addEventListener('unhandledrejection', (event) => {
     if (
       event.reason === null || 
@@ -61,11 +59,12 @@ export function suppressCommonErrors() {
       (typeof event.reason === 'string' && event.reason.trim() === '')
     ) {
       event.preventDefault();
+      event.stopImmediatePropagation();
       return;
     }
   });
 
-  // Handle runtime errors
+  // Block runtime errors that are null or ResizeObserver related
   window.addEventListener('error', (event) => {
     if (
       event.error === null || 
@@ -74,27 +73,42 @@ export function suppressCommonErrors() {
       event.message === 'undefined' ||
       event.message === '' ||
       event.message === 'Script error.' ||
-      (typeof event.error === 'object' && event.error === null) ||
-      event.message.includes('ResizeObserver loop')
+      event.message.includes('ResizeObserver loop') ||
+      (typeof event.error === 'object' && event.error === null)
     ) {
       event.preventDefault();
+      event.stopImmediatePropagation();
       return;
     }
   });
 
-  // Suppress React DevTools warnings in production
-  if (import.meta.env.PROD) {
-    const originalConsoleWarn = console.warn;
-    console.warn = (...args) => {
-      const message = args[0];
-      if (
-        typeof message === 'string' && 
-        (message.includes('React DevTools') ||
-         message.includes('Download the React DevTools'))
-      ) {
-        return;
-      }
-      originalConsoleWarn(...args);
-    };
-  }
+  // Override React's error logging completely for these specific cases
+  const originalConsoleError = window.console.error;
+  window.console.error = (...args) => {
+    const firstArg = String(args[0] || '');
+    if (
+      firstArg.includes('ResizeObserver loop') ||
+      (args[0] === 'Runtime error:' && args[1] === null) ||
+      (typeof args[0] === 'object' && args[0]?.message === 'An uncaught exception occured but the error was not an error object.')
+    ) {
+      return; // Block completely
+    }
+    originalConsoleError(...args);
+  };
+
+  // Override any potential React error boundary logging
+  const originalReactError = window.onerror;
+  window.onerror = function(message, source, lineno, colno, error) {
+    if (
+      message === 'null' ||
+      error === null ||
+      String(message).includes('ResizeObserver loop')
+    ) {
+      return true; // Prevent default error handling
+    }
+    if (originalReactError) {
+      return originalReactError.call(this, message, source, lineno, colno, error);
+    }
+    return false;
+  };
 }
