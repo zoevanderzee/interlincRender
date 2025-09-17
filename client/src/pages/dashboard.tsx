@@ -20,7 +20,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useIntegratedData } from "@/hooks/use-integrated-data";
 import { Contract, User, Payment, Milestone } from "@shared/schema";
 import { useQuery } from "@tanstack/react-query"; // Import useQuery
-import { apiRequest } from "@/lib/api"; // Assuming apiRequest is available
 
 // Define interface for dashboard data (this is now implicitly handled by useIntegratedData)
 // Keep for clarity if needed, but the hook should provide typed data.
@@ -61,13 +60,6 @@ const Dashboard = () => {
   // Get Stripe Connect account status for payment readiness
   const { data: connectStatus } = useQuery({
     queryKey: ['/api/connect/status'],
-    queryFn: async () => {
-      const response = await apiRequest('GET', '/api/connect/status');
-      if (!response.ok) {
-        return { hasAccount: false, needsOnboarding: true, accountId: null };
-      }
-      return response.json();
-    },
     refetchInterval: 30000,
     retry: false,
     staleTime: 10000

@@ -2,7 +2,6 @@ import React, { ReactNode } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowDown, ArrowUp, Wallet } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/api";
 
 interface StatsCardProps {
   title: string;
@@ -26,13 +25,6 @@ const StatsCard = ({
   // Get Stripe Connect account status instead of Trolley wallet balance
   const { data: connectStatus } = useQuery({
     queryKey: ['/api/connect/status'],
-    queryFn: async () => {
-      const response = await apiRequest('GET', '/api/connect/status');
-      if (!response.ok) {
-        return { hasAccount: false, needsOnboarding: true, accountId: null };
-      }
-      return response.json();
-    },
     refetchInterval: 30000,
     retry: false,
     staleTime: 10000
