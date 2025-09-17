@@ -14,7 +14,7 @@ import { useLocation } from "wouter";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { MoodBoardUploader } from "@/components/MoodBoardUploader";
-import { ErrorBoundary } from "@/components/error/ErrorBoundary";
+import ErrorBoundary from "@/components/error/ErrorBoundary";
 
 const taskFormSchema = z.object({
   name: z.string().min(1, "Task name is required"),
