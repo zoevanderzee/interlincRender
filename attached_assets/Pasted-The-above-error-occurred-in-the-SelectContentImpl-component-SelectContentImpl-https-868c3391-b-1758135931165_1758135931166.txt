@@ -1,0 +1,48 @@
+The above error occurred in the <SelectContentImpl> component:
+
+SelectContentImpl@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-select.js:322:11
+SelectContent@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-select.js:301:57
+SlotClone@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-DKHUMOWT.js:52:9
+Slot@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-DKHUMOWT.js:33:9
+Primitive.div@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-CPFL7ZFD.js:41:11
+Portal@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-HHTAIDPU.js:260:9
+SelectPortal
+_c7@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/src/components/ui/select.tsx:121:47
+SelectProvider@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-JJS7DLG7.js:38:13
+SelectCollectionProviderProvider@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OKX5DAGM.js:28:13
+SelectCollectionProvider@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OKX5DAGM.js:90:29
+SelectProvider@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-JJS7DLG7.js:38:13
+PopperProvider@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-PSLAEUKM.js:1915:13
+Popper@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-PSLAEUKM.js:1973:37
+Select@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-select.js:104:37
+div
+FormItem@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/src/components/ui/form.tsx:71:4
+Controller@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-YABUFNLM.js:313:34
+FormField@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/src/components/ui/form.tsx:31:20
+form
+FormProvider@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-YABUFNLM.js:102:9
+div
+_c9@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/src/components/ui/card.tsx:114:10
+div
+_c@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/src/components/ui/card.tsx:20:9
+div
+div
+commitMutationEffectsOnFiber@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js:17896:49
+Suspense
+NewTask
+Route@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js:191:14
+Switch@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js:248:27
+Router
+AuthProvider@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/src/hooks/use-auth.tsx:27:5
+QueryClientProvider@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js:2805:9
+ErrorBoundary@
+App
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
+t@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:12639
+value@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:32772
+@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:34410
+Error caught by ErrorBoundary: 
+DOMException {line: 8462, column: 34, sourceURL: "https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/work…"}
+ 
+Object {componentStack: "↵SelectContentImpl@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/…"}
