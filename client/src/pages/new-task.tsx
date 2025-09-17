@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -303,35 +302,23 @@ function NewTaskContent() {
                               </Button>
                             </div>
                           ) : (
-                            availableContractors.map((req: any) => {
-                              const contractorId = req?.contractorUserId || req?.id;
-                              const firstName = req?.contractorFirstName;
-                              const lastName = req?.contractorLastName;
-                              const username = req?.contractorUsername;
-                              const email = req?.contractorEmail;
-                              
-                              if (!contractorId) return null;
-                              
-                              return (
-                                <SelectItem 
-                                  key={contractorId} 
-                                  value={contractorId.toString()}
-                                  className="text-white hover:bg-gray-800"
-                                >
-                                  <div className="flex flex-col">
-                                    <span className="font-medium">
-                                      {firstName && lastName 
-                                        ? `${firstName} ${lastName}`
-                                        : username || 'Contractor'
-                                      }
-                                    </span>
-                                    {email && (
-                                      <span className="text-sm text-gray-400">{email}</span>
-                                    )}
-                                  </div>
-                                </SelectItem>
-                              );
-                            })
+                            availableContractors.map((req: any) => (
+                              <SelectItem 
+                                key={req.contractorId} 
+                                value={req.contractorId.toString()}
+                                className="text-white hover:bg-gray-800"
+                              >
+                                <div className="flex flex-col">
+                                  <span className="font-medium">
+                                    {req.contractorFirstName && req.contractorLastName 
+                                      ? `${req.contractorFirstName} ${req.contractorLastName}`
+                                      : req.contractorUsername || 'Contractor'
+                                    }
+                                  </span>
+                                  <span className="text-sm text-gray-400">{req.contractorEmail || 'No email'}</span>
+                                </div>
+                              </SelectItem>
+                            ))
                           )}
                         </SelectContent>
                       </Select>

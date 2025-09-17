@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Contract, User } from '@shared/schema';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
@@ -18,50 +17,53 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AlertCircle, DollarSign, Loader2, User as UserIcon } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useNavigate } from 'react-router-dom';
+
 
 interface AddContractorModalProps {
   contractId: number;
   onSuccess?: () => void;
 }
 
+interface ContractFormData {
+  value: string;
+}
+
 export default function AddContractorModal({ contractId, onSuccess }: AddContractorModalProps) {
-  const [selectedContractor, setSelectedContractor] = useState<User | null>(null);
+  const [selectedContractor, setSelectedContractor] = useState<any>(null); // Use 'any' for now, will refine if schema is available
   const [contractorValue, setContractorValue] = useState<string>('');
   const [isOpen, setIsOpen] = useState(false);
   const [budgetWarning, setBudgetWarning] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
-  // Fetch all users with contractor role from your connected accounts
-  const { data: contractors = [], isLoading: isLoadingContractors } = useQuery<User[]>({
-    queryKey: ['/api/users'],
-    queryFn: async () => {
-      const response = await fetch('/api/users', {
-        headers: {
-          'X-User-ID': localStorage.getItem('user_id') || '',
-        },
-        credentials: 'include'
-      });
-      const users = await response.json();
-      return users.filter((user: User) => user.role === 'contractor');
-    },
-    enabled: isOpen,
+  // Mock user data, replace with actual user context or state management
+  const user = { id: 1, username: 'Test User' }; 
+
+  // Fetch connected contractors from connection requests
+  const { data: connectionRequests, isLoading: isLoadingContractors } = useQuery<any[]>({
+    queryKey: ['/api/connection-requests'],
+    queryFn: () => apiRequest('GET', '/api/connection-requests'),
+    enabled: isOpen && !!user, // Only fetch when modal is open and user is available
   });
 
   // Fetch the current contract details
   const { data: contract } = useQuery<Contract>({
     queryKey: ['/api/contracts', contractId],
+    queryFn: () => apiRequest('GET', `/api/contracts/${contractId}`),
     enabled: isOpen,
   });
 
-  console.log('Connected contractors from accounts database:', {
-    total: contractors.length,
-    contractors: contractors.map(c => ({
-      id: c.id,
-      name: `${c.firstName} ${c.lastName}`,
-      email: c.email
-    }))
-  });
+  console.log('Connected contractors from connection requests:', connectionRequests);
+
+  // Filter accepted contractors from connection requests
+  const availableContractors = connectionRequests?.filter((req: any) => 
+    req.status === 'accepted' && req.contractorId
+  ) || [];
+
+  console.log('Available contractors:', availableContractors);
 
   // Check if adding this contractor would exceed the project budget
   useEffect(() => {
@@ -86,7 +88,7 @@ export default function AddContractorModal({ contractId, onSuccess }: AddContrac
 
       console.log('Assigning contractor to contract:', {
         contractId,
-        contractorId: selectedContractor.id,
+        contractorId: selectedContractor.contractorId,
         contractorValue
       });
 
@@ -94,7 +96,7 @@ export default function AddContractorModal({ contractId, onSuccess }: AddContrac
         'PATCH', 
         `/api/contracts/${contractId}`, 
         { 
-          contractorId: selectedContractor.id,
+          contractorId: selectedContractor.contractorId,
           contractorBudget: contractorValue ? parseFloat(contractorValue) : undefined
         }
       );
@@ -132,6 +134,13 @@ export default function AddContractorModal({ contractId, onSuccess }: AddContrac
       });
     },
   });
+
+  const handleContractorSelect = (contractorId: string) => {
+    const contractor = availableContractors.find(c => c.contractorId.toString() === contractorId);
+    if (contractor) {
+      setSelectedContractor(contractor);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -189,43 +198,57 @@ export default function AddContractorModal({ contractId, onSuccess }: AddContrac
                   <span className="ml-2">Loading contractors...</span>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {contractors.length > 0 ? (
-                    contractors.map((contractor) => (
-                      <div
-                        key={contractor.id}
-                        className={`p-3 border rounded-md cursor-pointer transition-colors ${
-                          selectedContractor?.id === contractor.id
-                            ? 'border-blue-500 bg-blue-50'
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                        onClick={() => setSelectedContractor(contractor)}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                            <UserIcon className="h-4 w-4 text-gray-600" />
-                          </div>
-                          <div>
-                            <div className="font-medium">
-                              {contractor.firstName && contractor.lastName 
-                                ? `${contractor.firstName} ${contractor.lastName}`
-                                : contractor.username || contractor.email
-                              }
-                            </div>
-                            <div className="text-sm text-gray-500">{contractor.email}</div>
-                            {contractor.companyName && (
-                              <div className="text-sm text-gray-500">{contractor.companyName}</div>
-                            )}
-                          </div>
+                <Select onValueChange={handleContractorSelect} value={selectedContractor?.contractorId.toString() || ''}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a contractor">
+                      {selectedContractor ? (
+                        <div className="flex items-center gap-2">
+                          <UserIcon className="h-4 w-4 text-gray-600" />
+                          <span className="font-medium">
+                            {selectedContractor.contractorFirstName && selectedContractor.contractorLastName 
+                              ? `${selectedContractor.contractorFirstName} ${selectedContractor.contractorLastName}`
+                              : selectedContractor.contractorUsername || 'Contractor'
+                            }
+                          </span>
                         </div>
+                      ) : (
+                        'Select a contractor'
+                      )}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="bg-gray-900 border-gray-700">
+                    {availableContractors.length === 0 ? (
+                      <div className="p-4 text-center text-gray-400">
+                        <p>No contractors available</p>
+                        <Button 
+                          size="sm" 
+                          className="mt-2" 
+                          onClick={() => navigate('/contractors')}
+                        >
+                          Find Contractors
+                        </Button>
                       </div>
-                    ))
-                  ) : (
-                    <div className="p-4 text-center text-gray-500 border rounded-md">
-                      No connected contractors available. Please connect with contractors first.
-                    </div>
-                  )}
-                </div>
+                    ) : (
+                      availableContractors.map((contractor) => (
+                        <SelectItem 
+                          key={contractor.contractorId} 
+                          value={contractor.contractorId.toString()}
+                          className="text-white hover:bg-gray-800"
+                        >
+                          <div className="flex flex-col">
+                            <span className="font-medium">
+                              {contractor.contractorFirstName && contractor.contractorLastName 
+                                ? `${contractor.contractorFirstName} ${contractor.contractorLastName}`
+                                : contractor.contractorUsername || 'Contractor'
+                              }
+                            </span>
+                            <span className="text-sm text-gray-400">{contractor.contractorEmail}</span>
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
               )}
               <p className="text-xs text-muted-foreground">
                 Select from your connected contractor accounts
