@@ -72,10 +72,10 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
     }
   }, [contract, contractorValue]);
 
-  // Handle contractor assignment with local deliverable and work request creation
+  // Handle contractor assignment - simple database User assignment
   const updateContractMutation = useMutation({
     mutationFn: async () => {
-      // 1. Update the contract with contractor assignment
+      // Update the contract with contractor assignment from User database
       const contractResponse = await apiRequest(
         'PATCH', 
         `/api/contracts/${contractId}`, 
@@ -85,50 +85,18 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
         }
       );
 
-      // 2. Create work request to database (this is what shows up in Work Requests page)
-      const projectId = Array.isArray(contract) ? contract[0]?.projectId : contract?.projectId;
-      console.log('🔍 PROJECT DEBUG:', { contract, projectId, hasProjectId: !!projectId, isArray: Array.isArray(contract) });
-      if (projectId) {
-        const formattedDueDate = new Date(dueDate || Date.now()).toISOString();
-        
-        try {
-          const workRequestResponse = await apiRequest(
-            'POST',
-            `/api/projects/${projectId}/work-requests`,
-            {
-              contractorUserId: parseInt(selectedContractorId),
-              title: deliverables,
-              description: `Project deliverable: ${deliverables}`,
-              dueDate: formattedDueDate,
-              amount: parseFloat(contractorValue || '0'),
-              currency: 'USD'
-            }
-          );
-          console.log('✅ Work request created successfully:', workRequestResponse);
-        } catch (workRequestError) {
-          console.error('❌ Work request creation failed:', workRequestError);
-          // Continue anyway since contract update succeeded
-        }
-      }
-
       return contractResponse;
     },
     onSuccess: () => {
       // Invalidate relevant queries to refresh the UI
       queryClient.invalidateQueries({ queryKey: ['/api/contracts'] });
       queryClient.invalidateQueries({ queryKey: ['/api/contracts', contractId] });
-      queryClient.invalidateQueries({ queryKey: ['/api/projects'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/projects', contract?.projectId] });
-      queryClient.invalidateQueries({ queryKey: ['/api/budget'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/milestones'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/milestones', { contractId }] });
-      queryClient.invalidateQueries({ queryKey: ['/api/work-requests'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/team-members'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
       
       // Show success message
       toast({
-        title: "Worker added successfully",
-        description: "The worker has been assigned to this project with deliverables.",
+        title: "Contractor added successfully",
+        description: "The contractor has been assigned to this project.",
       });
       
       // Reset form fields
