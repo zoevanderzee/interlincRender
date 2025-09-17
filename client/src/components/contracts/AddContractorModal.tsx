@@ -54,16 +54,8 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
     enabled: isOpen, // Only fetch when modal is open
   });
 
-  // Use all contractors from the dashboard data without additional filtering
-  // The backend already handles the proper filtering for connected contractors
+  // Use all contractors from the dashboard data - backend already handles proper filtering
   const availableContractors = contractors.filter(c => c.role === 'contractor');
-  
-  // Filter contractors who have active Stripe Connect accounts
-  const availableContractors = contractors.filter(c => 
-    c.role === 'contractor' && 
-    c.stripeConnectAccountId && 
-    c.subscriptionStatus === 'active'
-  );
 
   // Check if adding this contractor would exceed the project budget
   useEffect(() => {
@@ -224,13 +216,13 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
       return;
     }
     
-    // Get selected contractor details - they already have Stripe Connect setup
+    // Get selected contractor details
     const selectedContractor = availableContractors.find(c => c.id.toString() === selectedContractorId);
     
-    if (!selectedContractor?.stripeConnectAccountId) {
+    if (!selectedContractor) {
       toast({
-        title: "Contractor not ready",
-        description: "This contractor hasn't completed their payment setup yet.",
+        title: "Contractor not found",
+        description: "Please select a valid contractor.",
         variant: "destructive",
       });
       return;

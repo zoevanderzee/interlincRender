@@ -344,7 +344,9 @@ function NewTaskContent() {
                                       }
                                     </span>
                                     <span className="text-sm text-gray-400">{contractor.email}</span>
-                                    <span className="text-xs text-green-400">Payment Ready</span>
+                                    {contractor.stripeConnectAccountId && (
+                                      <span className="text-xs text-green-400">Payment Ready</span>
+                                    )}
                                   </div>
                                 </SelectItem>
                               ))
