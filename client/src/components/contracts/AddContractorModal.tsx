@@ -39,9 +39,15 @@ export default function AddContractorModal({ contractId, onSuccess }: AddContrac
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch connected contractors from database
+  // Fetch connected contractors from database using the users endpoint with role filter
   const { data: contractorsData, isLoading: isLoadingContractors } = useQuery<User[]>({
-    queryKey: ['/api/users', { role: 'contractor' }],
+    queryKey: ['/api/users'],
+    queryFn: () => fetch('/api/users?role=contractor', {
+      headers: {
+        'X-User-ID': localStorage.getItem('user_id') || '',
+      },
+      credentials: 'include'
+    }).then(res => res.json()),
     enabled: isOpen,
   });
 
