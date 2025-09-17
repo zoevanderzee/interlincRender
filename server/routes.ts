@@ -1815,6 +1815,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ================ END DELIVERABLE ENDPOINTS ================
 
+  // Contractor Connect status endpoint
+  app.get(`${apiRouter}/contractors/:id/connect-status`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const contractorId = parseInt(req.params.id);
+      const userId = req.user?.id || (req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
+
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get contractor details
+      const contractor = await storage.getUser(contractorId);
+      if (!contractor) {
+        return res.status(404).json({ message: "Contractor not found" });
+      }
+
+      // Only businesses can view contractor Connect status or contractors can view their own
+      if (req.user?.role === 'business' || contractorId === userId) {
+        const connectStatus = {
+          hasAccount: !!contractor.stripeConnectAccountId,
+          accountId: contractor.stripeConnectAccountId,
+          status: contractor.stripeConnectAccountId ? 'connected' : 'not_connected',
+          payoutEnabled: contractor.payoutEnabled || false,
+          subscriptionStatus: contractor.subscriptionStatus,
+          role: contractor.role,
+          email: contractor.email,
+          name: `${contractor.firstName} ${contractor.lastName}`,
+          company: contractor.companyName
+        };
+
+        return res.json(connectStatus);
+      } else {
+        return res.status(403).json({ message: "Access denied" });
+      }
+    } catch (error) {
+      console.error("Error fetching contractor Connect status:", error);
+      res.status(500).json({ message: "Error fetching contractor status" });
+    }
+  });
+
   // Payment Method Management Routes
   app.get(`${apiRouter}/payment-methods`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {

@@ -23,11 +23,11 @@ interface IntegratedData {
   invites: any[];
   projects: any[];
   workRequests: any[];
-  walletBalance: number;
+  connectStatus: any;
   budgetData: any;
   hasActiveSubscription: boolean;
   paymentMethodsEnabled: boolean;
-  trolleyVerificationStatus: string;
+  stripeConnectStatus: string;
   notificationCount: number;
 }
 
@@ -52,10 +52,10 @@ export function useIntegratedData() {
     refetchInterval: 60 * 1000,
   });
 
-  // Wallet balance - financial data
-  const { data: walletData, isLoading: isWalletLoading } = useQuery({
-    queryKey: ['/api/trolley/wallet-balance'],
-    enabled: !!user && user.role === 'business',
+  // Stripe Connect status - payment account data
+  const { data: connectData, isLoading: isConnectLoading } = useQuery({
+    queryKey: ['/api/connect/status'],
+    enabled: !!user,
     staleTime: 15 * 1000, // Financial data needs frequent updates
     refetchInterval: 30 * 1000,
   });
@@ -94,8 +94,7 @@ export function useIntegratedData() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] }),
       queryClient.invalidateQueries({ queryKey: ['/api/budget'] }),
-      queryClient.invalidateQueries({ queryKey: ['/api/trolley/wallet-balance'] }),
-      queryClient.invalidateQueries({ queryKey: ['/api/trolley/funding-history'] }),
+      queryClient.invalidateQueries({ queryKey: ['/api/connect/status'] }),
       queryClient.invalidateQueries({ queryKey: ['/api/user'] }),
       queryClient.invalidateQueries({ queryKey: ['/api/contracts'] }),
       queryClient.invalidateQueries({ queryKey: ['/api/milestones'] }),
@@ -124,11 +123,11 @@ export function useIntegratedData() {
       }));
     }
 
-    // Update wallet balance
-    if (updates.walletBalance !== undefined) {
-      queryClient.setQueryData(['/api/trolley/wallet-balance'], (oldData: any) => ({
+    // Update Connect status
+    if (updates.connectStatus) {
+      queryClient.setQueryData(['/api/connect/status'], (oldData: any) => ({
         ...oldData,
-        balance: updates.walletBalance
+        ...updates.connectStatus
       }));
     }
 
@@ -171,15 +170,15 @@ export function useIntegratedData() {
     invites: dashboardData?.invites || [],
     projects: projectsData || [], // Use actual projects data, not contracts
     workRequests: workRequestsData || [],
-    walletBalance: walletData?.balance || 0,
+    connectStatus: connectData || null,
     budgetData: budgetData || null,
     hasActiveSubscription: user?.subscriptionStatus === 'active',
-    paymentMethodsEnabled: user?.trolleyBankAccountStatus === 'verified',
-    trolleyVerificationStatus: user?.trolleySubmerchantStatus || 'pending',
+    paymentMethodsEnabled: connectData?.hasAccount && !connectData?.needsOnboarding,
+    stripeConnectStatus: connectData?.hasAccount ? (connectData?.needsOnboarding ? 'pending' : 'complete') : 'not_started',
     notificationCount: parseInt(notificationData?.count || '0', 10),
   };
 
-  const isLoading = isDashboardLoading || isBudgetLoading || isWalletLoading || 
+  const isLoading = isDashboardLoading || isBudgetLoading || isConnectLoading || 
                    isProjectsLoading || isWorkRequestsLoading || isNotificationLoading;
 
   return {
@@ -191,7 +190,7 @@ export function useIntegratedData() {
     // Individual data sources for specific use cases
     dashboardData,
     budgetData,
-    walletData,
+    connectData,
     projectsData,
     workRequestsData,
   };
@@ -201,12 +200,14 @@ export function useIntegratedData() {
 export function useFinancialData() {
   const { data } = useIntegratedData();
   return {
-    walletBalance: data.walletBalance,
+    connectStatus: data.connectStatus,
     budgetData: data.budgetData,
     remainingBudget: data.stats.remainingBudget,
     totalBudgetUsed: data.stats.totalBudgetUsed,
     paymentsProcessed: data.stats.paymentsProcessed,
     payments: data.payments,
+    paymentMethodsEnabled: data.paymentMethodsEnabled,
+    stripeConnectStatus: data.stripeConnectStatus,
   };
 }
 
