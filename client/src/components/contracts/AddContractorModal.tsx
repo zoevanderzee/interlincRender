@@ -58,25 +58,12 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
   // The backend already handles the proper filtering for connected contractors
   const availableContractors = contractors.filter(c => c.role === 'contractor');
   
-  // DEBUG: Log contractor data to identify role issues
-  console.log('🔍 CONTRACTOR SELECTION DEBUG:', {
-    allContractorsFromProps: contractors.map(c => ({ 
-      id: c.id, 
-      email: c.email, 
-      username: c.username, 
-      role: c.role,
-      firstName: c.firstName,
-      lastName: c.lastName 
-    })),
-    filteredAvailableContractors: availableContractors.map(c => ({ 
-      id: c.id, 
-      email: c.email, 
-      username: c.username, 
-      role: c.role,
-      firstName: c.firstName,
-      lastName: c.lastName 
-    }))
-  });
+  // Filter contractors who have active Stripe Connect accounts
+  const availableContractors = contractors.filter(c => 
+    c.role === 'contractor' && 
+    c.stripeConnectAccountId && 
+    c.subscriptionStatus === 'active'
+  );
 
   // Check if adding this contractor would exceed the project budget
   useEffect(() => {
@@ -237,35 +224,17 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
       return;
     }
     
-    // DEBUG: Log the selected contractor and all API call data
+    // Get selected contractor details - they already have Stripe Connect setup
     const selectedContractor = availableContractors.find(c => c.id.toString() === selectedContractorId);
-    console.log('🔍 COMPLETE API CALL DEBUG:', {
-      selectedContractorId,
-      selectedContractor,
-      selectedContractorEmail: selectedContractor?.email,
-      selectedContractorRole: selectedContractor?.role,
-      isContractorRole: selectedContractor?.role === 'contractor',
-      contractDetails: contract,
-      deliverablePayload: {
-        contractId: contractId,
-        name: deliverables,
-        description: `Due: ${dueDate || new Date().toISOString().split('T')[0]}`,
-        dueDate: new Date(dueDate || new Date().toISOString().split('T')[0]).toISOString(),
-        status: 'accepted',
-        paymentAmount: contractorValue || '1',
-        progress: 0
-      },
-      workRequestPayload: {
-        title: deliverables,
-        description: `Project deliverable: ${deliverables}`,
-        recipientEmail: selectedContractor?.email,
-        status: 'pending',
-        budgetMin: contractorValue || '1',
-        budgetMax: contractorValue || '1',
-        dueDate: new Date(dueDate || new Date().toISOString().split('T')[0]).toISOString(),
-        skills: 'Required for project'
-      }
-    });
+    
+    if (!selectedContractor?.stripeConnectAccountId) {
+      toast({
+        title: "Contractor not ready",
+        description: "This contractor hasn't completed their payment setup yet.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     // All checks passed, proceed with contractor assignment
     updateContractMutation.mutate();

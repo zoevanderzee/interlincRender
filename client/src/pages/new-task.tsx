@@ -330,40 +330,24 @@ function NewTaskContent() {
                                 </Button>
                               </div>
                             ) : (
-                              availableContractors.map((req: any) => {
-                                try {
-                                  const contractorId = req?.contractorUserId || req?.id;
-                                  const firstName = req?.contractorFirstName;
-                                  const lastName = req?.contractorLastName;
-                                  const username = req?.contractorUsername;
-                                  const email = req?.contractorEmail;
-
-                                  if (!contractorId) return null;
-
-                                  return (
-                                    <SelectItem
-                                      key={contractorId}
-                                      value={contractorId.toString()}
-                                      className="text-white hover:bg-gray-800"
-                                    >
-                                      <div className="flex flex-col">
-                                        <span className="font-medium">
-                                          {firstName && lastName
-                                            ? `${firstName} ${lastName}`
-                                            : username || req?.contractorName || req?.name || 'Contractor'
-                                          }
-                                        </span>
-                                        {email && (
-                                          <span className="text-sm text-gray-400">{email}</span>
-                                        )}
-                                      </div>
-                                    </SelectItem>
-                                  );
-                                } catch (error) {
-                                  console.error('Error rendering contractor option:', error, req);
-                                  return null;
-                                }
-                              })
+                              availableContractors.map((contractor: any) => (
+                                <SelectItem
+                                  key={contractor.id}
+                                  value={contractor.id.toString()}
+                                  className="text-white hover:bg-gray-800"
+                                >
+                                  <div className="flex flex-col">
+                                    <span className="font-medium">
+                                      {contractor.firstName && contractor.lastName
+                                        ? `${contractor.firstName} ${contractor.lastName}`
+                                        : contractor.username || 'Contractor'
+                                      }
+                                    </span>
+                                    <span className="text-sm text-gray-400">{contractor.email}</span>
+                                    <span className="text-xs text-green-400">Payment Ready</span>
+                                  </div>
+                                </SelectItem>
+                              ))
                             )}
                           </SelectContent>
                         </Select>
