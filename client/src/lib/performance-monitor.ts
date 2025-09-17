@@ -163,3 +163,20 @@ export async function trackApiCall<T>(
     throw error;
   }
 }
+
+/**
+ * Performance Monitor object for easier import and usage
+ */
+export const PerformanceMonitor = {
+  initialize: () => {
+    if (PERFORMANCE_LOGGING) {
+      console.log('Performance monitoring initialized');
+    }
+  },
+  startMeasure,
+  endMeasure,
+  getPerformanceData,
+  clearPerformanceData,
+  trackComponentRender,
+  trackApiCall
+};
