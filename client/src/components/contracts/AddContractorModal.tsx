@@ -14,16 +14,9 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertCircle, DollarSign, Loader2 } from 'lucide-react';
+import { AlertCircle, DollarSign, Loader2, User as UserIcon } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface AddContractorModalProps {
@@ -32,22 +25,26 @@ interface AddContractorModalProps {
 }
 
 export default function AddContractorModal({ contractId, onSuccess }: AddContractorModalProps) {
-  const [selectedContractorId, setSelectedContractorId] = useState<string>('');
+  const [selectedContractor, setSelectedContractor] = useState<User | null>(null);
   const [contractorValue, setContractorValue] = useState<string>('');
   const [isOpen, setIsOpen] = useState(false);
   const [budgetWarning, setBudgetWarning] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch connected contractors from database using the users endpoint with role filter
-  const { data: contractorsData, isLoading: isLoadingContractors } = useQuery<User[]>({
+  // Fetch all users with contractor role from your connected accounts
+  const { data: contractors = [], isLoading: isLoadingContractors } = useQuery<User[]>({
     queryKey: ['/api/users'],
-    queryFn: () => fetch('/api/users?role=contractor', {
-      headers: {
-        'X-User-ID': localStorage.getItem('user_id') || '',
-      },
-      credentials: 'include'
-    }).then(res => res.json()),
+    queryFn: async () => {
+      const response = await fetch('/api/users', {
+        headers: {
+          'X-User-ID': localStorage.getItem('user_id') || '',
+        },
+        credentials: 'include'
+      });
+      const users = await response.json();
+      return users.filter((user: User) => user.role === 'contractor');
+    },
     enabled: isOpen,
   });
 
@@ -57,15 +54,9 @@ export default function AddContractorModal({ contractId, onSuccess }: AddContrac
     enabled: isOpen,
   });
 
-  // Show all connected contractors from the database
-  const availableContractors = (contractorsData || []).filter(contractor => 
-    contractor.role === 'contractor'
-  );
-
-  console.log('Connected contractors from database:', {
-    total: contractorsData?.length || 0,
-    available: availableContractors.length,
-    contractors: availableContractors.map(c => ({
+  console.log('Connected contractors from accounts database:', {
+    total: contractors.length,
+    contractors: contractors.map(c => ({
       id: c.id,
       name: `${c.firstName} ${c.lastName}`,
       email: c.email
@@ -89,9 +80,13 @@ export default function AddContractorModal({ contractId, onSuccess }: AddContrac
   // Assign contractor to contract
   const updateContractMutation = useMutation({
     mutationFn: async () => {
+      if (!selectedContractor) {
+        throw new Error('No contractor selected');
+      }
+
       console.log('Assigning contractor to contract:', {
         contractId,
-        selectedContractorId,
+        contractorId: selectedContractor.id,
         contractorValue
       });
 
@@ -99,7 +94,7 @@ export default function AddContractorModal({ contractId, onSuccess }: AddContrac
         'PATCH', 
         `/api/contracts/${contractId}`, 
         { 
-          contractorId: parseInt(selectedContractorId),
+          contractorId: selectedContractor.id,
           contractorBudget: contractorValue ? parseFloat(contractorValue) : undefined
         }
       );
@@ -114,7 +109,7 @@ export default function AddContractorModal({ contractId, onSuccess }: AddContrac
         description: "The contractor has been assigned to this project.",
       });
 
-      setSelectedContractorId('');
+      setSelectedContractor(null);
       setContractorValue('');
       setIsOpen(false);
 
@@ -141,7 +136,7 @@ export default function AddContractorModal({ contractId, onSuccess }: AddContrac
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!selectedContractorId) {
+    if (!selectedContractor) {
       toast({
         title: "Please select a contractor",
         description: "You must select a contractor to proceed.",
@@ -181,7 +176,7 @@ export default function AddContractorModal({ contractId, onSuccess }: AddContrac
         <DialogHeader>
           <DialogTitle>Assign Contractor to Project</DialogTitle>
           <DialogDescription>
-            Select a connected contractor with payment setup to assign to this project.
+            Select a contractor from your connected accounts to assign to this project.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
@@ -194,34 +189,46 @@ export default function AddContractorModal({ contractId, onSuccess }: AddContrac
                   <span className="ml-2">Loading contractors...</span>
                 </div>
               ) : (
-                <Select
-                  value={selectedContractorId}
-                  onValueChange={setSelectedContractorId}
-                >
-                  <SelectTrigger id="contractor">
-                    <SelectValue placeholder="Choose a contractor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableContractors.length > 0 ? (
-                      availableContractors.map((contractor) => (
-                        <SelectItem key={contractor.id} value={contractor.id.toString()}>
-                          {contractor.firstName && contractor.lastName 
-                            ? `${contractor.firstName} ${contractor.lastName}`
-                            : contractor.username || contractor.email
-                          }
-                          {contractor.companyName ? ` (${contractor.companyName})` : ''}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="none" disabled>
-                        No connected contractors available. Please connect with contractors first.
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
+                <div className="space-y-2">
+                  {contractors.length > 0 ? (
+                    contractors.map((contractor) => (
+                      <div
+                        key={contractor.id}
+                        className={`p-3 border rounded-md cursor-pointer transition-colors ${
+                          selectedContractor?.id === contractor.id
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                        onClick={() => setSelectedContractor(contractor)}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                            <UserIcon className="h-4 w-4 text-gray-600" />
+                          </div>
+                          <div>
+                            <div className="font-medium">
+                              {contractor.firstName && contractor.lastName 
+                                ? `${contractor.firstName} ${contractor.lastName}`
+                                : contractor.username || contractor.email
+                              }
+                            </div>
+                            <div className="text-sm text-gray-500">{contractor.email}</div>
+                            {contractor.companyName && (
+                              <div className="text-sm text-gray-500">{contractor.companyName}</div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-4 text-center text-gray-500 border rounded-md">
+                      No connected contractors available. Please connect with contractors first.
+                    </div>
+                  )}
+                </div>
               )}
               <p className="text-xs text-muted-foreground">
-                Select from your connected contractors
+                Select from your connected contractor accounts
               </p>
             </div>
 
@@ -265,7 +272,7 @@ export default function AddContractorModal({ contractId, onSuccess }: AddContrac
             </Button>
             <Button 
               type="submit" 
-              disabled={!selectedContractorId || updateContractMutation.isPending}
+              disabled={!selectedContractor || updateContractMutation.isPending}
             >
               {updateContractMutation.isPending ? (
                 <>
