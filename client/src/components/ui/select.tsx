@@ -69,8 +69,18 @@ const SelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
 >(({ className, children, position = "popper", ...props }, ref) => {
+  const [portalContainer, setPortalContainer] = React.useState<HTMLElement | null>(null);
+  
+  React.useEffect(() => {
+    setPortalContainer(document.body);
+  }, []);
+
+  if (!portalContainer) {
+    return null;
+  }
+
   return (
-    <SelectPrimitive.Portal container={document.body}>
+    <SelectPrimitive.Portal container={portalContainer}>
       <SelectPrimitive.Content
         ref={ref}
         className={cn(
