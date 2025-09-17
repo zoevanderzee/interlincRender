@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,6 +14,7 @@ import { useLocation } from "wouter";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { MoodBoardUploader } from "@/components/MoodBoardUploader";
+import { ErrorBoundary } from "@/components/error/ErrorBoundary";
 
 const taskFormSchema = z.object({
   name: z.string().min(1, "Task name is required"),
@@ -81,7 +81,7 @@ function NewTaskContent() {
       if (!userResponse.ok) {
         throw new Error("Authentication required - please log in again");
       }
-      
+
       const currentUser = await userResponse.json();
       const businessId = currentUser.id;
 
@@ -165,9 +165,9 @@ function NewTaskContent() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900 p-6">
         <div className="flex items-center mb-6">
-          <Button 
-            variant="ghost" 
-            size="sm" 
+          <Button
+            variant="ghost"
+            size="sm"
             className="mr-4 text-white hover:bg-zinc-800"
             onClick={() => navigate('/projects')}
           >
@@ -194,7 +194,7 @@ function NewTaskContent() {
   }
 
   // Safely filter contractors
-  const availableContractors = Array.isArray(connectionRequests) 
+  const availableContractors = Array.isArray(connectionRequests)
     ? connectionRequests.filter((req: any) => req?.status === 'accepted')
     : [];
 
@@ -202,9 +202,9 @@ function NewTaskContent() {
     <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900 p-6">
       {/* Page Header */}
       <div className="flex items-center mb-6">
-        <Button 
-          variant="ghost" 
-          size="sm" 
+        <Button
+          variant="ghost"
+          size="sm"
           className="mr-4 text-white hover:bg-zinc-800"
           onClick={() => navigate('/projects')}
         >
@@ -236,10 +236,10 @@ function NewTaskContent() {
                     <FormItem>
                       <FormLabel className="text-white">Task Name</FormLabel>
                       <FormControl>
-                        <Input 
+                        <Input
                           placeholder="Enter task name"
                           className="bg-zinc-900 border-zinc-700 text-white"
-                          {...field} 
+                          {...field}
                         />
                       </FormControl>
                       <FormMessage />
@@ -254,11 +254,11 @@ function NewTaskContent() {
                     <FormItem>
                       <FormLabel className="text-white">Description</FormLabel>
                       <FormControl>
-                        <Textarea 
+                        <Textarea
                           placeholder="Describe what this task involves"
                           className="bg-zinc-900 border-zinc-700 text-white"
                           rows={4}
-                          {...field} 
+                          {...field}
                         />
                       </FormControl>
                       <FormMessage />
@@ -289,11 +289,11 @@ function NewTaskContent() {
                     <FormItem>
                       <FormLabel className="text-white">Budget ($)</FormLabel>
                       <FormControl>
-                        <Input 
+                        <Input
                           type="number"
                           placeholder="0.00"
                           className="bg-zinc-900 border-zinc-700 text-white"
-                          {...field} 
+                          {...field}
                         />
                       </FormControl>
                       <FormMessage />
@@ -307,72 +307,74 @@ function NewTaskContent() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-white">Assign to Contractor</FormLabel>
-                      <Select 
-                        onValueChange={(value) => field.onChange(parseInt(value))} 
-                        value={field.value ? field.value.toString() : ""}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
-                            <SelectValue placeholder="Choose a contractor..." />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent className="bg-zinc-900 border-zinc-700">
-                          {availableContractors.length === 0 ? (
-                            <div className="p-4 text-center text-gray-400">
-                              <p>No contractors available</p>
-                              <Button 
-                                size="sm" 
-                                className="mt-2" 
-                                onClick={() => navigate('/contractors')}
-                              >
-                                Find Contractors
-                              </Button>
-                            </div>
-                          ) : (
-                            availableContractors.map((req: any) => {
-                              try {
-                                const contractorId = req?.contractorUserId || req?.id;
-                                const firstName = req?.contractorFirstName;
-                                const lastName = req?.contractorLastName;
-                                const username = req?.contractorUsername;
-                                const email = req?.contractorEmail;
-                                
-                                if (!contractorId) return null;
-                                
-                                return (
-                                <SelectItem 
-                                  key={contractorId} 
-                                  value={contractorId.toString()}
-                                  className="text-white hover:bg-gray-800"
+                      <ErrorBoundary fallback={<div>Error loading contractor selection</div>}>
+                        <Select
+                          onValueChange={(value) => field.onChange(parseInt(value))}
+                          value={field.value ? field.value.toString() : ""}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
+                              <SelectValue placeholder="Choose a contractor..." />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="bg-zinc-900 border-zinc-700">
+                            {availableContractors.length === 0 ? (
+                              <div className="p-4 text-center text-gray-400">
+                                <p>No contractors available</p>
+                                <Button
+                                  size="sm"
+                                  className="mt-2"
+                                  onClick={() => navigate('/contractors')}
                                 >
-                                  <div className="flex flex-col">
-                                    <span className="font-medium">
-                                      {firstName && lastName 
-                                        ? `${firstName} ${lastName}`
-                                        : username || req?.contractorName || req?.name || 'Contractor'
-                                      }
-                                    </span>
-                                    {email && (
-                                      <span className="text-sm text-gray-400">{email}</span>
-                                    )}
-                                  </div>
-                                </SelectItem>
-                                );
-                              } catch (error) {
-                                console.error('Error rendering contractor option:', error, req);
-                                return null;
-                              }
-                            })
-                          )}
-                        </SelectContent>
-                      </Select>
+                                  Find Contractors
+                                </Button>
+                              </div>
+                            ) : (
+                              availableContractors.map((req: any) => {
+                                try {
+                                  const contractorId = req?.contractorUserId || req?.id;
+                                  const firstName = req?.contractorFirstName;
+                                  const lastName = req?.contractorLastName;
+                                  const username = req?.contractorUsername;
+                                  const email = req?.contractorEmail;
+
+                                  if (!contractorId) return null;
+
+                                  return (
+                                    <SelectItem
+                                      key={contractorId}
+                                      value={contractorId.toString()}
+                                      className="text-white hover:bg-gray-800"
+                                    >
+                                      <div className="flex flex-col">
+                                        <span className="font-medium">
+                                          {firstName && lastName
+                                            ? `${firstName} ${lastName}`
+                                            : username || req?.contractorName || req?.name || 'Contractor'
+                                          }
+                                        </span>
+                                        {email && (
+                                          <span className="text-sm text-gray-400">{email}</span>
+                                        )}
+                                      </div>
+                                    </SelectItem>
+                                  );
+                                } catch (error) {
+                                  console.error('Error rendering contractor option:', error, req);
+                                  return null;
+                                }
+                              })
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </ErrorBoundary>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
                 <div className="flex space-x-4 pt-4">
-                  <Button 
+                  <Button
                     type="button"
                     variant="outline"
                     onClick={() => navigate('/projects')}
@@ -380,7 +382,7 @@ function NewTaskContent() {
                   >
                     Cancel
                   </Button>
-                  <Button 
+                  <Button
                     type="submit"
                     disabled={createTaskMutation.isPending}
                     className="bg-blue-600 hover:bg-blue-700"
