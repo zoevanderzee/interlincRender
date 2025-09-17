@@ -517,6 +517,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
         }
+
+        console.log(`Found ${contractorsByConnections.length} contractors through connections`);
       } catch (error) {
         console.error("Error fetching connected contractors:", error);
       }
@@ -533,6 +535,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       console.log(`Returning ${linkedContractors.length} contractors from User database for business ${userId}`);
+      console.log('Contractor details:', linkedContractors.map(c => ({
+        id: c.id,
+        username: c.username,
+        email: c.email,
+        firstName: c.firstName,
+        lastName: c.lastName,
+        role: c.role,
+        companyName: c.companyName
+      })));
 
       res.json(linkedContractors);
     } catch (error) {

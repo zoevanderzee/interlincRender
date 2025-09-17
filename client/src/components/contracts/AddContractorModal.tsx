@@ -61,6 +61,9 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
     }))
   });
 
+  // Debug: Log all contractors to see what's coming in
+  console.log('All contractors received:', contractors);
+
   // Check if adding this contractor would exceed the project budget
   useEffect(() => {
     if (contract && contractorValue) {
@@ -195,14 +198,15 @@ export default function AddContractorModal({ contractId, contractors, onSuccess 
                       <SelectItem key={contractor.id} value={contractor.id.toString()}>
                         {contractor.firstName && contractor.lastName 
                           ? `${contractor.firstName} ${contractor.lastName}`
-                          : contractor.username
+                          : contractor.username || contractor.email
                         } 
                         {contractor.companyName ? ` (${contractor.companyName})` : ''}
+                        {contractor.email ? ` - ${contractor.email}` : ''}
                       </SelectItem>
                     ))
                   ) : (
                     <SelectItem value="none" disabled>
-                      No connected contractors available. Please connect with contractors first.
+                      No connected contractors found. Check your contractor connections.
                     </SelectItem>
                   )}
                 </SelectContent>
