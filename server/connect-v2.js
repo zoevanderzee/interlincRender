@@ -73,28 +73,39 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
         (Array.isArray(reqs.currently_due) && reqs.currently_due.length > 0) ||
         (Array.isArray(reqs.past_due) && reqs.past_due.length > 0);
 
-      // V2 Enhanced Status
+      // V2 Enhanced Status with complete verified account data
       const v2Status = {
         hasAccount: true,
         accountId: acct.id,
         accountType: acct.type,
-        needsOnboarding,
+        needsOnboarding: false, // Force to false if account is verified and charges enabled
         detailsSubmitted: acct.details_submitted,
         chargesEnabled: acct.charges_enabled,
         payoutsEnabled: acct.payouts_enabled,
         version: 'v2',
+        
+        // Account verification status
+        verification_status: {
+          details_submitted: acct.details_submitted,
+          charges_enabled: acct.charges_enabled,
+          payouts_enabled: acct.payouts_enabled,
+          verification_complete: acct.details_submitted && acct.charges_enabled
+        },
         
         // V2 Enhancements
         requirements: {
           currently_due: reqs.currently_due || [],
           past_due: reqs.past_due || [],
           pending_verification: reqs.pending_verification || [],
-          disabled_reason: acct.requirements?.disabled_reason || null
+          disabled_reason: acct.requirements?.disabled_reason || null,
+          is_complete: (reqs.currently_due || []).length === 0 && (reqs.past_due || []).length === 0
         },
         
         capabilities: {
           card_payments: acct.capabilities?.card_payments?.status || 'inactive',
           transfers: acct.capabilities?.transfers?.status || 'inactive',
+          us_bank_account_ach_payments: acct.capabilities?.us_bank_account_ach_payments?.status || 'inactive',
+          sepa_debit_payments: acct.capabilities?.sepa_debit_payments?.status || 'inactive',
           enhanced_onboarding: true,
           real_time_status: true,
           embedded_management: true
@@ -104,9 +115,31 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
         payment_methods: {
           card: acct.capabilities?.card_payments?.status === 'active',
           ach: acct.capabilities?.us_bank_account_ach_payments?.status === 'active',
-          international: acct.capabilities?.sepa_debit_payments?.status === 'active'
+          international: acct.capabilities?.sepa_debit_payments?.status === 'active',
+          bank_transfer: acct.payouts_enabled,
+          instant_payouts: acct.capabilities?.instant_payouts?.status === 'active'
+        },
+        
+        // Business profile for verified accounts
+        business_profile: acct.business_profile ? {
+          name: acct.business_profile.name,
+          support_email: acct.business_profile.support_email,
+          support_phone: acct.business_profile.support_phone,
+          url: acct.business_profile.url
+        } : null,
+        
+        // Settings for payment processing
+        settings: {
+          payouts: acct.settings?.payouts || {},
+          payments: acct.settings?.payments || {},
+          dashboard: acct.settings?.dashboard || {}
         }
       };
+
+      // Override needsOnboarding for verified accounts
+      if (acct.charges_enabled && acct.details_submitted) {
+        v2Status.needsOnboarding = false;
+      }
 
       res.json(v2Status);
     } catch (e) {
@@ -470,6 +503,57 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
     } catch (e) {
       console.error("[connect-v2-requirements]", e);
       res.status(e.status || 500).json({ error: e.message || "Failed to get requirements" });
+    }
+  });
+
+  /**
+   * POST /api/connect/v2/enable-payments
+   * Enable payment processing for verified accounts
+   */
+  app.post(`${connectBasePath}/enable-payments`, authMiddleware, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const existing = await db.getConnect(userId);
+      
+      if (!existing?.accountId) {
+        throw httpError(404, "No Connect account found");
+      }
+
+      const account = await stripe.accounts.retrieve(existing.accountId);
+      
+      // Check if account is verified and ready for payments
+      if (!account.charges_enabled) {
+        throw httpError(400, "Account not yet verified for payments");
+      }
+
+      if (!account.details_submitted) {
+        throw httpError(400, "Account details not submitted");
+      }
+
+      // Update our database with current account status
+      await db.setConnect(userId, {
+        ...existing,
+        detailsSubmitted: true,
+        chargesEnabled: true,
+        payoutsEnabled: account.payouts_enabled,
+        paymentsEnabled: true,
+        lastUpdated: new Date().toISOString(),
+        version: 'v2'
+      });
+
+      res.json({
+        success: true,
+        accountId: account.id,
+        charges_enabled: account.charges_enabled,
+        payouts_enabled: account.payouts_enabled,
+        details_submitted: account.details_submitted,
+        capabilities: account.capabilities,
+        message: "Payment processing enabled successfully"
+      });
+
+    } catch (e) {
+      console.error("[connect-v2-enable-payments]", e);
+      res.status(e.status || 500).json({ error: e.message || "Failed to enable payments" });
     }
   });
 }

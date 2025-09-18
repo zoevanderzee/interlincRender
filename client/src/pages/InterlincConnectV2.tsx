@@ -61,7 +61,7 @@ export default function InterlincConnect() {
   });
   const [submitting, setSubmitting] = useState(false);
 
-  // Check V2 status
+  // Check V2 status and enable payments if verified
   const checkStatus = async () => {
     try {
       console.log('Checking Interlinc Connect V2 status...');
@@ -69,7 +69,27 @@ export default function InterlincConnect() {
       const data = await response.json();
 
       console.log('Interlinc Connect V2 Status:', data);
-      setStatus(data);
+      
+      // If account is verified but not yet enabled for payments, enable it
+      if (data.hasAccount && data.verification_status?.charges_enabled && !data.paymentsEnabled) {
+        console.log('Account verified but payments not enabled. Enabling now...');
+        try {
+          const enableResponse = await apiRequest('POST', '/api/connect/v2/enable-payments');
+          if (enableResponse.ok) {
+            const enableData = await enableResponse.json();
+            console.log('Payments enabled successfully:', enableData);
+            // Refresh status to get updated data
+            const refreshResponse = await apiRequest('GET', '/api/connect/v2/status');
+            const refreshedData = await refreshResponse.json();
+            setStatus(refreshedData);
+          }
+        } catch (enableError) {
+          console.error('Failed to enable payments:', enableError);
+          setStatus(data); // Still set the original status
+        }
+      } else {
+        setStatus(data);
+      }
 
       if (data.hasAccount && !data.needsOnboarding) {
         setActiveTab('manage');
@@ -162,7 +182,9 @@ export default function InterlincConnect() {
   const getStatusInfo = () => {
     if (!status) return { variant: 'outline', text: 'Loading...', color: 'text-muted-foreground' };
 
-    if (status.hasAccount && !status.needsOnboarding) {
+    if (status.hasAccount && status.verification_status?.charges_enabled && status.chargesEnabled) {
+      return { variant: 'success', text: 'Verified & Ready for Payments', color: 'text-green-400' };
+    } else if (status.hasAccount && !status.needsOnboarding) {
       return { variant: 'success', text: 'Connected & Active', color: 'text-green-400' };
     } else if (status.needsOnboarding) {
       return { variant: 'warning', text: 'Setup Required', color: 'text-amber-400' };
