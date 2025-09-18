@@ -70,21 +70,37 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       const reqs = acct.requirements || {};
       
       // Account is fully ready if charges are enabled and details submitted
-      const isFullyVerified = acct.charges_enabled && acct.details_submitted;
+      const isFullyVerified = acct.charges_enabled && acct.details_submitted && acct.payouts_enabled;
       const hasOutstandingRequirements = 
         (Array.isArray(reqs.currently_due) && reqs.currently_due.length > 0) ||
-        (Array.isArray(reqs.past_due) && reqs.past_due.length > 0);
+        (Array.isArray(reqs.past_due) && reqs.past_due.length > 0) ||
+        (Array.isArray(reqs.pending_verification) && reqs.pending_verification.length > 0);
+
+      // For active accounts with no requirements, no onboarding needed
+      const needsOnboarding = !isFullyVerified || hasOutstandingRequirements;
+
+      console.log(`[Connect V2 Status] Account ${acct.id}:`, {
+        charges_enabled: acct.charges_enabled,
+        details_submitted: acct.details_submitted,
+        payouts_enabled: acct.payouts_enabled,
+        isFullyVerified,
+        hasOutstandingRequirements,
+        needsOnboarding,
+        currently_due: reqs.currently_due?.length || 0,
+        past_due: reqs.past_due?.length || 0,
+        pending_verification: reqs.pending_verification?.length || 0
+      });
 
       // V2 Enhanced Status with complete verified account data
       const v2Status = {
         hasAccount: true,
         accountId: acct.id,
         accountType: acct.type,
-        needsOnboarding: !isFullyVerified || hasOutstandingRequirements,
+        needsOnboarding,
         detailsSubmitted: acct.details_submitted,
         chargesEnabled: acct.charges_enabled,
         payoutsEnabled: acct.payouts_enabled,
-        isFullyVerified: isFullyVerified,
+        isFullyVerified,
         version: 'v2',
         
         // Account verification status
@@ -144,6 +160,8 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
         v2Status.needsOnboarding = false;
         v2Status.paymentReady = true;
         
+        console.log(`[Connect V2] Account ${acct.id} is fully verified - updating database`);
+        
         // Automatically enable payments in our system for verified accounts
         await db.setConnect(userId, {
           ...existing,
@@ -155,6 +173,8 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
           lastUpdated: new Date().toISOString(),
           version: 'v2'
         });
+      } else {
+        console.log(`[Connect V2] Account ${acct.id} still needs onboarding`);
       }
 
       res.json(v2Status);

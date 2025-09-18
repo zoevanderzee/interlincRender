@@ -65,17 +65,33 @@ export default function connectRoutes(app, apiPath, authMiddleware) {
 
       const acct = await stripe.accounts.retrieve(existing.accountId);
       const reqs = acct.requirements || {};
-      const needsOnboarding =
-        !acct.details_submitted ||
+      
+      // Account is ready if all three conditions are met
+      const isFullyReady = acct.details_submitted && acct.charges_enabled && acct.payouts_enabled;
+      const hasOutstandingRequirements =
         (Array.isArray(reqs.currently_due) && reqs.currently_due.length > 0) ||
         (Array.isArray(reqs.past_due) && reqs.past_due.length > 0);
+      
+      const needsOnboarding = !isFullyReady || hasOutstandingRequirements;
+
+      console.log(`[Connect V1 Status] Account ${acct.id}:`, {
+        charges_enabled: acct.charges_enabled,
+        details_submitted: acct.details_submitted,
+        payouts_enabled: acct.payouts_enabled,
+        isFullyReady,
+        hasOutstandingRequirements,
+        needsOnboarding
+      });
 
       res.json({ 
         hasAccount: true, 
         accountId: acct.id, 
         accountType: acct.type, 
         needsOnboarding,
-        detailsSubmitted: acct.details_submitted 
+        detailsSubmitted: acct.details_submitted,
+        chargesEnabled: acct.charges_enabled,
+        payoutsEnabled: acct.payouts_enabled,
+        isFullyReady
       });
     } catch (e) {
       console.error("[connect-status]", e);
