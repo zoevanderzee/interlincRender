@@ -35,9 +35,13 @@ function NewTaskContent() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch connection requests to get contractors with error handling
-  const { data: connectionRequests = [], isLoading: isLoadingConnections, error: connectionError } = useQuery<any[]>({
-    queryKey: ['/api/connection-requests'],
+  // Fetch business workers to get contractors with error handling
+  const { data: businessWorkers = [], isLoading: isLoadingConnections, error: connectionError } = useQuery<any[]>({
+    queryKey: ['/api/business-workers/contractors'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/business-workers/contractors');
+      return response.json();
+    },
     retry: 3,
     retryDelay: 1000,
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -166,10 +170,8 @@ function NewTaskContent() {
     );
   }
 
-  // Safely filter contractors
-  const availableContractors = Array.isArray(connectionRequests) 
-    ? connectionRequests.filter((req: any) => req?.status === 'accepted')
-    : [];
+  // Use contractors from business_workers table
+  const availableContractors = Array.isArray(businessWorkers) ? businessWorkers : [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900 p-6">
@@ -302,20 +304,20 @@ function NewTaskContent() {
                               </Button>
                             </div>
                           ) : (
-                            availableContractors.map((req: any) => (
+                            availableContractors.map((contractor: any) => (
                               <SelectItem 
-                                key={req.contractorId} 
-                                value={req.contractorId.toString()}
+                                key={contractor.id} 
+                                value={contractor.id.toString()}
                                 className="text-white hover:bg-gray-800"
                               >
                                 <div className="flex flex-col">
                                   <span className="font-medium">
-                                    {req.contractorFirstName && req.contractorLastName 
-                                      ? `${req.contractorFirstName} ${req.contractorLastName}`
-                                      : req.contractorUsername || 'Contractor'
+                                    {contractor.firstName && contractor.lastName 
+                                      ? `${contractor.firstName} ${contractor.lastName}`
+                                      : contractor.username || 'Contractor'
                                     }
                                   </span>
-                                  <span className="text-sm text-gray-400">{req.contractorEmail || 'No email'}</span>
+                                  <span className="text-sm text-gray-400">{contractor.email || 'No email'}</span>
                                 </div>
                               </SelectItem>
                             ))

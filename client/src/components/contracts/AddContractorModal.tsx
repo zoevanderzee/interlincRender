@@ -42,10 +42,13 @@ export default function AddContractorModal({ contractId, onSuccess }: AddContrac
   // Mock user data, replace with actual user context or state management
   const user = { id: 1, username: 'Test User' }; 
 
-  // Fetch connected contractors from connection requests
-  const { data: connectionRequests, isLoading: isLoadingContractors } = useQuery<any[]>({
-    queryKey: ['/api/connection-requests'],
-    queryFn: () => apiRequest('GET', '/api/connection-requests'),
+  // Fetch connected contractors from business_workers table
+  const { data: businessWorkers, isLoading: isLoadingContractors } = useQuery<any[]>({
+    queryKey: ['/api/business-workers/contractors'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/business-workers/contractors');
+      return response.json();
+    },
     enabled: isOpen && !!user, // Only fetch when modal is open and user is available
   });
 
@@ -56,12 +59,10 @@ export default function AddContractorModal({ contractId, onSuccess }: AddContrac
     enabled: isOpen,
   });
 
-  console.log('Connected contractors from connection requests:', connectionRequests);
+  console.log('Connected contractors from business_workers:', businessWorkers);
 
-  // Filter accepted contractors from connection requests
-  const availableContractors = connectionRequests?.filter((req: any) => 
-    req.status === 'accepted' && req.contractorId
-  ) || [];
+  // Use contractors from business_workers table
+  const availableContractors = businessWorkers || [];
 
   console.log('Available contractors:', availableContractors);
 
@@ -96,7 +97,7 @@ export default function AddContractorModal({ contractId, onSuccess }: AddContrac
         'PATCH', 
         `/api/contracts/${contractId}`, 
         { 
-          contractorId: selectedContractor.contractorId,
+          contractorId: selectedContractor.id,
           contractorBudget: contractorValue ? parseFloat(contractorValue) : undefined
         }
       );
@@ -136,7 +137,7 @@ export default function AddContractorModal({ contractId, onSuccess }: AddContrac
   });
 
   const handleContractorSelect = (contractorId: string) => {
-    const contractor = availableContractors.find(c => c.contractorId.toString() === contractorId);
+    const contractor = availableContractors.find(c => c.id.toString() === contractorId);
     if (contractor) {
       setSelectedContractor(contractor);
     }
@@ -198,16 +199,16 @@ export default function AddContractorModal({ contractId, onSuccess }: AddContrac
                   <span className="ml-2">Loading contractors...</span>
                 </div>
               ) : (
-                <Select onValueChange={handleContractorSelect} value={selectedContractor?.contractorId.toString() || ''}>
+                <Select onValueChange={handleContractorSelect} value={selectedContractor?.id.toString() || ''}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select a contractor">
                       {selectedContractor ? (
                         <div className="flex items-center gap-2">
                           <UserIcon className="h-4 w-4 text-gray-600" />
                           <span className="font-medium">
-                            {selectedContractor.contractorFirstName && selectedContractor.contractorLastName 
-                              ? `${selectedContractor.contractorFirstName} ${selectedContractor.contractorLastName}`
-                              : selectedContractor.contractorUsername || 'Contractor'
+                            {selectedContractor.firstName && selectedContractor.lastName 
+                              ? `${selectedContractor.firstName} ${selectedContractor.lastName}`
+                              : selectedContractor.username || 'Contractor'
                             }
                           </span>
                         </div>
@@ -231,18 +232,18 @@ export default function AddContractorModal({ contractId, onSuccess }: AddContrac
                     ) : (
                       availableContractors.map((contractor) => (
                         <SelectItem 
-                          key={contractor.contractorId} 
-                          value={contractor.contractorId.toString()}
+                          key={contractor.id} 
+                          value={contractor.id.toString()}
                           className="text-white hover:bg-gray-800"
                         >
                           <div className="flex flex-col">
                             <span className="font-medium">
-                              {contractor.contractorFirstName && contractor.contractorLastName 
-                                ? `${contractor.contractorFirstName} ${contractor.contractorLastName}`
-                                : contractor.contractorUsername || 'Contractor'
+                              {contractor.firstName && contractor.lastName 
+                                ? `${contractor.firstName} ${contractor.lastName}`
+                                : contractor.username || 'Contractor'
                               }
                             </span>
-                            <span className="text-sm text-gray-400">{contractor.contractorEmail}</span>
+                            <span className="text-sm text-gray-400">{contractor.email}</span>
                           </div>
                         </SelectItem>
                       ))

@@ -61,9 +61,13 @@ export default function AssignContractor() {
   console.log("Contractor data:", contractor);
   console.log("Is loading contractor:", isLoadingContractor);
 
-  // Fetch connection requests to get contractors with error handling
-  const { data: connectionRequests = [], isLoading: isLoadingConnections, error: connectionError } = useQuery<any[]>({
-    queryKey: ['/api/connection-requests'],
+  // Fetch business workers to get contractors with error handling
+  const { data: businessWorkers = [], isLoading: isLoadingConnections, error: connectionError } = useQuery<any[]>({
+    queryKey: ['/api/business-workers/contractors'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/business-workers/contractors');
+      return response.json();
+    },
     enabled: !!user,
     retry: 3,
     retryDelay: 1000,
