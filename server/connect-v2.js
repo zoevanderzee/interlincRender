@@ -91,20 +91,21 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
         }
       }
       
-      // Check individual capability statuses
-      const capabilities = account.capabilities || {};
+      // Check individual capability statuses after update
+      const updatedAccount = await stripe.accounts.retrieve(existing.accountId);
+      const currentCapabilities = updatedAccount.capabilities || {};
       const capabilityStatuses = {
-        card_payments: capabilities.card_payments?.status || 'not_requested',
-        transfers: capabilities.transfers?.status || 'not_requested',
-        us_bank_account_ach_payments: capabilities.us_bank_account_ach_payments?.status || 'not_requested',
-        sepa_debit_payments: capabilities.sepa_debit_payments?.status || 'not_requested',
-        instant_payouts: capabilities.instant_payouts?.status || 'not_requested'
+        card_payments: currentCapabilities.card_payments?.status || 'not_requested',
+        transfers: currentCapabilities.transfers?.status || 'not_requested',
+        us_bank_account_ach_payments: currentCapabilities.us_bank_account_ach_payments?.status || 'not_requested',
+        sepa_debit_payments: currentCapabilities.sepa_debit_payments?.status || 'not_requested',
+        instant_payouts: currentCapabilities.instant_payouts?.status || 'not_requested'
       };
 
       // Determine if account is fully operational based on real Stripe data
-      const isFullyVerified = account.charges_enabled && 
-                             account.details_submitted && 
-                             account.payouts_enabled &&
+      const isFullyVerified = updatedAccount.charges_enabled && 
+                             updatedAccount.details_submitted && 
+                             updatedAccount.payouts_enabled &&
                              !requirements.disabled_reason &&
                              (requirements.currently_due || []).length === 0 &&
                              (requirements.past_due || []).length === 0;
@@ -113,10 +114,10 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
                              (requirements.past_due || []).length > 0 ||
                              !!requirements.disabled_reason;
 
-      console.log(`[Connect V2 Status] Account ${account.id}:`, {
-        charges_enabled: account.charges_enabled,
-        details_submitted: account.details_submitted,
-        payouts_enabled: account.payouts_enabled,
+      console.log(`[Connect V2 Status] Account ${updatedAccount.id}:`, {
+        charges_enabled: updatedAccount.charges_enabled,
+        details_submitted: updatedAccount.details_submitted,
+        payouts_enabled: updatedAccount.payouts_enabled,
         capabilities: capabilityStatuses,
         hasRequirements,
         isFullyVerified
@@ -125,36 +126,36 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       // Update our database with current status from Stripe
       await db.setConnect(userId, {
         ...existing,
-        detailsSubmitted: account.details_submitted,
-        chargesEnabled: account.charges_enabled,
-        payoutsEnabled: account.payouts_enabled,
+        detailsSubmitted: updatedAccount.details_submitted,
+        chargesEnabled: updatedAccount.charges_enabled,
+        payoutsEnabled: updatedAccount.payouts_enabled,
         isFullyVerified,
         lastStatusCheck: new Date().toISOString(),
         version: 'v2',
         stripeAccountData: {
-          type: account.type,
-          business_type: account.business_type,
-          created: account.created,
+          type: updatedAccount.type,
+          business_type: updatedAccount.business_type,
+          created: updatedAccount.created,
           requirements: requirements,
-          capabilities: capabilities
+          capabilities: currentCapabilities
         }
       });
 
       const v2Status = {
         hasAccount: true,
-        accountId: account.id,
-        accountType: account.type,
+        accountId: updatedAccount.id,
+        accountType: updatedAccount.type,
         needsOnboarding: !isFullyVerified || hasRequirements,
-        detailsSubmitted: account.details_submitted,
-        chargesEnabled: account.charges_enabled,
-        payoutsEnabled: account.payouts_enabled,
+        detailsSubmitted: updatedAccount.details_submitted,
+        chargesEnabled: updatedAccount.charges_enabled,
+        payoutsEnabled: updatedAccount.payouts_enabled,
         isFullyVerified,
         version: 'v2',
         
         verification_status: {
-          details_submitted: account.details_submitted,
-          charges_enabled: account.charges_enabled,
-          payouts_enabled: account.payouts_enabled,
+          details_submitted: updatedAccount.details_submitted,
+          charges_enabled: updatedAccount.charges_enabled,
+          payouts_enabled: updatedAccount.payouts_enabled,
           verification_complete: isFullyVerified
         },
         
@@ -175,11 +176,11 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
           instant_payouts: capabilityStatuses.instant_payouts === 'active'
         },
 
-        business_profile: account.business_profile ? {
-          name: account.business_profile.name,
-          support_email: account.business_profile.support_email,
-          support_phone: account.business_profile.support_phone,
-          url: account.business_profile.url
+        business_profile: updatedAccount.business_profile ? {
+          name: updatedAccount.business_profile.name,
+          support_email: updatedAccount.business_profile.support_email,
+          support_phone: updatedAccount.business_profile.support_phone,
+          url: updatedAccount.business_profile.url
         } : null
       };
 
