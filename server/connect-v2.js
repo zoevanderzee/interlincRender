@@ -381,43 +381,60 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
 
   /**
    * POST /api/connect/v2/add-bank-account
-   * Direct bank account addition via API
+   * Update account with bank account information (for Express accounts)
    */
   app.post(`${connectBasePath}/add-bank-account`, authMiddleware, async (req, res) => {
     try {
       const userId = getUserId(req);
       const { routing_number, account_number, account_holder_type = 'individual' } = req.body;
 
+      if (!routing_number || !account_number) {
+        return res.status(400).json({ error: "Routing number and account number are required" });
+      }
+
       const existing = await db.getConnect(userId);
       if (!existing?.accountId) {
         return res.status(404).json({ error: "No Connect account found" });
       }
 
-      // Create external bank account
-      const bankAccount = await stripe.accounts.createExternalAccount(
-        existing.accountId,
-        {
-          external_account: {
-            object: 'bank_account',
-            country: 'US',
-            currency: 'usd',
-            routing_number,
-            account_number,
-            account_holder_type
-          }
+      // For Express accounts, we update the account with bank account info
+      // rather than using createExternalAccount which requires special permissions
+      const updateData = {
+        external_account: {
+          object: 'bank_account',
+          country: 'US',
+          currency: 'usd',
+          routing_number,
+          account_number,
+          account_holder_type
         }
-      );
+      };
+
+      // Update the account with bank account information
+      const account = await stripe.accounts.update(existing.accountId, updateData);
+
+      // For security, we don't return the full account number
+      const last4 = account_number.slice(-4);
 
       res.json({
         success: true,
-        bank_account_id: bankAccount.id,
-        last4: bankAccount.last4,
-        routing_number: bankAccount.routing_number
+        message: "Bank account information updated successfully",
+        last4: last4,
+        routing_number: routing_number.slice(0, 4) + 'XXXXX', // Partially mask routing number
+        account_holder_type
       });
 
     } catch (e) {
       console.error("[connect-v2-add-bank-account]", e);
-      res.status(e.status || 500).json({ error: e.message || "Bank account addition failed" });
+      
+      // Handle specific Stripe permission errors
+      if (e.type === 'StripePermissionError' || e.code === 'oauth_not_supported') {
+        return res.status(400).json({ 
+          error: "Bank account setup must be completed through the onboarding process. Please complete account setup first." 
+        });
+      }
+      
+      res.status(e.status || 500).json({ error: e.message || "Bank account setup failed" });
     }
   });
 

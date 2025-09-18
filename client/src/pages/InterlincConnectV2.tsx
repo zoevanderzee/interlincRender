@@ -729,30 +729,54 @@ export default function InterlincConnectV2() {
                       {/* Bank Account Setup */}
                       <Card>
                         <CardHeader>
-                          <CardTitle className="text-base">Add Bank Account</CardTitle>
-                          <CardDescription>Add payout destination</CardDescription>
+                          <CardTitle className="text-base">Bank Account Setup</CardTitle>
+                          <CardDescription>
+                            {status?.verification_status?.verification_complete ? 
+                              "Update payout destination" : 
+                              "Complete onboarding first to add bank account"
+                            }
+                          </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                          <div>
-                            <Label>Routing Number</Label>
-                            <Input 
-                              value={bankAccountForm.routing_number}
-                              onChange={(e) => setBankAccountForm(prev => ({...prev, routing_number: e.target.value}))}
-                              placeholder="123456789"
-                            />
-                          </div>
-                          <div>
-                            <Label>Account Number</Label>
-                            <Input 
-                              value={bankAccountForm.account_number}
-                              onChange={(e) => setBankAccountForm(prev => ({...prev, account_number: e.target.value}))}
-                              placeholder="1234567890"
-                            />
-                          </div>
-                          <Button onClick={addBankAccount} disabled={submitting} className="w-full">
-                            {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                            Add Bank Account
-                          </Button>
+                          {status?.verification_status?.verification_complete ? (
+                            <>
+                              <div>
+                                <Label>Routing Number</Label>
+                                <Input 
+                                  value={bankAccountForm.routing_number}
+                                  onChange={(e) => setBankAccountForm(prev => ({...prev, routing_number: e.target.value}))}
+                                  placeholder="123456789"
+                                />
+                              </div>
+                              <div>
+                                <Label>Account Number</Label>
+                                <Input 
+                                  value={bankAccountForm.account_number}
+                                  onChange={(e) => setBankAccountForm(prev => ({...prev, account_number: e.target.value}))}
+                                  placeholder="1234567890"
+                                />
+                              </div>
+                              <Button onClick={addBankAccount} disabled={submitting} className="w-full">
+                                {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                                Update Bank Account
+                              </Button>
+                            </>
+                          ) : (
+                            <div className="text-center py-4">
+                              <AlertCircle className="w-8 h-8 text-amber-400 mx-auto mb-2" />
+                              <p className="text-sm text-muted-foreground mb-4">
+                                Bank account setup is handled during the onboarding process. 
+                                Complete your account verification first.
+                              </p>
+                              <Button 
+                                variant="outline" 
+                                onClick={() => setActiveTab('onboard')}
+                                disabled={!status?.hasAccount || !status?.needsOnboarding}
+                              >
+                                Complete Onboarding
+                              </Button>
+                            </div>
+                          )}
                         </CardContent>
                       </Card>
 
