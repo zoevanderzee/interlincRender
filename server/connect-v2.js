@@ -94,13 +94,21 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       // Check individual capability statuses after update
       const updatedAccount = await stripe.accounts.retrieve(existing.accountId);
       const currentCapabilities = updatedAccount.capabilities || {};
-      const capabilityStatuses = {
-        card_payments: currentCapabilities.card_payments || 'not_requested',
-        transfers: currentCapabilities.transfers || 'not_requested',
-        us_bank_account_ach_payments: currentCapabilities.us_bank_account_ach_payments || 'not_requested',
-        sepa_debit_payments: currentCapabilities.sepa_debit_payments || 'not_requested',
-        instant_payouts: currentCapabilities.instant_payouts || 'not_requested'
+      // Filter capabilities to only show requested/active ones (exclude not_requested)
+      const allCapabilities = {
+        card_payments: currentCapabilities.card_payments,
+        transfers: currentCapabilities.transfers,
+        us_bank_account_ach_payments: currentCapabilities.us_bank_account_ach_payments,
+        sepa_debit_payments: currentCapabilities.sepa_debit_payments,
+        instant_payouts: currentCapabilities.instant_payouts
       };
+      
+      const capabilityStatuses = {};
+      Object.entries(allCapabilities).forEach(([key, value]) => {
+        if (value && value !== 'not_requested') {
+          capabilityStatuses[key] = value;
+        }
+      });
 
       // Determine if account is fully operational based on real Stripe data
       const isFullyVerified = updatedAccount.charges_enabled && 

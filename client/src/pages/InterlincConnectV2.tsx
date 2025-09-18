@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -492,14 +491,20 @@ export default function InterlincConnectV2() {
                   <div>
                     <Label className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Payment Methods</Label>
                     <div className="mt-2 space-y-2">
-                      {status.capabilities && Object.entries(status.capabilities).map(([capability, capStatus]) => (
-                        <div key={capability} className="flex justify-between items-center">
-                          <span className="capitalize">{capability.replace(/_/g, ' ')}</span>
-                          <Badge variant={capStatus === 'active' ? 'default' : capStatus === 'pending' ? 'secondary' : 'destructive'}>
-                            {capStatus}
-                          </Badge>
+                      {status.capabilities && Object.keys(status.capabilities).length > 0 ? (
+                        Object.entries(status.capabilities).filter(([_, capStatus]) => capStatus !== 'not_requested').map(([capability, capStatus]) => (
+                          <div key={capability} className="flex justify-between items-center">
+                            <span className="capitalize">{capability.replace(/_/g, ' ')}</span>
+                            <Badge variant={capStatus === 'active' ? 'default' : capStatus === 'pending' ? 'secondary' : 'destructive'}>
+                              {capStatus}
+                            </Badge>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-sm text-muted-foreground">
+                          No payment methods configured yet
                         </div>
-                      ))}
+                      )}
                     </div>
                   </div>
                 </div>
@@ -587,7 +592,7 @@ export default function InterlincConnectV2() {
                     <h3 className="text-xl font-semibold mb-2">Account Information</h3>
                     <p className="text-muted-foreground">Provide your business details for verification</p>
                   </div>
-                  
+
                   {onboardingForm.business_type === 'individual' ? (
                     <div className="grid grid-cols-2 gap-4">
                       <div>
