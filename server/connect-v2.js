@@ -69,15 +69,36 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       // Get real-time account status from Stripe
       const account = await stripe.accounts.retrieve(existing.accountId);
       const requirements = account.requirements || {};
+
+      // Check if capabilities need to be requested
+      const capabilities = account.capabilities || {};
+      const needsCapabilityUpdate = !capabilities.card_payments || !capabilities.transfers;
+
+      if (needsCapabilityUpdate) {
+        try {
+          console.log(`[Connect V2] Updating capabilities for account ${existing.accountId}`);
+          await stripe.accounts.update(existing.accountId, {
+            capabilities: {
+              card_payments: { requested: true },
+              transfers: { requested: true }
+            }
+          });
+          // Retrieve updated account
+          const updatedAccount = await stripe.accounts.retrieve(existing.accountId);
+          console.log(`[Connect V2] Capabilities updated:`, updatedAccount.capabilities);
+        } catch (capError) {
+          console.error('[Connect V2] Error updating capabilities:', capError);
+        }
+      }
       
       // Check individual capability statuses
       const capabilities = account.capabilities || {};
       const capabilityStatuses = {
-        card_payments: capabilities.card_payments?.status || 'inactive',
-        transfers: capabilities.transfers?.status || 'inactive',
-        us_bank_account_ach_payments: capabilities.us_bank_account_ach_payments?.status || 'inactive',
-        sepa_debit_payments: capabilities.sepa_debit_payments?.status || 'inactive',
-        instant_payouts: capabilities.instant_payouts?.status || 'inactive'
+        card_payments: capabilities.card_payments?.status || 'not_requested',
+        transfers: capabilities.transfers?.status || 'not_requested',
+        us_bank_account_ach_payments: capabilities.us_bank_account_ach_payments?.status || 'not_requested',
+        sepa_debit_payments: capabilities.sepa_debit_payments?.status || 'not_requested',
+        instant_payouts: capabilities.instant_payouts?.status || 'not_requested'
       };
 
       // Determine if account is fully operational based on real Stripe data
@@ -197,11 +218,8 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
         email: user.email,
         business_type,
         capabilities: {
-          transfers: { requested: true },
           card_payments: { requested: true },
-          us_bank_account_ach_payments: { requested: true },
-          sepa_debit_payments: { requested: true },
-          instant_payouts: { requested: true }
+          transfers: { requested: true }
         },
         metadata: {
           userId: userId.toString(),
