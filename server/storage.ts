@@ -146,7 +146,7 @@ export interface IStorage {
   // Bank Accounts
   getUserBankAccounts(userId: number): Promise<BankAccount[]>;
   getUserBankAccount(userId: number, accountId: string): Promise<BankAccount | undefined>;
-  saveUserBankAccount(userId: number, bankAccount: InsertBankAccount): Promise<BankAccount>;
+  saveUserBankAccount(userId: number, bankAccountData: InsertBankAccount): Promise<BankAccount>;
   setDefaultBankAccount(userId: number, accountId: string): Promise<BankAccount | undefined>;
   removeBankAccount(userId: number, accountId: string): Promise<boolean>;
   updatePaymentStatus(paymentId: number, status: string, paymentDetails?: Record<string, any>): Promise<Payment | undefined>;

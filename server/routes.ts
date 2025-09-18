@@ -662,6 +662,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Stripe webhook handler for payment status updates
+  app.post(`${apiRouter}/stripe/webhook`, express.raw({type: 'application/json'}), async (req: Request, res: Response) => {
+    const sig = req.headers['stripe-signature'];
+    const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+    let event;
+
+    try {
+      if (!endpointSecret) {
+        console.error('STRIPE_WEBHOOK_SECRET not configured');
+        return res.status(400).json({ error: 'Webhook secret not configured' });
+      }
+
+      event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    } catch (err: any) {
+      console.error(`Webhook signature verification failed: ${err.message}`);
+      return res.status(400).json({ error: `Webhook Error: ${err.message}` });
+    }
+
+    // Handle the event
+    switch (event.type) {
+      case 'payment_intent.succeeded':
+        const succeededIntent = event.data.object;
+        console.log(`Payment succeeded: ${succeededIntent.id}`);
+        
+        // Update payment status in database
+        try {
+          const paymentId = succeededIntent.metadata?.paymentId;
+          if (paymentId) {
+            await storage.updatePaymentStatus(parseInt(paymentId), 'completed');
+            console.log(`Updated payment ${paymentId} status to completed`);
+          }
+        } catch (error) {
+          console.error('Error updating payment status:', error);
+        }
+        break;
+
+      case 'payment_intent.payment_failed':
+        const failedIntent = event.data.object;
+        const errorMessage = failedIntent.last_payment_error?.message || 'Payment failed';
+        console.log(`Payment failed: ${failedIntent.id}, ${errorMessage}`);
+        
+        // Update payment status in database
+        try {
+          const paymentId = failedIntent.metadata?.paymentId;
+          if (paymentId) {
+            await storage.updatePaymentStatus(parseInt(paymentId), 'failed');
+            console.log(`Updated payment ${paymentId} status to failed`);
+          }
+        } catch (error) {
+          console.error('Error updating payment status:', error);
+        }
+        break;
+
+      case 'payment_intent.processing':
+        const processingIntent = event.data.object;
+        console.log(`Payment processing: ${processingIntent.id}`);
+        
+        // Update payment status to processing
+        try {
+          const paymentId = processingIntent.metadata?.paymentId;
+          if (paymentId) {
+            await storage.updatePaymentStatus(parseInt(paymentId), 'processing');
+            console.log(`Updated payment ${paymentId} status to processing`);
+          }
+        } catch (error) {
+          console.error('Error updating payment status:', error);
+        }
+        break;
+
+      default:
+        console.log(`Unhandled event type ${event.type}`);
+    }
+
+    res.json({received: true});
+  });
+
   // Generate a direct invitation link
   app.post(`${apiRouter}/invites/:id/generate-link`, async (req: Request, res: Response) => {
     try {

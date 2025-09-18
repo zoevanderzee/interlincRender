@@ -94,6 +94,7 @@ export async function processMilestonePayment(payment: Payment): Promise<Payment
       paymentId: payment.id.toString(),
       contractId: payment.contractId.toString(),
       milestoneId: payment.milestoneId ? payment.milestoneId.toString() : '',
+      paymentType: 'milestone'
     },
   });
 }

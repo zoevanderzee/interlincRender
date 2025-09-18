@@ -308,7 +308,8 @@ export default function plaidRoutes(app: Express, apiPath: string, authMiddlewar
         status: 'processing',
         paymentIntentId: paymentResult.id,
         clientSecret: paymentResult.clientSecret,
-        directToContractor: !!contractorConnectId
+        directToContractor: !!contractorConnectId,
+        paymentId: payment.id
       });
     } catch (error: any) {
       console.error('Error initiating ACH payment:', error);
