@@ -1,6 +1,6 @@
 
-const express = require('express');
-const { isFeatureEnabled } = require('./feature-flags.js');
+import express from "express";
+import { isFeatureEnabled } from "./feature-flags.js";
 
 export default function testV2Routes(app, apiPath, authMiddleware) {
   const testBasePath = `${apiPath}/test`;

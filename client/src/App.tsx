@@ -285,6 +285,10 @@ function Router() {
         </Layout>
       </ProtectedRoute>
 
+      <Route path="/interlinc-connect-v2" element={<InterlincConnectV2 />} />
+      
+      <Route path="/stripe-test-v2" element={<StripeTestV2 />} />
+
       <ProtectedRoute path="/contractor-payment-setup">
         <Layout>
           <ContractorInterlincConnect />
