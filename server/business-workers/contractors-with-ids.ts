@@ -16,25 +16,46 @@ export function registerContractorsWithIdsRoutes(app: Express, requireAuth?: any
         return res.status(401).json({ error: "Authentication required" });
       }
 
-      // Get all business_workers relationships for this business
-      const businessWorkers = await storage.getBusinessWorkers(businessId);
-      
-      // Get contractor details for each relationship
-      const contractorsWithIds = await Promise.all(
-        businessWorkers.map(async (bw) => {
-          const contractor = await storage.getUser(bw.contractorUserId);
-          if (!contractor) return null;
-          
-          return {
-            ...contractor,
-            // contractor user ID is already included in contractor object
-          };
-        })
-      );
+      // Get contractors linked to this business through contracts
+      const contractorsWithContracts = await storage.getContractorsByBusinessId(businessId);
 
-      // Filter out any null values and return
-      const validContractors = contractorsWithIds.filter(c => c !== null);
-      res.json(validContractors);
+      // Get contractors from accepted connection requests
+      let contractorsByConnections = [];
+      try {
+        const connections = await storage.getConnectionRequests({
+          businessId: businessId,
+          status: 'accepted'
+        });
+
+        console.log(`Found ${connections.length} accepted connection requests for business ID: ${businessId}`);
+
+        for (const connection of connections) {
+          if (connection.contractorId) {
+            const contractor = await storage.getUser(connection.contractorId);
+            if (contractor && contractor.role === 'contractor') {
+              contractorsByConnections.push(contractor);
+            }
+          }
+        }
+
+        console.log(`Found ${contractorsByConnections.length} contractors through connections`);
+      } catch (error) {
+        console.error("Error fetching connected contractors:", error);
+      }
+
+      // Combine and deduplicate contractors
+      const contractorIds = new Set();
+      const uniqueContractors = [];
+
+      [...contractorsWithContracts, ...contractorsByConnections].forEach(contractor => {
+        if (!contractorIds.has(contractor.id) && contractor.role === 'contractor') {
+          contractorIds.add(contractor.id);
+          uniqueContractors.push(contractor);
+        }
+      });
+
+      console.log(`Returning ${uniqueContractors.length} contractors for business ${businessId}`);
+      res.json(uniqueContractors);
 
     } catch (error) {
       console.error("Error fetching contractors:", error);
