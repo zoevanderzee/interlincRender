@@ -104,7 +104,15 @@ export default function InterlincConnectV2() {
       const response = await apiRequest('GET', '/api/connect/v2/status');
       const data = await response.json();
 
-      console.log('V2 Status Response:', JSON.stringify(data, null, 2));
+      console.log('V2 Status Response (Real Stripe Data):', JSON.stringify(data, null, 2));
+      console.log('Account verification details:', {
+        accountId: data.accountId,
+        charges_enabled: data.verification_status?.charges_enabled,
+        details_submitted: data.verification_status?.details_submitted,
+        payouts_enabled: data.verification_status?.payouts_enabled,
+        requirements: data.requirements,
+        capabilities: data.capabilities
+      });
       setStatus(data);
 
       // Auto-navigate based on status
@@ -357,10 +365,17 @@ export default function InterlincConnectV2() {
   const getStatusInfo = () => {
     if (!status) return { variant: 'outline', text: 'Loading...', color: 'text-muted-foreground' };
 
-    if (status.verification_status?.verification_complete) {
+    // Check if account has blocking requirements
+    const hasBlockingRequirements = status.requirements?.disabled_reason ||
+                                   (status.requirements?.currently_due?.length > 0) ||
+                                   (status.requirements?.past_due?.length > 0);
+
+    if (status.verification_status?.verification_complete && !hasBlockingRequirements) {
       return { variant: 'success', text: 'Fully Verified & Active', color: 'text-green-400' };
-    } else if (status.hasAccount && status.verification_status?.charges_enabled) {
+    } else if (status.hasAccount && status.verification_status?.charges_enabled && !hasBlockingRequirements) {
       return { variant: 'success', text: 'Connected & Active', color: 'text-green-400' };
+    } else if (status.hasAccount && hasBlockingRequirements) {
+      return { variant: 'destructive', text: 'Action Required', color: 'text-red-400' };
     } else if (status.hasAccount && status.verification_status?.details_submitted) {
       return { variant: 'warning', text: 'Under Review', color: 'text-amber-400' };
     } else if (status.hasAccount) {

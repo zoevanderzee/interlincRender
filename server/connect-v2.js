@@ -80,15 +80,17 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
         instant_payouts: capabilities.instant_payouts?.status || 'inactive'
       };
 
-      // Determine if account is fully operational
+      // Determine if account is fully operational based on real Stripe data
       const isFullyVerified = account.charges_enabled && 
                              account.details_submitted && 
                              account.payouts_enabled &&
-                             capabilityStatuses.card_payments === 'active' &&
-                             capabilityStatuses.transfers === 'active';
+                             !requirements.disabled_reason &&
+                             (requirements.currently_due || []).length === 0 &&
+                             (requirements.past_due || []).length === 0;
 
       const hasRequirements = (requirements.currently_due || []).length > 0 ||
-                             (requirements.past_due || []).length > 0;
+                             (requirements.past_due || []).length > 0 ||
+                             !!requirements.disabled_reason;
 
       console.log(`[Connect V2 Status] Account ${account.id}:`, {
         charges_enabled: account.charges_enabled,
@@ -99,7 +101,7 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
         isFullyVerified
       });
 
-      // Update our database with current status
+      // Update our database with current status from Stripe
       await db.setConnect(userId, {
         ...existing,
         detailsSubmitted: account.details_submitted,
@@ -107,7 +109,14 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
         payoutsEnabled: account.payouts_enabled,
         isFullyVerified,
         lastStatusCheck: new Date().toISOString(),
-        version: 'v2'
+        version: 'v2',
+        stripeAccountData: {
+          type: account.type,
+          business_type: account.business_type,
+          created: account.created,
+          requirements: requirements,
+          capabilities: capabilities
+        }
       });
 
       const v2Status = {
