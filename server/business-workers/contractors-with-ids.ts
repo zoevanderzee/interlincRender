@@ -16,6 +16,20 @@ export function registerContractorsWithIdsRoutes(app: Express, requireAuth?: any
         return res.status(401).json({ error: "Authentication required" });
       }
 
+      // Verify the user exists and is a business
+      const user = await storage.getUser(businessId);
+      if (!user) {
+        console.log(`User ${businessId} not found`);
+        return res.status(401).json({ error: "User not found" });
+      }
+
+      if (user.role !== 'business') {
+        console.log(`User ${businessId} is not a business user (role: ${user.role})`);
+        return res.status(403).json({ error: "Access denied: Business account required" });
+      }
+
+      console.log(`Authentication verified for business user ${businessId} (${user.username})`);
+
       // Get contractors linked to this business through contracts
       const contractorsWithContracts = await storage.getContractorsByBusinessId(businessId);
 
