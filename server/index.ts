@@ -100,6 +100,11 @@ app.use((req, res, next) => {
   // It is the only port that is not firewalled.
   const port = 5000;
   server.listen(port, "0.0.0.0", () => {
-    log(`serving on port ${port}`);
+    log(`🚀 Server running on http://0.0.0.0:${port}`);
+    log(`🌐 External access available via Replit URL`);
+    console.log(`Server started successfully on port ${port}`);
+  }).on('error', (err) => {
+    console.error('Failed to start server:', err);
+    process.exit(1);
   });
 })();
