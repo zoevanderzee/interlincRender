@@ -68,11 +68,39 @@ export default function InterlincConnect() {
       const response = await apiRequest('GET', '/api/connect/v2/status');
       const data = await response.json();
 
-      console.log('Interlinc Connect V2 Status:', data);
+      console.log('Real Stripe Account Data from V2 API:', JSON.stringify(data, null, 2));
       
-      // If account is verified but not yet enabled for payments, enable it
-      if (data.hasAccount && data.verification_status?.charges_enabled && !data.paymentsEnabled) {
-        console.log('Account verified but payments not enabled. Enabling now...');
+      // Log specific payment capabilities
+      if (data.capabilities) {
+        console.log('Payment Capabilities:');
+        console.log('- Card Payments:', data.capabilities.card_payments);
+        console.log('- ACH Transfers:', data.capabilities.us_bank_account_ach_payments);
+        console.log('- International/SEPA:', data.capabilities.sepa_debit_payments);
+        console.log('- Transfers:', data.capabilities.transfers);
+      }
+
+      // Log verification status
+      if (data.verification_status) {
+        console.log('Verification Status:');
+        console.log('- Details Submitted:', data.verification_status.details_submitted);
+        console.log('- Charges Enabled:', data.verification_status.charges_enabled);
+        console.log('- Payouts Enabled:', data.verification_status.payouts_enabled);
+      }
+
+      // Log requirements if any
+      if (data.requirements) {
+        console.log('Outstanding Requirements:');
+        console.log('- Currently Due:', data.requirements.currently_due);
+        console.log('- Past Due:', data.requirements.past_due);
+        console.log('- Pending Verification:', data.requirements.pending_verification);
+        if (data.requirements.disabled_reason) {
+          console.log('- Disabled Reason:', data.requirements.disabled_reason);
+        }
+      }
+      
+      // If account is verified and charges enabled, enable payments
+      if (data.hasAccount && data.chargesEnabled && !data.paymentsEnabled) {
+        console.log('Account is verified and charges enabled. Enabling payments...');
         try {
           const enableResponse = await apiRequest('POST', '/api/connect/v2/enable-payments');
           if (enableResponse.ok) {
@@ -182,12 +210,29 @@ export default function InterlincConnect() {
   const getStatusInfo = () => {
     if (!status) return { variant: 'outline', text: 'Loading...', color: 'text-muted-foreground' };
 
-    if (status.hasAccount && status.chargesEnabled && status.capabilities?.card_payments === 'active') {
-      return { variant: 'success', text: 'Verified & Ready for Payments', color: 'text-green-400' };
+    // Check if account is fully verified and ready for all payment types
+    const cardPaymentsActive = status.capabilities?.card_payments === 'active';
+    const achPaymentsActive = status.capabilities?.us_bank_account_ach_payments === 'active';
+    const sepaPaymentsActive = status.capabilities?.sepa_debit_payments === 'active';
+    const transfersActive = status.capabilities?.transfers === 'active';
+
+    if (status.hasAccount && status.chargesEnabled && cardPaymentsActive) {
+      const activePaymentMethods = [];
+      if (cardPaymentsActive) activePaymentMethods.push('Cards');
+      if (achPaymentsActive) activePaymentMethods.push('ACH');
+      if (sepaPaymentsActive) activePaymentMethods.push('SEPA');
+      
+      return { 
+        variant: 'success', 
+        text: `Verified & Active (${activePaymentMethods.join(', ')})`, 
+        color: 'text-green-400' 
+      };
     } else if (status.hasAccount && status.chargesEnabled) {
-      return { variant: 'success', text: 'Connected & Active', color: 'text-green-400' };
-    } else if (status.hasAccount && !status.needsOnboarding) {
-      return { variant: 'success', text: 'Connected & Active', color: 'text-green-400' };
+      return { variant: 'success', text: 'Connected & Charges Enabled', color: 'text-green-400' };
+    } else if (status.hasAccount && status.detailsSubmitted && !status.chargesEnabled) {
+      return { variant: 'warning', text: 'Pending Stripe Verification', color: 'text-amber-400' };
+    } else if (status.hasAccount && !status.detailsSubmitted) {
+      return { variant: 'warning', text: 'Account Created - Setup Required', color: 'text-amber-400' };
     } else if (status.needsOnboarding) {
       return { variant: 'warning', text: 'Setup Required', color: 'text-amber-400' };
     }
@@ -281,34 +326,65 @@ export default function InterlincConnect() {
                             <div className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-lg border border-border/50">
                               <div className="flex items-center gap-2">
                                 <CreditCard className="w-4 h-4 text-muted-foreground" />
-                                <span className="text-sm">Card Payments</span>
+                                <div>
+                                  <span className="text-sm">Card Payments</span>
+                                  <p className="text-xs text-muted-foreground">Status: {status.capabilities.card_payments || 'inactive'}</p>
+                                </div>
                               </div>
                               {status.capabilities.card_payments === 'active' ? (
                                 <CheckCircle className="w-4 h-4 text-green-400" />
-                              ) : (
+                              ) : status.capabilities.card_payments === 'pending' ? (
                                 <Clock className="w-4 h-4 text-amber-400" />
+                              ) : (
+                                <XCircle className="w-4 h-4 text-red-400" />
                               )}
                             </div>
                             <div className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-lg border border-border/50">
                               <div className="flex items-center gap-2">
                                 <Building className="w-4 h-4 text-muted-foreground" />
-                                <span className="text-sm">ACH Transfers</span>
+                                <div>
+                                  <span className="text-sm">ACH Transfers</span>
+                                  <p className="text-xs text-muted-foreground">Status: {status.capabilities.us_bank_account_ach_payments || 'inactive'}</p>
+                                </div>
                               </div>
                               {status.capabilities.us_bank_account_ach_payments === 'active' ? (
                                 <CheckCircle className="w-4 h-4 text-green-400" />
-                              ) : (
+                              ) : status.capabilities.us_bank_account_ach_payments === 'pending' ? (
                                 <Clock className="w-4 h-4 text-amber-400" />
+                              ) : (
+                                <XCircle className="w-4 h-4 text-red-400" />
                               )}
                             </div>
                             <div className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-lg border border-border/50">
                               <div className="flex items-center gap-2">
                                 <Globe className="w-4 h-4 text-muted-foreground" />
-                                <span className="text-sm">International</span>
+                                <div>
+                                  <span className="text-sm">International/SEPA</span>
+                                  <p className="text-xs text-muted-foreground">Status: {status.capabilities.sepa_debit_payments || 'inactive'}</p>
+                                </div>
                               </div>
                               {status.capabilities.sepa_debit_payments === 'active' ? (
                                 <CheckCircle className="w-4 h-4 text-green-400" />
-                              ) : (
+                              ) : status.capabilities.sepa_debit_payments === 'pending' ? (
                                 <Clock className="w-4 h-4 text-amber-400" />
+                              ) : (
+                                <XCircle className="w-4 h-4 text-red-400" />
+                              )}
+                            </div>
+                            <div className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-lg border border-border/50">
+                              <div className="flex items-center gap-2">
+                                <Settings className="w-4 h-4 text-muted-foreground" />
+                                <div>
+                                  <span className="text-sm">Transfers</span>
+                                  <p className="text-xs text-muted-foreground">Status: {status.capabilities.transfers || 'inactive'}</p>
+                                </div>
+                              </div>
+                              {status.capabilities.transfers === 'active' ? (
+                                <CheckCircle className="w-4 h-4 text-green-400" />
+                              ) : status.capabilities.transfers === 'pending' ? (
+                                <Clock className="w-4 h-4 text-amber-400" />
+                              ) : (
+                                <XCircle className="w-4 h-4 text-red-400" />
                               )}
                             </div>
                           </>
@@ -649,6 +725,47 @@ export default function InterlincConnect() {
                                 </CardContent>
                               </Card>
                             )}
+
+                            <Card>
+                              <CardHeader>
+                                <CardTitle>Account Debug Information</CardTitle>
+                                <CardDescription>Raw Stripe account data for verification</CardDescription>
+                              </CardHeader>
+                              <CardContent>
+                                <Button 
+                                  onClick={() => {
+                                    console.log('Full Status Object:', JSON.stringify(status, null, 2));
+                                    if (status.capabilities) {
+                                      console.log('\n=== PAYMENT CAPABILITIES ===');
+                                      Object.entries(status.capabilities).forEach(([key, value]) => {
+                                        console.log(`${key}: ${value}`);
+                                      });
+                                    }
+                                    if (status.verification_status) {
+                                      console.log('\n=== VERIFICATION STATUS ===');
+                                      Object.entries(status.verification_status).forEach(([key, value]) => {
+                                        console.log(`${key}: ${value}`);
+                                      });
+                                    }
+                                    alert('Account details logged to console. Check browser developer tools.');
+                                  }}
+                                  variant="outline"
+                                  className="w-full"
+                                >
+                                  Log Full Account Details to Console
+                                </Button>
+                                
+                                <div className="mt-4 p-3 bg-muted/50 rounded-lg text-xs font-mono">
+                                  <div><strong>Account ID:</strong> {status?.accountId || 'Not available'}</div>
+                                  <div><strong>Charges Enabled:</strong> {status?.chargesEnabled ? 'Yes' : 'No'}</div>
+                                  <div><strong>Details Submitted:</strong> {status?.detailsSubmitted ? 'Yes' : 'No'}</div>
+                                  <div><strong>Payouts Enabled:</strong> {status?.payoutsEnabled ? 'Yes' : 'No'}</div>
+                                  {status?.requirements && (
+                                    <div><strong>Requirements Complete:</strong> {status.requirements.is_complete ? 'Yes' : 'No'}</div>
+                                  )}
+                                </div>
+                              </CardContent>
+                            </Card>
                           </div>
                         </div>
                       ) : (
