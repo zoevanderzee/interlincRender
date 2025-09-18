@@ -259,9 +259,6 @@ export default function InterlincConnect() {
               <Badge variant={statusInfo.variant} className="px-4 py-2">
                 {statusInfo.text}
               </Badge>
-              <div className="text-sm text-gray-500">
-                V2 Enhanced
-              </div>
             </div>
           </div>
         </div>
@@ -276,7 +273,7 @@ export default function InterlincConnect() {
                 <div>
                   <h3 className="text-xl font-semibold mb-2">Interlinc Connect Status</h3>
                   <p className="text-blue-100">
-                    {status?.version === 'v2' ? 'Using enhanced V2 API with advanced features' : 'Initializing enhanced features'}
+                    Advanced payment processing with enhanced capabilities
                   </p>
                 </div>
                 <div className="bg-white/10 backdrop-blur-sm rounded-full p-3">
@@ -385,7 +382,7 @@ export default function InterlincConnect() {
               <CardContent className="flex flex-col items-center justify-center py-16">
                 <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Initializing Interlinc Connect</h3>
-                <p className="text-gray-600 text-center">Setting up your enhanced payment processing...</p>
+                <p className="text-gray-600 text-center">Setting up your payment processing...</p>
               </CardContent>
             </Card>
           ) : (
