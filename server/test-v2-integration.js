@@ -62,9 +62,9 @@ export default function testV2Routes(app, apiPath, authMiddleware) {
         v2Integration: 'active',
         statusTest: statusData,
         capabilities: {
-          enhanced_onboarding: true,
+          direct_api_integration: true,
           real_time_status: true,
-          embedded_management: true,
+          full_account_management: true,
           payment_methods: {
             card: true,
             ach: true,

@@ -59,9 +59,9 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
           needsOnboarding: true,
           version: 'v2',
           capabilities: {
-            enhanced_onboarding: true,
+            direct_api_integration: true,
             real_time_status: true,
-            embedded_management: true
+            full_account_management: true
           }
         });
       }

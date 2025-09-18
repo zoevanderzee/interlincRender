@@ -415,7 +415,7 @@ export default function InterlincConnectV2() {
             <div>
               <h1 className="text-4xl font-bold mb-2">Payment Processing Setup</h1>
               <p className="text-lg text-muted-foreground">
-                Complete API-based payment processing with enhanced capabilities
+                Direct API integration for complete payment processing control
               </p>
             </div>
             <div className="flex items-center gap-3">
