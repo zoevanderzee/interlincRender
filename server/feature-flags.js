@@ -2,10 +2,10 @@
 // Feature flags for gradual rollout
 const FEATURE_FLAGS = {
   STRIPE_CONNECT_V2: {
-    enabled: false, // Start with V2 disabled
-    rollout_percentage: 0, // 0% of users get V2
-    user_whitelist: [], // Specific user IDs to force V2
-    user_blacklist: [] // Specific user IDs to force V1
+    enabled: true, // Enable V2 today
+    rollout_percentage: 100, // 100% rollout for testing
+    user_whitelist: [86], // Enable for your business account
+    user_blacklist: [] // No blacklist
   }
 };
 

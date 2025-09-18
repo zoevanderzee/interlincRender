@@ -3511,6 +3511,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register contractor assignment routes
   registerContractorAssignmentRoutes(app, apiRouter, requireAuth);
 
+  // Register admin routes for V2 feature flag management
+  const adminRoutes = await import("./admin-routes.js");
+  adminRoutes.default(app, apiRouter, requireAuth);
+
+  // Register V2 test routes
+  const testV2Routes = await import("./test-v2-integration.js");
+  testV2Routes.default(app, apiRouter, requireAuth);
+
   // Calendar events endpoint - unified data for projects and tasks
   app.get(`${apiRouter}/calendar/events`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
