@@ -465,14 +465,23 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       const userId = getUserId(req);
       const { amount, currency = 'usd', description, metadata = {} } = req.body;
 
+      // Validate amount
+      if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+        return res.status(400).json({ error: "Valid amount is required" });
+      }
+
       const existing = await db.getConnect(userId);
       if (!existing?.accountId) {
         return res.status(404).json({ error: "No Connect account found" });
       }
 
+      // Convert amount to cents and ensure it's an integer
+      const amountInCents = Math.round(parseFloat(amount) * 100);
+      console.log(`[Connect V2] Creating transfer: $${amount} -> ${amountInCents} cents`);
+
       // Create transfer to connected account
       const transfer = await stripe.transfers.create({
-        amount: Math.round(amount * 100), // Convert to cents
+        amount: amountInCents,
         currency,
         destination: existing.accountId,
         description,
