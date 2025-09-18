@@ -287,6 +287,18 @@ function Router() {
         </Layout>
       </ProtectedRoute>
 
+      <ProtectedRoute path="/interlinc-connect-v2">
+        <Layout>
+          <InterlincConnectV2 />
+        </Layout>
+      </ProtectedRoute>
+
+      <ProtectedRoute path="/test-interlinc-v2">
+        <Layout>
+          <TestInterlincV2 />
+        </Layout>
+      </ProtectedRoute>
+
       <Route path="/interlinc-connect-v1" element={<InterlincConnect />} />
 
       <Route path="/stripe-test-v2" element={<StripeTestV2 />} />
@@ -296,22 +308,6 @@ function Router() {
           <ContractorInterlincConnect />
         </Layout>
       </ProtectedRoute>
-
-      <Route path="/interlinc-connect-v2" element={
-            <ProtectedRoute>
-              <InterlincConnectV2 />
-            </ProtectedRoute>
-          } />
-          <Route path="/InterlincConnectV2" element={
-            <ProtectedRoute>
-              <InterlincConnectV2 />
-            </ProtectedRoute>
-          } />
-          <Route path="/test-interlinc-v2" element={
-            <ProtectedRoute>
-              <TestInterlincV2 />
-            </ProtectedRoute>
-          } />
 
       <Route component={NotFound} />
     </Switch>
