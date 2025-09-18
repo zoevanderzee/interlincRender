@@ -182,15 +182,17 @@ export default function InterlincConnect() {
   const getStatusInfo = () => {
     if (!status) return { variant: 'outline', text: 'Loading...', color: 'text-muted-foreground' };
 
-    if (status.hasAccount && status.verification_status?.charges_enabled && status.chargesEnabled) {
+    if (status.hasAccount && status.chargesEnabled && status.capabilities?.card_payments === 'active') {
       return { variant: 'success', text: 'Verified & Ready for Payments', color: 'text-green-400' };
+    } else if (status.hasAccount && status.chargesEnabled) {
+      return { variant: 'success', text: 'Connected & Active', color: 'text-green-400' };
     } else if (status.hasAccount && !status.needsOnboarding) {
       return { variant: 'success', text: 'Connected & Active', color: 'text-green-400' };
     } else if (status.needsOnboarding) {
       return { variant: 'warning', text: 'Setup Required', color: 'text-amber-400' };
     }
 
-    return { variant: 'info', text: 'Ready to Configure', color: 'text-blue-400' };
+    return { variant: 'info', text: 'Ready to Configure', color: 'text-slate-400' };
   };
 
   const handleFormChange = (field: keyof OnboardingForm, value: any) => {
@@ -246,11 +248,11 @@ export default function InterlincConnect() {
         <div className="grid gap-8">
           {/* Status Overview */}
           <Card className="overflow-hidden">
-            <div className="bg-gradient-to-r from-blue-600/80 to-indigo-600/80 backdrop-blur-sm text-white p-6 border-b border-border/50">
+            <div className="bg-gradient-to-r from-slate-700/80 to-slate-800/80 backdrop-blur-sm text-white p-6 border-b border-border/50">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-xl font-semibold mb-2">Interlinc Connect Status</h3>
-                  <p className="text-blue-100">
+                  <p className="text-slate-100">
                     Advanced payment processing with enhanced capabilities
                   </p>
                 </div>
@@ -274,14 +276,14 @@ export default function InterlincConnect() {
                     <div>
                       <label className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Payment Methods</label>
                       <div className="mt-2 space-y-2">
-                        {status.payment_methods && (
+                        {status.capabilities && (
                           <>
                             <div className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-lg border border-border/50">
                               <div className="flex items-center gap-2">
                                 <CreditCard className="w-4 h-4 text-muted-foreground" />
                                 <span className="text-sm">Card Payments</span>
                               </div>
-                              {status.payment_methods.card ? (
+                              {status.capabilities.card_payments === 'active' ? (
                                 <CheckCircle className="w-4 h-4 text-green-400" />
                               ) : (
                                 <Clock className="w-4 h-4 text-amber-400" />
@@ -292,7 +294,7 @@ export default function InterlincConnect() {
                                 <Building className="w-4 h-4 text-muted-foreground" />
                                 <span className="text-sm">ACH Transfers</span>
                               </div>
-                              {status.payment_methods.ach ? (
+                              {status.capabilities.us_bank_account_ach_payments === 'active' ? (
                                 <CheckCircle className="w-4 h-4 text-green-400" />
                               ) : (
                                 <Clock className="w-4 h-4 text-amber-400" />
@@ -303,7 +305,7 @@ export default function InterlincConnect() {
                                 <Globe className="w-4 h-4 text-muted-foreground" />
                                 <span className="text-sm">International</span>
                               </div>
-                              {status.payment_methods.international ? (
+                              {status.capabilities.sepa_debit_payments === 'active' ? (
                                 <CheckCircle className="w-4 h-4 text-green-400" />
                               ) : (
                                 <Clock className="w-4 h-4 text-amber-400" />
@@ -338,8 +340,8 @@ export default function InterlincConnect() {
                           </div>
                         </div>
                         <div className="flex items-center gap-3 py-2">
-                          <div className="w-8 h-8 bg-purple-500/20 rounded-full flex items-center justify-center">
-                            <Settings className="w-4 h-4 text-purple-400" />
+                          <div className="w-8 h-8 bg-slate-500/20 rounded-full flex items-center justify-center">
+                            <Settings className="w-4 h-4 text-slate-400" />
                           </div>
                           <div>
                             <p className="font-medium text-sm">API Management</p>
