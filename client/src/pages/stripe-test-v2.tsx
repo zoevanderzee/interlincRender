@@ -11,8 +11,6 @@ import { apiRequest } from '@/lib/queryClient';
 // Import Stripe.js directly
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY || '');
 
-// Original StripeTestV2 for payment testing - REMOVED as per intention
-
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Settings, CreditCard } from 'lucide-react';
