@@ -34,6 +34,7 @@ import PaymentSimulator from "@/pages/payment-simulator";
 import PayContractor from "@/pages/pay-contractor";
 import InterlincConnect from "@/pages/InterlincConnect";
 import ContractorInterlincConnect from "@/pages/ContractorInterlincConnect";
+import InterlincConnectV2 from "@/pages/InterlincConnectV2";
 import BudgetOversight from "@/pages/budget-oversight";
 import Calendar from "@/pages/calendar";
 
