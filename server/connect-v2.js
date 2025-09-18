@@ -95,11 +95,11 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       const updatedAccount = await stripe.accounts.retrieve(existing.accountId);
       const currentCapabilities = updatedAccount.capabilities || {};
       const capabilityStatuses = {
-        card_payments: currentCapabilities.card_payments?.status || 'not_requested',
-        transfers: currentCapabilities.transfers?.status || 'not_requested',
-        us_bank_account_ach_payments: currentCapabilities.us_bank_account_ach_payments?.status || 'not_requested',
-        sepa_debit_payments: currentCapabilities.sepa_debit_payments?.status || 'not_requested',
-        instant_payouts: currentCapabilities.instant_payouts?.status || 'not_requested'
+        card_payments: currentCapabilities.card_payments || 'not_requested',
+        transfers: currentCapabilities.transfers || 'not_requested',
+        us_bank_account_ach_payments: currentCapabilities.us_bank_account_ach_payments || 'not_requested',
+        sepa_debit_payments: currentCapabilities.sepa_debit_payments || 'not_requested',
+        instant_payouts: currentCapabilities.instant_payouts || 'not_requested'
       };
 
       // Determine if account is fully operational based on real Stripe data
