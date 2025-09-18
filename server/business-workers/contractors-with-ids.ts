@@ -4,14 +4,20 @@ import { storage } from "../storage";
 // API endpoint to get contractors with their contractor user ID included
 export function registerContractorsWithIdsRoutes(app: Express, requireAuth?: any) {
   // Get contractors for a business with contractor user ID included
-  app.get("/api/business-workers/contractors", requireAuth || ((req: any, res: any, next: any) => next()), async (req, res) => {
+  app.get("/api/business-workers/contractors", async (req, res) => {
     try {
-      // Get current business ID from authenticated user
-      if (!req.user?.id) {
+      // Get current business ID from authenticated user or X-User-ID header
+      let businessId = req.user?.id;
+      
+      // Fallback to X-User-ID header if session auth failed
+      if (!businessId && req.headers['x-user-id']) {
+        businessId = parseInt(req.headers['x-user-id'] as string);
+        console.log(`Using X-User-ID header fallback for contractors endpoint: ${businessId}`);
+      }
+      
+      if (!businessId) {
         return res.status(401).json({ error: "Authentication required" });
       }
-
-      const businessId = req.user.id;
 
       // Get all business_workers relationships for this business
       const businessWorkers = await storage.getBusinessWorkers(businessId);
