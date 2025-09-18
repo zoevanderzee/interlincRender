@@ -2444,6 +2444,21 @@ export class DatabaseStorage implements IStorage {
       .where(eq(connectionRequests.id, id))
       .returning();
     
+    // If connection request is being accepted, automatically add to business_workers table
+    if (updatedRequest && updates.status === 'accepted' && updatedRequest.contractorId && updatedRequest.businessId) {
+      try {
+        await this.upsertBusinessWorker({
+          businessId: updatedRequest.businessId,
+          contractorUserId: updatedRequest.contractorId,
+          status: 'active'
+        });
+        console.log(`Added contractor ${updatedRequest.contractorId} to business_workers table for business ${updatedRequest.businessId}`);
+      } catch (error) {
+        console.error('Error adding contractor to business_workers table:', error);
+        // Continue even if this fails
+      }
+    }
+    
     return updatedRequest;
   }
   

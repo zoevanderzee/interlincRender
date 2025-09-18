@@ -30,46 +30,69 @@ export function registerContractorsWithIdsRoutes(app: Express, requireAuth?: any
 
       console.log(`Authentication verified for business user ${businessId} (${user.username})`);
 
-      // Get contractors linked to this business through contracts
-      const contractorsWithContracts = await storage.getContractorsByBusinessId(businessId);
-
-      // Get contractors from accepted connection requests
-      let contractorsByConnections = [];
+      // Get contractors from business_workers table (primary source)
+      let contractorsFromBusinessWorkers = [];
       try {
-        const connections = await storage.getConnectionRequests({
-          businessId: businessId,
-          status: 'accepted'
-        });
+        const businessWorkers = await storage.getBusinessWorkers(businessId);
+        console.log(`Found ${businessWorkers.length} entries in business_workers table for business ID: ${businessId}`);
 
-        console.log(`Found ${connections.length} accepted connection requests for business ID: ${businessId}`);
-
-        for (const connection of connections) {
-          if (connection.contractorId) {
-            const contractor = await storage.getUser(connection.contractorId);
+        for (const businessWorker of businessWorkers) {
+          if (businessWorker.contractorUserId && businessWorker.status === 'active') {
+            const contractor = await storage.getUser(businessWorker.contractorUserId);
             if (contractor && contractor.role === 'contractor') {
-              contractorsByConnections.push(contractor);
+              contractorsFromBusinessWorkers.push(contractor);
             }
           }
         }
 
-        console.log(`Found ${contractorsByConnections.length} contractors through connections`);
+        console.log(`Found ${contractorsFromBusinessWorkers.length} contractors from business_workers table`);
       } catch (error) {
-        console.error("Error fetching connected contractors:", error);
+        console.error("Error fetching contractors from business_workers table:", error);
       }
 
-      // Combine and deduplicate contractors
-      const contractorIds = new Set();
-      const uniqueContractors = [];
+      // Fallback: Get contractors from legacy connection requests if business_workers table is empty
+      let contractorsByConnections = [];
+      if (contractorsFromBusinessWorkers.length === 0) {
+        try {
+          const connections = await storage.getConnectionRequests({
+            businessId: businessId,
+            status: 'accepted'
+          });
 
-      [...contractorsWithContracts, ...contractorsByConnections].forEach(contractor => {
-        if (!contractorIds.has(contractor.id) && contractor.role === 'contractor') {
-          contractorIds.add(contractor.id);
-          uniqueContractors.push(contractor);
+          console.log(`Fallback: Found ${connections.length} accepted connection requests for business ID: ${businessId}`);
+
+          for (const connection of connections) {
+            if (connection.contractorId) {
+              const contractor = await storage.getUser(connection.contractorId);
+              if (contractor && contractor.role === 'contractor') {
+                contractorsByConnections.push(contractor);
+                
+                // Migrate to business_workers table
+                try {
+                  await storage.upsertBusinessWorker({
+                    businessId: businessId,
+                    contractorUserId: connection.contractorId,
+                    status: 'active'
+                  });
+                  console.log(`Migrated contractor ${connection.contractorId} to business_workers table`);
+                } catch (migrateError) {
+                  console.error('Error migrating contractor to business_workers table:', migrateError);
+                }
+              }
+            }
+          }
+
+          console.log(`Fallback: Found ${contractorsByConnections.length} contractors through connections`);
+        } catch (error) {
+          console.error("Error fetching connected contractors:", error);
         }
-      });
+      }
 
-      console.log(`Returning ${uniqueContractors.length} contractors for business ${businessId}`);
-      res.json(uniqueContractors);
+      // Use primary data source (business_workers) or fallback
+      const finalContractors = contractorsFromBusinessWorkers.length > 0 ? contractorsFromBusinessWorkers : contractorsByConnections;
+
+      console.log(`Returning ${finalContractors.length} contractors for business ${businessId} (source: ${contractorsFromBusinessWorkers.length > 0 ? 'business_workers table' : 'connection_requests fallback'})`);
+      res.json(finalContractors);
 
     } catch (error) {
       console.error("Error fetching contractors:", error);
