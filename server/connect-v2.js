@@ -5,7 +5,7 @@ import { storage } from "./storage.js";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" });
 
-// --- V2 API Implementation ----------------------------------------------------
+// --- V2 Direct API Implementation ----------------------------------------------------
 function httpError(status, message) {
   const e = new Error(message);
   e.status = status;
@@ -46,7 +46,7 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
 
   /**
    * GET /api/connect/v2/status
-   * Enhanced status with V2 capabilities
+   * Enhanced status with real-time capability checking
    */
   app.get(`${connectBasePath}/status`, authMiddleware, async (req, res) => {
     try {
@@ -66,116 +66,92 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
         });
       }
 
-      const acct = await stripe.accounts.retrieve(existing.accountId);
-      const reqs = acct.requirements || {};
+      // Get real-time account status from Stripe
+      const account = await stripe.accounts.retrieve(existing.accountId);
+      const requirements = account.requirements || {};
       
-      // Account is fully ready if charges are enabled and details submitted
-      const isFullyVerified = acct.charges_enabled && acct.details_submitted && acct.payouts_enabled;
-      const hasOutstandingRequirements = 
-        (Array.isArray(reqs.currently_due) && reqs.currently_due.length > 0) ||
-        (Array.isArray(reqs.past_due) && reqs.past_due.length > 0) ||
-        (Array.isArray(reqs.pending_verification) && reqs.pending_verification.length > 0);
+      // Check individual capability statuses
+      const capabilities = account.capabilities || {};
+      const capabilityStatuses = {
+        card_payments: capabilities.card_payments?.status || 'inactive',
+        transfers: capabilities.transfers?.status || 'inactive',
+        us_bank_account_ach_payments: capabilities.us_bank_account_ach_payments?.status || 'inactive',
+        sepa_debit_payments: capabilities.sepa_debit_payments?.status || 'inactive',
+        instant_payouts: capabilities.instant_payouts?.status || 'inactive'
+      };
 
-      // For active accounts with no requirements, no onboarding needed
-      const needsOnboarding = !isFullyVerified || hasOutstandingRequirements;
+      // Determine if account is fully operational
+      const isFullyVerified = account.charges_enabled && 
+                             account.details_submitted && 
+                             account.payouts_enabled &&
+                             capabilityStatuses.card_payments === 'active' &&
+                             capabilityStatuses.transfers === 'active';
 
-      console.log(`[Connect V2 Status] Account ${acct.id}:`, {
-        charges_enabled: acct.charges_enabled,
-        details_submitted: acct.details_submitted,
-        payouts_enabled: acct.payouts_enabled,
-        isFullyVerified,
-        hasOutstandingRequirements,
-        needsOnboarding,
-        currently_due: reqs.currently_due?.length || 0,
-        past_due: reqs.past_due?.length || 0,
-        pending_verification: reqs.pending_verification?.length || 0
+      const hasRequirements = (requirements.currently_due || []).length > 0 ||
+                             (requirements.past_due || []).length > 0;
+
+      console.log(`[Connect V2 Status] Account ${account.id}:`, {
+        charges_enabled: account.charges_enabled,
+        details_submitted: account.details_submitted,
+        payouts_enabled: account.payouts_enabled,
+        capabilities: capabilityStatuses,
+        hasRequirements,
+        isFullyVerified
       });
 
-      // V2 Enhanced Status with complete verified account data
+      // Update our database with current status
+      await db.setConnect(userId, {
+        ...existing,
+        detailsSubmitted: account.details_submitted,
+        chargesEnabled: account.charges_enabled,
+        payoutsEnabled: account.payouts_enabled,
+        isFullyVerified,
+        lastStatusCheck: new Date().toISOString(),
+        version: 'v2'
+      });
+
       const v2Status = {
         hasAccount: true,
-        accountId: acct.id,
-        accountType: acct.type,
-        needsOnboarding,
-        detailsSubmitted: acct.details_submitted,
-        chargesEnabled: acct.charges_enabled,
-        payoutsEnabled: acct.payouts_enabled,
+        accountId: account.id,
+        accountType: account.type,
+        needsOnboarding: !isFullyVerified || hasRequirements,
+        detailsSubmitted: account.details_submitted,
+        chargesEnabled: account.charges_enabled,
+        payoutsEnabled: account.payouts_enabled,
         isFullyVerified,
         version: 'v2',
         
-        // Account verification status
         verification_status: {
-          details_submitted: acct.details_submitted,
-          charges_enabled: acct.charges_enabled,
-          payouts_enabled: acct.payouts_enabled,
-          verification_complete: acct.details_submitted && acct.charges_enabled
+          details_submitted: account.details_submitted,
+          charges_enabled: account.charges_enabled,
+          payouts_enabled: account.payouts_enabled,
+          verification_complete: isFullyVerified
         },
         
-        // V2 Enhancements
         requirements: {
-          currently_due: reqs.currently_due || [],
-          past_due: reqs.past_due || [],
-          pending_verification: reqs.pending_verification || [],
-          disabled_reason: acct.requirements?.disabled_reason || null,
-          is_complete: (reqs.currently_due || []).length === 0 && (reqs.past_due || []).length === 0
+          currently_due: requirements.currently_due || [],
+          past_due: requirements.past_due || [],
+          pending_verification: requirements.pending_verification || [],
+          disabled_reason: requirements.disabled_reason || null,
+          is_complete: !hasRequirements
         },
         
-        capabilities: {
-          card_payments: acct.capabilities?.card_payments?.status || 'inactive',
-          transfers: acct.capabilities?.transfers?.status || 'inactive',
-          us_bank_account_ach_payments: acct.capabilities?.us_bank_account_ach_payments?.status || 'inactive',
-          sepa_debit_payments: acct.capabilities?.sepa_debit_payments?.status || 'inactive',
-          enhanced_onboarding: true,
-          real_time_status: true,
-          embedded_management: true
-        },
+        capabilities: capabilityStatuses,
         
-        // Payment method support
         payment_methods: {
-          card: acct.capabilities?.card_payments?.status === 'active',
-          ach: acct.capabilities?.us_bank_account_ach_payments?.status === 'active',
-          international: acct.capabilities?.sepa_debit_payments?.status === 'active',
-          bank_transfer: acct.payouts_enabled,
-          instant_payouts: acct.capabilities?.instant_payouts?.status === 'active'
+          card: capabilityStatuses.card_payments === 'active',
+          ach: capabilityStatuses.us_bank_account_ach_payments === 'active',
+          international: capabilityStatuses.sepa_debit_payments === 'active',
+          instant_payouts: capabilityStatuses.instant_payouts === 'active'
         },
-        
-        // Business profile for verified accounts
-        business_profile: acct.business_profile ? {
-          name: acct.business_profile.name,
-          support_email: acct.business_profile.support_email,
-          support_phone: acct.business_profile.support_phone,
-          url: acct.business_profile.url
-        } : null,
-        
-        // Settings for payment processing
-        settings: {
-          payouts: acct.settings?.payouts || {},
-          payments: acct.settings?.payments || {},
-          dashboard: acct.settings?.dashboard || {}
-        }
-      };
 
-      // Final status determination - if account can process payments, no onboarding needed
-      if (isFullyVerified && !hasOutstandingRequirements) {
-        v2Status.needsOnboarding = false;
-        v2Status.paymentReady = true;
-        
-        console.log(`[Connect V2] Account ${acct.id} is fully verified - updating database`);
-        
-        // Automatically enable payments in our system for verified accounts
-        await db.setConnect(userId, {
-          ...existing,
-          detailsSubmitted: true,
-          chargesEnabled: true,
-          payoutsEnabled: acct.payouts_enabled,
-          paymentsEnabled: true,
-          isFullyVerified: true,
-          lastUpdated: new Date().toISOString(),
-          version: 'v2'
-        });
-      } else {
-        console.log(`[Connect V2] Account ${acct.id} still needs onboarding`);
-      }
+        business_profile: account.business_profile ? {
+          name: account.business_profile.name,
+          support_email: account.business_profile.support_email,
+          support_phone: account.business_profile.support_phone,
+          url: account.business_profile.url
+        } : null
+      };
 
       res.json(v2Status);
     } catch (e) {
@@ -185,66 +161,38 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
   });
 
   /**
-   * POST /api/connect/v2/session
-   * Enhanced session creation with V2 features
+   * POST /api/connect/v2/create-account
+   * Direct account creation via API - no embedded components
    */
-  app.post(`${connectBasePath}/session`, authMiddleware, async (req, res) => {
+  app.post(`${connectBasePath}/create-account`, authMiddleware, async (req, res) => {
     try {
       const userId = getUserId(req);
-      const { publishableKey, country = "GB", enabledComponents = {} } = req.body || {};
-
-      assertKeyModesMatch(publishableKey);
+      const { country = "GB", business_type = "individual" } = req.body || {};
 
       const existing = await db.getConnect(userId);
       if (existing?.accountId) {
-        // Enhanced session for existing accounts
-        const acct = await stripe.accounts.retrieve(existing.accountId);
-        if (acct.type === "standard") throw httpError(409, "V2 requires Express/Custom accounts.");
-
-        const reqs = acct.requirements || {};
-        const needsOnboarding =
-          !acct.details_submitted ||
-          (Array.isArray(reqs.currently_due) && reqs.currently_due.length > 0) ||
-          (Array.isArray(reqs.past_due) && reqs.past_due.length > 0);
-
-        // V2 Enhanced Components
-        const components = {
-          account_onboarding: { enabled: true },
-          account_management: { enabled: enabledComponents.account_management || false },
-          ...enabledComponents
-        };
-
-        const session = await stripe.accountSessions.create({
-          account: existing.accountId,
-          components: components,
-        });
-
-        return res.json({ 
-          client_secret: session.client_secret, 
-          needsOnboarding, 
-          hasExistingAccount: true,
-          version: 'v2',
-          components: Object.keys(components)
-        });
+        return res.status(409).json({ error: "Account already exists" });
       }
 
-      // Create new account with V2 enhancements
       const user = await db.getUser(userId);
-      console.log('Creating new V2 Stripe Connect account for user:', userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
 
-      const isContractor = user.role === 'contractor';
+      console.log('Creating V2 Connect account for user:', userId);
 
-      // V2 Enhanced Account Configuration
+      // Create account with enhanced V2 capabilities
       const accountConfig = {
         type: 'express',
-        country: country || 'GB',
+        country,
         email: user.email,
+        business_type,
         capabilities: {
           transfers: { requested: true },
           card_payments: { requested: true },
-          // V2 Enhanced Capabilities
           us_bank_account_ach_payments: { requested: true },
           sepa_debit_payments: { requested: true },
+          instant_payouts: { requested: true }
         },
         metadata: {
           userId: userId.toString(),
@@ -252,37 +200,30 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
           version: 'v2',
           created_at: new Date().toISOString()
         },
+        settings: {
+          payouts: {
+            schedule: {
+              interval: 'daily'
+            }
+          }
+        }
       };
 
-      if (isContractor) {
-        accountConfig.business_type = 'individual';
+      if (business_type === 'individual') {
         accountConfig.individual = {
           first_name: user.firstName,
           last_name: user.lastName,
-          email: user.email,
+          email: user.email
         };
       } else {
-        accountConfig.business_type = 'company';
         accountConfig.company = {
-          name: user.companyName || `${user.firstName} ${user.lastName}`,
+          name: user.companyName || `${user.firstName} ${user.lastName}`
         };
       }
 
       const account = await stripe.accounts.create(accountConfig);
 
-      // V2 Enhanced Session Components
-      const components = {
-        account_onboarding: { enabled: true },
-        account_management: { enabled: enabledComponents.account_management || false },
-        ...enabledComponents
-      };
-
-      const session = await stripe.accountSessions.create({
-        account: account.id,
-        components: components,
-      });
-
-      // Save with V2 metadata
+      // Store account info
       await db.setConnect(userId, { 
         accountId: account.id, 
         accountType: account.type,
@@ -293,307 +234,363 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
         createdAt: new Date().toISOString()
       });
 
-      res.json({ 
-        client_secret: session.client_secret, 
-        needsOnboarding: true, 
-        hasExistingAccount: false, 
+      res.json({
+        success: true,
         accountId: account.id,
         version: 'v2',
-        components: Object.keys(components)
+        needsOnboarding: true,
+        capabilities: account.capabilities
       });
 
     } catch (e) {
-      console.error("[connect-v2-session]", e);
-      res.status(e.status || 500).json({ error: e.message || "Unknown error" });
+      console.error("[connect-v2-create-account]", e);
+      res.status(e.status || 500).json({ error: e.message || "Account creation failed" });
     }
   });
 
   /**
-   * POST /api/connect/v2/account-management-session
-   * Create session for embedded account management
+   * POST /api/connect/v2/submit-onboarding
+   * Direct onboarding data submission - no embedded forms
    */
-  app.post(`${connectBasePath}/account-management-session`, authMiddleware, async (req, res) => {
+  app.post(`${connectBasePath}/submit-onboarding`, authMiddleware, async (req, res) => {
     try {
       const userId = getUserId(req);
-      const existing = await db.getConnect(userId);
-      
-      if (!existing?.accountId) {
-        throw httpError(404, "No Connect account found");
-      }
-
-      const session = await stripe.accountSessions.create({
-        account: existing.accountId,
-        components: {
-          account_management: { enabled: true },
-          notification_banner: { enabled: true }
-        },
-      });
-
-      res.json({ 
-        client_secret: session.client_secret,
-        accountId: existing.accountId,
-        version: 'v2'
-      });
-
-    } catch (e) {
-      console.error("[connect-v2-management]", e);
-      res.status(e.status || 500).json({ error: e.message || "Unknown error" });
-    }
-  });
-
-  /**
-   * GET /api/connect/v2/capabilities
-   * Get account capabilities and payment methods
-   */
-  app.get(`${connectBasePath}/capabilities`, authMiddleware, async (req, res) => {
-    try {
-      const userId = getUserId(req);
-      const existing = await db.getConnect(userId);
-      
-      if (!existing?.accountId) {
-        return res.json({ 
-          error: "No account found",
-          available_methods: ['card', 'ach', 'international']
-        });
-      }
-
-      const acct = await stripe.accounts.retrieve(existing.accountId);
-      
-      res.json({
-        account_id: acct.id,
-        capabilities: acct.capabilities,
-        available_payment_methods: {
-          card: acct.capabilities?.card_payments?.status === 'active',
-          ach: acct.capabilities?.us_bank_account_ach_payments?.status === 'active',
-          sepa: acct.capabilities?.sepa_debit_payments?.status === 'active',
-        },
-        payout_methods: {
-          bank_transfer: acct.payouts_enabled,
-          instant: acct.capabilities?.instant_payouts?.status === 'active'
-        }
-      });
-
-    } catch (e) {
-      console.error("[connect-v2-capabilities]", e);
-      res.status(e.status || 500).json({ error: e.message || "Unknown error" });
-    }
-  });
-
-  /**
-   * POST /api/connect/v2/onboard
-   * Complete onboarding directly via API without embedded components
-   */
-  app.post(`${connectBasePath}/onboard`, authMiddleware, async (req, res) => {
-    try {
-      const userId = getUserId(req);
-      const { 
-        business_type, 
-        first_name, 
-        last_name, 
-        email, 
-        phone,
-        company_name,
-        tax_id,
-        address_line1,
-        address_city,
-        address_postal_code,
-        address_country = 'GB',
-        tos_acceptance 
-      } = req.body || {};
-
-      if (!tos_acceptance) {
-        throw httpError(400, "Terms of service acceptance is required");
-      }
+      const onboardingData = req.body;
 
       const existing = await db.getConnect(userId);
       if (!existing?.accountId) {
-        throw httpError(404, "No Connect account found. Please create account first.");
+        return res.status(404).json({ error: "No Connect account found" });
       }
 
-      // Update account with provided information
+      console.log('Submitting onboarding data for account:', existing.accountId);
+
+      // Prepare update data based on business type
       const updateData = {
-        business_type,
+        business_type: onboardingData.business_type || 'individual',
         tos_acceptance: {
           date: Math.floor(Date.now() / 1000),
-          ip: req.ip || '127.0.0.1',
+          ip: req.ip || '127.0.0.1'
         }
       };
 
-      if (business_type === 'individual') {
-        updateData.individual = {
-          first_name,
-          last_name,
-          email,
-          phone,
+      if (onboardingData.business_type === 'company') {
+        updateData.company = {
+          name: onboardingData.company_name,
+          phone: onboardingData.phone,
+          tax_id: onboardingData.tax_id,
           address: {
-            line1: address_line1,
-            city: address_city,
-            postal_code: address_postal_code,
-            country: address_country
+            line1: onboardingData.address_line1,
+            city: onboardingData.address_city,
+            postal_code: onboardingData.address_postal_code,
+            country: onboardingData.address_country || 'GB'
           }
         };
       } else {
-        updateData.company = {
-          name: company_name,
-          tax_id,
-          phone,
+        updateData.individual = {
+          first_name: onboardingData.first_name,
+          last_name: onboardingData.last_name,
+          email: onboardingData.email,
+          phone: onboardingData.phone,
           address: {
-            line1: address_line1,
-            city: address_city,
-            postal_code: address_postal_code,
-            country: address_country
+            line1: onboardingData.address_line1,
+            city: onboardingData.address_city,
+            postal_code: onboardingData.address_postal_code,
+            country: onboardingData.address_country || 'GB'
+          },
+          dob: onboardingData.dob ? {
+            day: onboardingData.dob.day,
+            month: onboardingData.dob.month,
+            year: onboardingData.dob.year
+          } : undefined
+        };
+      }
+
+      // Add business profile
+      if (onboardingData.business_profile) {
+        updateData.business_profile = {
+          name: onboardingData.business_profile.name,
+          support_email: onboardingData.business_profile.support_email,
+          support_phone: onboardingData.business_profile.support_phone,
+          url: onboardingData.business_profile.url
+        };
+      }
+
+      // Update account with onboarding data
+      const account = await stripe.accounts.update(existing.accountId, updateData);
+
+      // Update our database
+      await db.setConnect(userId, {
+        ...existing,
+        detailsSubmitted: account.details_submitted,
+        chargesEnabled: account.charges_enabled,
+        payoutsEnabled: account.payouts_enabled,
+        lastUpdated: new Date().toISOString()
+      });
+
+      res.json({
+        success: true,
+        accountId: account.id,
+        details_submitted: account.details_submitted,
+        charges_enabled: account.charges_enabled,
+        payouts_enabled: account.payouts_enabled,
+        requirements: account.requirements || {},
+        capabilities: account.capabilities || {}
+      });
+
+    } catch (e) {
+      console.error("[connect-v2-submit-onboarding]", e);
+      res.status(e.status || 500).json({ error: e.message || "Onboarding submission failed" });
+    }
+  });
+
+  /**
+   * POST /api/connect/v2/add-bank-account
+   * Direct bank account addition via API
+   */
+  app.post(`${connectBasePath}/add-bank-account`, authMiddleware, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { routing_number, account_number, account_holder_type = 'individual' } = req.body;
+
+      const existing = await db.getConnect(userId);
+      if (!existing?.accountId) {
+        return res.status(404).json({ error: "No Connect account found" });
+      }
+
+      // Create external bank account
+      const bankAccount = await stripe.accounts.createExternalAccount(
+        existing.accountId,
+        {
+          external_account: {
+            object: 'bank_account',
+            country: 'US',
+            currency: 'usd',
+            routing_number,
+            account_number,
+            account_holder_type
+          }
+        }
+      );
+
+      res.json({
+        success: true,
+        bank_account_id: bankAccount.id,
+        last4: bankAccount.last4,
+        routing_number: bankAccount.routing_number
+      });
+
+    } catch (e) {
+      console.error("[connect-v2-add-bank-account]", e);
+      res.status(e.status || 500).json({ error: e.message || "Bank account addition failed" });
+    }
+  });
+
+  /**
+   * POST /api/connect/v2/request-capabilities
+   * Request additional payment capabilities
+   */
+  app.post(`${connectBasePath}/request-capabilities`, authMiddleware, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { capabilities } = req.body;
+
+      const existing = await db.getConnect(userId);
+      if (!existing?.accountId) {
+        return res.status(404).json({ error: "No Connect account found" });
+      }
+
+      // Update account capabilities
+      const updateData = { capabilities: {} };
+      
+      capabilities.forEach(capability => {
+        updateData.capabilities[capability] = { requested: true };
+      });
+
+      const account = await stripe.accounts.update(existing.accountId, updateData);
+
+      res.json({
+        success: true,
+        capabilities: account.capabilities,
+        requirements: account.requirements
+      });
+
+    } catch (e) {
+      console.error("[connect-v2-request-capabilities]", e);
+      res.status(e.status || 500).json({ error: e.message || "Capability request failed" });
+    }
+  });
+
+  /**
+   * POST /api/connect/v2/create-transfer
+   * Direct transfer creation for payouts
+   */
+  app.post(`${connectBasePath}/create-transfer`, authMiddleware, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { amount, currency = 'usd', description, metadata = {} } = req.body;
+
+      const existing = await db.getConnect(userId);
+      if (!existing?.accountId) {
+        return res.status(404).json({ error: "No Connect account found" });
+      }
+
+      // Create transfer to connected account
+      const transfer = await stripe.transfers.create({
+        amount: Math.round(amount * 100), // Convert to cents
+        currency,
+        destination: existing.accountId,
+        description,
+        metadata: {
+          ...metadata,
+          userId: userId.toString(),
+          version: 'v2'
+        }
+      });
+
+      res.json({
+        success: true,
+        transfer_id: transfer.id,
+        amount: transfer.amount / 100, // Convert back to dollars
+        currency: transfer.currency,
+        status: transfer.status || 'pending'
+      });
+
+    } catch (e) {
+      console.error("[connect-v2-create-transfer]", e);
+      res.status(e.status || 500).json({ error: e.message || "Transfer creation failed" });
+    }
+  });
+
+  /**
+   * GET /api/connect/v2/transfers
+   * Get transfer history for the account
+   */
+  app.get(`${connectBasePath}/transfers`, authMiddleware, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { limit = 10 } = req.query;
+
+      const existing = await db.getConnect(userId);
+      if (!existing?.accountId) {
+        return res.status(404).json({ error: "No Connect account found" });
+      }
+
+      // Get transfers for this account
+      const transfers = await stripe.transfers.list({
+        destination: existing.accountId,
+        limit: parseInt(limit)
+      });
+
+      const formattedTransfers = transfers.data.map(transfer => ({
+        id: transfer.id,
+        amount: transfer.amount / 100,
+        currency: transfer.currency,
+        description: transfer.description,
+        created: new Date(transfer.created * 1000).toISOString(),
+        status: transfer.status || 'completed',
+        metadata: transfer.metadata
+      }));
+
+      res.json({
+        transfers: formattedTransfers,
+        has_more: transfers.has_more
+      });
+
+    } catch (e) {
+      console.error("[connect-v2-transfers]", e);
+      res.status(e.status || 500).json({ error: e.message || "Failed to fetch transfers" });
+    }
+  });
+
+  /**
+   * POST /api/connect/v2/update-business-profile
+   * Update business profile information
+   */
+  app.post(`${connectBasePath}/update-business-profile`, authMiddleware, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const profileData = req.body;
+
+      const existing = await db.getConnect(userId);
+      if (!existing?.accountId) {
+        return res.status(404).json({ error: "No Connect account found" });
+      }
+
+      const account = await stripe.accounts.update(existing.accountId, {
+        business_profile: profileData
+      });
+
+      res.json({
+        success: true,
+        business_profile: account.business_profile
+      });
+
+    } catch (e) {
+      console.error("[connect-v2-update-business-profile]", e);
+      res.status(e.status || 500).json({ error: e.message || "Profile update failed" });
+    }
+  });
+
+  /**
+   * POST /api/connect/v2/verify-account
+   * Submit verification documents and information
+   */
+  app.post(`${connectBasePath}/verify-account`, authMiddleware, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { document_type, document_front, document_back } = req.body;
+
+      const existing = await db.getConnect(userId);
+      if (!existing?.accountId) {
+        return res.status(404).json({ error: "No Connect account found" });
+      }
+
+      // Upload verification documents
+      let updateData = {};
+
+      if (document_front) {
+        const frontFile = await stripe.files.create({
+          purpose: 'identity_document',
+          file: {
+            data: Buffer.from(document_front, 'base64'),
+            name: 'identity_front.jpg',
+            type: 'application/octet-stream'
+          }
+        });
+
+        updateData.individual = {
+          verification: {
+            document: {
+              front: frontFile.id
+            }
           }
         };
       }
 
-      const account = await stripe.accounts.update(existing.accountId, updateData);
+      if (document_back) {
+        const backFile = await stripe.files.create({
+          purpose: 'identity_document',
+          file: {
+            data: Buffer.from(document_back, 'base64'),
+            name: 'identity_back.jpg',
+            type: 'application/octet-stream'
+          }
+        });
 
-      // Update our database
-      await db.setConnect(userId, {
-        ...existing,
-        detailsSubmitted: account.details_submitted,
-        chargesEnabled: account.charges_enabled,
-        payoutsEnabled: account.payouts_enabled,
-        lastUpdated: new Date().toISOString()
-      });
-
-      res.json({
-        success: true,
-        accountId: account.id,
-        detailsSubmitted: account.details_submitted,
-        requirementsRemaining: account.requirements?.currently_due || []
-      });
-
-    } catch (e) {
-      console.error("[connect-v2-onboard]", e);
-      res.status(e.status || 500).json({ error: e.message || "Onboarding failed" });
-    }
-  });
-
-  /**
-   * POST /api/connect/v2/update
-   * Update account information directly via API
-   */
-  app.post(`${connectBasePath}/update`, authMiddleware, async (req, res) => {
-    try {
-      const userId = getUserId(req);
-      const updateData = req.body || {};
-
-      const existing = await db.getConnect(userId);
-      if (!existing?.accountId) {
-        throw httpError(404, "No Connect account found");
+        updateData.individual.verification.document.back = backFile.id;
       }
 
       const account = await stripe.accounts.update(existing.accountId, updateData);
 
-      // Update our database
-      await db.setConnect(userId, {
-        ...existing,
-        detailsSubmitted: account.details_submitted,
-        chargesEnabled: account.charges_enabled,
-        payoutsEnabled: account.payouts_enabled,
-        lastUpdated: new Date().toISOString()
-      });
-
       res.json({
         success: true,
-        accountId: account.id,
-        detailsSubmitted: account.details_submitted,
-        chargesEnabled: account.charges_enabled,
-        payoutsEnabled: account.payouts_enabled
+        verification_status: account.individual?.verification || {},
+        requirements: account.requirements
       });
 
     } catch (e) {
-      console.error("[connect-v2-update]", e);
-      res.status(e.status || 500).json({ error: e.message || "Update failed" });
-    }
-  });
-
-  /**
-   * GET /api/connect/v2/requirements
-   * Get detailed account requirements
-   */
-  app.get(`${connectBasePath}/requirements`, authMiddleware, async (req, res) => {
-    try {
-      const userId = getUserId(req);
-      const existing = await db.getConnect(userId);
-      
-      if (!existing?.accountId) {
-        throw httpError(404, "No Connect account found");
-      }
-
-      const account = await stripe.accounts.retrieve(existing.accountId);
-      const requirements = account.requirements || {};
-
-      res.json({
-        accountId: account.id,
-        currently_due: requirements.currently_due || [],
-        past_due: requirements.past_due || [],
-        pending_verification: requirements.pending_verification || [],
-        disabled_reason: requirements.disabled_reason,
-        details_submitted: account.details_submitted,
-        charges_enabled: account.charges_enabled,
-        payouts_enabled: account.payouts_enabled
-      });
-
-    } catch (e) {
-      console.error("[connect-v2-requirements]", e);
-      res.status(e.status || 500).json({ error: e.message || "Failed to get requirements" });
-    }
-  });
-
-  /**
-   * POST /api/connect/v2/enable-payments
-   * Enable payment processing for verified accounts
-   */
-  app.post(`${connectBasePath}/enable-payments`, authMiddleware, async (req, res) => {
-    try {
-      const userId = getUserId(req);
-      const existing = await db.getConnect(userId);
-      
-      if (!existing?.accountId) {
-        throw httpError(404, "No Connect account found");
-      }
-
-      const account = await stripe.accounts.retrieve(existing.accountId);
-      
-      // Check if account is verified and ready for payments
-      if (!account.charges_enabled) {
-        throw httpError(400, "Account not yet verified for payments");
-      }
-
-      if (!account.details_submitted) {
-        throw httpError(400, "Account details not submitted");
-      }
-
-      // Update our database with current account status
-      await db.setConnect(userId, {
-        ...existing,
-        detailsSubmitted: account.details_submitted,
-        chargesEnabled: account.charges_enabled,
-        payoutsEnabled: account.payouts_enabled,
-        paymentsEnabled: true,
-        isFullyVerified: true,
-        paymentReady: true,
-        lastUpdated: new Date().toISOString(),
-        version: 'v2'
-      });
-
-      res.json({
-        success: true,
-        accountId: account.id,
-        charges_enabled: account.charges_enabled,
-        payouts_enabled: account.payouts_enabled,
-        details_submitted: account.details_submitted,
-        capabilities: account.capabilities,
-        paymentReady: true,
-        isFullyVerified: true,
-        message: "Payment processing fully activated"
-      });
-
-    } catch (e) {
-      console.error("[connect-v2-enable-payments]", e);
-      res.status(e.status || 500).json({ error: e.message || "Failed to enable payments" });
+      console.error("[connect-v2-verify-account]", e);
+      res.status(e.status || 500).json({ error: e.message || "Verification failed" });
     }
   });
 }

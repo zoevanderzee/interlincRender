@@ -1,8 +1,12 @@
+
 import Stripe from 'stripe';
 import { Payment, User } from '@shared/schema';
 
 // Initialize Stripe with the secret key from environment variables
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
+  apiVersion: '2024-06-20',
+  typescript: true
+});
 
 export interface CreatePaymentIntentParams {
   amount: number;
@@ -14,20 +18,33 @@ export interface CreatePaymentIntentParams {
     amount?: number;
   };
   applicationFeeAmount?: number;
+  paymentMethodTypes?: string[];
 }
 
 export interface PaymentIntentResponse {
   clientSecret: string;
   id: string;
+  status?: string;
 }
 
 export interface ConnectAccountResponse {
   id: string;
-  accountLink: string;
+  accountLink?: string;
+  loginLink?: string;
+}
+
+export interface ConnectAccountStatus {
+  charges_enabled: boolean;
+  details_submitted: boolean;
+  payouts_enabled: boolean;
+  requirements: Stripe.Account.Requirements | null;
+  capabilities: Stripe.Account.Capabilities | null;
+  verification_status: 'pending' | 'verified' | 'rejected';
+  disabled_reason: string | null;
 }
 
 /**
- * Creates a payment intent in Stripe
+ * V2 Enhanced Payment Intent Creation with comprehensive error handling
  */
 export async function createPaymentIntent(params: CreatePaymentIntentParams): Promise<PaymentIntentResponse> {
   try {
@@ -35,23 +52,39 @@ export async function createPaymentIntent(params: CreatePaymentIntentParams): Pr
       amount: params.amount,
       currency: params.currency,
       description: params.description,
-      metadata: params.metadata,
-      automatic_payment_methods: {
-        enabled: true,
-      },
+      metadata: params.metadata || {},
+      payment_method_types: params.paymentMethodTypes || ['card', 'us_bank_account'],
+      capture_method: 'automatic',
+      confirmation_method: 'automatic'
     };
 
-    // If this is a Connect payment, add the transfer data
+    // Enhanced Connect payment handling
     if (params.transferData && params.transferData.destination) {
+      // Validate destination account first
+      try {
+        const account = await stripe.accounts.retrieve(params.transferData.destination);
+        if (!account.charges_enabled) {
+          throw new Error('Destination account is not enabled for charges');
+        }
+      } catch (accountError) {
+        throw new Error('Invalid or disabled destination account');
+      }
+
       paymentIntentParams.transfer_data = {
         destination: params.transferData.destination,
-        amount: params.transferData.amount,
+        amount: params.transferData.amount
       };
 
-      // Add application fee if provided
       if (params.applicationFeeAmount) {
         paymentIntentParams.application_fee_amount = params.applicationFeeAmount;
       }
+
+      // Add Connect-specific metadata
+      paymentIntentParams.metadata = {
+        ...paymentIntentParams.metadata,
+        connect_payment: 'true',
+        destination_account: params.transferData.destination
+      };
     }
 
     const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
@@ -59,36 +92,344 @@ export async function createPaymentIntent(params: CreatePaymentIntentParams): Pr
     return {
       clientSecret: paymentIntent.client_secret as string,
       id: paymentIntent.id,
+      status: paymentIntent.status
     };
-  } catch (error) {
-    console.error('Error creating payment intent:', error);
+  } catch (error: any) {
+    console.error('Error creating V2 payment intent:', error);
+    
+    // Enhanced error handling with specific error codes
+    if (error.type === 'StripeCardError') {
+      throw new Error(`Payment failed: ${error.message}`);
+    } else if (error.type === 'StripeInvalidRequestError') {
+      throw new Error(`Invalid request: ${error.message}`);
+    } else if (error.type === 'StripeAPIError') {
+      throw new Error('Payment service temporarily unavailable. Please try again.');
+    } else if (error.type === 'StripeConnectionError') {
+      throw new Error('Network error. Please check your connection and try again.');
+    } else if (error.type === 'StripeRateLimitError') {
+      throw new Error('Too many requests. Please wait a moment and try again.');
+    }
+    
     throw error;
   }
 }
 
 /**
- * Retrieves a payment intent from Stripe
+ * V2 Enhanced Connect Account Creation with full capability management
  */
-export async function retrievePaymentIntent(id: string) {
+export async function createConnectAccountV2(contractor: User, options: {
+  country?: string;
+  business_type?: 'individual' | 'company';
+  capabilities?: string[];
+  settings?: Stripe.AccountCreateParams.Settings;
+} = {}): Promise<ConnectAccountResponse> {
   try {
-    return await stripe.paymentIntents.retrieve(id);
-  } catch (error) {
-    console.error('Error retrieving payment intent:', error);
-    throw error;
+    const {
+      country = 'GB',
+      business_type = 'individual',
+      capabilities = ['card_payments', 'transfers', 'us_bank_account_ach_payments'],
+      settings
+    } = options;
+
+    // Enhanced account configuration for V2
+    const accountConfig: Stripe.AccountCreateParams = {
+      type: 'express',
+      country,
+      email: contractor.email,
+      business_type,
+      capabilities: {},
+      metadata: {
+        userId: contractor.id.toString(),
+        role: contractor.role || 'contractor',
+        version: 'v2',
+        created_at: new Date().toISOString()
+      },
+      settings: {
+        payouts: {
+          schedule: {
+            interval: 'daily'
+          }
+        },
+        ...settings
+      }
+    };
+
+    // Request all specified capabilities
+    capabilities.forEach(capability => {
+      accountConfig.capabilities![capability] = { requested: true };
+    });
+
+    // Set up business/individual information
+    if (business_type === 'individual') {
+      accountConfig.individual = {
+        first_name: contractor.firstName,
+        last_name: contractor.lastName,
+        email: contractor.email
+      };
+    } else {
+      accountConfig.company = {
+        name: contractor.companyName || `${contractor.firstName} ${contractor.lastName}`
+      };
+    }
+
+    const account = await stripe.accounts.create(accountConfig);
+
+    console.log(`V2 Connect account created: ${account.id} for user ${contractor.id}`);
+
+    return {
+      id: account.id
+    };
+  } catch (error: any) {
+    console.error('Error creating V2 Connect account:', error);
+    
+    if (error.type === 'StripeInvalidRequestError') {
+      throw new Error(`Account creation failed: ${error.message}`);
+    }
+    
+    throw new Error('Failed to create payment processing account. Please try again.');
   }
 }
 
 /**
- * Processes a milestone payment
- * Creates a payment intent and returns the client secret for the frontend
+ * V2 Enhanced Account Status Checking with detailed capability information
  */
+export async function getConnectAccountStatusV2(accountId: string): Promise<ConnectAccountStatus> {
+  try {
+    const account = await stripe.accounts.retrieve(accountId);
+    const requirements = account.requirements;
+    const capabilities = account.capabilities;
+
+    // Determine verification status based on multiple factors
+    let verification_status: 'pending' | 'verified' | 'rejected' = 'pending';
+    
+    if (account.charges_enabled && account.details_submitted && account.payouts_enabled) {
+      // Check if all required capabilities are active
+      const allCapabilitiesActive = Object.values(capabilities || {}).every(
+        cap => cap.status === 'active'
+      );
+      verification_status = allCapabilitiesActive ? 'verified' : 'pending';
+    } else if (requirements?.disabled_reason) {
+      verification_status = 'rejected';
+    }
+
+    return {
+      charges_enabled: account.charges_enabled,
+      details_submitted: account.details_submitted,
+      payouts_enabled: account.payouts_enabled,
+      requirements: requirements || null,
+      capabilities: capabilities || null,
+      verification_status,
+      disabled_reason: requirements?.disabled_reason || null
+    };
+  } catch (error: any) {
+    console.error('Error checking V2 Connect account status:', error);
+    
+    if (error.type === 'StripeInvalidRequestError' && error.code === 'resource_missing') {
+      throw new Error('Account not found');
+    }
+    
+    throw new Error('Failed to check account status');
+  }
+}
+
+/**
+ * V2 Enhanced Direct Transfer Creation with validation
+ */
+export async function createDirectTransferV2(params: {
+  destination: string;
+  amount: number;
+  currency?: string;
+  description?: string;
+  metadata?: Record<string, string>;
+}): Promise<{ transfer_id: string; status: string }> {
+  try {
+    const { destination, amount, currency = 'usd', description, metadata } = params;
+
+    // Validate destination account
+    const account = await stripe.accounts.retrieve(destination);
+    if (!account.payouts_enabled) {
+      throw new Error('Destination account is not enabled for payouts');
+    }
+
+    // Create the transfer
+    const transfer = await stripe.transfers.create({
+      amount: Math.round(amount * 100), // Convert to cents
+      currency,
+      destination,
+      description: description || 'Direct transfer',
+      metadata: {
+        ...metadata,
+        version: 'v2',
+        created_at: new Date().toISOString()
+      }
+    });
+
+    console.log(`V2 Direct transfer created: ${transfer.id} for $${amount} to ${destination}`);
+
+    return {
+      transfer_id: transfer.id,
+      status: transfer.object === 'transfer' ? 'created' : 'pending'
+    };
+  } catch (error: any) {
+    console.error('Error creating V2 direct transfer:', error);
+    
+    if (error.type === 'StripeInvalidRequestError') {
+      if (error.code === 'insufficient_funds') {
+        throw new Error('Insufficient funds for transfer');
+      } else if (error.code === 'account_invalid') {
+        throw new Error('Invalid destination account');
+      }
+      throw new Error(`Transfer failed: ${error.message}`);
+    }
+    
+    throw new Error('Transfer creation failed. Please try again.');
+  }
+}
+
+/**
+ * V2 Enhanced Capability Management
+ */
+export async function updateAccountCapabilities(
+  accountId: string, 
+  capabilities: Record<string, { requested: boolean }>
+): Promise<{ success: boolean; capabilities: Stripe.Account.Capabilities | null }> {
+  try {
+    const account = await stripe.accounts.update(accountId, {
+      capabilities
+    });
+
+    console.log(`V2 Capabilities updated for account ${accountId}:`, capabilities);
+
+    return {
+      success: true,
+      capabilities: account.capabilities || null
+    };
+  } catch (error: any) {
+    console.error('Error updating V2 capabilities:', error);
+    
+    throw new Error(`Failed to update payment capabilities: ${error.message}`);
+  }
+}
+
+/**
+ * V2 Enhanced Bank Account Management
+ */
+export async function addBankAccountV2(
+  accountId: string,
+  bankAccountData: {
+    routing_number: string;
+    account_number: string;
+    account_holder_type: 'individual' | 'company';
+    currency?: string;
+  }
+): Promise<{ bank_account_id: string; last4: string }> {
+  try {
+    const { routing_number, account_number, account_holder_type, currency = 'usd' } = bankAccountData;
+
+    const bankAccount = await stripe.accounts.createExternalAccount(accountId, {
+      external_account: {
+        object: 'bank_account',
+        country: 'US',
+        currency,
+        routing_number,
+        account_number,
+        account_holder_type
+      }
+    });
+
+    console.log(`V2 Bank account added: ${bankAccount.id} for account ${accountId}`);
+
+    if (bankAccount.object === 'bank_account') {
+      return {
+        bank_account_id: bankAccount.id,
+        last4: bankAccount.last4
+      };
+    }
+
+    throw new Error('Failed to create bank account');
+  } catch (error: any) {
+    console.error('Error adding V2 bank account:', error);
+    
+    if (error.type === 'StripeInvalidRequestError') {
+      if (error.code === 'routing_number_invalid') {
+        throw new Error('Invalid routing number provided');
+      } else if (error.code === 'account_number_invalid') {
+        throw new Error('Invalid account number provided');
+      }
+      throw new Error(`Bank account validation failed: ${error.message}`);
+    }
+    
+    throw new Error('Failed to add bank account. Please verify your information.');
+  }
+}
+
+/**
+ * V2 Enhanced Document Upload for verification
+ */
+export async function uploadVerificationDocument(
+  accountId: string,
+  documentData: {
+    purpose: 'identity_document' | 'additional_verification';
+    file_data: string; // base64 encoded
+    file_type: 'front' | 'back' | 'additional';
+  }
+): Promise<{ file_id: string; status: string }> {
+  try {
+    const { purpose, file_data, file_type } = documentData;
+
+    // Create file upload
+    const file = await stripe.files.create({
+      purpose,
+      file: {
+        data: Buffer.from(file_data, 'base64'),
+        name: `${purpose}_${file_type}.jpg`,
+        type: 'application/octet-stream'
+      }
+    });
+
+    // Update account with document
+    const updateData: any = {};
+    
+    if (purpose === 'identity_document') {
+      updateData.individual = {
+        verification: {
+          document: file_type === 'front' ? { front: file.id } : { back: file.id }
+        }
+      };
+    }
+
+    await stripe.accounts.update(accountId, updateData);
+
+    console.log(`V2 Document uploaded: ${file.id} for account ${accountId}`);
+
+    return {
+      file_id: file.id,
+      status: 'uploaded'
+    };
+  } catch (error: any) {
+    console.error('Error uploading V2 verification document:', error);
+    
+    if (error.type === 'StripeInvalidRequestError') {
+      throw new Error(`Document upload failed: ${error.message}`);
+    }
+    
+    throw new Error('Failed to upload verification document. Please try again.');
+  }
+}
+
+/**
+ * Legacy methods for backward compatibility
+ */
+export async function retrievePaymentIntent(id: string): Promise<Stripe.PaymentIntent> {
+  return await stripe.paymentIntents.retrieve(id);
+}
+
 export async function processMilestonePayment(payment: Payment): Promise<PaymentIntentResponse> {
-  // Convert payment amount to cents (Stripe uses smallest currency unit)
   const amount = Math.round(parseFloat(payment.amount) * 100);
   
   return createPaymentIntent({
     amount,
-    currency: 'usd', // Default to USD
+    currency: 'usd',
     description: `Payment for milestone ID: ${payment.milestoneId}`,
     metadata: {
       paymentId: payment.id.toString(),
@@ -99,222 +440,42 @@ export async function processMilestonePayment(payment: Payment): Promise<Payment
   });
 }
 
-/**
- * Updates the payment status based on the Stripe payment intent status
- */
 export async function updatePaymentStatus(paymentIntentId: string): Promise<string> {
   const paymentIntent = await retrievePaymentIntent(paymentIntentId);
   return paymentIntent.status;
 }
 
-/**
- * Creates a Stripe Connect account for a contractor
- */
+// Legacy Connect methods - deprecated in favor of V2 methods
 export async function createConnectAccount(contractor: User): Promise<ConnectAccountResponse> {
-  try {
-    // Create a connected account for the contractor as an individual
-    const account = await stripe.accounts.create({
-      type: 'express',
-      country: 'GB', // Default to GB to match your setup
-      email: contractor.email,
-      business_type: 'individual',
-      individual: {
-        first_name: contractor.firstName,
-        last_name: contractor.lastName,
-        email: contractor.email,
-      },
-      capabilities: {
-        transfers: { requested: true },
-        card_payments: { requested: true },
-      },
-      metadata: {
-        userId: contractor.id.toString(),
-        role: 'contractor',
-      },
-    });
-
-    // Create an account link for onboarding
-    const accountLink = await stripe.accountLinks.create({
-      account: account.id,
-      refresh_url: `${process.env.FRONTEND_URL || 'http://localhost:5000'}/contractors/onboarding/refresh`,
-      return_url: `${process.env.FRONTEND_URL || 'http://localhost:5000'}/contractors/onboarding/complete`,
-      type: 'account_onboarding',
-    });
-
-    return {
-      id: account.id,
-      accountLink: accountLink.url,
-    };
-  } catch (error) {
-    console.error('Error creating Connect account:', error);
-    throw error;
-  }
+  console.warn('Using legacy createConnectAccount - consider upgrading to createConnectAccountV2');
+  return createConnectAccountV2(contractor);
 }
 
-/**
- * Process a direct payment to a contractor through Stripe Connect
- */
-export async function processDirectPayment(payment: Payment, contractorConnectId: string, platformFee: number = 0): Promise<PaymentIntentResponse> {
-  // Convert amounts to cents (Stripe uses smallest currency unit)
-  const amount = Math.round(parseFloat(payment.amount) * 100);
-  const feeAmount = platformFee > 0 ? Math.round(platformFee * 100) : Math.round(amount * 0.05); // Default 5% fee
-  
-  return createPaymentIntent({
-    amount,
-    currency: 'usd', // Default to USD
-    description: `Payment for milestone ID: ${payment.milestoneId}`,
-    metadata: {
-      paymentId: payment.id.toString(),
-      contractId: payment.contractId.toString(),
-      milestoneId: payment.milestoneId ? payment.milestoneId.toString() : '',
-      connectAccountId: contractorConnectId
-    },
-    transferData: {
-      destination: contractorConnectId,
-      amount: amount - feeAmount, // Transfer amount minus platform fee
-    },
-    applicationFeeAmount: feeAmount,
-  });
-}
-
-/**
- * Creates a transfer to a connected account
- */
-export async function createTransfer(payment: Payment, contractorConnectId: string): Promise<string> {
-  try {
-    const amount = Math.round(parseFloat(payment.amount) * 100);
-    const transfer = await stripe.transfers.create({
-      amount,
-      currency: 'usd',
-      destination: contractorConnectId,
-      description: `Payment for contract #${payment.contractId}, milestone #${payment.milestoneId}`,
-      metadata: {
-        paymentId: payment.id.toString(),
-        contractId: payment.contractId.toString(),
-        milestoneId: payment.milestoneId ? payment.milestoneId.toString() : '',
-      },
-    });
-    
-    return transfer.id;
-  } catch (error) {
-    console.error('Error creating transfer:', error);
-    throw error;
-  }
-}
-
-/**
- * Get Stripe Connect account details
- */
-export async function getConnectAccount(accountId: string) {
-  try {
-    return await stripe.accounts.retrieve(accountId);
-  } catch (error) {
-    console.error('Error retrieving Connect account:', error);
-    throw error;
-  }
-}
-
-/**
- * Check if a Connect account is properly set up
- */
 export async function checkConnectAccountStatus(accountId: string): Promise<boolean> {
-  try {
-    const account = await getConnectAccount(accountId);
-    return account.charges_enabled && account.details_submitted;
-  } catch (error) {
-    console.error('Error checking Connect account status:', error);
-    return false;
-  }
+  console.warn('Using legacy checkConnectAccountStatus - consider upgrading to getConnectAccountStatusV2');
+  const status = await getConnectAccountStatusV2(accountId);
+  return status.verification_status === 'verified';
 }
 
-/**
- * Create a bank account payment method from a Plaid processor token
- * This links a user's bank account to Stripe for ACH payments
- */
-export async function createBankAccountPaymentMethod(
-  customerId: string,
-  processorToken: string
-): Promise<string> {
-  try {
-    // Create a bank account token from the processor token
-    const bankAccount = await stripe.customers.createSource(
-      customerId,
-      {
-        source: processorToken
-      }
-    );
-    
-    return bankAccount.id;
-  } catch (error) {
-    console.error('Error creating bank account payment method:', error);
-    throw error;
-  }
-}
-
-/**
- * Process an ACH payment from a bank account to a contractor
- */
-export async function processACHPayment(
-  payment: Payment,
-  customerId: string,
-  bankAccountId: string,
-  contractorConnectId?: string
-): Promise<PaymentIntentResponse> {
-  // Convert payment amount to cents
-  const amount = Math.round(parseFloat(payment.amount) * 100);
-  const description = `ACH Payment for contract #${payment.contractId}, milestone #${payment.milestoneId}`;
-  
-  try {
-    // Create the charge options
-    const chargeOptions: Stripe.ChargeCreateParams = {
-      amount: amount,
-      currency: 'usd',
-      customer: customerId,
-      source: bankAccountId,
-      description: description,
-      metadata: {
-        paymentId: payment.id.toString(),
-        contractId: payment.contractId.toString(),
-        milestoneId: payment.milestoneId ? payment.milestoneId.toString() : '',
-      }
-    };
-    
-    // If we have a Connect account for the contractor, add transfer data
-    if (contractorConnectId) {
-      const platformFee = Math.round(amount * 0.05); // 5% platform fee
-      
-      chargeOptions.transfer_data = {
-        destination: contractorConnectId,
-        amount: amount - platformFee
-      };
-      
-      chargeOptions.application_fee_amount = platformFee;
-    }
-    
-    // Create the charge - for ACH, this returns 'pending' initially
-    const charge = await stripe.charges.create(chargeOptions);
-    
-    // For our API, we return a client secret and ID format similar to payment intents
-    return {
-      clientSecret: `${charge.id}_secret`, // ACH doesn't use client secret, but we maintain API consistency
-      id: charge.id
-    };
-  } catch (error) {
-    console.error('Error processing ACH payment:', error);
-    throw error;
-  }
+export async function getConnectAccount(accountId: string): Promise<Stripe.Account> {
+  return await stripe.accounts.retrieve(accountId);
 }
 
 export default {
+  // V2 Enhanced Methods
   createPaymentIntent,
+  createConnectAccountV2,
+  getConnectAccountStatusV2,
+  createDirectTransferV2,
+  updateAccountCapabilities,
+  addBankAccountV2,
+  uploadVerificationDocument,
+  
+  // Legacy Methods
   retrievePaymentIntent,
   processMilestonePayment,
   updatePaymentStatus,
   createConnectAccount,
-  processDirectPayment,
-  createTransfer,
-  getConnectAccount,
   checkConnectAccountStatus,
-  createBankAccountPaymentMethod,
-  processACHPayment
+  getConnectAccount
 };
