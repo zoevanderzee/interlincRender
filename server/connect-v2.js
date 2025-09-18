@@ -482,9 +482,22 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       const userId = getUserId(req);
       const { amount, currency = 'usd', description, metadata = {} } = req.body;
 
-      // Validate amount
-      if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
-        return res.status(400).json({ error: "Valid amount is required" });
+      // Validate amount with detailed error messages
+      if (!amount) {
+        return res.status(400).json({ error: "Amount is required" });
+      }
+      
+      const parsedAmount = parseFloat(amount);
+      if (isNaN(parsedAmount)) {
+        return res.status(400).json({ error: "Amount must be a valid number" });
+      }
+      
+      if (parsedAmount <= 0) {
+        return res.status(400).json({ error: "Amount must be greater than 0" });
+      }
+      
+      if (parsedAmount < 0.5) {
+        return res.status(400).json({ error: "Minimum transfer amount is $0.50" });
       }
 
       const existing = await db.getConnect(userId);
@@ -493,8 +506,8 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       }
 
       // Convert amount to cents and ensure it's an integer
-      const amountInCents = Math.round(parseFloat(amount) * 100);
-      console.log(`[Connect V2] Creating transfer: $${amount} -> ${amountInCents} cents`);
+      const amountInCents = Math.round(parsedAmount * 100);
+      console.log(`[Connect V2] Creating transfer: $${parsedAmount} -> ${amountInCents} cents`);
 
       // Create transfer to connected account
       const transfer = await stripe.transfers.create({

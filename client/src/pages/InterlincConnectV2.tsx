@@ -301,9 +301,17 @@ export default function InterlincConnectV2() {
       setSubmitting(true);
       setError(null);
 
+      // Validate amount before sending
+      const amount = parseFloat(transferAmount);
+      if (!transferAmount || isNaN(amount) || amount <= 0) {
+        throw new Error('Please enter a valid amount greater than 0');
+      }
+
+      console.log(`[Transfer] Creating transfer: $${transferAmount} (parsed: ${amount})`);
+
       const response = await apiRequest('POST', '/api/connect/v2/create-transfer', {
         body: JSON.stringify({
-          amount: parseFloat(transferAmount),
+          amount: amount,
           description: transferDescription || 'Manual transfer'
         }),
         headers: { 'Content-Type': 'application/json' }
@@ -791,10 +799,16 @@ export default function InterlincConnectV2() {
                             <Label>Amount ($)</Label>
                             <Input 
                               type="number"
+                              step="0.01"
+                              min="0.01"
                               value={transferAmount}
                               onChange={(e) => setTransferAmount(e.target.value)}
                               placeholder="100.00"
+                              required
                             />
+                            {transferAmount && isNaN(parseFloat(transferAmount)) && (
+                              <p className="text-sm text-red-500 mt-1">Please enter a valid number</p>
+                            )}
                           </div>
                           <div>
                             <Label>Description</Label>
@@ -804,7 +818,11 @@ export default function InterlincConnectV2() {
                               placeholder="Transfer description"
                             />
                           </div>
-                          <Button onClick={createTransfer} disabled={submitting || !transferAmount} className="w-full">
+                          <Button 
+                            onClick={createTransfer} 
+                            disabled={submitting || !transferAmount || isNaN(parseFloat(transferAmount)) || parseFloat(transferAmount) <= 0} 
+                            className="w-full"
+                          >
                             {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                             Create Transfer
                           </Button>
