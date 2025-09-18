@@ -483,11 +483,15 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       const { amount, currency = 'usd', description, metadata = {} } = req.body;
 
       // Validate amount with detailed error messages
-      if (!amount) {
+      console.log(`[Connect V2] Received transfer request:`, { amount, type: typeof amount, body: req.body });
+      
+      if (!amount && amount !== 0) {
         return res.status(400).json({ error: "Amount is required" });
       }
       
       const parsedAmount = parseFloat(amount);
+      console.log(`[Connect V2] Parsed amount:`, { original: amount, parsed: parsedAmount, isNaN: isNaN(parsedAmount) });
+      
       if (isNaN(parsedAmount)) {
         return res.status(400).json({ error: "Amount must be a valid number" });
       }

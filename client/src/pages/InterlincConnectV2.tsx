@@ -302,18 +302,34 @@ export default function InterlincConnectV2() {
       setError(null);
 
       // Validate amount before sending
+      if (!transferAmount || transferAmount.trim() === '') {
+        throw new Error('Please enter an amount');
+      }
+
       const amount = parseFloat(transferAmount);
-      if (!transferAmount || isNaN(amount) || amount <= 0) {
+      if (isNaN(amount) || amount <= 0) {
         throw new Error('Please enter a valid amount greater than 0');
       }
 
-      console.log(`[Transfer] Creating transfer: $${transferAmount} (parsed: ${amount})`);
+      if (amount < 0.5) {
+        throw new Error('Minimum transfer amount is $0.50');
+      }
+
+      console.log(`[Transfer] Creating transfer:`, {
+        originalInput: transferAmount,
+        parsedAmount: amount,
+        description: transferDescription || 'Manual transfer'
+      });
+
+      const requestBody = {
+        amount: amount,
+        description: transferDescription || 'Manual transfer'
+      };
+
+      console.log(`[Transfer] Request body:`, requestBody);
 
       const response = await apiRequest('POST', '/api/connect/v2/create-transfer', {
-        body: JSON.stringify({
-          amount: amount,
-          description: transferDescription || 'Manual transfer'
-        }),
+        body: JSON.stringify(requestBody),
         headers: { 'Content-Type': 'application/json' }
       });
 
