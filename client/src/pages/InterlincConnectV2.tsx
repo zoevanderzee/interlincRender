@@ -98,30 +98,41 @@ export default function InterlincConnect() {
         }
       }
       
-      // If account is verified and charges enabled, enable payments
-      if (data.hasAccount && data.chargesEnabled && !data.paymentsEnabled) {
-        console.log('Account is verified and charges enabled. Enabling payments...');
-        try {
-          const enableResponse = await apiRequest('POST', '/api/connect/v2/enable-payments');
-          if (enableResponse.ok) {
-            const enableData = await enableResponse.json();
-            console.log('Payments enabled successfully:', enableData);
-            // Refresh status to get updated data
-            const refreshResponse = await apiRequest('GET', '/api/connect/v2/status');
-            const refreshedData = await refreshResponse.json();
-            setStatus(refreshedData);
+      // Check if this is a fully verified account
+      if (data.hasAccount && data.chargesEnabled && data.detailsSubmitted) {
+        console.log('Account is fully verified and ready for payments');
+        
+        // If not already marked as payment ready, enable it
+        if (!data.paymentReady && !data.paymentsEnabled) {
+          console.log('Enabling payments for verified account...');
+          try {
+            const enableResponse = await apiRequest('POST', '/api/connect/v2/enable-payments');
+            if (enableResponse.ok) {
+              const enableData = await enableResponse.json();
+              console.log('Payments enabled successfully:', enableData);
+              // Refresh status to get updated data
+              const refreshResponse = await apiRequest('GET', '/api/connect/v2/status');
+              const refreshedData = await refreshResponse.json();
+              setStatus(refreshedData);
+              
+              // Auto-switch to management tab for verified accounts
+              if (!refreshedData.needsOnboarding) {
+                setActiveTab('manage');
+              }
+              return refreshedData;
+            }
+          } catch (enableError) {
+            console.error('Failed to enable payments:', enableError);
           }
-        } catch (enableError) {
-          console.error('Failed to enable payments:', enableError);
-          setStatus(data); // Still set the original status
         }
-      } else {
-        setStatus(data);
+        
+        // Auto-switch to management tab for verified accounts
+        if (!data.needsOnboarding) {
+          setActiveTab('manage');
+        }
       }
 
-      if (data.hasAccount && !data.needsOnboarding) {
-        setActiveTab('manage');
-      }
+      setStatus(data);
 
       return data;
     } catch (error) {
@@ -220,8 +231,9 @@ export default function InterlincConnect() {
     const achPaymentsActive = status.capabilities?.us_bank_account_ach_payments === 'active';
     const sepaPaymentsActive = status.capabilities?.sepa_debit_payments === 'active';
     const transfersActive = status.capabilities?.transfers === 'active';
+    const isFullyVerified = status.isFullyVerified || (status.chargesEnabled && status.detailsSubmitted);
 
-    if (status.hasAccount && status.chargesEnabled && cardPaymentsActive) {
+    if (isFullyVerified && cardPaymentsActive) {
       const activePaymentMethods = [];
       if (cardPaymentsActive) activePaymentMethods.push('Cards');
       if (achPaymentsActive) activePaymentMethods.push('ACH');
@@ -229,9 +241,11 @@ export default function InterlincConnect() {
       
       return { 
         variant: 'success', 
-        text: `Verified & Active (${activePaymentMethods.join(', ')})`, 
+        text: `Payment Ready (${activePaymentMethods.join(', ')})`, 
         color: 'text-green-400' 
       };
+    } else if (status.hasAccount && status.chargesEnabled && status.detailsSubmitted) {
+      return { variant: 'success', text: 'Verified & Payment Ready', color: 'text-green-400' };
     } else if (status.hasAccount && status.chargesEnabled) {
       return { variant: 'success', text: 'Connected & Charges Enabled', color: 'text-green-400' };
     } else if (status.hasAccount && status.detailsSubmitted && !status.chargesEnabled) {

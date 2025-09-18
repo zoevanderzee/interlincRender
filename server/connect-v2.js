@@ -68,8 +68,10 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
 
       const acct = await stripe.accounts.retrieve(existing.accountId);
       const reqs = acct.requirements || {};
-      const needsOnboarding =
-        !acct.details_submitted ||
+      
+      // Account is fully ready if charges are enabled and details submitted
+      const isFullyVerified = acct.charges_enabled && acct.details_submitted;
+      const hasOutstandingRequirements = 
         (Array.isArray(reqs.currently_due) && reqs.currently_due.length > 0) ||
         (Array.isArray(reqs.past_due) && reqs.past_due.length > 0);
 
@@ -78,10 +80,11 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
         hasAccount: true,
         accountId: acct.id,
         accountType: acct.type,
-        needsOnboarding: false, // Force to false if account is verified and charges enabled
+        needsOnboarding: !isFullyVerified || hasOutstandingRequirements,
         detailsSubmitted: acct.details_submitted,
         chargesEnabled: acct.charges_enabled,
         payoutsEnabled: acct.payouts_enabled,
+        isFullyVerified: isFullyVerified,
         version: 'v2',
         
         // Account verification status
@@ -136,9 +139,22 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
         }
       };
 
-      // Override needsOnboarding for verified accounts
-      if (acct.charges_enabled && acct.details_submitted) {
+      // Final status determination - if account can process payments, no onboarding needed
+      if (isFullyVerified && !hasOutstandingRequirements) {
         v2Status.needsOnboarding = false;
+        v2Status.paymentReady = true;
+        
+        // Automatically enable payments in our system for verified accounts
+        await db.setConnect(userId, {
+          ...existing,
+          detailsSubmitted: true,
+          chargesEnabled: true,
+          payoutsEnabled: acct.payouts_enabled,
+          paymentsEnabled: true,
+          isFullyVerified: true,
+          lastUpdated: new Date().toISOString(),
+          version: 'v2'
+        });
       }
 
       res.json(v2Status);
@@ -533,10 +549,12 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       // Update our database with current account status
       await db.setConnect(userId, {
         ...existing,
-        detailsSubmitted: true,
-        chargesEnabled: true,
+        detailsSubmitted: account.details_submitted,
+        chargesEnabled: account.charges_enabled,
         payoutsEnabled: account.payouts_enabled,
         paymentsEnabled: true,
+        isFullyVerified: true,
+        paymentReady: true,
         lastUpdated: new Date().toISOString(),
         version: 'v2'
       });
@@ -548,7 +566,9 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
         payouts_enabled: account.payouts_enabled,
         details_submitted: account.details_submitted,
         capabilities: account.capabilities,
-        message: "Payment processing enabled successfully"
+        paymentReady: true,
+        isFullyVerified: true,
+        message: "Payment processing fully activated"
       });
 
     } catch (e) {
