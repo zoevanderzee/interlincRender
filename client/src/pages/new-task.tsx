@@ -78,13 +78,26 @@ function NewTaskContent() {
 
   const createTaskMutation = useMutation({
     mutationFn: async (data: TaskFormData) => {
+      // Get current user ID from localStorage
+      const currentUserId = localStorage.getItem('user_id');
+      if (!currentUserId) {
+        throw new Error('User not authenticated');
+      }
+
       // First create a project for this task
       const projectResponse = await apiRequest("POST", "/api/projects", {
         name: data.name,
+        businessId: parseInt(currentUserId),
         description: data.description,
         budget: data.budget,
         status: "active"
       });
+
+      if (!projectResponse.ok) {
+        const errorData = await projectResponse.json();
+        throw new Error(errorData.message || 'Failed to create project');
+      }
+
       const project = await projectResponse.json();
 
       // Then create a work request for the task
@@ -98,6 +111,11 @@ function NewTaskContent() {
         amount: parseFloat(data.budget),
         currency: "USD"
       });
+
+      if (!workRequestResponse.ok) {
+        const errorData = await workRequestResponse.json();
+        throw new Error(errorData.message || 'Failed to create work request');
+      }
 
       return workRequestResponse.json();
     },
