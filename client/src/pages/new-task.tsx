@@ -84,29 +84,39 @@ function NewTaskContent() {
         throw new Error('User not authenticated');
       }
 
-      // First create a project for this task
-      const projectResponse = await apiRequest("POST", "/api/projects", {
-        name: data.name,
-        businessId: parseInt(currentUserId),
-        description: data.description,
-        budget: data.budget,
-        status: "active"
-      });
+      // First, check if a "Quick Tasks" project already exists
+      const projectsResponse = await apiRequest("GET", "/api/projects");
+      const projects = await projectsResponse.json();
+      
+      let project;
+      const quickTasksProject = projects.find((p: any) => p.name === "Quick Tasks");
+      
+      if (quickTasksProject) {
+        // Use existing Quick Tasks project
+        project = quickTasksProject;
+        console.log('Using existing Quick Tasks project:', project.id);
+      } else {
+        // Create a "Quick Tasks" project only if it doesn't exist
+        const projectResponse = await apiRequest("POST", "/api/projects", {
+          name: "Quick Tasks",
+          businessId: parseInt(currentUserId),
+          description: "Container project for individual task assignments",
+          budget: "0",
+          status: "active"
+        });
 
-      if (!projectResponse.ok) {
-        const errorData = await projectResponse.json();
-        throw new Error(errorData.message || 'Failed to create project');
+        if (!projectResponse.ok) {
+          const errorData = await projectResponse.json();
+          throw new Error(errorData.message || 'Failed to create Quick Tasks project');
+        }
+
+        const projectResult = await projectResponse.json();
+        project = projectResult.data;
+        console.log('Created new Quick Tasks project:', project.id);
       }
 
-      const projectResult = await projectResponse.json();
-      console.log('Project creation response:', projectResult);
-
-      const project = projectResult.data; // Extract the actual project data
-      console.log('Extracted project:', project);
-      console.log('Project ID:', project?.id);
-
       if (!project || !project.id) {
-        throw new Error('Failed to get project ID from response');
+        throw new Error('Failed to get project ID');
       }
 
       // Then create a work request for the task
