@@ -98,7 +98,16 @@ function NewTaskContent() {
         throw new Error(errorData.message || 'Failed to create project');
       }
 
-      const project = await projectResponse.json();
+      const projectResult = await projectResponse.json();
+      console.log('Project creation response:', projectResult);
+
+      const project = projectResult.data; // Extract the actual project data
+      console.log('Extracted project:', project);
+      console.log('Project ID:', project?.id);
+
+      if (!project || !project.id) {
+        throw new Error('Failed to get project ID from response');
+      }
 
       // Then create a work request for the task
       const workRequestResponse = await apiRequest("POST", `/api/projects/${project.id}/work-requests`, {
