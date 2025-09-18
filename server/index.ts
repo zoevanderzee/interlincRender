@@ -10,6 +10,7 @@ import { apiErrorHandler } from "./middleware/error-handler";
 import path from "path";
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import { requireAuth } from "./middleware/auth";
 
 // ES module equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -72,6 +73,10 @@ app.use((req, res, next) => {
   });
 
   const server = await registerRoutes(app);
+
+  // Register business worker routes
+  registerBusinessWorkerRoutes(app, requireAuth);
+  registerContractorsWithIdsRoutes(app, requireAuth);
 
   // Use our error logger middleware
   app.use(errorLogger);
