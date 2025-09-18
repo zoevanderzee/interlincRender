@@ -255,13 +255,7 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       const session = await stripe.accountSessions.create({
         account: existing.accountId,
         components: {
-          account_management: { 
-            enabled: true,
-            features: {
-              external_account_collection: true,
-              document_collection: true
-            }
-          },
+          account_management: { enabled: true },
           notification_banner: { enabled: true }
         },
       });
