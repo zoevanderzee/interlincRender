@@ -54,6 +54,7 @@ import trolleyRoutes from "./trolley-routes";
 import trolleyTestRoutes from "./trolley-test-routes";
 import {registerFirebaseRoutes} from "./firebase-routes";
 import connectRoutes from "./connect.js";
+import connectV2Routes from "./connect-v2.js";
 import {registerSyncUserRoutes} from "./routes/sync-user";
 import {setupSyncEmailVerification} from "./routes/sync-email-verification";
 import {registerSyncFirebaseUserRoutes} from "./routes/sync-firebase-user";

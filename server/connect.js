@@ -1,6 +1,8 @@
 import express from "express";
 import Stripe from "stripe";
 import { storage } from "./storage.js";
+import { isFeatureEnabled } from "./feature-flags.js";
+import connectV2Routes from "./connect-v2.js";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" });
 
@@ -44,6 +46,9 @@ const db = {
 
 export default function connectRoutes(app, apiPath, authMiddleware) {
   const connectBasePath = `${apiPath}/connect`;
+  
+  // Initialize V2 routes
+  connectV2Routes(app, apiPath, authMiddleware);
 
   /**
    * GET /api/connect/status
