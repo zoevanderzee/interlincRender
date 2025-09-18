@@ -6,16 +6,13 @@ export function registerContractorsWithIdsRoutes(app: Express, requireAuth?: any
   // Get contractors for a business with contractor user ID included
   app.get("/api/business-workers/contractors", async (req, res) => {
     try {
-      // Get current business ID from authenticated user or X-User-ID header
-      let businessId = req.user?.id;
+      // Get current business ID from X-User-ID header (primary method)
+      let businessId = req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : req.user?.id;
       
-      // Fallback to X-User-ID header if session auth failed
-      if (!businessId && req.headers['x-user-id']) {
-        businessId = parseInt(req.headers['x-user-id'] as string);
-        console.log(`Using X-User-ID header fallback for contractors endpoint: ${businessId}`);
-      }
+      console.log(`Contractors endpoint - businessId: ${businessId}, from header: ${req.headers['x-user-id']}, from session: ${req.user?.id}`);
       
       if (!businessId) {
+        console.log(`No businessId found - headers: ${JSON.stringify(req.headers)}`);
         return res.status(401).json({ error: "Authentication required" });
       }
 
