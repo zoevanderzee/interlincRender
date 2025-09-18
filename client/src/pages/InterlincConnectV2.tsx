@@ -195,10 +195,15 @@ export default function InterlincConnect() {
     const initialize = async () => {
       try {
         setIsLoading(true);
+        setError(null);
+        console.log('Initializing Interlinc Connect V2...');
         await checkStatus();
+        console.log('Interlinc Connect V2 initialized successfully');
       } catch (err) {
         console.error('Interlinc Connect initialization failed:', err);
-        setError(err instanceof Error ? err.message : 'Failed to initialize');
+        const errorMessage = err instanceof Error ? err.message : 'Failed to initialize';
+        console.error('Error details:', errorMessage);
+        setError(errorMessage);
       } finally {
         setIsLoading(false);
       }
@@ -245,6 +250,7 @@ export default function InterlincConnect() {
   };
 
   if (error) {
+    console.error('InterlincConnectV2 error:', error);
     return (
       <div className="min-h-screen flex items-center justify-center p-6">
         <Card className="max-w-md w-full">

@@ -54,6 +54,7 @@ import ContractorOnboarding from "@/pages/contractor-onboarding";
 
 import AssignContractor from "@/pages/assign-contractor";
 import ProjectDetails from "@/pages/project-details";
+import TestInterlincV2 from "./pages/test-interlinc-v2";
 
 
 function Router() {
@@ -287,7 +288,7 @@ function Router() {
       </ProtectedRoute>
 
       <Route path="/interlinc-connect-v1" element={<InterlincConnect />} />
-      
+
       <Route path="/stripe-test-v2" element={<StripeTestV2 />} />
 
       <ProtectedRoute path="/contractor-payment-setup">
@@ -295,6 +296,22 @@ function Router() {
           <ContractorInterlincConnect />
         </Layout>
       </ProtectedRoute>
+
+      <Route path="/interlinc-connect-v2" element={
+            <ProtectedRoute>
+              <InterlincConnectV2 />
+            </ProtectedRoute>
+          } />
+          <Route path="/InterlincConnectV2" element={
+            <ProtectedRoute>
+              <InterlincConnectV2 />
+            </ProtectedRoute>
+          } />
+          <Route path="/test-interlinc-v2" element={
+            <ProtectedRoute>
+              <TestInterlincV2 />
+            </ProtectedRoute>
+          } />
 
       <Route component={NotFound} />
     </Switch>
