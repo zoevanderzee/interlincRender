@@ -2,9 +2,9 @@ import type { Express } from "express";
 import { storage } from "../storage";
 
 // API endpoint to get contractors with their contractor user ID included
-export function registerContractorsWithIdsRoutes(app: Express, requireAuth: any) {
+export function registerContractorsWithIdsRoutes(app: Express, requireAuth?: any) {
   // Get contractors for a business with contractor user ID included
-  app.get("/api/business-workers/contractors", requireAuth, async (req, res) => {
+  app.get("/api/business-workers/contractors", requireAuth || ((req: any, res: any, next: any) => next()), async (req, res) => {
     try {
       // Get current business ID from authenticated user
       if (!req.user?.id) {

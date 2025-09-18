@@ -3522,7 +3522,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerBusinessWorkerRoutes(app, requireAuth);
 
   // Register contractors with IDs routes
-  registerContractorsWithIdsRoutes(app);
+  registerContractorsWithIdsRoutes(app, requireAuth);
 
   // Register project routes
   registerProjectRoutes(app);
