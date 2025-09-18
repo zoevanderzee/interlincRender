@@ -52,12 +52,12 @@ export default function AssignContractor() {
   // Fetch contractor details (only if contractorId is provided via URL or query param)
   const contractorIdToFetch = contractorId || contractorIdFromQuery;
   console.log("Contractor ID to fetch:", contractorIdToFetch);
-  
+
   const { data: contractor, isLoading: isLoadingContractor } = useQuery<any>({
     queryKey: [`/api/users/${contractorIdToFetch}`],
     enabled: !!contractorIdToFetch
   });
-  
+
   console.log("Contractor data:", contractor);
   console.log("Is loading contractor:", isLoadingContractor);
 
@@ -192,8 +192,8 @@ export default function AssignContractor() {
 
   // Show contractor selection if no contractorId in URL params or query params
   const showContractorSelection = !contractorId && !contractorIdFromQuery;
-  const availableContractors = Array.isArray(connectionRequests) 
-    ? connectionRequests.filter((req: any) => req?.status === 'accepted')
+  const availableContractors = Array.isArray(businessWorkers) 
+    ? businessWorkers.filter((req: any) => req?.status === 'accepted')
     : [];
 
   const selectedProject = projects.find(p => p.id.toString() === selectedProjectId);
@@ -250,20 +250,20 @@ export default function AssignContractor() {
                       </Button>
                     </div>
                   ) : (
-                    availableContractors.map((req: any) => (
+                    availableContractors.map((contractor: any) => (
                       <SelectItem 
-                        key={req.contractorUserId || req.id} 
-                        value={(req.contractorUserId || req.id).toString()}
+                        key={contractor.id} 
+                        value={contractor.id.toString()}
                         className="text-white hover:bg-gray-800"
                       >
                         <div className="flex flex-col">
                           <span className="font-medium">
-                            {req.contractorFirstName && req.contractorLastName 
-                              ? `${req.contractorFirstName} ${req.contractorLastName}`
-                              : req.contractorUsername
+                            {contractor.firstName && contractor.lastName 
+                              ? `${contractor.firstName} ${contractor.lastName}`
+                              : contractor.username
                             }
                           </span>
-                          <span className="text-sm text-gray-400">{req.contractorEmail}</span>
+                          <span className="text-sm text-gray-400">{contractor.email}</span>
                         </div>
                       </SelectItem>
                     ))
