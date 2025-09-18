@@ -55,4 +55,4 @@ localPort = 43277
 externalPort = 3000
 
 [agent]
-integrations = ["javascript_object_storage:1.0.0"]
+integrations = ["javascript_object_storage:1.0.0", "javascript_stripe:1.0.0"]
