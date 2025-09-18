@@ -11,6 +11,8 @@ import path from "path";
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { requireAuth } from "./middleware/auth";
+import { registerBusinessWorkerRoutes } from "./business-workers/index";
+import { registerContractorsWithIdsRoutes } from "./business-workers/contractors-with-ids";
 
 // ES module equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
