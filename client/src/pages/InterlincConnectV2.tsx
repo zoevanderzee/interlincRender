@@ -1,15 +1,13 @@
+
 import React, { useEffect, useState } from 'react';
-import { loadConnectAndInitialize } from '@stripe/connect-js/pure';
-import {
-  ConnectAccountOnboarding,
-  ConnectAccountManagement,
-  ConnectComponentsProvider
-} from '@stripe/react-connect-js';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CheckCircle, Clock, XCircle, AlertCircle, Settings, CreditCard, Zap, Shield, Globe, Building, Users, ArrowRight } from 'lucide-react';
+import { CheckCircle, Clock, XCircle, AlertCircle, Settings, CreditCard, Zap, Shield, Globe, Building, Users, ArrowRight, Loader2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { apiRequest } from '@/lib/queryClient';
 
 interface ConnectStatusV2 {
@@ -37,15 +35,31 @@ interface ConnectStatusV2 {
   };
 }
 
+interface OnboardingForm {
+  business_type: 'individual' | 'company';
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  phone?: string;
+  company_name?: string;
+  tax_id?: string;
+  address_line1?: string;
+  address_city?: string;
+  address_postal_code?: string;
+  address_country?: string;
+  tos_acceptance?: boolean;
+}
+
 export default function InterlincConnect() {
-  const [stripeConnect, setStripeConnect] = useState<any>(null);
-  const [managementConnect, setManagementConnect] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<ConnectStatusV2 | null>(null);
   const [activeTab, setActiveTab] = useState('setup');
-
-  const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+  const [onboardingForm, setOnboardingForm] = useState<OnboardingForm>({
+    business_type: 'company',
+    address_country: 'GB'
+  });
+  const [submitting, setSubmitting] = useState(false);
 
   // Check V2 status
   const checkStatus = async () => {
@@ -57,6 +71,10 @@ export default function InterlincConnect() {
       console.log('Interlinc Connect V2 Status:', data);
       setStatus(data);
 
+      if (data.hasAccount && !data.needsOnboarding) {
+        setActiveTab('manage');
+      }
+
       return data;
     } catch (error) {
       console.error('Failed to check Interlinc Connect status:', error);
@@ -64,109 +82,64 @@ export default function InterlincConnect() {
     }
   };
 
-  // Initialize V2 Connect for onboarding
-  const initializeOnboarding = async () => {
+  // Submit onboarding data directly via API
+  const submitOnboarding = async () => {
     try {
-      const connectInstance = loadConnectAndInitialize({
-        publishableKey,
-        fetchClientSecret: async () => {
-          const userId = localStorage.getItem('user_id');
-          const firebaseUid = localStorage.getItem('firebase_uid');
-          const authHeaders: Record<string, string> = {
-            'Content-Type': 'application/json',
-          };
+      setSubmitting(true);
+      setError(null);
 
-          if (userId) authHeaders['X-User-ID'] = userId;
-          if (firebaseUid) authHeaders['X-Firebase-UID'] = firebaseUid;
-
-          console.log('Creating Interlinc Connect V2 session...');
-          const response = await fetch('/api/connect/v2/session', {
-            method: 'POST',
-            body: JSON.stringify({
-              publishableKey,
-              country: 'GB',
-              enabledComponents: {
-                account_management: true
-              }
-            }),
-            headers: authHeaders,
-            credentials: 'include',
-          });
-
-          if (!response.ok) {
-            throw new Error(`Failed to create Interlinc Connect session: ${response.statusText}`);
-          }
-
-          const data = await response.json();
-          console.log('Interlinc Connect V2 Session created:', data);
-          return data.client_secret;
-        },
-        appearance: {
-          overlays: 'dialog',
-          variables: {
-            colorPrimary: '#6366f1',
-            colorBackground: '#ffffff',
-            colorText: '#1f2937',
-            colorDanger: '#ef4444',
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-            spacingUnit: '4px',
-            borderRadius: '12px',
-          },
-        },
+      const response = await apiRequest('POST', '/api/connect/v2/onboard', {
+        body: JSON.stringify(onboardingForm),
+        headers: { 'Content-Type': 'application/json' }
       });
 
-      setStripeConnect(connectInstance);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Onboarding failed');
+      }
+
+      const result = await response.json();
+      console.log('Onboarding completed:', result);
+
+      // Refresh status
+      await checkStatus();
+      setActiveTab('manage');
+
     } catch (err) {
-      console.error('Failed to initialize Interlinc Connect onboarding:', err);
-      throw err;
+      console.error('Onboarding failed:', err);
+      setError(err instanceof Error ? err.message : 'Onboarding failed');
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  // Initialize V2 Connect for account management
-  const initializeManagement = async () => {
+  // Update account information
+  const updateAccount = async (updateData: any) => {
     try {
-      const managementInstance = loadConnectAndInitialize({
-        publishableKey,
-        fetchClientSecret: async () => {
-          const userId = localStorage.getItem('user_id');
-          const firebaseUid = localStorage.getItem('firebase_uid');
-          const authHeaders: Record<string, string> = {
-            'Content-Type': 'application/json',
-          };
+      setSubmitting(true);
+      setError(null);
 
-          if (userId) authHeaders['X-User-ID'] = userId;
-          if (firebaseUid) authHeaders['X-Firebase-UID'] = firebaseUid;
-
-          console.log('Creating Interlinc Connect management session...');
-          const response = await fetch('/api/connect/v2/account-management-session', {
-            method: 'POST',
-            body: JSON.stringify({
-              publishableKey
-            }),
-            headers: authHeaders,
-            credentials: 'include',
-          });
-
-          if (!response.ok) {
-            throw new Error(`Failed to create management session: ${response.statusText}`);
-          }
-
-          const data = await response.json();
-          console.log('Interlinc Connect management session created:', data);
-          return data.client_secret;
-        },
-        appearance: {
-          overlays: 'dialog',
-          variables: {
-            colorPrimary: '#6366f1',
-          },
-        },
+      const response = await apiRequest('POST', '/api/connect/v2/update', {
+        body: JSON.stringify(updateData),
+        headers: { 'Content-Type': 'application/json' }
       });
 
-      setManagementConnect(managementInstance);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Update failed');
+      }
+
+      const result = await response.json();
+      console.log('Account updated:', result);
+
+      // Refresh status
+      await checkStatus();
+
     } catch (err) {
-      console.error('Failed to initialize Interlinc Connect management:', err);
-      throw err;
+      console.error('Account update failed:', err);
+      setError(err instanceof Error ? err.message : 'Update failed');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -174,17 +147,7 @@ export default function InterlincConnect() {
     const initialize = async () => {
       try {
         setIsLoading(true);
-        const statusData = await checkStatus();
-
-        if (statusData.needsOnboarding) {
-          await initializeOnboarding();
-        }
-
-        if (statusData.hasAccount) {
-          await initializeManagement();
-          setActiveTab('manage');
-        }
-
+        await checkStatus();
       } catch (err) {
         console.error('Interlinc Connect initialization failed:', err);
         setError(err instanceof Error ? err.message : 'Failed to initialize');
@@ -193,19 +156,8 @@ export default function InterlincConnect() {
       }
     };
 
-    if (publishableKey) {
-      initialize();
-    }
-  }, [publishableKey]);
-
-  const handleOnboardingExit = async () => {
-    console.log('Interlinc Connect onboarding completed');
-    await checkStatus();
-    if (status?.hasAccount) {
-      await initializeManagement();
-      setActiveTab('manage');
-    }
-  };
+    initialize();
+  }, []);
 
   const getStatusInfo = () => {
     if (!status) return { variant: 'outline', text: 'Loading...', color: 'text-gray-500' };
@@ -217,6 +169,10 @@ export default function InterlincConnect() {
     }
 
     return { variant: 'info', text: 'Ready to Configure', color: 'text-blue-600' };
+  };
+
+  const handleFormChange = (field: keyof OnboardingForm, value: any) => {
+    setOnboardingForm(prev => ({ ...prev, [field]: value }));
   };
 
   if (error) {
@@ -364,7 +320,7 @@ export default function InterlincConnect() {
                             <Settings className="w-4 h-4 text-purple-600" />
                           </div>
                           <div>
-                            <p className="font-medium text-sm">Embedded Management</p>
+                            <p className="font-medium text-sm">API Management</p>
                             <p className="text-xs text-gray-500">Complete control within your app</p>
                           </div>
                         </div>
@@ -410,8 +366,8 @@ export default function InterlincConnect() {
 
                   <TabsContent value="setup" className="mt-0 p-6">
                     <div className="min-h-[500px]">
-                      {stripeConnect && status?.needsOnboarding ? (
-                        <div className="space-y-4">
+                      {status?.needsOnboarding ? (
+                        <div className="space-y-6">
                           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                             <div className="flex items-center gap-3">
                               <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
@@ -424,11 +380,142 @@ export default function InterlincConnect() {
                             </div>
                           </div>
 
-                          <ConnectComponentsProvider connectInstance={stripeConnect}>
-                            <div className="border border-gray-200 rounded-lg overflow-hidden">
-                              <ConnectAccountOnboarding onExit={handleOnboardingExit} />
+                          <div className="bg-white border border-gray-200 rounded-lg p-6">
+                            <h4 className="text-lg font-semibold mb-4">Business Information</h4>
+                            
+                            <div className="grid gap-4">
+                              <div>
+                                <Label htmlFor="business_type">Business Type</Label>
+                                <Select 
+                                  value={onboardingForm.business_type} 
+                                  onValueChange={(value) => handleFormChange('business_type', value)}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select business type" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="individual">Individual</SelectItem>
+                                    <SelectItem value="company">Company</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              {onboardingForm.business_type === 'individual' ? (
+                                <>
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                      <Label htmlFor="first_name">First Name</Label>
+                                      <Input 
+                                        id="first_name"
+                                        value={onboardingForm.first_name || ''}
+                                        onChange={(e) => handleFormChange('first_name', e.target.value)}
+                                        placeholder="John"
+                                      />
+                                    </div>
+                                    <div>
+                                      <Label htmlFor="last_name">Last Name</Label>
+                                      <Input 
+                                        id="last_name"
+                                        value={onboardingForm.last_name || ''}
+                                        onChange={(e) => handleFormChange('last_name', e.target.value)}
+                                        placeholder="Doe"
+                                      />
+                                    </div>
+                                  </div>
+                                </>
+                              ) : (
+                                <div>
+                                  <Label htmlFor="company_name">Company Name</Label>
+                                  <Input 
+                                    id="company_name"
+                                    value={onboardingForm.company_name || ''}
+                                    onChange={(e) => handleFormChange('company_name', e.target.value)}
+                                    placeholder="Company Ltd"
+                                  />
+                                </div>
+                              )}
+
+                              <div>
+                                <Label htmlFor="email">Email</Label>
+                                <Input 
+                                  id="email"
+                                  type="email"
+                                  value={onboardingForm.email || ''}
+                                  onChange={(e) => handleFormChange('email', e.target.value)}
+                                  placeholder="contact@company.com"
+                                />
+                              </div>
+
+                              <div>
+                                <Label htmlFor="phone">Phone</Label>
+                                <Input 
+                                  id="phone"
+                                  value={onboardingForm.phone || ''}
+                                  onChange={(e) => handleFormChange('phone', e.target.value)}
+                                  placeholder="+44 20 1234 5678"
+                                />
+                              </div>
+
+                              <div>
+                                <Label htmlFor="address_line1">Address</Label>
+                                <Input 
+                                  id="address_line1"
+                                  value={onboardingForm.address_line1 || ''}
+                                  onChange={(e) => handleFormChange('address_line1', e.target.value)}
+                                  placeholder="123 Business Street"
+                                />
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <Label htmlFor="address_city">City</Label>
+                                  <Input 
+                                    id="address_city"
+                                    value={onboardingForm.address_city || ''}
+                                    onChange={(e) => handleFormChange('address_city', e.target.value)}
+                                    placeholder="London"
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor="address_postal_code">Postal Code</Label>
+                                  <Input 
+                                    id="address_postal_code"
+                                    value={onboardingForm.address_postal_code || ''}
+                                    onChange={(e) => handleFormChange('address_postal_code', e.target.value)}
+                                    placeholder="SW1A 1AA"
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="flex items-center space-x-2">
+                                <input
+                                  type="checkbox"
+                                  id="tos_acceptance"
+                                  checked={onboardingForm.tos_acceptance || false}
+                                  onChange={(e) => handleFormChange('tos_acceptance', e.target.checked)}
+                                  className="rounded border-gray-300"
+                                />
+                                <Label htmlFor="tos_acceptance" className="text-sm">
+                                  I agree to the terms of service and privacy policy
+                                </Label>
+                              </div>
                             </div>
-                          </ConnectComponentsProvider>
+
+                            <Button 
+                              onClick={submitOnboarding}
+                              disabled={submitting || !onboardingForm.tos_acceptance}
+                              className="w-full mt-6"
+                            >
+                              {submitting ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                  Setting up account...
+                                </>
+                              ) : (
+                                'Complete Setup'
+                              )}
+                            </Button>
+                          </div>
                         </div>
                       ) : (
                         <div className="flex flex-col items-center justify-center py-16">
@@ -454,8 +541,8 @@ export default function InterlincConnect() {
 
                   <TabsContent value="manage" className="mt-0 p-6">
                     <div className="min-h-[500px]">
-                      {managementConnect && status?.hasAccount ? (
-                        <div className="space-y-4">
+                      {status?.hasAccount ? (
+                        <div className="space-y-6">
                           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                             <div className="flex items-center gap-3">
                               <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
@@ -468,11 +555,74 @@ export default function InterlincConnect() {
                             </div>
                           </div>
 
-                          <ConnectComponentsProvider connectInstance={managementConnect}>
-                            <div className="border border-gray-200 rounded-lg overflow-hidden">
-                              <ConnectAccountManagement />
-                            </div>
-                          </ConnectComponentsProvider>
+                          <div className="grid gap-6">
+                            <Card>
+                              <CardHeader>
+                                <CardTitle>Account Information</CardTitle>
+                                <CardDescription>View and update your account details</CardDescription>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="space-y-4">
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                      <Label>Account ID</Label>
+                                      <p className="font-mono text-sm bg-gray-50 p-2 rounded">
+                                        {status.accountId}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <Label>Status</Label>
+                                      <Badge variant={status.needsOnboarding ? 'warning' : 'success'}>
+                                        {status.needsOnboarding ? 'Pending Setup' : 'Active'}
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+
+                            <Card>
+                              <CardHeader>
+                                <CardTitle>Payment Capabilities</CardTitle>
+                                <CardDescription>Manage your payment processing features</CardDescription>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="space-y-3">
+                                  <div className="flex justify-between items-center">
+                                    <span>Card Payments</span>
+                                    <Badge variant={status.capabilities?.card_payments === 'active' ? 'success' : 'secondary'}>
+                                      {status.capabilities?.card_payments || 'Inactive'}
+                                    </Badge>
+                                  </div>
+                                  <div className="flex justify-between items-center">
+                                    <span>Transfers</span>
+                                    <Badge variant={status.capabilities?.transfers === 'active' ? 'success' : 'secondary'}>
+                                      {status.capabilities?.transfers || 'Inactive'}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+
+                            {status.requirements && status.requirements.currently_due.length > 0 && (
+                              <Card className="border-amber-200">
+                                <CardHeader>
+                                  <CardTitle className="text-amber-800">Action Required</CardTitle>
+                                  <CardDescription>Complete these requirements to activate your account</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                  <ul className="space-y-2">
+                                    {status.requirements.currently_due.map((req, index) => (
+                                      <li key={index} className="flex items-center gap-2">
+                                        <AlertCircle className="w-4 h-4 text-amber-600" />
+                                        <span className="text-sm">{req.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </CardContent>
+                              </Card>
+                            )}
+                          </div>
                         </div>
                       ) : (
                         <div className="flex flex-col items-center justify-center py-16">

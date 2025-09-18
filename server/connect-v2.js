@@ -309,4 +309,167 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       res.status(e.status || 500).json({ error: e.message || "Unknown error" });
     }
   });
+
+  /**
+   * POST /api/connect/v2/onboard
+   * Complete onboarding directly via API without embedded components
+   */
+  app.post(`${connectBasePath}/onboard`, authMiddleware, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { 
+        business_type, 
+        first_name, 
+        last_name, 
+        email, 
+        phone,
+        company_name,
+        tax_id,
+        address_line1,
+        address_city,
+        address_postal_code,
+        address_country = 'GB',
+        tos_acceptance 
+      } = req.body || {};
+
+      if (!tos_acceptance) {
+        throw httpError(400, "Terms of service acceptance is required");
+      }
+
+      const existing = await db.getConnect(userId);
+      if (!existing?.accountId) {
+        throw httpError(404, "No Connect account found. Please create account first.");
+      }
+
+      // Update account with provided information
+      const updateData = {
+        business_type,
+        tos_acceptance: {
+          date: Math.floor(Date.now() / 1000),
+          ip: req.ip || '127.0.0.1',
+        }
+      };
+
+      if (business_type === 'individual') {
+        updateData.individual = {
+          first_name,
+          last_name,
+          email,
+          phone,
+          address: {
+            line1: address_line1,
+            city: address_city,
+            postal_code: address_postal_code,
+            country: address_country
+          }
+        };
+      } else {
+        updateData.company = {
+          name: company_name,
+          tax_id,
+          phone,
+          address: {
+            line1: address_line1,
+            city: address_city,
+            postal_code: address_postal_code,
+            country: address_country
+          }
+        };
+      }
+
+      const account = await stripe.accounts.update(existing.accountId, updateData);
+
+      // Update our database
+      await db.setConnect(userId, {
+        ...existing,
+        detailsSubmitted: account.details_submitted,
+        chargesEnabled: account.charges_enabled,
+        payoutsEnabled: account.payouts_enabled,
+        lastUpdated: new Date().toISOString()
+      });
+
+      res.json({
+        success: true,
+        accountId: account.id,
+        detailsSubmitted: account.details_submitted,
+        requirementsRemaining: account.requirements?.currently_due || []
+      });
+
+    } catch (e) {
+      console.error("[connect-v2-onboard]", e);
+      res.status(e.status || 500).json({ error: e.message || "Onboarding failed" });
+    }
+  });
+
+  /**
+   * POST /api/connect/v2/update
+   * Update account information directly via API
+   */
+  app.post(`${connectBasePath}/update`, authMiddleware, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const updateData = req.body || {};
+
+      const existing = await db.getConnect(userId);
+      if (!existing?.accountId) {
+        throw httpError(404, "No Connect account found");
+      }
+
+      const account = await stripe.accounts.update(existing.accountId, updateData);
+
+      // Update our database
+      await db.setConnect(userId, {
+        ...existing,
+        detailsSubmitted: account.details_submitted,
+        chargesEnabled: account.charges_enabled,
+        payoutsEnabled: account.payouts_enabled,
+        lastUpdated: new Date().toISOString()
+      });
+
+      res.json({
+        success: true,
+        accountId: account.id,
+        detailsSubmitted: account.details_submitted,
+        chargesEnabled: account.charges_enabled,
+        payoutsEnabled: account.payouts_enabled
+      });
+
+    } catch (e) {
+      console.error("[connect-v2-update]", e);
+      res.status(e.status || 500).json({ error: e.message || "Update failed" });
+    }
+  });
+
+  /**
+   * GET /api/connect/v2/requirements
+   * Get detailed account requirements
+   */
+  app.get(`${connectBasePath}/requirements`, authMiddleware, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const existing = await db.getConnect(userId);
+      
+      if (!existing?.accountId) {
+        throw httpError(404, "No Connect account found");
+      }
+
+      const account = await stripe.accounts.retrieve(existing.accountId);
+      const requirements = account.requirements || {};
+
+      res.json({
+        accountId: account.id,
+        currently_due: requirements.currently_due || [],
+        past_due: requirements.past_due || [],
+        pending_verification: requirements.pending_verification || [],
+        disabled_reason: requirements.disabled_reason,
+        details_submitted: account.details_submitted,
+        charges_enabled: account.charges_enabled,
+        payouts_enabled: account.payouts_enabled
+      });
+
+    } catch (e) {
+      console.error("[connect-v2-requirements]", e);
+      res.status(e.status || 500).json({ error: e.message || "Failed to get requirements" });
+    }
+  });
 }
