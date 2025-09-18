@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { loadConnectAndInitialize } from '@stripe/connect-js/pure';
 import {
@@ -275,9 +274,9 @@ export default function InterlincConnect() {
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-xl font-semibold mb-2">Account Status</h3>
+                  <h3 className="text-xl font-semibold mb-2">Interlinc Connect Status</h3>
                   <p className="text-blue-100">
-                    {status?.version === 'v2' ? 'Enhanced V2 API with advanced features' : 'Initializing enhanced features'}
+                    {status?.version === 'v2' ? 'Using enhanced V2 API with advanced features' : 'Initializing enhanced features'}
                   </p>
                 </div>
                 <div className="bg-white/10 backdrop-blur-sm rounded-full p-3">
@@ -296,7 +295,7 @@ export default function InterlincConnect() {
                         {status.accountId || 'Not created yet'}
                       </p>
                     </div>
-                    
+
                     <div>
                       <label className="text-sm font-medium text-gray-500 uppercase tracking-wide">Payment Methods</label>
                       <div className="mt-2 space-y-2">
@@ -427,7 +426,7 @@ export default function InterlincConnect() {
                               </div>
                             </div>
                           </div>
-                          
+
                           <ConnectComponentsProvider connectInstance={stripeConnect}>
                             <div className="border border-gray-200 rounded-lg overflow-hidden">
                               <ConnectAccountOnboarding onExit={handleOnboardingExit} />
@@ -471,7 +470,7 @@ export default function InterlincConnect() {
                               </div>
                             </div>
                           </div>
-                          
+
                           <ConnectComponentsProvider connectInstance={managementConnect}>
                             <div className="border border-gray-200 rounded-lg overflow-hidden">
                               <ConnectAccountManagement />
