@@ -432,29 +432,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Contractors can only see themselves
           users = [currentUser];
         } else {
-          // For contractor users requesting all users (no role filter), include businesses they work with
-          const businessesWithContracts = await storage.getBusinessesByContractorId(currentUser.id);
-
-          // Get work requests sent to this contractor to find additional businesses
-          const workRequests = await storage.getWorkRequestsByEmail(currentUser.email);
-          const businessIdsFromRequests = [...new Set(workRequests.map(wr => wr.businessId))];
-
-          // Get business users for work request senders
-          const businessesFromRequests = [];
-          for (const businessId of businessIdsFromRequests) {
-            const business = await storage.getUser(businessId);
-            if (business && business.role === 'business') {
-              businessesFromRequests.push(business);
-            }
-          }
-
-          // Combine contractor and business data
-          const allBusinesses = [...businessesWithContracts, ...businessesFromRequests];
-          const uniqueBusinesses = allBusinesses.filter((business, index, self) =>
-            index === self.findIndex(b => b.id === business.id)
-          );
-
-          users = [currentUser, ...uniqueBusinesses];
+          // For all other cases, return empty array for security
+          users = [];
         }
       }
       // Admin users (if implemented) can see everyone
@@ -535,7 +514,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Filter to only include contractors with Stripe Connect accounts
-      const contractorsWithStripeConnect = linkedContractors.filter(contractor => 
+      const contractorsWithStripeConnect = linkedContractors.filter(contractor =>
         contractor.stripeConnectAccountId
       );
 
@@ -946,6 +925,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete a contract (project)
   app.delete(`${apiRouter}/contracts/:id`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);

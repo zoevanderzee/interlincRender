@@ -15,7 +15,10 @@ import {
   AlertCircle,
   Search,
   Filter,
-  Plus // Import Plus icon
+  Plus,
+  MoreHorizontal,
+  Edit,
+  Trash2 // Import delete and menu icons
 } from "lucide-react";
 import { Contract, User, Milestone, Payment } from "@shared/schema";
 import { Button } from "@/components/ui/button";
@@ -23,7 +26,10 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useLocation } from "wouter";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 interface ProjectsOverviewProps {
   contracts: Contract[];
@@ -44,6 +50,10 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
   const [expandedProject, setExpandedProject] = useState<number | null>(contracts.length > 0 ? contracts[0].id : null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<Contract | null>(null);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   // Toggle project expansion
   const toggleProject = (id: number) => {
@@ -121,6 +131,50 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
   const projectContracts = expandedProject 
     ? contracts.filter(c => c.id === expandedProject)
     : [];
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (contractId: number) => {
+      const response = await fetch(`/api/contracts/${contractId}`, {
+        method: 'DELETE',
+        headers: {
+          'X-User-ID': localStorage.getItem('user_id') || '',
+        },
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete project');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
+      toast({ title: 'Project deleted successfully' });
+      setDeleteDialogOpen(false);
+      setProjectToDelete(null);
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: 'Failed to delete project', 
+        description: error.message || 'An error occurred while deleting the project',
+        variant: 'destructive' 
+      });
+    }
+  });
+
+  // Handle delete project
+  const handleDeleteProject = (contract: Contract, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent expanding the project
+    setProjectToDelete(contract);
+    setDeleteDialogOpen(true);
+  };
+
+  // Confirm delete
+  const confirmDelete = () => {
+    if (projectToDelete) {
+      deleteMutation.mutate(projectToDelete.id);
+    }
+  };
 
   return (
     <Card className="border-zinc-800 bg-zinc-900 overflow-hidden divide-y divide-zinc-800">
@@ -239,6 +293,38 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
                       <Badge className={`${statusColor} text-white px-2 py-1 font-normal rounded-md`}>
                         {status}
                       </Badge>
+
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-zinc-400 hover:text-white"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="bg-zinc-900 border-zinc-700 text-white">
+                          <DropdownMenuItem 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/contract/${contract.id}`);
+                            }}
+                            className="hover:bg-zinc-800 cursor-pointer"
+                          >
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit Project
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={(e) => handleDeleteProject(contract, e)}
+                            className="hover:bg-zinc-800 cursor-pointer text-red-400 hover:text-red-300"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete Project
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
 
                       <div className="text-zinc-400">
                         {isExpanded ? 
@@ -419,6 +505,30 @@ const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent className="bg-zinc-900 border-zinc-800 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Project</AlertDialogTitle>
+            <AlertDialogDescription className="text-zinc-400">
+              Are you sure you want to delete "{projectToDelete?.contractName}"? This action cannot be undone and will remove all associated milestones and payments.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-zinc-800 border-zinc-700 text-white hover:bg-zinc-700">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete}
+              className="bg-red-600 text-white hover:bg-red-700"
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? 'Deleting...' : 'Delete Project'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };
