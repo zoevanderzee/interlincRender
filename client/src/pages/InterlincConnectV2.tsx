@@ -1,10 +1,9 @@
-
 import React, { useEffect, useState } from 'react';
 import { loadConnectAndInitialize } from '@stripe/connect-js/pure';
-import { 
-  ConnectAccountOnboarding, 
+import {
+  ConnectAccountOnboarding,
   ConnectAccountManagement,
-  ConnectComponentsProvider 
+  ConnectComponentsProvider
 } from '@stripe/react-connect-js';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -54,10 +53,10 @@ export default function InterlincConnect() {
       console.log('Checking Interlinc Connect V2 status...');
       const response = await apiRequest('GET', '/api/connect/v2/status');
       const data = await response.json();
-      
+
       console.log('Interlinc Connect V2 Status:', data);
       setStatus(data);
-      
+
       return data;
     } catch (error) {
       console.error('Failed to check Interlinc Connect status:', error);
@@ -76,7 +75,7 @@ export default function InterlincConnect() {
           const authHeaders: Record<string, string> = {
             'Content-Type': 'application/json',
           };
-          
+
           if (userId) authHeaders['X-User-ID'] = userId;
           if (firebaseUid) authHeaders['X-Firebase-UID'] = firebaseUid;
 
@@ -134,14 +133,16 @@ export default function InterlincConnect() {
           const authHeaders: Record<string, string> = {
             'Content-Type': 'application/json',
           };
-          
+
           if (userId) authHeaders['X-User-ID'] = userId;
           if (firebaseUid) authHeaders['X-Firebase-UID'] = firebaseUid;
 
           console.log('Creating Interlinc Connect management session...');
           const response = await fetch('/api/connect/v2/account-management-session', {
             method: 'POST',
-            body: JSON.stringify({}),
+            body: JSON.stringify({
+              publishableKey
+            }),
             headers: authHeaders,
             credentials: 'include',
           });
@@ -174,16 +175,16 @@ export default function InterlincConnect() {
       try {
         setIsLoading(true);
         const statusData = await checkStatus();
-        
+
         if (statusData.needsOnboarding) {
           await initializeOnboarding();
         }
-        
+
         if (statusData.hasAccount) {
           await initializeManagement();
           setActiveTab('manage');
         }
-        
+
       } catch (err) {
         console.error('Interlinc Connect initialization failed:', err);
         setError(err instanceof Error ? err.message : 'Failed to initialize');
@@ -208,13 +209,13 @@ export default function InterlincConnect() {
 
   const getStatusBadge = () => {
     if (!status) return <Badge variant="outline">Loading...</Badge>;
-    
+
     if (status.hasAccount && !status.needsOnboarding) {
       return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Connected</Badge>;
     } else if (status.needsOnboarding) {
       return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Setup Required</Badge>;
     }
-    
+
     return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Ready</Badge>;
   };
 
@@ -263,12 +264,12 @@ export default function InterlincConnect() {
               {status?.version === 'v2' ? 'Using enhanced V2 API with advanced features' : 'Initializing enhanced features'}
             </CardDescription>
           </CardHeader>
-          
+
           {status && (
             <CardContent>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <strong>Account ID:</strong> 
+                  <strong>Account ID:</strong>
                   <p className="text-gray-600 font-mono text-xs">{status.accountId || 'Not created'}</p>
                 </div>
                 <div>
@@ -343,7 +344,7 @@ export default function InterlincConnect() {
                     Account Management
                   </TabsTrigger>
                 </TabsList>
-                
+
                 <TabsContent value="setup" className="mt-6">
                   <div className="min-h-[400px]">
                     {stripeConnect && status?.needsOnboarding ? (
@@ -359,8 +360,8 @@ export default function InterlincConnect() {
                         <p className="text-gray-600 text-center mb-4">
                           Your Interlinc Connect account is ready to process payments.
                         </p>
-                        <Button 
-                          onClick={() => setActiveTab('manage')} 
+                        <Button
+                          onClick={() => setActiveTab('manage')}
                           className="flex items-center gap-2"
                         >
                           <Settings className="w-4 h-4" />
@@ -370,7 +371,7 @@ export default function InterlincConnect() {
                     )}
                   </div>
                 </TabsContent>
-                
+
                 <TabsContent value="manage" className="mt-6">
                   <div className="min-h-[400px]">
                     {managementConnect && status?.hasAccount ? (
@@ -384,8 +385,8 @@ export default function InterlincConnect() {
                         <p className="text-gray-600 text-center mb-4">
                           Please complete account setup before accessing management features.
                         </p>
-                        <Button 
-                          onClick={() => setActiveTab('setup')} 
+                        <Button
+                          onClick={() => setActiveTab('setup')}
                           variant="outline"
                           className="flex items-center gap-2"
                         >
