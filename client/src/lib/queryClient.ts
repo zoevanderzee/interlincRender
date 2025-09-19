@@ -153,7 +153,7 @@ export const getQueryFn: <T>(options: {
       if (endpoint === '/api/connect/status' || 
           endpoint.includes('/api/connect/status') ||
           endpoint.includes('connect-status') ||
-          (endpoint.includes('connect') && !endpoint.includes('/v2/'))) {
+          (endpoint.includes('connect') && !endpoint.includes('/v2/') && !endpoint.includes('contractor'))) {
         console.log(`❌ BLOCKED V1 Connect endpoint: ${endpoint}`);
         throw createApiError(410, 'Gone', 'V1 Connect endpoints permanently removed - use /api/connect/v2/status');
       }

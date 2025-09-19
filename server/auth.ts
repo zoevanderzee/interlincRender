@@ -89,20 +89,21 @@ export function setupAuth(app: Express) {
   // Add CORS headers for cookie support
   app.use((req, res, next) => {
     const origin = req.headers.origin;
+    const host = req.get('host');
     const allowedOrigins = [
       'https://interlinc.app',
       'https://www.interlinc.app',
       'https://interlinc.co', 
       'https://www.interlinc.co',
-      req.protocol + '://' + req.get('host') // Allow same-origin requests
+      req.protocol + '://' + host // Allow same-origin requests
     ];
 
     // In development, allow all origins; in production, check allowlist
     if (process.env.NODE_ENV === 'development' || allowedOrigins.includes(origin)) {
-      res.header('Access-Control-Allow-Origin', origin || req.protocol + '://' + req.get('host'));
+      res.header('Access-Control-Allow-Origin', origin || req.protocol + '://' + host);
       res.header('Access-Control-Allow-Credentials', 'true');
       res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-      res.header('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization,X-User-ID,X-Firebase-UID,X-CSRF-Token');
+      res.header('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization,X-User-ID,X-Firebase-UID,X-CSRF-Token,Cookie');
 
       if (req.method === 'OPTIONS') {
         res.sendStatus(200);

@@ -37,6 +37,10 @@ export function useIntegratedData() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
+  // Extracting userId and firebaseUid from the user object for cleaner access
+  const userId = user?.id;
+  const firebaseUid = user?.firebaseUid;
+
   // Core dashboard data - contains contracts, contractors, stats, payments, milestones
   const { data: dashboardData, isLoading: isDashboardLoading, error: dashboardError } = useQuery({
     queryKey: ['/api/dashboard'],
@@ -53,13 +57,27 @@ export function useIntegratedData() {
     refetchInterval: 60 * 1000,
   });
 
-  // Stripe Connect V2 account status - V2 ONLY
-  const { data: stripeConnectData, isLoading: isStripeConnectLoading } = useQuery({
+  // Connect status query - V2 only
+  const connectStatusQuery = useQuery({
     queryKey: ['/api/connect/v2/status'],
-    enabled: !!user && user.role === 'business',
-    staleTime: 60 * 1000, // Increased to reduce frequency
-    refetchInterval: 120 * 1000, // Reduced frequency to prevent UI lag
-    retry: 1, // Reduce retries
+    queryFn: async () => {
+      const response = await fetch('/api/connect/v2/status', {
+        credentials: 'include',
+        headers: {
+          'X-User-ID': userId?.toString() || '',
+          'X-Firebase-UID': firebaseUid || ''
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    },
+    enabled: !!userId && !!firebaseUid,
+    retry: 1,
+    staleTime: 60000,
+    refetchInterval: false,
+    refetchOnWindowFocus: false
   });
 
   // Projects data - separate from contracts
@@ -77,7 +95,7 @@ export function useIntegratedData() {
     staleTime: 30 * 1000,
     select: (data) => {
       if (!user?.id || !Array.isArray(data)) return [];
-      return data.filter((request: any) => 
+      return data.filter((request: any) =>
         request.contractorUserId === user.id || request.businessUserId === user.id
       );
     }
@@ -105,7 +123,7 @@ export function useIntegratedData() {
       queryClient.invalidateQueries({ queryKey: ['/api/work-requests'] }),
       queryClient.invalidateQueries({ queryKey: ['/api/notifications/count'] }),
     ]);
-    
+
     // Permanently remove ALL V1 Connect queries
     queryClient.removeQueries({ queryKey: ['/api/connect/status'], exact: false });
     queryClient.removeQueries({ queryKey: ['connect-status'], exact: false });
@@ -180,18 +198,18 @@ export function useIntegratedData() {
     walletBalance: 0, // Stripe Connect doesn't have a wallet balance concept
     budgetData: budgetData || null,
     hasActiveSubscription: user?.subscriptionStatus === 'active',
-    paymentMethodsEnabled: stripeConnectData?.hasAccount && !stripeConnectData?.needsOnboarding,
+    paymentMethodsEnabled: connectStatusQuery?.data?.hasAccount && !connectStatusQuery?.data?.needsOnboarding,
     trolleyVerificationStatus: 'active', // V1 Trolley system removed - using V2 Stripe Connect only
     notificationCount: parseInt(notificationData?.count || '0', 10),
   };
 
-  const isLoading = isDashboardLoading || isBudgetLoading || isStripeConnectLoading || 
+  const isLoading = isDashboardLoading || isBudgetLoading || connectStatusQuery.isLoading ||
                    isProjectsLoading || isWorkRequestsLoading || isNotificationLoading;
 
   return {
     data: {
       ...integratedData,
-      stripeConnectData
+      stripeConnectData: connectStatusQuery.data
     },
     isLoading,
     error: dashboardError,
@@ -200,7 +218,7 @@ export function useIntegratedData() {
     // Individual data sources for specific use cases
     dashboardData,
     budgetData,
-    stripeConnectData,
+    stripeConnectData: connectStatusQuery.data,
     projectsData,
     workRequestsData,
   };

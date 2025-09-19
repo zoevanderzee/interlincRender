@@ -5,6 +5,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import { initializeLogger, requestLogger, errorLogger } from "./services/logger";
 import { addCsrfToken, csrfProtection } from "./middleware/csrf";
 import { securityHeaders } from "./middleware/security-headers";
+import { setupHealthCheck } from "./health";
 import { setupDatabaseHealthChecks } from "./services/db-health";
 import { apiErrorHandler } from "./middleware/error-handler";
 import path from "path";
@@ -13,6 +14,8 @@ import { dirname } from 'path';
 import { requireAuth } from "./middleware/auth";
 import { registerBusinessWorkerRoutes } from "./business-workers/index";
 import { registerContractorsWithIdsRoutes } from "./business-workers/contractors-with-ids";
+import { setupAuth } from "./middleware/auth";
+
 
 // ES module equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -66,6 +69,15 @@ app.use((req, res, next) => {
   // app.use(securityHeaders);
   // app.use(addCsrfToken);
   // app.use('/api', csrfProtection);
+
+  // Setup health check (before auth)
+  setupHealthCheck(app);
+
+  // Setup security headers
+  setupSecurityHeaders(app);
+
+  // Setup authentication
+  setupAuth(app);
 
   // Remove static HTML fallback routes to restore React app
 
