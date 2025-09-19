@@ -148,6 +148,13 @@ export const getQueryFn: <T>(options: {
   async ({ queryKey }) => {
     try {
       const endpoint = (queryKey[0] as string).toLowerCase();
+      
+      // PERMANENTLY BLOCK ALL V1 CONNECT ENDPOINTS
+      if (endpoint === '/api/connect/status' || endpoint.includes('/api/connect/status')) {
+        console.log(`❌ BLOCKED V1 Connect endpoint: ${endpoint}`);
+        throw createApiError(410, 'Gone', 'V1 Connect endpoints permanently removed - use /api/connect/v2/status');
+      }
+      
       console.log(`Fetching data from ${endpoint}`);
 
       // Add authentication headers - use the same logic as apiRequest

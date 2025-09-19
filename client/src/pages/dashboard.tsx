@@ -60,8 +60,8 @@ const Dashboard = () => {
   const { data: integratedData, isLoading: isDashboardLoading, error: dashboardError } = useIntegratedData();
   const { toast } = useToast();
 
-  // Use V2 connect data from integrated hook
-  const { stripeConnectData: connectStatus } = useIntegratedData();
+  // Use V2 connect data from integrated hook  
+  const connectStatus = integratedData ? integratedData.stripeConnectData : null;
 
   // Format the remaining budget as currency
   const formatCurrency = (value: string | null): string => {
