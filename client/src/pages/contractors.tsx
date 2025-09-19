@@ -30,7 +30,7 @@ import { User, Invite } from "@shared/schema";
 import { Search, Plus, Mail, Building, Briefcase, UserIcon, ArrowRight, Copy, Share, ExternalLink, CheckCircle2, Fingerprint, CreditCard, Link as LinkIcon } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { FindByProfileCodeDialog } from "@/components/contractors/FindByProfileCodeDialog";
-import { ConnectionRequestsList } from "@/components/profile/ConnectionRequestsList";
+// V1 ConnectionRequestsList removed - using V2 data only
 import { useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -49,13 +49,13 @@ const Contractors = () => {
   const linkInputRef = useRef<HTMLInputElement>(null);
   const [inviteData, setInviteData] = useState<{ id: number, token: string } | null>(null);
 
-  // Use dashboard data for consistency across all pages
+  // V2 ONLY: Use dashboard data for consistency across all pages
   const { data: dashboardData, isLoading: isLoadingWorkers } = useQuery({
     queryKey: ['/api/dashboard'],
     enabled: !!user
   });
 
-  // Use dashboard data for contractors - no separate connection requests needed
+  // V2: All contractor data comes from dashboard - no V1 connection requests
   const connectionRequests = [];
   const isLoadingConnections = false;
   

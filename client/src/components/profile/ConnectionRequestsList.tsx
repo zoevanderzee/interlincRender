@@ -5,89 +5,47 @@ import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, MessageSquare, Building2, User } from "lucide-react";
 import { format } from "date-fns";
 
-// Connection request type
-interface ConnectionRequest {
+// V2 ONLY: Connection data from dashboard
+interface ConnectionData {
   id: number;
-  profileCode: string | null;
-  businessId: number;
   businessName?: string;
-  contractorId: number | null;
   contractorName?: string;
-  message: string | null;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
+  email?: string;
+  role?: string;
 }
 
 export function ConnectionRequestsList() {
   const { user } = useAuth();
-  
-  // Determine if user is a contractor (from contractor's perspective)
+
+  // Determine if user is a contractor
   const isContractor = user?.role === "contractor";
 
-  // Fetch connection requests
-  const { data: connectionRequests = [], isLoading } = useQuery({
-    queryKey: ["/api/connection-requests"],
-    queryFn: async () => {
-      if (!user) return [];
-      
-      console.log("Fetching connection requests for user:", user.id, user.role);
-      
-      try {
-        const response = await fetch("/api/connection-requests", {
-          headers: {
-            "X-User-ID": user.id.toString()
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error("Failed to fetch connection requests");
-        }
-        
-        const data = await response.json();
-        console.log("Connection requests data:", data);
-        
-        return data;
-      } catch (error) {
-        console.error("Error fetching connection requests:", error);
-        return [];
-      }
-    },
+  // V2: Fetch connections from dashboard data only
+  const { data: dashboardData, isLoading } = useQuery({
+    queryKey: ["/api/dashboard"],
     enabled: !!user
   });
-  
-  // Helper function to deduplicate by businessId
-  const deduplicateByBusinessId = (requests: ConnectionRequest[]) => {
-    const seen = new Set();
-    return requests.filter(req => {
-      if (seen.has(req.businessId)) {
-        return false;
-      }
-      seen.add(req.businessId);
-      return true;
-    });
-  };
-  
-  // Deduplicate accepted requests to show each company only once
-  const acceptedRequests = deduplicateByBusinessId(
-    connectionRequests.filter((req: ConnectionRequest) => req.status === "accepted")
-  );
-  
+
+  // Extract connections from V2 dashboard data
+  const connections = isContractor 
+    ? (dashboardData as any)?.businesses || []
+    : (dashboardData as any)?.contractors || [];
+
   // Format date for display
   const formatDate = (dateString: string) => {
     try {
       return format(new Date(dateString), "MMM d, yyyy");
     } catch (error) {
-      return "Invalid date";
+      return "Connected";
     }
   };
-  
+
   // Handle empty state
-  if (!isLoading && acceptedRequests.length === 0) {
+  if (!isLoading && connections.length === 0) {
     return (
       <Card className="w-full">
         <CardHeader>
-          <CardTitle>{isContractor ? "Company Requests" : "Contractor Connections"}</CardTitle>
+          <CardTitle>{isContractor ? "Company Connections" : "Contractor Connections"}</CardTitle>
           <CardDescription>
             {isContractor 
               ? "Companies you are connected with" 
@@ -102,12 +60,12 @@ export function ConnectionRequestsList() {
       </Card>
     );
   }
-  
-  // When requests exist
+
+  // When connections exist
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle>{isContractor ? "Company Requests" : "Contractor Connections"}</CardTitle>
+        <CardTitle>{isContractor ? "Company Connections" : "Contractor Connections"}</CardTitle>
         <CardDescription>
           {isContractor 
             ? "Companies you are connected with" 
@@ -116,8 +74,8 @@ export function ConnectionRequestsList() {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {acceptedRequests.map((request: ConnectionRequest) => (
-            <Card key={request.id} className="overflow-hidden">
+          {connections.map((connection: ConnectionData) => (
+            <Card key={connection.id} className="overflow-hidden">
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-center">
                   <div>
@@ -126,20 +84,20 @@ export function ConnectionRequestsList() {
                         <>
                           <Building2 className="h-4 w-4 text-green-500" />
                           <CardTitle className="text-base">
-                            {request.businessName || "Unknown Business"}
+                            {connection.businessName || connection.email || "Connected Business"}
                           </CardTitle>
                         </>
                       ) : (
                         <>
                           <User className="h-4 w-4 text-green-500" />
                           <CardTitle className="text-base">
-                            {request.contractorName || "Unknown Contractor"}
+                            {connection.contractorName || connection.email || "Connected Contractor"}
                           </CardTitle>
                         </>
                       )}
                     </div>
                     <CardDescription className="mt-1">
-                      Connected on {formatDate(request.updatedAt)}
+                      Connected via V2 system
                     </CardDescription>
                   </div>
                   <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
@@ -148,16 +106,6 @@ export function ConnectionRequestsList() {
                   </Badge>
                 </div>
               </CardHeader>
-              {request.message && (
-                <CardContent className="pt-0">
-                  <div className="bg-muted p-3 rounded-md">
-                    <div className="flex items-start space-x-2">
-                      <MessageSquare className="h-4 w-4 text-muted-foreground mt-0.5" />
-                      <p className="text-sm text-muted-foreground">{request.message}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              )}
             </Card>
           ))}
         </div>
