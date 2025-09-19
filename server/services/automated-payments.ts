@@ -1,5 +1,5 @@
 import { storage } from '../storage';
-import { trolleyService } from '../trolley-service';
+import { createDirectTransferV2 } from './stripe';
 
 interface PaymentProcessingResult {
   success: boolean;
@@ -7,8 +7,6 @@ interface PaymentProcessingResult {
   logId?: number;
   error?: string;
   transferId?: string;
-  batchId?: string;
-  trolleyPaymentId?: string;
   // Add fields expected by UI
   payment?: {
     amount: string;
@@ -19,9 +17,9 @@ interface PaymentProcessingResult {
 }
 
 class AutomatedPaymentService {
-  
+
   /**
-   * 🚀 NEW: Non-blocking payment processing for approved work
+   * Process approved work payment using Stripe Connect V2
    * This follows the "approval first, payment second" approach
    * NEVER blocks approval even if payment fails
    */
@@ -51,27 +49,14 @@ class AutomatedPaymentService {
       const applicationFee = totalAmount * platformFeeRate;
       const netAmount = totalAmount - applicationFee;
 
-      console.log(`[PAYMENT_ATTEMPT] Starting payment for approved milestone ${milestoneId}: $${totalAmount}`);
+      console.log(`[PAYMENT_ATTEMPT] Starting Stripe payment for approved milestone ${milestoneId}: $${totalAmount}`);
 
-      // Check if auto-pay is enabled for this milestone
-      if (!milestone.autoPayEnabled) {
-        console.log(`[PAYMENT_SKIPPED] Auto-pay disabled for milestone ${milestoneId}`);
-        return { success: false, error: 'Auto-pay disabled for this milestone' };
-      }
-
-      // Check if payment already exists for this milestone
-      const existingPayment = await storage.getPaymentByMilestoneId(milestoneId);
-      if (existingPayment && existingPayment.status !== 'failed') {
-        console.log(`[PAYMENT_SKIPPED] Payment already exists for milestone ${milestoneId}`);
-        return { success: false, error: 'Payment already exists for this milestone' };
-      }
-
-      // NON-BLOCKING: Check if contractor has Trolley recipient setup
-      if (!contractor.trolleyRecipientId) {
-        console.log(`[PAYMENT_FAILED] Contractor ${contractor.id} not set up for payments`);
-        return { 
-          success: false, 
-          error: 'Contractor not set up for payments. Work approved but payment cannot be processed until contractor completes onboarding.'
+      // Check if contractor has Stripe Connect account setup
+      if (!contractor.stripeConnectAccountId) {
+        console.log(`[PAYMENT_FAILED] Contractor ${contractor.id} not set up for Stripe payments`);
+        return {
+          success: false,
+          error: 'Contractor not set up for payments. Work approved but payment cannot be processed until contractor completes Stripe Connect onboarding.'
         };
       }
 
@@ -82,7 +67,7 @@ class AutomatedPaymentService {
         return { success: false, error: 'Business user not found' };
       }
 
-      // NON-BLOCKING: Budget validation - Check if payment exceeds budget cap
+      // Budget validation - Check if payment exceeds budget cap
       let budgetWarning = null;
       const budgetInfo = await storage.getBudget(contract.businessId);
       if (budgetInfo && budgetInfo.budgetCap) {
@@ -93,9 +78,9 @@ class AutomatedPaymentService {
         if (totalAmount > budgetRemaining) {
           console.log(`⚠️ PAYMENT_BUDGET_WARNING: Amount $${totalAmount} exceeds remaining budget $${budgetRemaining}`);
           budgetWarning = `Payment amount $${totalAmount.toFixed(2)} exceeds remaining budget $${budgetRemaining.toFixed(2)}. Work approved but payment cannot be processed. Please increase your budget cap.`;
-          
-          return { 
-            success: false, 
+
+          return {
+            success: false,
             error: budgetWarning
           };
         }
@@ -103,29 +88,33 @@ class AutomatedPaymentService {
         console.log(`✅ BUDGET CHECK PASSED: Payment $${totalAmount} within remaining budget $${budgetRemaining}`);
       }
 
-      // Attempt payment through Trolley API
+      // Attempt payment through Stripe Connect V2
       let paymentResult = null;
       try {
-        paymentResult = await trolleyService.createAndProcessPayment({
-          recipientId: contractor.trolleyRecipientId,
-          amount: netAmount.toFixed(2),
-          currency: 'USD',
-          memo: `Payment for milestone: ${milestone.name}`,
-          externalId: `milestone_${milestoneId}`,
-          description: `Milestone payment for contract ${contract.contractName}`
+        paymentResult = await createDirectTransferV2({
+          destination: contractor.stripeConnectAccountId,
+          amount: netAmount,
+          currency: 'usd',
+          description: `Payment for milestone: ${milestone.name}`,
+          metadata: {
+            milestoneId: milestoneId.toString(),
+            contractId: contract.id.toString(),
+            contractorId: contractor.id.toString(),
+            businessId: contract.businessId.toString()
+          }
         });
-      } catch (trolleyError: any) {
-        console.log(`[PAYMENT_FAILED] Trolley API error: ${trolleyError.message}`);
-        return { 
-          success: false, 
-          error: `Payment processor error: ${trolleyError.message}. Work approved but payment failed.`
+      } catch (stripeError: any) {
+        console.log(`[PAYMENT_FAILED] Stripe API error: ${stripeError.message}`);
+        return {
+          success: false,
+          error: `Payment processor error: ${stripeError.message}. Work approved but payment failed.`
         };
       }
 
-      if (!paymentResult) {
-        console.log(`[PAYMENT_FAILED] Trolley payment creation failed`);
-        return { 
-          success: false, 
+      if (!paymentResult || !paymentResult.success) {
+        console.log(`[PAYMENT_FAILED] Stripe payment creation failed`);
+        return {
+          success: false,
           error: 'Payment processor temporarily unavailable. Work approved but payment failed.'
         };
       }
@@ -141,10 +130,9 @@ class AutomatedPaymentService {
           triggeredBy: 'auto_approval' as const,
           triggeredAt: new Date(),
           applicationFee: applicationFee.toFixed(2),
-          paymentProcessor: 'trolley' as const,
-          trolleyBatchId: paymentResult.batch.id,
-          trolleyPaymentId: paymentResult.payment.id,
-          notes: `Automatically triggered payment for approved milestone: ${milestone.name}`
+          paymentProcessor: 'stripe' as const,
+          stripeTransferId: paymentResult.transfer_id,
+          notes: `Automatically triggered Stripe payment for approved milestone: ${milestone.name}`
         };
 
         const payment = await storage.createPayment(paymentData);
@@ -165,14 +153,13 @@ class AutomatedPaymentService {
           paymentResult
         );
 
-        console.log(`✅ PAYMENT_SUCCESS: $${totalAmount} payment processed for milestone ${milestoneId}`);
+        console.log(`✅ STRIPE PAYMENT_SUCCESS: $${totalAmount} payment processed for milestone ${milestoneId}`);
 
         return {
           success: true,
           paymentId: payment.id,
           logId: logId,
-          batchId: paymentResult.batch.id,
-          trolleyPaymentId: paymentResult.payment.id,
+          transferId: paymentResult.transfer_id,
           payment: {
             amount: milestone.paymentAmount,
             contractorId: contractor.id,
@@ -182,16 +169,16 @@ class AutomatedPaymentService {
         };
       } catch (dbError: any) {
         console.error(`[PAYMENT_FAILED] Database error while recording payment:`, dbError);
-        return { 
-          success: false, 
+        return {
+          success: false,
           error: `Payment processed but database recording failed: ${dbError.message}`
         };
       }
 
     } catch (error: any) {
       console.error(`[PAYMENT_FAILED] Unexpected error in payment processing:`, error);
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: `Unexpected payment error: ${error.message}. Work approved but payment failed.`
       };
     }
@@ -204,110 +191,6 @@ class AutomatedPaymentService {
   async processMilestoneApproval(milestoneId: number, approvedBy: number): Promise<PaymentProcessingResult> {
     console.log(`[DEPRECATED] processMilestoneApproval called - redirecting to processApprovedWorkPayment`);
     return this.processApprovedWorkPayment(milestoneId, approvedBy);
-  }
-
-  /**
-   * Creates payment through Trolley Embedded Payouts
-   * Company wallet funds are used to pay contractors
-   */
-  private async createTrolleyPayment(
-    paymentId: number,
-    amount: number,
-    applicationFee: number,
-    contractor: any,
-    milestone: any,
-    contract: any
-  ): Promise<{ success: boolean; batchId?: string; paymentId?: string; error?: string }> {
-    try {
-      // Get business owner details
-      const business = await storage.getUser(contract.businessId);
-      if (!business) {
-        return { success: false, error: 'Business user not found' };
-      }
-
-      // Check if Trolley API is configured
-      if (!trolleyService.isConfigured()) {
-        return { 
-          success: false, 
-          error: 'Payment processing not configured. Contact support to enable payment processing.' 
-        };
-      }
-
-      // Check if business has Trolley company profile
-      if (!business.trolleyCompanyProfileId) {
-        return {
-          success: false,
-          error: 'Company must complete Trolley onboarding before processing payments. Please visit Payment Setup.'
-        };
-      }
-
-      // Prepare Trolley Embedded Payout data
-      const embeddedPayoutData = {
-        companyProfileId: business.trolleyCompanyProfileId,
-        recipient: {
-          id: contractor.trolleyRecipientId || contractor.email,
-          email: contractor.email,
-          firstName: contractor.firstName,
-          lastName: contractor.lastName,
-          type: 'individual'
-        },
-        payment: {
-          sourceAmount: amount,
-          sourceCurrency: 'USD',
-          targetCurrency: contractor.preferredCurrency || 'USD',
-          purpose: 'contractor_payment',
-          memo: `Milestone: ${milestone.name} - Contract ${contract.contractCode}`,
-          compliance: {
-            category: 'contractor_services',
-            subcategory: 'milestone_completion',
-            taxCategory: 'professional_services'
-          }
-        },
-        platformMetadata: {
-          contractId: contract.id,
-          milestoneId: milestone.id,
-          contractCode: contract.contractCode,
-          businessId: contract.businessId,
-          platformPaymentId: paymentId,
-          platformFee: applicationFee,
-          netContractorAmount: amount
-        }
-      };
-
-      console.log('Processing Trolley Embedded Payout:', {
-        companyProfile: business.trolleyCompanyProfileId,
-        contractorEmail: contractor.email,
-        amount: amount,
-        milestone: milestone.name,
-        contract: contract.contractCode
-      });
-
-      // LIVE TROLLEY PAYMENT - Create real payment through Trolley API
-      const { trolleyService } = await import('../trolley-service');
-      
-      const trolleyResult = await trolleyService.createAndProcessPayment({
-        recipientId: contractor.trolleyRecipientId,
-        amount: amount.toString(),
-        currency: 'USD',
-        memo: `Milestone: ${milestone.name} - Contract ${contract.contractCode}`
-      });
-
-      if (!trolleyResult) {
-        return { success: false, error: 'Failed to create live Trolley payment' };
-      }
-
-      console.log('✅ LIVE TROLLEY PAYMENT CREATED:', trolleyResult.payment.id);
-
-      return {
-        success: true,
-        batchId: trolleyResult.batch.id,
-        paymentId: trolleyResult.payment.id
-      };
-
-    } catch (error: any) {
-      console.error('Trolley Embedded Payout error:', error);
-      return { success: false, error: error.message };
-    }
   }
 
   /**
@@ -369,8 +252,8 @@ class AutomatedPaymentService {
       triggerEvent: 'milestone_approved' as const,
       approvalTimestamp: new Date(),
       paymentTimestamp: new Date(),
-      processorReference: stripeResult.paymentIntentId,
-      transferReference: stripeResult.transferId,
+      processorReference: stripeResult.transfer_id,
+      transferReference: stripeResult.transfer_id,
       deliverableReference: milestone.deliverableUrl,
       complianceData: complianceData
     };
@@ -387,16 +270,14 @@ class AutomatedPaymentService {
     try {
       // Get all approved milestones that don't have payments yet
       const unprocessedMilestones = await storage.getApprovedMilestonesWithoutPayments();
-      
+
       const results: PaymentProcessingResult[] = [];
-      
+
       for (const milestone of unprocessedMilestones) {
-        if (milestone.autoPayEnabled) {
-          const result = await this.processMilestoneApproval(milestone.id, milestone.approvedBy || 0);
-          results.push(result);
-        }
+        const result = await this.processMilestoneApproval(milestone.id, milestone.approvedBy || 0);
+        results.push(result);
       }
-      
+
       return results;
     } catch (error) {
       console.error('Error processing queued approvals:', error);

@@ -1308,30 +1308,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get contractor details
       const contractor = await storage.getUser(contract.contractorId);
-      if (!contractor || !contractor.trolleyRecipientId) {
-        return res.status(400).json({ message: "Contractor not found or not set up for payments" });
+      if (!contractor || !contractor.stripeConnectAccountId) {
+        return res.status(400).json({ message: "Contractor not found or not set up for Stripe payments" });
       }
 
-      // Trigger automated Trolley payment
+      // Trigger automated Stripe payment
       try {
-        const paymentAmount = parseFloat(updatedMilestone.paymentAmount);
+        const paymentResult = await automatedPaymentService.processApprovedWorkPayment(milestoneId, approvedBy);
 
-        // Create Trolley payment using existing payment creation logic
-        const paymentResult = await trolleyService.createAndProcessPayment(
-          contractor.trolleyRecipientId,
-          paymentAmount.toString(),
-          'GBP',
-          `Payment for milestone: ${updatedMilestone.name}`
-        );
-
-        if (paymentResult && paymentResult.batch && paymentResult.payment) {
+        if (paymentResult && paymentResult.success) {
           // Payment succeeded - log success and send notifications
-          console.log(`Payment processed successfully for milestone ${milestoneId}:`, {
-            batchId: paymentResult.batch.id,
-            paymentId: paymentResult.payment.id,
-            amount: paymentAmount,
-            currency: 'GBP',
-            contractor: contractor.trolleyRecipientId
+          console.log(`Stripe payment processed successfully for milestone ${milestoneId}:`, {
+            transferId: paymentResult.transferId,
+            paymentId: paymentResult.paymentId,
+            contractor: contractor.stripeConnectAccountId
           });
 
           // Send payment success notification to contractor
@@ -1339,40 +1329,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
             await notificationService.createPaymentProcessed(
               contractor.id,
               updatedMilestone.name,
-              `£${paymentAmount.toFixed(2)}`
+              `$${parseFloat(updatedMilestone.paymentAmount).toFixed(2)}`
             );
           } catch (notificationError) {
             console.error('Error creating payment notification:', notificationError);
-          }
-
-          // Update budget tracking - deduct from business user's budget
-          try {
-            const currentBudgetUsed = parseFloat(await storage.getUser(approvedBy).then(u => u?.budgetUsed || '0'));
-            const newBudgetUsed = (currentBudgetUsed + paymentAmount).toFixed(2);
-            await storage.updateUser(approvedBy, { budgetUsed: newBudgetUsed });
-            console.log(`Budget updated for user ${approvedBy}: £${newBudgetUsed} used`);
-          } catch (budgetError) {
-            console.error('Error updating budget tracking:', budgetError);
           }
 
           res.json({
             message: "Milestone approved and payment processed successfully",
             milestone: updatedMilestone,
             payment: {
-              batchId: paymentResult.batch.id,
-              paymentId: paymentResult.payment.id,
-              amount: paymentAmount,
-              currency: 'GBP',
-              status: 'completed'
+              transferId: paymentResult.transferId,
+              paymentId: paymentResult.paymentId,
+              amount: parseFloat(updatedMilestone.paymentAmount),
+              currency: 'USD',
+              status: 'processing'
             }
           });
         } else {
           // Payment failed - log error but keep milestone approved
-          console.error('Payment processing failed:', paymentResult);
+          console.error('Stripe payment processing failed:', paymentResult?.error);
 
           return res.status(500).json({
             message: "Payment processing failed - milestone remains approved for manual processing",
-            error: 'Failed to process Trolley payment',
+            error: paymentResult?.error || 'Failed to process Stripe payment',
             milestone: updatedMilestone
           });
         }
