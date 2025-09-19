@@ -322,13 +322,18 @@ function NewTaskContent() {
                       <Select 
                         onValueChange={(value) => field.onChange(parseInt(value))} 
                         value={field.value ? field.value.toString() : ""}
+                        disabled={createTaskMutation.isPending}
                       >
                         <FormControl>
-                          <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
+                          <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white transition-colors duration-200 will-change-auto">
                             <SelectValue placeholder="Choose a contractor..." />
                           </SelectTrigger>
                         </FormControl>
-                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                        <SelectContent 
+                          className="bg-zinc-900 border-zinc-700 max-h-[300px] overflow-y-auto"
+                          position="popper"
+                          sideOffset={5}
+                        >
                           {availableContractors.length === 0 ? (
                             <div className="p-4 text-center text-gray-400">
                               <p>No contractors available</p>
@@ -343,18 +348,18 @@ function NewTaskContent() {
                           ) : (
                             availableContractors.map((contractor: any) => (
                               <SelectItem 
-                                key={contractor.id} 
+                                key={`contractor-${contractor.id}`}
                                 value={contractor.id.toString()}
-                                className="text-white hover:bg-gray-800"
+                                className="text-white hover:bg-zinc-800 focus:bg-zinc-800 transition-colors duration-150 cursor-pointer"
                               >
-                                <div className="flex flex-col">
-                                  <span className="font-medium">
+                                <div className="flex flex-col py-1">
+                                  <span className="font-medium text-sm">
                                     {contractor.firstName && contractor.lastName 
                                       ? `${contractor.firstName} ${contractor.lastName}`
                                       : contractor.username || 'Contractor'
                                     }
                                   </span>
-                                  <span className="text-sm text-gray-400">{contractor.email || 'No email'}</span>
+                                  <span className="text-xs text-gray-400">{contractor.email || 'No email'}</span>
                                 </div>
                               </SelectItem>
                             ))

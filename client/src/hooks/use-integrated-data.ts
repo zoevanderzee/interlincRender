@@ -57,8 +57,9 @@ export function useIntegratedData() {
   const { data: stripeConnectData, isLoading: isStripeConnectLoading } = useQuery({
     queryKey: ['/api/connect/v2/status'],
     enabled: !!user && user.role === 'business',
-    staleTime: 30 * 1000,
-    refetchInterval: 60 * 1000,
+    staleTime: 60 * 1000, // Increased to reduce frequency
+    refetchInterval: 120 * 1000, // Reduced frequency to prevent UI lag
+    retry: 1, // Reduce retries
   });
 
   // Projects data - separate from contracts
