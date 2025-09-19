@@ -520,9 +520,7 @@ export default function Projects() {
                       </Card>
                     );
                   })
-                ) : null;
-              })()
-              ) : (
+                ) : (
                 <Card className="bg-zinc-900 border-zinc-800">
                   <CardContent className="pt-6 pb-6 text-center">
                     <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-zinc-800">
