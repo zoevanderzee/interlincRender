@@ -1,14 +1,11 @@
 /**
- * Stripe Connect Guard - Ensures embedded-only implementation
+ * Stripe Connect V2 Guard - Direct API Implementation Only
  * 
- * This guard script validates that the application uses only embedded onboarding
- * and prevents any fallback to Standard account links or accountLinks.create.
- * 
- * Design Requirements:
- * - Express accounts only (no Standard accounts)
- * - accountSessions.create only (no accountLinks.create)
- * - Embedded onboarding rendering inside container div
- * - No external redirects or popup windows
+ * This guard validates V2 direct API implementation:
+ * - No embedded components (V1 feature)
+ * - No redirects or external pages
+ * - Direct API calls only
+ * - Express accounts with full programmatic control
  */
 
 // Type definitions for validation
