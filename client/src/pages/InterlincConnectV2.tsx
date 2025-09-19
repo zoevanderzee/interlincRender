@@ -58,11 +58,7 @@ interface OnboardingForm {
   };
 }
 
-interface BankAccountForm {
-  routing_number: string;
-  account_number: string;
-  account_holder_type: 'individual' | 'company';
-}
+
 
 interface VerificationForm {
   document_type: string;
@@ -83,18 +79,12 @@ export default function InterlincConnectV2() {
     business_type: 'individual',
     address_country: 'GB'
   });
-  const [bankAccountForm, setBankAccountForm] = useState<BankAccountForm>({
-    routing_number: '',
-    account_number: '',
-    account_holder_type: 'individual'
-  });
+  
   const [verificationForm, setVerificationForm] = useState<VerificationForm>({
     document_type: 'passport'
   });
 
-  // Transfer state
-  const [transferAmount, setTransferAmount] = useState('');
-  const [transferDescription, setTransferDescription] = useState('');
+  
 
   // Check V2 status and capabilities
   const checkStatus = async () => {
@@ -205,46 +195,6 @@ export default function InterlincConnectV2() {
     }
   };
 
-  // Add bank account
-  const addBankAccount = async () => {
-    try {
-      setSubmitting(true);
-      setError(null);
-
-      const response = await apiRequest('POST', '/api/connect/v2/add-bank-account', {
-        body: JSON.stringify(bankAccountForm),
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Bank account addition failed');
-      }
-
-      const result = await response.json();
-      console.log('Bank account added:', result);
-
-      toast({
-        title: "Bank Account Added",
-        description: "Your bank account has been added successfully.",
-      });
-
-      // Clear form and refresh status
-      setBankAccountForm({
-        routing_number: '',
-        account_number: '',
-        account_holder_type: 'individual'
-      });
-      await checkStatus();
-
-    } catch (err) {
-      console.error('Bank account addition failed:', err);
-      setError(err instanceof Error ? err.message : 'Bank account addition failed');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   // Submit verification documents
   const submitVerification = async () => {
     try {
@@ -290,66 +240,6 @@ export default function InterlincConnectV2() {
     } catch (err) {
       console.error('Verification submission failed:', err);
       setError(err instanceof Error ? err.message : 'Verification submission failed');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  // Create transfer
-  const createTransfer = async () => {
-    try {
-      setSubmitting(true);
-      setError(null);
-
-      // Validate amount before sending
-      if (!transferAmount || transferAmount.trim() === '') {
-        throw new Error('Please enter an amount');
-      }
-
-      const amount = parseFloat(transferAmount);
-      if (isNaN(amount) || amount <= 0) {
-        throw new Error('Please enter a valid amount greater than 0');
-      }
-
-      if (amount < 0.5) {
-        throw new Error('Minimum transfer amount is $0.50');
-      }
-
-      console.log(`[Transfer] Creating transfer:`, {
-        originalInput: transferAmount,
-        parsedAmount: amount,
-        description: transferDescription || 'Manual transfer'
-      });
-
-      const requestBody = {
-        amount: amount,
-        description: transferDescription || 'Manual transfer'
-      };
-
-      console.log(`[Transfer] Request body:`, requestBody);
-
-      const response = await apiRequest('POST', '/api/connect/v2/create-transfer', requestBody);
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Transfer creation failed');
-      }
-
-      const result = await response.json();
-      console.log('Transfer created:', result);
-
-      toast({
-        title: "Transfer Created",
-        description: `Transfer of $${transferAmount} has been initiated.`,
-      });
-
-      // Clear form
-      setTransferAmount('');
-      setTransferDescription('');
-
-    } catch (err) {
-      console.error('Transfer creation failed:', err);
-      setError(err instanceof Error ? err.message : 'Transfer creation failed');
     } finally {
       setSubmitting(false);
     }
@@ -743,105 +633,51 @@ export default function InterlincConnectV2() {
 
               <TabsContent value="manage" className="p-6">
                 <div className="space-y-8">
-                  {/* Account Management */}
+                  {/* Account Status Display Only */}
                   <div>
-                    <h3 className="text-lg font-semibold mb-4">Account Management</h3>
-                    <div className="grid md:grid-cols-2 gap-6">
-                      {/* Bank Account Setup */}
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="text-base">Bank Account Setup</CardTitle>
-                          <CardDescription>
-                            {status?.verification_status?.verification_complete ? 
-                              "Update payout destination" : 
-                              "Complete onboarding first to add bank account"
-                            }
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
+                    <h3 className="text-lg font-semibold mb-4">Payment Processing Status</h3>
+                    <Card>
+                      <CardContent className="p-6">
+                        <div className="text-center">
                           {status?.verification_status?.verification_complete ? (
                             <>
-                              <div>
-                                <Label>Routing Number</Label>
-                                <Input 
-                                  value={bankAccountForm.routing_number}
-                                  onChange={(e) => setBankAccountForm(prev => ({...prev, routing_number: e.target.value}))}
-                                  placeholder="123456789"
-                                />
+                              <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <CheckCircle className="w-8 h-8 text-green-400" />
                               </div>
-                              <div>
-                                <Label>Account Number</Label>
-                                <Input 
-                                  value={bankAccountForm.account_number}
-                                  onChange={(e) => setBankAccountForm(prev => ({...prev, account_number: e.target.value}))}
-                                  placeholder="1234567890"
-                                />
+                              <h3 className="text-xl font-semibold mb-2 text-green-400">Payment Processing Active</h3>
+                              <p className="text-muted-foreground mb-4">
+                                Your account is fully verified and ready to process contractor payments automatically when milestones are approved.
+                              </p>
+                              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mt-4">
+                                <h4 className="font-medium text-blue-400 mb-2">How Payments Work</h4>
+                                <ul className="text-sm text-blue-300 space-y-1 text-left">
+                                  <li>• Business assigns contractor to project/task</li>
+                                  <li>• Contractor submits work deliverables</li>
+                                  <li>• Business approves milestone → Payment automatically sent</li>
+                                  <li>• Contractor receives direct bank transfer</li>
+                                </ul>
                               </div>
-                              <Button onClick={addBankAccount} disabled={submitting} className="w-full">
-                                {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                                Update Bank Account
-                              </Button>
                             </>
                           ) : (
-                            <div className="text-center py-4">
-                              <AlertCircle className="w-8 h-8 text-amber-400 mx-auto mb-2" />
-                              <p className="text-sm text-muted-foreground mb-4">
-                                Bank account setup is handled during the onboarding process. 
-                                Complete your account verification first.
+                            <>
+                              <div className="w-16 h-16 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <Clock className="w-8 h-8 text-amber-400" />
+                              </div>
+                              <h3 className="text-xl font-semibold mb-2 text-amber-400">Setup In Progress</h3>
+                              <p className="text-muted-foreground mb-4">
+                                Complete your account verification to enable automated contractor payments.
                               </p>
                               <Button 
-                                variant="outline" 
                                 onClick={() => setActiveTab('onboard')}
                                 disabled={!status?.hasAccount || !status?.needsOnboarding}
                               >
-                                Complete Onboarding
+                                Continue Setup
                               </Button>
-                            </div>
+                            </>
                           )}
-                        </CardContent>
-                      </Card>
-
-                      {/* Manual Transfer */}
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="text-base">Create Transfer</CardTitle>
-                          <CardDescription>Manual payout transfer</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div>
-                            <Label>Amount ($)</Label>
-                            <Input 
-                              type="number"
-                              step="0.01"
-                              min="0.01"
-                              value={transferAmount}
-                              onChange={(e) => setTransferAmount(e.target.value)}
-                              placeholder="100.00"
-                              required
-                            />
-                            {transferAmount && isNaN(parseFloat(transferAmount)) && (
-                              <p className="text-sm text-red-500 mt-1">Please enter a valid number</p>
-                            )}
-                          </div>
-                          <div>
-                            <Label>Description</Label>
-                            <Input 
-                              value={transferDescription}
-                              onChange={(e) => setTransferDescription(e.target.value)}
-                              placeholder="Transfer description"
-                            />
-                          </div>
-                          <Button 
-                            onClick={createTransfer} 
-                            disabled={submitting || !transferAmount || isNaN(parseFloat(transferAmount)) || parseFloat(transferAmount) <= 0} 
-                            className="w-full"
-                          >
-                            {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                            Create Transfer
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    </div>
+                        </div>
+                      </CardContent>
+                    </Card>
                   </div>
 
                   {/* Requirements */}
