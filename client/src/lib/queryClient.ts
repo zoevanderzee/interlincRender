@@ -20,7 +20,7 @@ async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     let errorMessage: string;
     let errorData: any;
-    
+
     try {
       // Try to parse as JSON first
       errorData = await res.json();
@@ -29,7 +29,7 @@ async function throwIfResNotOk(res: Response) {
       // Fall back to text if not JSON
       errorMessage = await res.text() || res.statusText;
     }
-    
+
     throw createApiError(
       res.status,
       res.statusText,
@@ -59,51 +59,51 @@ export async function apiRequest(
   try {
     // Normalize method name to uppercase
     const normalizedMethod = method.toUpperCase();
-    
+
     // Content-Type is only needed for methods with a body (POST, PUT, PATCH)
     const defaultHeaders: Record<string, string> = 
       data && ['POST', 'PUT', 'PATCH'].includes(normalizedMethod) 
         ? { "Content-Type": "application/json" } 
         : {};
-    
+
     // Add CSRF token to headers for non-GET requests if available
     if (csrfToken && !['GET', 'HEAD', 'OPTIONS'].includes(normalizedMethod)) {
       defaultHeaders['X-CSRF-Token'] = csrfToken;
     }
-    
+
     // Add authentication headers required by backend
     const userId = localStorage.getItem('user_id');
     const firebaseUid = localStorage.getItem('firebase_uid');
-    
+
     console.log('Authentication headers check:');
     console.log('user_id from localStorage:', userId);
     console.log('firebase_uid from localStorage:', firebaseUid);
-    
+
     if (userId) {
       defaultHeaders['X-User-ID'] = userId;
       console.log('Added X-User-ID header:', userId);
     }
-    
+
     if (firebaseUid) {
       defaultHeaders['X-Firebase-UID'] = firebaseUid;
       console.log('Added X-Firebase-UID header:', firebaseUid);
     }
-    
+
     if (!userId && !firebaseUid) {
       console.log('No authentication headers available - user not logged in');
     }
-    
+
     const headers: Record<string, string> = { ...defaultHeaders, ...(customHeaders || {}) };
-    
+
     // Make sure the URL is always lowercase to match server routes
     const normalizedUrl = url.toLowerCase();
-    
+
     // Log the fetch request for debugging
     console.log(`API Request: ${normalizedMethod} ${normalizedUrl}`, { headers, hasCookies: document.cookie.length > 0 });
-    
+
     // Only include body for methods that support it
     const hasBody = ['POST', 'PUT', 'PATCH'].includes(normalizedMethod);
-    
+
     const res = await fetch(normalizedUrl, {
       method: normalizedMethod,
       headers,
@@ -115,7 +115,7 @@ export async function apiRequest(
 
     // Update CSRF token from response
     updateCsrfToken(res);
-    
+
     // Log the response status and headers
     console.log(`API Response: ${normalizedMethod} ${normalizedUrl}`, { 
       status: res.status, 
@@ -129,7 +129,7 @@ export async function apiRequest(
     if ((error as ApiError).isApiError) {
       throw error;
     }
-    
+
     // Handle network errors or other non-API errors
     throw createApiError(
       0,
@@ -149,32 +149,32 @@ export const getQueryFn: <T>(options: {
     try {
       const endpoint = (queryKey[0] as string).toLowerCase();
       console.log(`Fetching data from ${endpoint}`);
-      
+
       // Add authentication headers - use the same logic as apiRequest
       const userId = localStorage.getItem('user_id');
       const firebaseUid = localStorage.getItem('firebase_uid');
-      
+
       // Log the fetch request for debugging
       console.log(`Query Request: GET ${endpoint}`, { 
         hasCookies: document.cookie.length > 0,
         cookieString: document.cookie,
         hasUserInStorage: !!userId
       });
-      
+
       // Use header-based authentication with localStorage
       const headers: HeadersInit = {
         'Accept': 'application/json',
         'Cache-Control': 'no-cache'
       };
-      
+
       if (userId) {
         headers['X-User-ID'] = userId;
       }
-      
+
       if (firebaseUid) {
         headers['X-Firebase-UID'] = firebaseUid;
       }
-      
+
       const res = await fetch(endpoint, {
         method: 'GET',
         credentials: "include",
@@ -184,7 +184,7 @@ export const getQueryFn: <T>(options: {
 
       // Update CSRF token from response
       updateCsrfToken(res);
-      
+
       // Log the response status and headers
       console.log(`Query Response: GET ${endpoint}`, { 
         status: res.status, 
@@ -201,11 +201,11 @@ export const getQueryFn: <T>(options: {
       return await res.json();
     } catch (error) {
       console.error(`Error fetching data from ${queryKey[0]}:`, error);
-      
+
       if ((error as ApiError).isApiError) {
         throw error;
       }
-      
+
       // Handle network errors or other non-API errors
       throw createApiError(
         0,
@@ -235,15 +235,15 @@ export const queryClient = new QueryClient({
 // Clear all cached data and force fresh authentication check
 export function clearAuthCache() {
   console.log("Clearing all authentication caches and data");
-  
+
   // Clear React Query cache
   queryClient.clear();
   queryClient.removeQueries();
-  
+
   // Clear all browser storage
   localStorage.clear();
   sessionStorage.clear();
-  
+
   // Clear all cookies aggressively
   const cookies = document.cookie.split(';');
   for (let cookie of cookies) {
@@ -257,13 +257,13 @@ export function clearAuthCache() {
     document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.replit.dev;`;
     document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.interlinc.app;`;
   }
-  
+
   // Clear IndexedDB
   if ('indexedDB' in window) {
     indexedDB.deleteDatabase('keyval-store');
     indexedDB.deleteDatabase('firebaseLocalStorageDb');
   }
-  
+
   // Clear any cached user headers
   if ('caches' in window) {
     caches.keys().then(names => {
@@ -272,6 +272,6 @@ export function clearAuthCache() {
       });
     });
   }
-  
+
   console.log("All authentication data cleared");
 }

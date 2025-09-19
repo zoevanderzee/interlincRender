@@ -18,6 +18,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useIntegratedData } from "@/hooks/use-integrated-data";
 import { Contract, User, Payment, Milestone } from "@shared/schema";
+import { useQuery } from '@tanstack/react-query';
+
 
 // Define interface for dashboard data (this is now implicitly handled by useIntegratedData)
 // Keep for clarity if needed, but the hook should provide typed data.
@@ -54,6 +56,12 @@ const Dashboard = () => {
   // Use the integrated data hook
   const { data: integratedData, isLoading: isDashboardLoading, error: dashboardError } = useIntegratedData();
   const { toast } = useToast();
+
+  // Fetch connect status using V2 API
+  const { data: connectStatus } = useQuery({
+    queryKey: ['/api/connect/v2/status'],
+    enabled: !!user
+  });
 
   // Format the remaining budget as currency
   const formatCurrency = (value: string | null): string => {
