@@ -55,7 +55,7 @@ export function useIntegratedData() {
 
   // Stripe Connect V2 account status - replaces Trolley wallet balance
   const { data: stripeConnectData, isLoading: isStripeConnectLoading } = useQuery({
-    queryKey: ['connect-status-v2'],
+    queryKey: ['/api/connect/v2/status'],
     queryFn: () => apiRequest('GET', '/api/connect/v2/status').then(res => res.json()),
     enabled: !!user && user.role === 'business',
     staleTime: 30 * 1000, // Financial data needs frequent updates
@@ -96,8 +96,7 @@ export function useIntegratedData() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] }),
       queryClient.invalidateQueries({ queryKey: ['/api/budget'] }),
-      queryClient.invalidateQueries({ queryKey: ['connect-status-v2'] }), // Invalidates Stripe Connect V2 status
-      queryClient.invalidateQueries({ queryKey: ['/api/trolley/funding-history'] }), // Trolley related query, kept for potential future use or if other parts of the app still use it
+      queryClient.invalidateQueries({ queryKey: ['/api/connect/v2/status'] }),
       queryClient.invalidateQueries({ queryKey: ['/api/user'] }),
       queryClient.invalidateQueries({ queryKey: ['/api/contracts'] }),
       queryClient.invalidateQueries({ queryKey: ['/api/milestones'] }),
