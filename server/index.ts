@@ -73,9 +73,6 @@ app.use((req, res, next) => {
   // Setup health check (before auth)
   setupHealthCheck(app);
 
-  // Setup security headers
-  setupSecurityHeaders(app);
-
   // Setup authentication
   setupAuth(app);
 
