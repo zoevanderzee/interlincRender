@@ -257,8 +257,8 @@ queryClient.cancelQueries({ queryKey: ['/api/connect/status'] });
 queryClient.cancelQueries({ queryKey: ['connect-status'] });
 queryClient.cancelQueries({ queryKey: ['connect'] });
 
-// Continuously monitor and block V1 queries
-setInterval(() => {
+// One-time cleanup of V1 queries at startup
+const cleanupV1Queries = () => {
   const queries = queryClient.getQueryCache().findAll();
   queries.forEach(query => {
     const key = query.queryKey[0];
@@ -266,11 +266,13 @@ setInterval(() => {
         (key.includes('/api/connect/status') || 
          key === 'connect-status' || 
          (key.includes('connect') && !key.includes('/v2/')))) {
-      console.log('🚫 Found and removing rogue V1 query:', key);
+      console.log('🚫 Removing V1 query:', key);
       queryClient.removeQueries({ queryKey: query.queryKey });
     }
   });
-}, 5000); // Check every 5 seconds
+};
+
+cleanupV1Queries();
 
 // Force clear the entire cache to remove any lingering V1 data
 queryClient.clear();

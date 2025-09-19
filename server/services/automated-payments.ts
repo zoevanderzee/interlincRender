@@ -109,7 +109,7 @@ class AutomatedPaymentService {
         // Create V2 direct transfer to contractor's account
         const transferResult = await createDirectTransferV2({
           destination: contractorConnect.accountId,
-          amount: netAmount,
+          amount: Math.round(netAmount * 100), // Convert to cents
           currency: 'usd',
           description: `Payment for milestone: ${milestone.name} (Project: ${milestone.contractName})`,
           metadata: {
