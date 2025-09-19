@@ -328,10 +328,7 @@ export default function InterlincConnectV2() {
 
       console.log(`[Transfer] Request body:`, requestBody);
 
-      const response = await apiRequest('POST', '/api/connect/v2/create-transfer', {
-        body: JSON.stringify(requestBody),
-        headers: { 'Content-Type': 'application/json' }
-      });
+      const response = await apiRequest('POST', '/api/connect/v2/create-transfer', requestBody);
 
       if (!response.ok) {
         const errorData = await response.json();
