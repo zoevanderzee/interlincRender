@@ -1,0 +1,81 @@
+Error fetching data from /api/connect/status: 
+Error {status: 410, statusText: "Gone", data: {…}, isApiError: true}
+
+Query Response: GET /api/notifications/count 
+Object {status: 200, setCookie: null, contentType: "application/json; charset=utf-8"}
+Fetching data from /api/connect/status
+Query Request: GET /api/connect/status 
+Object {hasCookies: false, cookieString: "", hasUserInStorage: true}
+Query Response: GET /api/connect/status 
+Object {status: 410, setCookie: null, contentType: "application/json; charset=utf-8"}
+Error fetching data from /api/connect/status: 
+Error {status: 410, statusText: "Gone", data: {…}, isApiError: true}
+
+Fetching data from /api/connect/status
+Query Request: GET /api/connect/status 
+Object {hasCookies: false, cookieString: "", hasUserInStorage: true}
+Query Response: GET /api/connect/status 
+Object {status: 410, setCookie: null, contentType: "application/json; charset=utf-8"}
+Error fetching data from /api/connect/status: 
+Error {status: 410, statusText: "Gone", data: {…}, isApiError: true}
+
+Fetching data from /api/connect/status
+Query Request: GET /api/connect/status 
+Object {hasCookies: false, cookieString: "", hasUserInStorage: true}
+Query Response: GET /api/connect/status 
+Object {status: 410, setCookie: null, contentType: "application/json; charset=utf-8"}
+Error fetching data from /api/connect/status: 
+Error {status: 410, statusText: "Gone", data: {…}, isApiError: true}
+
+
+ InterLinc Logo
+
+CORE
+Dashboard
+Projects
+Calendar
+Contractors
+FINANCE
+Payments
+Budget Oversight
+Reports
+Interlinc Connect
+DOCUMENTS
+Data Room
+Settings
+Help & Support
+Interlinc
+Interlinc
+1
+Projects
+Oversee your project portfolio and contractor relationships
+New Project
+Projects Overview
+Tasks
+Individual Contracts
+Total Projects
+8
+Assigned Projects
+0
+Total Contractors
+1
+Total Value
+$8
+Your Projects
+test
+Pay test
+Unassigned
+Budget: $1.00
+Created: 18/09/2025
+Assign Contractor
+test
+Pay test
+Unassigned
+Budget: $1.00
+Created: 18/09/2025
+Assign Contractor
+test
+Pay test
+Unassigned
+Budget: $1.00
+Created: 18/09/2025
