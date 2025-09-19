@@ -48,37 +48,7 @@ export default function connectRoutes(app, apiPath, authMiddleware) {
   // V2 ROUTES ONLY - V1 completely removed
   connectV2Routes(app, apiPath, authMiddleware);
 
-  // Block any remaining V1 endpoint attempts with clear error messages
-  app.all(`${apiPath}/connect/status`, (req, res) => {
-    console.log('❌ Blocked V1 Connect endpoint access:', req.method, req.url);
-    res.status(410).json({ 
-      error: 'V1 Connect API permanently removed', 
-      message: 'Use V2 only: /api/connect/v2/status',
-      redirect: '/api/connect/v2/status'
-    });
-  });
-
-  app.all(`${apiPath}/connect/create-account`, (req, res) => {
-    console.log('❌ Blocked V1 Connect endpoint access:', req.method, req.url);
-    res.status(410).json({ 
-      error: 'V1 Connect API permanently removed', 
-      message: 'Use V2 only: /api/connect/v2/create-account' 
-    });
-  });
-
-  // Block any other V1 Connect endpoints
-  app.all(`${apiPath}/connect/*`, (req, res, next) => {
-    // Allow V2 endpoints to pass through
-    if (req.path.includes('/connect/v2/')) {
-      return next();
-    }
-    
-    console.log('❌ Blocked V1 Connect endpoint access:', req.method, req.url);
-    res.status(410).json({ 
-      error: 'V1 Connect API permanently removed', 
-      message: 'All Connect functionality moved to V2: /api/connect/v2/*' 
-    });
-  });
+  // V1 endpoints completely removed - only V2 available
 
   console.log("✅ Stripe Connect V2 routes initialized - V1 endpoints completely blocked");
 }

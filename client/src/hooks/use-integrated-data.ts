@@ -176,7 +176,7 @@ export function useIntegratedData() {
     budgetData: budgetData || null,
     hasActiveSubscription: user?.subscriptionStatus === 'active',
     paymentMethodsEnabled: stripeConnectData?.hasAccount && !stripeConnectData?.needsOnboarding,
-    trolleyVerificationStatus: user?.trolleySubmerchantStatus || 'pending', // Kept for potential future use or if other parts of the app still use it
+    trolleyVerificationStatus: 'active', // V1 Trolley system removed - using V2 Stripe Connect only
     notificationCount: parseInt(notificationData?.count || '0', 10),
   };
 

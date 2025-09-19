@@ -21,7 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useIntegratedData } from "@/hooks/use-integrated-data";
 import { Contract, User, Payment, Milestone } from "@shared/schema";
 import { useQuery } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/api';
+import { apiRequest } from '@/lib/queryClient';
 
 
 // Define interface for dashboard data (this is now implicitly handled by useIntegratedData)
@@ -60,12 +60,8 @@ const Dashboard = () => {
   const { data: integratedData, isLoading: isDashboardLoading, error: dashboardError } = useIntegratedData();
   const { toast } = useToast();
 
-  // Fetch connect status using V2 API
-  const { data: connectStatus } = useQuery({
-    queryKey: ['connect-status-v2'],
-    queryFn: () => apiRequest('GET', '/api/connect/v2/status').then(res => res.json()),
-    refetchInterval: 30000,
-  });
+  // Use V2 connect data from integrated hook
+  const { stripeConnectData: connectStatus } = useIntegratedData();
 
   // Format the remaining budget as currency
   const formatCurrency = (value: string | null): string => {
