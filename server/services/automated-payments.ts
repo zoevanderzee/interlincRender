@@ -1,5 +1,6 @@
 import { storage } from '../storage';
 import { createDirectTransferV2 } from './stripe';
+import { notificationService } from './notifications';
 
 interface PaymentProcessingResult {
   success: boolean;
@@ -88,20 +89,41 @@ class AutomatedPaymentService {
         console.log(`✅ BUDGET CHECK PASSED: Payment $${totalAmount} within remaining budget $${budgetRemaining}`);
       }
 
-      // Attempt payment through Stripe Connect V2
-      let paymentResult = null;
+      // Process payment through Stripe V2 Connect
+      console.log(`[Automated Payments] Processing milestone payment for milestone ${milestoneId}`);
+
       try {
-        paymentResult = await createDirectTransferV2({
-          destination: contractor.stripeConnectAccountId,
+        // Get contractor's Stripe Connect account
+        const contractorConnect = await storage.getConnectForUser(contractor.id);
+
+        if (!contractorConnect?.accountId) {
+          throw new Error(`Contractor ${contractor.id} does not have a Stripe Connect account`);
+        }
+
+        console.log(`[Automated Payments] Creating Stripe V2 transfer:`, {
+          destination: contractorConnect.accountId,
+          amount: netAmount,
+          milestone: milestone.name
+        });
+
+        // Create V2 direct transfer to contractor's account
+        const transferResult = await createDirectTransferV2({
+          destination: contractorConnect.accountId,
           amount: netAmount,
           currency: 'usd',
-          description: `Payment for milestone: ${milestone.name}`,
+          description: `Payment for milestone: ${milestone.name} (Project: ${milestone.contractName})`,
           metadata: {
             milestoneId: milestoneId.toString(),
-            contractId: contract.id.toString(),
             contractorId: contractor.id.toString(),
-            businessId: contract.businessId.toString()
+            businessId: approvedBy.toString(),
+            paymentType: 'milestone_completion'
           }
+        });
+
+        console.log(`✅ Stripe V2 transfer created successfully:`, {
+          transferId: transferResult.transfer_id,
+          amount: netAmount,
+          status: transferResult.status
         });
       } catch (stripeError: any) {
         console.log(`[PAYMENT_FAILED] Stripe API error: ${stripeError.message}`);
@@ -111,7 +133,7 @@ class AutomatedPaymentService {
         };
       }
 
-      if (!paymentResult || !paymentResult.success) {
+      if (!transferResult || !transferResult.success) {
         console.log(`[PAYMENT_FAILED] Stripe payment creation failed`);
         return {
           success: false,
@@ -119,22 +141,24 @@ class AutomatedPaymentService {
         };
       }
 
-      // Create payment record in database
-      try {
-        const paymentData = {
-          contractId: milestone.contractId,
-          milestoneId: milestoneId,
-          amount: milestone.paymentAmount,
-          status: 'processing' as const,
-          scheduledDate: new Date(),
-          triggeredBy: 'auto_approval' as const,
-          triggeredAt: new Date(),
-          applicationFee: applicationFee.toFixed(2),
-          paymentProcessor: 'stripe' as const,
-          stripeTransferId: paymentResult.transfer_id,
-          notes: `Automatically triggered Stripe payment for approved milestone: ${milestone.name}`
-        };
 
+      // Create payment record
+      const paymentData = {
+        contractId: milestone.contractId,
+        milestoneId: milestoneId,
+        amount: netAmount.toFixed(2),
+        status: 'completed' as const,
+        stripeTransferId: transferResult.transfer_id,
+        processedAt: new Date().toISOString(),
+        metadata: {
+          approvedBy,
+          transferStatus: transferResult.status
+        }
+      };
+
+
+      // Store payment and update budget
+      try {
         const payment = await storage.createPayment(paymentData);
 
         // Update budget tracking
@@ -150,7 +174,7 @@ class AutomatedPaymentService {
           totalAmount,
           applicationFee,
           netAmount,
-          paymentResult
+          transferResult // Pass transferResult for compliance log
         );
 
         console.log(`✅ STRIPE PAYMENT_SUCCESS: $${totalAmount} payment processed for milestone ${milestoneId}`);
@@ -159,7 +183,7 @@ class AutomatedPaymentService {
           success: true,
           paymentId: payment.id,
           logId: logId,
-          transferId: paymentResult.transfer_id,
+          transferId: transferResult.transfer_id,
           payment: {
             amount: milestone.paymentAmount,
             contractorId: contractor.id,
