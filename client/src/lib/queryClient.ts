@@ -240,21 +240,21 @@ export const queryClient = new QueryClient({
   }
 });
 
-// Permanently block all V1 Connect endpoints
-queryClient.removeQueries({ 
-  queryKey: ['connect-status'], 
-  exact: false 
-});
+// AGGRESSIVELY REMOVE ALL V1 CONNECT QUERIES
+console.log('🔥 PERMANENTLY REMOVING ALL V1 CONNECT QUERIES');
 
-queryClient.removeQueries({ 
-  queryKey: ['connect'], 
-  exact: false 
-});
+// Remove all possible V1 Connect query variations
+queryClient.removeQueries({ queryKey: ['connect-status'], exact: false });
+queryClient.removeQueries({ queryKey: ['connect'], exact: false });
+queryClient.removeQueries({ queryKey: ['/api/connect/status'], exact: false });
+queryClient.removeQueries({ queryKey: ['/api/connect'], exact: false });
 
-queryClient.removeQueries({ 
-  queryKey: ['/api/connect/status'], 
-  exact: false 
-});
+// Cancel any ongoing V1 Connect queries
+queryClient.cancelQueries({ queryKey: ['/api/connect/status'] });
+queryClient.cancelQueries({ queryKey: ['connect-status'] });
+
+// Force clear the entire cache to remove any lingering V1 data
+queryClient.clear();
 
 // V1 endpoints permanently removed - using getQueryFn for all queries
 queryClient.setDefaultOptions({

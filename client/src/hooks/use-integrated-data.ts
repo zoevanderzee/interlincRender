@@ -106,9 +106,10 @@ export function useIntegratedData() {
       queryClient.invalidateQueries({ queryKey: ['/api/notifications/count'] }),
     ]);
     
-    // Ensure no V1 queries exist
-    queryClient.removeQueries({ queryKey: ['/api/connect/status'] });
-    queryClient.removeQueries({ queryKey: ['connect-status'] });
+    // Permanently remove ALL V1 Connect queries
+    queryClient.removeQueries({ queryKey: ['/api/connect/status'], exact: false });
+    queryClient.removeQueries({ queryKey: ['connect-status'], exact: false });
+    queryClient.removeQueries({ queryKey: ['connect'], exact: false });
   };
 
   // Function to update data optimistically across all components
