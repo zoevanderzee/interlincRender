@@ -55,11 +55,9 @@ const Contractors = () => {
     enabled: !!user
   });
 
-  // Fetch connection requests to get contractors connected to this business
-  const { data: connectionRequests = [], isLoading: isLoadingConnections } = useQuery({
-    queryKey: ['/api/connection-requests'],
-    enabled: !isContractor && !!user,
-  });
+  // Use dashboard data for contractors - no separate connection requests needed
+  const connectionRequests = [];
+  const isLoadingConnections = false;
   
   // Get data from dashboard - use empty arrays as fallbacks since these properties may not exist
   const externalWorkers = (dashboardData as any)?.contractors || [];
@@ -67,24 +65,20 @@ const Contractors = () => {
   const contracts = (dashboardData as any)?.contracts || [];
   const isLoadingBusinesses = isLoadingWorkers;
   
-  // Get contractor IDs from accepted connection requests
+  // All contractors from dashboard are already connected
   const connectedContractorIds = new Set(
-    (connectionRequests as any[])
-      .filter((req: any) => req.status === 'accepted')
-      .map((req: any) => req.contractorId)
+    externalWorkers.map((worker: User) => worker.id)
   );
 
   // Filter contractors and freelancers - based on the tabs we've defined
   // "Sub Contractors" tab shows workers with role=contractor AND workerType=contractor
   const subContractors = externalWorkers.filter((worker: User) => 
-    worker.role === 'contractor' && worker.workerType === 'contractor' && 
-    (isContractor || connectedContractorIds.has(worker.id))
+    worker.role === 'contractor' && worker.workerType === 'contractor'
   );
   
   // "Contractors" tab shows workers with role=contractor who are either freelancers or don't have a workerType
   const contractors = externalWorkers.filter((worker: User) => 
-    worker.role === 'contractor' && (worker.workerType === 'freelancer' || !worker.workerType || worker.workerType === '') &&
-    (isContractor || connectedContractorIds.has(worker.id))
+    worker.role === 'contractor' && (worker.workerType === 'freelancer' || !worker.workerType || worker.workerType === '')
   );
   
   // Keep this for code compatibility - we'll update references from freelancers to contractors
@@ -552,20 +546,10 @@ const Contractors = () => {
           {/* Connection Requests Display */}
           {isContractor && (
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium text-white">Company Connection Requests</h3>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => {
-                    queryClient.invalidateQueries({ queryKey: ['/api/connection-requests'] });
-                  }}
-                >
-                  Refresh
-                </Button>
+              <div className="text-center py-8">
+                <h3 className="text-lg font-medium text-white mb-2">Company Connections</h3>
+                <p className="text-muted-foreground">Your connected companies will appear in the "Active Companies" tab.</p>
               </div>
-              
-              <ConnectionRequestsList />
             </div>
           )}
         </TabsContent>
@@ -804,8 +788,7 @@ const Contractors = () => {
                 )}
               </div>
               
-              {/* Connection Requests - Only show for contractors */}
-              {isContractor && <ConnectionRequestsList />}
+              {/* Connection Requests functionality moved to V2 system */}
             </div>
           </TabsContent>
         )}
