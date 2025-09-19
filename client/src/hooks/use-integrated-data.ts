@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "./use-auth";
+import { apiRequest } from "@/lib/queryClient";
 
 // Define comprehensive interfaces for all integrated data
 interface IntegratedStats {
@@ -54,7 +55,8 @@ export function useIntegratedData() {
 
   // Stripe Connect account status - replaces Trolley wallet balance
   const { data: stripeConnectData, isLoading: isStripeConnectLoading } = useQuery({
-    queryKey: ['/api/connect/status'],
+    queryKey: ['connect-status-v2'],
+    queryFn: () => apiRequest('GET', '/api/connect/v2/status').then(res => res.json()),
     enabled: !!user && user.role === 'business',
     staleTime: 30 * 1000, // Financial data needs frequent updates
     refetchInterval: 60 * 1000,
@@ -94,7 +96,7 @@ export function useIntegratedData() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] }),
       queryClient.invalidateQueries({ queryKey: ['/api/budget'] }),
-      queryClient.invalidateQueries({ queryKey: ['/api/connect/status'] }), // Invalidates Stripe Connect status
+      queryClient.invalidateQueries({ queryKey: ['connect-status-v2'] }), // Invalidates Stripe Connect V2 status
       queryClient.invalidateQueries({ queryKey: ['/api/trolley/funding-history'] }), // Trolley related query, kept for potential future use or if other parts of the app still use it
       queryClient.invalidateQueries({ queryKey: ['/api/user'] }),
       queryClient.invalidateQueries({ queryKey: ['/api/contracts'] }),
@@ -126,7 +128,7 @@ export function useIntegratedData() {
 
     // Update Stripe Connect status if relevant updates are provided
     if (updates.stripeConnectStatus) {
-      queryClient.setQueryData(['/api/connect/status'], (oldData: any) => ({
+      queryClient.setQueryData(['connect-status-v2'], (oldData: any) => ({
         ...oldData,
         ...updates.stripeConnectStatus
       }));
