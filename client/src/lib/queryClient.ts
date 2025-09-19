@@ -233,7 +233,7 @@ export const queryClient = new QueryClient({
   }
 });
 
-// Clear any V1 cached queries on initialization
+// Permanently block all V1 Connect endpoints
 queryClient.removeQueries({ 
   queryKey: ['connect-status'], 
   exact: false 
@@ -244,8 +244,27 @@ queryClient.removeQueries({
   exact: false 
 });
 
-// Only keep V2 queries
-console.log('Query cache cleared of V1 Connect endpoints');
+queryClient.removeQueries({ 
+  queryKey: ['/api/connect/status'], 
+  exact: false 
+});
+
+// Block any attempts to call V1 endpoints
+const originalQueryFn = queryClient.getDefaultOptions().queries?.queryFn;
+queryClient.setDefaultOptions({
+  queries: {
+    ...queryClient.getDefaultOptions().queries,
+    queryFn: (context) => {
+      const endpoint = context.queryKey[0] as string;
+      if (endpoint === '/api/connect/status' || endpoint.includes('/api/connect/status')) {
+        throw new Error('V1 Connect endpoints are deprecated - use /api/connect/v2/status');
+      }
+      return originalQueryFn ? originalQueryFn(context) : undefined;
+    }
+  }
+});
+
+console.log('V1 Connect endpoints permanently blocked - only V2 available');
 
 
 // Clear all cached data and force fresh authentication check

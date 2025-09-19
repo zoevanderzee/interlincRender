@@ -45,10 +45,18 @@ const db = {
 };
 
 export default function connectRoutes(app, apiPath, authMiddleware) {
-  // V2 ROUTES ONLY - V1 completely removed
+  // PERMANENTLY BLOCK ALL V1 ENDPOINTS
+  app.all(`${apiPath}/connect/status`, (req, res) => {
+    console.log(`❌ BLOCKED V1 endpoint call: ${req.method} ${req.path}`);
+    res.status(410).json({ 
+      error: "V1 Connect endpoints are permanently deprecated. Use /api/connect/v2/status instead.",
+      version: "v2_only",
+      redirect: `${apiPath}/connect/v2/status`
+    });
+  });
+
+  // V2 ROUTES ONLY
   connectV2Routes(app, apiPath, authMiddleware);
 
-  // V1 endpoints completely removed - only V2 available
-
-  console.log("✅ Stripe Connect V2 routes initialized - V1 endpoints completely blocked");
+  console.log("✅ Stripe Connect V2 routes initialized - V1 endpoints permanently blocked");
 }
