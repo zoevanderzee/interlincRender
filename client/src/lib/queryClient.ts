@@ -249,22 +249,15 @@ queryClient.removeQueries({
   exact: false 
 });
 
-// Block any attempts to call V1 endpoints
-const originalQueryFn = queryClient.getDefaultOptions().queries?.queryFn;
+// V1 endpoints permanently removed - using getQueryFn for all queries
 queryClient.setDefaultOptions({
   queries: {
     ...queryClient.getDefaultOptions().queries,
-    queryFn: (context) => {
-      const endpoint = context.queryKey[0] as string;
-      if (endpoint === '/api/connect/status' || endpoint.includes('/api/connect/status')) {
-        throw new Error('V1 Connect endpoints are deprecated - use /api/connect/v2/status');
-      }
-      return originalQueryFn ? originalQueryFn(context) : undefined;
-    }
+    queryFn: getQueryFn({ on401: "throw" })
   }
 });
 
-console.log('V1 Connect endpoints permanently blocked - only V2 available');
+console.log('Query client configured to use V2 Connect endpoints only');
 
 
 // Clear all cached data and force fresh authentication check

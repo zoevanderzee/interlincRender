@@ -53,10 +53,9 @@ export function useIntegratedData() {
     refetchInterval: 60 * 1000,
   });
 
-  // Stripe Connect V2 account status - completely replacing V1
+  // Stripe Connect V2 account status - V2 ONLY
   const { data: stripeConnectData, isLoading: isStripeConnectLoading } = useQuery({
     queryKey: ['/api/connect/v2/status'],
-    queryFn: () => apiRequest('GET', '/api/connect/v2/status').then(res => res.json()),
     enabled: !!user && user.role === 'business',
     staleTime: 30 * 1000,
     refetchInterval: 60 * 1000,
