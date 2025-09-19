@@ -284,8 +284,8 @@ export default function Projects() {
           <h2 className="text-xl font-semibold text-white">Your Projects</h2>
         </div>
         
-        {projects.length > 0 ? (
-          projects.map((project: any) => {
+        {projects.filter(project => project.name !== 'Quick Tasks').length > 0 ? (
+          projects.filter(project => project.name !== 'Quick Tasks').map((project: any) => {
             const projectContracts = contracts.filter((contract: any) => contract.projectId === project.id);
             const isAssigned = projectContracts.length > 0;
             
@@ -384,113 +384,144 @@ export default function Projects() {
 
             {/* Tasks Stats */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <Card className="bg-zinc-900 border-zinc-800">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-400">Active Tasks</p>
-                      <p className="text-3xl font-bold text-white">
-                        {workRequests.filter((wr: any) => wr.status === 'assigned').length}
-                      </p>
-                    </div>
-                    <User className="h-8 w-8 text-green-500" />
-                  </div>
-                </CardContent>
-              </Card>
+              {(() => {
+                // Find the Quick Tasks project and filter work requests
+                const quickTasksProject = projects.find(p => p.name === 'Quick Tasks');
+                const quickTasksWorkRequests = quickTasksProject ? 
+                  workRequests.filter(wr => wr.projectId === quickTasksProject.id) : [];
+                
+                return (
+                  <>
+                    <Card className="bg-zinc-900 border-zinc-800">
+                      <CardContent className="pt-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-gray-400">Active Tasks</p>
+                            <p className="text-3xl font-bold text-white">
+                              {quickTasksWorkRequests.filter((wr: any) => wr.status === 'assigned').length}
+                            </p>
+                          </div>
+                          <User className="h-8 w-8 text-green-500" />
+                        </div>
+                      </CardContent>
+                    </Card>
 
-              <Card className="bg-zinc-900 border-zinc-800">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-400">Completed Tasks</p>
-                      <p className="text-3xl font-bold text-white">
-                        {workRequests.filter((wr: any) => wr.status === 'paid').length}
-                      </p>
-                    </div>
-                    <FileText className="h-8 w-8 text-blue-500" />
-                  </div>
-                </CardContent>
-              </Card>
+                    <Card className="bg-zinc-900 border-zinc-800">
+                      <CardContent className="pt-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-gray-400">Completed Tasks</p>
+                            <p className="text-3xl font-bold text-white">
+                              {quickTasksWorkRequests.filter((wr: any) => wr.status === 'paid').length}
+                            </p>
+                          </div>
+                          <FileText className="h-8 w-8 text-blue-500" />
+                        </div>
+                      </CardContent>
+                    </Card>
 
-              <Card className="bg-zinc-900 border-zinc-800">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-400">Total Task Value</p>
-                      <p className="text-3xl font-bold text-white">
-                        ${workRequests.reduce((sum: number, wr: any) => sum + parseFloat(wr.amount || 0), 0).toLocaleString()}
-                      </p>
-                    </div>
-                    <DollarSign className="h-8 w-8 text-yellow-500" />
-                  </div>
-                </CardContent>
-              </Card>
+                    <Card className="bg-zinc-900 border-zinc-800">
+                      <CardContent className="pt-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-gray-400">Total Task Value</p>
+                            <p className="text-3xl font-bold text-white">
+                              ${quickTasksWorkRequests.reduce((sum: number, wr: any) => sum + parseFloat(wr.amount || 0), 0).toLocaleString()}
+                            </p>
+                          </div>
+                          <DollarSign className="h-8 w-8 text-yellow-500" />
+                        </div>
+                      </CardContent>
+                    </Card>
 
-              <Card className="bg-zinc-900 border-zinc-800">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-400">In Review</p>
-                      <p className="text-3xl font-bold text-white">
-                        {workRequests.filter((wr: any) => wr.status === 'in_review').length}
-                      </p>
-                    </div>
-                    <Users className="h-8 w-8 text-purple-500" />
-                  </div>
-                </CardContent>
-              </Card>
+                    <Card className="bg-zinc-900 border-zinc-800">
+                      <CardContent className="pt-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-gray-400">Accepted Tasks</p>
+                            <p className="text-3xl font-bold text-white">
+                              {quickTasksWorkRequests.filter((wr: any) => wr.status === 'accepted').length}
+                            </p>
+                          </div>
+                          <Users className="h-8 w-8 text-purple-500" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </>
+                );
+              })()}
             </div>
 
             {/* Tasks List */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-white">Recent Tasks</h3>
-              {workRequests.length > 0 ? (
-                workRequests.slice(0, 10).map((task: any) => (
-                  <Card key={task.id} className="bg-zinc-900 border-zinc-800">
-                    <CardHeader>
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <CardTitle className="text-white">{task.title}</CardTitle>
-                          <p className="text-gray-400 text-sm mt-1">{task.description}</p>
-                          <p className="text-blue-400 text-sm mt-1">
-                            Assigned to: {task.contractorFirstName} {task.contractorLastName}
-                          </p>
-                        </div>
-                        <Badge variant={
-                          task.status === 'assigned' ? 'default' : 
-                          task.status === 'in_review' ? 'secondary' :
-                          task.status === 'paid' ? 'default' : 'secondary'
-                        }>
-                          {task.status.replace('_', ' ')}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center space-x-4">
-                          <div className="flex items-center text-gray-400">
-                            <DollarSign className="mr-1 h-4 w-4" />
-                            <span>${task.amount || 0}</span>
-                          </div>
-                          {task.dueDate && (
-                            <div className="flex items-center text-gray-400">
-                              <Calendar className="mr-1 h-4 w-4" />
-                              <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>
+              {(() => {
+                // Find the Quick Tasks project
+                const quickTasksProject = projects.find(p => p.name === 'Quick Tasks');
+                const quickTasksWorkRequests = quickTasksProject ? 
+                  workRequests.filter(wr => wr.projectId === quickTasksProject.id) : [];
+                
+                return quickTasksWorkRequests.length > 0 ? (
+                  quickTasksWorkRequests.slice(0, 10).map((task: any) => {
+                    // Get contractor info
+                    const contractor = contractors.find(c => c.id === task.contractorUserId);
+                    const contractorName = contractor ? 
+                      (contractor.firstName && contractor.lastName ? 
+                        `${contractor.firstName} ${contractor.lastName}` : 
+                        contractor.username) : 
+                      'Unknown Contractor';
+                    
+                    return (
+                      <Card key={task.id} className="bg-zinc-900 border-zinc-800">
+                        <CardHeader>
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <CardTitle className="text-white">{task.title}</CardTitle>
+                              <p className="text-gray-400 text-sm mt-1">{task.description}</p>
+                              <p className="text-blue-400 text-sm mt-1">
+                                Assigned to: {contractorName}
+                              </p>
                             </div>
-                          )}
-                        </div>
-                        <Button 
-                          variant="outline"
-                          size="sm"
-                          onClick={() => navigate(`/project/${task.projectId}`)}
-                          className="border-gray-700 text-white hover:bg-gray-800"
-                        >
-                          View Details
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
+                            <Badge variant={
+                              task.status === 'assigned' ? 'default' : 
+                              task.status === 'accepted' ? 'default' :
+                              task.status === 'in_review' ? 'secondary' :
+                              task.status === 'approved' ? 'default' :
+                              task.status === 'paid' ? 'default' : 'secondary'
+                            }>
+                              {task.status.replace('_', ' ')}
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center space-x-4">
+                              <div className="flex items-center text-gray-400">
+                                <DollarSign className="mr-1 h-4 w-4" />
+                                <span>${task.amount || 0}</span>
+                              </div>
+                              {task.dueDate && (
+                                <div className="flex items-center text-gray-400">
+                                  <Calendar className="mr-1 h-4 w-4" />
+                                  <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>
+                                </div>
+                              )}
+                            </div>
+                            <Button 
+                              variant="outline"
+                              size="sm"
+                              onClick={() => navigate(`/project/${task.projectId}`)}
+                              className="border-gray-700 text-white hover:bg-gray-800"
+                            >
+                              View Details
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })
+                ) : null;
+              })()
               ) : (
                 <Card className="bg-zinc-900 border-zinc-800">
                   <CardContent className="pt-6 pb-6 text-center">
