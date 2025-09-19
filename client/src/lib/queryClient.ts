@@ -150,7 +150,10 @@ export const getQueryFn: <T>(options: {
       const endpoint = (queryKey[0] as string).toLowerCase();
       
       // PERMANENTLY BLOCK ALL V1 CONNECT ENDPOINTS
-      if (endpoint === '/api/connect/status' || endpoint.includes('/api/connect/status')) {
+      if (endpoint === '/api/connect/status' || 
+          endpoint.includes('/api/connect/status') ||
+          endpoint.includes('connect-status') ||
+          (endpoint.includes('connect') && !endpoint.includes('/v2/'))) {
         console.log(`❌ BLOCKED V1 Connect endpoint: ${endpoint}`);
         throw createApiError(410, 'Gone', 'V1 Connect endpoints permanently removed - use /api/connect/v2/status');
       }
@@ -252,6 +255,22 @@ queryClient.removeQueries({ queryKey: ['/api/connect'], exact: false });
 // Cancel any ongoing V1 Connect queries
 queryClient.cancelQueries({ queryKey: ['/api/connect/status'] });
 queryClient.cancelQueries({ queryKey: ['connect-status'] });
+queryClient.cancelQueries({ queryKey: ['connect'] });
+
+// Continuously monitor and block V1 queries
+setInterval(() => {
+  const queries = queryClient.getQueryCache().findAll();
+  queries.forEach(query => {
+    const key = query.queryKey[0];
+    if (typeof key === 'string' && 
+        (key.includes('/api/connect/status') || 
+         key === 'connect-status' || 
+         (key.includes('connect') && !key.includes('/v2/')))) {
+      console.log('🚫 Found and removing rogue V1 query:', key);
+      queryClient.removeQueries({ queryKey: query.queryKey });
+    }
+  });
+}, 5000); // Check every 5 seconds
 
 // Force clear the entire cache to remove any lingering V1 data
 queryClient.clear();
