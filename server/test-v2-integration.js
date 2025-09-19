@@ -18,15 +18,13 @@ export default function testV2Routes(app, apiPath, authMiddleware) {
         success: true,
         userId,
         v2Enabled: isV2Enabled,
-        message: isV2Enabled ? 'V2 API is enabled for this user' : 'V1 API is active for this user',
-        availableEndpoints: isV2Enabled ? [
+        message: 'V2 API is the only available version (V1 removed)',
+        availableEndpoints: [
           'GET /api/connect/v2/status',
-          'POST /api/connect/v2/session', 
-          'POST /api/connect/v2/account-management-session',
-          'GET /api/connect/v2/capabilities'
-        ] : [
-          'GET /api/connect/status',
-          'POST /api/connect/session'
+          'POST /api/connect/v2/create-account',
+          'POST /api/connect/v2/submit-onboarding',
+          'POST /api/connect/v2/create-transfer',
+          'GET /api/connect/v2/transfers'
         ]
       });
     } catch (e) {

@@ -53,7 +53,7 @@ export function useIntegratedData() {
     refetchInterval: 60 * 1000,
   });
 
-  // Stripe Connect account status - replaces Trolley wallet balance
+  // Stripe Connect V2 account status - replaces Trolley wallet balance
   const { data: stripeConnectData, isLoading: isStripeConnectLoading } = useQuery({
     queryKey: ['connect-status-v2'],
     queryFn: () => apiRequest('GET', '/api/connect/v2/status').then(res => res.json()),

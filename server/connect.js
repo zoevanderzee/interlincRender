@@ -45,30 +45,8 @@ const db = {
 };
 
 export default function connectRoutes(app, apiPath, authMiddleware) {
-  const connectBasePath = `${apiPath}/connect`;
-  
-  // Initialize V2 routes
+  // Initialize V2 routes ONLY
   connectV2Routes(app, apiPath, authMiddleware);
 
-  /**
-   * GET /api/connect/status
-   * Returns the user's current Connect account status
-   */
-  app.get(`${connectBasePath}/status`, (req, res) => {
-    res.status(410).json({ 
-      error: "V1 API deprecated. Use /api/connect/v2/status instead." 
-    });
-  });
-
-  /**
-   * POST /api/connect/session
-   * Body: { publishableKey?: "pk_...", country?: "GB" }
-   * Creates an account session for embedded onboarding (no pre-created account)
-   * Returns: { client_secret: "<string>", needsOnboarding: true }
-   */
-  app.post(`${connectBasePath}/session`, (req, res) => {
-    res.status(410).json({ 
-      error: "V1 API deprecated. Use V2 API endpoints instead." 
-    });
-  });
+  console.log("✅ Stripe Connect V2 routes initialized - V1 endpoints removed");
 }

@@ -1,7 +1,18 @@
+
 import React from 'react';
 
-// This file has been removed - use InterlincConnectV2.tsx instead
+// V1 has been completely removed - redirect to V2
 export default function InterlincConnect() {
-  window.location.href = '/interlinc-connect-v2';
-  return null;
+  React.useEffect(() => {
+    window.location.href = '/interlinc-connect-v2';
+  }, []);
+  
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <h2 className="text-xl font-semibold mb-2">Redirecting to V2...</h2>
+        <p className="text-muted-foreground">V1 Connect has been removed. Redirecting to V2 interface.</p>
+      </div>
+    </div>
+  );
 }

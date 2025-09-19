@@ -1,40 +1,43 @@
-
-// Feature flags for gradual rollout
+// Feature flags configuration - V2 only
 const FEATURE_FLAGS = {
+  // Stripe Connect V2 - enabled for ALL users (V1 removed)
   STRIPE_CONNECT_V2: {
-    enabled: true, // Enable V2 today
-    rollout_percentage: 100, // 100% rollout for testing
-    user_whitelist: [86], // Enable for your business account
-    user_blacklist: [] // No blacklist
+    enabled: true,
+    enabledUsers: 'all'
   }
 };
 
 export function isFeatureEnabled(flagName, userId = null) {
   const flag = FEATURE_FLAGS[flagName];
-  if (!flag) return false;
-  
-  // Check if globally disabled
-  if (!flag.enabled) return false;
-  
-  // Check blacklist first
-  if (userId && flag.user_blacklist.includes(userId)) {
+
+  if (!flag || !flag.enabled) {
     return false;
   }
-  
-  // Check whitelist
-  if (userId && flag.user_whitelist.includes(userId)) {
+
+  // V2 is enabled for ALL users (V1 completely removed)
+  if (flagName === 'STRIPE_CONNECT_V2') {
     return true;
   }
-  
-  // Check rollout percentage
-  if (userId) {
-    const userHash = userId % 100;
-    return userHash < flag.rollout_percentage;
+
+  // If no user restrictions, feature is enabled
+  if (!flag.enabledUsers) {
+    return true;
   }
-  
+
+  // If enabled for all users
+  if (flag.enabledUsers === 'all') {
+    return true;
+  }
+
+  // Check if user is in the enabled list
+  if (Array.isArray(flag.enabledUsers)) {
+    return userId && flag.enabledUsers.includes(userId);
+  }
+
   return false;
 }
 
+// This function is no longer relevant as V1 is removed, but kept for backward compatibility if needed elsewhere.
 export function enableFeatureForUser(flagName, userId) {
   const flag = FEATURE_FLAGS[flagName];
   if (flag && !flag.user_whitelist.includes(userId)) {
@@ -42,6 +45,7 @@ export function enableFeatureForUser(flagName, userId) {
   }
 }
 
+// This function is no longer relevant as V1 is removed, but kept for backward compatibility if needed elsewhere.
 export function setRolloutPercentage(flagName, percentage) {
   const flag = FEATURE_FLAGS[flagName];
   if (flag) {

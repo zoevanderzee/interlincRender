@@ -3573,7 +3573,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const adminRoutes = await import("./admin-routes.js");
   adminRoutes.default(app, apiRouter, requireAuth);
 
-  // Register V2 test routes
+  // Register V2 test routes (V1 completely removed)
   const testV2Routes = await import("./test-v2-integration.js");
   testV2Routes.default(app, apiRouter, requireAuth);
 
