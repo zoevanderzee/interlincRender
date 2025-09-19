@@ -10,15 +10,18 @@ import {
   Loader2,
   Clock,
   Calendar,
-  Settings
+  Settings,
+  AlertCircle,
+  CheckCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useIntegratedData } from "@/hooks/use-integrated-data";
 import { Contract, User, Payment, Milestone } from "@shared/schema";
 import { useQuery } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/api';
 
 
 // Define interface for dashboard data (this is now implicitly handled by useIntegratedData)
@@ -59,8 +62,9 @@ const Dashboard = () => {
 
   // Fetch connect status using V2 API
   const { data: connectStatus } = useQuery({
-    queryKey: ['/api/connect/v2/status'],
-    enabled: !!user
+    queryKey: ['connect-status-v2'],
+    queryFn: () => apiRequest('GET', '/api/connect/v2/status').then(res => res.json()),
+    refetchInterval: 30000,
   });
 
   // Format the remaining budget as currency
@@ -275,6 +279,64 @@ const Dashboard = () => {
       <div className="mb-8">
         <h1 className="text-2xl md:text-3xl font-semibold text-white">Dashboard</h1>
         <p className="text-gray-400 mt-1">Welcome back. Here's your business overview at a glance.</p>
+      </div>
+
+      {/* Connect Status Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {!connectStatus?.hasAccount && (
+          <Card className="border-amber-500/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-amber-400" />
+                Payment Processing Setup Required
+              </CardTitle>
+              <CardDescription>
+                Complete your Stripe Connect setup to receive payments
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={() => navigate('/interlinc-connect-v2')} className="w-full">
+                Complete Setup
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+        {connectStatus?.hasAccount && !connectStatus?.verification_status?.verification_complete && (
+          <Card className="border-amber-500/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="w-5 h-5 text-amber-400" />
+                Payment Processing Pending
+              </CardTitle>
+              <CardDescription>
+                Your account is under review
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={() => navigate('/interlinc-connect-v2')} variant="outline" className="w-full">
+                Check Status
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+        {connectStatus?.hasAccount && connectStatus?.verification_status?.verification_complete && (
+          <Card className="border-green-500/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CheckCircle className="w-5 h-5 text-green-400" />
+                Payment Processing Active
+              </CardTitle>
+              <CardDescription>
+                Ready to process contractor payments
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={() => navigate('/interlinc-connect-v2')} variant="outline" className="w-full">
+                Manage Account
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Primary Metrics: 4 Key Cards */}
