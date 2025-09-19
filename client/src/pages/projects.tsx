@@ -539,7 +539,8 @@ export default function Projects() {
                     </Button>
                   </CardContent>
                 </Card>
-              )}
+                );
+              })()}
             </div>
           </div>
         </TabsContent>
