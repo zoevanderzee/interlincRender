@@ -219,18 +219,34 @@ export const getQueryFn: <T>(options: {
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      queryFn: getQueryFn({ on401: "throw" }),
-      refetchInterval: false,
-      refetchOnWindowFocus: true, // Enable refetching when window is focused
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      retry: 1, // Retry once to handle temporary network issues
-      retryDelay: 1000, // Retry after 1 second
-    },
-    mutations: {
-      retry: 1, // Retry once to handle temporary network issues
-    },
-  },
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      refetchOnWindowFocus: false,
+      retry: (failureCount, error: any) => {
+        // Don't retry on authentication errors or 410 (V1 deprecated)
+        if (error?.status === 401 || error?.status === 403 || error?.status === 410) {
+          return false;
+        }
+        // Retry up to 3 times for other errors
+        return failureCount < 3;
+      }
+    }
+  }
 });
+
+// Clear any V1 cached queries on initialization
+queryClient.removeQueries({ 
+  queryKey: ['connect-status'], 
+  exact: false 
+});
+
+queryClient.removeQueries({ 
+  queryKey: ['connect'], 
+  exact: false 
+});
+
+// Only keep V2 queries
+console.log('Query cache cleared of V1 Connect endpoints');
+
 
 // Clear all cached data and force fresh authentication check
 export function clearAuthCache() {
