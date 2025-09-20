@@ -453,6 +453,13 @@ export default function AuthPage() {
 
         // After successful Firebase login, get the user data from our backend
         try {
+          console.log("Attempting to sync Firebase user with backend:", {
+            uid: result.user.uid,
+            email: result.user.email,
+            emailVerified: result.user.emailVerified,
+            displayName: result.user.displayName || ""
+          });
+          
           const syncResponse = await fetch("/api/sync-firebase-user", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -464,6 +471,8 @@ export default function AuthPage() {
             }),
             credentials: 'include'
           });
+          
+          console.log("Sync response status:", syncResponse.status);
 
           if (syncResponse.ok) {
             const syncData = await syncResponse.json();
@@ -531,11 +540,20 @@ export default function AuthPage() {
               throw new Error("Failed to retrieve user data from backend");
             }
           } else {
-            throw new Error("Failed to sync with backend");
+            const syncErrorData = await syncResponse.json();
+            console.error("Backend sync failed:", syncErrorData);
+            throw new Error(`Failed to sync with backend: ${syncErrorData.details || syncErrorData.error || 'Unknown error'}`);
           }
-        } catch (syncError) {
+        } catch (syncError: any) {
           console.error("Backend sync error:", syncError);
-          throw new Error("Authentication succeeded but failed to sync with backend");
+          
+          // Try to get more specific error information
+          let errorMessage = "Authentication succeeded but failed to sync with backend";
+          if (syncError.message && syncError.message.includes('Failed to sync with backend:')) {
+            errorMessage = syncError.message;
+          }
+          
+          throw new Error(errorMessage);
         }
       } else {
         setLoginErrors({

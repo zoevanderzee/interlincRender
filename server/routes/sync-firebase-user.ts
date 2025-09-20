@@ -56,25 +56,51 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
         });
       }
 
-      // CRITICAL: Log this case to prevent duplicate accounts
-      console.error(`🚨 CRITICAL: No existing user found for email ${email} or Firebase UID ${uid}`);
-      console.error('This should not happen for existing business users - check for account corruption');
+      // Log this case but don't treat it as an error - this happens for new Firebase users
+      console.log(`Creating new user account for email ${email} with Firebase UID ${uid}`);
       
-      // Create minimal user record for metadata storage
-      // Note: This is optional - Firebase handles all authentication
+      // Create user record for Firebase authentication
       const userData = {
         email: email.toLowerCase(), // Normalize email to lowercase
-        username: email.split('@')[0].toLowerCase(),
+        username: email.split('@')[0].toLowerCase() + '_' + Date.now(), // Ensure unique username
         firstName: displayName?.split(' ')[0] || 'User',
         lastName: displayName?.split(' ').slice(1).join(' ') || '',
         password: 'firebase_managed', // Not used for authentication
-        role: 'contractor' as const, // Default to contractor for new accounts
+        role: 'business' as const, // Default to business for new accounts
         firebaseUid: uid,
         emailVerified: emailVerified,
         subscriptionStatus: 'inactive' as const
       };
 
-      const newUser = await storage.createUser(userData);
+      try {
+        const newUser = await storage.createUser(userData);
+        console.log(`New user created successfully: ${newUser.id} (${newUser.email})`);
+      } catch (createError: any) {
+        console.error('Error creating new user:', createError);
+        
+        // If user creation fails, try to find if user was created by someone else
+        const retryUser = await storage.getUserByEmail(email.toLowerCase());
+        if (retryUser) {
+          console.log('User was created by another process, using existing user');
+          // Update with Firebase UID if missing
+          if (!retryUser.firebaseUid) {
+            await storage.updateUser(retryUser.id, { firebaseUid: uid });
+          }
+          
+          req.session.userId = retryUser.id;
+          req.session.user = retryUser;
+          
+          return res.json({ 
+            success: true, 
+            message: "User found and synced",
+            userId: retryUser.id
+          });
+        }
+        
+        throw createError; // Re-throw if we can't recover
+      }
+
+      const newUser = await storage.getUserByEmail(email.toLowerCase());
 
       // User created and synced successfully
       console.log(`User metadata created for user ID ${newUser.id} (${newUser.username})`);
@@ -101,11 +127,12 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
         userId: newUser.id
       });
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Sync Firebase user error:', error);
       return res.status(500).json({ 
         success: false, 
-        error: 'Failed to sync user metadata' 
+        error: 'Failed to sync user metadata',
+        details: error.message || 'Unknown error occurred'
       });
     }
   });
