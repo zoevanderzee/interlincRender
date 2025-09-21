@@ -122,7 +122,7 @@ const ContractorRequests = () => {
   // Accept work request mutation
   const acceptMutation = useMutation({
     mutationFn: async (requestId: number) => {
-      // Call the new contractor accept endpoint
+      // Call the contractor accept endpoint
       return await apiRequest('POST', `/api/work-requests/${requestId}/accept`, {});
     },
     onSuccess: () => {
@@ -148,7 +148,7 @@ const ContractorRequests = () => {
   // Decline work request mutation
   const declineMutation = useMutation({
     mutationFn: async (requestId: number) => {
-      // Call the new contractor decline endpoint
+      // Call the contractor decline endpoint
       return await apiRequest('POST', `/api/work-requests/${requestId}/decline`, {});
     },
     onSuccess: () => {
