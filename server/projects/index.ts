@@ -540,6 +540,47 @@ export function registerProjectRoutes(app: Express) {
       // Update status to accepted
       await storage.updateWorkRequestStatus(workRequestId, "accepted");
 
+      // Create contract for the accepted work request
+      const business = await storage.getUser(currentUserId);
+      const contractor = await storage.getUser(workRequest.contractorUserId);
+      
+      if (business && contractor) {
+        const contractCode = `WR-${workRequestId}-${Date.now().toString(36).toUpperCase()}`;
+        const contractName = `${workRequest.title} - ${business.companyName || business.firstName + ' ' + business.lastName}`;
+        
+        const contract = await storage.createContract({
+          contractName,
+          contractCode,
+          businessId: currentUserId,
+          projectId: workRequest.projectId,
+          contractorId: workRequest.contractorUserId,
+          description: workRequest.description || `Contract for work request: ${workRequest.title}`,
+          status: "active",
+          value: workRequest.amount,
+          contractorBudget: workRequest.amount,
+          startDate: new Date().toISOString(),
+          endDate: workRequest.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        });
+
+        // Link work request to contract
+        await storage.updateWorkRequestContract(workRequestId, contract.id);
+
+        // Create milestone
+        const milestone = await storage.createMilestone({
+          contractId: contract.id,
+          name: workRequest.title,
+          description: workRequest.deliverableDescription || workRequest.description || `Deliverable for: ${workRequest.title}`,
+          dueDate: workRequest.dueDate ? new Date(workRequest.dueDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          paymentAmount: workRequest.amount,
+          status: 'assigned',
+          progress: 0,
+          autoPayEnabled: true,
+          submissionType: 'digital'
+        });
+
+        console.log(`[BUSINESS_ACCEPT] Created contract ${contract.id} and milestone ${milestone.id} for work request ${workRequestId}`);
+      }
+
       // If triggerPayment is true, initiate Trolley payment process
       if (triggerPayment) {
         console.log(`[BUSINESS_ACCEPT] Triggering Trolley payment for work request ${workRequestId}: $${allocatedBudget}`);
@@ -551,7 +592,8 @@ export function registerProjectRoutes(app: Express) {
         ok: true,
         status: "accepted",
         allocatedBudget: allocatedBudget,
-        paymentTriggered: triggerPayment
+        paymentTriggered: triggerPayment,
+        message: "Work request accepted and contract created successfully"
       });
 
     } catch (error) {

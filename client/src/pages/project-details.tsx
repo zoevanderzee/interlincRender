@@ -85,8 +85,14 @@ export default function ProjectDetails() {
           description: `Budget of $${parseFloat(workRequest.amount).toLocaleString()} allocated and Trolley payment triggered.`,
         });
         
-        // Refresh work requests
-        await queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/work-requests`] });
+        // Refresh all relevant data
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/work-requests`] }),
+          queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}`] }),
+          queryClient.invalidateQueries({ queryKey: ['/api/contracts'] }),
+          queryClient.invalidateQueries({ queryKey: ['/api/milestones?contractId=31'] }),
+          queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] })
+        ]);
       } else {
         throw new Error("Failed to accept work request");
       }
@@ -113,8 +119,12 @@ export default function ProjectDetails() {
           description: "Work request has been rejected and contractor notified.",
         });
         
-        // Refresh work requests
-        await queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/work-requests`] });
+        // Refresh all relevant data
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/work-requests`] }),
+          queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}`] }),
+          queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] })
+        ]);
       } else {
         throw new Error("Failed to reject work request");
       }

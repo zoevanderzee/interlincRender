@@ -304,8 +304,8 @@ export default function Projects() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center space-x-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className="space-y-2">
                       <div className="flex items-center text-gray-400">
                         <DollarSign className="mr-1 h-4 w-4" />
                         <span>Budget: ${project.budget || 0}</span>
@@ -316,17 +316,36 @@ export default function Projects() {
                           <span>Created: {new Date(project.createdAt).toLocaleDateString()}</span>
                         </div>
                       )}
+                      <div className="flex items-center text-gray-400">
+                        <FileText className="mr-1 h-4 w-4" />
+                        <span>Status: {project.status || 'Active'}</span>
+                      </div>
                     </div>
-                    <div className="flex space-x-2">
+                    <div className="space-y-2">
                       {isAssigned && (
-                        <Button 
-                          variant="outline"
-                          onClick={() => navigate(`/project/${project.id}`)}
-                          className="border-gray-700 text-white hover:bg-gray-800"
-                        >
-                          View Details
-                        </Button>
+                        <>
+                          <div className="flex items-center text-gray-400">
+                            <Users className="mr-1 h-4 w-4" />
+                            <span>{projectContracts.length} contractor{projectContracts.length !== 1 ? 's' : ''}</span>
+                          </div>
+                          <div className="flex items-center text-gray-400">
+                            <TrendingUp className="mr-1 h-4 w-4" />
+                            <span>Total allocated: ${projectContracts.reduce((sum: number, contract: any) => sum + parseFloat(contract.value || 0), 0).toLocaleString()}</span>
+                          </div>
+                        </>
                       )}
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <div className="flex space-x-2">
+                      <Button 
+                        variant="outline"
+                        onClick={() => navigate(`/project/${project.id}`)}
+                        className="border-gray-700 text-white hover:bg-gray-800"
+                      >
+                        <Eye className="mr-1 h-4 w-4" />
+                        More Info
+                      </Button>
                       <Button 
                         onClick={() => navigate(`/assign-contractor?projectId=${project.id}`)}
                         className="bg-blue-600 hover:bg-blue-700"

@@ -44,9 +44,15 @@ export function useIntegratedData() {
   // Core dashboard data - contains contracts, contractors, stats, payments, milestones
   const { data: dashboardData, isLoading: isDashboardLoading, error: dashboardError } = useQuery({
     queryKey: ['/api/dashboard'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/dashboard');
+      return response.json();
+    },
     enabled: !!user,
-    staleTime: 30 * 1000, // 30 seconds for real-time updates
-    refetchInterval: 60 * 1000, // Auto-refresh every minute
+    staleTime: 15000, // 15 seconds (reduced for faster updates)
+    refetchInterval: 30000, // 30 seconds (more frequent updates)
+    refetchOnWindowFocus: true, // Refresh when user returns to tab
+    refetchOnReconnect: true, // Refresh on reconnect
   });
 
   // Budget data - financial information
@@ -93,6 +99,9 @@ export function useIntegratedData() {
     queryKey: ['/api/work-requests'],
     enabled: !!user && user.role === 'contractor',
     staleTime: 30 * 1000,
+    refetchInterval: 30000, // Refresh every 30 seconds to catch updates
+    refetchOnWindowFocus: true, // Refresh when user returns to tab
+    refetchOnReconnect: true, // Refresh on reconnect
     select: (data) => {
       if (!user?.id || !Array.isArray(data)) return [];
       return data.filter((request: any) =>
