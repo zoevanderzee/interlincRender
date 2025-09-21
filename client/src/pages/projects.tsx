@@ -4,12 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Calendar, DollarSign, Users, FileText, TrendingUp, Eye, Briefcase, User } from "lucide-react";
+import { Plus, Calendar, DollarSign, Users, FileText, TrendingUp, Eye, User } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { SubmitWorkModal } from "@/components/SubmitWorkModal";
 import { useIntegratedData } from "@/hooks/use-integrated-data";
-import ContractsTable from "@/components/dashboard/ContractsTable";
+
 
 export default function Projects() {
   const { user } = useAuth();
@@ -210,7 +210,7 @@ export default function Projects() {
       </div>
 
       <Tabs defaultValue="projects" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 bg-zinc-800">
+        <TabsList className="grid w-full grid-cols-2 bg-zinc-800">
           <TabsTrigger value="projects" className="data-[state=active]:bg-zinc-700 text-white">
             <Users className="mr-2 h-4 w-4" />
             Projects Overview
@@ -218,10 +218,6 @@ export default function Projects() {
           <TabsTrigger value="tasks" className="data-[state=active]:bg-zinc-700 text-white">
             <User className="mr-2 h-4 w-4" />
             Tasks
-          </TabsTrigger>
-          <TabsTrigger value="contracts" className="data-[state=active]:bg-zinc-700 text-white">
-            <Briefcase className="mr-2 h-4 w-4" />
-            Individual Contracts
           </TabsTrigger>
         </TabsList>
 
@@ -545,75 +541,7 @@ export default function Projects() {
           </div>
         </TabsContent>
 
-        <TabsContent value="contracts" className="mt-6">
-          <div className="space-y-6">
-            {/* Stats Cards for Contracts */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <Card className="bg-zinc-900 border-zinc-800">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-400">Total Contracts</p>
-                      <p className="text-3xl font-bold text-white">{integratedData?.contracts?.length || 0}</p>
-                    </div>
-                    <Briefcase className="h-8 w-8 text-blue-500" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-zinc-900 border-zinc-800">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-400">Active Contracts</p>
-                      <p className="text-3xl font-bold text-white">
-                        {integratedData?.contracts?.filter((c: any) => c.status === 'active').length || 0}
-                      </p>
-                    </div>
-                    <Users className="h-8 w-8 text-green-500" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-zinc-900 border-zinc-800">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-400">Assigned Contractors</p>
-                      <p className="text-3xl font-bold text-white">
-                        {new Set(integratedData?.contracts?.filter((c: any) => c.contractorId).map((c: any) => c.contractorId)).size || 0}
-                      </p>
-                    </div>
-                    <Users className="h-8 w-8 text-purple-500" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-zinc-900 border-zinc-800">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-400">Total Contract Value</p>
-                      <p className="text-3xl font-bold text-white">
-                        ${integratedData?.contracts?.reduce((sum: number, contract: any) => sum + parseFloat(contract.value || 0), 0).toLocaleString() || 0}
-                      </p>
-                    </div>
-                    <DollarSign className="h-8 w-8 text-yellow-500" />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Contracts Table */}
-            <ContractsTable
-              contracts={integratedData?.contracts || []}
-              contractors={integratedData?.contractors || []}
-              onViewContract={(id) => navigate(`/contract/${id}`)}
-              onEditContract={(id) => navigate(`/contracts/${id}/edit`)}
-              isContractor={false}
-            />
-          </div>
-        </TabsContent>
+        
       </Tabs>
     </div>
   );
