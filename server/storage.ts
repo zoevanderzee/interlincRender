@@ -1353,16 +1353,40 @@ export class DatabaseStorage implements IStorage {
         )
       );
 
+    // Find businesses from accepted connection requests
+    const businessesWithConnections = await db
+      .select()
+      .from(users)
+      .innerJoin(connectionRequests, eq(users.id, connectionRequests.businessId))
+      .where(
+        and(
+          eq(connectionRequests.contractorId, contractorId),
+          eq(connectionRequests.status, 'accepted'),
+          eq(users.role, 'business')
+        )
+      );
+
     // Extract unique businesses
     const businessIds = new Set();
     const uniqueBusinesses: User[] = [];
 
+    // Add businesses from contracts
     businessesWithContracts.forEach(row => {
       if (!businessIds.has(row.users.id)) {
         businessIds.add(row.users.id);
         uniqueBusinesses.push(row.users);
       }
     });
+
+    // Add businesses from connection requests
+    businessesWithConnections.forEach(row => {
+      if (!businessIds.has(row.users.id)) {
+        businessIds.add(row.users.id);
+        uniqueBusinesses.push(row.users);
+      }
+    });
+
+    console.log(`Found ${uniqueBusinesses.length} total businesses for contractor ${contractorId}: ${businessesWithContracts.length} from contracts, ${businessesWithConnections.length} from connections`);
 
     return uniqueBusinesses;
   }
