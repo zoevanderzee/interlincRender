@@ -61,10 +61,11 @@ export default function AddContractorModal({ contractId, onSuccess }: AddContrac
 
   console.log('Connected contractors from business_workers:', businessWorkers);
 
-  // Use contractors from business_workers table
+  // Use contractors from business_workers table - they have 'active' status, not 'accepted'
   const availableContractors = businessWorkers || [];
 
   console.log('Available contractors:', availableContractors);
+  console.log('Business workers raw data:', businessWorkers);
 
   // Check if adding this contractor would exceed the project budget
   useEffect(() => {
@@ -218,9 +219,10 @@ export default function AddContractorModal({ contractId, onSuccess }: AddContrac
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="bg-gray-900 border-gray-700">
-                    {availableContractors.length === 0 ? (
+                    {!availableContractors || availableContractors.length === 0 ? (
                       <div className="p-4 text-center text-gray-400">
                         <p>No contractors available</p>
+                        <p className="text-xs mt-1">Loading: {isLoadingContractors ? 'Yes' : 'No'}</p>
                         <Button 
                           size="sm" 
                           className="mt-2" 
