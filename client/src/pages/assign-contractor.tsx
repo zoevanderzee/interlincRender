@@ -91,8 +91,10 @@ export default function AssignContractor() {
   } = useForm<WorkRequestForm>({
     resolver: zodResolver(workRequestSchema),
     defaultValues: {
-      contractorUserId: parseInt(contractorId || contractorIdFromQuery || selectedContractorId || "0"),
-      currency: "USD"
+      projectId: parseInt(projectIdFromQuery || "0"),
+      contractorUserId: parseInt(contractorId || contractorIdFromQuery || "0"),
+      currency: "USD",
+      amount: 0
     }
   });
 
@@ -125,6 +127,14 @@ export default function AssignContractor() {
     const contractorToUse = parseInt(contractorId || contractorIdFromQuery || selectedContractorId || "0");
     const projectToUse = parseInt(selectedProjectId || "0");
 
+    console.log("Form submission data:", {
+      contractorToUse,
+      projectToUse,
+      selectedContractorId,
+      selectedProjectId,
+      data
+    });
+
     if (!projectToUse) {
       toast({
         title: "Project Required",
@@ -136,7 +146,7 @@ export default function AssignContractor() {
 
     if (!contractorToUse) {
       toast({
-        title: "Contractor Required",
+        title: "Contractor Required", 
         description: "Please select a contractor for this assignment",
         variant: "destructive"
       });
@@ -146,9 +156,11 @@ export default function AssignContractor() {
     const formData = {
       ...data,
       projectId: projectToUse,
-      contractorUserId: contractorToUse
+      contractorUserId: contractorToUse,
+      amount: parseFloat(data.amount.toString()) // Ensure amount is a number
     };
 
+    console.log("Submitting work request:", formData);
     createWorkRequestMutation.mutate(formData);
   };
 
@@ -230,6 +242,7 @@ export default function AssignContractor() {
               <Select 
                 value={selectedContractorId} 
                 onValueChange={(value) => {
+                  console.log("Contractor selected:", value);
                   setSelectedContractorId(value);
                   setValue('contractorUserId', parseInt(value));
                 }}
@@ -252,8 +265,8 @@ export default function AssignContractor() {
                   ) : (
                     availableContractors.map((contractor: any) => (
                       <SelectItem 
-                        key={contractor.id} 
-                        value={contractor.id.toString()}
+                        key={contractor.contractorId || contractor.id} 
+                        value={(contractor.contractorId || contractor.id).toString()}
                         className="text-white hover:bg-gray-800"
                       >
                         <div className="flex flex-col">
