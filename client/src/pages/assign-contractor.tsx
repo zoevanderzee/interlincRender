@@ -193,7 +193,7 @@ export default function AssignContractor() {
   // Show contractor selection if no contractorId in URL params or query params
   const showContractorSelection = !contractorId && !contractorIdFromQuery;
   const availableContractors = Array.isArray(businessWorkers) 
-    ? businessWorkers.filter((req: any) => req?.status === 'accepted')
+    ? businessWorkers
     : [];
 
   const selectedProject = projects.find(p => p.id.toString() === selectedProjectId);
