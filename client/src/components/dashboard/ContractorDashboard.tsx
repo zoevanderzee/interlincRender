@@ -255,9 +255,10 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
                   <div key={business.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                     <div>
                       <p className="font-medium">
-                        {business.companyName || business.company || 
-                         `${business.firstName || ''} ${business.lastName || ''}`.trim() || 
-                         business.username}
+                        {business.companyName || 
+                         (business.firstName && business.lastName ? 
+                           `${business.firstName} ${business.lastName}` : 
+                           business.username || "Business")}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         {business.email}

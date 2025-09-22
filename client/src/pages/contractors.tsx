@@ -417,7 +417,10 @@ const Contractors = () => {
                         </div>
                         <div>
                           <h3 className="font-semibold text-white">
-                            {company.companyName || company.username || "Business"}
+                            {company.companyName || 
+                             (company.firstName && company.lastName ? 
+                               `${company.firstName} ${company.lastName}` : 
+                               company.username || "Business")}
                           </h3>
                           <p className="text-sm text-muted-foreground">{company.industry || "Business"}</p>
                         </div>

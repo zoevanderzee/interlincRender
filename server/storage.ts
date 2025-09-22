@@ -1082,6 +1082,9 @@ export class DatabaseStorage implements IStorage {
   // User CRUD methods
   async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
+    if (user && user.role === 'business') {
+      console.log(`Retrieved business user ${id}: companyName="${user.companyName}", firstName="${user.firstName}", lastName="${user.lastName}"`);
+    }
     return user;
   }
 

@@ -59,11 +59,21 @@ export function ConnectionRequestsList() {
               
               if (businessRes.ok) {
                 const business = await businessRes.json();
-                // Use actual company name from database without any hardcoded overrides
-                const displayName = business.companyName || 
-                  (business.firstName && business.lastName ? 
-                    `${business.firstName} ${business.lastName}` : 
-                    business.username || "Unknown Business");
+                console.log('Business data fetched for connection request:', business);
+                
+                // CRITICAL: Always use the actual company name from the database
+                // Priority: companyName > firstName+lastName > username
+                let displayName = "Unknown Business";
+                
+                if (business.companyName && business.companyName.trim()) {
+                  displayName = business.companyName.trim();
+                } else if (business.firstName && business.lastName) {
+                  displayName = `${business.firstName.trim()} ${business.lastName.trim()}`;
+                } else if (business.username && business.username.trim()) {
+                  displayName = business.username.trim();
+                }
+                
+                console.log(`Business ${business.id} display name: "${displayName}"`);
                 
                 return {
                   ...request,
