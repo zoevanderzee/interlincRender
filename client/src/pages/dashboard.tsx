@@ -60,7 +60,7 @@ const Dashboard = () => {
   const { data: integratedData, isLoading: isDashboardLoading, error: dashboardError } = useIntegratedData();
   const { toast } = useToast();
 
-  // Use V2 connect data from integrated hook  
+  // Use V2 connect data from integrated hook
   const connectStatus = integratedData ? integratedData.stripeConnectData : null;
 
   // Format the remaining budget as currency
@@ -158,19 +158,19 @@ const Dashboard = () => {
 
         {/* Primary Metrics: 3 Key Cards for contractors */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {/* Card 1: Active Projects */}
+          {/* Card 1: Active Assignments */}
           <Card className="animate-fade-in hover:animate-glow-pulse">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-muted-foreground text-sm font-medium">Active Projects</h3>
+                <h3 className="text-muted-foreground text-sm font-medium">Active Assignments</h3>
                 <div className="p-3 rounded-xl bg-blue-500/10 backdrop-blur-sm shadow-lg transition-all duration-300 hover:scale-110">
                   <Briefcase size={20} className="text-blue-400" />
                 </div>
               </div>
               <p className="text-3xl font-bold text-white tracking-tight">
-                {integratedData.stats.activeContractsCount}
+                {integratedData.assignments ? integratedData.assignments.length : 0}
               </p>
-              <p className="text-xs text-muted-foreground mt-1">Current projects in progress</p>
+              <p className="text-xs text-muted-foreground mt-1">Current assignments in progress</p>
             </CardContent>
           </Card>
 
