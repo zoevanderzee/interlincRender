@@ -423,7 +423,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
 
-          // Also get businesses from accepted connection requests
+          // Get businesses from accepted connection requests - THIS IS THE KEY FIX
           let businessesFromConnections = [];
           try {
             const connections = await storage.getConnectionRequests({
@@ -437,7 +437,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
               if (connection.businessId) {
                 const business = await storage.getUser(connection.businessId);
                 if (business && business.role === 'business') {
-                  businessesFromConnections.push(business);
+                  // Ensure the business has proper display name
+                  const displayBusiness = {
+                    ...business,
+                    displayName: business.companyName || business.company || `${business.firstName || ''} ${business.lastName || ''}`.trim() || business.username
+                  };
+                  businessesFromConnections.push(displayBusiness);
                 }
               }
             }
@@ -451,7 +456,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             index === self.findIndex(b => b.id === business.id)
           );
 
-          console.log(`Returning ${uniqueBusinesses.length} connected businesses for contractor ${currentUser.id}`);
+          console.log(`Returning ${uniqueBusinesses.length} connected businesses for contractor ${currentUser.id}:`);
+          console.log(uniqueBusinesses.map(b => `- ${b.displayName || b.username} (ID: ${b.id})`));
           users = uniqueBusinesses;
         } else if (!role || role === "contractor" || role === "freelancer") {
           // Contractors can only see themselves
@@ -2375,6 +2381,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           contractorPayments.push(...payments);
         }
 
+        // Get connected businesses for this contractor
+        const connectedBusinesses = await storage.getBusinessesByContractorId(userId);
+
         // Active contracts are those with status 'Active' (case-sensitive match)
         const activeContracts = contractorContracts.filter(contract => contract.status === 'Active');
 
@@ -2391,6 +2400,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
           contracts: contractorContracts, // Contractor's own contracts
           contractors: [], // Not relevant for contractors
+          businesses: connectedBusinesses, // Connected businesses for contractors
           milestones: contractorMilestones, // Contractor's own milestones
           payments: contractorPayments, // Contractor's own payments
           invites: [] // Not relevant for contractors

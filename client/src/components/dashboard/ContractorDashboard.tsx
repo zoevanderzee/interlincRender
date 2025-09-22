@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { Contract, Payment, Milestone } from '@shared/schema';
-import { DollarSign, FileText, Calendar, Clock, AlertTriangle, CheckCircle, Briefcase } from 'lucide-react';
+import { DollarSign, FileText, Calendar, Clock, AlertTriangle, CheckCircle, Briefcase, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { format } from 'date-fns';
+import { Badge } from "@/components/ui/badge";
 
 interface DashboardData {
   stats: {
@@ -18,6 +19,7 @@ interface DashboardData {
   contracts: Contract[];
   milestones: Milestone[];
   payments: Payment[];
+  businesses: any[]; // Assuming businesses is an array of objects with companyName, email etc.
 }
 
 // Calculate total earnings from completed payments
@@ -36,25 +38,27 @@ const calculatePendingEarnings = (payments: Payment[]) => {
 
 export function ContractorDashboard({ dashboardData }: { dashboardData: DashboardData }) {
   const [_, navigate] = useLocation();
-  
+
+  const { stats, contracts, payments, milestones, businesses } = dashboardData;
+
   // Calculate upcoming payments (next 30 days)
   const now = new Date();
   const thirtyDaysFromNow = new Date();
   thirtyDaysFromNow.setDate(now.getDate() + 30);
-  
-  const upcomingPayments = dashboardData.payments.filter(payment => {
+
+  const upcomingPayments = payments.filter(payment => {
     const paymentDate = new Date(payment.scheduledDate);
     return payment.status !== 'completed' && 
            paymentDate >= now && 
            paymentDate <= thirtyDaysFromNow;
   });
-  
+
   // Active projects for this contractor - match database case 'Active'
-  const activeProjects = dashboardData.contracts.filter(c => c.status === 'Active');
-  
+  const activeProjects = contracts.filter(c => c.status === 'Active');
+
   // Calculate total and pending earnings
-  const totalEarnings = calculateTotalEarnings(dashboardData.payments);
-  const pendingEarnings = calculatePendingEarnings(dashboardData.payments);
+  const totalEarnings = calculateTotalEarnings(payments);
+  const pendingEarnings = calculatePendingEarnings(payments);
 
   return (
     <>
@@ -63,7 +67,7 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
         <h1 className="text-2xl md:text-3xl font-semibold text-white">Contractor Dashboard</h1>
         <p className="text-gray-400 mt-1">Manage your projects and track your payments</p>
       </div>
-      
+
       {/* Primary Metrics: 3 Key Cards for contractors */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         {/* Card 1: Active Projects */}
@@ -75,11 +79,11 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
                 <Briefcase size={20} className="text-blue-400" />
               </div>
             </div>
-            <p className="text-3xl font-bold text-white tracking-tight">{dashboardData.stats.activeContractsCount}</p>
+            <p className="text-3xl font-bold text-white tracking-tight">{stats.activeContractsCount}</p>
             <p className="text-xs text-muted-foreground mt-1">Current projects in progress</p>
           </CardContent>
         </Card>
-        
+
         {/* Card 2: Total Earnings */}
         <Card className="animate-fade-in hover:animate-glow-pulse">
           <CardContent className="p-6">
@@ -93,7 +97,7 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
             <p className="text-xs text-muted-foreground mt-1">Completed payments</p>
           </CardContent>
         </Card>
-        
+
         {/* Card 3: Pending Earnings */}
         <Card className="animate-fade-in hover:animate-glow-pulse">
           <CardContent className="p-6">
@@ -108,7 +112,7 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
           </CardContent>
         </Card>
       </div>
-      
+
       {/* Action Buttons */}
       <div className="flex flex-wrap gap-4 mb-8">
         <Button 
@@ -119,7 +123,7 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
           <FileText className="mr-2" size={16} />
           View All Projects
         </Button>
-        
+
         <Button 
           variant="outline"
           size="lg"
@@ -130,10 +134,10 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
           Payment History
         </Button>
       </div>
-      
+
       {/* Quick Actions Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        {/* Projects */}
+        {/* My Projects */}
         <Button 
           variant="ghost"
           className="h-auto py-4 px-6 justify-start animate-slide-in"
@@ -145,7 +149,7 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
             <div className="text-xs text-muted-foreground">View active projects</div>
           </div>
         </Button>
-        
+
         {/* Payments */}
         <Button 
           variant="ghost"
@@ -158,8 +162,8 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
             <div className="text-xs text-muted-foreground">View payment history</div>
           </div>
         </Button>
-        
-        {/* Settings */}
+
+        {/* Profile */}
         <Button 
           variant="ghost"
           className="h-auto py-4 px-6 justify-start animate-slide-in"
@@ -172,7 +176,7 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
           </div>
         </Button>
       </div>
-      
+
       {/* Active Projects */}
       <div className="mb-8">
         <h2 className="text-xl font-semibold text-white mb-4">Active Projects</h2>
@@ -233,56 +237,87 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
           </Card>
         )}
       </div>
-      
-      {/* Upcoming Payments */}
-      <div>
-        <h2 className="text-xl font-semibold text-white mb-4">Upcoming Payments</h2>
-        {upcomingPayments.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {upcomingPayments.slice(0, 4).map((payment) => {
-              const contract = dashboardData.contracts.find(c => c.id === payment.contractId);
-              return (
-                <Card key={payment.id} className="bg-zinc-900 border-zinc-800">
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between items-start">
-                      <CardTitle className="text-white">${parseFloat(payment.amount).toLocaleString('en-US')}</CardTitle>
-                      <div className="px-2 py-1 bg-yellow-500/20 rounded text-xs text-yellow-400">
-                        {payment.status}
-                      </div>
+
+      {/* Combined section for Active Companies and Upcoming Payments */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        {/* Active Companies */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5" />
+              Active Companies
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {businesses && businesses.length > 0 ? (
+              <div className="space-y-3">
+                {businesses.slice(0, 5).map((business: any) => (
+                  <div key={business.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div>
+                      <p className="font-medium">
+                        {business.companyName || business.company || 
+                         `${business.firstName || ''} ${business.lastName || ''}`.trim() || 
+                         business.username}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {business.email}
+                      </p>
                     </div>
-                    <CardDescription>
-                      {contract?.contractName || 'Unknown Project'}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">Payment Date</span>
-                        <span className="text-white">{format(new Date(payment.scheduledDate), 'MMM d, yyyy')}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">Project Code</span>
-                        <span className="text-white">{contract?.contractCode || 'N/A'}</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        ) : (
-          <Card className="bg-zinc-900 border-zinc-800">
-            <CardContent className="pt-6 pb-6 text-center">
-              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-zinc-800">
-                <Calendar className="h-6 w-6 text-blue-500" />
+                    <Badge variant="default" className="bg-green-500">
+                      Connected
+                    </Badge>
+                  </div>
+                ))}
               </div>
-              <h3 className="mb-2 text-lg font-medium text-white">No Upcoming Payments</h3>
-              <p className="text-sm text-gray-400">
-                You don't have any scheduled payments in the next 30 days.
-              </p>
-            </CardContent>
-          </Card>
-        )}
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Building2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No companies connected</p>
+                <p className="text-sm">Accept connection requests to see companies here</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Upcoming Payments */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Upcoming Payments
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {upcomingPayments.length > 0 ? (
+              <div className="space-y-3">
+                {upcomingPayments.slice(0, 4).map((payment) => {
+                  const contract = contracts.find(c => c.id === payment.contractId);
+                  return (
+                    <div key={payment.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div>
+                        <p className="font-medium">${parseFloat(payment.amount).toLocaleString('en-US')}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {contract?.contractName || 'Unknown Project'}
+                        </p>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {format(new Date(payment.scheduledDate), 'MMM d, yyyy')}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <h3 className="mb-2 text-lg font-medium text-white">No Upcoming Payments</h3>
+                <p className="text-sm">
+                  You don't have any scheduled payments in the next 30 days.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </>
   );
