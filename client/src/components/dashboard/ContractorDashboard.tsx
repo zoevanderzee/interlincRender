@@ -50,7 +50,7 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
   });
   
   // Active assignments from work requests (preferred) or active contracts as fallback
-  const activeAssignments = dashboardData.assignments || dashboardData.contracts.filter(c => c.status === 'Active');
+  const activeAssignments = dashboardData.workRequests || dashboardData.contracts.filter(c => c.status === 'Active');
   
   // Calculate total and pending earnings from dashboard stats (server-calculated)
   const totalEarnings = dashboardData.stats.paymentsProcessed || 0;
