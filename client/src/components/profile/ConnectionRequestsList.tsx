@@ -59,13 +59,11 @@ export function ConnectionRequestsList() {
               
               if (businessRes.ok) {
                 const business = await businessRes.json();
-                // Prioritize company name over username or personal name
-                const displayName = business.companyName ? business.companyName : 
-                  (business.username === "Creativlinc" ? "Creativ Linc" : 
-                    (business.username || 
-                    (business.firstName && business.lastName ? 
-                      `${business.firstName} ${business.lastName}` : 
-                      "Unknown Business")));
+                // Use the same logic as work requests for consistent business name display
+                const displayName = business.companyName || 
+                  (business.firstName && business.lastName ? 
+                    `${business.firstName} ${business.lastName}` : 
+                    business.username || "Unknown Business");
                 
                 return {
                   ...request,
