@@ -40,9 +40,9 @@ const Contractors = () => {
   const { user } = useAuth();
   const isContractor = user?.role === "contractor";
   const [searchTerm, setSearchTerm] = useState("");
+  
 
-
-
+  
   // State for direct link dialog
   const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
   const [directLink, setDirectLink] = useState("");
@@ -55,22 +55,16 @@ const Contractors = () => {
     enabled: !!user
   });
 
-  // For contractors, fetch the businesses they're connected to via the users API
-  const { data: connectedBusinesses = [], isLoading: isLoadingConnectedBusinesses } = useQuery({
-    queryKey: ['/api/users', { role: 'business' }],
-    enabled: !!user && isContractor
-  });
-
   // V2: All contractor data comes from dashboard - no V1 connection requests
   const connectionRequests = [];
   const isLoadingConnections = false;
-
+  
   // Get data from dashboard - use empty arrays as fallbacks since these properties may not exist
   const externalWorkers = (dashboardData as any)?.contractors || [];
-  const businessAccounts = isContractor ? connectedBusinesses : ((dashboardData as any)?.businesses || []);
+  const businessAccounts = (dashboardData as any)?.businesses || [];
   const contracts = (dashboardData as any)?.contracts || [];
-  const isLoadingBusinesses = isContractor ? isLoadingConnectedBusinesses : isLoadingWorkers;
-
+  const isLoadingBusinesses = isLoadingWorkers;
+  
   // All contractors from dashboard are already connected
   const connectedContractorIds = new Set(
     externalWorkers.map((worker: User) => worker.id)
@@ -81,12 +75,12 @@ const Contractors = () => {
   const subContractors = externalWorkers.filter((worker: User) => 
     worker.role === 'contractor' && worker.workerType === 'contractor'
   );
-
+  
   // "Contractors" tab shows workers with role=contractor who are either freelancers or don't have a workerType
   const contractors = externalWorkers.filter((worker: User) => 
     worker.role === 'contractor' && (worker.workerType === 'freelancer' || !worker.workerType || worker.workerType === '')
   );
-
+  
   // Keep this for code compatibility - we'll update references from freelancers to contractors
   const freelancers = contractors;
 
@@ -94,12 +88,12 @@ const Contractors = () => {
   const { data: allInvites = [], isLoading: isLoadingInvites } = useQuery<Invite[]>({
     queryKey: ['/api/invites', { pending: true }],
   });
-
+  
   // Filter invites by worker type
   const contractorInvites = allInvites.filter(invite => 
     invite.workerType === 'contractor' || !invite.workerType // Handle existing data without workerType
   );
-
+  
   const freelancerInvites = allInvites.filter(invite => 
     invite.workerType === 'freelancer'
   );
@@ -115,7 +109,7 @@ const Contractors = () => {
       contractor.email.toLowerCase().includes(searchTerm.toLowerCase())
     );
   });
-
+  
   // Filter regular contractors by search term
   const filteredContractors = contractors.filter((contractor: User) => {
     if (!contractor) return false;
@@ -140,7 +134,7 @@ const Contractors = () => {
       business.email.toLowerCase().includes(searchTerm.toLowerCase())
     );
   });
-
+  
   // Generate a direct link for an invitation
   const generateDirectLinkMutation = useMutation({
     mutationFn: async ({ inviteId }: { inviteId: number }) => {
@@ -151,7 +145,7 @@ const Contractors = () => {
       // Create the direct link
       const baseUrl = window.location.origin;
       const directLinkUrl = `${baseUrl}/work-request-respond?token=${data.token}`;
-
+      
       setDirectLink(directLinkUrl);
       setInviteData({ id: data.inviteId, token: data.token });
       setIsLinkDialogOpen(true);
@@ -164,7 +158,7 @@ const Contractors = () => {
       });
     },
   });
-
+  
   // Function to copy a link to clipboard
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text).then(() => {
@@ -198,7 +192,7 @@ const Contractors = () => {
       day: "numeric"
     });
   };
-
+  
   // Function to get or create the permanent business onboarding link
   const generateOnboardingLink = async () => {
     try {
@@ -207,31 +201,31 @@ const Contractors = () => {
         workerType: "contractor" // Default to contractor
       });
       const linkData = await response.json();
-
+      
       if (!linkData.url) {
         throw new Error("Failed to get a valid onboarding link");
       }
-
+      
       // Set the permanent link in the state
       setDirectLink(linkData.url);
-
+      
       // Show the link dialog
       setIsLinkDialogOpen(true);
-
+      
       console.log("Retrieved permanent business onboarding link:", linkData);
     } catch (error: any) {
       console.error("Error generating permanent onboarding link:", error);
-
+      
       // Generate a fallback link using a fixed token format
       const currentUser = await queryClient.getQueryData<{id: number, role: string}>(["/api/user"]);
-
+      
       if (currentUser && currentUser.id) {
         const appUrl = window.location.origin;
         const fallbackLink = `${appUrl}/auth?invite=contractor&email=direct&token=fallback-token-${currentUser.id}&businessId=${currentUser.id}&workerType=contractor`;
-
+        
         setDirectLink(fallbackLink);
         setIsLinkDialogOpen(true);
-
+        
         toast({
           title: "Using fallback link",
           description: "The server encountered an issue, but we generated a fallback link for you."
@@ -316,7 +310,7 @@ const Contractors = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
+      
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <div>
@@ -371,7 +365,7 @@ const Contractors = () => {
             </>
           )}
         </TabsList>
-
+        
         <TabsContent value="contractors">
           {/* Search */}
           <div className="mb-6 relative">
@@ -417,10 +411,7 @@ const Contractors = () => {
                         </div>
                         <div>
                           <h3 className="font-semibold text-white">
-                            {company.companyName || 
-                             (company.firstName && company.lastName ? 
-                               `${company.firstName} ${company.lastName}` : 
-                               company.username || "Business")}
+                            {company.companyName || `${company.firstName} ${company.lastName}`}
                           </h3>
                           <p className="text-sm text-muted-foreground">{company.industry || "Business"}</p>
                         </div>
@@ -429,21 +420,21 @@ const Contractors = () => {
                         {getContractCount(company.id)} {getContractCount(company.id) === 1 ? 'project' : 'projects'}
                       </div>
                     </div>
-
+                    
                     {company.email && (
                       <div className="flex items-center text-sm text-muted-foreground mb-3">
                         <Mail size={16} className="mr-2" />
                         {company.email}
                       </div>
                     )}
-
+                    
                     {(company as any).address && (
                       <div className="flex items-center text-sm text-muted-foreground mb-3">
                         <Building size={16} className="mr-2" />
                         {(company as any).address}
                       </div>
                     )}
-
+                    
                     <div className="border-t border-border pt-3 mt-3">
                       <Button
                         variant="outline"
@@ -487,26 +478,26 @@ const Contractors = () => {
                         {getContractCount(contractor.id)} {getContractCount(contractor.id) === 1 ? 'contract' : 'contracts'}
                       </div>
                     </div>
-
+                  
                     {contractor.industry && (
                       <div className="flex items-center text-sm text-muted-foreground mb-3">
                         <Briefcase size={16} className="mr-2" />
                         {contractor.industry}
                       </div>
                     )}
-
+                  
                     <div className="flex items-center text-sm text-muted-foreground mb-3">
                       <Mail size={16} className="mr-2" />
                       {contractor.email}
                     </div>
-
+                  
                     {contractor.hourlyRate && (
                       <div className="flex items-center text-sm text-muted-foreground mb-3">
                         <CreditCard size={16} className="mr-2" />
                         ${contractor.hourlyRate}/hr
                       </div>
                     )}
-
+                  
                     <div className="border-t border-border pt-3 mt-3 flex justify-end">
                       <Button
                         variant="ghost"
@@ -521,7 +512,7 @@ const Contractors = () => {
                   </Card>
                 ))
               )}
-
+              
               {/* Empty state for business users */}
               {!isContractor && filteredContractors.length === 0 && (
                 <EmptyState 
@@ -538,7 +529,7 @@ const Contractors = () => {
                   }
                 />
               )}
-
+              
               {/* Empty state for contractors */}
               {isContractor && filteredBusinesses.length === 0 && (
                 <EmptyState 
@@ -562,7 +553,7 @@ const Contractors = () => {
             </div>
           )}
         </TabsContent>
-
+        
         <TabsContent value="freelancers">
           {/* Search for freelancers tab */}
           <div className="mb-6 relative">
@@ -615,26 +606,26 @@ const Contractors = () => {
                         {getContractCount(freelancer.id)} {getContractCount(freelancer.id) === 1 ? 'project' : 'projects'}
                       </div>
                     </div>
-
+                    
                     {freelancer.industry && (
                       <div className="flex items-center text-sm text-muted-foreground mb-3">
                         <Briefcase size={16} className="mr-2" />
                         {freelancer.industry}
                       </div>
                     )}
-
+                    
                     <div className="flex items-center text-sm text-muted-foreground mb-3">
                       <Mail size={16} className="mr-2" />
                       {freelancer.email}
                     </div>
-
+                    
                     {freelancer.hourlyRate && (
                       <div className="flex items-center text-sm text-muted-foreground mb-3">
                         <CreditCard size={16} className="mr-2" />
                         ${freelancer.hourlyRate}/hr
                       </div>
                     )}
-
+                    
                     {!isContractor && (
                       <div className="border-t border-border pt-3 mt-3 flex justify-between">
                         <Button
@@ -659,7 +650,7 @@ const Contractors = () => {
                     )}
                   </Card>
                 ))}
-
+                
                 {/* Empty State for Freelancers */}
                 {freelancers.length === 0 && (
                   <div className="col-span-full bg-black text-white rounded-lg shadow-sm border border-border p-8 text-center">
@@ -683,7 +674,7 @@ const Contractors = () => {
               </div>
           )}
         </TabsContent>
-
+        
         {!isContractor && (
           <TabsContent value="invites">
             <div className="space-y-6">
@@ -696,13 +687,13 @@ const Contractors = () => {
                     </p>
                   </div>
                 </div>
-
+                
                 {isLoadingInvites ? (
                   <div className="animate-pulse p-6">
                     <div className="h-7 bg-zinc-800 rounded w-1/4 mb-3"></div>
                     <div className="h-4 bg-zinc-800 rounded w-3/4 mb-2"></div>
                     <div className="h-4 bg-zinc-800 rounded w-2/4 mb-6"></div>
-
+                    
                     <div className="h-7 bg-zinc-800 rounded w-1/3 mb-3"></div>
                     <div className="h-4 bg-zinc-800 rounded w-3/5 mb-2"></div>
                     <div className="h-4 bg-zinc-800 rounded w-2/5"></div>
@@ -796,7 +787,7 @@ const Contractors = () => {
                   </div>
                 )}
               </div>
-
+              
               {/* Connection Requests functionality moved to V2 system */}
             </div>
           </TabsContent>

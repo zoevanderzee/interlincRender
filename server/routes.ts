@@ -423,41 +423,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
 
-          // Get businesses from accepted connection requests - THIS IS THE KEY FIX
-          let businessesFromConnections = [];
-          try {
-            const connections = await storage.getConnectionRequests({
-              contractorId: currentUser.id,
-              status: 'accepted'
-            });
-
-            console.log(`Found ${connections.length} accepted connection requests for contractor ID: ${currentUser.id}`);
-
-            for (const connection of connections) {
-              if (connection.businessId) {
-                const business = await storage.getUser(connection.businessId);
-                if (business && business.role === 'business') {
-                  // Ensure the business has proper display name
-                  const displayBusiness = {
-                    ...business,
-                    displayName: business.companyName || business.company || `${business.firstName || ''} ${business.lastName || ''}`.trim() || business.username
-                  };
-                  businessesFromConnections.push(displayBusiness);
-                }
-              }
-            }
-          } catch (error) {
-            console.error("Error fetching businesses from connections:", error);
-          }
-
           // Combine and deduplicate businesses
-          const allBusinesses = [...businessesWithContracts, ...businessesFromRequests, ...businessesFromConnections];
+          const allBusinesses = [...businessesWithContracts, ...businessesFromRequests];
           const uniqueBusinesses = allBusinesses.filter((business, index, self) =>
             index === self.findIndex(b => b.id === business.id)
           );
 
-          console.log(`Returning ${uniqueBusinesses.length} connected businesses for contractor ${currentUser.id}:`);
-          console.log(uniqueBusinesses.map(b => `- ${b.displayName || b.username} (ID: ${b.id})`));
           users = uniqueBusinesses;
         } else if (!role || role === "contractor" || role === "freelancer") {
           // Contractors can only see themselves
@@ -716,7 +687,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       case 'payment_intent.succeeded':
         const succeededIntent = event.data.object;
         console.log(`Payment succeeded: ${succeededIntent.id}`);
-
+        
         // Update payment status in database
         try {
           const paymentId = succeededIntent.metadata?.paymentId;
@@ -733,7 +704,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const failedIntent = event.data.object;
         const errorMessage = failedIntent.last_payment_error?.message || 'Payment failed';
         console.log(`Payment failed: ${failedIntent.id}, ${errorMessage}`);
-
+        
         // Update payment status in database
         try {
           const paymentId = failedIntent.metadata?.paymentId;
@@ -749,7 +720,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       case 'payment_intent.processing':
         const processingIntent = event.data.object;
         console.log(`Payment processing: ${processingIntent.id}`);
-
+        
         // Update payment status to processing
         try {
           const paymentId = processingIntent.metadata?.paymentId;
@@ -2381,9 +2352,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           contractorPayments.push(...payments);
         }
 
-        // Get connected businesses for this contractor
-        const connectedBusinesses = await storage.getBusinessesByContractorId(userId);
-
         // Active contracts are those with status 'Active' (case-sensitive match)
         const activeContracts = contractorContracts.filter(contract => contract.status === 'Active');
 
@@ -2400,7 +2368,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
           contracts: contractorContracts, // Contractor's own contracts
           contractors: [], // Not relevant for contractors
-          businesses: connectedBusinesses, // Connected businesses for contractors
           milestones: contractorMilestones, // Contractor's own milestones
           payments: contractorPayments, // Contractor's own payments
           invites: [] // Not relevant for contractors
@@ -3639,8 +3606,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const contract of activeContracts) {
         // Get milestones for this contract
         const milestones = await storage.getMilestonesByContractId(contract.id);
-        // Get deliverables (which are also milestones) for this contract
-        // const deliverables = await storage.getDeliverablesByContractId(contract.id); // This would be a separate call if they were stored separately
 
         // Get contractor name
         let contractorName = 'Unknown Contractor';
@@ -4507,6 +4472,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Retrieve a user's profile code
       const userId = req.user?.id;
+
       if (!userId) {
         return res.status(401).json({ message: "Authentication required" });
       }
@@ -5040,7 +5006,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Only allow contractors to see their own submissions
       if (req.user!.role === 'contractor' && req.user!.id !== contractorId) {
-        return res.status(4003).json({ message: 'Access denied' });
+        return res.status(403).json({ message: 'Access denied' });
       }
 
       const submissions = await storage.getWorkRequestSubmissionsByContractorId(contractorId);
@@ -5292,8 +5258,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
               if (paymentResult.success) {
                 console.log(`[APPROVAL_PAYMENT] ✅ Payment successful: $${paymentResult.payment?.amount} to contractor ${paymentResult.payment?.contractorId}`);
-                totalPaymentsSuccessful++;
-                totalPaymentAmount += parseFloat(autoPayMilestone.paymentAmount);
                 await storage.updateMilestone(autoPayMilestone.id, { status: 'completed' });
               } else {
                 console.log(`[APPROVAL_PAYMENT] ⚠️ Payment failed but work remains approved:`, paymentResult.error);
@@ -5304,7 +5268,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } catch (paymentError: any) {
             console.log('[APPROVAL_PAYMENT] ⚠️ Payment processing error - work remains approved:', paymentError.message);
             paymentResult = { success: false, error: paymentError.message };
-            totalPaymentsFailed++;
           }
         }
       }
@@ -5671,7 +5634,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (apiError) {
         console.log('Error fetching funding history from Trolley API:', apiError);
         res.json([]); // Return empty array if API call fails
-
       }
 
     } catch (error) {
