@@ -2023,8 +2023,12 @@ export class DatabaseStorage implements IStorage {
           // Get business user info
           const [businessUser] = await db.select().from(users).where(eq(users.id, project.businessId));
           if (businessUser) {
+            // Use actual company name from database, no hardcoded overrides
             businessInfo = {
-              companyName: businessUser.companyName,
+              companyName: businessUser.companyName || 
+                (businessUser.firstName && businessUser.lastName ? 
+                  `${businessUser.firstName} ${businessUser.lastName}` : 
+                  businessUser.username || "Business"),
               businessFirstName: businessUser.firstName,
               businessLastName: businessUser.lastName,
               projectTitle: project.name

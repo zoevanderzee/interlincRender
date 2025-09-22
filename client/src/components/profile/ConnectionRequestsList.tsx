@@ -59,7 +59,7 @@ export function ConnectionRequestsList() {
               
               if (businessRes.ok) {
                 const business = await businessRes.json();
-                // Use the same logic as work requests for consistent business name display
+                // Use actual company name from database without any hardcoded overrides
                 const displayName = business.companyName || 
                   (business.firstName && business.lastName ? 
                     `${business.firstName} ${business.lastName}` : 
