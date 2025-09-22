@@ -28,8 +28,8 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
   // For mobile display
   if (!isOpen && !isMobileOpen) {
     return (
-      <div className="hidden md:flex flex-col bg-black border-r border-zinc-800 w-16 overflow-y-auto transition-all duration-300 ease-in-out">
-        <div className="flex justify-center py-4 border-b border-zinc-800">
+      <div className="hidden md:flex flex-col bg-[#0F172A] border-r border-[#334155] w-16 overflow-y-auto transition-all duration-300 ease-in-out">
+        <div className="flex justify-center py-4 border-b border-[#334155]">
           <img src={logoImage} alt="InterLinc Logo" className="h-8" />
         </div>
 
@@ -144,9 +144,9 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
   return (
     <div className={`
       ${isMobileOpen ? "fixed inset-y-0 left-0 z-30" : "hidden md:flex"} 
-      flex-col bg-black border-r border-zinc-800 w-64 overflow-y-auto transition-all duration-300 ease-in-out
+      flex-col bg-[#0F172A] border-r border-[#334155] w-64 overflow-y-auto transition-all duration-300 ease-in-out
     `}>
-      <div className="flex items-center justify-between p-4 border-b border-zinc-800">
+      <div className="flex items-center justify-between p-4 border-b border-[#334155]">
         <div className="flex items-center">
           <img src={logoImage} alt="InterLinc Logo" className="h-8" />
         </div>
@@ -169,7 +169,7 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
             <li>
               <Link 
                 href="/" 
-                className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/") ? "bg-zinc-800 text-white" : "text-white hover:bg-zinc-800"}`}
+                className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/") ? "bg-[#2563EB] text-white" : "text-white hover:bg-[#2563EB]"}`}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-3" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="3" width="7" height="9"></rect>
@@ -183,7 +183,7 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
             <li>
               <Link 
                 href="/projects" 
-                className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/projects") ? "bg-zinc-800 text-white" : "text-white hover:bg-zinc-800"}`}
+                className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/projects") ? "bg-[#2563EB] text-white" : "text-white hover:bg-[#2563EB]"}`}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-3" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="8" y1="6" x2="21" y2="6"></line>
@@ -336,7 +336,7 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
 
 
         <div className="mt-auto px-4">
-          <div className="pt-4 border-t border-zinc-800">
+          <div className="pt-4 border-t border-[#334155]">
             <Link 
               href="/settings" 
               className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/settings") ? "bg-zinc-800 text-white" : "text-white hover:bg-zinc-800"}`}
