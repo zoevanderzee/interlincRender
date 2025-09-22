@@ -50,20 +50,16 @@ export function SubmitWorkModal({
       deliverableFiles?: any[];
       deliverableDescription?: string;
     }) => {
-      console.log(`Submitting work for deliverable ${deliverableId} with data:`, data);
-      
-      // Try deliverables endpoint first
+      // Try both deliverables and milestones endpoints for compatibility
       let response = await apiRequest("PATCH", `/api/deliverables/${deliverableId}`, data);
       
       if (!response.ok) {
-        console.log(`Deliverables endpoint failed with status ${response.status}, trying milestones endpoint`);
         // Fallback to milestones endpoint
         response = await apiRequest("PATCH", `/api/milestones/${deliverableId}`, data);
       }
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'Submission failed' }));
-        console.error(`Both endpoints failed. Final error:`, errorData);
         throw new Error(errorData.message || `Submission failed with status ${response.status}`);
       }
       

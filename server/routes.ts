@@ -1647,61 +1647,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`Found deliverable ${id} for contract ${existingDeliverable.contractId}`);
 
-      // If the contract doesn't exist, check if this is a work request milestone
-      let contract = await storage.getContract(existingDeliverable.contractId);
+      const contract = await storage.getContract(existingDeliverable.contractId);
       if (!contract) {
-        console.log(`Contract ${existingDeliverable.contractId} not found for deliverable ${id}, checking for work request association`);
-        
-        // Try to find a work request that might be associated with this milestone
-        try {
-          const workRequests = await storage.getWorkRequestsByContractorId(userId);
-          const relatedWorkRequest = workRequests.find(wr => 
-            wr.title === existingDeliverable.name && 
-            ['assigned', 'in_review', 'approved'].includes(wr.status)
-          );
-          
-          if (relatedWorkRequest) {
-            console.log(`Found related work request ${relatedWorkRequest.id} for deliverable ${id}`);
-            // For work requests, we'll allow the submission even without a contract
-            // The business user will be able to review and approve the work
-          } else {
-            return res.status(404).json({ message: "Contract not found and no related work request found" });
-          }
-        } catch (error) {
-          console.error("Error checking for related work requests:", error);
-          return res.status(404).json({ message: "Contract not found" });
-        }
+        console.log(`Contract ${existingDeliverable.contractId} not found for deliverable ${id}`);
+        return res.status(404).json({ message: "Contract not found" });
       }
 
       console.log(`Found contract ${contract.id}: businessId=${contract.businessId}, contractorId=${contract.contractorId}`);
 
       // Allow contractors to submit work on their assignments
       if (userRole === 'contractor') {
-        let hasAccess = false;
-        
-        if (contract) {
-          // Check if contractor is assigned to this contract
-          hasAccess = contract.contractorId === userId;
-          
-          if (!hasAccess) {
-            // Check if contractor has work requests for this project
-            const workRequests = await storage.getWorkRequestsByContractorId(userId);
-            hasAccess = workRequests.some(wr => wr.projectId === contract.id && ['accepted', 'assigned'].includes(wr.status));
-          }
-        } else {
-          // No contract exists, check if this is a work request submission
-          const workRequests = await storage.getWorkRequestsByContractorId(userId);
-          hasAccess = workRequests.some(wr => 
-            wr.title === existingDeliverable.name && 
-            ['assigned', 'in_review', 'approved'].includes(wr.status)
-          );
-        }
+        // Check if contractor is assigned to this contract or has work requests for this project
+        const hasAccess = contract.contractorId === userId;
         
         if (!hasAccess) {
-          console.log(`Contractor ${userId} has no access to deliverable ${id}`);
-          return res.status(403).json({ message: "Access denied: You are not assigned to this deliverable" });
+          // Check if contractor has work requests for this project
+          const workRequests = await storage.getWorkRequestsByContractorId(userId);
+          const hasWorkRequest = workRequests.some(wr => wr.projectId === contract.id && ['accepted', 'assigned'].includes(wr.status));
+          
+          if (!hasWorkRequest) {
+            console.log(`Contractor ${userId} has no access to contract ${contract.id}`);
+            return res.status(403).json({ message: "Access denied: You are not assigned to this project" });
+          }
         }
-      } else if (userRole === 'business' && contract && contract.businessId !== userId) {
+      } else if (userRole === 'business' && contract.businessId !== userId) {
         return res.status(403).json({ message: "Access denied: Cannot update other business deliverables" });
       }
 
@@ -1721,36 +1690,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create notification when contractor submits work (marks deliverable as completed)
       if (updateData.status === 'completed' && userRole === 'contractor') {
         try {
-          if (contract) {
-            await notificationService.createWorkSubmission(
-              contract.businessId,
-              updatedDeliverable.name,
-              contract.contractName || "Project",
-              userId
-            );
-            console.log(`Created work submission notification for business ${contract.businessId}`);
-          } else {
-            // For work requests without contracts, find the business from the work request
-            const workRequests = await storage.getWorkRequestsByContractorId(userId);
-            const relatedWorkRequest = workRequests.find(wr => 
-              wr.title === updatedDeliverable.name && 
-              ['assigned', 'in_review', 'approved'].includes(wr.status)
-            );
-            
-            if (relatedWorkRequest) {
-              // Get the business ID from the project
-              const project = await storage.getProject(relatedWorkRequest.projectId);
-              if (project) {
-                await notificationService.createWorkSubmission(
-                  project.businessId,
-                  updatedDeliverable.name,
-                  "Work Request",
-                  userId
-                );
-                console.log(`Created work submission notification for business ${project.businessId} from work request`);
-              }
-            }
-          }
+          await notificationService.createWorkSubmission(
+            contract.businessId,
+            updatedDeliverable.name,
+            contract.contractName || "Project",
+            userId
+          );
+          console.log(`Created work submission notification for business ${contract.businessId}`);
         } catch (notificationError) {
           console.error('Error creating work submission notification:', notificationError);
         }

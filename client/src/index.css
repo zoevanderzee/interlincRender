@@ -6,38 +6,38 @@
 
 @layer base {
   :root {
-    /* Luxury Blue Theme */
-    --background: 220 100% 5%;  /* #0A0A1A very dark navy blue */
+    /* Premium Color Palette - Charcoal to Deep Navy */
+    --background: 222 47% 2%;
     --foreground: 0 0% 98%;
-    --card: 215 25% 17%;       /* #1E293B slate-800 */
+    --card: 225 39% 7%;
     --card-foreground: 0 0% 98%;
-    --popover: 215 25% 17%;    /* #1E293B slate-800 */
+    --popover: 225 39% 7%;
     --popover-foreground: 0 0% 98%;
-    --primary: 217 91% 60%;    /* #60A5FA blue-400 */
-    --primary-foreground: 0 0% 98%;
-    --secondary: 215 20% 27%;  /* #334155 slate-700 */
+    --primary: 0 0% 100%;
+    --primary-foreground: 222 47% 2%;
+    --secondary: 222 47% 11%;
     --secondary-foreground: 0 0% 98%;
-    --muted: 215 20% 27%;      /* #334155 slate-700 */
+    --muted: 222 47% 11%;
     --muted-foreground: 0 0% 63.9%;
-    --accent: 221 83% 53%;     /* #2563EB blue-600 */
+    --accent: 222 47% 11%;
     --accent-foreground: 0 0% 98%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 215 20% 27%;     /* #334155 slate-700 */
-    --input: 215 20% 27%;      /* #334155 slate-700 */
-    --ring: 217 91% 60%;       /* #60A5FA blue-400 */
-    --sidebar-background: 220 100% 5%;  /* #0A0A1A very dark navy blue */
+    --border: 222 47% 15%;
+    --input: 222 47% 15%;
+    --ring: 0 0% 100%;
+    --sidebar-background: 222 47% 2%;
     --sidebar-foreground: 0 0% 98%;
-    --sidebar-border: 215 20% 27%;     /* #334155 slate-700 */
-    --sidebar-primary: 217 91% 60%;    /* #60A5FA blue-400 */
-    --sidebar-primary-foreground: 222 84% 5%;
-    --sidebar-accent: 221 83% 53%;     /* #2563EB blue-600 */
+    --sidebar-border: 222 47% 15%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 222 47% 2%;
+    --sidebar-accent: 222 47% 11%;
     --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-ring: 217 91% 60%;       /* #60A5FA blue-400 */
+    --sidebar-ring: 0 0% 100%;
 
     /* Gradient Variables */
-    --card-gradient: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
-    --border-gradient: linear-gradient(135deg, #334155 0%, #2563EB 100%);
+    --card-gradient: linear-gradient(135deg, hsl(225, 39%, 7%) 0%, hsl(222, 47%, 4%) 100%);
+    --border-gradient: linear-gradient(135deg, hsl(222, 47%, 15%) 0%, hsl(220, 40%, 25%) 100%);
     
     /* Animation Variables */
     --transition-smooth: all 400ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -51,11 +51,11 @@
   body {
     font-family: 'SF Pro Display', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     @apply antialiased text-white min-h-screen;
-    background: linear-gradient(135deg, #0A0A1A 0%, #1E293B 100%);
+    background: linear-gradient(135deg, hsl(222, 47%, 2%) 0%, hsl(220, 39%, 1%) 100%);
     
     /* Subtle texture overlay */
     background-image: 
-      radial-gradient(circle at 1px 1px, rgba(96,165,250,0.03) 1px, transparent 0);
+      radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 0);
     background-size: 20px 20px;
   }
   

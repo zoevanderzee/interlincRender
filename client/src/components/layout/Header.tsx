@@ -53,7 +53,7 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-[#0F172A] border-b border-[#334155] h-16 flex items-center justify-between px-6 sticky top-0 z-50">
+    <header className="bg-black border-b border-zinc-800 h-16 flex items-center justify-between px-6 sticky top-0 z-50">
       <div className="flex items-center space-x-4">
         <Link href="/">
           <div className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
