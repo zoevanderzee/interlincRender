@@ -6268,9 +6268,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Register Trolley submerchant routes
-  registerTrolleySubmerchantRoutes(app, requireAuth);
-
   // Register Trolley contractor routes
   const { registerTrolleyContractorRoutes } = await import('./trolley-contractor-routes');
   registerTrolleyContractorRoutes(app, apiRouter, requireAuth);
