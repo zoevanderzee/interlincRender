@@ -42,17 +42,13 @@ import stripeService from "./services/stripe";
 import notificationService from "./services/notifications";
 import automatedPaymentService from "./services/automated-payments";
 import {generateComplianceExport, generateInvoiceExport, generatePaymentExport, generateCSVExport} from './export-helpers';
-import { trolleySdk } from "./trolley-sdk-service";
-import { trolleySubmerchantService, type TrolleySubmerchantData } from "./services/trolley-submerchant";
-import { trolleyService } from "./trolley-service";
+
 import {setupAuth} from "./auth";
 import {db} from "./db";
 import {sql, eq, and, or, desc, inArray} from "drizzle-orm";
 // Legacy object storage import removed - now using custom file storage
 import { FileStorageService, uploadMiddleware } from "./fileStorage";
 import plaidRoutes from "./plaid-routes";
-import trolleyRoutes from "./trolley-routes";
-import trolleyTestRoutes from "./trolley-test-routes";
 import {registerFirebaseRoutes} from "./firebase-routes";
 import connectRoutes from "./connect.js";
 import connectV2Routes from "./connect-v2.js";
@@ -3696,7 +3692,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register Plaid routes
   plaidRoutes(app, apiRouter, requireAuth);
-  trolleyRoutes(app, apiRouter, requireAuth);
 
   // Register Firebase auth routes
   registerFirebaseRoutes(app);
