@@ -171,6 +171,19 @@ export const getQueryFn: <T>(options: {
         hasUserInStorage: !!userId
       });
 
+      // Check authentication data before making request
+      console.log("Authentication headers check:");
+      console.log("user_id from localStorage:", userId);
+      console.log("firebase_uid from localStorage:", firebaseUid);
+
+      if (!userId && !firebaseUid) {
+        console.log("No authentication headers available - user not logged in");
+        if (unauthorizedBehavior === "throw") {
+          throw createApiError(401, 'Unauthorized', 'User not authenticated');
+        }
+        return null as T;
+      }
+
       // Use header-based authentication with localStorage
       const headers: HeadersInit = {
         'Accept': 'application/json',
@@ -179,10 +192,12 @@ export const getQueryFn: <T>(options: {
 
       if (userId) {
         headers['X-User-ID'] = userId;
+        console.log("Added X-User-ID header:", userId);
       }
 
       if (firebaseUid) {
         headers['X-Firebase-UID'] = firebaseUid;
+        console.log("Added X-Firebase-UID header:", firebaseUid);
       }
 
       const res = await fetch(endpoint, {

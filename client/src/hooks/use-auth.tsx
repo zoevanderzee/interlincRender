@@ -47,25 +47,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryKey: ["/api/user"],
     queryFn: async () => {
       console.log("Fetching current user data...");
+      
+      // First check if we have authentication data in localStorage
+      const storedUserId = localStorage.getItem('user_id');
+      const storedFirebaseUid = localStorage.getItem('firebase_uid');
+      
+      console.log("Stored auth data:", { storedUserId, storedFirebaseUid });
+      
       try {
         // Use apiRequest which handles X-User-ID header automatically
         const res = await apiRequest("GET", "/api/user");
 
         if (!res.ok) {
-          console.log("User not authenticated");
+          console.log("User not authenticated - clearing localStorage");
+          // Clear authentication data if request fails
+          localStorage.removeItem('user_id');
+          localStorage.removeItem('firebase_uid');
           return null;
         }
 
         const userData = await res.json();
         console.log("User authenticated:", userData?.username);
 
-        // Store authentication data for headers
+        // Store/update authentication data for headers
         localStorage.setItem('user_id', userData.id.toString());
         localStorage.setItem('firebase_uid', userData.firebaseUid || '');
 
         return userData;
       } catch (error) {
         console.error("Error fetching user data:", error);
+        // Clear authentication data on error
+        localStorage.removeItem('user_id');
+        localStorage.removeItem('firebase_uid');
         return null;
       }
     },
@@ -131,6 +144,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: (data: User) => {
       console.log("Login successful, saving user data to query cache");
+      
+      // Immediately store authentication data
+      localStorage.setItem('user_id', data.id.toString());
+      localStorage.setItem('firebase_uid', data.firebaseUid || '');
+      console.log("Authentication data stored after login:", {
+        user_id: data.id,
+        firebase_uid: data.firebaseUid || 'none'
+      });
+      
       queryClient.setQueryData(["/api/user"], data);
 
       // Force immediate refresh of user query with the new localStorage data
