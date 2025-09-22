@@ -1,8 +1,8 @@
-import { 
+import {
   users, invites, contracts, milestones, payments, paymentLogs, documents, bankAccounts, workRequests,
   businessOnboardingLinks, businessOnboardingUsage, connectionRequests, notifications, workSubmissions, workRequestSubmissions,
   businessWorkers, projects,
-  type User, type InsertUser, 
+  type User, type InsertUser,
   type Invite, type InsertInvite,
   type Contract, type InsertContract,
   type Milestone, type InsertMilestone,
@@ -155,7 +155,7 @@ export interface IStorage {
   getWorkRequest(id: number): Promise<WorkRequest | undefined>;
   getWorkRequestByToken(tokenHash: string): Promise<WorkRequest | undefined>;
   getWorkRequestsByBusinessId(businessId: number): Promise<WorkRequest[]>;
-  getWorkRequestsByEmail(email: string): Promise<WorkRequest[]>;
+  getWorkRequestsByContractorId(contractorUserId: number): Promise<WorkRequest[]>;
   getWorkRequestsWithBusinessInfo(contractorUserId: number): Promise<any[]>;
   getPendingWorkRequests(): Promise<WorkRequest[]>;
   createWorkRequest(workRequest: InsertWorkRequest, tokenHash: string): Promise<WorkRequest>;
@@ -305,8 +305,8 @@ export class MemStorage implements IStorage {
 
   async getUserByResetToken(token: string): Promise<User | undefined> {
     return Array.from(this.users.values()).find(
-      (user) => user.resetPasswordToken === token && 
-                user.resetPasswordExpires && 
+      (user) => user.resetPasswordToken === token &&
+                user.resetPasswordExpires &&
                 new Date(user.resetPasswordExpires) > new Date()
     );
   }
@@ -315,8 +315,8 @@ export class MemStorage implements IStorage {
     const user = await this.getUserByEmail(email);
     if (!user) return undefined;
 
-    const updatedUser = { 
-      ...user, 
+    const updatedUser = {
+      ...user,
       resetPasswordToken: token,
       resetPasswordExpires: expires
     };
@@ -340,8 +340,8 @@ export class MemStorage implements IStorage {
 
   async verifyEmailToken(token: string): Promise<User | null> {
     const user = Array.from(this.users.values()).find(
-      (user) => user.emailVerificationToken === token && 
-                user.emailVerificationExpires && 
+      (user) => user.emailVerificationToken === token &&
+                user.emailVerificationExpires &&
                 new Date(user.emailVerificationExpires) > new Date()
     );
 
@@ -377,8 +377,8 @@ export class MemStorage implements IStorage {
     // First get all active contracts for this business
     const contractorIds = new Set(
       Array.from(this.contracts.values())
-        .filter(contract => 
-          contract.businessId === businessId && 
+        .filter(contract =>
+          contract.businessId === businessId &&
           contract.contractorId !== null &&
           contract.status === 'active' // Only include contractors with active contracts
         )
@@ -401,7 +401,7 @@ export class MemStorage implements IStorage {
 
     // Get all contractors with those emails
     return Array.from(this.users.values()).filter(
-      user => user.email && invitedEmails.has(user.email.toLowerCase()) && 
+      user => user.email && invitedEmails.has(user.email.toLowerCase()) &&
         (user.role === 'contractor' || user.role === 'freelancer')
     );
   }
@@ -440,9 +440,9 @@ export class MemStorage implements IStorage {
     const existingUser = this.users.get(id);
     if (!existingUser) return undefined;
 
-    const updatedUser = { 
-      ...existingUser, 
-      stripeCustomerId 
+    const updatedUser = {
+      ...existingUser,
+      stripeCustomerId
     };
     this.users.set(id, updatedUser);
     return updatedUser;
@@ -452,8 +452,8 @@ export class MemStorage implements IStorage {
     const existingUser = this.users.get(id);
     if (!existingUser) return undefined;
 
-    const updatedUser = { 
-      ...existingUser, 
+    const updatedUser = {
+      ...existingUser,
       stripeCustomerId: stripeInfo.stripeCustomerId,
       stripeSubscriptionId: stripeInfo.stripeSubscriptionId
     };
@@ -465,8 +465,8 @@ export class MemStorage implements IStorage {
     const existingUser = this.users.get(id);
     if (!existingUser) return undefined;
 
-    const updatedUser = { 
-      ...existingUser, 
+    const updatedUser = {
+      ...existingUser,
       stripeConnectAccountId: connectAccountId,
       payoutEnabled
     };
@@ -503,10 +503,10 @@ export class MemStorage implements IStorage {
     // Default expiration to 7 days from now if not provided
     const expiresAt = insertInvite.expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-    const invite: Invite = { 
-      ...insertInvite, 
-      id, 
-      createdAt, 
+    const invite: Invite = {
+      ...insertInvite,
+      id,
+      createdAt,
       expiresAt,
       status: insertInvite.status || 'pending',
       projectId: insertInvite.projectId || null,
@@ -531,9 +531,9 @@ export class MemStorage implements IStorage {
     const existingInvite = this.invites.get(id);
     if (!existingInvite) return undefined;
 
-    const updatedInvite = { 
-      ...existingInvite, 
-      token: token 
+    const updatedInvite = {
+      ...existingInvite,
+      token: token
     };
     this.invites.set(id, updatedInvite);
     return updatedInvite;
@@ -682,9 +682,9 @@ export class MemStorage implements IStorage {
 
   async createPayment(insertPayment: InsertPayment): Promise<Payment> {
     const id = this.paymentId++;
-    const payment: Payment = { 
-      ...insertPayment, 
-      id, 
+    const payment: Payment = {
+      ...insertPayment,
+      id,
       completedDate: null,
       stripePaymentIntentId: null,
       stripePaymentIntentStatus: null,
@@ -707,14 +707,14 @@ export class MemStorage implements IStorage {
     const existingPayment = this.payments.get(id);
     if (!existingPayment) return undefined;
 
-    const updatedPayment = { 
-      ...existingPayment, 
-      stripePaymentIntentId, 
+    const updatedPayment = {
+      ...existingPayment,
+      stripePaymentIntentId,
       stripePaymentIntentStatus,
       // Update payment status based on Stripe status
-      status: stripePaymentIntentStatus === 'succeeded' ? 'completed' : 
-              stripePaymentIntentStatus === 'processing' ? 'processing' : 
-              stripePaymentIntentStatus === 'requires_payment_method' ? 'failed' : 
+      status: stripePaymentIntentStatus === 'succeeded' ? 'completed' :
+              stripePaymentIntentStatus === 'processing' ? 'processing' :
+              stripePaymentIntentStatus === 'requires_payment_method' ? 'failed' :
               existingPayment.status,
       // If payment succeeded, set the completed date
       completedDate: stripePaymentIntentStatus === 'succeeded' ? new Date() : existingPayment.completedDate
@@ -728,8 +728,8 @@ export class MemStorage implements IStorage {
     const existingPayment = this.payments.get(id);
     if (!existingPayment) return undefined;
 
-    const updatedPayment = { 
-      ...existingPayment, 
+    const updatedPayment = {
+      ...existingPayment,
       stripeTransferId,
       stripeTransferStatus,
       applicationFee: applicationFee.toString()
@@ -845,8 +845,8 @@ export class MemStorage implements IStorage {
     const existingPayment = this.payments.get(paymentId);
     if (!existingPayment) return undefined;
 
-    const updatedPayment: Payment = { 
-      ...existingPayment, 
+    const updatedPayment: Payment = {
+      ...existingPayment,
       status,
       // If payment completed, set the completed date
       completedDate: status === 'completed' ? new Date() : existingPayment.completedDate,
@@ -1075,7 +1075,7 @@ export class DatabaseStorage implements IStorage {
   constructor() {
     const PostgresSessionStore = connectPg(session);
     this.sessionStore = new PostgresSessionStore({
-      pool, 
+      pool,
       createTableIfMissing: true
     });
   }
@@ -1726,9 +1726,9 @@ export class DatabaseStorage implements IStorage {
 
   async updatePaymentStripeDetails(id: number, stripePaymentIntentId: string, stripePaymentIntentStatus: string): Promise<Payment | undefined> {
     // Update payment status based on Stripe status
-    const status = stripePaymentIntentStatus === 'succeeded' ? 'completed' : 
-                  stripePaymentIntentStatus === 'processing' ? 'processing' : 
-                  stripePaymentIntentStatus === 'requires_payment_method' ? 'failed' : 
+    const status = stripePaymentIntentStatus === 'succeeded' ? 'completed' :
+                  stripePaymentIntentStatus === 'processing' ? 'processing' :
+                  stripePaymentIntentStatus === 'requires_payment_method' ? 'failed' :
                   'scheduled';
 
     // If payment succeeded, set the completed date
@@ -1900,9 +1900,9 @@ export class DatabaseStorage implements IStorage {
   async updateBankAccountStripeId(bankAccountId: number, stripeBankAccountId: string): Promise<BankAccount | undefined> {
     const [updatedAccount] = await db
       .update(bankAccounts)
-      .set({ 
+      .set({
         stripeBankAccountId,
-        isVerified: true 
+        isVerified: true
       })
       .where(eq(bankAccounts.id, bankAccountId))
       .returning();
@@ -1946,19 +1946,41 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getWorkRequestsByBusinessId(businessId: number): Promise<WorkRequest[]> {
-    return db
-      .select()
-      .from(workRequests)
-      .where(eq(workRequests.businessId, businessId))
-      .orderBy(desc(workRequests.createdAt));
+    try {
+      console.log(`Getting work requests for business ID: ${businessId}`);
+      const results = await db
+        .select()
+        .from(workRequests)
+        .innerJoin(projects, eq(workRequests.projectId, projects.id))
+        .where(eq(projects.businessId, businessId));
+
+      return results.map(row => ({
+        ...row.work_requests,
+        projectName: row.projects.name
+      }));
+    } catch (error) {
+      console.error('Error getting work requests by business ID:', error);
+      return [];
+    }
   }
 
-  async getWorkRequestsByContractorId(contractorUserId: number): Promise<WorkRequest[]> {
-    return db
-      .select()
-      .from(workRequests)
-      .where(eq(workRequests.contractorUserId, contractorUserId))
-      .orderBy(desc(workRequests.createdAt));
+  async getWorkRequestsByContractorId(contractorId: number): Promise<WorkRequest[]> {
+    try {
+      console.log(`Getting work requests for contractor ID: ${contractorId}`);
+      const results = await db
+        .select()
+        .from(workRequests)
+        .innerJoin(projects, eq(workRequests.projectId, projects.id))
+        .where(eq(workRequests.contractorUserId, contractorId));
+
+      return results.map(row => ({
+        ...row.work_requests,
+        projectName: row.projects.name
+      }));
+    } catch (error) {
+      console.error('Error getting work requests by contractor ID:', error);
+      return [];
+    }
   }
 
   async getWorkRequestsWithBusinessInfo(contractorUserId: number): Promise<any[]> {
@@ -2029,7 +2051,7 @@ export class DatabaseStorage implements IStorage {
     const expiresAt = insertWorkRequest.expiresAt || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
 
     // Handle potentially missing recipient email
-    const recipientEmail = insertWorkRequest.recipientEmail ? 
+    const recipientEmail = insertWorkRequest.recipientEmail ?
       insertWorkRequest.recipientEmail.toLowerCase() : null;
 
     const [workRequest] = await db
@@ -2902,7 +2924,7 @@ export class DatabaseStorage implements IStorage {
   async updateTrolleySubmerchantInfo(userId: number, submerchantId: string, status: string): Promise<User | undefined> {
     const [updated] = await db
       .update(users)
-      .set({ 
+      .set({
         trolleySubmerchantId: submerchantId,
         trolleySubmerchantStatus: status
       })
@@ -3086,7 +3108,7 @@ export class DatabaseStorage implements IStorage {
   async setConnectForUser(userId: number, data: { accountId: string, accountType: string }): Promise<User | undefined> {
     const [updated] = await db
       .update(users)
-      .set({ 
+      .set({
         stripeConnectAccountId: data.accountId,
         stripeConnectAccountType: data.accountType
       })

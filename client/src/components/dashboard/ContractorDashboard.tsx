@@ -49,12 +49,12 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
            paymentDate <= thirtyDaysFromNow;
   });
   
-  // Active projects for this contractor - match database case 'Active'
-  const activeProjects = dashboardData.contracts.filter(c => c.status === 'Active');
+  // Active assignments from work requests (preferred) or active contracts as fallback
+  const activeAssignments = dashboardData.assignments || dashboardData.contracts.filter(c => c.status === 'Active');
   
-  // Calculate total and pending earnings
-  const totalEarnings = calculateTotalEarnings(dashboardData.payments);
-  const pendingEarnings = calculatePendingEarnings(dashboardData.payments);
+  // Calculate total and pending earnings from dashboard stats (server-calculated)
+  const totalEarnings = dashboardData.stats.paymentsProcessed || 0;
+  const pendingEarnings = dashboardData.stats.totalPendingValue || 0;
 
   return (
     <>
@@ -66,17 +66,17 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
       
       {/* Primary Metrics: 3 Key Cards for contractors */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        {/* Card 1: Active Projects */}
+        {/* Card 1: Active Assignments */}
         <Card className="animate-fade-in hover:animate-glow-pulse">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-muted-foreground text-sm font-medium">Active Projects</h3>
+              <h3 className="text-muted-foreground text-sm font-medium">Active Assignments</h3>
               <div className="p-3 rounded-xl bg-blue-500/10 backdrop-blur-sm shadow-lg transition-all duration-300 hover:scale-110">
                 <Briefcase size={20} className="text-blue-400" />
               </div>
             </div>
             <p className="text-3xl font-bold text-white tracking-tight">{dashboardData.stats.activeContractsCount}</p>
-            <p className="text-xs text-muted-foreground mt-1">Current projects in progress</p>
+            <p className="text-xs text-muted-foreground mt-1">Current assignments in progress</p>
           </CardContent>
         </Card>
         
@@ -173,37 +173,46 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
         </Button>
       </div>
       
-      {/* Active Projects */}
+      {/* Active Assignments */}
       <div className="mb-8">
-        <h2 className="text-xl font-semibold text-white mb-4">Active Projects</h2>
-        {activeProjects.length > 0 ? (
+        <h2 className="text-xl font-semibold text-white mb-4">Active Assignments</h2>
+        {activeAssignments.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {activeProjects.slice(0, 4).map((contract) => (
-              <Card key={contract.id} className="bg-zinc-900 border-zinc-800">
+            {activeAssignments.slice(0, 4).map((assignment) => (
+              <Card key={assignment.id} className="bg-zinc-900 border-zinc-800">
                 <CardHeader className="pb-2">
                   <div className="flex justify-between items-start">
-                    <CardTitle className="text-white">{contract.contractName}</CardTitle>
+                    <CardTitle className="text-white">
+                      {assignment.title || assignment.contractName || 'Assignment'}
+                    </CardTitle>
                     <div className="px-2 py-1 bg-blue-500/20 rounded text-xs text-blue-400">
-                      {contract.contractCode}
+                      {assignment.status || assignment.contractCode || 'Active'}
                     </div>
                   </div>
                   <CardDescription className="line-clamp-2">
-                    {contract.description || 'No description provided'}
+                    {assignment.description || 'No description provided'}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-gray-400">Start Date</span>
-                      <span className="text-white">{contract.startDate ? format(new Date(contract.startDate), 'MMM d, yyyy') : 'Not set'}</span>
+                      <span className="text-gray-400">Due Date</span>
+                      <span className="text-white">
+                        {assignment.dueDate ? format(new Date(assignment.dueDate), 'MMM d, yyyy') : 
+                         assignment.startDate ? format(new Date(assignment.startDate), 'MMM d, yyyy') : 'Not set'}
+                      </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-400">End Date</span>
-                      <span className="text-white">{contract.endDate ? format(new Date(contract.endDate), 'MMM d, yyyy') : 'Not set'}</span>
+                      <span className="text-gray-400">Status</span>
+                      <span className="text-white capitalize">
+                        {assignment.status?.replace('_', ' ') || 'Active'}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Value</span>
-                      <span className="text-white">${parseFloat(contract.value).toLocaleString('en-US')}</span>
+                      <span className="text-white">
+                        ${parseFloat(assignment.amount || assignment.value || 0).toLocaleString('en-US')}
+                      </span>
                     </div>
                   </div>
                 </CardContent>
@@ -211,7 +220,15 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
                   <Button 
                     variant="ghost" 
                     className="w-full text-accent-500 hover:text-accent-400 hover:bg-accent-500/10"
-                    onClick={() => navigate(`/contract/${contract.id}`)}
+                    onClick={() => {
+                      if (assignment.contractId) {
+                        navigate(`/contract/${assignment.contractId}`);
+                      } else if (assignment.projectId) {
+                        navigate(`/projects`);
+                      } else {
+                        navigate(`/contractor-requests`);
+                      }
+                    }}
                   >
                     View Details
                   </Button>
@@ -225,9 +242,9 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-zinc-800">
                 <AlertTriangle className="h-6 w-6 text-yellow-500" />
               </div>
-              <h3 className="mb-2 text-lg font-medium text-white">No Active Projects</h3>
+              <h3 className="mb-2 text-lg font-medium text-white">No Active Assignments</h3>
               <p className="text-sm text-gray-400">
-                You don't have any active projects at the moment.
+                You don't have any active assignments at the moment.
               </p>
             </CardContent>
           </Card>

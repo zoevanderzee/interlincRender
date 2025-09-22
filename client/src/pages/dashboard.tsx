@@ -218,7 +218,7 @@ const Dashboard = () => {
           <Button
             variant="ghost"
             className="h-auto py-4 px-6 justify-start animate-slide-in"
-            onClick={() => navigate('/projects')}
+            onClick={() => navigate('/contractor-requests')}
           >
             <Briefcase className="mr-3" size={18} />
             <div className="text-left">

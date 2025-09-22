@@ -2334,12 +2334,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let userContracts = [];
 
-      // Handle contractor dashboard - contractors can see their own contracts
+      // Handle contractor dashboard - contractors can see their own contracts and assignments
       if (userRole === 'contractor') {
-        console.log(`Contractor ${userId} accessing dashboard for their own contracts`);
+        console.log(`Contractor ${userId} accessing dashboard for their own contracts and assignments`);
 
         // Get contractor's own contracts
         const contractorContracts = await storage.getContractsByContractorId(userId);
+
+        // Get contractor's work requests (assignments)
+        const workRequests = await storage.getWorkRequestsByContractorId(userId);
 
         // Get contractor's own milestones
         const contractorMilestones = [];
@@ -2352,17 +2355,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
           contractorPayments.push(...payments);
         }
 
-        // Active contracts are those with status 'Active' (case-sensitive match)
-        const activeContracts = contractorContracts.filter(contract => contract.status === 'Active');
+        // Active assignments are work requests with status 'assigned', 'in_review', or 'approved'
+        const activeAssignments = workRequests.filter(wr => 
+          ['assigned', 'in_review', 'approved'].includes(wr.status)
+        );
+
+        // Calculate total earnings from completed payments
+        const totalEarnings = contractorPayments
+          .filter(p => p.status === 'completed')
+          .reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
+
+        // Calculate pending earnings from work requests and pending payments
+        const pendingFromWorkRequests = workRequests
+          .filter(wr => ['assigned', 'in_review', 'approved'].includes(wr.status))
+          .reduce((sum, wr) => sum + parseFloat(wr.amount), 0);
+        
+        const pendingFromPayments = contractorPayments
+          .filter(p => ['pending', 'processing', 'scheduled'].includes(p.status))
+          .reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
+
+        const totalPendingEarnings = pendingFromWorkRequests + pendingFromPayments;
 
         const dashboardData = {
           stats: {
-            activeContractsCount: activeContracts.length,
-            pendingApprovalsCount: contractorMilestones.filter(m => m.status === 'pending_approval').length,
-            paymentsProcessed: contractorPayments.filter(p => p.status === 'completed').length,
-            totalPendingValue: contractorPayments
-              .filter(p => p.status !== 'completed')
-              .reduce((sum, payment) => sum + parseFloat(payment.amount), 0),
+            activeContractsCount: activeAssignments.length, // Show active assignments instead
+            pendingApprovalsCount: contractorMilestones.filter(m => m.status === 'completed' || m.status === 'submitted').length,
+            paymentsProcessed: totalEarnings, // Show total earnings amount
+            totalPendingValue: totalPendingEarnings, // Show pending earnings
             activeContractorsCount: 0, // Not relevant for contractors
             pendingInvitesCount: 0 // Not relevant for contractors
           },
@@ -2370,7 +2389,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           contractors: [], // Not relevant for contractors
           milestones: contractorMilestones, // Contractor's own milestones
           payments: contractorPayments, // Contractor's own payments
-          invites: [] // Not relevant for contractors
+          invites: [], // Not relevant for contractors
+          workRequests: workRequests, // Add work requests to dashboard data
+          assignments: activeAssignments // Add active assignments specifically
         };
         return res.json(dashboardData);
       }

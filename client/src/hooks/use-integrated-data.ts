@@ -94,10 +94,10 @@ export function useIntegratedData() {
     select: (data) => data || [],
   });
 
-  // Work requests for contractors
+  // Work requests for contractors and businesses
   const { data: workRequestsData, isLoading: isWorkRequestsLoading } = useQuery({
     queryKey: ['/api/work-requests'],
-    enabled: !!user && user.role === 'contractor',
+    enabled: !!user,
     staleTime: 30 * 1000,
     refetchInterval: 30000, // Refresh every 30 seconds to catch updates
     refetchOnWindowFocus: true, // Refresh when user returns to tab
