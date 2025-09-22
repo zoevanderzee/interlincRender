@@ -50,7 +50,19 @@ export function SubmitWorkModal({
       deliverableFiles?: any[];
       deliverableDescription?: string;
     }) => {
-      const response = await apiRequest("PATCH", `/api/deliverables/${deliverableId}`, data);
+      // Try both deliverables and milestones endpoints for compatibility
+      let response = await apiRequest("PATCH", `/api/deliverables/${deliverableId}`, data);
+      
+      if (!response.ok) {
+        // Fallback to milestones endpoint
+        response = await apiRequest("PATCH", `/api/milestones/${deliverableId}`, data);
+      }
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Submission failed' }));
+        throw new Error(errorData.message || `Submission failed with status ${response.status}`);
+      }
+      
       return response.json();
     },
     onSuccess: () => {
@@ -59,10 +71,12 @@ export function SubmitWorkModal({
         description: "Your deliverable has been submitted for approval.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/milestones"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/deliverables"] });
       queryClient.invalidateQueries({ queryKey: ["/api/contracts"] });
       onClose();
     },
     onError: (error: any) => {
+      console.error("Submission error:", error);
       toast({
         title: "Submission Failed",
         description: error.message || "Failed to submit work. Please try again.",

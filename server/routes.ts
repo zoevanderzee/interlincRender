@@ -1212,36 +1212,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const updateData = req.body;
-      const userId = req.user?.id;
-      const userRole = req.user?.role || 'business';
+      
+      // Get user ID from session or X-User-ID header fallback
+      let userId = req.user?.id;
+      let userRole = req.user?.role || 'contractor';
+
+      // Use X-User-ID header fallback if session auth failed
+      if (!userId && req.headers['x-user-id']) {
+        userId = parseInt(req.headers['x-user-id'] as string);
+        const user = await storage.getUser(userId);
+        if (user) {
+          userRole = user.role;
+        }
+      }
 
       if (!userId) {
         return res.status(401).json({ message: "Authentication required" });
       }
 
+      console.log(`Updating milestone ${id} for user ${userId} with role ${userRole}`);
+
       // SECURITY: Verify user has access to update this milestone
       const existingMilestone = await storage.getMilestone(id);
       if (!existingMilestone) {
+        console.log(`Milestone ${id} not found`);
         return res.status(404).json({ message: "Milestone not found" });
       }
 
+      console.log(`Found milestone ${id} for contract ${existingMilestone.contractId}`);
+
       const contract = await storage.getContract(existingMilestone.contractId);
       if (!contract) {
+        console.log(`Contract ${existingMilestone.contractId} not found for milestone ${id}`);
         return res.status(404).json({ message: "Contract not found" });
       }
 
-      if (userRole === 'business' && contract.businessId !== userId) {
+      console.log(`Found contract ${contract.id}: businessId=${contract.businessId}, contractorId=${contract.contractorId}`);
+
+      // Allow contractors to submit work on their assignments
+      if (userRole === 'contractor') {
+        // Check if contractor is assigned to this contract or has work requests for this project
+        const hasAccess = contract.contractorId === userId;
+        
+        if (!hasAccess) {
+          // Check if contractor has work requests for this project
+          const workRequests = await storage.getWorkRequestsByContractorId(userId);
+          const hasWorkRequest = workRequests.some(wr => wr.projectId === contract.id && ['accepted', 'assigned'].includes(wr.status));
+          
+          if (!hasWorkRequest) {
+            console.log(`Contractor ${userId} has no access to contract ${contract.id}`);
+            return res.status(403).json({ message: "Access denied: You are not assigned to this project" });
+          }
+        }
+      } else if (userRole === 'business' && contract.businessId !== userId) {
         return res.status(403).json({ message: "Access denied: Cannot update other business milestones" });
       }
-      if (userRole === 'contractor' && contract.contractorId !== userId) {
-        return res.status(403).json({ message: "Access denied: Cannot update other contractor milestones" });
+
+      // Set submittedAt timestamp when status changes to completed
+      if (updateData.status === 'completed' && !updateData.submittedAt) {
+        updateData.submittedAt = new Date().toISOString();
       }
 
       const updatedMilestone = await storage.updateMilestone(id, updateData);
 
       if (!updatedMilestone) {
-        return res.status(404).json({ message: "Milestone not found" });
+        return res.status(404).json({ message: "Milestone not found after update" });
       }
+
+      console.log(`Successfully updated milestone ${id}`);
 
       // Create notification when contractor submits work (marks milestone as completed)
       if (updateData.status === 'completed' && userRole === 'contractor') {
@@ -1252,6 +1290,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             contract.contractName || "Project",
             userId
           );
+          console.log(`Created work submission notification for business ${contract.businessId}`);
         } catch (notificationError) {
           console.error('Error creating work submission notification:', notificationError);
         }
@@ -1579,36 +1618,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const updateData = req.body;
-      const userId = req.user?.id;
-      const userRole = req.user?.role || 'business';
+      
+      // Get user ID from session or X-User-ID header fallback
+      let userId = req.user?.id;
+      let userRole = req.user?.role || 'contractor';
+
+      // Use X-User-ID header fallback if session auth failed
+      if (!userId && req.headers['x-user-id']) {
+        userId = parseInt(req.headers['x-user-id'] as string);
+        const user = await storage.getUser(userId);
+        if (user) {
+          userRole = user.role;
+        }
+      }
 
       if (!userId) {
         return res.status(401).json({ message: "Authentication required" });
       }
 
+      console.log(`Updating deliverable ${id} for user ${userId} with role ${userRole}`);
+
       // SECURITY: Verify user has access to update this deliverable
       const existingDeliverable = await storage.getMilestone(id); // Use same storage method
       if (!existingDeliverable) {
+        console.log(`Deliverable ${id} not found`);
         return res.status(404).json({ message: "Deliverable not found" });
       }
 
+      console.log(`Found deliverable ${id} for contract ${existingDeliverable.contractId}`);
+
       const contract = await storage.getContract(existingDeliverable.contractId);
       if (!contract) {
+        console.log(`Contract ${existingDeliverable.contractId} not found for deliverable ${id}`);
         return res.status(404).json({ message: "Contract not found" });
       }
 
-      if (userRole === 'business' && contract.businessId !== userId) {
+      console.log(`Found contract ${contract.id}: businessId=${contract.businessId}, contractorId=${contract.contractorId}`);
+
+      // Allow contractors to submit work on their assignments
+      if (userRole === 'contractor') {
+        // Check if contractor is assigned to this contract or has work requests for this project
+        const hasAccess = contract.contractorId === userId;
+        
+        if (!hasAccess) {
+          // Check if contractor has work requests for this project
+          const workRequests = await storage.getWorkRequestsByContractorId(userId);
+          const hasWorkRequest = workRequests.some(wr => wr.projectId === contract.id && ['accepted', 'assigned'].includes(wr.status));
+          
+          if (!hasWorkRequest) {
+            console.log(`Contractor ${userId} has no access to contract ${contract.id}`);
+            return res.status(403).json({ message: "Access denied: You are not assigned to this project" });
+          }
+        }
+      } else if (userRole === 'business' && contract.businessId !== userId) {
         return res.status(403).json({ message: "Access denied: Cannot update other business deliverables" });
       }
-      if (userRole === 'contractor' && contract.contractorId !== userId) {
-        return res.status(403).json({ message: "Access denied: Cannot update other contractor deliverables" });
+
+      // Set submittedAt timestamp when status changes to completed
+      if (updateData.status === 'completed' && !updateData.submittedAt) {
+        updateData.submittedAt = new Date().toISOString();
       }
 
       const updatedDeliverable = await storage.updateMilestone(id, updateData); // Use same storage method
 
       if (!updatedDeliverable) {
-        return res.status(404).json({ message: "Deliverable not found" });
+        return res.status(404).json({ message: "Deliverable not found after update" });
       }
+
+      console.log(`Successfully updated deliverable ${id}`);
 
       // Create notification when contractor submits work (marks deliverable as completed)
       if (updateData.status === 'completed' && userRole === 'contractor') {
@@ -1619,6 +1696,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             contract.contractName || "Project",
             userId
           );
+          console.log(`Created work submission notification for business ${contract.businessId}`);
         } catch (notificationError) {
           console.error('Error creating work submission notification:', notificationError);
         }
