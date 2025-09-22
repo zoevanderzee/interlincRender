@@ -1366,6 +1366,19 @@ export class DatabaseStorage implements IStorage {
         )
       );
 
+    // Find businesses from business_workers table (where accepted connections are stored)
+    const businessesFromWorkers = await db
+      .select()
+      .from(users)
+      .innerJoin(businessWorkers, eq(users.id, businessWorkers.businessId))
+      .where(
+        and(
+          eq(businessWorkers.contractorUserId, contractorId),
+          eq(businessWorkers.status, 'active'),
+          eq(users.role, 'business')
+        )
+      );
+
     // Extract unique businesses
     const businessIds = new Set();
     const uniqueBusinesses: User[] = [];
@@ -1386,7 +1399,15 @@ export class DatabaseStorage implements IStorage {
       }
     });
 
-    console.log(`Found ${uniqueBusinesses.length} total businesses for contractor ${contractorId}: ${businessesWithContracts.length} from contracts, ${businessesWithConnections.length} from connections`);
+    // Add businesses from business_workers table
+    businessesFromWorkers.forEach(row => {
+      if (!businessIds.has(row.users.id)) {
+        businessIds.add(row.users.id);
+        uniqueBusinesses.push(row.users);
+      }
+    });
+
+    console.log(`Found ${uniqueBusinesses.length} total businesses for contractor ${contractorId}: ${businessesWithContracts.length} from contracts, ${businessesWithConnections.length} from connections, ${businessesFromWorkers.length} from business_workers`);
 
     return uniqueBusinesses;
   }
