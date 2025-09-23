@@ -96,22 +96,41 @@ export default function PayContractor() {
 
   // Get currency from YOUR business account (who is making the payment)
   const currency = (() => {
+    console.log('=== CURRENCY DETERMINATION DEBUG ===');
+    console.log('connectStatus:', connectStatus);
+    console.log('connectStatus.defaultCurrency:', connectStatus?.defaultCurrency);
+    console.log('connectStatus.country:', connectStatus?.country);
+
     // First priority: YOUR Connect V2 status default currency
     if (connectStatus?.defaultCurrency) {
-      console.log(`Using YOUR business currency: ${connectStatus.defaultCurrency}`);
+      console.log(`✅ Using YOUR business currency: ${connectStatus.defaultCurrency}`);
       return connectStatus.defaultCurrency;
     }
 
     // Second priority: YOUR Connect V2 status country
     if (connectStatus?.country) {
       const connectCurrency = getCurrencyFromCountry(connectStatus.country);
-      console.log(`Using YOUR business country ${connectStatus.country} -> ${connectCurrency}`);
+      console.log(`✅ Using YOUR business country ${connectStatus.country} -> ${connectCurrency}`);
       return connectCurrency;
     }
 
-    console.log('No business account data available, defaulting to USD');
-    return 'usd';
+    // Third priority: Check if account has Stripe data
+    if (connectStatus?.stripeAccountData?.default_currency) {
+      console.log(`✅ Using Stripe account currency: ${connectStatus.stripeAccountData.default_currency}`);
+      return connectStatus.stripeAccountData.default_currency;
+    }
+
+    if (connectStatus?.stripeAccountData?.country) {
+      const stripeCurrency = getCurrencyFromCountry(connectStatus.stripeAccountData.country);
+      console.log(`✅ Using Stripe account country ${connectStatus.stripeAccountData.country} -> ${stripeCurrency}`);
+      return stripeCurrency;
+    }
+
+    console.log('❌ No business account data available, defaulting to GBP');
+    return 'gbp'; // Default to GBP instead of USD
   })();
+
+  console.log(`=== FINAL CURRENCY SELECTED: ${currency.toUpperCase()} ===`);
 
   // Check for contractor ID in URL params
   useEffect(() => {

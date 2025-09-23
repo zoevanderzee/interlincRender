@@ -53,21 +53,51 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       const userId = getUserId(req);
       const existing = await db.getConnect(userId);
 
-      // Country to currency mapping
+      // Comprehensive country to currency mapping
       const countryToCurrency = {
-        'US': 'usd',
-        'GB': 'gbp', 
-        'CA': 'cad',
-        'AU': 'aud',
-        'DE': 'eur',
-        'FR': 'eur',
-        'IT': 'eur',
-        'ES': 'eur',
-        'NL': 'eur',
-        'BE': 'eur',
-        'JP': 'jpy',
-        'SG': 'sgd',
-        'HK': 'hkd'
+        'US': 'usd', 'USA': 'usd',
+        'GB': 'gbp', 'UK': 'gbp', 'United Kingdom': 'gbp',
+        'CA': 'cad', 'Canada': 'cad',
+        'AU': 'aud', 'Australia': 'aud',
+        'NZ': 'nzd', 'New Zealand': 'nzd',
+        // European Union countries
+        'AT': 'eur', 'BE': 'eur', 'CY': 'eur', 'EE': 'eur', 'FI': 'eur', 'FR': 'eur',
+        'DE': 'eur', 'GR': 'eur', 'IE': 'eur', 'IT': 'eur', 'LV': 'eur', 'LT': 'eur',
+        'LU': 'eur', 'MT': 'eur', 'NL': 'eur', 'PT': 'eur', 'SK': 'eur', 'SI': 'eur',
+        'ES': 'eur', 'European Union': 'eur', 'Europe': 'eur',
+        // Other major currencies
+        'CH': 'chf', 'Switzerland': 'chf',
+        'JP': 'jpy', 'Japan': 'jpy',
+        'KR': 'krw', 'South Korea': 'krw',
+        'SG': 'sgd', 'Singapore': 'sgd',
+        'HK': 'hkd', 'Hong Kong': 'hkd',
+        'SE': 'sek', 'Sweden': 'sek',
+        'NO': 'nok', 'Norway': 'nok',
+        'DK': 'dkk', 'Denmark': 'dkk',
+        'PL': 'pln', 'Poland': 'pln',
+        'CZ': 'czk', 'Czech Republic': 'czk',
+        'HU': 'huf', 'Hungary': 'huf',
+        'IN': 'inr', 'India': 'inr',
+        'BR': 'brl', 'Brazil': 'brl',
+        'MX': 'mxn', 'Mexico': 'mxn'
+      };
+
+      // Function to determine currency from country code
+      const getCurrencyFromCountry = (countryCode) => {
+        if (!countryCode) return 'usd';
+        
+        // Try exact match first
+        const exactMatch = countryToCurrency[countryCode];
+        if (exactMatch) return exactMatch;
+        
+        // Try case-insensitive match
+        const lowerCaseMatch = Object.keys(countryToCurrency).find(
+          key => key.toLowerCase() === countryCode.toLowerCase()
+        );
+        if (lowerCaseMatch) return countryToCurrency[lowerCaseMatch];
+        
+        // Default fallback
+        return 'usd';
       };
 
       if (!existing?.accountId) {
@@ -75,6 +105,8 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
           hasAccount: false, 
           needsOnboarding: true,
           version: 'v2',
+          country: 'GB', // Default country
+          defaultCurrency: 'gbp', // Default currency
           capabilities: {
             direct_api_integration: true,
             real_time_status: true,
@@ -86,6 +118,46 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       // Get real-time account status from Stripe
       const account = await stripe.accounts.retrieve(existing.accountId);
       const requirements = account.requirements || {};
+
+      // BULLETPROOF CURRENCY LOGIC: Get the most reliable country/currency data
+      let accountCountry = null;
+      let accountCurrency = null;
+
+      // Priority 1: Stripe account's actual country (most reliable)
+      if (account.country) {
+        accountCountry = account.country;
+        console.log(`[Currency Logic] Using Stripe account country: ${accountCountry}`);
+      }
+
+      // Priority 2: Stripe account's default currency (most reliable)
+      if (account.default_currency) {
+        accountCurrency = account.default_currency;
+        console.log(`[Currency Logic] Using Stripe account currency: ${accountCurrency}`);
+      }
+
+      // Priority 3: Fallback to stored data
+      if (!accountCountry && existing.country) {
+        accountCountry = existing.country;
+        console.log(`[Currency Logic] Using stored country: ${accountCountry}`);
+      }
+
+      // Priority 4: Derive currency from country if we don't have it directly
+      if (!accountCurrency && accountCountry) {
+        accountCurrency = getCurrencyFromCountry(accountCountry);
+        console.log(`[Currency Logic] Derived currency from country ${accountCountry}: ${accountCurrency}`);
+      }
+
+      // Final fallbacks
+      if (!accountCountry) {
+        accountCountry = 'GB';
+        console.log(`[Currency Logic] Using default country: ${accountCountry}`);
+      }
+      if (!accountCurrency) {
+        accountCurrency = 'gbp';
+        console.log(`[Currency Logic] Using default currency: ${accountCurrency}`);
+      }
+
+      console.log(`[Currency Logic FINAL] Country: ${accountCountry}, Currency: ${accountCurrency}`);
 
       // Check if capabilities need to be requested
       const capabilities = account.capabilities || {};
@@ -145,12 +217,16 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
         payouts_enabled: updatedAccount.payouts_enabled,
         capabilities: capabilityStatuses,
         hasRequirements,
-        isFullyVerified
+        isFullyVerified,
+        country: accountCountry,
+        currency: accountCurrency
       });
 
-      // Update our database with current status from Stripe
+      // Update our database with current status from Stripe INCLUDING currency data
       await db.setConnect(userId, {
         ...existing,
+        country: accountCountry, // Store the determined country
+        defaultCurrency: accountCurrency, // Store the determined currency
         detailsSubmitted: updatedAccount.details_submitted,
         chargesEnabled: updatedAccount.charges_enabled,
         payoutsEnabled: updatedAccount.payouts_enabled,
@@ -172,8 +248,8 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
         hasAccount: true,
         accountId: updatedAccount.id,
         accountType: updatedAccount.type,
-        country: existing.country || updatedAccount.country || 'GB',
-        defaultCurrency: existing.defaultCurrency || countryToCurrency[existing.country || updatedAccount.country] || 'gbp',
+        country: accountCountry, // Use bulletproof country
+        defaultCurrency: accountCurrency, // Use bulletproof currency
         needsOnboarding: !isFullyVerified || hasRequirements,
         detailsSubmitted: updatedAccount.details_submitted,
         chargesEnabled: updatedAccount.charges_enabled,
@@ -528,9 +604,65 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       const userId = getUserId(req);
       const existing = await db.getConnect(userId);
       
-      // Use account's default currency if not specified
-      const defaultCurrency = existing?.defaultCurrency || 'usd';
-      const { amount, currency = defaultCurrency, description, metadata = {} } = req.body;
+      // BULLETPROOF CURRENCY DETERMINATION
+      let determinedCurrency = 'gbp'; // Default fallback
+      
+      // Priority 1: Request body currency (if provided and valid)
+      if (req.body.currency && req.body.currency.trim() !== '') {
+        determinedCurrency = req.body.currency.toLowerCase();
+        console.log(`[Transfer Currency] Using provided currency: ${determinedCurrency}`);
+      }
+      // Priority 2: Account's stored default currency
+      else if (existing?.defaultCurrency) {
+        determinedCurrency = existing.defaultCurrency;
+        console.log(`[Transfer Currency] Using stored default currency: ${determinedCurrency}`);
+      }
+      // Priority 3: Get fresh account data from Stripe
+      else if (existing?.accountId) {
+        try {
+          const account = await stripe.accounts.retrieve(existing.accountId);
+          if (account.default_currency) {
+            determinedCurrency = account.default_currency;
+            console.log(`[Transfer Currency] Using Stripe account currency: ${determinedCurrency}`);
+          } else if (account.country) {
+            // Use the same mapping as in status endpoint
+            const countryToCurrency = {
+              'US': 'usd', 'USA': 'usd',
+              'GB': 'gbp', 'UK': 'gbp', 'United Kingdom': 'gbp',
+              'CA': 'cad', 'Canada': 'cad',
+              'AU': 'aud', 'Australia': 'aud',
+              'NZ': 'nzd', 'New Zealand': 'nzd',
+              'AT': 'eur', 'BE': 'eur', 'CY': 'eur', 'EE': 'eur', 'FI': 'eur', 'FR': 'eur',
+              'DE': 'eur', 'GR': 'eur', 'IE': 'eur', 'IT': 'eur', 'LV': 'eur', 'LT': 'eur',
+              'LU': 'eur', 'MT': 'eur', 'NL': 'eur', 'PT': 'eur', 'SK': 'eur', 'SI': 'eur',
+              'ES': 'eur', 'European Union': 'eur', 'Europe': 'eur',
+              'CH': 'chf', 'Switzerland': 'chf',
+              'JP': 'jpy', 'Japan': 'jpy',
+              'KR': 'krw', 'South Korea': 'krw',
+              'SG': 'sgd', 'Singapore': 'sgd',
+              'HK': 'hkd', 'Hong Kong': 'hkd',
+              'SE': 'sek', 'Sweden': 'sek',
+              'NO': 'nok', 'Norway': 'nok',
+              'DK': 'dkk', 'Denmark': 'dkk',
+              'PL': 'pln', 'Poland': 'pln',
+              'CZ': 'czk', 'Czech Republic': 'czk',
+              'HU': 'huf', 'Hungary': 'huf',
+              'IN': 'inr', 'India': 'inr',
+              'BR': 'brl', 'Brazil': 'brl',
+              'MX': 'mxn', 'Mexico': 'mxn'
+            };
+            determinedCurrency = countryToCurrency[account.country] || 'gbp';
+            console.log(`[Transfer Currency] Derived from Stripe country ${account.country}: ${determinedCurrency}`);
+          }
+        } catch (stripeError) {
+          console.error('[Transfer Currency] Error getting Stripe account:', stripeError);
+        }
+      }
+      
+      console.log(`[Transfer Currency] FINAL CURRENCY: ${determinedCurrency}`);
+      
+      const { amount, description, metadata = {} } = req.body;
+      const currency = determinedCurrency;
 
       // Validate amount with detailed error messages
       console.log(`[Connect V2] Received transfer request:`, { amount, type: typeof amount, body: req.body });
