@@ -88,51 +88,28 @@ export default function PayContractor() {
     return 'usd';
   };
 
-  // Get Connect V2 status to determine currency
+  // Get YOUR business Connect V2 status to determine currency (not contractor's)
   const { data: connectStatus } = useQuery({
     queryKey: ['/api/connect/v2/status'],
     queryFn: () => apiRequest('GET', '/api/connect/v2/status').then(res => res.json()),
-    enabled: !!contractor?.stripeConnectAccountId,
   });
 
-  // Get currency from Connect V2 status, Connect account data, or contractor country
+  // Get currency from YOUR business account (who is making the payment)
   const currency = (() => {
-    if (!contractor) return 'usd';
-
-    // First priority: Connect V2 status default currency
+    // First priority: YOUR Connect V2 status default currency
     if (connectStatus?.defaultCurrency) {
-      console.log(`Using Connect V2 status currency: ${connectStatus.defaultCurrency}`);
+      console.log(`Using YOUR business currency: ${connectStatus.defaultCurrency}`);
       return connectStatus.defaultCurrency;
     }
 
-    // Second priority: Connect V2 status country
+    // Second priority: YOUR Connect V2 status country
     if (connectStatus?.country) {
       const connectCurrency = getCurrencyFromCountry(connectStatus.country);
-      console.log(`Using Connect V2 status country ${connectStatus.country} -> ${connectCurrency}`);
+      console.log(`Using YOUR business country ${connectStatus.country} -> ${connectCurrency}`);
       return connectCurrency;
     }
 
-    // Third priority: Connect account data currency
-    if (contractor.connectAccountData?.defaultCurrency) {
-      console.log(`Using Connect account data currency: ${contractor.connectAccountData.defaultCurrency}`);
-      return contractor.connectAccountData.defaultCurrency;
-    }
-
-    // Fourth priority: Connect account data country
-    if (contractor.connectAccountData?.country) {
-      const connectCurrency = getCurrencyFromCountry(contractor.connectAccountData.country);
-      console.log(`Using Connect account data country ${contractor.connectAccountData.country} -> ${connectCurrency}`);
-      return connectCurrency;
-    }
-
-    // Fifth priority: Contractor country field
-    if (contractor.country) {
-      const countryCurrency = getCurrencyFromCountry(contractor.country);
-      console.log(`Using contractor country ${contractor.country} -> ${countryCurrency}`);
-      return countryCurrency;
-    }
-
-    console.log('No country data available, defaulting to USD');
+    console.log('No business account data available, defaulting to USD');
     return 'usd';
   })();
 
