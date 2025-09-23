@@ -94,13 +94,24 @@ export async function createPaymentIntent(params: CreatePaymentIntentParams): Pr
         throw new Error('Invalid or disabled destination account');
       }
 
-      paymentIntentParams.transfer_data = {
-        destination: params.transferData.destination,
-        amount: params.transferData.amount
-      };
-
-      if (params.applicationFeeAmount) {
+      // Use either transfer_data.amount OR application_fee_amount, not both
+      if (params.transferData.amount) {
+        // If transfer amount is specified, use it (amount going to connected account)
+        paymentIntentParams.transfer_data = {
+          destination: params.transferData.destination,
+          amount: params.transferData.amount
+        };
+      } else if (params.applicationFeeAmount) {
+        // If only application fee is specified, transfer everything except the fee
+        paymentIntentParams.transfer_data = {
+          destination: params.transferData.destination
+        };
         paymentIntentParams.application_fee_amount = params.applicationFeeAmount;
+      } else {
+        // Default: transfer everything to connected account (no platform fee)
+        paymentIntentParams.transfer_data = {
+          destination: params.transferData.destination
+        };
       }
 
       // Add Connect-specific metadata
