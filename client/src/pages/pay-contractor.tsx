@@ -139,25 +139,47 @@ export default function PayContractor() {
 
     if (contractorId && contractorId !== 'undefined') {
       setSelectedContractorId(contractorId);
-      fetchContractorInfo(contractorId);
+      // fetchContractorInfo(contractorId); // This call is now redundant
     }
   }, []);
 
-  // Fetch contractor info when selection changes
+  // Get contractor details when one is selected
   useEffect(() => {
-    if (selectedContractorId && selectedContractorId !== 'undefined') {
-      fetchContractorInfo(selectedContractorId);
+    if (selectedContractorId && contractors.length > 0) {
+      const contractorData = contractors.find((c: any) => c.id.toString() === selectedContractorId);
+      if (contractorData) {
+        console.log('Selected contractor data:', contractorData);
+        setContractor({
+          id: contractorData.id,
+          firstName: contractorData.firstName,
+          lastName: contractorData.lastName,
+          email: contractorData.email,
+          stripeConnectAccountId: contractorData.stripeConnectAccountId,
+          country: contractorData.country || contractorData.connectAccountData?.country,
+          connectAccountData: contractorData.connectAccountData
+        });
+        setError(null);
+      } else {
+        setContractor(null);
+        setError('Contractor not found');
+      }
     }
-  }, [selectedContractorId]);
+  }, [selectedContractorId, contractors]);
 
   const fetchContractorInfo = async (contractorId: string) => {
+    // This function is no longer needed as we use dashboard data
+    // but keeping it for compatibility
+    console.log('fetchContractorInfo called - using dashboard data instead');
     try {
-      const response = await apiRequest('GET', `/api/contractors/${contractorId}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch contractor info');
+      // The original logic for fetching contractor info from a specific endpoint is removed
+      // as the data is now directly available from the 'contractors' query.
+      // If this function were to be used elsewhere, its implementation would need to be re-evaluated.
+      // For now, we simulate a successful fetch or handle potential errors if specific data is missing.
+      const contractorData = contractors.find((c: any) => c.id.toString() === contractorId);
+      if (!contractorData) {
+        throw new Error('Contractor not found in dashboard data');
       }
-      const data = await response.json();
-      setContractor(data);
+      setContractor(contractorData);
       setError(null);
     } catch (err: any) {
       console.error('Error fetching contractor:', err);
