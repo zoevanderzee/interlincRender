@@ -2706,11 +2706,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Get contractor's Connect account to determine currency
+      let accountCurrency = 'usd'; // default
+      try {
+        const account = await stripe.accounts.retrieve(contractor.stripeConnectAccountId);
+        accountCurrency = account.default_currency || account.country === 'GB' ? 'gbp' : 'usd';
+        console.log(`[Payment Intent] Detected account currency: ${accountCurrency} for country: ${account.country}`);
+      } catch (accountError) {
+        console.log(`[Payment Intent] Could not detect account currency, using USD:`, accountError.message);
+      }
+
       // Create V2 enhanced payment intent
       try {
         const paymentIntentParams = {
           amount: amountNum,
-          currency: 'usd',
+          currency: accountCurrency,
           description: description || 'Contractor payment',
           metadata: {
             businessId: businessId.toString(),
@@ -2723,7 +2733,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             amount: Math.round(amountInCents * 0.97) // 97% to contractor, 3% platform fee
           },
           applicationFeeAmount: Math.round(amountInCents * 0.03), // 3% platform fee
-          paymentMethodTypes: ['card', 'us_bank_account']
+          paymentMethodTypes: ['card']
         };
 
         console.log('[Payment Intent] Creating with params:', paymentIntentParams);

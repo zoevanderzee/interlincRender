@@ -164,7 +164,7 @@ export default function PayContractor() {
   const createPaymentMutation = useMutation({
     mutationFn: async (data: PaymentFormData) => {
       console.log('[Pay Contractor] Creating payment intent:', data);
-      
+
       const response = await fetch('/api/create-payment-intent', {
         method: 'POST',
         headers: {
@@ -175,7 +175,9 @@ export default function PayContractor() {
           amount: parseFloat(data.amount),
           description: data.description,
           contractorId: data.contractorId,
-          connectedAccountId: selectedContractor?.stripeConnectAccountId
+          connectedAccountId: selectedContractor?.stripeConnectAccountId,
+          // Ensure currency is set to GBP for UK accounts
+          currency: 'gbp' 
         })
       });
 
@@ -196,10 +198,10 @@ export default function PayContractor() {
     },
     onError: (error: Error) => {
       console.error('[Pay Contractor] Payment intent creation failed:', error);
-      
+
       // Show specific error message from server
       const errorMessage = error.message || "Failed to initialize payment. Please try again.";
-      
+
       toast({
         title: "Payment Setup Failed",
         description: errorMessage,
@@ -220,7 +222,9 @@ export default function PayContractor() {
       return;
     }
 
-    if (parseFloat(formData.amount) <= 0) {
+    const numericAmount = parseFloat(formData.amount);
+
+    if (isNaN(numericAmount) || numericAmount <= 0) {
       toast({
         title: "Invalid Amount",
         description: "Please enter a valid payment amount.",
@@ -229,10 +233,11 @@ export default function PayContractor() {
       return;
     }
 
-    if (parseFloat(formData.amount) < 0.5) {
+    // Validate for GBP minimum amount
+    if (numericAmount < 0.50) {
       toast({
         title: "Amount Too Small",
-        description: "Minimum payment amount is $0.50",
+        description: "Minimum payment amount is £0.50",
         variant: "destructive"
       });
       return;
@@ -260,7 +265,7 @@ export default function PayContractor() {
   const handlePaymentSuccess = () => {
     toast({
       title: "Payment Successful",
-      description: `Payment of $${formData.amount} sent to ${selectedContractor?.firstName} ${selectedContractor?.lastName}`,
+      description: `Payment of £${formData.amount} sent to ${selectedContractor?.firstName} ${selectedContractor?.lastName}`,
     });
     queryClient.invalidateQueries({ queryKey: ['/api/payments'] });
     navigate('/payments');
@@ -345,18 +350,24 @@ export default function PayContractor() {
             <div className="space-y-2">
               <Label htmlFor="amount">Payment Amount</Label>
               <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="amount"
                   type="number"
                   step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  className="pl-10"
+                  min="0.50"
+                  placeholder="Enter amount"
                   value={formData.amount}
                   onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
+                  required
+                  className="pr-12"
                 />
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                  <span className="text-sm text-muted-foreground">GBP</span>
+                </div>
               </div>
+              <p className="text-xs text-muted-foreground">
+                Minimum amount: £0.50
+              </p>
             </div>
 
             {/* Description */}

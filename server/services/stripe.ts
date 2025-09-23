@@ -48,12 +48,32 @@ export interface ConnectAccountStatus {
  */
 export async function createPaymentIntent(params: CreatePaymentIntentParams): Promise<PaymentIntentResponse> {
   try {
+    // Convert amount to cents and ensure minimum amounts per currency
+    const currency = params.currency.toLowerCase();
+    const minimumAmounts = {
+      'usd': 50, // 50 cents = $0.50
+      'gbp': 30, // 30 pence = £0.30
+      'eur': 50, // 50 cents = €0.50
+      'cad': 50, // 50 cents = CAD$0.50
+      'aud': 50, // 50 cents = AUD$0.50
+    };
+
+    const minAmount = minimumAmounts[currency] || 50;
+    const amountInCents = Math.round(params.amount * 100);
+
+    if (amountInCents < minAmount) {
+      const currencySymbols = { usd: '$', gbp: '£', eur: '€', cad: 'C$', aud: 'A$' };
+      const symbol = currencySymbols[currency] || '';
+      const minDisplay = (minAmount / 100).toFixed(2);
+      throw new Error(`Minimum payment amount is ${symbol}${minDisplay} ${currency.toUpperCase()}`);
+    }
+
     const paymentIntentParams: Stripe.PaymentIntentCreateParams = {
-      amount: params.amount,
-      currency: params.currency,
+      amount: amountInCents,
+      currency: currency,
       description: params.description,
       metadata: params.metadata || {},
-      payment_method_types: params.paymentMethodTypes || ['card', 'us_bank_account'],
+      payment_method_types: params.paymentMethodTypes || ['card'],
       capture_method: 'automatic',
       confirmation_method: 'automatic'
     };
