@@ -1,431 +1,312 @@
+
 import { useState, useEffect } from 'react';
-import { useLocation, useRoute } from 'wouter';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertCircle, CheckCircle, CreditCard, User, DollarSign, FileText, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/use-auth';
-import { ArrowLeft, CreditCard, User, DollarSign, Calendar } from 'lucide-react';
-import { loadStripe } from '@stripe/stripe-js';
-import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { apiRequest } from '@/lib/queryClient';
+import { useLocation } from 'wouter';
 
-// Load Stripe
-const publicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY || '';
-if (!publicKey || !publicKey.startsWith('pk_')) {
-  throw new Error('Missing required Stripe key: VITE_STRIPE_PUBLIC_KEY');
-}
-const stripePromise = loadStripe(publicKey);
-
-interface Contractor {
+interface ContractorInfo {
   id: number;
-  username: string;
   firstName: string;
   lastName: string;
   email: string;
-  profileCode: string;
   stripeConnectAccountId?: string;
 }
 
-interface PaymentFormData {
-  contractorId: number;
-  amount: string;
-  description: string;
-  dueDate: string;
-}
-
-function PaymentForm({ 
-  contractor, 
-  amount, 
-  description, 
-  clientSecret, 
-  onSuccess 
-}: {
-  contractor: Contractor;
-  amount: string;
-  description: string;
-  clientSecret: string;
-  onSuccess: () => void;
-}) {
-  const stripe = useStripe();
-  const elements = useElements();
+export default function PayContractor() {
+  const [, navigate] = useLocation();
+  const [contractor, setContractor] = useState<ContractorInfo | null>(null);
+  const [amount, setAmount] = useState('1.00');
+  const [description, setDescription] = useState('Payment test');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Get contractor ID from URL params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const contractorId = params.get('contractorId');
+    
+    if (contractorId) {
+      fetchContractorInfo(contractorId);
+    } else {
+      setError('No contractor specified');
+    }
+  }, []);
 
-    if (!stripe || !elements) return;
+  const fetchContractorInfo = async (contractorId: string) => {
+    try {
+      const response = await apiRequest('GET', `/api/contractors/${contractorId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch contractor info');
+      }
+      const data = await response.json();
+      setContractor(data);
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
 
-    setIsProcessing(true);
+  const handleDirectPayment = async () => {
+    if (!contractor) return;
+    
+    if (!amount || parseFloat(amount) <= 0) {
+      toast({
+        title: 'Invalid amount',
+        description: 'Please enter a valid payment amount.',
+        variant: 'destructive'
+      });
+      return;
+    }
 
     try {
-      const { error, paymentIntent } = await stripe.confirmPayment({
-        elements,
-        redirect: 'if_required',
+      setIsProcessing(true);
+      setError(null);
+
+      console.log('Creating V2 Connect direct payment:', {
+        contractorId: contractor.id,
+        amount: parseFloat(amount),
+        description
       });
 
-      if (error) {
-        console.error('[Payment Form] Payment failed:', error);
-        toast({
-          title: "Payment Failed",
-          description: error.message,
-          variant: "destructive",
-        });
-      } else if (paymentIntent && paymentIntent.status === 'succeeded') {
-        console.log('[Payment Form] Payment succeeded:', paymentIntent.id);
-        toast({
-          title: "Payment Successful",
-          description: `Payment of ${formatAmount(amount)} has been processed successfully.`,
-        });
-        onSuccess();
-      } else {
-        console.error('[Payment Form] Unexpected payment status:', paymentIntent?.status);
-        toast({
-          title: "Payment Status Unclear",
-          description: "Please check your payment status in the payments section.",
-          variant: "destructive",
-        });
-      }
-    } catch (err) {
-      console.error('[Payment Form] Payment error:', err);
-      toast({
-        title: "Payment Error",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
+      // Create direct transfer using V2 Connect
+      const response = await apiRequest('POST', '/api/connect/v2/create-transfer', {
+        destination: contractor.stripeConnectAccountId,
+        amount: parseFloat(amount),
+        currency: 'usd',
+        description,
+        metadata: {
+          contractorId: contractor.id.toString(),
+          paymentType: 'direct_payment'
+        }
       });
-    }
-
-    setIsProcessing(false);
-  };
-
-  const formatAmount = (amount: string) => {
-    const numAmount = parseFloat(amount);
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(numAmount);
-  };
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <CreditCard className="h-5 w-5" />
-          Payment Details
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Payment Summary */}
-        <div className="bg-muted p-4 rounded-lg space-y-2">
-          <div className="flex justify-between">
-            <span className="font-medium">Paying:</span>
-            <span>{contractor.firstName} {contractor.lastName}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="font-medium">Amount:</span>
-            <span className="text-lg font-bold">{formatAmount(amount)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="font-medium">Description:</span>
-            <span className="text-sm text-muted-foreground max-w-48 text-right">{description}</span>
-          </div>
-        </div>
-
-        {/* Stripe Payment Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <PaymentElement />
-          <Button 
-            type="submit" 
-            className="w-full" 
-            disabled={!stripe || isProcessing}
-          >
-            {isProcessing ? "Processing..." : `Pay ${formatAmount(amount)}`}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
-  );
-}
-
-export default function PayContractor() {
-  const { user } = useAuth();
-  const [, navigate] = useLocation();
-  const [match] = useRoute('/pay-contractor/:contractorId?');
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-
-  const contractorId = match && typeof match === 'object' && 'contractorId' in match && match.contractorId
-    ? parseInt(match.contractorId as string) 
-    : null;
-
-  const [formData, setFormData] = useState<PaymentFormData>({
-    contractorId: contractorId || 0,
-    amount: '',
-    description: '',
-    dueDate: new Date().toISOString().split('T')[0]
-  });
-
-  const [clientSecret, setClientSecret] = useState<string>('');
-  const [showPaymentForm, setShowPaymentForm] = useState(false);
-
-  // Fetch contractors
-  const { data: contractors = [] } = useQuery<Contractor[]>({
-    queryKey: ['/api/users', { role: 'contractor' }]
-  });
-
-  // Get selected contractor
-  const selectedContractor = contractors.find(c => c.id === formData.contractorId);
-
-  // Create payment intent mutation
-  const createPaymentMutation = useMutation({
-    mutationFn: async (data: PaymentFormData) => {
-      console.log('[Pay Contractor] Creating payment intent:', data);
-
-      const response = await fetch('/api/create-payment-intent', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-User-ID': user?.id.toString() || ''
-        },
-        body: JSON.stringify({
-          amount: parseFloat(data.amount),
-          description: data.description,
-          contractorId: data.contractorId,
-          connectedAccountId: selectedContractor?.stripeConnectAccountId,
-          // Ensure currency is set to GBP for UK accounts
-          currency: 'gbp' 
-        })
-      });
-
-      const responseData = await response.json();
-      console.log('[Pay Contractor] Payment intent response:', responseData);
 
       if (!response.ok) {
-        // Throw with the specific error from server
-        throw new Error(responseData.error || 'Failed to create payment intent');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Payment failed');
       }
 
-      return responseData;
-    },
-    onSuccess: (data) => {
-      console.log('[Pay Contractor] Payment intent created successfully');
-      setClientSecret(data.clientSecret);
-      setShowPaymentForm(true);
-    },
-    onError: (error: Error) => {
-      console.error('[Pay Contractor] Payment intent creation failed:', error);
-
-      // Show specific error message from server
-      const errorMessage = error.message || "Failed to initialize payment. Please try again.";
-
+      const result = await response.json();
+      
+      console.log('Direct payment successful:', result);
+      
+      setPaymentSuccess(true);
       toast({
-        title: "Payment Setup Failed",
-        description: errorMessage,
-        variant: "destructive"
+        title: 'Payment Successful',
+        description: `$${amount} has been sent to ${contractor.firstName} ${contractor.lastName}`,
       });
-    }
-  });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!formData.contractorId || !formData.amount || !formData.description) {
+    } catch (err: any) {
+      console.error('Direct payment failed:', err);
+      setError(err.message);
       toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields.",
-        variant: "destructive"
+        title: 'Payment Failed',
+        description: err.message,
+        variant: 'destructive'
       });
-      return;
+    } finally {
+      setIsProcessing(false);
     }
-
-    const numericAmount = parseFloat(formData.amount);
-
-    if (isNaN(numericAmount) || numericAmount <= 0) {
-      toast({
-        title: "Invalid Amount",
-        description: "Please enter a valid payment amount.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Validate for GBP minimum amount
-    if (numericAmount < 0.50) {
-      toast({
-        title: "Amount Too Small",
-        description: "Minimum payment amount is £0.50",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Validate contractor has Connect account
-    if (!selectedContractor?.stripeConnectAccountId) {
-      toast({
-        title: "Payment Setup Required",
-        description: "This contractor needs to complete their payment account setup before receiving payments.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    console.log('[Pay Contractor] Submitting payment:', {
-      contractor: selectedContractor?.firstName + ' ' + selectedContractor?.lastName,
-      amount: formData.amount,
-      hasConnectAccount: !!selectedContractor?.stripeConnectAccountId
-    });
-
-    createPaymentMutation.mutate(formData);
   };
 
-  const handlePaymentSuccess = () => {
-    toast({
-      title: "Payment Successful",
-      description: `Payment of £${formData.amount} sent to ${selectedContractor?.firstName} ${selectedContractor?.lastName}`,
-    });
-    queryClient.invalidateQueries({ queryKey: ['/api/payments'] });
-    navigate('/payments');
-  };
-
-  // If we have a client secret, show the Stripe payment form
-  if (showPaymentForm && clientSecret && selectedContractor) {
+  if (error && !contractor) {
     return (
-      <div className="container py-6 max-w-2xl">
-        <div className="flex items-center gap-4 mb-6">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => setShowPaymentForm(false)}
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-          <h1 className="text-2xl font-bold">Complete Payment</h1>
-        </div>
+      <div className="container mx-auto py-8 px-4">
+        <Card className="max-w-md mx-auto">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-destructive" />
+              Error
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-destructive mb-4">{error}</p>
+            <Button onClick={() => navigate('/contractors')} variant="outline" className="w-full">
+              Back to Contractors
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
-        <Elements stripe={stripePromise} options={{ clientSecret }}>
-          <PaymentForm
-            contractor={selectedContractor}
-            amount={formData.amount}
-            description={formData.description}
-            clientSecret={clientSecret}
-            onSuccess={handlePaymentSuccess}
-          />
-        </Elements>
+  if (paymentSuccess) {
+    return (
+      <div className="container mx-auto py-8 px-4">
+        <Card className="max-w-md mx-auto">
+          <CardHeader className="text-center">
+            <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-2" />
+            <CardTitle>Payment Successful</CardTitle>
+            <CardDescription>
+              Payment has been sent successfully
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 text-center">
+            <div className="space-y-2">
+              <p className="text-2xl font-bold">${amount}</p>
+              <p className="text-muted-foreground">
+                Sent to {contractor?.firstName} {contractor?.lastName}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {description}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => window.location.reload()} 
+                variant="outline" 
+                className="flex-1"
+              >
+                Make Another Payment
+              </Button>
+              <Button 
+                onClick={() => navigate('/contractors')} 
+                className="flex-1"
+              >
+                Back to Contractors
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!contractor) {
+    return (
+      <div className="container mx-auto py-8 px-4">
+        <div className="max-w-md mx-auto text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Loading contractor information...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container py-6 max-w-2xl">
-      <div className="flex items-center gap-4 mb-6">
+    <div className="container mx-auto py-8 px-4">
+      <div className="max-w-md mx-auto">
         <Button 
+          onClick={() => navigate('/contractors')} 
           variant="ghost" 
-          size="sm" 
-          onClick={() => navigate('/payments')}
+          className="mb-6"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Payments
+          Back
         </Button>
-        <h1 className="text-2xl font-bold">Pay Contractor</h1>
-      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5" />
-            Payment Setup
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Contractor Selection */}
-            <div className="space-y-2">
-              <Label htmlFor="contractor">Select Contractor</Label>
-              <Select 
-                value={formData.contractorId.toString()} 
-                onValueChange={(value) => setFormData(prev => ({ ...prev, contractorId: parseInt(value) }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose a contractor" />
-                </SelectTrigger>
-                <SelectContent>
-                  {contractors.map((contractor) => (
-                    <SelectItem key={contractor.id} value={contractor.id.toString()}>
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4" />
-                        {contractor.firstName} {contractor.lastName} ({contractor.profileCode})
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              Complete Payment
+            </CardTitle>
+            <CardDescription>
+              Send payment directly using Stripe Connect V2
+            </CardDescription>
+          </CardHeader>
+          
+          <CardContent className="space-y-6">
+            {/* Payment Details */}
+            <div className="bg-muted p-4 rounded-lg space-y-3">
+              <h3 className="font-semibold flex items-center gap-2">
+                <User className="h-4 w-4" />
+                Payment Details
+              </h3>
+              
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Paying:</span>
+                  <p className="font-medium">
+                    {contractor.firstName} {contractor.lastName}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Amount:</span>
+                  <p className="font-bold text-lg">${amount}</p>
+                </div>
+              </div>
+              
+              <div>
+                <span className="text-muted-foreground">Description:</span>
+                <p className="font-medium">{description}</p>
+              </div>
             </div>
 
-            {/* Amount */}
-            <div className="space-y-2">
-              <Label htmlFor="amount">Payment Amount</Label>
-              <div className="relative">
+            {/* Payment Form */}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="amount" className="flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" />
+                  Amount (USD)
+                </Label>
                 <Input
                   id="amount"
                   type="number"
                   step="0.01"
                   min="0.50"
-                  placeholder="Enter amount"
-                  value={formData.amount}
-                  onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
-                  required
-                  className="pr-12"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="0.00"
                 />
-                <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                  <span className="text-sm text-muted-foreground">GBP</span>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="description" className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Description
+                </Label>
+                <Textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Payment description..."
+                  rows={3}
+                />
+              </div>
+            </div>
+
+            {error && (
+              <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+                <div className="flex items-center gap-2 text-destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <span className="text-sm font-medium">{error}</span>
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Minimum amount: £0.50
-              </p>
-            </div>
-
-            {/* Description */}
-            <div className="space-y-2">
-              <Label htmlFor="description">Payment Description</Label>
-              <Textarea
-                id="description"
-                placeholder="What is this payment for?"
-                value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-              />
-            </div>
-
-            {/* Due Date */}
-            <div className="space-y-2">
-              <Label htmlFor="dueDate">Payment Date</Label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="dueDate"
-                  type="date"
-                  className="pl-10"
-                  value={formData.dueDate}
-                  onChange={(e) => setFormData(prev => ({ ...prev, dueDate: e.target.value }))}
-                />
-              </div>
-            </div>
+            )}
 
             <Button 
-              type="submit" 
-              className="w-full" 
-              disabled={createPaymentMutation.isPending}
+              onClick={handleDirectPayment}
+              disabled={isProcessing || !contractor.stripeConnectAccountId}
+              className="w-full"
             >
-              {createPaymentMutation.isPending ? "Preparing Payment..." : "Continue to Payment"}
+              {isProcessing ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                  Processing Payment...
+                </>
+              ) : (
+                <>
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Confirm Payment ${amount}
+                </>
+              )}
             </Button>
-          </form>
-        </CardContent>
-      </Card>
+
+            {!contractor.stripeConnectAccountId && (
+              <div className="text-center text-sm text-muted-foreground">
+                This contractor hasn't set up their payment account yet.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
