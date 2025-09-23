@@ -65,6 +65,7 @@ import {registerProjectRoutes} from "./projects/index";
 // import { generateWorkRequestToken } from "./services/email"; // Not needed for now
 // Schema tables imported from shared/schema instead
 import { registerContractorAssignmentRoutes } from "./contractor-assignment";
+import { trolleyApi } from "./services/trolley-api"; // Import trolleyApi
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
@@ -2407,6 +2408,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userRole = req.user?.role || 'business'; // Default to business if not specified
 
       let userContracts = [];
+      let userWorkRequests = []; // To store work requests for contractors
 
       // Handle contractor dashboard - contractors can see their own contracts and assignments
       if (userRole === 'contractor') {
@@ -2417,6 +2419,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Get contractor's work requests (assignments)
         const workRequests = await storage.getWorkRequestsByContractorId(userId);
+        userWorkRequests = workRequests; // Store for later use
 
         // Get contractor's own milestones
         const contractorMilestones = [];
@@ -2526,7 +2529,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               milestoneId: 0, // No milestone associated yet
               amount: remainingAmount.toFixed(2),
               status: 'pending',
-              scheduledDate: contract.startDate || new Date(),
+              scheduledDate: contract.startDate || contract.createdAt,
               completedDate: null,
               notes: `Pending contract payment for ${contract.contractName}`,
               contractName: contract.contractName, // Add contract name for display purposes
@@ -2583,10 +2586,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get actual projects count for dashboard stats
       const userProjects = await storage.getBusinessProjects(userId || 0);
 
+      // Fetch work requests for the dashboard
+      let userWorkRequests = [];
+      if (userRole === 'business') {
+        userWorkRequests = await storage.getWorkRequestsByBusinessId(userId || 0);
+      }
+
+      // Calculate stats - include both direct contracts and work request contracts
+      const activeContractsCount = userContracts.filter(contract =>
+        contract.status?.toLowerCase() === 'active'
+      ).length;
+
+      // Also count accepted work requests as active contracts
+      const acceptedWorkRequestsCount = userWorkRequests.filter(wr =>
+        wr.status === 'accepted'
+      ).length;
+
+      const totalActiveContracts = activeContractsCount + acceptedWorkRequestsCount;
+
+
       const dashboardData = {
         stats: {
-          activeContractsCount: activeContracts.length,
-          pendingApprovalsCount: pendingApprovals.length,
+          activeContractsCount: totalActiveContracts,
+          pendingApprovalsCount: pendingMilestones.length,
           paymentsProcessed: totalPaymentsValue,
           totalPendingValue: totalPendingValue, // Add total pending value from contracts
           activeContractorsCount: activeContractorsCount, // Use the proper active contractors count
@@ -2598,6 +2620,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         milestones: upcomingMilestones,
         payments: allUpcomingPayments, // Include virtual payments
         projects: userProjects, // Include projects data in dashboard
+        workRequests: userWorkRequests, // Add work requests to dashboard data
         // Only include minimal invite data to prevent errors
         invites: pendingInvites.map(item => ({
           id: typeof item.id === 'number' ? item.id : 0,
@@ -3317,6 +3340,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+
   // Update payment status from Stripe
   app.post(`${apiRouter}/payments/:id/update-status`, async (req: Request, res: Response) => {
     try {
@@ -3504,8 +3528,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Process real payment through Trolley
       console.log('🔴 PROCESSING REAL TROLLEY PAYMENT');
-
-      const { trolleyApi } = await import('./services/trolley-api');
 
       // Create real Trolley payment to contractor
       const paymentData = {
@@ -4228,6 +4250,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.error('Error creating work request:', error);
       res.status(500).json({ message: "Error creating work request" });
+    }
+  });
+
+  // Work request submission endpoint
+  app.post(`${apiRouter}/work-requests/:id/submit`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const workRequestId = parseInt(req.params.id);
+      const contractorId = req.user?.id;
+
+      if (!contractorId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get the work request to verify it belongs to this contractor
+      const workRequest = await storage.getWorkRequest(workRequestId);
+      if (!workRequest) {
+        return res.status(404).json({ message: "Work request not found" });
+      }
+
+      if (workRequest.contractorUserId !== contractorId) {
+        return res.status(403).json({ message: "Access denied: This work request is not assigned to you" });
+      }
+
+      // Update work request status to accepted
+      const updatedWorkRequest = await storage.updateWorkRequest(workRequestId, {
+        status: 'accepted',
+        acceptedAt: new Date()
+      });
+
+      if (!updatedWorkRequest) {
+        return res.status(400).json({ message: "Failed to accept work request" });
+      }
+
+      // CRITICAL: Ensure contract-work request consistency
+      await storage.ensureContractWorkRequestConsistency(
+        contractorId,
+        updatedWorkRequest.title
+      );
+
+      console.log(`Work request ${workRequestId} accepted by contractor ${contractorId} - contract consistency ensured`);
+
+      res.json({
+        message: "Work request accepted successfully",
+        workRequest: updatedWorkRequest
+      });
+
+    } catch (error) {
+      console.error("Error submitting work request:", error);
+      res.status(500).json({ message: "Error submitting work request" });
     }
   });
 
@@ -5323,7 +5394,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update the submission
       const updatedSubmission = await storage.updateWorkRequestSubmission(submissionId, {
         status,
-        feedback,
+        reviewNotes: feedback,
         reviewedAt: new Date()
       });
 
@@ -5413,7 +5484,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const allSubmissions = await storage.getWorkRequestSubmissionsByBusinessId(req.user!.id);
         targetSubmissions = allSubmissions.filter(sub =>
           sub.status === 'pending' &&
-          // Need to filter by project through work request relationship
+          // Need to cross-reference through work request relationship
           // This is a simplified approach - in production you'd need proper JOIN
           true // For now filter by business only - would need JOIN in production
         );
@@ -5517,7 +5588,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   totalPaymentsFailed++;
                 }
               } else {
-                console.log(`[BULK_APPROVAL] No auto-pay milestone found for submission ${submission.id}`);
+                console.log(`[BULK_APPROVAL] No auto-pay milestone found for submission ${submission.id} in contract ${workRequest.contractId}`);
               }
             } catch (paymentError: any) {
               console.log(`[BULK_APPROVAL] ⚠️ Payment error for submission ${submission.id}:`, paymentError.message);
@@ -6049,8 +6120,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🔴 CREATING REAL TROLLEY SUBMERCHANT for business: ${user.email}`);
 
-      const { trolleySdk } = await import('./trolley-sdk-service');
-
       // Create real submerchant account with business information
       const submerchantData = {
         merchant: {
@@ -6121,8 +6190,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log(`🔴 CREATING REAL TROLLEY SUBMERCHANT for business: ${user.email}`);
-
-      const { trolleySdk } = await import('./trolley-sdk-service');
 
       // Create real submerchant account
       const submerchantData = {

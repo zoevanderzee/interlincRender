@@ -335,7 +335,7 @@ export class MemStorage implements IStorage {
       emailVerificationExpires: expires
     };
 
-    this.users.set(userId, updatedUser);
+    this.users.set(user.id, updatedUser);
   }
 
   async verifyEmailToken(token: string): Promise<User | null> {
@@ -3238,87 +3238,79 @@ export class DatabaseStorage implements IStorage {
   }
 
   // BULLETPROOF DATA CONSISTENCY METHOD
-  async ensureContractWorkRequestConsistency(contractorId: number, deliverableName: string): Promise<{contract: Contract | null, workRequest: WorkRequest | null, businessId: number | null}> {
+  async ensureContractWorkRequestConsistency(contractorId: number, workTitle: string): Promise<{ contract?: Contract, workRequest?: WorkRequest }> {
     try {
-      console.log(`🔧 CONSISTENCY CHECK: contractor=${contractorId}, deliverable="${deliverableName}"`);
+      console.log(`🔄 Ensuring contract-work request consistency for contractor ${contractorId}, work: "${workTitle}"`);
 
-      // 1. Find work request by contractor and deliverable name
-      const workRequests = await this.getWorkRequestsByContractorId(contractorId);
-      const workRequest = workRequests.find(wr => wr.title === deliverableName);
+      // Find work request by contractor and title
+      const workRequest = await db
+        .select()
+        .from(workRequests)
+        .where(
+          and(
+            eq(workRequests.contractorUserId, contractorId),
+            eq(workRequests.title, workTitle),
+            eq(workRequests.status, 'accepted')
+          )
+        )
+        .limit(1)
+        .then(results => results[0]);
 
       if (!workRequest) {
-        console.log(`❌ No work request found for "${deliverableName}"`);
-        return { contract: null, workRequest: null, businessId: null };
+        console.log(`❌ No accepted work request found for contractor ${contractorId} with title "${workTitle}"`);
+        return {};
       }
 
-      console.log(`✅ Found work request: ID=${workRequest.id}, Project=${workRequest.projectId}`);
+      // Find or create matching contract
+      let contract = await db
+        .select()
+        .from(contracts)
+        .where(
+          and(
+            eq(contracts.contractorId, contractorId),
+            eq(contracts.contractName, workTitle)
+          )
+        )
+        .limit(1)
+        .then(results => results[0]);
 
-      // 2. Get business ID from work request project
-      const project = await this.getProject(workRequest.projectId);
-      if (!project) {
-        console.log(`❌ No project found for work request`);
-        return { contract: null, workRequest, businessId: null };
-      }
+      if (!contract) {
+        // Create new contract based on work request
+        console.log(`✅ Creating new contract for work request ${workRequest.id}`);
 
-      const businessId = project.businessId;
-      console.log(`✅ Found business: ID=${businessId}`);
-
-      // 3. Find existing contract between this business and contractor
-      let existingContract = Array.from(this.contracts.values()).find(c =>
-        c.businessId === businessId &&
-        c.contractorId === contractorId &&
-        c.status === 'active'
-      );
-
-      if (!existingContract) {
-        // 4. Create a contract if none exists
-        console.log(`🔨 Creating new contract for business ${businessId} and contractor ${contractorId}`);
-
-        const newContract = await this.createContract({
-          contractName: `Project Assignment - ${project.name}`,
-          contractCode: `AUTO-${Date.now()}`,
-          businessId: businessId,
+        const contractData = {
+          contractName: workRequest.title,
+          contractCode: `WR-${workRequest.id}-${Date.now()}`,
+          businessId: workRequest.businessId || 86, // Fallback to known business ID
           contractorId: contractorId,
-          description: `Auto-generated contract for project: ${project.name}`,
-          status: 'active',
-          value: workRequest.amount.toString(),
+          description: workRequest.description || '',
+          status: 'active' as const,
+          value: workRequest.amount,
           startDate: new Date(),
-          endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
-        });
-
-        // 5. Link the work request to this contract
-        await this.updateWorkRequest(workRequest.id, {
-          contractId: newContract.id
-        });
-
-        console.log(`✅ Created contract ID=${newContract.id} and linked work request`);
-
-        return {
-          contract: newContract,
-          workRequest: workRequest,
-          businessId: businessId
+          endDate: workRequest.dueDate
         };
+
+        contract = await this.createContract(contractData);
+
+        // Link work request to contract
+        await this.updateWorkRequest(workRequest.id, { contractId: contract.id });
+
+        console.log(`✅ Contract ${contract.id} created and linked to work request ${workRequest.id}`);
       } else {
-        console.log(`✅ Found existing contract ID=${existingContract.id}`);
+        console.log(`✅ Found existing contract ${contract.id} for work request`);
 
-        // Ensure work request is linked to this contract
-        if (workRequest.contractId !== existingContract.id) {
-          await this.updateWorkRequest(workRequest.id, {
-            contractId: existingContract.id
-          });
-          console.log(`🔗 Linked work request to existing contract`);
+        // Ensure work request is linked to contract
+        if (!workRequest.contractId) {
+          await this.updateWorkRequest(workRequest.id, { contractId: contract.id });
+          console.log(`✅ Linked work request ${workRequest.id} to existing contract ${contract.id}`);
         }
-
-        return {
-          contract: existingContract,
-          workRequest: workRequest,
-          businessId: businessId
-        };
       }
+
+      return { contract, workRequest };
 
     } catch (error) {
-      console.error('❌ Error in ensureContractWorkRequestConsistency:', error);
-      return { contract: null, workRequest: null, businessId: null };
+      console.error('Error ensuring contract-work request consistency:', error);
+      return {};
     }
   }
 
