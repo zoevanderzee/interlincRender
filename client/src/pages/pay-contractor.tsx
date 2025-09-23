@@ -17,7 +17,12 @@ interface ContractorInfo {
   lastName: string;
   email: string;
   stripeConnectAccountId?: string;
-  country?: string; // Assuming country is available in ContractorInfo
+  country?: string;
+  // Connect V2 data that includes country information
+  connectAccountData?: {
+    country?: string;
+    defaultCurrency?: string;
+  };
 }
 
 export default function PayContractor() {
@@ -36,20 +41,80 @@ export default function PayContractor() {
     queryKey: ['/api/contractors'],
   });
 
-  // Function to get currency based on country
+  // Function to get currency based on country - using the same mapping as Connect V2
   const getCurrencyFromCountry = (countryCode?: string): string => {
-    // This is a placeholder. In a real application, you would have a more robust mapping
-    // or fetch currency information from an API based on the country code.
     const currencyMap: { [key: string]: string } = {
-      US: 'usd',
-      CA: 'cad',
-      GB: 'gbp',
-      // Add more country to currency mappings as needed
+      // Major currencies - matching Connect V2 implementation
+      'US': 'usd', 'USA': 'usd',
+      'GB': 'gbp', 'UK': 'gbp', 'United Kingdom': 'gbp',
+      'CA': 'cad', 'Canada': 'cad',
+      'AU': 'aud', 'Australia': 'aud',
+      'NZ': 'nzd', 'New Zealand': 'nzd',
+      // European Union
+      'AT': 'eur', 'BE': 'eur', 'CY': 'eur', 'EE': 'eur', 'FI': 'eur', 'FR': 'eur',
+      'DE': 'eur', 'GR': 'eur', 'IE': 'eur', 'IT': 'eur', 'LV': 'eur', 'LT': 'eur',
+      'LU': 'eur', 'MT': 'eur', 'NL': 'eur', 'PT': 'eur', 'SK': 'eur', 'SI': 'eur',
+      'ES': 'eur', 'European Union': 'eur', 'Europe': 'eur',
+      // Other major currencies
+      'CH': 'chf', 'Switzerland': 'chf',
+      'JP': 'jpy', 'Japan': 'jpy',
+      'KR': 'krw', 'South Korea': 'krw',
+      'SG': 'sgd', 'Singapore': 'sgd',
+      'HK': 'hkd', 'Hong Kong': 'hkd',
+      'SE': 'sek', 'Sweden': 'sek',
+      'NO': 'nok', 'Norway': 'nok',
+      'DK': 'dkk', 'Denmark': 'dkk',
+      'PL': 'pln', 'Poland': 'pln',
+      'CZ': 'czk', 'Czech Republic': 'czk',
+      'HU': 'huf', 'Hungary': 'huf',
+      'IN': 'inr', 'India': 'inr',
+      'BR': 'brl', 'Brazil': 'brl',
+      'MX': 'mxn', 'Mexico': 'mxn'
     };
-    return countryCode && currencyMap[countryCode] ? currencyMap[countryCode] : 'usd'; // Default to USD
+
+    if (!countryCode) return 'usd';
+    
+    // Try exact match first
+    const exactMatch = currencyMap[countryCode];
+    if (exactMatch) return exactMatch;
+    
+    // Try case-insensitive match
+    const lowerCaseMatch = Object.keys(currencyMap).find(
+      key => key.toLowerCase() === countryCode.toLowerCase()
+    );
+    if (lowerCaseMatch) return currencyMap[lowerCaseMatch];
+    
+    // Default fallback
+    return 'usd';
   };
 
-  const currency = contractor ? getCurrencyFromCountry(contractor.country) : 'usd';
+  // Get currency from Connect V2 data or country field
+  const currency = (() => {
+    if (!contractor) return 'usd';
+    
+    // First, try to use the default currency from Connect V2 data
+    if (contractor.connectAccountData?.defaultCurrency) {
+      console.log(`Using Connect V2 currency: ${contractor.connectAccountData.defaultCurrency}`);
+      return contractor.connectAccountData.defaultCurrency;
+    }
+    
+    // Then try Connect V2 country data
+    if (contractor.connectAccountData?.country) {
+      const connectCurrency = getCurrencyFromCountry(contractor.connectAccountData.country);
+      console.log(`Using Connect V2 country ${contractor.connectAccountData.country} -> ${connectCurrency}`);
+      return connectCurrency;
+    }
+    
+    // Fallback to contractor country field
+    if (contractor.country) {
+      const countryCurrency = getCurrencyFromCountry(contractor.country);
+      console.log(`Using contractor country ${contractor.country} -> ${countryCurrency}`);
+      return countryCurrency;
+    }
+    
+    console.log('No country data available, defaulting to USD');
+    return 'usd';
+  })();
 
   // Check for contractor ID in URL params
   useEffect(() => {

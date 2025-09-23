@@ -520,8 +520,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         contractor.stripeConnectAccountId
       );
 
-      console.log(`Returning ${contractorsWithStripeConnect.length} contractors with Stripe Connect from ${linkedContractors.length} total for business ${userId}`);
-      console.log('Contractor details:', contractorsWithStripeConnect.map(c => ({
+      // Enhance contractor data with Connect V2 information
+      const enhancedContractors = await Promise.all(
+        contractorsWithStripeConnect.map(async (contractor) => {
+          try {
+            // Get Connect V2 data for this contractor
+            const connectData = await storage.getConnectForUser(contractor.id);
+            
+            return {
+              ...contractor,
+              connectAccountData: connectData ? {
+                country: connectData.country,
+                defaultCurrency: connectData.defaultCurrency,
+                accountId: connectData.accountId,
+                isFullyVerified: connectData.isFullyVerified
+              } : null
+            };
+          } catch (error) {
+            console.error(`Error getting Connect data for contractor ${contractor.id}:`, error);
+            return contractor;
+          }
+        })
+      );
+
+      console.log(`Returning ${enhancedContractors.length} contractors with Connect data from ${linkedContractors.length} total for business ${userId}`);
+      console.log('Enhanced contractor details:', enhancedContractors.map(c => ({
         id: c.id,
         username: c.username,
         email: c.email,
@@ -529,10 +552,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastName: c.lastName,
         role: c.role,
         companyName: c.companyName,
-        hasStripeConnect: !!c.stripeConnectAccountId
+        hasStripeConnect: !!c.stripeConnectAccountId,
+        connectCountry: c.connectAccountData?.country,
+        connectCurrency: c.connectAccountData?.defaultCurrency
       })));
 
-      res.json(contractorsWithStripeConnect);
+      res.json(enhancedContractors);
     } catch (error) {
       console.error("Error fetching contractors:", error);
       res.status(500).json({ message: "Error fetching contractors" });
