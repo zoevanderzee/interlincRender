@@ -1647,10 +1647,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`Found deliverable ${id} for contract ${existingDeliverable.contractId}`);
 
-      // Basic validation - accept submission as long as:
-      // 1. User is authenticated
-      // 2. The deliverable exists  
-      // 3. Input is valid (basic file or physical checkbox + description)
+      // SECURITY: Verify user has access to this deliverable
+      const contract = await storage.getContract(existingDeliverable.contractId);
+      if (!contract) {
+        console.log(`Contract ${existingDeliverable.contractId} not found for deliverable ${id}`);
+        return res.status(404).json({ message: "Contract not found" });
+      }
+
+      console.log(`Found contract ${contract.id}: businessId=${contract.businessId}, contractorId=${contract.contractorId}`);
+
+      // Allow contractors to submit work on their assignments
+      if (userRole === 'contractor') {
+        // Check if contractor is assigned to this contract
+        const hasAccess = contract.contractorId === userId;
+        
+        if (!hasAccess) {
+          console.log(`Contractor ${userId} has no access to contract ${contract.id}`);
+          return res.status(403).json({ message: "Access denied: You are not assigned to this project" });
+        }
+      } else if (userRole === 'business' && contract.businessId !== userId) {
+        return res.status(403).json({ message: "Access denied: Cannot update other business deliverables" });
+      }
 
       // Set submittedAt timestamp when status changes to completed
       if (updateData.status === 'completed' && !updateData.submittedAt) {
@@ -1665,8 +1682,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`Successfully updated deliverable ${id}`);
 
-      // Mark deliverable as completed and save timestamp
-      console.log(`Deliverable ${id} submitted successfully by user ${userId}`);
+      // Create notification when contractor submits work (marks deliverable as completed)
+      if (updateData.status === 'completed' && userRole === 'contractor') {
+        try {
+          await notificationService.createWorkSubmission(
+            contract.businessId,
+            updatedDeliverable.name,
+            contract.contractName || "Project",
+            userId
+          );
+          console.log(`Created work submission notification for business ${contract.businessId}`);
+        } catch (notificationError) {
+          console.error('Error creating work submission notification:', notificationError);
+        }
+      }
 
       res.json(updatedDeliverable);
     } catch (error) {
