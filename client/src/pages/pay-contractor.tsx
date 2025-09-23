@@ -62,21 +62,41 @@ function PaymentForm({
 
     setIsProcessing(true);
 
-    const { error } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: `${window.location.origin}/payments`,
-      },
-    });
+    try {
+      const { error, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        redirect: 'if_required',
+      });
 
-    if (error) {
+      if (error) {
+        console.error('[Payment Form] Payment failed:', error);
+        toast({
+          title: "Payment Failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+        console.log('[Payment Form] Payment succeeded:', paymentIntent.id);
+        toast({
+          title: "Payment Successful",
+          description: `Payment of ${formatAmount(amount)} has been processed successfully.`,
+        });
+        onSuccess();
+      } else {
+        console.error('[Payment Form] Unexpected payment status:', paymentIntent?.status);
+        toast({
+          title: "Payment Status Unclear",
+          description: "Please check your payment status in the payments section.",
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      console.error('[Payment Form] Payment error:', err);
       toast({
-        title: "Payment Failed",
-        description: error.message,
+        title: "Payment Error",
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
-    } else {
-      onSuccess();
     }
 
     setIsProcessing(false);
@@ -287,63 +307,15 @@ export default function PayContractor() {
           <h1 className="text-2xl font-bold">Complete Payment</h1>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5" />
-              Payment Confirmation
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Payment Summary */}
-            <div className="bg-muted p-4 rounded-lg space-y-2">
-              <div className="flex justify-between">
-                <span className="font-medium">Paying:</span>
-                <span>{selectedContractor.firstName} {selectedContractor.lastName}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="font-medium">Amount:</span>
-                <span className="text-lg font-bold">£{formData.amount}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="font-medium">Description:</span>
-                <span className="text-sm text-muted-foreground max-w-48 text-right">{formData.description}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="font-medium">Due Date:</span>
-                <span className="text-sm text-muted-foreground">
-                  {new Date(formData.dueDate).toLocaleDateString('en-GB')}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="font-medium">Payment Method:</span>
-                <span className="text-sm text-muted-foreground">Business Account (Approved)</span>
-              </div>
-            </div>
-
-            <div className="border-l-4 border-green-500 bg-green-50 p-4 rounded">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <CreditCard className="h-5 w-5 text-green-400" />
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm text-green-700">
-                    Your business account is verified and ready for payments. 
-                    Stripe will process this payment and handle all transaction fees automatically.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <Button 
-              onClick={handlePaymentSuccess} 
-              className="w-full bg-green-600 hover:bg-green-700"
-              size="lg"
-            >
-              Confirm Payment of £{formData.amount}
-            </Button>
-          </CardContent>
-        </Card>
+        <Elements stripe={stripePromise} options={{ clientSecret }}>
+          <PaymentForm
+            contractor={selectedContractor}
+            amount={formData.amount}
+            description={formData.description}
+            clientSecret={clientSecret}
+            onSuccess={handlePaymentSuccess}
+          />
+        </Elements>
       </div>
     );
   }
