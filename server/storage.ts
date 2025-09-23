@@ -218,6 +218,9 @@ export interface IStorage {
   updateWorkRequestStatus(id: number, status: string): Promise<WorkRequest | undefined>;
   updateWorkRequestContract(id: number, contractId: number): Promise<WorkRequest | undefined>;
   getContractByWorkRequestId(workRequestId: number): Promise<Contract | undefined>;
+
+  // BULLETPROOF DATA CONSISTENCY METHOD
+  ensureContractWorkRequestConsistency(contractorId: number, deliverableName: string): Promise<{contract: Contract | null, workRequest: WorkRequest | null, businessId: number | null}>;
 }
 
 // In-memory storage implementation
@@ -2209,25 +2212,6 @@ export class DatabaseStorage implements IStorage {
       .where(eq(connectionRequests.contractorId, contractorId));
   }
 
-  async getConnectionRequests(filters: { businessId?: number, contractorId?: number, status?: string }): Promise<ConnectionRequest[]> {
-    let query = db.select().from(connectionRequests);
-
-    // Apply filters
-    if (filters.businessId !== undefined) {
-      query = query.where(eq(connectionRequests.businessId, filters.businessId));
-    }
-
-    if (filters.contractorId !== undefined) {
-      query = query.where(eq(connectionRequests.contractorId, filters.contractorId));
-    }
-
-    if (filters.status !== undefined) {
-      query = query.where(eq(connectionRequests.status, filters.status));
-    }
-
-    return await query.orderBy(desc(connectionRequests.createdAt));
-  }
-
   async getConnectionRequestByProfileCode(businessId: number, profileCode: string): Promise<ConnectionRequest | undefined> {
     const [request] = await db
       .select()
@@ -3240,103 +3224,79 @@ export class DatabaseStorage implements IStorage {
   // BULLETPROOF DATA CONSISTENCY METHOD
   async ensureContractWorkRequestConsistency(contractorId: number, deliverableName: string): Promise<{contract: Contract | null, workRequest: WorkRequest | null, businessId: number | null}> {
     try {
-      console.log(`🔧 CONSISTENCY CHECK: contractor=${contractorId}, deliverable="${deliverableName}"`);
+      console.log(`DB: Ensuring data consistency for contractor ${contractorId}, deliverable: ${deliverableName}`);
 
-      // 1. Find work request by contractor and deliverable name
-      const workRequests = await this.getWorkRequestsByContractorId(contractorId);
-      const workRequest = workRequests.find(wr => wr.title === deliverableName);
+      // Find all work requests for this contractor with enhanced query
+      const workRequestsData = await this.getWorkRequestsWithBusinessInfo(contractorId);
+      console.log(`DB: Found ${workRequestsData.length} work requests for contractor ${contractorId}`);
 
-      if (!workRequest) {
-        console.log(`❌ No work request found for "${deliverableName}"`);
+      // Find work request that matches deliverable
+      const matchingWorkRequest = workRequestsData.find(wr => 
+        wr.title === deliverableName && 
+        (wr.status === 'accepted' || wr.status === 'assigned')
+      );
+
+      if (!matchingWorkRequest) {
+        console.log(`DB: No matching work request found for deliverable: ${deliverableName}`);
         return { contract: null, workRequest: null, businessId: null };
       }
 
-      console.log(`✅ Found work request: ID=${workRequest.id}, Project=${workRequest.projectId}`);
+      console.log(`DB: Found matching work request ${matchingWorkRequest.id}`);
 
-      // 2. Get business ID from work request project
-      const project = await this.getProject(workRequest.projectId);
-      if (!project) {
-        console.log(`❌ No project found for work request`);
-        return { contract: null, workRequest, businessId: null };
-      }
+      let contract = null;
+      let businessId = null;
 
-      const businessId = project.businessId;
-      console.log(`✅ Found business: ID=${businessId}`);
+      // Get business ID from work request data
+      if (matchingWorkRequest.projectId) {
+        const [project] = await db
+          .select()
+          .from(projects)
+          .where(eq(projects.id, matchingWorkRequest.projectId));
 
-      // 3. Find existing contract between this business and contractor
-      let existingContract = Array.from(this.contracts.values()).find(c =>
-        c.businessId === businessId &&
-        c.contractorId === contractorId &&
-        c.status === 'active'
-      );
-
-      if (!existingContract) {
-        // 4. Create a contract if none exists
-        console.log(`🔨 Creating new contract for business ${businessId} and contractor ${contractorId}`);
-
-        const newContract = await this.createContract({
-          contractName: `Project Assignment - ${project.name}`,
-          contractCode: `AUTO-${Date.now()}`,
-          businessId: businessId,
-          contractorId: contractorId,
-          description: `Auto-generated contract for project: ${project.name}`,
-          status: 'active',
-          value: workRequest.amount.toString(),
-          startDate: new Date(),
-          endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
-        });
-
-        // 5. Link the work request to this contract
-        await this.updateWorkRequest(workRequest.id, {
-          contractId: newContract.id
-        });
-
-        console.log(`✅ Created contract ID=${newContract.id} and linked work request`);
-
-        return {
-          contract: newContract,
-          workRequest: workRequest,
-          businessId: businessId
-        };
-      } else {
-        console.log(`✅ Found existing contract ID=${existingContract.id}`);
-
-        // Ensure work request is linked to this contract
-        if (workRequest.contractId !== existingContract.id) {
-          await this.updateWorkRequest(workRequest.id, {
-            contractId: existingContract.id
-          });
-          console.log(`🔗 Linked work request to existing contract`);
+        if (project) {
+          businessId = project.businessId;
+          console.log(`DB: Found business ${businessId} via project ${project.id}`);
         }
-
-        return {
-          contract: existingContract,
-          workRequest: workRequest,
-          businessId: businessId
-        };
       }
+
+      // Try to get contract
+      if (matchingWorkRequest.contractId) {
+        const [contractData] = await db
+          .select()
+          .from(contracts)
+          .where(eq(contracts.id, matchingWorkRequest.contractId));
+
+        if (contractData) {
+          contract = contractData;
+          businessId = contract.businessId;
+          console.log(`DB: Found contract ${contract.id} via direct lookup`);
+        }
+      } else if (businessId && matchingWorkRequest.projectId) {
+        // Look for contracts linked to this project
+        const contractsForProject = await db
+          .select()
+          .from(contracts)
+          .where(and(
+            eq(contracts.businessId, businessId),
+            eq(contracts.projectId, matchingWorkRequest.projectId)
+          ));
+
+        if (contractsForProject.length > 0) {
+          contract = contractsForProject[0];
+          console.log(`DB: Found contract ${contract.id} via project lookup`);
+        }
+      }
+
+      return {
+        contract,
+        workRequest: matchingWorkRequest,
+        businessId
+      };
 
     } catch (error) {
-      console.error('❌ Error in ensureContractWorkRequestConsistency:', error);
+      console.error(`DB: Error ensuring data consistency:`, error);
       return { contract: null, workRequest: null, businessId: null };
     }
-  }
-
-  async updateWorkRequestContract(id: number, contractId: number): Promise<WorkRequest | undefined> {
-    const existingRequest = this.workRequests.get(id);
-    if (!existingRequest) return undefined;
-
-    const updatedRequest = { ...existingRequest, contractId };
-    this.workRequests.set(id, updatedRequest);
-    return updatedRequest;
-  }
-
-  async getContractByWorkRequestId(workRequestId: number): Promise<Contract | undefined> {
-    const workRequest = await this.getWorkRequest(workRequestId);
-    if (!workRequest || !workRequest.contractId) {
-      return undefined;
-    }
-    return await this.getContract(workRequest.contractId);
   }
 }
 
