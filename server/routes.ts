@@ -2603,52 +2603,139 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { amount, description, contractorId, connectedAccountId } = req.body;
       const businessId = req.user?.id;
 
+      console.log('[Payment Intent] Request:', { amount, description, contractorId, connectedAccountId, businessId });
+
       if (!businessId) {
-        return res.status(401).json({ message: "Not authenticated" });
+        return res.status(401).json({ error: "Authentication required" });
       }
 
       if (!amount || !contractorId) {
-        return res.status(400).json({ message: "Amount and contractor ID are required" });
+        return res.status(400).json({ error: "Amount and contractor ID are required" });
+      }
+
+      // Validate amount
+      const amountNum = parseFloat(amount);
+      if (isNaN(amountNum) || amountNum <= 0) {
+        return res.status(400).json({ error: "Invalid payment amount" });
+      }
+
+      if (amountNum < 0.5) {
+        return res.status(400).json({ error: "Minimum payment amount is $0.50" });
       }
 
       // Convert amount to cents
-      const amountInCents = Math.round(parseFloat(amount) * 100);
+      const amountInCents = Math.round(amountNum * 100);
 
       // Get contractor details
       const contractor = await storage.getUser(contractorId);
       if (!contractor) {
-        return res.status(404).json({ message: "Contractor not found" });
+        return res.status(404).json({ error: "Contractor not found" });
       }
 
-      // Create payment intent
-      let paymentIntentData: any = {
-        amount: amountInCents,
-        currency: 'usd',
-        metadata: {
-          businessId: businessId.toString(),
-          contractorId: contractorId.toString(),
-          description: description || 'Contractor payment'
-        }
-      };
-
-      // If contractor has a Stripe Connect account, use it for direct transfer
-      if (contractor.stripeConnectAccountId) {
-        paymentIntentData.transfer_data = {
-          destination: contractor.stripeConnectAccountId,
-        };
-        paymentIntentData.application_fee_amount = Math.round(amountInCents * 0.03); // 3% platform fee
-      }
-
-      const paymentIntent = await stripe.paymentIntents.create(paymentIntentData);
-
-      res.json({
-        clientSecret: paymentIntent.client_secret,
-        paymentIntentId: paymentIntent.id
+      console.log('[Payment Intent] Contractor:', { 
+        id: contractor.id, 
+        email: contractor.email,
+        stripeConnectAccountId: contractor.stripeConnectAccountId 
       });
 
+      // Check if contractor has V2 Connect account setup
+      if (!contractor.stripeConnectAccountId) {
+        return res.status(400).json({ 
+          error: "Contractor payment setup incomplete. Please ask the contractor to complete their payment account setup.",
+          code: "CONNECT_ACCOUNT_REQUIRED"
+        });
+      }
+
+      // Validate Connect account status using V2 service
+      let accountValid = false;
+      try {
+        const accountStatus = await stripeService.getConnectAccountStatusV2(contractor.stripeConnectAccountId);
+        accountValid = accountStatus.verification_status === 'verified' && accountStatus.charges_enabled;
+        
+        console.log('[Payment Intent] Connect account status:', {
+          accountId: contractor.stripeConnectAccountId,
+          verified: accountStatus.verification_status === 'verified',
+          chargesEnabled: accountStatus.charges_enabled,
+          payoutsEnabled: accountStatus.payouts_enabled
+        });
+
+        if (!accountValid) {
+          return res.status(400).json({ 
+            error: "Contractor's payment account is not fully verified. Please ask them to complete their account setup.",
+            code: "CONNECT_ACCOUNT_NOT_VERIFIED"
+          });
+        }
+      } catch (connectError) {
+        console.error('[Payment Intent] Connect account validation error:', connectError);
+        return res.status(400).json({ 
+          error: "Unable to verify contractor's payment account. Please ensure they have completed account setup.",
+          code: "CONNECT_ACCOUNT_VALIDATION_FAILED"
+        });
+      }
+
+      // Create V2 enhanced payment intent
+      try {
+        const paymentIntentParams = {
+          amount: amountNum,
+          currency: 'usd',
+          description: description || 'Contractor payment',
+          metadata: {
+            businessId: businessId.toString(),
+            contractorId: contractorId.toString(),
+            paymentType: 'contractor_payment',
+            version: 'v2'
+          },
+          transferData: {
+            destination: contractor.stripeConnectAccountId,
+            amount: Math.round(amountInCents * 0.97) // 97% to contractor, 3% platform fee
+          },
+          applicationFeeAmount: Math.round(amountInCents * 0.03), // 3% platform fee
+          paymentMethodTypes: ['card', 'us_bank_account']
+        };
+
+        console.log('[Payment Intent] Creating with params:', paymentIntentParams);
+
+        const paymentIntent = await stripeService.createPaymentIntent(paymentIntentParams);
+
+        console.log('[Payment Intent] Created successfully:', {
+          id: paymentIntent.id,
+          status: paymentIntent.status
+        });
+
+        res.json({
+          clientSecret: paymentIntent.clientSecret,
+          paymentIntentId: paymentIntent.id,
+          status: paymentIntent.status
+        });
+
+      } catch (stripeError: any) {
+        console.error('[Payment Intent] Stripe creation error:', stripeError);
+        
+        // Handle specific Stripe errors
+        if (stripeError.type === 'StripeInvalidRequestError') {
+          return res.status(400).json({ 
+            error: `Payment setup error: ${stripeError.message}`,
+            code: "STRIPE_INVALID_REQUEST"
+          });
+        } else if (stripeError.type === 'StripePermissionError') {
+          return res.status(400).json({ 
+            error: "Insufficient permissions for this payment. Please contact support.",
+            code: "STRIPE_PERMISSION_ERROR"
+          });
+        } else {
+          return res.status(500).json({ 
+            error: "Payment processing temporarily unavailable. Please try again.",
+            code: "STRIPE_SERVICE_ERROR"
+          });
+        }
+      }
+
     } catch (error: any) {
-      console.error('Error creating payment intent:', error);
-      res.status(500).json({ message: "Error creating payment intent: " + error.message });
+      console.error('[Payment Intent] Unexpected error:', error);
+      res.status(500).json({ 
+        error: "Failed to initialize payment. Please try again.",
+        code: "PAYMENT_INITIALIZATION_FAILED"
+      });
     }
   });
 

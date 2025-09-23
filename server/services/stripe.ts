@@ -199,17 +199,30 @@ export async function getConnectAccountStatusV2(accountId: string): Promise<Conn
     const requirements = account.requirements;
     const capabilities = account.capabilities;
 
+    console.log(`[Connect Status V2] Account ${accountId}:`, {
+      charges_enabled: account.charges_enabled,
+      details_submitted: account.details_submitted,
+      payouts_enabled: account.payouts_enabled,
+      capabilities: capabilities,
+      requirements: requirements
+    });
+
     // Determine verification status based on multiple factors
     let verification_status: 'pending' | 'verified' | 'rejected' = 'pending';
     
-    if (account.charges_enabled && account.details_submitted && account.payouts_enabled) {
-      // Check if all required capabilities are active
-      const allCapabilitiesActive = Object.values(capabilities || {}).every(
-        cap => cap.status === 'active'
-      );
-      verification_status = allCapabilitiesActive ? 'verified' : 'pending';
-    } else if (requirements?.disabled_reason) {
+    // Check for blocking requirements first
+    const hasBlockingRequirements = requirements?.disabled_reason ||
+                                   (requirements?.currently_due?.length || 0) > 0 ||
+                                   (requirements?.past_due?.length || 0) > 0;
+
+    if (hasBlockingRequirements) {
       verification_status = 'rejected';
+    } else if (account.charges_enabled && account.details_submitted && account.payouts_enabled) {
+      // Check if critical capabilities are active
+      const cardPaymentsActive = capabilities?.card_payments?.status === 'active';
+      const transfersActive = capabilities?.transfers?.status === 'active';
+      
+      verification_status = (cardPaymentsActive && transfersActive) ? 'verified' : 'pending';
     }
 
     return {
@@ -225,10 +238,31 @@ export async function getConnectAccountStatusV2(accountId: string): Promise<Conn
     console.error('Error checking V2 Connect account status:', error);
     
     if (error.type === 'StripeInvalidRequestError' && error.code === 'resource_missing') {
-      throw new Error('Account not found');
+      throw new Error('Connect account not found');
     }
     
     throw new Error('Failed to check account status');
+  }
+}
+
+/**
+ * Validate Connect account for payment processing
+ */
+export async function validateConnectAccountForPayment(accountId: string): Promise<boolean> {
+  try {
+    const status = await getConnectAccountStatusV2(accountId);
+    
+    const isValid = status.verification_status === 'verified' && 
+                   status.charges_enabled && 
+                   status.payouts_enabled &&
+                   !status.disabled_reason;
+
+    console.log(`[Connect Validation] Account ${accountId} valid for payments:`, isValid);
+    
+    return isValid;
+  } catch (error) {
+    console.error(`[Connect Validation] Failed to validate account ${accountId}:`, error);
+    return false;
   }
 }
 

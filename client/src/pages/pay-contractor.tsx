@@ -163,6 +163,8 @@ export default function PayContractor() {
   // Create payment intent mutation
   const createPaymentMutation = useMutation({
     mutationFn: async (data: PaymentFormData) => {
+      console.log('[Pay Contractor] Creating payment intent:', data);
+      
       const response = await fetch('/api/create-payment-intent', {
         method: 'POST',
         headers: {
@@ -177,20 +179,30 @@ export default function PayContractor() {
         })
       });
 
+      const responseData = await response.json();
+      console.log('[Pay Contractor] Payment intent response:', responseData);
+
       if (!response.ok) {
-        throw new Error('Failed to create payment intent');
+        // Throw with the specific error from server
+        throw new Error(responseData.error || 'Failed to create payment intent');
       }
 
-      return response.json();
+      return responseData;
     },
     onSuccess: (data) => {
+      console.log('[Pay Contractor] Payment intent created successfully');
       setClientSecret(data.clientSecret);
       setShowPaymentForm(true);
     },
-    onError: (error) => {
+    onError: (error: Error) => {
+      console.error('[Pay Contractor] Payment intent creation failed:', error);
+      
+      // Show specific error message from server
+      const errorMessage = error.message || "Failed to initialize payment. Please try again.";
+      
       toast({
-        title: "Error",
-        description: "Failed to initialize payment. Please try again.",
+        title: "Payment Setup Failed",
+        description: errorMessage,
         variant: "destructive"
       });
     }
@@ -216,6 +228,31 @@ export default function PayContractor() {
       });
       return;
     }
+
+    if (parseFloat(formData.amount) < 0.5) {
+      toast({
+        title: "Amount Too Small",
+        description: "Minimum payment amount is $0.50",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate contractor has Connect account
+    if (!selectedContractor?.stripeConnectAccountId) {
+      toast({
+        title: "Payment Setup Required",
+        description: "This contractor needs to complete their payment account setup before receiving payments.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    console.log('[Pay Contractor] Submitting payment:', {
+      contractor: selectedContractor?.firstName + ' ' + selectedContractor?.lastName,
+      amount: formData.amount,
+      hasConnectAccount: !!selectedContractor?.stripeConnectAccountId
+    });
 
     createPaymentMutation.mutate(formData);
   };

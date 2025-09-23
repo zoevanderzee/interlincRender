@@ -103,6 +103,7 @@ function PaymentProcessor({
 
   // Handle Stripe payment completion
   const handleStripePaymentComplete = (paymentIntentId: string) => {
+    console.log('[Payment Processor] Stripe payment completed:', paymentIntentId);
     cardPaymentMutation.mutate(paymentIntentId);
   };
 
