@@ -218,6 +218,9 @@ export interface IStorage {
   updateWorkRequestStatus(id: number, status: string): Promise<WorkRequest | undefined>;
   updateWorkRequestContract(id: number, contractId: number): Promise<WorkRequest | undefined>;
   getContractByWorkRequestId(workRequestId: number): Promise<Contract | undefined>;
+
+  // BULLETPROOF DATA CONSISTENCY METHOD
+  ensureContractWorkRequestConsistency(contractorId: number, deliverableName: string): Promise<{contract: Contract | null, workRequest: WorkRequest | null, businessId: number | null}>;
 }
 
 // In-memory storage implementation
@@ -3117,7 +3120,6 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  // Added delete methods for contracts and associated records
   async deleteContractMilestones(contractId: number): Promise<void> {
     await db.delete(milestones).where(eq(milestones.contractId, contractId));
   }
@@ -3194,6 +3196,107 @@ export class DatabaseStorage implements IStorage {
 
   async deleteContractPayments(contractId: number): Promise<void> {
     await this.db.delete(payments).where(eq(payments.contractId, contractId));
+  }
+
+  // Project methods
+  async getProject(id: number): Promise<Project | undefined> {
+    const [project] = await db.select().from(projects).where(eq(projects.id, id));
+    return project;
+  }
+
+  async getBusinessProjects(businessId: number): Promise<Project[]> {
+    return await db.select().from(projects).where(eq(projects.businessId, businessId));
+  }
+
+  async createProject(project: InsertProject): Promise<Project> {
+    const [newProject] = await db.insert(projects).values(project).returning();
+    return newProject;
+  }
+
+  async getContractByWorkRequestId(workRequestId: number): Promise<Contract | undefined> {
+    const workRequest = await this.getWorkRequest(workRequestId);
+    if (!workRequest || !workRequest.contractId) {
+      return undefined;
+    }
+    return this.getContract(workRequest.contractId);
+  }
+
+  // BULLETPROOF DATA CONSISTENCY METHOD
+  async ensureContractWorkRequestConsistency(contractorId: number, deliverableName: string): Promise<{contract: Contract | null, workRequest: WorkRequest | null, businessId: number | null}> {
+    try {
+      console.log(`DB: Ensuring data consistency for contractor ${contractorId}, deliverable: ${deliverableName}`);
+
+      // Find all work requests for this contractor with enhanced query
+      const workRequestsData = await this.getWorkRequestsWithBusinessInfo(contractorId);
+      console.log(`DB: Found ${workRequestsData.length} work requests for contractor ${contractorId}`);
+
+      // Find work request that matches deliverable
+      const matchingWorkRequest = workRequestsData.find(wr => 
+        wr.title === deliverableName && 
+        (wr.status === 'accepted' || wr.status === 'assigned')
+      );
+
+      if (!matchingWorkRequest) {
+        console.log(`DB: No matching work request found for deliverable: ${deliverableName}`);
+        return { contract: null, workRequest: null, businessId: null };
+      }
+
+      console.log(`DB: Found matching work request ${matchingWorkRequest.id}`);
+
+      let contract = null;
+      let businessId = null;
+
+      // Get business ID from work request data
+      if (matchingWorkRequest.projectId) {
+        const [project] = await db
+          .select()
+          .from(projects)
+          .where(eq(projects.id, matchingWorkRequest.projectId));
+
+        if (project) {
+          businessId = project.businessId;
+          console.log(`DB: Found business ${businessId} via project ${project.id}`);
+        }
+      }
+
+      // Try to get contract
+      if (matchingWorkRequest.contractId) {
+        const [contractData] = await db
+          .select()
+          .from(contracts)
+          .where(eq(contracts.id, matchingWorkRequest.contractId));
+
+        if (contractData) {
+          contract = contractData;
+          businessId = contract.businessId;
+          console.log(`DB: Found contract ${contract.id} via direct lookup`);
+        }
+      } else if (businessId && matchingWorkRequest.projectId) {
+        // Look for contracts linked to this project
+        const contractsForProject = await db
+          .select()
+          .from(contracts)
+          .where(and(
+            eq(contracts.businessId, businessId),
+            eq(contracts.projectId, matchingWorkRequest.projectId)
+          ));
+
+        if (contractsForProject.length > 0) {
+          contract = contractsForProject[0];
+          console.log(`DB: Found contract ${contract.id} via project lookup`);
+        }
+      }
+
+      return {
+        contract,
+        workRequest: matchingWorkRequest,
+        businessId
+      };
+
+    } catch (error) {
+      console.error(`DB: Error ensuring data consistency:`, error);
+      return { contract: null, workRequest: null, businessId: null };
+    }
   }
 }
 
