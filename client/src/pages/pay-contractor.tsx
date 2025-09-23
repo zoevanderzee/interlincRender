@@ -73,17 +73,17 @@ export default function PayContractor() {
     };
 
     if (!countryCode) return 'usd';
-    
+
     // Try exact match first
     const exactMatch = currencyMap[countryCode];
     if (exactMatch) return exactMatch;
-    
+
     // Try case-insensitive match
     const lowerCaseMatch = Object.keys(currencyMap).find(
       key => key.toLowerCase() === countryCode.toLowerCase()
     );
     if (lowerCaseMatch) return currencyMap[lowerCaseMatch];
-    
+
     // Default fallback
     return 'usd';
   };
@@ -98,40 +98,40 @@ export default function PayContractor() {
   // Get currency from Connect V2 status, Connect account data, or contractor country
   const currency = (() => {
     if (!contractor) return 'usd';
-    
+
     // First priority: Connect V2 status default currency
     if (connectStatus?.defaultCurrency) {
       console.log(`Using Connect V2 status currency: ${connectStatus.defaultCurrency}`);
       return connectStatus.defaultCurrency;
     }
-    
+
     // Second priority: Connect V2 status country
     if (connectStatus?.country) {
       const connectCurrency = getCurrencyFromCountry(connectStatus.country);
       console.log(`Using Connect V2 status country ${connectStatus.country} -> ${connectCurrency}`);
       return connectCurrency;
     }
-    
+
     // Third priority: Connect account data currency
     if (contractor.connectAccountData?.defaultCurrency) {
       console.log(`Using Connect account data currency: ${contractor.connectAccountData.defaultCurrency}`);
       return contractor.connectAccountData.defaultCurrency;
     }
-    
+
     // Fourth priority: Connect account data country
     if (contractor.connectAccountData?.country) {
       const connectCurrency = getCurrencyFromCountry(contractor.connectAccountData.country);
       console.log(`Using Connect account data country ${contractor.connectAccountData.country} -> ${connectCurrency}`);
       return connectCurrency;
     }
-    
+
     // Fifth priority: Contractor country field
     if (contractor.country) {
       const countryCurrency = getCurrencyFromCountry(contractor.country);
       console.log(`Using contractor country ${contractor.country} -> ${countryCurrency}`);
       return countryCurrency;
     }
-    
+
     console.log('No country data available, defaulting to USD');
     return 'usd';
   })();
@@ -252,7 +252,7 @@ export default function PayContractor() {
           </CardHeader>
           <CardContent className="space-y-4 text-center">
             <div className="space-y-2">
-              <p className="text-2xl font-bold">${amount}</p>
+              <p className="text-2xl font-bold">{amount} {currency.toUpperCase()}</p>
               <p className="text-muted-foreground">
                 Sent to {contractor?.firstName} {contractor?.lastName}
               </p>
