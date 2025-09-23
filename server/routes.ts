@@ -4271,11 +4271,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied: This work request is not assigned to you" });
       }
 
-      // Verify the work request is accepted
-      if (workRequest.status !== 'accepted') {
-        return res.status(400).json({ message: 'Work request must be accepted before submitting work' });
-      }
-
       // Update work request status to accepted
       const updatedWorkRequest = await storage.updateWorkRequest(workRequestId, {
         status: 'accepted',
@@ -6247,9 +6242,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
-
-  // Register Trolley submerchant routes
-  registerTrolleySubmerchantRoutes(app, requireAuth);
 
   // Register Trolley contractor routes
   const { registerTrolleyContractorRoutes } = await import('./trolley-contractor-routes');
