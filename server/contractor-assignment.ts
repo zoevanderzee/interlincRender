@@ -85,6 +85,16 @@ export function registerContractorAssignmentRoutes(app: Express, apiRouter: stri
         const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
 
         result = await storage.createWorkRequest(workRequestData, tokenHash);
+
+        // Immediately use the consistency method to create/link contract
+        const consistency = await storage.ensureContractWorkRequestConsistency(
+          validatedData.contractorUserId, 
+          validatedData.title
+        );
+
+        if (consistency.contract) {
+          console.log(`✅ Auto-created/linked contract ${consistency.contract.id} for work request ${result.id}`);
+        }
         
         return res.json({
           success: true,
