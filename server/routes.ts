@@ -2657,20 +2657,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let accountValid = false;
       try {
         const accountStatus = await stripeService.getConnectAccountStatusV2(contractor.stripeConnectAccountId);
-        accountValid = accountStatus.verification_status === 'verified' && accountStatus.charges_enabled;
+        
+        // Account is valid if it has charges enabled and no blocking requirements
+        accountValid = accountStatus.charges_enabled && 
+                       accountStatus.payouts_enabled && 
+                       !accountStatus.disabled_reason &&
+                       (accountStatus.requirements?.currently_due?.length || 0) === 0 &&
+                       (accountStatus.requirements?.past_due?.length || 0) === 0;
         
         console.log('[Payment Intent] Connect account status:', {
           accountId: contractor.stripeConnectAccountId,
-          verified: accountStatus.verification_status === 'verified',
+          verificationStatus: accountStatus.verification_status,
           chargesEnabled: accountStatus.charges_enabled,
-          payoutsEnabled: accountStatus.payouts_enabled
+          payoutsEnabled: accountStatus.payouts_enabled,
+          hasRequirements: (accountStatus.requirements?.currently_due?.length || 0) > 0,
+          accountValid: accountValid
         });
 
         if (!accountValid) {
-          return res.status(400).json({ 
-            error: "Contractor's payment account is not fully verified. Please ask them to complete their account setup.",
-            code: "CONNECT_ACCOUNT_NOT_VERIFIED"
-          });
+          // Provide more specific error messages
+          if (!accountStatus.charges_enabled) {
+            return res.status(400).json({ 
+              error: "Contractor's account cannot accept charges yet. Please complete account verification.",
+              code: "CONNECT_CHARGES_DISABLED"
+            });
+          } else if (!accountStatus.payouts_enabled) {
+            return res.status(400).json({ 
+              error: "Contractor's account cannot receive payouts yet. Please complete account verification.",
+              code: "CONNECT_PAYOUTS_DISABLED"
+            });
+          } else if ((accountStatus.requirements?.currently_due?.length || 0) > 0) {
+            return res.status(400).json({ 
+              error: "Contractor has pending verification requirements. Please complete account setup.",
+              code: "CONNECT_REQUIREMENTS_PENDING"
+            });
+          } else {
+            return res.status(400).json({ 
+              error: "Contractor's payment account is not ready for payments. Please complete verification.",
+              code: "CONNECT_ACCOUNT_NOT_READY"
+            });
+          }
         }
       } catch (connectError) {
         console.error('[Payment Intent] Connect account validation error:', connectError);
