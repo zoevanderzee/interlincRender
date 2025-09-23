@@ -1,0 +1,48 @@
+Added X-User-ID header: 115
+Added X-Firebase-UID header: MdtkYSE97UaLFN5QT7ES7KbF6tt1
+API Request: GET /api/dashboard 
+Object {headers: {…}, hasCookies: false}
+Fetching data from /api/notifications/count
+Query Request: GET /api/notifications/count 
+Object {hasCookies: false, cookieString: "", hasUserInStorage: true}
+Query Response: GET /api/notifications/count 
+Object {status: 200, setCookie: null, contentType: "application/json; charset=utf-8"}
+API Response: GET /api/dashboard 
+Object {status: 200, setCookie: null, contentType: "application/json; charset=utf-8"}
+Authentication headers check:
+user_id from localStorage: 115
+firebase_uid from localStorage: MdtkYSE97UaLFN5QT7ES7KbF6tt1
+Added X-User-ID header: 115
+Added X-Firebase-UID header: MdtkYSE97UaLFN5QT7ES7KbF6tt1
+API Request: PATCH /api/deliverables/25 
+Object {headers: {…}, hasCookies: false}
+API Response: PATCH /api/deliverables/25 
+Object {status: 404, setCookie: null, contentType: "application/json; charset=utf-8"}
+Submission error: 
+Error {status: 404, statusText: "Not Found", data: {…}, isApiError: true}
+
+ProtectedRoute: 
+Object {path: "/projects", isLoading: false, hasUser: true}
+ProtectedRoute: 
+Object {path: "/projects", isLoading: false, hasUser: true}
+ProtectedRoute: 
+Object {path: "/projects", isLoading: false, hasUser: true}
+ProtectedRoute: 
+Object {path: "/projects", isLoading: false, hasUser: true}
+Authentication headers check:
+user_id from localStorage: 115
+firebase_uid from localStorage: MdtkYSE97UaLFN5QT7ES7KbF6tt1
+Added X-User-ID header: 115
+Added X-Firebase-UID header: MdtkYSE97UaLFN5QT7ES7KbF6tt1
+API Request: PATCH /api/deliverables/25 
+Object {headers: {…}, hasCookies: false}
+API Response: PATCH /api/deliverables/25 
+Object {status: 404, setCookie: null, contentType: "application/json; charset=utf-8"}
+Submission error: 
+Error {status: 404, statusText: "Not Found", data: {…}, isApiError: true}
+
+t@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:12639
+value@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:32772
+@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:34410
+ProtectedRoute: 
+Object {path: "/projects", isLoadin
