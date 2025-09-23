@@ -101,16 +101,16 @@ export default function PayContractor() {
     console.log('connectStatus.defaultCurrency:', connectStatus?.defaultCurrency);
     console.log('connectStatus.country:', connectStatus?.country);
 
-    // First priority: YOUR Connect V2 status default currency
-    if (connectStatus?.defaultCurrency) {
-      console.log(`✅ Using YOUR business currency: ${connectStatus.defaultCurrency}`);
-      return connectStatus.defaultCurrency;
+    // BULLETPROOF: First priority - YOUR Connect V2 status default currency
+    if (connectStatus?.defaultCurrency && connectStatus.defaultCurrency.trim() !== '') {
+      console.log(`✅ USING YOUR BUSINESS CURRENCY: ${connectStatus.defaultCurrency}`);
+      return connectStatus.defaultCurrency.toLowerCase();
     }
 
-    // Second priority: YOUR Connect V2 status country
-    if (connectStatus?.country) {
+    // BULLETPROOF: Second priority - YOUR Connect V2 status country
+    if (connectStatus?.country && connectStatus.country.trim() !== '') {
       const connectCurrency = getCurrencyFromCountry(connectStatus.country);
-      console.log(`✅ Using YOUR business country ${connectStatus.country} -> ${connectCurrency}`);
+      console.log(`✅ USING YOUR BUSINESS COUNTRY ${connectStatus.country} -> ${connectCurrency}`);
       return connectCurrency;
     }
 
@@ -126,8 +126,8 @@ export default function PayContractor() {
       return stripeCurrency;
     }
 
-    console.log('❌ No business account data available, defaulting to GBP');
-    return 'gbp'; // Default to GBP instead of USD
+    console.log('❌ FALLBACK: No business account data available, defaulting to GBP');
+    return 'gbp';
   })();
 
   console.log(`=== FINAL CURRENCY SELECTED: ${currency.toUpperCase()} ===`);
