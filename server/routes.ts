@@ -527,14 +527,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Get Connect V2 data for this contractor
             const connectData = await storage.getConnectForUser(contractor.id);
             
+            let connectAccountData = null;
+            
+            if (connectData) {
+              // Get real-time Connect status from Stripe
+              try {
+                const account = await stripe.accounts.retrieve(connectData.accountId);
+                connectAccountData = {
+                  country: account.country,
+                  defaultCurrency: account.default_currency,
+                  accountId: connectData.accountId,
+                  isFullyVerified: account.charges_enabled && account.details_submitted && account.payouts_enabled
+                };
+              } catch (stripeError) {
+                console.error(`Error getting Stripe account for contractor ${contractor.id}:`, stripeError);
+                connectAccountData = {
+                  country: connectData.country,
+                  defaultCurrency: connectData.defaultCurrency,
+                  accountId: connectData.accountId,
+                  isFullyVerified: connectData.isFullyVerified
+                };
+              }
+            }
+            
             return {
               ...contractor,
-              connectAccountData: connectData ? {
-                country: connectData.country,
-                defaultCurrency: connectData.defaultCurrency,
-                accountId: connectData.accountId,
-                isFullyVerified: connectData.isFullyVerified
-              } : null
+              connectAccountData
             };
           } catch (error) {
             console.error(`Error getting Connect data for contractor ${contractor.id}:`, error);
