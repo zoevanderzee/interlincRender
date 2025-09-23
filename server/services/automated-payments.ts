@@ -44,11 +44,9 @@ class AutomatedPaymentService {
         return { success: false, error: 'Contractor not found' };
       }
 
-      // Calculate payment amounts
+      // Calculate payment amounts - V2 Connect handles fees automatically
       const totalAmount = parseFloat(milestone.paymentAmount);
-      const platformFeeRate = 0.0025; // 0.25% platform fee
-      const applicationFee = totalAmount * platformFeeRate;
-      const netAmount = totalAmount - applicationFee;
+      const netAmount = totalAmount; // Full amount goes to contractor
 
       console.log(`[PAYMENT_ATTEMPT] Starting Stripe payment for approved milestone ${milestoneId}: $${totalAmount}`);
 
