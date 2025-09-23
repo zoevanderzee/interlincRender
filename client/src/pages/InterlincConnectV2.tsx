@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CheckCircle, Clock, XCircle, AlertCircle, Settings, CreditCard, Zap, Shield, Globe, Building, Users, ArrowRight, Loader2, Upload, FileText } from 'lucide-react';
+import { CheckCircle, Clock, XCircle, AlertCircle, Shield, CreditCard, Zap, Users, ArrowRight, Loader2, Upload, FileText } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -66,6 +66,22 @@ interface VerificationForm {
   document_back?: File;
 }
 
+const countryCurrencyMap: Record<string, { name: string; symbol: string }> = {
+  US: { name: 'United States Dollar', symbol: 'USD' },
+  GB: { name: 'Pound Sterling', symbol: 'GBP' },
+  CA: { name: 'Canadian Dollar', symbol: 'CAD' },
+  AU: { name: 'Australian Dollar', symbol: 'AUD' },
+  DE: { name: 'Euro', symbol: 'EUR' },
+  FR: { name: 'Euro', symbol: 'EUR' },
+  IT: { name: 'Euro', symbol: 'EUR' },
+  ES: { name: 'Euro', symbol: 'EUR' },
+  NL: { name: 'Euro', symbol: 'EUR' },
+  BE: { name: 'Euro', symbol: 'EUR' },
+  JP: { name: 'Japanese Yen', symbol: 'JPY' },
+  SG: { name: 'Singapore Dollar', symbol: 'SGD' },
+  HK: { name: 'Hong Kong Dollar', symbol: 'HKD' },
+};
+
 export default function InterlincConnectV2() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -77,14 +93,18 @@ export default function InterlincConnectV2() {
   // Form states
   const [onboardingForm, setOnboardingForm] = useState<OnboardingForm>({
     business_type: 'individual',
-    address_country: 'GB'
+    address_country: 'GB' // Default country
   });
-  
+
+  const [selectedCountry, setSelectedCountry] = useState<string>(onboardingForm.address_country || 'GB');
+
   const [verificationForm, setVerificationForm] = useState<VerificationForm>({
     document_type: 'passport'
   });
 
-  
+  const getCurrentCurrency = () => {
+    return countryCurrencyMap[selectedCountry] || countryCurrencyMap['GB'];
+  };
 
   // Check V2 status and capabilities
   const checkStatus = async () => {
@@ -129,7 +149,7 @@ export default function InterlincConnectV2() {
 
       const response = await apiRequest('POST', '/api/connect/v2/create-account', {
         body: JSON.stringify({
-          country: 'GB',
+          country: onboardingForm.address_country, // Use selected country
           business_type: onboardingForm.business_type
         }),
         headers: { 'Content-Type': 'application/json' }
@@ -476,8 +496,8 @@ export default function InterlincConnectV2() {
                   <div className="space-y-4">
                     <div>
                       <Label htmlFor="business_type">Account Type</Label>
-                      <Select 
-                        value={onboardingForm.business_type} 
+                      <Select
+                        value={onboardingForm.business_type}
                         onValueChange={(value) => setOnboardingForm(prev => ({...prev, business_type: value as 'individual' | 'company'}))}
                       >
                         <SelectTrigger>
@@ -488,6 +508,39 @@ export default function InterlincConnectV2() {
                           <SelectItem value="company">Company</SelectItem>
                         </SelectContent>
                       </Select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="country">Country</Label>
+                      <Select
+                        value={selectedCountry}
+                        onValueChange={(value) => {
+                          setSelectedCountry(value);
+                          setOnboardingForm(prev => ({...prev, address_country: value}));
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="US">United States (USD)</SelectItem>
+                          <SelectItem value="GB">United Kingdom (GBP)</SelectItem>
+                          <SelectItem value="CA">Canada (CAD)</SelectItem>
+                          <SelectItem value="AU">Australia (AUD)</SelectItem>
+                          <SelectItem value="DE">Germany (EUR)</SelectItem>
+                          <SelectItem value="FR">France (EUR)</SelectItem>
+                          <SelectItem value="IT">Italy (EUR)</SelectItem>
+                          <SelectItem value="ES">Spain (EUR)</SelectItem>
+                          <SelectItem value="NL">Netherlands (EUR)</SelectItem>
+                          <SelectItem value="BE">Belgium (EUR)</SelectItem>
+                          <SelectItem value="JP">Japan (JPY)</SelectItem>
+                          <SelectItem value="SG">Singapore (SGD)</SelectItem>
+                          <SelectItem value="HK">Hong Kong (HKD)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Currency: {getCurrentCurrency().name} ({getCurrentCurrency().symbol})
+                      </p>
                     </div>
                     <Button onClick={createAccount} disabled={submitting} className="w-full">
                       {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
@@ -508,14 +561,14 @@ export default function InterlincConnectV2() {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label>First Name</Label>
-                        <Input 
+                        <Input
                           value={onboardingForm.first_name || ''}
                           onChange={(e) => setOnboardingForm(prev => ({...prev, first_name: e.target.value}))}
                         />
                       </div>
                       <div>
                         <Label>Last Name</Label>
-                        <Input 
+                        <Input
                           value={onboardingForm.last_name || ''}
                           onChange={(e) => setOnboardingForm(prev => ({...prev, last_name: e.target.value}))}
                         />
@@ -524,7 +577,7 @@ export default function InterlincConnectV2() {
                   ) : (
                     <div>
                       <Label>Company Name</Label>
-                      <Input 
+                      <Input
                         value={onboardingForm.company_name || ''}
                         onChange={(e) => setOnboardingForm(prev => ({...prev, company_name: e.target.value}))}
                       />
@@ -534,7 +587,7 @@ export default function InterlincConnectV2() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label>Email</Label>
-                      <Input 
+                      <Input
                         type="email"
                         value={onboardingForm.email || ''}
                         onChange={(e) => setOnboardingForm(prev => ({...prev, email: e.target.value}))}
@@ -542,7 +595,7 @@ export default function InterlincConnectV2() {
                     </div>
                     <div>
                       <Label>Phone</Label>
-                      <Input 
+                      <Input
                         value={onboardingForm.phone || ''}
                         onChange={(e) => setOnboardingForm(prev => ({...prev, phone: e.target.value}))}
                       />
@@ -551,7 +604,7 @@ export default function InterlincConnectV2() {
 
                   <div>
                     <Label>Address</Label>
-                    <Input 
+                    <Input
                       value={onboardingForm.address_line1 || ''}
                       onChange={(e) => setOnboardingForm(prev => ({...prev, address_line1: e.target.value}))}
                       placeholder="Street address"
@@ -561,14 +614,14 @@ export default function InterlincConnectV2() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label>City</Label>
-                      <Input 
+                      <Input
                         value={onboardingForm.address_city || ''}
                         onChange={(e) => setOnboardingForm(prev => ({...prev, address_city: e.target.value}))}
                       />
                     </div>
                     <div>
                       <Label>Postal Code</Label>
-                      <Input 
+                      <Input
                         value={onboardingForm.address_postal_code || ''}
                         onChange={(e) => setOnboardingForm(prev => ({...prev, address_postal_code: e.target.value}))}
                       />
@@ -591,7 +644,7 @@ export default function InterlincConnectV2() {
 
                   <div>
                     <Label>Document Type</Label>
-                    <Select 
+                    <Select
                       value={verificationForm.document_type}
                       onValueChange={(value) => setVerificationForm(prev => ({...prev, document_type: value}))}
                     >
@@ -608,7 +661,7 @@ export default function InterlincConnectV2() {
 
                   <div>
                     <Label>Document Front</Label>
-                    <Input 
+                    <Input
                       type="file"
                       accept="image/*"
                       onChange={(e) => setVerificationForm(prev => ({...prev, document_front: e.target.files?.[0]}))}
@@ -617,7 +670,7 @@ export default function InterlincConnectV2() {
 
                   <div>
                     <Label>Document Back (if applicable)</Label>
-                    <Input 
+                    <Input
                       type="file"
                       accept="image/*"
                       onChange={(e) => setVerificationForm(prev => ({...prev, document_back: e.target.files?.[0]}))}
@@ -667,7 +720,7 @@ export default function InterlincConnectV2() {
                               <p className="text-muted-foreground mb-4">
                                 Complete your account verification to enable automated contractor payments.
                               </p>
-                              <Button 
+                              <Button
                                 onClick={() => setActiveTab('onboard')}
                                 disabled={!status?.hasAccount || !status?.needsOnboarding}
                               >

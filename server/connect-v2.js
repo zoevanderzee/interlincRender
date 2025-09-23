@@ -53,6 +53,23 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       const userId = getUserId(req);
       const existing = await db.getConnect(userId);
 
+      // Country to currency mapping
+      const countryToCurrency = {
+        'US': 'usd',
+        'GB': 'gbp', 
+        'CA': 'cad',
+        'AU': 'aud',
+        'DE': 'eur',
+        'FR': 'eur',
+        'IT': 'eur',
+        'ES': 'eur',
+        'NL': 'eur',
+        'BE': 'eur',
+        'JP': 'jpy',
+        'SG': 'sgd',
+        'HK': 'hkd'
+      };
+
       if (!existing?.accountId) {
         return res.json({ 
           hasAccount: false, 
@@ -153,6 +170,8 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
         hasAccount: true,
         accountId: updatedAccount.id,
         accountType: updatedAccount.type,
+        country: existing.country || updatedAccount.country || 'GB',
+        defaultCurrency: existing.defaultCurrency || countryToCurrency[existing.country || updatedAccount.country] || 'gbp',
         needsOnboarding: !isFullyVerified || hasRequirements,
         detailsSubmitted: updatedAccount.details_submitted,
         chargesEnabled: updatedAccount.charges_enabled,
@@ -208,6 +227,27 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       const userId = getUserId(req);
       const { country = "GB", business_type = "individual" } = req.body || {};
 
+      // Validate country and determine currency
+      const countryToCurrency = {
+        'US': 'usd',
+        'GB': 'gbp', 
+        'CA': 'cad',
+        'AU': 'aud',
+        'DE': 'eur',
+        'FR': 'eur',
+        'IT': 'eur',
+        'ES': 'eur',
+        'NL': 'eur',
+        'BE': 'eur',
+        'JP': 'jpy',
+        'SG': 'sgd',
+        'HK': 'hkd'
+      };
+
+      const defaultCurrency = countryToCurrency[country] || 'usd';
+      
+      console.log(`Creating V2 Connect account for user ${userId} in country ${country} with currency ${defaultCurrency}`);
+
       const existing = await db.getConnect(userId);
       if (existing?.accountId) {
         return res.status(409).json({ error: "Account already exists" });
@@ -217,8 +257,6 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
-
-      console.log('Creating V2 Connect account for user:', userId);
 
       // Create account with enhanced V2 capabilities
       const accountConfig = {
@@ -234,6 +272,8 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
           userId: userId.toString(),
           role: user.role || 'business',
           version: 'v2',
+          country: country,
+          default_currency: defaultCurrency,
           created_at: new Date().toISOString()
         },
         settings: {
@@ -263,6 +303,8 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       await db.setConnect(userId, { 
         accountId: account.id, 
         accountType: account.type,
+        country: country,
+        defaultCurrency: defaultCurrency,
         detailsSubmitted: false,
         chargesEnabled: false,
         payoutsEnabled: false,
@@ -273,6 +315,8 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       res.json({
         success: true,
         accountId: account.id,
+        country: country,
+        defaultCurrency: defaultCurrency,
         version: 'v2',
         needsOnboarding: true,
         capabilities: account.capabilities
@@ -480,7 +524,11 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
   app.post(`${connectBasePath}/create-transfer`, authMiddleware, async (req, res) => {
     try {
       const userId = getUserId(req);
-      const { amount, currency = 'usd', description, metadata = {} } = req.body;
+      const existing = await db.getConnect(userId);
+      
+      // Use account's default currency if not specified
+      const defaultCurrency = existing?.defaultCurrency || 'usd';
+      const { amount, currency = defaultCurrency, description, metadata = {} } = req.body;
 
       // Validate amount with detailed error messages
       console.log(`[Connect V2] Received transfer request:`, { amount, type: typeof amount, body: req.body });
@@ -500,11 +548,36 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
         return res.status(400).json({ error: "Amount must be greater than 0" });
       }
       
-      if (parsedAmount < 0.5) {
-        return res.status(400).json({ error: "Minimum transfer amount is $0.50" });
+      // Country-specific minimum amounts
+      const minimumAmounts = {
+        'usd': 0.50,
+        'gbp': 0.30,
+        'eur': 0.50,
+        'cad': 0.50,
+        'aud': 0.50,
+        'jpy': 50,
+        'sgd': 0.50,
+        'hkd': 4.00
+      };
+
+      const minAmount = minimumAmounts[currency] || 0.50;
+      if (parsedAmount < minAmount) {
+        const currencySymbols = {
+          'usd': '$',
+          'gbp': '£',
+          'eur': '€',
+          'cad': 'C$',
+          'aud': 'A$',
+          'jpy': '¥',
+          'sgd': 'S$',
+          'hkd': 'HK$'
+        };
+        const symbol = currencySymbols[currency] || '';
+        return res.status(400).json({ 
+          error: `Minimum transfer amount is ${symbol}${minAmount} ${currency.toUpperCase()}` 
+        });
       }
 
-      const existing = await db.getConnect(userId);
       if (!existing?.accountId) {
         return res.status(404).json({ error: "No Connect account found" });
       }
