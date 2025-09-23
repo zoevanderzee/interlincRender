@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,7 +31,7 @@ export default function PayContractor() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const contractorId = params.get('contractorId');
-    
+
     if (contractorId) {
       fetchContractorInfo(contractorId);
     } else {
@@ -55,7 +54,7 @@ export default function PayContractor() {
 
   const handleDirectPayment = async () => {
     if (!contractor) return;
-    
+
     if (!amount || parseFloat(amount) <= 0) {
       toast({
         title: 'Invalid amount',
@@ -93,9 +92,9 @@ export default function PayContractor() {
       }
 
       const result = await response.json();
-      
+
       console.log('Direct payment successful:', result);
-      
+
       setPaymentSuccess(true);
       toast({
         title: 'Payment Successful',
@@ -211,7 +210,7 @@ export default function PayContractor() {
               Send payment directly using Stripe Connect V2
             </CardDescription>
           </CardHeader>
-          
+
           <CardContent className="space-y-6">
             {/* Payment Details */}
             <div className="bg-muted p-4 rounded-lg space-y-3">
@@ -219,7 +218,7 @@ export default function PayContractor() {
                 <User className="h-4 w-4" />
                 Payment Details
               </h3>
-              
+
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-muted-foreground">Paying:</span>
@@ -232,7 +231,7 @@ export default function PayContractor() {
                   <p className="font-bold text-lg">${amount}</p>
                 </div>
               </div>
-              
+
               <div>
                 <span className="text-muted-foreground">Description:</span>
                 <p className="font-medium">{description}</p>
