@@ -2598,10 +2598,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Stripe integration routes
 
   // Create payment intent for contractor payment
-  app.post(`${apiRouter}/create-payment-intent`, async (req: Request, res: Response) => {
+  app.post(`${apiRouter}/create-payment-intent`, requireAuth, async (req: Request, res: Response) => {
     try {
       const { amount, description, contractorId, connectedAccountId } = req.body;
-      const businessId = req.user?.id;
+      
+      // Get user ID from session or X-User-ID header fallback
+      let businessId = req.user?.id;
+      
+      // Use X-User-ID header fallback if session auth failed
+      if (!businessId && req.headers['x-user-id']) {
+        businessId = parseInt(req.headers['x-user-id'] as string);
+      }
 
       console.log('[Payment Intent] Request:', { amount, description, contractorId, connectedAccountId, businessId });
 
