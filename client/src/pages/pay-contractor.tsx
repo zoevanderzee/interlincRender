@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +17,7 @@ interface ContractorInfo {
   lastName: string;
   email: string;
   stripeConnectAccountId?: string;
+  country?: string; // Assuming country is available in ContractorInfo
 }
 
 export default function PayContractor() {
@@ -36,11 +36,26 @@ export default function PayContractor() {
     queryKey: ['/api/contractors'],
   });
 
+  // Function to get currency based on country
+  const getCurrencyFromCountry = (countryCode?: string): string => {
+    // This is a placeholder. In a real application, you would have a more robust mapping
+    // or fetch currency information from an API based on the country code.
+    const currencyMap: { [key: string]: string } = {
+      US: 'usd',
+      CA: 'cad',
+      GB: 'gbp',
+      // Add more country to currency mappings as needed
+    };
+    return countryCode && currencyMap[countryCode] ? currencyMap[countryCode] : 'usd'; // Default to USD
+  };
+
+  const currency = contractor ? getCurrencyFromCountry(contractor.country) : 'usd';
+
   // Check for contractor ID in URL params
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const contractorId = params.get('contractorId');
-    
+
     if (contractorId && contractorId !== 'undefined') {
       setSelectedContractorId(contractorId);
       fetchContractorInfo(contractorId);
@@ -103,7 +118,7 @@ export default function PayContractor() {
       const response = await apiRequest('POST', '/api/connect/v2/create-transfer', {
         destination: contractor.stripeConnectAccountId,
         amount: parseFloat(amount),
-        currency: 'usd',
+        currency: currency, // Use dynamic currency
         description,
         metadata: {
           contractorId: contractor.id.toString(),
@@ -261,7 +276,7 @@ export default function PayContractor() {
                   </div>
                   <div>
                     <span className="text-muted-foreground">Amount:</span>
-                    <p className="font-bold text-lg">${amount}</p>
+                    <p className="font-bold text-lg">{amount} {currency.toUpperCase()}</p>
                   </div>
                 </div>
 
@@ -276,8 +291,8 @@ export default function PayContractor() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="amount" className="flex items-center gap-2">
-                  <DollarSign className="h-4 w-4" />
-                  Amount (USD)
+                  <DollarSign className="w-4 h-4" />
+                  Amount ({currency.toUpperCase()})
                 </Label>
                 <Input
                   id="amount"
@@ -327,7 +342,7 @@ export default function PayContractor() {
               ) : (
                 <>
                   <DollarSign className="h-4 w-4 mr-2" />
-                  Send Payment ${amount}
+                  Send Payment {amount} {currency.toUpperCase()}
                 </>
               )}
             </Button>
