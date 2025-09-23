@@ -1924,8 +1924,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ================ END DELIVERABLE ENDPOINTS ================
-
   // Payment Method Management Routes
   app.get(`${apiRouter}/payment-methods`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
@@ -4273,6 +4271,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied: This work request is not assigned to you" });
       }
 
+      // Verify the work request is accepted
+      if (workRequest.status !== 'accepted') {
+        return res.status(400).json({ message: 'Work request must be accepted before submitting work' });
+      }
+
       // Update work request status to accepted
       const updatedWorkRequest = await storage.updateWorkRequest(workRequestId, {
         status: 'accepted',
@@ -5225,9 +5228,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const submissionId = parseInt(req.params.id);
       const { status, feedback } = req.body;
-      const user = req.user!;
 
-      console.log('Reviewing work request submission:', { submissionId, status, feedback, userId: user.id });
+      // Only businesses can review submissions
+      if (req.user!.role !== 'business') {
+        return res.status(403).json({ message: 'Only businesses can review work submissions' });
+      }
 
       // Get the submission to verify access
       const submission = await storage.getWorkRequestSubmission(submissionId);
@@ -5236,7 +5241,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Only allow business owners to review submissions for their business
-      if (user.role !== 'business' || submission.businessId !== user.id) {
+      if (submission.businessId !== req.user!.id) {
         return res.status(403).json({ message: 'Access denied' });
       }
 
@@ -5317,7 +5322,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(submissions);
     } catch (error: any) {
       console.error('Error fetching business work submissions:', error);
-      res.status(500).json({ message: error.message });
+      res.status(500).json{ message: error.message });
     }
   });
 
