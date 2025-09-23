@@ -50,6 +50,10 @@ export async function createPaymentIntent(params: CreatePaymentIntentParams): Pr
   try {
     // Convert amount to cents and ensure minimum amounts per currency
     const currency = params.currency.toLowerCase();
+    
+    // Enhanced currency validation for Connect accounts
+    console.log(`[Payment Intent V2] Creating payment for ${params.amount} ${currency.toUpperCase()}`);
+    
     const minimumAmounts = {
       'usd': 50, // 50 cents = $0.50
       'gbp': 30, // 30 pence = £0.30

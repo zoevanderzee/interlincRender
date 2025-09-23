@@ -162,7 +162,9 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
           business_type: updatedAccount.business_type,
           created: updatedAccount.created,
           requirements: requirements,
-          capabilities: currentCapabilities
+          capabilities: currentCapabilities,
+          default_currency: updatedAccount.default_currency,
+          country: updatedAccount.country
         }
       });
 

@@ -2601,10 +2601,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post(`${apiRouter}/create-payment-intent`, requireAuth, async (req: Request, res: Response) => {
     try {
       const { amount, description, contractorId, connectedAccountId } = req.body;
-      
+
       // Get user ID from session or X-User-ID header fallback
       let businessId = req.user?.id;
-      
+
       // Use X-User-ID header fallback if session auth failed
       if (!businessId && req.headers['x-user-id']) {
         businessId = parseInt(req.headers['x-user-id'] as string);
@@ -2639,15 +2639,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Contractor not found" });
       }
 
-      console.log('[Payment Intent] Contractor:', { 
-        id: contractor.id, 
+      console.log('[Payment Intent] Contractor:', {
+        id: contractor.id,
         email: contractor.email,
-        stripeConnectAccountId: contractor.stripeConnectAccountId 
+        stripeConnectAccountId: contractor.stripeConnectAccountId
       });
 
       // Check if contractor has V2 Connect account setup
       if (!contractor.stripeConnectAccountId) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           error: "Contractor payment setup incomplete. Please ask the contractor to complete their payment account setup.",
           code: "CONNECT_ACCOUNT_REQUIRED"
         });
@@ -2657,14 +2657,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let accountValid = false;
       try {
         const accountStatus = await stripeService.getConnectAccountStatusV2(contractor.stripeConnectAccountId);
-        
+
         // Account is valid if it has charges enabled and no blocking requirements
-        accountValid = accountStatus.charges_enabled && 
-                       accountStatus.payouts_enabled && 
+        accountValid = accountStatus.charges_enabled &&
+                       accountStatus.payouts_enabled &&
                        !accountStatus.disabled_reason &&
                        (accountStatus.requirements?.currently_due?.length || 0) === 0 &&
                        (accountStatus.requirements?.past_due?.length || 0) === 0;
-        
+
         console.log('[Payment Intent] Connect account status:', {
           accountId: contractor.stripeConnectAccountId,
           verificationStatus: accountStatus.verification_status,
@@ -2677,22 +2677,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!accountValid) {
           // Provide more specific error messages
           if (!accountStatus.charges_enabled) {
-            return res.status(400).json({ 
+            return res.status(400).json({
               error: "Contractor's account cannot accept charges yet. Please complete account verification.",
               code: "CONNECT_CHARGES_DISABLED"
             });
           } else if (!accountStatus.payouts_enabled) {
-            return res.status(400).json({ 
+            return res.status(400).json({
               error: "Contractor's account cannot receive payouts yet. Please complete account verification.",
               code: "CONNECT_PAYOUTS_DISABLED"
             });
           } else if ((accountStatus.requirements?.currently_due?.length || 0) > 0) {
-            return res.status(400).json({ 
+            return res.status(400).json({
               error: "Contractor has pending verification requirements. Please complete account setup.",
               code: "CONNECT_REQUIREMENTS_PENDING"
             });
           } else {
-            return res.status(400).json({ 
+            return res.status(400).json({
               error: "Contractor's payment account is not ready for payments. Please complete verification.",
               code: "CONNECT_ACCOUNT_NOT_READY"
             });
@@ -2700,7 +2700,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       } catch (connectError) {
         console.error('[Payment Intent] Connect account validation error:', connectError);
-        return res.status(400).json({ 
+        return res.status(400).json({
           error: "Unable to verify contractor's payment account. Please ensure they have completed account setup.",
           code: "CONNECT_ACCOUNT_VALIDATION_FAILED"
         });
@@ -2753,20 +2753,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       } catch (stripeError: any) {
         console.error('[Payment Intent] Stripe creation error:', stripeError);
-        
+
         // Handle specific Stripe errors
         if (stripeError.type === 'StripeInvalidRequestError') {
-          return res.status(400).json({ 
+          return res.status(400).json({
             error: `Payment setup error: ${stripeError.message}`,
             code: "STRIPE_INVALID_REQUEST"
           });
         } else if (stripeError.type === 'StripePermissionError') {
-          return res.status(400).json({ 
+          return res.status(400).json({
             error: "Insufficient permissions for this payment. Please contact support.",
             code: "STRIPE_PERMISSION_ERROR"
           });
         } else {
-          return res.status(500).json({ 
+          return res.status(500).json({
             error: "Payment processing temporarily unavailable. Please try again.",
             code: "STRIPE_SERVICE_ERROR"
           });
@@ -2775,7 +2775,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error: any) {
       console.error('[Payment Intent] Unexpected error:', error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Failed to initialize payment. Please try again.",
         code: "PAYMENT_INITIALIZATION_FAILED"
       });
@@ -4840,7 +4840,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Only businesses can create connection requests
       if (currentUser && currentUser.role !== 'business') {
-        return res.status(403).json({ message: "Only businesses can create connection requests" });
+        return res.status.status(403).json({ message: "Only businesses can create connection requests" });
       }
 
       // First check if the profile code is valid
