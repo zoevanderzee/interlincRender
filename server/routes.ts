@@ -3868,7 +3868,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       if (!user) {
-        return res.status(404).json({ message: "User not found" });
+        return res.status(404).json{ message: "User not found" });
       }
 
       // Update reset flag if provided
@@ -3925,7 +3925,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   /**
-   * Endpoint to allocate budget for a contractor on a specific project
+   * Allocate budget for a contractor on a specific project
    * This supports the budget validation feature in project creation
    */
   app.post(`${apiRouter}/contracts/:id/allocate-budget`, requireAuth, async (req: Request, res: Response) => {
@@ -4617,23 +4617,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Get submissions for specific project
         const allSubmissions = await storage.getWorkRequestSubmissionsByBusinessId(req.user!.id);
-        targetSubmissions = allSubmissions.filter(sub =>
-          sub.status === 'pending' &&
-          // Need to cross-reference through work request relationship
+        targetSubmissions = allSubmissions.filter(sub => {
+          if (!sub.workRequestId) return false;
+          // Need to cross-reference through work request to get project ID
           // This is a simplified approach - in production you'd need proper JOIN
-          true // For now filter by business only - would need JOIN in production
-        );
+          // For now, we'll just filter by business ID
+          return sub.status === 'pending';
+        });
       }
 
       if (submissionIds === 'all') {
-        // Get all pending submissions for this project
+        // Get all pending submissions for this business
         const allSubmissions = await storage.getWorkRequestSubmissionsByBusinessId(req.user!.id);
-        targetSubmissions = allSubmissions.filter(sub =>
-          sub.status === 'pending' &&
-          // Filter by project - need to cross-reference through work request
-          // This is a simplified approach - in production you'd need proper JOIN
-          true // For now, approve all pending submissions for this business
-        );
+        targetSubmissions = allSubmissions.filter(sub => sub.status === 'pending');
       } else {
         // Get specific submissions by IDs
         const submissions = await Promise.all(
@@ -4641,7 +4637,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
         targetSubmissions = submissions.filter(sub => {
           if (!sub) return false;
-          // Verify business owns these submissions
+          // Verify business owns these submissions and they are pending
           return sub.businessId === req.user!.id && sub.status === 'pending';
         });
       }
@@ -4781,7 +4777,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get(`${apiRouter}/trolley/status`, requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user;
-      if (!user) {
+      if (!user || user.role !== 'business') {
         return res.status(401).json({ message: "Not authenticated" });
       }
 
@@ -4812,7 +4808,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const companyData = {
-        name: user.companyName || `${user.firstName} ${user.lastName}`,
+        name: user.company || `${user.firstName} ${user.lastName}`,
         email: user.email,
         type: 'business' as const
       };
