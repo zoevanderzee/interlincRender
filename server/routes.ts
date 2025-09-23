@@ -1648,37 +1648,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Not authorized to submit this deliverable' });
       }
 
-      // Use the bulletproof consistency method to find/create the proper contract and milestone
-      const consistency = await storage.ensureContractWorkRequestConsistency(
-        workRequest.contractorUserId, 
-        workRequest.title
+      // Find the corresponding milestone/deliverable by matching the work request title
+      const milestones = await storage.getAllMilestones();
+      const matchingMilestone = milestones.find(m =>
+        m.name === workRequest.title &&
+        m.contractId === workRequest.contractId
       );
 
-      if (!consistency.contract) {
-        return res.status(404).json({ message: 'Unable to find or create contract for this work request' });
-      }
-
-      // Find or create the corresponding milestone
-      let milestone = await storage.getMilestonesByContractId(consistency.contract.id);
-      let matchingMilestone = milestone.find(m => m.name === workRequest.title);
-
       if (!matchingMilestone) {
-        // Create the milestone if it doesn't exist
-        matchingMilestone = await storage.createMilestone({
-          contractId: consistency.contract.id,
-          name: workRequest.title,
-          description: workRequest.description || '',
-          dueDate: workRequest.dueDate,
-          paymentAmount: workRequest.amount.toString(),
-          status: 'assigned',
-          progress: 0
-        });
+        return res.status(404).json({ message: 'Corresponding deliverable not found' });
       }
-
-      // Update the work request status to 'submitted'
-      await storage.updateWorkRequest(workRequestId, {
-        status: 'submitted'
-      });
 
       // Proceed with deliverable update
       const updateData = {
