@@ -65,7 +65,6 @@ import {registerProjectRoutes} from "./projects/index";
 // import { generateWorkRequestToken } from "./services/email"; // Not needed for now
 // Schema tables imported from shared/schema instead
 import { registerContractorAssignmentRoutes } from "./contractor-assignment";
-import { trolleyApi } from "./services/trolley-api"; // Import trolleyApi
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
@@ -381,7 +380,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.error("Error fetching connected contractors:", error);
           }
 
-          // Combine and deduplicate contractors from User database
+          // Combine all sources and remove duplicates
           const contractorIds = new Set();
           const uniqueContractors: any[] = [];
 
@@ -1651,7 +1650,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Use the bulletproof consistency method to find/create the proper contract and milestone
       const consistency = await storage.ensureContractWorkRequestConsistency(
-        workRequest.contractorUserId,
+        workRequest.contractorUserId, 
         workRequest.title
       );
 
@@ -1786,6 +1785,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       } else {
         // Deliverable was approved but payment failed - still return success for approval
+        console.error('Automated payment failed:', paymentResult.error);
         res.json({
           message: "Deliverable approved, but automated payment failed",
           deliverable: updatedDeliverable,
@@ -1922,6 +1922,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Error rejecting milestone" });
     }
   });
+
+  // ================ END DELIVERABLE ENDPOINTS ================
 
   // Payment Method Management Routes
   app.get(`${apiRouter}/payment-methods`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
@@ -2405,7 +2407,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userRole = req.user?.role || 'business'; // Default to business if not specified
 
       let userContracts = [];
-      let userWorkRequests = []; // To store work requests for contractors
 
       // Handle contractor dashboard - contractors can see their own contracts and assignments
       if (userRole === 'contractor') {
@@ -2416,7 +2417,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Get contractor's work requests (assignments)
         const workRequests = await storage.getWorkRequestsByContractorId(userId);
-        userWorkRequests = workRequests; // Store for later use
 
         // Get contractor's own milestones
         const contractorMilestones = [];
@@ -2526,7 +2526,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               milestoneId: 0, // No milestone associated yet
               amount: remainingAmount.toFixed(2),
               status: 'pending',
-              scheduledDate: contract.startDate || contract.createdAt,
+              scheduledDate: contract.startDate || new Date(),
               completedDate: null,
               notes: `Pending contract payment for ${contract.contractName}`,
               contractName: contract.contractName, // Add contract name for display purposes
@@ -2583,29 +2583,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get actual projects count for dashboard stats
       const userProjects = await storage.getBusinessProjects(userId || 0);
 
-      // Fetch work requests for the dashboard
-      let userWorkRequests = [];
-      if (userRole === 'business') {
-        userWorkRequests = await storage.getWorkRequestsByBusinessId(userId || 0);
-      }
-
-      // Calculate stats - include both direct contracts and work request contracts
-      const activeContractsCount = userContracts.filter(contract =>
-        contract.status?.toLowerCase() === 'active'
-      ).length;
-
-      // Also count accepted work requests as active contracts
-      const acceptedWorkRequestsCount = userWorkRequests.filter(wr =>
-        wr.status === 'accepted'
-      ).length;
-
-      const totalActiveContracts = activeContractsCount + acceptedWorkRequestsCount;
-
-
       const dashboardData = {
         stats: {
-          activeContractsCount: totalActiveContracts,
-          pendingApprovalsCount: pendingMilestones.length,
+          activeContractsCount: activeContracts.length,
+          pendingApprovalsCount: pendingApprovals.length,
           paymentsProcessed: totalPaymentsValue,
           totalPendingValue: totalPendingValue, // Add total pending value from contracts
           activeContractorsCount: activeContractorsCount, // Use the proper active contractors count
@@ -2617,7 +2598,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         milestones: upcomingMilestones,
         payments: allUpcomingPayments, // Include virtual payments
         projects: userProjects, // Include projects data in dashboard
-        workRequests: userWorkRequests, // Add work requests to dashboard data
         // Only include minimal invite data to prevent errors
         invites: pendingInvites.map(item => ({
           id: typeof item.id === 'number' ? item.id : 0,
@@ -3337,7 +3317,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-
   // Update payment status from Stripe
   app.post(`${apiRouter}/payments/:id/update-status`, async (req: Request, res: Response) => {
     try {
@@ -3364,7 +3343,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Stripe Connect routes for contractors
+  // Stripe Connect endpoints for contractors
 
   // Create a Stripe Connect account for a contractor
   app.post(`${apiRouter}/contractors/:id/connect-account`, requireAuth, async (req: Request, res: Response) => {
@@ -3525,6 +3504,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Process real payment through Trolley
       console.log('🔴 PROCESSING REAL TROLLEY PAYMENT');
+
+      const { trolleyApi } = await import('./services/trolley-api');
 
       // Create real Trolley payment to contractor
       const paymentData = {
@@ -3868,7 +3849,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       if (!user) {
-        return res.status(404).json{ message: "User not found" });
+        return res.status(404).json({ message: "User not found" });
       }
 
       // Update reset flag if provided
@@ -3925,7 +3906,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   /**
-   * Allocate budget for a contractor on a specific project
+   * Endpoint to allocate budget for a contractor on a specific project
    * This supports the budget validation feature in project creation
    */
   app.post(`${apiRouter}/contracts/:id/allocate-budget`, requireAuth, async (req: Request, res: Response) => {
@@ -4034,7 +4015,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create a PaymentIntent with the order amount and currency
       // Convert amount to whole number of cents (Stripe requires integer)
-      const amountInCents = Math.round(parseFloat(amount) * 100);
+      const amountInCents = Math.round(parseFloat(amount));
       console.log('Creating payment intent for amount (cents):', amountInCents);
 
       const paymentIntent = await stripe.paymentIntents.create({
@@ -4250,8 +4231,823 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Work request submission endpoint
-  app.post(`${apiRouter}/work-request-submissions`, requireAuth, async (req: AuthenticatedRequest, res) => {
+  app.patch(`${apiRouter}/work-requests/:id`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updateData = req.body;
+      const currentUser = req.user;
+
+      // Get the existing work request
+      const existingWorkRequest = await storage.getWorkRequest(id);
+      if (!existingWorkRequest) {
+        return res.status(404).json({ message: "Work request not found" });
+      }
+
+      // Permission check - only the business that created it or an admin can update it
+      if (!(currentUser && (currentUser.id === existingWorkRequest.businessId || currentUser.role === 'admin'))) {
+        return res.status(403).json({ message: "Unauthorized to update this work request" });
+      }
+
+      // Update the work request
+      const updatedWorkRequest = await storage.updateWorkRequest(id, updateData);
+
+      if (!updatedWorkRequest) {
+        return res.status(404).json({ message: "Work request not found" });
+      }
+
+      res.json(updatedWorkRequest);
+    } catch (error) {
+      res.status(500).json({ message: "Error updating work request" });
+    }
+  });
+
+  // OLD ENDPOINT - DISABLED TO AVOID CONFLICTS WITH NEW CONTRACTOR ENDPOINTS
+  // Endpoint for accepting a work request and linking it to a contract
+  /*
+  app.post(`${apiRouter}/work-requests/:id/accept`, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { token, contractId } = req.body;
+
+      // Get the work request
+      const workRequest = await storage.getWorkRequest(id);
+      if (!workRequest) {
+        return res.status(404).json({ message: "Work request not found" });
+      }
+
+      let isValidToken = false;
+
+      // Special handling for contractor users accepting work requests
+      // If the user is logged in, allow them to accept work requests
+      if (token === 'auto-accept' && req.headers['x-user-id']) {
+        const userId = parseInt(req.headers['x-user-id'] as string);
+        const user = await storage.getUser(userId);
+
+        if (user && user.role === 'contractor') {
+          isValidToken = true;
+          console.log(`Auto-accepting work request #${id} for logged-in contractor ${userId}`);
+        }
+      } else if (workRequest.tokenHash && token) {
+        // Standard token verification
+        isValidToken = await import('./services/email').then(
+          ({ verifyWorkRequestToken }) => verifyWorkRequestToken(token, workRequest.tokenHash)
+        );
+      } else if (!workRequest.tokenHash) {
+        // If no token hash stored, allow acceptance (fallback for older requests)
+        isValidToken = true;
+      }
+
+      if (!isValidToken) {
+        return res.status(401).json({ message: "Invalid token or unauthorized to accept this request" });
+      }
+
+      // Check if the work request is still pending and not expired
+      if (workRequest.status !== 'pending') {
+        return res.status(400).json({ message: `Work request is already ${workRequest.status}` });
+      }
+
+      if (workRequest.expiresAt && new Date(workRequest.expiresAt) < new Date()) {
+        return res.status(400).json({ message: "Work request has expired" });
+      }
+
+      // If a contractId is provided, link to that contract
+      if (contractId) {
+        const contract = await storage.getContract(contractId);
+        if (!contract) {
+          return res.status(404).json({ message: "Contract not found" });
+        }
+
+        // Link work request to contract and change status to 'accepted'
+        const updatedWorkRequest = await storage.linkWorkRequestToContract(id, contractId);
+        return res.json(updatedWorkRequest);
+      } else {
+        // If no contractId is provided, just update the status to 'accepted'
+        const updatedWorkRequest = await storage.updateWorkRequest(id, { status: 'accepted' });
+        return res.json(updatedWorkRequest);
+      }
+    } catch (error) {
+      console.error('Error accepting work request:', error);
+      res.status(500).json({ message: "Error accepting work request" });
+    }
+  });
+  */
+
+  // BRAND NEW: Completely different endpoint path to avoid all conflicts
+  app.post(`${apiRouter}/contractor/decline-work/:id`, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      console.log(`=== NEW DECLINE ENDPOINT HIT ===`);
+      console.log(`Declining work request #${id} for contractor`);
+
+      // For logged-in contractors, allow decline without any token verification
+      if (req.headers['x-user-id']) {
+        const userId = parseInt(req.headers['x-user-id'] as string);
+        const user = await storage.getUser(userId);
+
+        if (user && user.role === 'contractor') {
+          console.log(`✓ Contractor ${userId} declining work request #${id}`);
+
+          // Get and update the work request
+          const workRequest = await storage.getWorkRequest(id);
+          if (!workRequest) {
+            return res.status(404).json({ message: "Work request not found" });
+          }
+
+          if (workRequest.status !== 'pending') {
+            return res.status(400).json({ message: `Work request is already ${workRequest.status}` });
+          }
+
+          const updatedWorkRequest = await storage.updateWorkRequest(id, {
+            status: 'declined'
+          });
+
+          console.log(`✓ Work request declined successfully`);
+
+          // Create in-app notification for the business owner
+          try {
+            const contractorName = user.firstName && user.lastName
+              ? `${user.firstName} ${user.lastName}`
+              : user.username;
+
+            await storage.createNotification({
+              userId: workRequest.businessId,
+              title: 'Work Request Declined',
+              message: `${contractorName} has declined your work request: "${workRequest.title}"`,
+              type: 'work_request_declined',
+              relatedId: id,
+              isRead: false
+            });
+            console.log(`In-app notification created for business owner (ID: ${workRequest.businessId})`);
+          } catch (notificationError) {
+            console.error('Failed to create notification:', notificationError);
+            // Don't fail the decline operation if notification fails
+          }
+
+          return res.json(updatedWorkRequest);
+        }
+      }
+
+      return res.status(401).json({ message: "Unauthorized" });
+    } catch (error) {
+      console.error('Error declining work request:', error);
+      res.status(500).json({ message: "Error declining work request" });
+    }
+  });
+
+  // OLD: Original decline endpoint (keeping for compatibility)
+  app.post(`${apiRouter}/work-requests/:id/decline`, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { token, reason } = req.body;
+      console.log(`=== DECLINE ENDPOINT DEBUG ===`);
+      console.log(`Request ID: ${id}`);
+      console.log(`Request body:`, req.body);
+      console.log(`X-User-ID header:`, req.headers['x-user-id']);
+
+      // Get the work request
+      const workRequest = await storage.getWorkRequest(id);
+      if (!workRequest) {
+        console.log(`Work request ${id} not found`);
+        return res.status(404).json({ message: "Work request not found" });
+      }
+
+      console.log(`Found work request:`, workRequest);
+
+      // For logged-in contractors, allow decline without token verification
+      if (req.headers['x-user-id']) {
+        const userId = parseInt(req.headers['x-user-id'] as string);
+        console.log(`Checking user ${userId}...`);
+
+        const user = await storage.getUser(userId);
+        console.log(`User found:`, user ? `${user.username} (${user.role})` : 'null');
+
+        if (user && user.role === 'contractor') {
+          console.log(`✓ Contractor ${userId} declining work request #${id}`);
+
+          // Check if the work request is still pending
+          if (workRequest.status !== 'pending') {
+            console.log(`Work request status is ${workRequest.status}, not pending`);
+            return res.status(400).json({ message: `Work request is already ${workRequest.status}` });
+          }
+
+          console.log(`Updating work request status to declined...`);
+          // Update the work request status to 'declined'
+          const updatedWorkRequest = await storage.updateWorkRequest(id, {
+            status: 'declined'
+          });
+
+          console.log(`✓ Work request declined successfully:`, updatedWorkRequest);
+          return res.json(updatedWorkRequest);
+        } else {
+          console.log(`User is not a contractor or not found`);
+        }
+      } else {
+        console.log(`No X-User-ID header found`);
+      }
+
+      // If not logged in contractor, check for valid token
+      if (workRequest.tokenHash && token) {
+        const isValidToken = await import('./services/email').then(
+          ({ verifyWorkRequestToken }) => verifyWorkRequestToken(token, workRequest.tokenHash)
+        );
+
+        if (isValidToken) {
+          const updatedWorkRequest = await storage.updateWorkRequest(id, {
+            status: 'declined'
+          });
+          return res.json(updatedWorkRequest);
+        }
+      }
+
+      return res.status(401).json({ message: "Invalid token" });
+    } catch (error) {
+      console.error('Error declining work request:', error);
+      res.status(500).json({ message: "Error declining work request" });
+    }
+  });
+
+  // Endpoint to generate a shareable link for an existing work request
+  app.post(`${apiRouter}/work-requests/:id/generate-link`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const currentUser = req.user;
+
+      // Get the work request
+      const workRequest = await storage.getWorkRequest(id);
+      if (!workRequest) {
+        return res.status(404).json({ message: "Work request not found" });
+      }
+
+      // Permission check - only the business that created it or an admin can generate a link
+      if (!(currentUser && (currentUser.id === workRequest.businessId || currentUser.role === 'admin'))) {
+        return res.status(403).json({ message: "Unauthorized to generate a link for this work request" });
+      }
+
+      // Generate a new token if needed
+      let token;
+
+      if (!workRequest.tokenHash) {
+        // Generate a new token
+        const tokenData = generateWorkRequestToken();
+        token = tokenData.token;
+
+        // Use the updateWorkRequestSchema to ensure tokenHash is accepted
+        const updateData = updateWorkRequestSchema.parse({ tokenHash: tokenData.tokenHash });
+        await storage.updateWorkRequest(id, updateData);
+      } else {
+        // We can't retrieve the original token since we only store the hash
+        // So we'll generate a new token and update the hash
+        const tokenData = generateWorkRequestToken();
+        token = tokenData.token;
+
+        // Use the updateWorkRequestSchema to ensure tokenHash is accepted
+        const updateData = updateWorkRequestSchema.parse({ tokenHash: tokenData.tokenHash });
+        await storage.updateWorkRequest(id, updateData);
+      }
+
+      // Get application URL, handling both Replit and local environments
+      let appUrl = `${req.protocol}://${req.get('host')}`;
+
+      // Check if running in Replit
+      if (process.env.REPLIT_DEV_DOMAIN) {
+        appUrl = `https://${process.env.REPLIT_DEV_DOMAIN}`;
+      }
+
+      // Generate the shareable link
+      const shareableLink = `${appUrl}/work-requests/respond?token=${token}`;
+
+      res.json({ shareableLink });
+    } catch (error) {
+      console.error('Error generating shareable link:', error);
+      res.status(500).json({ message: "Error generating shareable link" });
+    }
+  });
+
+  // Endpoint to verify a work request token without accepting/declining
+  app.post(`${apiRouter}/work-requests/verify-token`, async (req: Request, res: Response) => {
+    try {
+      const { token } = req.body;
+
+      if (!token) {
+        return res.status(400).json({ message: "Token is required" });
+      }
+
+      // Hash the token for lookup
+      const tokenHash = nodeCrypto.createHash('sha256').update(token).digest('hex');
+
+      // Find the work request by token hash
+      const workRequest = await storage.getWorkRequestByToken(tokenHash);
+
+      if (!workRequest) {
+        return res.status(404).json({ message: "Invalid or expired token" });
+      }
+
+      // Check if the work request is expired
+      if (workRequest.expiresAt && new Date(workRequest.expiresAt) < new Date()) {
+        return res.status(400).json({ message: "Work request has expired" });
+      }
+
+      // Return basic information about the work request
+      res.json({
+        valid: true,
+        workRequestId: workRequest.id,
+        status: workRequest.status,
+        title: workRequest.title, // Use title field from work request
+        businessId: workRequest.businessId,
+        expired: workRequest.expiresAt && new Date(workRequest.expiresAt) < new Date()
+      });
+    } catch (error) {
+      console.error('Error verifying token:', error);
+      res.status(500).json({ message: "Error verifying token" });
+    }
+  });
+
+  // Profile Code Routes
+  app.get(`${apiRouter}/profile-code`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
+    try {
+      // Retrieve a user's profile code
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get the user
+      const user = await storage.getUser(userId);
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Return the profile code (might be null if not generated yet)
+      res.json({
+        code: user.profileCode,
+        userId: user.id,
+        createdAt: user.updatedAt // Using updatedAt as a proxy for when the code was created/updated
+      });
+    } catch (error: any) {
+      console.error('Error retrieving profile code:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post(`${apiRouter}/profile-code/generate`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
+    try {
+      // Generate a new profile code for the authenticated user
+      let userId = req.user?.id;
+      let userRole = req.user?.role;
+
+      // Handle fallback authentication via X-User-ID header
+      if (!userId && req.headers['x-user-id']) {
+        const fallbackUserId = parseInt(req.headers['x-user-id'] as string);
+        const fallbackUser = await storage.getUser(fallbackUserId);
+        if (fallbackUser) {
+          userId = fallbackUser.id;
+          userRole = fallbackUser.role;
+        }
+      }
+
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Only contractors and freelancers can have profile codes
+      if (userRole !== 'contractor' && userRole !== 'freelancer') {
+        return res.status(403).json({ message: "Only contractors and freelancers can generate profile codes" });
+      }
+
+      // Generate a new profile code
+      const profileCode = await storage.generateProfileCode(userId);
+
+      res.json({
+        code: profileCode,
+        userId: userId,
+        createdAt: new Date()
+      });
+    } catch (error: any) {
+      console.error('Error generating profile code:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post(`${apiRouter}/profile-code/regenerate`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      // Regenerate a profile code for the authenticated user
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Only contractors and freelancers can have profile codes
+      const userRole = req.user?.role;
+      if (userRole !== 'contractor' && userRole !== 'freelancer') {
+        return res.status(403).json({ message: "Only contractors and freelancers can regenerate profile codes" });
+      }
+
+      // Generate a new profile code
+      const profileCode = await storage.regenerateProfileCode(userId);
+
+      res.json({
+        code: profileCode,
+        userId: userId,
+        createdAt: new Date()
+      });
+    } catch (error: any) {
+      console.error('Error regenerating profile code:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get(`${apiRouter}/contractors/find-by-profile-code/:profileCode`, async (req: Request, res: Response) => {
+    try {
+      const { profileCode } = req.params;
+
+      if (!profileCode) {
+        return res.status(400).json({ message: "Profile code is required" });
+      }
+
+      // Check for X-User-ID header for auth fallback
+      const userId = req.header('X-User-ID') || req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from storage to check role
+      const currentUser = await storage.getUser(parseInt(userId.toString()));
+      if (!currentUser) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      // Only businesses can search for contractors by profile code
+      if (currentUser.role !== 'business') {
+        return res.status(403).json({ message: "Only businesses can search for contractors by profile code" });
+      }
+
+      // Find the contractor by profile code
+      const contractor = await storage.getUserByProfileCode(profileCode);
+
+      if (!contractor) {
+        return res.status(404).json({ message: "No contractor found with this profile code" });
+      }
+
+      // Return limited contractor information
+      res.json({
+        id: contractor.id,
+        username: contractor.username,
+        firstName: contractor.firstName,
+        lastName: contractor.lastName,
+        companyName: contractor.companyName,
+        title: contractor.title,
+        // Don't include email, password, or other sensitive information
+      });
+    } catch (error: any) {
+      console.error('Error finding contractor by profile code:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Connection Request Routes
+  app.post(`${apiRouter}/connection-requests`, async (req: Request, res: Response) => {
+    try {
+      // Create a new connection request
+      const { profileCode, message } = req.body;
+
+      if (!profileCode) {
+        return res.status(400).json({ message: "Profile code is required" });
+      }
+
+      // Check for X-User-ID header for auth fallback
+      const userId = req.header('X-User-ID') || req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from storage to check role
+      const currentUser = await storage.getUser(parseInt(userId.toString()));
+      if (!currentUser) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      // Only businesses can create connection requests
+      if (currentUser && currentUser.role !== 'business') {
+        return res.status(403).json({ message: "Only businesses can create connection requests" });
+      }
+
+      // First check if the profile code is valid
+      const contractor = await storage.getUserByProfileCode(profileCode);
+
+      if (!contractor) {
+        return res.status(404).json({ message: "Invalid profile code. Please check and try again." });
+      }
+
+      // Check if this contractor is already connected to this business
+      const businessId = parseInt(userId.toString());
+
+      // Check existing contracts
+      const existingContracts = await storage.getContractsByBusinessId(businessId);
+      const alreadyContracted = existingContracts.some(contract => contract.contractorId === contractor.id);
+
+      if (alreadyContracted) {
+        return res.status(400).json({ message: "You already have contracts with this contractor." });
+      }
+
+      // Check for existing connection requests with this contractor
+      const existingRequests = await storage.getConnectionRequestsByBusinessId(businessId);
+      const alreadyRequested = existingRequests.some(req => {
+        // Stronger validation to prevent duplicate requests:
+        // 1. Check by profile code (case insensitive)
+        const profileCodeMatch = req.profileCode &&
+                                profileCode &&
+                                req.profileCode.toUpperCase() === profileCode.toUpperCase();
+
+        // 2. Check by contractor ID directly
+        const contractorIdMatch = req.contractorId === contractor.id;
+
+        // Consider it a duplicate if either matches and status is pending or accepted
+        return (profileCodeMatch || contractorIdMatch) &&
+               (req.status === 'pending' || req.status === 'accepted');
+      });
+
+      if (alreadyRequested) {
+        return res.status(400).json({
+          message: "You've already sent a connection request to this contractor."
+        });
+      }
+
+      // Create the connection request
+      const createdRequest = await storage.createConnectionRequest({
+        businessId: businessId,
+        profileCode: profileCode,
+        message: message || null,
+        status: 'pending'
+      });
+
+      res.status(201).json(createdRequest);
+    } catch (error: any) {
+      console.error('Error creating connection request:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get(`${apiRouter}/connection-requests`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
+    try {
+      // Get user ID and role, handling fallback authentication
+      let userId = req.user?.id;
+      let userRole = req.user?.role;
+
+      // Handle fallback authentication via X-User-ID header
+      if (!userId && req.headers['x-user-id']) {
+        const fallbackUserId = parseInt(req.headers['x-user-id'] as string);
+        const fallbackUser = await storage.getUser(fallbackUserId);
+        if (fallbackUser) {
+          userId = fallbackUser.id;
+          userRole = fallbackUser.role;
+          console.log(`Using X-User-ID header fallback for connection requests: user ${userId} with role ${userRole}`);
+        }
+      }
+
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      let connectionRequests = [];
+
+      if (userRole === 'business') {
+        // If business, get requests sent by this business
+        connectionRequests = await storage.getConnectionRequestsByBusinessId(userId);
+      } else if (userRole === 'contractor' || userRole === 'freelancer') {
+        // If contractor, get requests where this contractor is the recipient
+        connectionRequests = await storage.getConnectionRequestsByContractorId(userId);
+      }
+
+      // Enrich requests with business and contractor names
+      const enrichedRequests = await Promise.all(
+        connectionRequests.map(async (request) => {
+          const business = await storage.getUser(request.businessId);
+          const contractor = request.contractorId ? await storage.getUser(request.contractorId) : null;
+
+          return {
+            ...request,
+            businessName: business?.companyName || business?.username || `Business ${request.businessId}`,
+            contractorName: contractor?.username || contractor?.firstName && contractor?.lastName
+              ? `${contractor.firstName} ${contractor.lastName}`
+              : `Contractor ${request.contractorId}`
+          };
+        })
+      );
+
+      console.log(`Returning ${enrichedRequests.length} connection requests for user ${userId} (${userRole})`);
+      res.json(enrichedRequests);
+    } catch (error: any) {
+      console.error('Error fetching connection requests:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.patch(`${apiRouter}/connection-requests/:id`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+
+      if (!status || !['accepted', 'declined'].includes(status)) {
+        return res.status(400).json({ message: "Valid status (accepted or declined) is required" });
+      }
+
+      // Get the connection request
+      const connectionRequest = await storage.getConnectionRequest(parseInt(id));
+
+      if (!connectionRequest) {
+        return res.status(404).json({ message: "Connection request not found" });
+      }
+
+      // Check if the user is authorized to update this request
+      const userId = req.user?.id;
+      const userRole = req.user?.role;
+
+      // Only the contractor can accept/decline requests
+      if ((userRole !== 'contractor' && userRole !== 'freelancer') ||
+          connectionRequest.contractorId !== userId) {
+        return res.status(403).json({ message: "You are not authorized to update this connection request" });
+      }
+
+      // Update the request status
+      const updatedRequest = await storage.updateConnectionRequest(parseInt(id), { status });
+
+      // Create notification for connection acceptance
+      if (status === 'accepted') {
+        try {
+          const businessUser = await storage.getUser(connectionRequest.businessId);
+          await notificationService.createContractInvitation(
+            connectionRequest.businessId,
+            "Connection Accepted",
+            req.user?.username || "Contractor"
+          );
+        } catch (notificationError) {
+          console.error('Error creating connection acceptance notification:', notificationError);
+        }
+      }
+
+      // If the request is accepted, make sure the contractor has the correct workerType
+      // According to client/src/pages/contractors.tsx:
+      // "Sub Contractors" tab shows workers with workerType="contractor"
+      // "Contractors" tab shows workers with workerType="freelancer" or !workerType
+      if (status === 'accepted') {
+        try {
+          // Get the contractor's current data
+          const contractor = await storage.getUser(userId);
+
+          // For contractors that accept connection requests, make sure they are in the "Contractors" tab
+          // by either leaving workerType null or setting it to "freelancer"
+          if (contractor) {
+            // Clear workerType or set to "freelancer" to ensure they show in Contractors tab
+            await storage.updateUser(userId, { workerType: null });
+            console.log(`Updated user ${userId} workerType to null after connection acceptance (previous type: ${contractor.workerType || 'null'})`);
+          }
+        } catch (updateError) {
+          console.error('Error updating contractor type:', updateError);
+          // Don't fail the request if this update fails, just log it
+        }
+      }
+
+      res.json(updatedRequest);
+    } catch (error: any) {
+      console.error('Error updating connection request:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Get company onboarding links
+  app.get(`${apiRouter}/business-onboarding-link`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
+    try {
+      const businessId = req.user?.id;
+
+      if (!businessId || req.user?.role !== 'business') {
+        return res.status(403).json({ message: "Only business accounts can access onboarding links" });
+      }
+
+      // Get the business onboarding link
+      const link = await storage.getBusinessOnboardingLink(businessId);
+
+      if (!link) {
+        return res.status(404).json({ message: "No onboarding link found" });
+      }
+
+      // Get application URL, handling both Replit and local environments
+      let appUrl = `${req.protocol}://${req.get('host')}`;
+
+      // Check if running in Replit
+      if (process.env.REPLIT_DEV_DOMAIN) {
+        // Use the Replit-specific domain from environment
+        appUrl = `https://${process.env.REPLIT_DEV_DOMAIN}`;
+      }
+
+      // Create the full invitation URL
+      const inviteUrl = `${appUrl}/auth?invite=contractor&email=direct&token=${link.token}&businessId=${businessId}&workerType=${link.workerType}`;
+
+      res.json({
+        token: link.token,
+        workerType: link.workerType,
+        inviteUrl,
+        createdAt: link.createdAt
+      });
+    } catch (error: any) {
+      console.error('Error retrieving business onboarding link:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Notifications endpoints
+  app.get(`${apiRouter}/notifications`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
+    try {
+      // Get user ID from session or X-User-ID header
+      const userId = req.user?.id || (req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
+
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const notifications = await storage.getNotificationsByUserId(userId);
+      return res.json(notifications);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      return res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
+  app.get(`${apiRouter}/notifications/count`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
+    try {
+      // Get user ID from session or X-User-ID header
+      const userId = req.user?.id || (req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
+
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const count = await storage.getUnreadNotificationCount(userId);
+      return res.json({ count });
+    } catch (error) {
+      console.error('Error fetching notification count:', error);
+      return res.status(500).json({ message: "Failed to fetch notification count" });
+    }
+  });
+
+  app.patch(`${apiRouter}/notifications/:id/read`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      // Get user ID from session or X-User-ID header
+      const userId = req.user?.id || (req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
+
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const notification = await storage.markNotificationAsRead(parseInt(id));
+      return res.json(notification);
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      return res.status(500).json({ message: "Failed to mark notification as read" });
+    }
+  });
+
+  app.post(`${apiRouter}/business-onboarding-link`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const businessId = req.user?.id;
+      const { workerType } = req.body;
+
+      if (!businessId || req.user?.role !== 'business') {
+        return res.status(403).json({ message: "Only business accounts can create onboarding links" });
+      }
+
+      // Create or update the business onboarding link
+      const link = await storage.createBusinessOnboardingLink(businessId, workerType || 'contractor');
+
+      // Get application URL, handling both Replit and local environments
+      let appUrl = `${req.protocol}://${req.get('host')}`;
+
+      // Check if running in Replit
+      if (process.env.REPLIT_DEV_DOMAIN) {
+        // Use the Replit-specific domain from environment
+        appUrl = `https://${process.env.REPLIT_DEV_DOMAIN}`;
+      }
+
+      // Create the full invitation URL
+      const inviteUrl = `${appUrl}/auth?invite=contractor&email=direct&token=${link.token}&businessId=${businessId}&workerType=${link.workerType}`;
+
+      res.status(201).json({
+        token: link.token,
+        workerType: link.workerType,
+        inviteUrl,
+        createdAt: link.createdAt
+      });
+    } catch (error: any) {
+      console.error('Error creating business onboarding link:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Work Request Submissions Routes
+  app.post('/api/work-request-submissions', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const { workRequestId, title, description, notes, attachmentUrls, submissionType } = req.body;
       const contractorId = req.user!.id;
@@ -4359,11 +5155,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const submissionId = parseInt(req.params.id);
       const { status, feedback } = req.body;
+      const user = req.user!;
 
-      // Only businesses can review submissions
-      if (req.user!.role !== 'business') {
-        return res.status(403).json({ message: 'Only businesses can review work submissions' });
-      }
+      console.log('Reviewing work request submission:', { submissionId, status, feedback, userId: user.id });
 
       // Get the submission to verify access
       const submission = await storage.getWorkRequestSubmission(submissionId);
@@ -4372,7 +5166,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Only allow business owners to review submissions for their business
-      if (submission.businessId !== req.user!.id) {
+      if (user.role !== 'business' || submission.businessId !== user.id) {
         return res.status(403).json({ message: 'Access denied' });
       }
 
@@ -4529,7 +5323,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update the submission
       const updatedSubmission = await storage.updateWorkRequestSubmission(submissionId, {
         status,
-        reviewNotes: feedback,
+        feedback,
         reviewedAt: new Date()
       });
 
@@ -4617,19 +5411,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Get submissions for specific project
         const allSubmissions = await storage.getWorkRequestSubmissionsByBusinessId(req.user!.id);
-        targetSubmissions = allSubmissions.filter(sub => {
-          if (!sub.workRequestId) return false;
-          // Need to cross-reference through work request to get project ID
+        targetSubmissions = allSubmissions.filter(sub =>
+          sub.status === 'pending' &&
+          // Need to filter by project through work request relationship
           // This is a simplified approach - in production you'd need proper JOIN
-          // For now, we'll just filter by business ID
-          return sub.status === 'pending';
-        });
+          true // For now filter by business only - would need JOIN in production
+        );
       }
 
       if (submissionIds === 'all') {
-        // Get all pending submissions for this business
+        // Get all pending submissions for this project
         const allSubmissions = await storage.getWorkRequestSubmissionsByBusinessId(req.user!.id);
-        targetSubmissions = allSubmissions.filter(sub => sub.status === 'pending');
+        targetSubmissions = allSubmissions.filter(sub =>
+          sub.status === 'pending' &&
+          // Filter by project - need to cross-reference through work request
+          // This is a simplified approach - in production you'd need proper JOIN
+          true // For now, approve all pending submissions for this business
+        );
       } else {
         // Get specific submissions by IDs
         const submissions = await Promise.all(
@@ -4637,7 +5435,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
         targetSubmissions = submissions.filter(sub => {
           if (!sub) return false;
-          // Verify business owns these submissions and they are pending
+          // Verify business owns these submissions
           return sub.businessId === req.user!.id && sub.status === 'pending';
         });
       }
@@ -4719,7 +5517,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   totalPaymentsFailed++;
                 }
               } else {
-                console.log(`[BULK_APPROVAL] No auto-pay milestone found for submission ${submission.id} in contract ${workRequest.contractId}`);
+                console.log(`[BULK_APPROVAL] No auto-pay milestone found for submission ${submission.id}`);
               }
             } catch (paymentError: any) {
               console.log(`[BULK_APPROVAL] ⚠️ Payment error for submission ${submission.id}:`, paymentError.message);
@@ -4777,7 +5575,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get(`${apiRouter}/trolley/status`, requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user;
-      if (!user || user.role !== 'business') {
+      if (!user) {
         return res.status(401).json({ message: "Not authenticated" });
       }
 
@@ -4808,7 +5606,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const companyData = {
-        name: user.company || `${user.firstName} ${user.lastName}`,
+        name: user.companyName || `${user.firstName} ${user.lastName}`,
         email: user.email,
         type: 'business' as const
       };
@@ -4894,7 +5692,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
       } catch (apiError) {
-        console.log('❌ LIVE BALANCE FETCH FAILED:', apiError);
+        console.error(`❌ LIVE BALANCE FETCH FAILED:`, apiError);
         // CRITICAL: DO NOT RETURN FAKE DATA - Return error to force user to fix authentication
         return res.status(503).json({
           message: "Unable to fetch live balance. Please verify your Trolley account connection."
@@ -5076,7 +5874,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Company profile required. Please complete Trolley onboarding first." });
       }
 
-      const { milestoneId, contractorId, amount, currency = 'GBP', memo } = req.body;
+      const { milestoneId, amount, currency = 'GBP', memo } = req.body;
 
       if (!milestoneId || !amount) {
         return res.status(400).json({ message: "Milestone ID and amount are required" });
@@ -5251,6 +6049,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🔴 CREATING REAL TROLLEY SUBMERCHANT for business: ${user.email}`);
 
+      const { trolleySdk } = await import('./trolley-sdk-service');
+
       // Create real submerchant account with business information
       const submerchantData = {
         merchant: {
@@ -5322,6 +6122,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🔴 CREATING REAL TROLLEY SUBMERCHANT for business: ${user.email}`);
 
+      const { trolleySdk } = await import('./trolley-sdk-service');
+
       // Create real submerchant account
       const submerchantData = {
         merchant: {
@@ -5371,6 +6173,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({
         success: false,
         message: "Error configuring payment account"
+      });
+    }
+  });
+
+  // Register Trolley submerchant routes
+  registerTrolleySubmerchantRoutes(app, requireAuth);
+
+  // Register Trolley contractor routes
+  const { registerTrolleyContractorRoutes } = await import('./trolley-contractor-routes');
+  registerTrolleyContractorRoutes(app, apiRouter, requireAuth);
+
+  // Trolley status checking endpoint for contractors
+  app.post(`${apiRouter}/trolley/check-status`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const user = await storage.getUser(userId);
+
+      if (!user || user.role !== 'contractor') {
+        return res.status(403).json({
+          success: false,
+          message: 'Only contractors can check payment setup status'
+        });
+      }
+
+      if (!user.trolleyRecipientId) {
+        return res.json({
+          success: false,
+          status: 'not_started',
+          message: 'No Trolley recipient account found. Please start payment setup first.'
+        });
+      }
+
+      // Check recipient status with live Trolley API
+
+      try {
+        const recipient = await trolleyService.getRecipient(user.trolleyRecipientId);
+
+        if (!recipient) {
+          return res.json({
+            success: false,
+            status: 'error',
+            message: 'Unable to verify account status with Trolley'
+          });
+        }
+
+        console.log('Checking Trolley recipient status for user:', {
+          recipientId: user.trolleyRecipientId,
+          status: recipient.status,
+          accounts: recipient.accounts?.length || 0
+        });
+
+        // Check if recipient is active and has payment methods
+        const isActive = recipient.status === 'active' || recipient.status === 'verified';
+        const hasPaymentMethod = recipient.accounts && recipient.accounts.length > 0;
+
+        if (isActive && hasPaymentMethod && !user.payoutEnabled) {
+          // Update user to enable payouts
+          await storage.updateUser(userId, { payoutEnabled: true });
+
+          // Create success notification
+          await storage.createNotification(
+            userId,
+            'payment_setup_completed',
+            'Payment Setup Complete',
+            'Your Trolley account has been verified and you can now receive payments!',
+            { recipientId: user.trolleyRecipientId, status: recipient.status }
+          );
+
+          console.log(`✅ Activated payouts for user ${userId} - Trolley recipient is now verified`);
+
+          return res.json({
+            success: true,
+            status: 'completed',
+            message: 'Account verified! You can now receive payments.',
+            recipientStatus: recipient.status,
+            payoutEnabled: true
+          });
+        }
+
+        return res.json({
+          success: true,
+          status: isActive ? 'pending_payment_method' : 'pending_verification',
+          message: isActive
+            ? 'Account verified but payment method setup needed'
+            : 'Account still pending verification by Trolley',
+          recipientStatus: recipient.status,
+          payoutEnabled: user.payoutEnabled,
+          hasPaymentMethod
+        });
+
+      } catch (trolleyError) {
+        console.error('Trolley API error:', trolleyError);
+        return res.json({
+          success: false,
+          status: 'api_error',
+          message: 'Unable to check status with Trolley. Please try again later.'
+        });
+      }
+
+    } catch (error) {
+      console.error('Error checking Trolley status:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to check account status'
       });
     }
   });
@@ -5457,1063 +6363,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  const httpServer = createServer(app);
-  return httpServer;
-}
-
-// Trolley Submerchant Routes
-function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void {
-  const apiRouter = "/api";
-  const basePath = '/api/trolley-submerchant';
-
-  /**
-   * Create Trolley submerchant account for business
-   */
-  app.post(`${basePath}/create`, requireAuth, async (req: Request, res: Response) => {
-    try {
-      const user = (req as any).user;
-      if (!user || user.role !== 'business') {
-        return res.status(403).json({ message: 'Only business accounts can create submerchant accounts' });
-      }
-
-      // Check if user already has a submerchant account
-      if (user.trolleySubmerchantId) {
-        return res.status(400).json({
-          message: 'Submerchant account already exists',
-          submerchantId: user.trolleySubmerchantId,
-          status: user.trolleySubmerchantStatus
-        });
-      }
-
-      const submerchantData: TrolleySubmerchantData = req.body;
-
-      // Validate the submerchant data
-      const validation = trolleySubmerchantService.validateSubmerchantData(submerchantData);
-      if (!validation.valid) {
-        return res.status(400).json({
-          message: 'Invalid submerchant data',
-          errors: validation.errors
-        });
-      }
-
-      // Create the submerchant account
-      const result = await trolleySubmerchantService.createSubmerchantAccount(submerchantData);
-
-      if (!result.success) {
-        return res.status(500).json({
-          message: 'Failed to create submerchant account',
-          error: result.error
-        });
-      }
-
-      // Update user record with submerchant info
-      await storage.updateTrolleySubmerchantInfo(user.id, result.submerchantId!, result.status!);
-
-      res.json({
-        success: true,
-        message: 'Submerchant account created successfully',
-        submerchantId: result.submerchantId,
-        status: result.status
-      });
-
-    } catch (error) {
-      console.error('Error creating Trolley submerchant:', error);
-      res.status(500).json({
-        message: 'Internal server error',
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  });
-
-  /**
-   * Set payment method (pre_funded or pay_as_you_go)
-   */
-  app.post(`${basePath}/payment-method`, requireAuth, async (req: Request, res: Response) => {
-    try {
-      const user = (req as any).user;
-      if (!user || user.role !== 'business') {
-        return res.status(403).json({ message: 'Only business accounts can set payment method' });
-      }
-
-      const { paymentMethod } = req.body;
-      if (!paymentMethod || !['pre_funded', 'pay_as_you_go'].includes(paymentMethod)) {
-        return res.status(400).json({ message: 'Invalid payment method. Must be "pre_funded" or "pay_as_you_go"' });
-      }
-
-      await storage.setPaymentMethod(user.id, paymentMethod);
-
-      res.json({
-        success: true,
-        message: `Payment method set to ${paymentMethod}`,
-        paymentMethod
-      });
-
-    } catch (error) {
-      console.error('Error setting payment method:', error);
-      res.status(500).json({
-        message: 'Failed to set payment method',
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  });
-
-  /**
-   * Check budget availability for payment
-   */
-  app.post(`${basePath}/check-budget`, requireAuth, async (req: Request, res: Response) => {
-    try {
-      const user = (req as any).user;
-      if (!user || user.role !== 'business') {
-        return res.status(403).json({ message: 'Only business accounts can check budget' });
-      }
-
-      const { amount } = req.body;
-      if (!amount || amount <= 0) {
-        return res.status(400).json({ message: 'Amount must be greater than 0' });
-      }
-
-      const budgetCap = parseFloat(user.budgetCap || '0');
-      const budgetUsed = parseFloat(user.budgetUsed || '0');
-      const available = trolleySubmerchantService.checkBudgetAvailability(budgetCap, budgetUsed, amount);
-
-      res.json({
-        budgetCap,
-        budgetUsed,
-        budgetAvailable: budgetCap - budgetUsed,
-        requestedAmount: amount,
-        canAfford: available,
-        paymentMethod: user.paymentMethod || 'pay_as_you_go'
-      });
-
-    } catch (error) {
-      console.error('Error checking budget availability:', error);
-      res.status(500).json({
-        message: 'Failed to check budget',
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  });
-
-  /**
-   * Process milestone payment through submerchant
-   */
-  app.post(`${basePath}/process-payment`, requireAuth, async (req: Request, res: Response) => {
-    try {
-      const user = (req as any).user;
-      if (!user || user.role !== 'business') {
-        return res.status(403).json({ message: 'Only business accounts can process payments' });
-      }
-
-      if (!user.trolleySubmerchantId) {
-        return res.status(404).json({ message: 'No submerchant account found. Please create one first.' });
-      }
-
-      const { milestoneId, contractorId, amount, currency = 'USD', memo } = req.body;
-
-      if (!milestoneId || !contractorId || !amount || amount <= 0) {
-        return res.status(400).json({ message: 'Missing required payment details' });
-      }
-
-      // Check budget availability
-      const budgetCap = parseFloat(user.budgetCap || '0');
-      const budgetUsed = parseFloat(user.budgetUsed || '0');
-      const canAfford = trolleySubmerchantService.checkBudgetAvailability(budgetCap, budgetUsed, amount);
-
-      if (!canAfford) {
-        return res.status(400).json({
-          message: 'Insufficient budget',
-          budgetCap,
-          budgetUsed,
-          budgetAvailable: budgetCap - budgetUsed,
-          requestedAmount: amount
-        });
-      }
-
-      // Get contractor's Trolley recipient ID
-      const contractor = await storage.getUser(contractorId);
-      if (!contractor || !contractor.trolleyRecipientId) {
-        return res.status(400).json({ message: 'Contractor not found or not set up for Trolley payments' });
-      }
-
-      // Process payment through Trolley
-      const paymentResult = await trolleySubmerchantService.createSubmerchantPayment({
-        submerchantId: user.trolleySubmerchantId,
-        recipientId: contractor.trolleyRecipientId,
-        amount,
-        currency,
-        memo: memo || `Milestone ${milestoneId} payment`,
-        reference: `milestone_${milestoneId}_contract_${user.id}_${contractorId}`
-      });
-
-      if (!paymentResult.success) {
-        return res.status(500).json({
-          message: 'Payment processing failed',
-          error: paymentResult.error
-        });
-      }
-
-      // Update budget used
-      await storage.increaseBudgetUsed(user.id, amount);
-
-      // If using pre-funded account, deduct from balance
-      if (user.paymentMethod === 'pre_funded') {
-        const currentBalance = parseFloat(user.trolleyAccountBalance || '0');
-        const newBalance = Math.max(0, currentBalance - amount);
-        await storage.updateTrolleyAccountBalance(user.id, newBalance);
-      }
-
-      res.json({
-        success: true,
-        message: 'Payment processed successfully',
-        paymentId: paymentResult.paymentId,
-        batchId: paymentResult.batchId,
-        status: paymentResult.status,
-        amount,
-        currency,
-        contractorId,
-        milestoneId
-      });
-
-    } catch (error) {
-      console.error('Error processing submerchant payment:', error);
-      res.status(500).json({
-        message: 'Failed to process payment',
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  });
-
-  // Subscription management routes
-  // Get subscription prices endpoint
-  app.get('/api/subscription-prices', async (req: Request, res: Response) => {
-    try {
-      const priceIds = [
-        'price_1RgRilF4bfRUGDn9LWUhoJ6F', // business-starter - Test Plan £1.00/month
-        'price_1RgRilF4bfRUGDn9jMnjAo96', // business - Standard £49.99/month
-        'price_1Ricn6F4bfRUGDn91XzkPq5F', // business-enterprise - Enterprise £200.00/month
-        'price_1RiEGMF4bfRUGDn9UErjyXjX', // business-annual - Annual £1,200.00/year
-        process.env.STRIPE_CONTRACTOR_PRICE_ID, // contractor - Basic
-        'price_1Ro2tQF4bfRUGDn9SKrfWjfD', // contractor-pro - Pro
-      ];
-
-      const prices = await Promise.all(
-        priceIds.map(async (priceId) => {
-          if (!priceId) return null;
-          try {
-            const price = await stripe.prices.retrieve(priceId);
-            return {
-              id: priceId,
-              amount: price.unit_amount,
-              currency: price.currency,
-              interval: price.recurring?.interval,
-              interval_count: price.recurring?.interval_count,
-            };
-          } catch (error) {
-            console.error(`Error fetching price ${priceId}:`, error);
-            return null;
-          }
-        })
-      );
-
-      const priceMap = {
-        'business-starter': prices[0], // £1.00/month test plan
-        'business': prices[1],         // £49.99/month standard
-        'business-enterprise': prices[2], // £200.00/month enterprise
-        'business-annual': prices[3],  // £1,200.00/year annual
-        'contractor': prices[4],       // £5.00/month contractor basic
-        'contractor-pro': prices[5],   // contractor pro
-      };
-
-      res.json(priceMap);
-    } catch (error) {
-      console.error('Error fetching subscription prices:', error);
-      res.status(500).json({ error: 'Failed to fetch subscription prices' });
-    }
-  });
-
-  app.post("/api/create-subscription", async (req: Request, res: Response) => {
-    try {
-      const { planType, email, customerName } = req.body;
-
-      if (!planType || !email) {
-        return res.status(400).json({
-          message: 'Plan type and email are required'
-        });
-      }
-
-      // Create Stripe customer
-      const customer = await stripe.customers.create({
-        email: email,
-        name: customerName || email,
-      });
-
-      // Get the price ID based on plan type
-      let priceId;
-
-      if (planType === 'business') {
-        // Business plan - Standard £49.99/month (live mode)
-        priceId = 'price_1RgRilF4bfRUGDn9jMnjAo96';
-      } else if (planType === 'business-starter') {
-        // Business Starter plan - Test Plan £1.00/month (live mode)
-        priceId = 'price_1RgRilF4bfRUGDn9LWUhoJ6F';
-      } else if (planType === 'business-enterprise') {
-        // Business Enterprise plan - Monthly (live mode)
-        priceId = 'price_1Ricn6F4bfRUGDn91XzkPq5F';
-      } else if (planType === 'business-annual') {
-        // Business Annual plan - £1,200.00/year (live mode)
-        priceId = 'price_1RiEGMF4bfRUGDn9UErjyXjX';
-      } else if (planType === 'contractor') {
-        // Contractor Basic plan - £5/month (live mode)
-        priceId = process.env.STRIPE_CONTRACTOR_PRICE_ID;
-      } else if (planType === 'contractor-pro') {
-        // Contractor Pro plan - (live mode)
-        priceId = 'price_1Ro2tQF4bfRUGDn9SKrfWjfD';
-      } else {
-        return res.status(400).json({
-          message: 'Invalid plan type. Must be "business", "business-starter", "business-enterprise", "business-annual", "contractor", or "contractor-pro"'
-        });
-      }
-
-      if (!priceId) {
-        return res.status(500).json({
-          message: 'Subscription plan not configured. Please contact support.'
-        });
-      }
-
-      // Get price details to check if it's a free plan
-      const price = await stripe.prices.retrieve(priceId);
-      const isFree = price.unit_amount === 0;
-
-      // Create subscription with different settings for free vs paid plans
-      const subscriptionParams: any = {
-        customer: customer.id,
-        items: [{ price: priceId }],
-        metadata: {
-          planType: planType
-        }
-      };
-
-      if (isFree) {
-        // For free subscriptions, no payment required
-        subscriptionParams.payment_behavior = 'allow_incomplete';
-      } else {
-        // For paid subscriptions, require payment
-        subscriptionParams.payment_behavior = 'default_incomplete';
-        subscriptionParams.payment_settings = { save_default_payment_method: 'on_subscription' };
-        subscriptionParams.expand = ['latest_invoice.payment_intent'];
-      }
-
-      const subscription = await stripe.subscriptions.create(subscriptionParams);
-
-      const response: any = {
-        subscriptionId: subscription.id,
-        customerId: customer.id,
-        planType: planType
-      };
-
-      // Only add clientSecret for paid subscriptions
-      if (!isFree && subscription.latest_invoice) {
-        response.clientSecret = (subscription.latest_invoice as any)?.payment_intent?.client_secret;
-      }
-
-      res.json(response);
-
-    } catch (error) {
-      console.error('Error creating subscription:', error);
-      res.status(500).json({
-        message: 'Failed to create subscription',
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  });
-
-  // Complete subscription after successful payment
-  app.post("/api/complete-subscription", async (req: Request, res: Response) => {
-    try {
-      const { subscriptionId, userId } = req.body;
-
-      if (!subscriptionId || !userId) {
-        return res.status(400).json({
-          message: 'Subscription ID and user ID are required'
-        });
-      }
-
-      // Get subscription details from Stripe
-      const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-      console.log('Subscription status:', subscription.status);
-      console.log('Subscription details:', {
-        id: subscription.id,
-        status: subscription.status,
-        metadata: subscription.metadata
-      });
-
-      // Allow incomplete_expired, incomplete, active, trialing statuses
-      const validStatuses = ['active', 'trialing', 'incomplete', 'incomplete_expired'];
-      if (!validStatuses.includes(subscription.status)) {
-        return res.status(400).json({
-          message: `Subscription status is ${subscription.status}, expected one of: ${validStatuses.join(', ')}`
-        });
-      }
-
-      // Update user with subscription details
-      const user = await storage.updateUserSubscription(userId, {
-        stripeCustomerId: subscription.customer as string,
-        stripeSubscriptionId: subscription.id,
-        subscriptionStatus: subscription.status,
-        subscriptionPlan: subscription.metadata.planType || 'business',
-        subscriptionStartDate: new Date(subscription.current_period_start * 1000),
-        subscriptionEndDate: new Date(subscription.current_period_end * 1000),
-        subscriptionTrialEnd: subscription.trial_end ? new Date(subscription.trial_end * 1000) : null
-      });
-
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-
-      // Log the user in after successful subscription
-      req.login(user, (err) => {
-        if (err) {
-          console.error('Error logging in user after subscription:', err);
-          return res.status(500).json({ message: 'Subscription activated but login failed' });
-        }
-
-        res.json({
-          success: true,
-          message: 'Subscription activated successfully',
-          subscriptionStatus: subscription.status,
-          user: {
-            id: user.id,
-            subscriptionStatus: user.subscriptionStatus,
-            subscriptionPlan: user.subscriptionPlan
-          }
-        });
-      });
-
-    } catch (error) {
-      console.error('Error completing subscription:', error);
-      res.status(500).json({
-        message: 'Failed to complete subscription',
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  });
-
-  // Check subscription status
-  app.get("/api/subscription-status", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const userId = req.user?.id || (req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
-
-      if (!userId) {
-        return res.status(401).json({ message: 'Authentication required' });
-      }
-
-      const user = await storage.getUser(userId);
-
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-
-      // If user has a Stripe subscription, sync the status
-      if (user.stripeSubscriptionId) {
-        try {
-          const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
-
-          // Update user subscription status if it changed
-          if (subscription.status !== user.subscriptionStatus) {
-            await storage.updateUserSubscription(userId, {
-              subscriptionStatus: subscription.status,
-              subscriptionStartDate: new Date(subscription.current_period_start * 1000),
-              subscriptionEndDate: new Date(subscription.current_period_end * 1000)
-            });
-          }
-
-          res.json({
-            subscription: {
-              id: subscription.id,
-              status: subscription.status,
-              plan_name: user.subscriptionPlan,
-              amount: subscription.items.data[0]?.price?.unit_amount || 0,
-              currency: subscription.currency,
-              interval: subscription.items.data[0]?.price?.recurring?.interval || 'month',
-              current_period_start: subscription.current_period_start,
-              current_period_end: subscription.current_period_end,
-              cancel_at_period_end: subscription.cancel_at_period_end,
-              trial_end: subscription.trial_end
-            },
-            customer: {
-              id: subscription.customer
-            }
-          });
-        } catch (stripeError) {
-          console.error('Error fetching Stripe subscription:', stripeError);
-          res.json({
-            subscription: null,
-            customer: null,
-            error: 'Could not sync with payment provider'
-          });
-        }
-      } else {
-        res.json({
-          subscription: null,
-          customer: null,
-          message: 'No active subscription'
-        });
-      }
-
-    } catch (error) {
-      console.error('Error checking subscription status:', error);
-      res.status(500).json({
-        message: 'Failed to check subscription status',
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  });
-
-  // Subscription requirement middleware
-  const requireActiveSubscription = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const userId = req.user?.id;
-
-      if (!userId) {
-        return res.status(401).json({ message: 'Authentication required' });
-      }
-
-      const user = await storage.getUser(userId);
-
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-
-      // Check if user has active subscription
-      if (!user.subscriptionStatus ||
-          !['active', 'trialing'].includes(user.subscriptionStatus)) {
-        return res.status(402).json({
-          message: 'Active subscription required',
-          subscriptionStatus: user.subscriptionStatus || 'inactive',
-          code: 'SUBSCRIPTION_REQUIRED'
-        });
-      }
-
-      next();
-    } catch (error) {
-      console.error('Error checking subscription requirement:', error);
-      res.status(500).json({ message: 'Error validating subscription' });
-    }
-  };
-
-  // Cancel subscription
-  app.post("/api/cancel-subscription", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const userId = req.user?.id || (req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
-
-      if (!userId) {
-        return res.status(401).json({ message: 'Authentication required' });
-      }
-
-      const user = await storage.getUser(userId);
-
-      if (!user || !user.stripeSubscriptionId) {
-        return res.status(404).json({ message: 'No subscription found' });
-      }
-
-      // Cancel subscription at end of period
-      const subscription = await stripe.subscriptions.update(user.stripeSubscriptionId, {
-        cancel_at_period_end: true
-      });
-
-      res.json({
-        success: true,
-        message: 'Subscription will cancel at the end of the current billing period',
-        cancelAtPeriodEnd: subscription.cancel_at_period_end,
-        currentPeriodEnd: new Date(subscription.current_period_end * 1000)
-      });
-
-    } catch (error) {
-      console.error('Error cancelling subscription:', error);
-      res.status(500).json({
-        message: 'Failed to cancel subscription',
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  });
-
-  // Reactivate subscription
-  app.post("/api/reactivate-subscription", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const userId = req.user?.id || (req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
-
-      if (!userId) {
-        return res.status(401).json({ message: 'Authentication required' });
-      }
-
-      const user = await storage.getUser(userId);
-
-      if (!user || !user.stripeSubscriptionId) {
-        return res.status(404).json({ message: 'No subscription found' });
-      }
-
-      // Remove cancellation
-      const subscription = await stripe.subscriptions.update(user.stripeSubscriptionId, {
-        cancel_at_period_end: false
-      });
-
-      res.json({
-        success: true,
-        message: 'Subscription has been reactivated',
-        cancelAtPeriodEnd: subscription.cancel_at_period_end
-      });
-
-    } catch (error) {
-      console.error('Error reactivating subscription:', error);
-      res.status(500).json({
-        message: 'Failed to reactivate subscription',
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  });
-
-  // Apply subscription requirement to protected routes (add this to existing routes that need subscription)
-  // For now, we'll just export the middleware for later use
-  (app as any).requireActiveSubscription = requireActiveSubscription;
-
-  // Register Trolley routes
-  trolleyRoutes(app, "/api", requireAuth);
-
-  // Register Connect routes with authentication
-  connectRoutes(app, "/api", requireAuth);
-
-  // Register additional route modules
-  app.use("/api/plaid", plaidRoutes);
-  app.use("/api/trolley-test", trolleyTestRoutes);
-
-  // Legacy Object Storage Routes - REMOVED
-  // These routes have been replaced by the custom file storage system
-  // See file storage endpoints at the end of this file
-
-  // Support contact form endpoint
-  app.post("/api/support", async (req: Request, res: Response) => {
-    try {
-      const { name, email, category, subject, message } = req.body;
-
-      // Validate required fields
-      if (!name || !email || !category || !subject || !message) {
-        return res.status(400).json({ message: "All fields are required" });
-      }
-
-      // Email validation
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        return res.status(400).json({ message: "Invalid email address" });
-      }
-
-      // Create support request object
-      const supportRequest = {
-        name,
-        email,
-        category,
-        subject,
-        message,
-        timestamp: new Date().toISOString(),
-        userAgent: req.headers['user-agent'] || 'Unknown'
-      };
-
-      // Log the support request for now
-      console.log('Support request received:', supportRequest);
-
-      // TODO: Once SendGrid API key is available, send email to zoevdzee@interlinc.co
-      console.log('Email to send to zoevdzee@interlinc.co:');
-
-      // Return success response
-      res.json({
-        message: "Support request submitted successfully",
-        requestId: `support_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-      });
-
-    } catch (error) {
-      console.error('Error processing support request:', error);
-      res.status(500).json({ message: "Error processing support request" });
-    }
-  });
-
-  // ================ OBJECT STORAGE ENDPOINTS (for mood boards) ================
-  // Get object upload URL endpoint - compatible with ObjectUploader component
-  app.post(`${apiRouter}/objects/upload`, requireAuth, async (req: Request, res: Response) => {
-    try {
-      const userId = req.user?.id;
-      if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
-      }
-
-      // For compatibility with ObjectUploader, return a direct upload URL to our file service
-      // Generate a unique upload token for this user
-      const uploadToken = nodeCrypto.randomUUID();
-      const uploadURL = `/api/files/direct-upload/${uploadToken}`;
-
-      // Store the upload token temporarily (in production, use Redis or similar)
-      // For now, we'll just return the URL and handle the upload in the direct-upload endpoint
-      res.json({ uploadURL });
-    } catch (error) {
-      console.error("Error getting upload URL:", error);
-      res.status(500).json({ message: "Error getting upload URL" });
-    }
-  });
-
-  // Direct upload endpoint for object storage compatibility
-  app.put(`${apiRouter}/files/direct-upload/:token`, requireAuth, uploadMiddleware.single('file'), async (req: Request, res: Response) => {
-    try {
-      const userId = req.user?.id;
-      if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
-      }
-
-      if (!req.file) {
-        return res.status(400).json({ message: "No file uploaded" });
-      }
-
-      // Return the file URL that can be used to access the uploaded file
-      const fileURL = `/api/files/view/${req.file.filename}`;
-
-      res.json({
-        url: fileURL,
-        filename: req.file.filename,
-        originalName: req.file.originalname,
-        size: req.file.size,
-        type: req.file.mimetype
-      });
-    } catch (error) {
-      console.error("Error with direct upload:", error);
-      res.status(500).json({ message: "Error with direct upload" });
-    }
-  });
-
-  // ================ FILE STORAGE ENDPOINTS ================
-  // Upload file endpoint
-  app.post(`${apiRouter}/files/upload`, requireAuth, uploadMiddleware.single('file'), async (req: Request, res: Response) => {
-    try {
-      const userId = req.user?.id;
-      if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
-      }
-
-      if (!req.file) {
-        return res.status(400).json({ message: "No file uploaded" });
-      }
-
-      // Return file information in the same format as Google Cloud Storage
-      const fileInfo = {
-        url: `/api/files/view/${req.file.filename}`,
-        name: req.file.originalname,
-        size: req.file.size,
-        type: req.file.mimetype,
-        filename: req.file.filename
-      };
-
-      res.json(fileInfo);
-    } catch (error) {
-      console.error("Error uploading file:", error);
-      res.status(500).json({ message: "Error uploading file" });
-    }
-  });
-
-  // View file endpoint - serves files for inline viewing
-  app.get(`/api/files/view/:filename`, requireAuth, async (req: Request, res: Response) => {
-    try {
-      const userId = req.user?.id;
-      if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
-      }
-
-      const filename = req.params.filename;
-
-      // Security check: prevent directory traversal
-      if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
-        return res.status(400).json({ message: "Invalid filename" });
-      }
-
-      FileStorageService.serveFile(filename, res);
-    } catch (error) {
-      console.error("Error viewing file:", error);
-      if (!res.headersSent) {
-        res.status(500).json({ message: "Error viewing file" });
-      }
-    }
-  });
-
-  // Download file endpoint - forces download with original name
-  app.get(`/api/files/download/:filename`, requireAuth, async (req: Request, res: Response) => {
-    try {
-      const userId = req.user?.id;
-      if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
-      }
-
-      const filename = req.params.filename;
-      const originalName = req.query.name as string;
-
-      // Security check: prevent directory traversal
-      if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
-        return res.status(400).json({ message: "Invalid filename" });
-      }
-
-      FileStorageService.downloadFile(filename, originalName, res);
-    } catch (error) {
-      console.error("Error downloading file:", error);
-      if (!res.headersSent) {
-        res.status(500).json({ message: "Error downloading file" });
-      }
-    }
-  });
-
-  // Get file info endpoint
-  app.get(`/api/files/info/:filename`, requireAuth, async (req: Request, res: Response) => {
-    try {
-      const userId = req.user?.id;
-      if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
-      }
-
-      const filename = req.params.filename;
-
-      // Security check: prevent directory traversal
-      if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
-        return res.status(400).json({ message: "Invalid filename" });
-      }
-
-      const fileInfo = FileStorageService.getFileInfo(filename);
-
-      if (!fileInfo) {
-        return res.status(404).json({ message: "File not found" });
-      }
-
-      res.json({
-        name: fileInfo.originalName,
-        size: fileInfo.size,
-        type: fileInfo.mimetype,
-        uploadedAt: fileInfo.uploadedAt
-      });
-    } catch (error) {
-      console.error("Error getting file info:", error);
-      res.status(500).json({ message: "Error getting file info" });
-    }
-  });
-
-  // Add health endpoint
-  app.get(`${apiRouter}/connect/health`, async (_req, res) => {
-    try {
-      const acct = await stripe.accounts.retrieve();
-      const sk = process.env.STRIPE_SECRET_KEY || '';
-      const mode = sk.startsWith("sk_live_") ? "live" : sk.startsWith("sk_test_") ? "test" : "unknown";
-      res.json({ platform_account_id: acct.id, mode });
-    } catch (e) {
-      console.error("[connect] Stripe account retrieve failed", e);
-      res.status(500).json({ error: "Failed to retrieve Stripe account details" });
-    }
-  });
-
-  /**
-   * POST /api/connect/create-account-session
-   * Body: { accountId?: string|null, country?: string, publishableKey?: string }
-   * Returns: { accountId: "acct_...", client_secret: "seti_..." }
-   */
-  app.post(`${apiRouter}/connect/create-account-session`, async (req, res) => {
-    try {
-      let { accountId = null, country = "GB", publishableKey } = req.body || {};
-
-      // Guard: PK/SK mode must match (prevents cross-account / test-live mixups)
-      const sk = process.env.STRIPE_SECRET_KEY || '';
-      const pkMode = publishableKey?.startsWith("pk_live_") ? "live"
-                   : publishableKey?.startsWith("pk_test_") ? "test" : "unknown";
-      const skMode = sk.startsWith("sk_live_") ? "live"
-                   : sk.startsWith("sk_test_") ? "test" : "unknown";
-      if (publishableKey && pkMode !== skMode) {
-        return res.status(400).json({ error: `Key mode mismatch (client=${pkMode}, server=${skMode})` });
-      }
-
-      if (!accountId) {
-        const acct = await stripe.accounts.create({
-          type: "custom",
-          country,
-          capabilities: { card_payments: { requested: true }, transfers: { requested: true } },
-        });
-        accountId = acct.id;
-      }
-
-      const session = await stripe.accountSessions.create({
-        account: accountId,
-        components: { account_onboarding: { enabled: true } },
-      });
-
-      return res.json({ accountId, client_secret: session.client_secret }); // seti_...
-    } catch (e: any) {
-      console.error("[connect] ERROR", e);
-      res.status(500).json({ error: e?.message || "Unknown error" });
-    }
-  });
-
-  // Budget oversight endpoint for detailed category analysis
-  app.get(`${apiRouter}/budget/oversight`, requireAuth, async (req: Request, res: Response) => {
-    try {
-      const userId = req.user?.id;
-      if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
-      }
-
-      const user = await storage.getUser(userId);
-      if (!user || user.role !== 'business') {
-        return res.status(403).json({ message: "Only business users can access budget oversight" });
-      }
-
-      // Get all contracts for this business
-      const contracts = await storage.getContractsByBusinessId(userId);
-      const activeContracts = contracts.filter(c => c.status !== 'deleted');
-
-      // Get all milestones and payments for analysis
-      const allMilestones = await storage.getAllMilestones();
-      const allPayments = await storage.getAllPayments();
-
-      // Group contracts by category (you may want to add a category field to contracts)
-      const categoryMap = new Map<string, {
-        category: string;
-        contractorsCount: number;
-        totalAllocated: number;
-        totalSpent: number;
-        remaining: number;
-        contracts: Array<{
-          id: number;
-          contractorName: string;
-          projectName: string;
-          allocated: number;
-          spent: number;
-          status: string;
-        }>;
-      }>();
-
-      // Process each contract
-      for (const contract of activeContracts) {
-        // For now, categorize based on contract name keywords
-        // You might want to add a proper category field to contracts
-        let category = 'Other';
-        const contractName = contract.contractName.toLowerCase();
-
-        if (contractName.includes('ui') || contractName.includes('ux') || contractName.includes('design')) {
-          category = 'UI/UX Design';
-        } else if (contractName.includes('content') || contractName.includes('writing') || contractName.includes('copy')) {
-          category = 'Content Creation';
-        } else if (contractName.includes('marketing') || contractName.includes('seo') || contractName.includes('social')) {
-          category = 'Marketing';
-        } else if (contractName.includes('dev') || contractName.includes('code') || contractName.includes('app')) {
-          category = 'Development';
-        } else if (contractName.includes('consult') || contractName.includes('strategy')) {
-          category = 'Consulting';
-        }
-
-        // Get contractor name
-        let contractorName = 'Unassigned';
-        if (contract.contractorId) {
-          const contractor = await storage.getUser(contract.contractorId);
-          if (contractor) {
-            contractorName = `${contractor.firstName || ''} ${contractor.lastName || ''}`.trim() || contractor.username;
-          }
-        }
-
-        // Calculate spent amount from payments
-        const contractMilestones = allMilestones.filter(m => m.contractId === contract.id);
-        const contractPayments = allPayments.filter(p => p.contractId === contract.id && p.status === 'completed');
-        const totalSpent = contractPayments.reduce((sum, payment) => sum + parseFloat(payment.amount.toString()), 0);
-
-        const allocated = parseFloat(contract.contractorBudget?.toString() || contract.value.toString());
-
-        if (!categoryMap.has(category)) {
-          categoryMap.set(category, {
-            category,
-            contractorsCount: 0,
-            totalAllocated: 0,
-            totalSpent: 0,
-            remaining: 0,
-            contracts: []
-          });
-        }
-
-        const categoryData = categoryMap.get(category)!;
-        categoryData.contractorsCount++;
-        categoryData.totalAllocated += allocated;
-        categoryData.totalSpent += totalSpent;
-        categoryData.remaining += allocated - totalSpent;
-        categoryData.contracts.push({
-          id: contract.id,
-          contractorName,
-          projectName: contract.contractName,
-          allocated,
-          spent: totalSpent,
-          status: contract.status || 'active'
-        });
-      }
-
-      const categories = Array.from(categoryMap.values());
-
-      // Calculate totals
-      const totalBudget = parseFloat(user.budgetCap?.toString() || '0');
-      const totalAllocated = categories.reduce((sum, cat) => sum + cat.totalAllocated, 0);
-      const totalSpent = categories.reduce((sum, cat) => sum + cat.totalSpent, 0);
-      const remaining = totalBudget - totalAllocated;
-
-      // Generate monthly spending data (simplified - you might want to implement proper time-based queries)
-      const monthlySpending = [
-        { month: 'Jan', amount: Math.floor(totalSpent * 0.15), category: 'UI/UX Design' },
-        { month: 'Feb', amount: Math.floor(totalSpent * 0.20), category: 'Marketing' },
-        { month: 'Mar', amount: Math.floor(totalSpent * 0.25), category: 'Development' },
-        { month: 'Apr', amount: Math.floor(totalSpent * 0.18), category: 'Content Creation' },
-        { month: 'May', amount: Math.floor(totalSpent * 0.22), category: 'Marketing' }
-      ];
-
-      // Generate alerts
-      const alerts = [];
-      const utilizationRate = totalBudget > 0 ? (totalAllocated / totalBudget) * 100 : 0;
-
-      if (utilizationRate > 90) {
-        alerts.push({
-          type: 'danger' as const,
-          message: `Budget utilization is at ${utilizationRate.toFixed(1)}% - consider increasing budget cap`
-        });
-      } else if (utilizationRate > 75) {
-        alerts.push({
-          type: 'warning' as const,
-          message: `Budget utilization is at ${utilizationRate.toFixed(1)}% - monitor spending closely`
-        });
-      }
-
-      // Check for categories with high spending
-      categories.forEach(cat => {
-        const catUtilization = cat.totalAllocated > 0 ? (cat.totalSpent / cat.totalAllocated) * 100 : 0;
-        if (catUtilization > 85) {
-          alerts.push({
-            type: 'warning' as const,
-            message: `${cat.category} is at ${catUtilization.toFixed(1)}% of allocated budget`,
-            category: cat.category
-          });
-        }
-      });
-
-      res.json({
-        totalBudget,
-        totalAllocated,
-        totalSpent,
-        remaining,
-        categories,
-        monthlySpending,
-        alerts
-      });
-
-    } catch (error) {
-      console.error("Error fetching budget oversight:", error);
-      res.status(500).json({ message: "Error fetching budget oversight data" });
-    }
-  });
-
-  // Register Stripe Connect routes
-  connectRoutes(app, apiRouter, requireAuth);
-
-  // Create and return the server
   const httpServer = createServer(app);
   return httpServer;
 }
