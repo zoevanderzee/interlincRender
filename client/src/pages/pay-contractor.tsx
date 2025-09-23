@@ -1,13 +1,16 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { AlertCircle, CheckCircle, CreditCard, User, DollarSign, FileText, ArrowLeft } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertCircle, CheckCircle, User, DollarSign, FileText, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import { useLocation } from 'wouter';
+import { useQuery } from '@tanstack/react-query';
 
 interface ContractorInfo {
   id: number;
@@ -19,6 +22,7 @@ interface ContractorInfo {
 
 export default function PayContractor() {
   const [, navigate] = useLocation();
+  const [selectedContractorId, setSelectedContractorId] = useState<string>('');
   const [contractor, setContractor] = useState<ContractorInfo | null>(null);
   const [amount, setAmount] = useState('1.00');
   const [description, setDescription] = useState('Payment test');
@@ -27,17 +31,28 @@ export default function PayContractor() {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Get contractor ID from URL params
+  // Get contractors list
+  const { data: contractors = [] } = useQuery<ContractorInfo[]>({
+    queryKey: ['/api/contractors'],
+  });
+
+  // Check for contractor ID in URL params
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const contractorId = params.get('contractorId');
-
-    if (contractorId) {
+    
+    if (contractorId && contractorId !== 'undefined') {
+      setSelectedContractorId(contractorId);
       fetchContractorInfo(contractorId);
-    } else {
-      setError('No contractor specified');
     }
   }, []);
+
+  // Fetch contractor info when selection changes
+  useEffect(() => {
+    if (selectedContractorId && selectedContractorId !== 'undefined') {
+      fetchContractorInfo(selectedContractorId);
+    }
+  }, [selectedContractorId]);
 
   const fetchContractorInfo = async (contractorId: string) => {
     try {
@@ -47,13 +62,23 @@ export default function PayContractor() {
       }
       const data = await response.json();
       setContractor(data);
+      setError(null);
     } catch (err: any) {
+      console.error('Error fetching contractor:', err);
       setError(err.message);
+      setContractor(null);
     }
   };
 
   const handleDirectPayment = async () => {
-    if (!contractor) return;
+    if (!contractor) {
+      toast({
+        title: 'Error',
+        description: 'Please select a contractor first.',
+        variant: 'destructive'
+      });
+      return;
+    }
 
     if (!amount || parseFloat(amount) <= 0) {
       toast({
@@ -114,27 +139,6 @@ export default function PayContractor() {
     }
   };
 
-  if (error && !contractor) {
-    return (
-      <div className="container mx-auto py-8 px-4">
-        <Card className="max-w-md mx-auto">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-destructive" />
-              Error
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-destructive mb-4">{error}</p>
-            <Button onClick={() => navigate('/contractors')} variant="outline" className="w-full">
-              Back to Contractors
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   if (paymentSuccess) {
     return (
       <div className="container mx-auto py-8 px-4">
@@ -177,17 +181,6 @@ export default function PayContractor() {
     );
   }
 
-  if (!contractor) {
-    return (
-      <div className="container mx-auto py-8 px-4">
-        <div className="max-w-md mx-auto text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Loading contractor information...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="max-w-md mx-auto">
@@ -203,8 +196,8 @@ export default function PayContractor() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5" />
-              Complete Payment
+              <DollarSign className="h-5 w-5" />
+              Send Payment
             </CardTitle>
             <CardDescription>
               Send payment directly using Stripe Connect V2
@@ -212,31 +205,72 @@ export default function PayContractor() {
           </CardHeader>
 
           <CardContent className="space-y-6">
-            {/* Payment Details */}
-            <div className="bg-muted p-4 rounded-lg space-y-3">
-              <h3 className="font-semibold flex items-center gap-2">
+            {/* Contractor Selection */}
+            <div className="space-y-2">
+              <Label htmlFor="contractor" className="flex items-center gap-2">
                 <User className="h-4 w-4" />
-                Payment Details
-              </h3>
-
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Paying:</span>
-                  <p className="font-medium">
-                    {contractor.firstName} {contractor.lastName}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Amount:</span>
-                  <p className="font-bold text-lg">${amount}</p>
-                </div>
-              </div>
-
-              <div>
-                <span className="text-muted-foreground">Description:</span>
-                <p className="font-medium">{description}</p>
-              </div>
+                Select Contractor *
+              </Label>
+              <Select 
+                value={selectedContractorId} 
+                onValueChange={(value) => {
+                  setSelectedContractorId(value);
+                  setError(null);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a contractor..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {contractors.length === 0 ? (
+                    <div className="p-4 text-center text-gray-500">
+                      <p>No contractors available</p>
+                      <Button 
+                        size="sm" 
+                        className="mt-2" 
+                        onClick={() => navigate('/contractors')}
+                      >
+                        Add Contractors
+                      </Button>
+                    </div>
+                  ) : (
+                    contractors.map((c) => (
+                      <SelectItem key={c.id} value={c.id.toString()}>
+                        {c.firstName} {c.lastName} ({c.email})
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
             </div>
+
+            {/* Payment Details */}
+            {contractor && (
+              <div className="bg-muted p-4 rounded-lg space-y-3">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Payment Details
+                </h3>
+
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Paying:</span>
+                    <p className="font-medium">
+                      {contractor.firstName} {contractor.lastName}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Amount:</span>
+                    <p className="font-bold text-lg">${amount}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-muted-foreground">Description:</span>
+                  <p className="font-medium">{description}</p>
+                </div>
+              </div>
+            )}
 
             {/* Payment Form */}
             <div className="space-y-4">
@@ -282,7 +316,7 @@ export default function PayContractor() {
 
             <Button 
               onClick={handleDirectPayment}
-              disabled={isProcessing || !contractor.stripeConnectAccountId}
+              disabled={isProcessing || !contractor || !contractor.stripeConnectAccountId}
               className="w-full"
             >
               {isProcessing ? (
@@ -292,13 +326,13 @@ export default function PayContractor() {
                 </>
               ) : (
                 <>
-                  <CreditCard className="h-4 w-4 mr-2" />
-                  Confirm Payment ${amount}
+                  <DollarSign className="h-4 w-4 mr-2" />
+                  Send Payment ${amount}
                 </>
               )}
             </Button>
 
-            {!contractor.stripeConnectAccountId && (
+            {contractor && !contractor.stripeConnectAccountId && (
               <div className="text-center text-sm text-muted-foreground">
                 This contractor hasn't set up their payment account yet.
               </div>
