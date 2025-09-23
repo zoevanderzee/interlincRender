@@ -1651,7 +1651,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Use the bulletproof consistency method to find/create the proper contract and milestone
       const consistency = await storage.ensureContractWorkRequestConsistency(
-        workRequest.contractorUserId, 
+        workRequest.contractorUserId,
         workRequest.title
       );
 
@@ -4037,7 +4037,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create a PaymentIntent with the order amount and currency
       // Convert amount to whole number of cents (Stripe requires integer)
-      const amountInCents = Math.round(parseFloat(amount));
+      const amountInCents = Math.round(parseFloat(amount) * 100);
       console.log('Creating payment intent for amount (cents):', amountInCents);
 
       const paymentIntent = await stripe.paymentIntents.create({
@@ -4271,6 +4271,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (workRequest.contractorUserId !== contractorId) {
         return res.status(403).json({ message: "Access denied: This work request is not assigned to you" });
+      }
+
+      // Verify the work request is accepted
+      if (workRequest.status !== 'accepted') {
+        return res.status(400).json({ message: 'Work request must be accepted before submitting work' });
       }
 
       // Update work request status to accepted
@@ -4638,7 +4643,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Retrieve a user's profile code
       const userId = req.user?.id;
-
       if (!userId) {
         return res.status(401).json({ message: "Authentication required" });
       }
