@@ -2502,11 +2502,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userContracts = await storage.getAllContracts();
       }
 
-      // Active contracts are those with status 'active'
-      const activeContracts = userContracts.filter(contract => contract.status === 'active');
-
-      // Pending approvals are contracts with status 'pending_approval'
-      const pendingApprovals = userContracts.filter(contract => contract.status === 'pending_approval');
+      // Get actual business data - PROJECTS and WORK REQUESTS instead of old contracts
+      const userProjects = await storage.getBusinessProjects(userId || 0);
+      const userWorkRequests = await storage.getWorkRequestsByBusinessId(userId || 0);
+      
+      // Active projects are those with status 'active' 
+      const activeProjects = userProjects.filter(project => project.status === 'active');
+      
+      // Active work requests (accepted contracts) are those with status 'accepted'
+      const activeWorkRequests = userWorkRequests.filter(wr => wr.status === 'accepted');
+      
+      // Pending approvals are work requests with status 'pending'
+      const pendingWorkRequests = userWorkRequests.filter(wr => wr.status === 'pending');
 
       // Get the upcoming payments (5 most recent)
       let upcomingPayments = await storage.getUpcomingPayments(5);
@@ -2604,18 +2611,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Continue with empty invites array
       }
 
-      // Get actual projects count for dashboard stats
-      const userProjects = await storage.getBusinessProjects(userId || 0);
+      // Calculate real stats from work requests and projects
+      const totalWorkRequestsValue = activeWorkRequests.reduce((sum, wr) => {
+        return sum + parseFloat(wr.amount || '0');
+      }, 0);
+      
+      const totalPendingWorkRequestsValue = pendingWorkRequests.reduce((sum, wr) => {
+        return sum + parseFloat(wr.amount || '0');
+      }, 0);
+      
+      // Count unique contractors from work requests
+      const uniqueContractorIds = [...new Set(userWorkRequests.map(wr => wr.contractorUserId))];
+      const realActiveContractorsCount = uniqueContractorIds.length;
 
       const dashboardData = {
         stats: {
-          activeContractsCount: activeContracts.length,
-          pendingApprovalsCount: pendingApprovals.length,
-          paymentsProcessed: totalPaymentsValue,
-          totalPendingValue: totalPendingValue, // Add total pending value from contracts
-          activeContractorsCount: activeContractorsCount, // Use the proper active contractors count
+          activeContractsCount: activeWorkRequests.length, // Count accepted work requests as active contracts
+          pendingApprovalsCount: pendingWorkRequests.length, // Count pending work requests
+          paymentsProcessed: totalPaymentsValue, // Keep existing payment logic
+          totalPendingValue: totalPendingWorkRequestsValue, // Use work requests pending value
+          activeContractorsCount: realActiveContractorsCount, // Count unique contractors
           pendingInvitesCount: pendingInvites.length,
-          totalProjectsCount: userProjects.length // Add actual projects count
+          totalProjectsCount: activeProjects.length // Count active projects
         },
         contracts: userContracts.filter(contract => contract.status !== 'deleted'),
         contractors: allContractors,  // Add contractors data
