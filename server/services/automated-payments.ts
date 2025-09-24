@@ -104,7 +104,8 @@ class AutomatedPaymentService {
           milestone: milestone.name
         });
 
-        // Create V2 Payment Intent with destination charge (no platform balance required)
+        // Create destination charge for Standard Connect account
+        // Funds go directly from business to contractor's connected account
         const transferResult = await createPaymentIntent({
           amount: netAmount,
           currency: 'gbp',
@@ -113,14 +114,15 @@ class AutomatedPaymentService {
             milestoneId: milestoneId.toString(),
             contractorId: contractor.id.toString(),
             businessId: approvedBy.toString(),
-            paymentType: 'milestone_completion'
+            paymentType: 'milestone_completion',
+            flow_type: 'destination_charge_standard_account'
           },
           transferData: {
             destination: contractorConnect.accountId
           }
         });
 
-        console.log(`✅ Stripe V2 Payment Intent created successfully:`, {
+        console.log(`✅ Stripe V2 destination charge created successfully:`, {
           paymentIntentId: transferResult.id,
           amount: netAmount,
           status: transferResult.status
@@ -133,7 +135,7 @@ class AutomatedPaymentService {
         };
       }
 
-      if (!transferResult || !transferResult.transfer_id) {
+      if (!transferResult || !transferResult.id) {
         console.log(`[PAYMENT_FAILED] Stripe payment creation failed`);
         return {
           success: false,
@@ -142,7 +144,7 @@ class AutomatedPaymentService {
       }
 
 
-      // Create payment record
+      // Create payment record for destination charge
       const paymentData = {
         contractId: milestone.contractId,
         milestoneId: milestoneId,
@@ -152,7 +154,9 @@ class AutomatedPaymentService {
         processedAt: new Date().toISOString(),
         metadata: {
           approvedBy,
-          paymentIntentStatus: transferResult.status
+          paymentIntentStatus: transferResult.status,
+          paymentType: 'destination_charge',
+          destinationAccount: contractorConnect.accountId
         }
       };
 
@@ -184,7 +188,7 @@ class AutomatedPaymentService {
           success: true,
           paymentId: payment.id,
           logId: logId,
-          transferId: transferResult.transfer_id,
+          transferId: transferResult.id, // Payment Intent ID for destination charges
           payment: {
             amount: milestone.paymentAmount,
             contractorId: contractor.id,

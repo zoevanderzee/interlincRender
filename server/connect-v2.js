@@ -48,9 +48,19 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
   app.all(`${apiPath}/v1/transfers*`, (req, res) => {
     console.error(`❌ BLOCKED V1 TRANSFER ATTEMPT: ${req.method} ${req.path}`);
     res.status(410).json({ 
-      error: 'V1 transfers are disabled. Use V2 destination charges instead.',
+      error: 'V1 transfers are completely disabled. Use V2 destination charges with Standard accounts.',
       v2_endpoint: `${connectBasePath}/create-transfer`,
-      migration_info: 'V2 uses Payment Intents with destination charges, not direct transfers'
+      migration_info: 'V2 uses destination charges - funds go directly to connected Standard accounts without platform balance',
+      correct_flow: 'Business pays → Stripe routes directly to contractor → No platform fund handling'
+    });
+  });
+
+  // Also block any attempts to use Stripe transfers API directly
+  app.all(`${apiPath}/stripe/transfers*`, (req, res) => {
+    console.error(`❌ BLOCKED DIRECT STRIPE TRANSFER ATTEMPT: ${req.method} ${req.path}`);
+    res.status(410).json({ 
+      error: 'Direct Stripe transfers not supported with Standard accounts. Use destination charges.',
+      correct_approach: 'Payment Intents with transfer_data for Standard Connect accounts'
     });
   });
 
@@ -740,7 +750,8 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       const amountInCents = Math.round(parsedAmount * 100);
       console.log(`[V2 Payment] Creating V2 destination charge: ${parsedAmount} ${currency.toUpperCase()} -> ${amountInCents} cents to ${destination}`);
 
-      // Create Payment Intent with destination charge (V2 Connect approach - NO V1 transfers)
+      // Create Payment Intent with destination charge for Standard Connect accounts
+      // Funds go directly to connected account without touching platform balance
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amountInCents,
         currency,
@@ -750,16 +761,16 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
           businessId: userId.toString(),
           version: 'v2',
           payment_type: 'destination_charge',
-          api_version: 'v2_only',
-          transfer_method: 'destination_charge_not_transfer'
+          api_version: 'v2_standard_accounts',
+          flow_type: 'destination_charge_direct'
         },
-        // KEY: This sends funds directly to contractor without touching platform balance
+        // DESTINATION CHARGE: Funds go directly to connected Standard account
+        // No platform balance required, no manual transfers needed
+        on_behalf_of: destination,
         transfer_data: {
           destination: destination
         },
-        // V2 uses destination charges - no application fees needed
-        
-        // Return client secret for frontend payment confirmation
+        // Configure payment methods for direct processing
         automatic_payment_methods: {
           enabled: true
         }

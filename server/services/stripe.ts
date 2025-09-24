@@ -82,20 +82,25 @@ export async function createPaymentIntent(params: CreatePaymentIntentParams): Pr
       confirmation_method: 'automatic'
     };
 
-    // Enhanced Connect payment handling
+    // Standard Connect account destination charge handling
     if (params.transferData && params.transferData.destination) {
-      // Validate destination account first
+      // Validate destination account is a Standard Connect account
       try {
         const account = await stripe.accounts.retrieve(params.transferData.destination);
         if (!account.charges_enabled) {
           throw new Error('Destination account is not enabled for charges');
         }
+        if (account.type !== 'standard') {
+          console.warn(`Account ${account.id} is type '${account.type}', expected 'standard'`);
+        }
       } catch (accountError) {
         throw new Error('Invalid or disabled destination account');
       }
 
-      // V2 Connect: Transfer full amount to connected account
-      // Stripe handles transaction fees automatically
+      // DESTINATION CHARGE for Standard accounts
+      // Funds flow directly from customer to connected account
+      // Platform never touches the money
+      paymentIntentParams.on_behalf_of = params.transferData.destination;
       paymentIntentParams.transfer_data = {
         destination: params.transferData.destination
       };
@@ -103,8 +108,10 @@ export async function createPaymentIntent(params: CreatePaymentIntentParams): Pr
       // Add Connect-specific metadata
       paymentIntentParams.metadata = {
         ...paymentIntentParams.metadata,
-        connect_payment: 'true',
-        destination_account: params.transferData.destination
+        connect_payment: 'destination_charge',
+        destination_account: params.transferData.destination,
+        account_type: 'standard',
+        flow_type: 'direct_to_connected_account'
       };
     }
 
