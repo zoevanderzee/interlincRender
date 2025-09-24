@@ -4172,6 +4172,132 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get payment data for business dashboard
+  app.get(`${apiRouter}/payments/dashboard-data`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = getUserId(req);
+      const user = await storage.getUser(userId);
+      
+      if (!user?.stripeCustomerId) {
+        return res.json({
+          totalPaid: 0,
+          paymentsCompleted: 0,
+          pendingPayments: 0,
+          pendingAmount: 0,
+          processingPayments: 0,
+          processingAmount: 0,
+          monthlyTotal: 0
+        });
+      }
+
+      // Query Stripe for payments associated with this business customer
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      
+      // Get all Payment Intents for this customer
+      const paymentIntents = await stripe.paymentIntents.list({
+        customer: user.stripeCustomerId,
+        limit: 100,
+        expand: ['data.latest_charge']
+      });
+
+      let totalPaid = 0;
+      let paymentsCompleted = 0;
+      let pendingPayments = 0;
+      let pendingAmount = 0;
+      let processingPayments = 0;
+      let processingAmount = 0;
+      let monthlyTotal = 0;
+
+      paymentIntents.data.forEach(pi => {
+        const amount = pi.amount / 100; // Convert from cents
+        const created = new Date(pi.created * 1000);
+
+        switch (pi.status) {
+          case 'succeeded':
+            totalPaid += amount;
+            paymentsCompleted++;
+            if (created >= monthStart) {
+              monthlyTotal += amount;
+            }
+            break;
+          case 'processing':
+            processingPayments++;
+            processingAmount += amount;
+            break;
+          case 'requires_payment_method':
+          case 'requires_confirmation':
+          case 'requires_action':
+            pendingPayments++;
+            pendingAmount += amount;
+            break;
+        }
+      });
+
+      res.json({
+        totalPaid: totalPaid.toFixed(2),
+        paymentsCompleted,
+        pendingPayments,
+        pendingAmount: pendingAmount.toFixed(2),
+        processingPayments,
+        processingAmount: processingAmount.toFixed(2),
+        monthlyTotal: monthlyTotal.toFixed(2),
+        currency: 'gbp'
+      });
+
+    } catch (error: any) {
+      console.error('Error fetching payment dashboard data:', error);
+      res.status(500).json({ error: 'Failed to fetch payment data' });
+    }
+  });
+
+  // Get detailed payment history
+  app.get(`${apiRouter}/payments/history`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = getUserId(req);
+      const user = await storage.getUser(userId);
+      const { limit = 50, starting_after } = req.query;
+      
+      if (!user?.stripeCustomerId) {
+        return res.json({ data: [], has_more: false });
+      }
+
+      const params: any = {
+        customer: user.stripeCustomerId,
+        limit: parseInt(limit as string),
+        expand: ['data.latest_charge']
+      };
+
+      if (starting_after) {
+        params.starting_after = starting_after;
+      }
+
+      const paymentIntents = await stripe.paymentIntents.list(params);
+
+      const payments = paymentIntents.data.map(pi => ({
+        id: pi.id,
+        amount: (pi.amount / 100).toFixed(2),
+        currency: pi.currency.toUpperCase(),
+        status: pi.status,
+        created: new Date(pi.created * 1000).toISOString(),
+        description: pi.description,
+        contractorId: pi.metadata?.contractor_user_id,
+        contractId: pi.metadata?.contractId,
+        paymentType: pi.metadata?.paymentType,
+        destinationAccount: pi.metadata?.destination_account
+      }));
+
+      res.json({
+        data: payments,
+        has_more: paymentIntents.has_more
+      });
+
+    } catch (error: any) {
+      console.error('Error fetching payment history:', error);
+      res.status(500).json({ error: 'Failed to fetch payment history' });
+    }
+  });
+
   // Create a Stripe checkout session (for redirect flow)
   app.post(`${apiRouter}/create-checkout-session`, async (req: Request, res: Response) => {
     try {
