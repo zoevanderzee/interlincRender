@@ -1,6 +1,7 @@
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { useIntegratedData } from "@/hooks/use-integrated-data";
+import { formatCurrency } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -90,7 +91,7 @@ export default function Payments() {
               <CheckCircle className="h-4 w-4 text-green-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">${totalEarned.toLocaleString()}</div>
+              <div className="text-2xl font-bold text-white">{formatCurrency(totalEarned)}</div>
               <p className="text-xs text-gray-400">{completedPayments.length} payments completed</p>
             </CardContent>
           </Card>
@@ -101,7 +102,7 @@ export default function Payments() {
               <Clock className="h-4 w-4 text-yellow-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">${totalPending.toLocaleString()}</div>
+              <div className="text-2xl font-bold text-white">{formatCurrency(totalPending)}</div>
               <p className="text-xs text-gray-400">{pendingPayments.length} payments scheduled</p>
             </CardContent>
           </Card>
@@ -112,7 +113,7 @@ export default function Payments() {
               <TrendingUp className="h-4 w-4 text-blue-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">${totalProcessing.toLocaleString()}</div>
+              <div className="text-2xl font-bold text-white">{formatCurrency(totalProcessing)}</div>
               <p className="text-xs text-gray-400">{processingPayments.length} payments processing</p>
             </CardContent>
           </Card>
@@ -150,7 +151,7 @@ export default function Payments() {
                         {getContractName(payment.contractId)}
                       </TableCell>
                       <TableCell className="text-white font-medium">
-                        ${parseFloat(payment.amount).toLocaleString()}
+                        {formatCurrency(parseFloat(payment.amount))}
                       </TableCell>
                       <TableCell>
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -206,7 +207,7 @@ export default function Payments() {
             <CheckCircle className="h-4 w-4 text-green-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">${totalEarned.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-white">{formatCurrency(totalEarned)}</div>
             <p className="text-xs text-gray-400">{completedPayments.length} payments completed</p>
           </CardContent>
         </Card>
@@ -217,7 +218,7 @@ export default function Payments() {
             <Clock className="h-4 w-4 text-yellow-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">${totalPending.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-white">{formatCurrency(totalPending)}</div>
             <p className="text-xs text-gray-400">{pendingPayments.length} payments scheduled</p>
           </CardContent>
         </Card>
@@ -228,7 +229,7 @@ export default function Payments() {
             <TrendingUp className="h-4 w-4 text-blue-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">${totalProcessing.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-white">{formatCurrency(totalProcessing)}</div>
             <p className="text-xs text-gray-400">{processingPayments.length} payments processing</p>
           </CardContent>
         </Card>
@@ -239,7 +240,7 @@ export default function Payments() {
             <Calendar className="h-4 w-4 text-purple-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">${(totalEarned + totalPending + totalProcessing).toLocaleString()}</div>
+            <div className="text-2xl font-bold text-white">{formatCurrency(totalEarned + totalPending + totalProcessing)}</div>
             <p className="text-xs text-gray-400">This month's activity</p>
           </CardContent>
         </Card>
@@ -279,7 +280,7 @@ export default function Payments() {
                       {getContractName(payment.contractId)}
                     </TableCell>
                     <TableCell className="text-white font-medium">
-                      ${parseFloat(payment.amount).toLocaleString()}
+                      {formatCurrency(parseFloat(payment.amount))}
                     </TableCell>
                     <TableCell className="text-gray-300">
                       {payment.scheduledDate ? new Date(payment.scheduledDate).toLocaleDateString() : 'Not set'}
