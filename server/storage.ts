@@ -1,7 +1,7 @@
 import {
   users, invites, contracts, milestones, payments, paymentLogs, documents, bankAccounts, workRequests,
   businessOnboardingLinks, businessOnboardingUsage, connectionRequests, notifications, workSubmissions, workRequestSubmissions,
-  businessWorkers, projects,
+  businessWorkers, projects, tasks, taskSubmissions,
   type User, type InsertUser,
   type Invite, type InsertInvite,
   type Contract, type InsertContract,
@@ -17,7 +17,9 @@ import {
   type WorkSubmission, type InsertWorkSubmission,
   type WorkRequestSubmission, type InsertWorkRequestSubmission,
   type BusinessWorker, type InsertBusinessWorker,
-  type Project, type InsertProject
+  type Project, type InsertProject,
+  type Task, type InsertTask,
+  type TaskSubmission, type InsertTaskSubmission
 } from "@shared/schema";
 import { eq, and, desc, lte, gte, sql, or, inArray, isNotNull } from "drizzle-orm";
 import { db, pool } from "./db";
@@ -200,6 +202,26 @@ export interface IStorage {
     subscriptionEndDate: Date;
     subscriptionTrialEnd: Date | null;
   }>): Promise<User | undefined>;
+
+  // Tasks
+  getTask(id: number): Promise<Task | undefined>;
+  getTasksByProjectId(projectId: number): Promise<Task[]>;
+  getTasksByContractorId(contractorId: number): Promise<Task[]>;
+  getTasksByBusinessId(businessId: number): Promise<Task[]>;
+  createTask(task: InsertTask): Promise<Task>;
+  updateTask(id: number, task: Partial<InsertTask>): Promise<Task | undefined>;
+  assignTaskToContractor(taskId: number, contractorId: number): Promise<Task | undefined>;
+  updateTaskStatus(id: number, status: 'open' | 'in_progress' | 'submitted' | 'approved' | 'rejected' | 'canceled'): Promise<Task | undefined>;
+
+  // Task Submissions
+  getTaskSubmission(id: number): Promise<TaskSubmission | undefined>;
+  getTaskSubmissionsByTaskId(taskId: number): Promise<TaskSubmission[]>;
+  getTaskSubmissionsByContractorId(contractorId: number): Promise<TaskSubmission[]>;
+  getTaskSubmissionsByBusinessId(businessId: number): Promise<TaskSubmission[]>;
+  createTaskSubmission(submission: InsertTaskSubmission): Promise<TaskSubmission>;
+  updateTaskSubmission(id: number, submission: Partial<InsertTaskSubmission>): Promise<TaskSubmission | undefined>;
+  approveTaskSubmission(id: number, approverId: number): Promise<TaskSubmission | undefined>;
+  rejectTaskSubmission(id: number, rejectionReason?: string, approverId?: number): Promise<TaskSubmission | undefined>;
 
   // Business Workers (new specification)
   upsertBusinessWorker(data: InsertBusinessWorker): Promise<BusinessWorker>;
@@ -3219,6 +3241,233 @@ export class DatabaseStorage implements IStorage {
       return undefined;
     }
     return this.getContract(workRequest.contractId);
+  }
+
+  // Task methods
+  async getTask(id: number): Promise<Task | undefined> {
+    const [task] = await db.select().from(tasks).where(eq(tasks.id, id));
+    return task;
+  }
+
+  async getTasksByProjectId(projectId: number): Promise<Task[]> {
+    return await db.select().from(tasks).where(eq(tasks.projectId, projectId));
+  }
+
+  async getTasksByContractorId(contractorId: number): Promise<Task[]> {
+    return await db.select().from(tasks).where(eq(tasks.contractorId, contractorId));
+  }
+
+  async getTasksByBusinessId(businessId: number): Promise<Task[]> {
+    const result = await db
+      .select({
+        id: tasks.id,
+        projectId: tasks.projectId,
+        title: tasks.title,
+        description: tasks.description,
+        contractorId: tasks.contractorId,
+        amount: tasks.amount,
+        currency: tasks.currency,
+        dueDate: tasks.dueDate,
+        status: tasks.status,
+        createdAt: tasks.createdAt,
+        updatedAt: tasks.updatedAt
+      })
+      .from(tasks)
+      .innerJoin(projects, eq(tasks.projectId, projects.id))
+      .where(eq(projects.businessId, businessId));
+    
+    return result;
+  }
+
+  async createTask(task: InsertTask): Promise<Task> {
+    const [newTask] = await db.insert(tasks).values(task).returning();
+    return newTask;
+  }
+
+  async updateTask(id: number, taskData: Partial<InsertTask>): Promise<Task | undefined> {
+    const [updatedTask] = await db
+      .update(tasks)
+      .set(taskData)
+      .where(eq(tasks.id, id))
+      .returning();
+    return updatedTask;
+  }
+
+  async assignTaskToContractor(taskId: number, contractorId: number): Promise<Task | undefined> {
+    const [updatedTask] = await db
+      .update(tasks)
+      .set({ 
+        contractorId: contractorId, 
+        status: 'in_progress'
+      })
+      .where(eq(tasks.id, taskId))
+      .returning();
+    return updatedTask;
+  }
+
+  async updateTaskStatus(id: number, status: 'open' | 'in_progress' | 'submitted' | 'approved' | 'rejected' | 'canceled'): Promise<Task | undefined> {
+    // Validate status using schema enum values
+    const validStatuses = ["open", "in_progress", "submitted", "approved", "rejected", "canceled"] as const;
+    if (!validStatuses.includes(status)) {
+      throw new Error(`Invalid task status: ${status}`);
+    }
+    
+    const [updatedTask] = await db
+      .update(tasks)
+      .set({ status })
+      .where(eq(tasks.id, id))
+      .returning();
+    return updatedTask;
+  }
+
+  // Task Submission methods
+  async getTaskSubmission(id: number): Promise<TaskSubmission | undefined> {
+    const [submission] = await db.select().from(taskSubmissions).where(eq(taskSubmissions.id, id));
+    return submission;
+  }
+
+  async getTaskSubmissionsByTaskId(taskId: number): Promise<TaskSubmission[]> {
+    return await db.select().from(taskSubmissions).where(eq(taskSubmissions.taskId, taskId));
+  }
+
+  async getTaskSubmissionsByContractorId(contractorId: number): Promise<TaskSubmission[]> {
+    return await db.select().from(taskSubmissions).where(eq(taskSubmissions.contractorId, contractorId));
+  }
+
+  async getTaskSubmissionsByBusinessId(businessId: number): Promise<TaskSubmission[]> {
+    const result = await db
+      .select({
+        id: taskSubmissions.id,
+        taskId: taskSubmissions.taskId,
+        contractorId: taskSubmissions.contractorId,
+        note: taskSubmissions.note,
+        files: taskSubmissions.files,
+        status: taskSubmissions.status,
+        submittedAt: taskSubmissions.submittedAt,
+        approverId: taskSubmissions.approverId,
+        approvedAt: taskSubmissions.approvedAt,
+        rejectionReason: taskSubmissions.rejectionReason,
+        paymentId: taskSubmissions.paymentId,
+        createdAt: taskSubmissions.createdAt
+      })
+      .from(taskSubmissions)
+      .innerJoin(tasks, eq(taskSubmissions.taskId, tasks.id))
+      .innerJoin(projects, eq(tasks.projectId, projects.id))
+      .where(eq(projects.businessId, businessId));
+    
+    return result;
+  }
+
+  async createTaskSubmission(submission: InsertTaskSubmission): Promise<TaskSubmission> {
+    const [newSubmission] = await db.insert(taskSubmissions).values(submission).returning();
+    return newSubmission;
+  }
+
+  async updateTaskSubmission(id: number, submissionData: Partial<InsertTaskSubmission>): Promise<TaskSubmission | undefined> {
+    const [updatedSubmission] = await db
+      .update(taskSubmissions)
+      .set(submissionData)
+      .where(eq(taskSubmissions.id, id))
+      .returning();
+    return updatedSubmission;
+  }
+
+  async approveTaskSubmission(id: number, approverId: number): Promise<TaskSubmission | undefined> {
+    return await db.transaction(async (tx) => {
+      // Get the task submission with task info in one query with row locking
+      const [submissionWithTask] = await tx
+        .select({
+          submission: taskSubmissions,
+          taskId: tasks.id,
+          taskStatus: tasks.status
+        })
+        .from(taskSubmissions)
+        .innerJoin(tasks, eq(taskSubmissions.taskId, tasks.id))
+        .where(eq(taskSubmissions.id, id))
+        .for('update');
+
+      if (!submissionWithTask) return undefined;
+      
+      // Idempotency: If already approved, return existing submission
+      if (submissionWithTask.submission.status === 'approved') {
+        return submissionWithTask.submission;
+      }
+
+      // Validate state: submission must be in 'submitted' status
+      if (submissionWithTask.submission.status !== 'submitted') {
+        throw new Error(`Cannot approve task submission in status: ${submissionWithTask.submission.status}`);
+      }
+
+      // Update submission status
+      const [updatedSubmission] = await tx
+        .update(taskSubmissions)
+        .set({ 
+          status: 'approved',
+          approverId,
+          approvedAt: new Date()
+        })
+        .where(eq(taskSubmissions.id, id))
+        .returning();
+
+      // Update parent task status only if currently 'submitted'
+      if (submissionWithTask.taskStatus === 'submitted') {
+        await tx
+          .update(tasks)
+          .set({ status: 'approved' })
+          .where(eq(tasks.id, submissionWithTask.taskId));
+      }
+
+      return updatedSubmission;
+    });
+  }
+
+  async rejectTaskSubmission(id: number, rejectionReason?: string, approverId?: number): Promise<TaskSubmission | undefined> {
+    return await db.transaction(async (tx) => {
+      // Get the task submission with task info in one query with row locking
+      const [submissionWithTask] = await tx
+        .select({
+          submission: taskSubmissions,
+          taskId: tasks.id,
+          taskStatus: tasks.status
+        })
+        .from(taskSubmissions)
+        .innerJoin(tasks, eq(taskSubmissions.taskId, tasks.id))
+        .where(eq(taskSubmissions.id, id))
+        .for('update');
+
+      if (!submissionWithTask) return undefined;
+      
+      // Idempotency: If already rejected, return existing submission
+      if (submissionWithTask.submission.status === 'rejected') {
+        return submissionWithTask.submission;
+      }
+
+      // Validate state: submission must be in 'submitted' status
+      if (submissionWithTask.submission.status !== 'submitted') {
+        throw new Error(`Cannot reject task submission in status: ${submissionWithTask.submission.status}`);
+      }
+
+      // Update submission status
+      const [updatedSubmission] = await tx
+        .update(taskSubmissions)
+        .set({ 
+          status: 'rejected',
+          rejectionReason,
+          approverId
+        })
+        .where(eq(taskSubmissions.id, id))
+        .returning();
+
+      // Update parent task status only if currently 'submitted'
+      if (submissionWithTask.taskStatus === 'submitted') {
+        await tx
+          .update(tasks)
+          .set({ status: 'rejected' })
+          .where(eq(tasks.id, submissionWithTask.taskId));
+      }
+
+      return updatedSubmission;
+    });
   }
 
   // BULLETPROOF DATA CONSISTENCY METHOD

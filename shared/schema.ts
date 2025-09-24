@@ -268,6 +268,41 @@ export const workRequestSubmissions = pgTable("work_request_submissions", {
   submittedAt: timestamp("submitted_at").notNull().defaultNow(),
   reviewedAt: timestamp("reviewed_at"),
   reviewNotes: text("review_notes"), // Feedback from business owner
+  approverId: integer("approver_id").references(() => users.id), // Business user who approved/rejected
+  approvedAt: timestamp("approved_at"), // When submission was approved
+  rejectionReason: text("rejection_reason"), // Detailed reason for rejection
+  paymentId: integer("payment_id"), // Link to payment record after approval
+});
+
+// Tasks table (separate from projects/milestones for focused work items)
+export const tasks = pgTable("tasks", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id),
+  title: text("title").notNull(),
+  description: text("description"),
+  contractorId: integer("contractor_id").references(() => users.id), // Assigned contractor
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  currency: text("currency").notNull().default("GBP"),
+  dueDate: timestamp("due_date"),
+  status: text("status").notNull().default("open"), // open, in_progress, submitted, approved, rejected, canceled
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Task Submissions table (parallel to work_request_submissions)
+export const taskSubmissions = pgTable("task_submissions", {
+  id: serial("id").primaryKey(),
+  taskId: integer("task_id").notNull().references(() => tasks.id),
+  contractorId: integer("contractor_id").notNull().references(() => users.id),
+  note: text("note"), // Contractor's submission notes
+  files: jsonb("files"), // Array of file objects {url, name, type, size}
+  status: text("status").notNull().default("submitted"), // submitted, approved, rejected
+  submittedAt: timestamp("submitted_at").notNull().defaultNow(),
+  approverId: integer("approver_id").references(() => users.id), // Business user who approved/rejected
+  approvedAt: timestamp("approved_at"), // When submission was approved
+  rejectionReason: text("rejection_reason"), // Detailed reason for rejection  
+  paymentId: integer("payment_id"), // Link to payment record after approval
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Insert schemas - manually defined to include all fields
@@ -481,6 +516,46 @@ export const updateWorkRequestSchema = z.object({
   status: z.enum(["assigned", "in_review", "approved", "paid", "canceled"]).optional(),
 });
 
+// Work Request Submissions schema
+export const insertWorkRequestSubmissionSchema = z.object({
+  workRequestId: z.number(),
+  contractorId: z.number(),
+  businessId: z.number(),
+  title: z.string().min(1),
+  description: z.string().min(1),
+  notes: z.string().optional(),
+  attachmentUrls: z.any().optional(), // Array of file URLs
+  submissionType: z.enum(["digital", "physical"]).default("digital"),
+  status: z.enum(["pending", "approved", "rejected", "revision_requested"]).default("pending"),
+  approverId: z.number().optional(),
+  rejectionReason: z.string().optional(),
+  paymentId: z.number().optional(),
+});
+
+// Tasks schema
+export const insertTaskSchema = z.object({
+  projectId: z.number(),
+  title: z.string().min(1),
+  description: z.string().optional(),
+  contractorId: z.number().optional(),
+  amount: z.string(),
+  currency: z.string().default("GBP"),
+  dueDate: z.string().optional().transform(val => val ? new Date(val) : undefined),
+  status: z.enum(["open", "in_progress", "submitted", "approved", "rejected", "canceled"]).default("open"),
+});
+
+// Task Submissions schema
+export const insertTaskSubmissionSchema = z.object({
+  taskId: z.number(),
+  contractorId: z.number(),
+  note: z.string().optional(),
+  files: z.any().optional(), // Array of file objects
+  status: z.enum(["submitted", "approved", "rejected"]).default("submitted"),
+  approverId: z.number().optional(),
+  rejectionReason: z.string().optional(),
+  paymentId: z.number().optional(),
+});
+
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -518,6 +593,15 @@ export type ConnectAccount = typeof connectAccounts.$inferSelect;
 
 export type InsertWorkRequest = z.infer<typeof insertWorkRequestSchema>;
 export type WorkRequest = typeof workRequests.$inferSelect;
+
+export type InsertWorkRequestSubmission = z.infer<typeof insertWorkRequestSubmissionSchema>;
+export type WorkRequestSubmission = typeof workRequestSubmissions.$inferSelect;
+
+export type InsertTask = z.infer<typeof insertTaskSchema>;
+export type Task = typeof tasks.$inferSelect;
+
+export type InsertTaskSubmission = z.infer<typeof insertTaskSubmissionSchema>;
+export type TaskSubmission = typeof taskSubmissions.$inferSelect;
 
 // Business Onboarding Links table - for contractor/freelancer registration
 export const businessOnboardingLinks = pgTable("business_onboarding_links", {
@@ -621,20 +705,6 @@ export const insertWorkSubmissionSchema = z.object({
   milestoneId: z.number().optional(),
 });
 
-// Create work request submission schema
-export const insertWorkRequestSubmissionSchema = z.object({
-  workRequestId: z.number(),
-  contractorId: z.number(),
-  businessId: z.number(),
-  title: z.string(),
-  description: z.string(),
-  notes: z.string().optional(),
-  attachmentUrls: z.any().optional(),
-  submissionType: z.string().default("digital"),
-  status: z.string().default("pending"),
-  reviewNotes: z.string().optional(),
-});
-
 // Types for notifications
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type Notification = typeof notifications.$inferSelect;
@@ -642,10 +712,6 @@ export type Notification = typeof notifications.$inferSelect;
 // Types for work submissions
 export type InsertWorkSubmission = z.infer<typeof insertWorkSubmissionSchema>;
 export type WorkSubmission = typeof workSubmissions.$inferSelect;
-
-// Types for work request submissions
-export type InsertWorkRequestSubmission = z.infer<typeof insertWorkRequestSubmissionSchema>;
-export type WorkRequestSubmission = typeof workRequestSubmissions.$inferSelect;
 
 // Create types
 export type InsertBusinessOnboardingLink = z.infer<typeof insertBusinessOnboardingLinkSchema>;
