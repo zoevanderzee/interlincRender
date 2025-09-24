@@ -39,7 +39,7 @@ type WorkRequestForm = z.infer<typeof workRequestSchema>;
 
 export default function AssignContractor() {
   const params = useParams();
-  const contractorId = params.contractorId || null;
+  const contractorId = (params as any).contractorId || null;
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();

@@ -103,14 +103,14 @@ export function invalidateAfter(
  * Optimistic update helper for common UI patterns
  */
 export function optimisticUpdate<T>(
-  queryKey: readonly string[],
+  queryKey: readonly (string | number)[],
   updater: (oldData: T | undefined) => T | undefined
 ) {
-  const oldData = queryClient.getQueryData<T>(queryKey);
+  const oldData = queryClient.getQueryData<T>(queryKey as any);
   const newData = updater(oldData);
   
   if (newData) {
-    queryClient.setQueryData(queryKey, newData);
+    queryClient.setQueryData(queryKey as any, newData);
   }
   
   return oldData; // Return for rollback on error
