@@ -1,0 +1,146 @@
+Transactions
+£1.00
+GBP
+Incomplete
+Cancel
+Recent activity
+
+Add note
+Payment started
+24 Sept 2025, 11:49
+Transfer details
+Connected account
+acct_1S81GTJwvMamdjAa
+Amount details
+£1.00
+Allowed payment methods
+Card
+Tax calculation
+Calculate tax on your payments using Stripe. Learn more
+Events and logs
+LATEST ACTIVITY
+PaymentIntent status:
+requires_payment_method
+The PaymentIntent requires a payment method
+Set an existing payment method on the PaymentIntent or have the customer enter a new payment method.
+Learn more
+ALL ACTIVITY
+A new payment pi_3SAqGYF4bfRUGDn91FzQiSTf for £1.00 was created
+24/09/2025, 11:49:42
+PaymentIntent status:
+requires_payment_method
+200 OK
+A request to create a PaymentIntent completed
+24/09/2025, 11:49:42
+From Stripe
+payment_intent.created
+Inspect event detail in Workbench
+Event data
+{
+  "id": "pi_3SAqGYF4bfRUGDn91FzQiSTf",
+  "object": "payment_intent",
+  "last_payment_error": null,
+  "livemode": true,
+  "next_action": null,
+  "status": "requires_payment_method",
+  "amount": 100,
+  "amount_capturable": 0,
+  "amount_details": {
+    "tip": {
+    }
+  },
+  "amount_received": 0,
+  "application": null,
+  "application_fee_amount": null,
+  "automatic_payment_methods": null,
+  "canceled_at": null,
+  "cancellation_reason": null,
+  "capture_method": "automatic",
+  "client_secret": "pi_3SAqGYF4bfRUGDn91FzQiSTf_secret_OsQBB4lMf1nioM5OW50nXUor5",
+  "confirmation_method": "automatic",
+  "created": 1758710982,
+  "currency": "gbp",
+  "customer": null,
+  "description": "Payment",
+  "excluded_payment_method_types": null,
+  "invoice": null,
+  "latest_charge": null,
+  "metadata": {
+    "account_type": "express",
+    "api_version": "v2_bulletproof",
+    "businessId": "86",
+    "connect_payment": "destination_charge",
+    "contractorId": "115",
+    "contractor_user_id": "115",
+    "created_at": "2025-09-24T10:49:42.082Z",
+    "destination_account": "acct_1S81GTJwvMamdjAa",
+    "flow_type": "direct_to_connected_account",
+    "no_manual_transfers": "true",
+    "paymentType": "verified_destination_charge",
+    "payment_type": "verified_destination_charge",
+    "security_level": "bulletproof",
+    "version": "v2_secure"
+  },
+  "on_behalf_of": "acct_1S81GTJwvMamdjAa",
+  "payment_method": null,
+  "payment_method_configuration_details": null,
+  "payment_method_options": {
+    "card": {
+      "installments": null,
+      "mandate_options": null,
+      "network": null,
+      "request_three_d_secure": "automatic"
+    }
+  },
+  "payment_method_types": [
+    "card"
+  ],
+  "processing": null,
+  "receipt_email": null,
+  "review": null,
+  "setup_future_usage": null,
+  "shipping": null,
+  "source": null,
+  "statement_descriptor": null,
+  "statement_descriptor_suffix": null,
+  "transfer_data": {
+    "destination": "acct_1S81GTJwvMamdjAa"
+  },
+  "transfer_group": null
+}
+
+Hide lines
+Details
+Payment ID
+pi_3SAqGYF4bfRUGDn91FzQiSTf
+Payment method
+None
+Description
+Payment
+Edit
+Statement descriptor
+-
+Last updated
+24 Sept, 11:49
+Metadata
+account_type
+express
+api_version
+v2_bulletproof
+businessId
+86
+connect_payment
+destination_charge
+contractorId
+115
+contractor_user_id
+115
+created_at
+2025-09-24T10:49:42.082Z
+destination_account
+acct_1S81GTJwvMamdjAa
+flow_type
+direct_to_connected_account
+no_manual_transfers
+true
+View 4 more
