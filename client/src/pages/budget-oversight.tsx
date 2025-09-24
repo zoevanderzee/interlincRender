@@ -122,7 +122,13 @@ export default function BudgetOversight() {
   const isNearLimit = budgetUtilization > 80 && !isOverBudget;
 
   const formatCurrency = (value: number) => {
-    return `$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    // Use GBP formatting for UK users
+    return new Intl.NumberFormat('en-GB', { 
+      style: 'currency', 
+      currency: 'GBP',
+      minimumFractionDigits: 2, 
+      maximumFractionDigits: 2 
+    }).format(value);
   };
 
   return (

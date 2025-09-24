@@ -93,7 +93,9 @@ export default function Reports() {
               <DollarSign className="h-4 w-4 text-green-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">${reportData?.summary?.totalEarnings || 0}</div>
+              <div className="text-2xl font-bold text-white">
+                {new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(reportData?.summary?.totalEarnings || 0)}
+              </div>
               <p className="text-xs text-gray-400">All time earnings</p>
             </CardContent>
           </Card>
