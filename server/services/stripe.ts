@@ -295,22 +295,22 @@ export async function validateConnectAccountForPayment(accountId: string): Promi
 }
 
 /**
- * V2 Enhanced Direct Payment Creation using Payment Intents with destination charges
- * NO MANUAL TRANSFERS - funds go directly to connected account at charge time
+ * V2 Enhanced Direct Payment Creation using Payment Intents (NOT transfers)
+ * This replaces the old transfer-based approach with destination charges
  */
-export async function createDirectPaymentV2(params: {
+export async function createDirectTransferV2(params: {
   destination: string;
   amount: number;
   currency?: string;
   description?: string;
   metadata?: Record<string, string>;
-}): Promise<{ payment_intent_id: string; status: string; client_secret: string }> {
+}): Promise<{ transfer_id: string; status: string }> {
   try {
     const { destination, amount, currency = 'gbp', description, metadata } = params;
 
-    console.log(`[V2 Direct Payment] Creating destination charge for ${amount} ${currency} to ${destination}`);
+    console.log(`[V2 Direct Payment] Creating Payment Intent instead of transfer for ${amount} ${currency} to ${destination}`);
 
-    // Create Payment Intent with destination charge - NO manual transfers
+    // Use createPaymentIntent with destination charge (V2 approach)
     const paymentIntent = await createPaymentIntent({
       amount: amount,
       currency: currency,
@@ -318,7 +318,7 @@ export async function createDirectPaymentV2(params: {
       metadata: {
         ...metadata,
         version: 'v2',
-        payment_type: 'destination_charge',
+        payment_type: 'direct_destination_charge',
         created_at: new Date().toISOString()
       },
       transferData: {
@@ -329,9 +329,8 @@ export async function createDirectPaymentV2(params: {
     console.log(`V2 Payment Intent created: ${paymentIntent.id} for ${amount} ${currency} to ${destination}`);
 
     return {
-      payment_intent_id: paymentIntent.id,
-      status: paymentIntent.status || 'requires_payment_method',
-      client_secret: paymentIntent.clientSecret
+      transfer_id: paymentIntent.id, // Return payment intent ID as transfer_id for compatibility
+      status: paymentIntent.status || 'requires_payment_method'
     };
   } catch (error: any) {
     console.error('Error creating V2 direct payment:', error);
@@ -523,11 +522,11 @@ export async function getConnectAccount(accountId: string): Promise<Stripe.Accou
 }
 
 export default {
-  // V2 Enhanced Methods - DESTINATION CHARGES ONLY
+  // V2 Enhanced Methods
   createPaymentIntent,
   createConnectAccountV2,
   getConnectAccountStatusV2,
-  createDirectPaymentV2,
+  createDirectTransferV2,
   updateAccountCapabilities,
   addBankAccountV2,
   uploadVerificationDocument,

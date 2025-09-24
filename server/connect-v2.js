@@ -752,23 +752,21 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
 
       // Create Payment Intent with destination charge for Standard Connect accounts
       // Funds go directly to connected account without touching platform balance
-      // NO MANUAL TRANSFERS - NO PLATFORM BALANCE - DIRECT DESTINATION CHARGE
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amountInCents,
         currency,
-        description: description || 'Direct payment via Connect V2 - Destination Charge Only',
+        description: description || 'Direct payment via Connect V2 - Destination Charge',
         metadata: {
           ...metadata,
           businessId: userId.toString(),
           version: 'v2',
-          payment_type: 'destination_charge_only',
+          payment_type: 'destination_charge',
           api_version: 'v2_standard_accounts',
-          flow_type: 'direct_destination_charge',
-          no_manual_transfers: 'true'
+          flow_type: 'destination_charge_direct'
         },
-        // DESTINATION CHARGE ONLY: Funds bypass platform entirely
-        // Customer pays → Connected account receives funds directly
-        // No /v1/transfers, no platform balance, no manual transfers
+        // DESTINATION CHARGE: Funds go directly to connected Standard account
+        // No platform balance required, no manual transfers needed
+        on_behalf_of: destination,
         transfer_data: {
           destination: destination
         },

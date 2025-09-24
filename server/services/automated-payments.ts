@@ -87,10 +87,9 @@ class AutomatedPaymentService {
         console.log(`✅ BUDGET CHECK PASSED: Payment $${totalAmount} within remaining budget $${budgetRemaining}`);
       }
 
-      // Process payment through Stripe V2 Connect - DESTINATION CHARGES ONLY
+      // Process payment through Stripe V2 Connect
       console.log(`[Automated Payments] Processing milestone payment for milestone ${milestoneId}`);
 
-      let transferResult;
       try {
         // Get contractor's Stripe Connect account
         const contractorConnect = await storage.getConnectForUser(contractor.id);
@@ -99,15 +98,15 @@ class AutomatedPaymentService {
           throw new Error(`Contractor ${contractor.id} does not have a Stripe Connect account`);
         }
 
-        console.log(`[Automated Payments] Creating V2 destination charge (NO MANUAL TRANSFERS):`, {
+        console.log(`[Automated Payments] Creating Stripe V2 transfer:`, {
           destination: contractorConnect.accountId,
           amount: netAmount,
           milestone: milestone.name
         });
 
-        // Create Payment Intent with destination charge - funds go directly to contractor
-        // NO manual transfers, NO platform balance, NO /v1/transfers calls
-        transferResult = await createPaymentIntent({
+        // Create destination charge for Standard Connect account
+        // Funds go directly from business to contractor's connected account
+        const transferResult = await createPaymentIntent({
           amount: netAmount,
           currency: 'gbp',
           description: `Payment for milestone: ${milestone.name} (Project: ${milestone.contractName})`,
@@ -123,7 +122,7 @@ class AutomatedPaymentService {
           }
         });
 
-        console.log(`✅ V2 destination charge created successfully (NO TRANSFERS):`, {
+        console.log(`✅ Stripe V2 destination charge created successfully:`, {
           paymentIntentId: transferResult.id,
           amount: netAmount,
           status: transferResult.status
