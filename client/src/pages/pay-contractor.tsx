@@ -5,11 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AlertCircle, CheckCircle, User, DollarSign, FileText, ArrowLeft } from 'lucide-react';
+import { AlertCircle, CheckCircle, User, DollarSign, FileText, ArrowLeft, CreditCard } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import { useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
+import { StripeElements } from '@/components/payments/StripeElements';
 
 interface ContractorInfo {
   id: number;
@@ -33,6 +34,7 @@ export default function PayContractor() {
   const [description, setDescription] = useState('Payment test');
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [showStripeForm, setShowStripeForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -188,7 +190,7 @@ export default function PayContractor() {
     }
   };
 
-  const handleDirectPayment = async () => {
+  const handleProceedToPayment = () => {
     if (!contractor) {
       toast({
         title: 'Error',
@@ -207,52 +209,46 @@ export default function PayContractor() {
       return;
     }
 
+    setShowStripeForm(true);
+    setError(null);
+  };
+
+  const handlePaymentComplete = async (paymentIntentId: string) => {
+    console.log('Payment completed with intent ID:', paymentIntentId);
+    
+    // Process the payment to the contractor via Connect
     try {
       setIsProcessing(true);
-      setError(null);
-
-      console.log('Creating V2 Connect destination charge:', {
-        contractorId: contractor.id,
-        amount: parseFloat(amount),
-        description
-      });
-
-      // 🔒 BULLETPROOF: Create secure payment using contractor ID only (NEVER account ID from client)
-      // Server will query Stripe API to resolve the account ID for maximum security
+      
       const response = await apiRequest('POST', '/api/connect/v2/create-transfer', {
-        contractorUserId: contractor.id, // SECURITY: Only send contractor ID - server resolves account via Stripe API
+        contractorUserId: contractor!.id,
         amount: parseFloat(amount),
-        currency: currency, // Use dynamic currency
+        currency: currency,
         description,
+        paymentIntentId, // Pass the completed payment intent
         metadata: {
-          contractorId: contractor.id.toString(),
-          paymentType: 'verified_destination_charge',
-          security_level: 'bulletproof'
+          contractorId: contractor!.id.toString(),
+          paymentType: 'stripe_elements_payment',
+          paymentIntentId
         }
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Payment failed');
+        throw new Error(errorData.error || 'Transfer to contractor failed');
       }
 
-      const result = await response.json();
-
-      console.log('Payment Intent created successfully:', result);
-
-      // For live mode, we need to redirect to a payment form or use Stripe Elements
-      // For now, show success message as the payment intent was created successfully
       setPaymentSuccess(true);
       toast({
-        title: 'Payment Intent Created',
-        description: `Payment setup for ${amount} ${currency.toUpperCase()} to ${contractor.firstName} ${contractor.lastName}. Client secret: ${result.client_secret?.slice(-4)}`,
+        title: 'Payment Successful',
+        description: `Payment of ${amount} ${currency.toUpperCase()} sent to ${contractor!.firstName} ${contractor!.lastName}`,
       });
 
     } catch (err: any) {
-      console.error('Payment Intent creation failed:', err);
+      console.error('Transfer to contractor failed:', err);
       setError(err.message);
       toast({
-        title: 'Payment Failed',
+        title: 'Transfer Failed',
         description: err.message,
         variant: 'destructive'
       });
@@ -436,23 +432,39 @@ export default function PayContractor() {
               </div>
             )}
 
-            <Button 
-              onClick={handleDirectPayment}
-              disabled={isProcessing || !contractor}
-              className="w-full"
-            >
-              {isProcessing ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                  Processing Payment...
-                </>
-              ) : (
-                <>
-                  <DollarSign className="h-4 w-4 mr-2" />
-                  Send Payment {amount} {currency.toUpperCase()}
-                </>
-              )}
-            </Button>
+            {!showStripeForm ? (
+              <Button 
+                onClick={handleProceedToPayment}
+                disabled={isProcessing || !contractor}
+                className="w-full"
+              >
+                <CreditCard className="h-4 w-4 mr-2" />
+                Proceed to Payment
+              </Button>
+            ) : (
+              <div className="space-y-4">
+                <div className="border-t pt-4">
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <CreditCard className="h-4 w-4" />
+                    Enter Payment Details
+                  </h3>
+                  <StripeElements 
+                    amount={parseFloat(amount) * 100} // Convert to cents
+                    onPaymentComplete={handlePaymentComplete}
+                    isProcessing={isProcessing}
+                  />
+                </div>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowStripeForm(false)}
+                  className="w-full"
+                  disabled={isProcessing}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Payment Details
+                </Button>
+              </div>
+            )}
 
             {/* NOTE: Account verification now happens server-side via Stripe API */}
           </CardContent>
