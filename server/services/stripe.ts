@@ -82,22 +82,27 @@ export async function createPaymentIntent(params: CreatePaymentIntentParams): Pr
       confirmation_method: 'automatic'
     };
 
-    // Standard Connect account destination charge handling
+    // Express/Standard Connect account destination charge handling
     if (params.transferData && params.transferData.destination) {
-      // Validate destination account is a Standard Connect account
+      // Validate destination account supports destination charges
+      let accountType: string = 'unknown';
       try {
         const account = await stripe.accounts.retrieve(params.transferData.destination);
         if (!account.charges_enabled) {
           throw new Error('Destination account is not enabled for charges');
         }
-        if (account.type !== 'standard') {
-          console.warn(`Account ${account.id} is type '${account.type}', expected 'standard'`);
+        accountType = account.type || 'unknown';
+        console.log(`[V2 Destination Charge] Account ${account.id} is type '${accountType}' - charges enabled: ${account.charges_enabled}`);
+        
+        // Both Express and Standard accounts support destination charges
+        if (!['express', 'standard'].includes(accountType)) {
+          console.warn(`Account ${account.id} is type '${accountType}', may not support destination charges`);
         }
       } catch (accountError) {
         throw new Error('Invalid or disabled destination account');
       }
 
-      // DESTINATION CHARGE for Standard accounts
+      // DESTINATION CHARGE for Express/Standard accounts
       // Funds flow directly from customer to connected account
       // Platform never touches the money
       paymentIntentParams.on_behalf_of = params.transferData.destination;
@@ -110,7 +115,7 @@ export async function createPaymentIntent(params: CreatePaymentIntentParams): Pr
         ...paymentIntentParams.metadata,
         connect_payment: 'destination_charge',
         destination_account: params.transferData.destination,
-        account_type: 'standard',
+        account_type: accountType,
         flow_type: 'direct_to_connected_account'
       };
     }
