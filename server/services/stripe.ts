@@ -4,7 +4,7 @@ import { Payment, User } from '@shared/schema';
 
 // Initialize Stripe with the secret key from environment variables
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: '2024-06-20',
+  apiVersion: '2025-02-24.acacia',
   typescript: true
 });
 
@@ -455,9 +455,12 @@ export async function resolveContractorAccountId(contractorUserId: number): Prom
     // Step 1: Search ALL Connect accounts using auto-pagination
     console.log(`[SECURE RESOLVE] Searching through all Connect accounts...`);
     let checkedCount = 0;
+    let foundAccount: { accountId: string; isValid: boolean; error?: string } | null = null;
     
     // Step 2: Find account with our contractor's user ID in metadata (backward compatible)
-    for await (const account of stripe.accounts.list({ limit: 100 }).autoPagingEach()) {
+    await stripe.accounts.list({ limit: 100 }).autoPagingEach(async (account) => {
+      if (foundAccount) return false; // Stop iteration if we found the account
+      
       checkedCount++;
       const metadata = account.metadata || {};
       // Support both new userId format and legacy platform_user_id format
@@ -490,19 +493,25 @@ export async function resolveContractorAccountId(contractorUserId: number): Prom
             disabled_reason: account.requirements?.disabled_reason
           });
           
-          return {
+          foundAccount = {
             accountId: account.id,
             isValid: false,
             error: 'Contractor account not ready for payments - onboarding incomplete'
           };
+        } else {
+          console.log(`[SECURE RESOLVE] ✅ Account ${account.id} is VALID and ready for payments`);
+          foundAccount = {
+            accountId: account.id,
+            isValid: true
+          };
         }
         
-        console.log(`[SECURE RESOLVE] ✅ Account ${account.id} is VALID and ready for payments`);
-        return {
-          accountId: account.id,
-          isValid: true
-        };
+        return false; // Stop iteration after finding match
       }
+    });
+    
+    if (foundAccount) {
+      return foundAccount;
     }
     
     console.log(`[SECURE RESOLVE] ❌ No Stripe account found for contractor ${contractorUserId} after checking ${checkedCount} accounts`);
