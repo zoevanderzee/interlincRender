@@ -3809,68 +3809,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { month, year, type = 'both' } = req.query;
 
-      // Get user's contracts/projects
-      let userContracts = [];
+      // Get user's work requests and projects (current data structure)
+      let userWorkRequests = [];
+      let userProjects = [];
+      
       if (userRole === 'business') {
-        userContracts = await storage.getContractsByBusinessId(userId);
+        userWorkRequests = await storage.getWorkRequestsByBusinessId(userId);
+        userProjects = await storage.getBusinessProjects(userId);
       } else if (userRole === 'contractor') {
-        userContracts = await storage.getContractsByContractorId(userId);
+        userWorkRequests = await storage.getWorkRequestsByContractorId(userId);
+        // For contractors, get projects they're assigned to via work requests
+        const projectIds = [...new Set(userWorkRequests.map(wr => wr.projectId).filter(id => id))];
+        userProjects = [];
+        for (const projectId of projectIds) {
+          const project = await storage.getProject(projectId);
+          if (project) userProjects.push(project);
+        }
       }
 
-      // Filter out deleted contracts
-      const activeContracts = userContracts.filter(contract => contract.status !== 'deleted');
-
-      // Get milestones/deliverables for these contracts
       const calendarEvents = [];
 
-      for (const contract of activeContracts) {
-        // Get milestones for this contract
-        const milestones = await storage.getMilestonesByContractId(contract.id);
-
-        // Get contractor name
-        let contractorName = 'Unknown Contractor';
-        if (contract.contractorId) {
-          const contractor = await storage.getUser(contract.contractorId);
-          if (contractor) {
-            contractorName = contractor.firstName && contractor.lastName
-              ? `${contractor.firstName} ${contractor.lastName}`
-              : contractor.username;
-          }
-        }
-
-        // Add contract as a project event
-        if (type === 'both' || type === 'projects') {
+      // Create calendar events from projects
+      if (type === 'both' || type === 'projects') {
+        for (const project of userProjects) {
           calendarEvents.push({
-            id: `contract_${contract.id}`,
-            title: contract.contractName,
-            projectName: contract.contractName,
-            contractorName,
-            startDate: contract.startDate || contract.createdAt,
-            endDate: contract.deadline || contract.startDate || contract.createdAt,
+            id: `project_${project.id}`,
+            title: project.name,
+            projectName: project.name,
+            contractorName: 'Project',
+            startDate: project.createdAt,
+            endDate: project.deadline || project.createdAt,
             type: 'project',
-            status: contract.status === 'active' ? 'active' :
-                   contract.status === 'completed' ? 'completed' : 'pending',
-            color: contract.status === 'active' ? '#22C55E' :
-                   contract.status === 'completed' ? '#3B82F6' : '#F59E0B'
+            status: project.status || 'active',
+            color: project.status === 'completed' ? '#3B82F6' : '#22C55E'
           });
         }
+      }
 
-        // Add milestones as task events
-        if (type === 'both' || type === 'tasks') {
-          milestones.forEach(milestone => {
-            calendarEvents.push({
-              id: `milestone_${milestone.id}`,
-              title: milestone.name,
-              projectName: contract.contractName,
-              contractorName,
-              startDate: milestone.dueDate || milestone.createdAt,
-              endDate: milestone.dueDate || milestone.createdAt,
-              type: 'milestone',
-              status: milestone.status,
-              color: milestone.status === 'completed' ? '#22C55E' :
-                     milestone.status === 'approved' ? '#3B82F6' :
-                     milestone.status === 'overdue' ? '#EF4444' : '#F59E0B'
-            });
+      // Create calendar events from work requests (tasks/assignments)
+      if (type === 'both' || type === 'tasks') {
+        for (const workRequest of userWorkRequests) {
+          // Get contractor name
+          let contractorName = 'Unassigned';
+          if (workRequest.contractorUserId) {
+            const contractor = await storage.getUser(workRequest.contractorUserId);
+            if (contractor) {
+              contractorName = contractor.firstName && contractor.lastName
+                ? `${contractor.firstName} ${contractor.lastName}`
+                : contractor.username;
+            }
+          }
+          
+          // Get project name
+          let projectName = 'No Project';
+          if (workRequest.projectId) {
+            const project = await storage.getProject(workRequest.projectId);
+            if (project) {
+              projectName = project.name;
+            }
+          }
+
+          calendarEvents.push({
+            id: `work_request_${workRequest.id}`,
+            title: workRequest.title || workRequest.description || 'Work Request',
+            projectName,
+            contractorName,
+            startDate: workRequest.createdAt,
+            endDate: workRequest.dueDate || workRequest.createdAt,
+            type: 'deadline',
+            status: workRequest.status === 'accepted' ? 'active' :
+                   workRequest.status === 'completed' ? 'completed' :
+                   workRequest.status === 'pending' ? 'pending' : 'pending',
+            color: workRequest.status === 'accepted' ? '#22C55E' :
+                   workRequest.status === 'completed' ? '#3B82F6' :
+                   workRequest.status === 'pending' ? '#F59E0B' : '#EF4444'
           });
         }
       }
