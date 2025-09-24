@@ -707,10 +707,8 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       console.log(`[V2 Payment] FINAL CURRENCY: ${determinedCurrency}`);
       const currency = determinedCurrency;
 
-      // Validate required fields
-      if (!destination) {
-        return res.status(400).json({ error: "Destination account ID is required" });
-      }
+      // Validate required fields (contractor ID validation happens in createSecurePaymentV2)
+      // Note: destination is now resolved securely server-side via Stripe API
 
       if (!amount && amount !== 0) {
         return res.status(400).json({ error: "Amount is required" });
@@ -757,21 +755,12 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
         });
       }
 
-      // Validate destination account
-      try {
-        const destinationAccount = await stripe.accounts.retrieve(destination);
-        if (!destinationAccount.charges_enabled) {
-          throw new Error('Destination account is not enabled for charges');
-        }
-        console.log(`[V2 Payment] Destination account validated: ${destination}`);
-      } catch (accountError) {
-        console.error('[V2 Payment] Invalid destination account:', accountError);
-        return res.status(400).json({ error: 'Invalid or disabled destination account' });
-      }
+      // NOTE: Destination account validation now handled securely in createSecurePaymentV2()
+      // Server will query Stripe API to resolve and validate contractor account
 
       // Convert amount to cents
       const amountInCents = Math.round(parsedAmount * 100);
-      console.log(`[V2 Payment] Creating V2 destination charge: ${parsedAmount} ${currency.toUpperCase()} -> ${amountInCents} cents to ${destination}`);
+      console.log(`[SECURE PAYMENT V2] Creating secure payment: ${parsedAmount} ${currency.toUpperCase()} for contractor ${contractorUserId}`);
 
       // BULLETPROOF: Create Payment Intent using secure contractor resolution
       // 1. Stripe API resolves contractor account ID (NEVER trust database)
