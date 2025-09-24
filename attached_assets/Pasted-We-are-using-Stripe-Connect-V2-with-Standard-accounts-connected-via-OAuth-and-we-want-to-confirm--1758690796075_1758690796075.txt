@@ -1,0 +1,43 @@
+We are using Stripe Connect V2 with Standard accounts (connected via OAuth), and we want to confirm the correct and compliant way to send funds from business clients directly to contractors without platform-level fund handling.
+✅ Our Payment Flow Requirements
+A business (connected Stripe account) pays a contractor (also a connected Stripe account)
+The contractor receives funds directly
+Our platform does not touch or hold funds
+There are no transfers from platform balance
+There is no manual payout logic
+✅ Supported Stripe Setup (Connect V2 + Standard Accounts)
+Stripe Connect V2 does support this model using destination charges, even when both accounts are Standard accounts connected via OAuth.
+This is implemented by:
+Creating a Checkout Session or Payment Intent
+Setting transfer_data.destination to the contractor’s Stripe account ID
+Optionally setting on_behalf_of for correct attribution and compliance
+✅ Example: Destination Charge (No Application Fees)
+const session = await stripe.checkout.sessions.create({
+  mode: 'payment',
+  line_items: [...],
+  payment_intent_data: {
+    transfer_data: {
+      destination: '{{CONTRACTOR_STRIPE_ACCOUNT_ID}}'
+    }
+  },
+  on_behalf_of: '{{CONTRACTOR_STRIPE_ACCOUNT_ID}}',
+  success_url: 'https://yourdomain.com/success',
+  cancel_url: 'https://yourdomain.com/cancel',
+});
+This setup:
+Charges the business client
+Directs funds to the contractor’s account
+Attributes the payment to the contractor via on_behalf_of
+Does not use platform balance, so avoids “insufficient funds” errors
+Is fully supported under Stripe Connect V2
+🚫 Do Not:
+Use manual transfers from platform to contractor
+Build logic that relies on platform Stripe balance
+Expect the platform account to receive and route funds
+✅ Stripe References (No Fee Logic Used)
+Destination Charges – Stripe Docs
+On Behalf Of – Stripe Docs
+Connect with Standard Accounts
+✅ Final Notes
+This is a compliant and stable setup with Connect V2 and Standard accounts. No need for Embedded onboarding, Express/Custom accounts, or platform fund handling. Once implemented, payouts will go straight to the contractor’s Stripe account, managed entirely by Stripe.
+Let me know once this is wired in. It aligns with how Connect V2 is meant to work in a direct-payment model.
