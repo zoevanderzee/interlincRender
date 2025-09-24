@@ -217,15 +217,17 @@ export default function PayContractor() {
         description
       });
 
-      // Create destination charge using V2 Connect (Payment Intent approach)
+      // 🔒 BULLETPROOF: Create secure payment using contractor ID only (NEVER account ID from client)
+      // Server will query Stripe API to resolve the account ID for maximum security
       const response = await apiRequest('POST', '/api/connect/v2/create-transfer', {
-        destination: contractor.stripeConnectAccountId,
+        contractorUserId: contractor.id, // SECURITY: Only send contractor ID - server resolves account via Stripe API
         amount: parseFloat(amount),
         currency: currency, // Use dynamic currency
         description,
         metadata: {
           contractorId: contractor.id.toString(),
-          paymentType: 'destination_charge'
+          paymentType: 'verified_destination_charge',
+          security_level: 'bulletproof'
         }
       });
 
@@ -436,7 +438,7 @@ export default function PayContractor() {
 
             <Button 
               onClick={handleDirectPayment}
-              disabled={isProcessing || !contractor || !contractor.stripeConnectAccountId}
+              disabled={isProcessing || !contractor}
               className="w-full"
             >
               {isProcessing ? (
@@ -452,11 +454,7 @@ export default function PayContractor() {
               )}
             </Button>
 
-            {contractor && !contractor.stripeConnectAccountId && (
-              <div className="text-center text-sm text-muted-foreground">
-                This contractor hasn't set up their payment account yet.
-              </div>
-            )}
+            {/* NOTE: Account verification now happens server-side via Stripe API */}
           </CardContent>
         </Card>
       </div>
