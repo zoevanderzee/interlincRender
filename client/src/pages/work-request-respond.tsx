@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useLocation, useRoute, Link } from 'wouter';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import { invalidateAfter, optimisticUpdate } from '@/lib/invalidate';
+import { queryKeys as QK } from '@/lib/queryKeys';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -87,6 +89,12 @@ export default function WorkRequestRespond() {
       
       return response.json();
     },
+    onMutate: async () => {
+      // Optimistic update - mark as accepted immediately
+      return optimisticUpdate(QK.workRequests.detail(data?.id || 0), (old: any) => 
+        old ? { ...old, status: 'accepted' } : old
+      );
+    },
     onSuccess: () => {
       toast({
         title: 'Work request accepted',
@@ -94,9 +102,18 @@ export default function WorkRequestRespond() {
       });
       setResponseSubmitted(true);
       setResponseAction('accept');
-      queryClient.invalidateQueries({ queryKey: ['/api/work-requests'] });
+      
+      // Invalidate ALL related data across pages
+      invalidateAfter('workRequest.change', { 
+        id: data?.id, 
+        projectId: data?.projectId 
+      });
     },
-    onError: (error: Error) => {
+    onError: (error: Error, variables, rollback) => {
+      // Rollback optimistic update
+      if (rollback && data?.id) {
+        queryClient.setQueryData(QK.workRequests.detail(data.id), rollback);
+      }
       toast({
         title: 'Failed to accept work request',
         description: error.message,
@@ -124,6 +141,12 @@ export default function WorkRequestRespond() {
       
       return response.json();
     },
+    onMutate: async () => {
+      // Optimistic update - mark as declined immediately
+      return optimisticUpdate(QK.workRequests.detail(data?.id || 0), (old: any) => 
+        old ? { ...old, status: 'declined' } : old
+      );
+    },
     onSuccess: () => {
       toast({
         title: 'Work request declined',
@@ -132,9 +155,18 @@ export default function WorkRequestRespond() {
       setIsDeclineDialogOpen(false);
       setResponseSubmitted(true);
       setResponseAction('decline');
-      queryClient.invalidateQueries({ queryKey: ['/api/work-requests'] });
+      
+      // Invalidate ALL related data across pages
+      invalidateAfter('workRequest.change', { 
+        id: data?.id, 
+        projectId: data?.projectId 
+      });
     },
-    onError: (error: Error) => {
+    onError: (error: Error, variables, rollback) => {
+      // Rollback optimistic update
+      if (rollback && data?.id) {
+        queryClient.setQueryData(QK.workRequests.detail(data.id), rollback);
+      }
       toast({
         title: 'Failed to decline work request',
         description: error.message,

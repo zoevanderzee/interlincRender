@@ -63,6 +63,7 @@ import {registerSyncFirebaseUserRoutes} from "./routes/sync-firebase-user";
 import {registerBusinessWorkerRoutes} from "./business-workers/index";
 import {registerContractorsWithIdsRoutes} from "./business-workers/contractors-with-ids";
 import {registerProjectRoutes} from "./projects/index";
+import {registerTaskRoutes} from "./tasks/index";
 // import { generateWorkRequestToken } from "./services/email"; // Not needed for now
 // Schema tables imported from shared/schema instead
 import { registerContractorAssignmentRoutes } from "./contractor-assignment";
@@ -3765,6 +3766,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register project routes
   registerProjectRoutes(app);
+
+  // Register task routes
+  registerTaskRoutes(app);
 
   // Register contractor assignment routes
   registerContractorAssignmentRoutes(app, apiRouter, requireAuth);

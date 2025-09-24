@@ -21,6 +21,8 @@ import { Plus, Calendar, DollarSign, ArrowLeft, User } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { invalidateAfter, optimisticUpdate } from "@/lib/invalidate";
+import { queryKeys as QK } from "@/lib/queryKeys";
 
 const workRequestSchema = z.object({
   projectId: z.number(),
@@ -76,7 +78,7 @@ export default function AssignContractor() {
 
   // Fetch user's projects
   const { data: projects = [], isLoading: isLoadingProjects } = useQuery<any[]>({
-    queryKey: ['/api/projects'],
+    queryKey: QK.projects.all,
     enabled: !!user
   });
 
@@ -108,9 +110,10 @@ export default function AssignContractor() {
         title: "Work Request Created",
         description: `Successfully assigned contractor to project. Work request ID: ${result.workRequestId}`
       });
-      // Invalidate relevant queries
-      queryClient.invalidateQueries({ queryKey: ['/api/projects'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/work-requests'] });
+      // Invalidate ALL related data across pages using centralized system
+      invalidateAfter('workRequest.create', { 
+        projectId: result.projectId || parseInt(selectedProjectId) 
+      });
       navigate('/projects');
     },
     onError: (error: any) => {
