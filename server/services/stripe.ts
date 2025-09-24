@@ -20,6 +20,7 @@ export interface CreatePaymentIntentParams {
   applicationFeeAmount?: number;
   paymentMethodTypes?: string[];
   businessAccountId?: string; // Optional: Business account ID to create Payment Intent on behalf of
+  businessCustomerId?: string; // Optional: Business Stripe customer ID to associate payment
 }
 
 export interface PaymentIntentResponse {
@@ -82,6 +83,12 @@ export async function createPaymentIntent(params: CreatePaymentIntentParams): Pr
       capture_method: 'automatic',
       confirmation_method: 'automatic'
     };
+
+    // CRITICAL: Associate payment with business customer to prevent guest payments
+    if (params.businessCustomerId) {
+      paymentIntentParams.customer = params.businessCustomerId;
+      console.log(`[V2 Payment Intent] Associating with business customer: ${params.businessCustomerId}`);
+    }
 
     // Express/Standard Connect account destination charge handling
     if (params.transferData && params.transferData.destination) {
@@ -326,6 +333,7 @@ export async function createSecurePaymentV2(params: {
   description?: string;
   metadata?: Record<string, string>;
   businessAccountId?: string; // Business account for "on behalf of" creation
+  businessCustomerId?: string; // Business Stripe customer ID to prevent guest payments
 }): Promise<{ payment_intent_id: string; status: string; client_secret: string; destination_account: string }> {
   try {
     const { contractorUserId, amount, currency = 'gbp', description, metadata, businessAccountId } = params;
@@ -342,7 +350,7 @@ export async function createSecurePaymentV2(params: {
     const destination = accountResolution.accountId;
     console.log(`[SECURE PAYMENT V2] ✅ Resolved contractor ${contractorUserId} → Stripe account ${destination}`);
 
-    // STEP 2: CREATE PAYMENT INTENT WITH VERIFIED DESTINATION
+    // STEP 2: CREATE PAYMENT INTENT WITH VERIFIED DESTINATION AND BUSINESS CUSTOMER
     const paymentIntent = await createPaymentIntent({
       amount: amount,
       currency: currency,
@@ -359,7 +367,8 @@ export async function createSecurePaymentV2(params: {
       transferData: {
         destination: destination
       },
-      businessAccountId: businessAccountId // Create on behalf of business if provided
+      businessAccountId: businessAccountId, // Create on behalf of business if provided
+      businessCustomerId: params.businessCustomerId // Associate with business customer
     });
 
     console.log(`[SECURE PAYMENT V2] ✅ Payment Intent created: ${paymentIntent.id} for ${amount} ${currency} to verified account ${destination}`);

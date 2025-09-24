@@ -762,11 +762,17 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       const amountInCents = Math.round(parsedAmount * 100);
       console.log(`[SECURE PAYMENT V2] Creating secure payment: ${parsedAmount} ${currency.toUpperCase()} for contractor ${contractorUserId}`);
 
+      // Get business user to ensure we have their Stripe customer ID
+      const businessUser = await db.getUser(userId);
+      if (!businessUser) {
+        return res.status(404).json({ error: "Business user not found" });
+      }
+
       // BULLETPROOF: Create Payment Intent using secure contractor resolution
       // 1. Stripe API resolves contractor account ID (NEVER trust database)
-      // 2. Creates Payment Intent on behalf of business account
-      // 3. Payment appears in BUSINESS USER'S Stripe dashboard
-      console.log(`[SECURE PAYMENT] Creating secure Payment Intent on behalf of business account: ${businessConnect?.accountId}`);
+      // 2. Creates Payment Intent with business as customer (NOT guest)
+      // 3. Payment appears in BUSINESS USER'S Stripe customer record
+      console.log(`[SECURE PAYMENT] Creating secure Payment Intent for business customer: ${businessUser.stripeCustomerId}`);
       
       const paymentResult = await createSecurePaymentV2({
         contractorUserId: parseInt(contractorUserId), // Only accept contractor ID
@@ -782,9 +788,9 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
           flow_type: 'secure_destination_charge',
           no_manual_transfers: 'true',
           security_level: 'bulletproof'
-        }
-        // FIXED: Use platform account instead of business account to avoid Connect network restrictions
-        // This enables proper destination charges where platform orchestrates but money flows directly: Customer → Contractor
+        },
+        // CRITICAL: Pass business customer ID to associate payment with business, not create guest
+        businessCustomerId: businessUser.stripeCustomerId
       });
       
       console.log(`[SECURE PAYMENT] ✅ Payment Intent created securely: ${paymentResult.payment_intent_id} → verified account ${paymentResult.destination_account}`);
