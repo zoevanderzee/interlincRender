@@ -2,7 +2,7 @@
 import express from "express";
 import Stripe from "stripe";
 import { storage } from "./storage.js";
-import { createPaymentIntent } from "./services/stripe.js";
+import { createPaymentIntent, createSecurePaymentV2 } from "./services/stripe.js";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" });
 
@@ -618,12 +618,34 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
 
   /**
    * POST /api/connect/v2/create-transfer
-   * V2 Connect: Direct payment using destination charges (NOT transfers)
+   * BULLETPROOF V2 Connect: Secure payment using contractor ID only (NEVER account ID from client)
+   * Stripe API is the ONLY source of truth for account resolution
    */
   app.post(`${connectBasePath}/create-transfer`, authMiddleware, async (req, res) => {
     try {
       const userId = getUserId(req);
-      const { destination, amount, description, metadata = {} } = req.body;
+      const { contractorUserId, amount, description, metadata = {} } = req.body;
+      
+      // SECURITY: Reject any client-provided account ID
+      if (req.body.destination || req.body.accountId || req.body.stripeAccountId) {
+        console.error('[SECURITY VIOLATION] Client attempted to provide account ID:', {
+          destination: req.body.destination,
+          accountId: req.body.accountId,
+          stripeAccountId: req.body.stripeAccountId,
+          userId,
+          ip: req.ip
+        });
+        return res.status(400).json({ 
+          error: 'Security violation: Account IDs cannot be provided by client. Only contractor ID accepted.' 
+        });
+      }
+      
+      // Validate required fields
+      if (!contractorUserId) {
+        return res.status(400).json({ error: "Contractor user ID is required" });
+      }
+      
+      console.log(`[SECURE PAYMENT] Business ${userId} creating payment to contractor ${contractorUserId}`);
 
       // Get business's Connect account for currency determination
       const businessConnect = await db.getConnect(userId);
@@ -751,48 +773,43 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       const amountInCents = Math.round(parsedAmount * 100);
       console.log(`[V2 Payment] Creating V2 destination charge: ${parsedAmount} ${currency.toUpperCase()} -> ${amountInCents} cents to ${destination}`);
 
-      // Create Payment Intent on behalf of business account using V2 service
-      // This makes the Payment Intent appear in the BUSINESS USER'S Stripe dashboard
-      // instead of the platform's dashboard
-      console.log(`[V2 Payment] Creating Payment Intent on behalf of business account: ${businessConnect?.accountId}`);
+      // BULLETPROOF: Create Payment Intent using secure contractor resolution
+      // 1. Stripe API resolves contractor account ID (NEVER trust database)
+      // 2. Creates Payment Intent on behalf of business account
+      // 3. Payment appears in BUSINESS USER'S Stripe dashboard
+      console.log(`[SECURE PAYMENT] Creating secure Payment Intent on behalf of business account: ${businessConnect?.accountId}`);
       
-      const paymentIntentResult = await createPaymentIntent({
+      const paymentResult = await createSecurePaymentV2({
+        contractorUserId: parseInt(contractorUserId), // Only accept contractor ID
         amount: parsedAmount, // Use original amount, not cents (service handles conversion)
         currency,
-        description: description || 'Direct payment via Connect V2 - Destination Charge Only',
+        description: description || 'Secure payment via Connect V2 - Verified Destination',
         metadata: {
           ...metadata,
           businessId: userId.toString(),
-          version: 'v2',
-          payment_type: 'destination_charge_only',
-          api_version: 'v2_business_account',
-          flow_type: 'direct_destination_charge',
-          no_manual_transfers: 'true'
+          version: 'v2_secure',
+          payment_type: 'verified_destination_charge',
+          api_version: 'v2_bulletproof',
+          flow_type: 'secure_destination_charge',
+          no_manual_transfers: 'true',
+          security_level: 'bulletproof'
         },
-        transferData: {
-          destination: destination
-        },
-        paymentMethodTypes: ['card'],
         businessAccountId: businessConnect?.accountId // KEY: This makes it appear in business dashboard
       });
       
-      const paymentIntent = {
-        id: paymentIntentResult.id,
-        client_secret: paymentIntentResult.clientSecret,
-        status: paymentIntentResult.status
-      };
-
-      console.log(`[V2 Payment] Payment Intent created: ${paymentIntent.id} with status: ${paymentIntent.status}`);
+      console.log(`[SECURE PAYMENT] ✅ Payment Intent created securely: ${paymentResult.payment_intent_id} → verified account ${paymentResult.destination_account}`);
 
       res.json({
         success: true,
-        payment_intent_id: paymentIntent.id,
-        client_secret: paymentIntent.client_secret,
+        payment_intent_id: paymentResult.payment_intent_id,
+        client_secret: paymentResult.client_secret,
         amount: parsedAmount,
         currency: currency,
-        status: paymentIntent.status,
-        destination: destination,
-        transfer_data: paymentIntent.transfer_data
+        status: paymentResult.status,
+        destination_account: paymentResult.destination_account, // Verified account from Stripe API
+        contractor_user_id: contractorUserId,
+        security_level: 'bulletproof',
+        verification_method: 'stripe_api_source_of_truth'
       });
 
     } catch (e) {

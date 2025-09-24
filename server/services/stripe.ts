@@ -267,8 +267,8 @@ export async function getConnectAccountStatusV2(accountId: string): Promise<Conn
       verification_status = 'rejected';
     } else if (account.charges_enabled && account.details_submitted && account.payouts_enabled) {
       // Check if critical capabilities are active
-      const cardPaymentsActive = capabilities?.card_payments?.status === 'active';
-      const transfersActive = capabilities?.transfers?.status === 'active';
+      const cardPaymentsActive = capabilities?.card_payments === 'active';
+      const transfersActive = capabilities?.transfers === 'active';
       
       verification_status = (cardPaymentsActive && transfersActive) ? 'verified' : 'pending';
     }
@@ -315,8 +315,78 @@ export async function validateConnectAccountForPayment(accountId: string): Promi
 }
 
 /**
- * V2 Enhanced Direct Payment Creation using Payment Intents with destination charges
+ * BULLETPROOF V2 Direct Payment Creation - Contractor ID Only (Never Account ID from Client)
+ * Uses Stripe API as source of truth to resolve contractor account ID
  * NO MANUAL TRANSFERS - funds go directly to connected account at charge time
+ */
+export async function createSecurePaymentV2(params: {
+  contractorUserId: number;  // ONLY accept contractor ID - never account ID from client
+  amount: number;
+  currency?: string;
+  description?: string;
+  metadata?: Record<string, string>;
+  businessAccountId?: string; // Business account for "on behalf of" creation
+}): Promise<{ payment_intent_id: string; status: string; client_secret: string; destination_account: string }> {
+  try {
+    const { contractorUserId, amount, currency = 'gbp', description, metadata, businessAccountId } = params;
+
+    console.log(`[SECURE PAYMENT V2] Creating payment for contractor ${contractorUserId}, amount: ${amount} ${currency}`);
+
+    // STEP 1: RESOLVE CONTRACTOR ACCOUNT ID USING STRIPE API (NEVER TRUST DATABASE)
+    const accountResolution = await resolveContractorAccountId(contractorUserId);
+    
+    if (!accountResolution.isValid) {
+      throw new Error(accountResolution.error || 'Contractor account not valid for payments');
+    }
+    
+    const destination = accountResolution.accountId;
+    console.log(`[SECURE PAYMENT V2] ✅ Resolved contractor ${contractorUserId} → Stripe account ${destination}`);
+
+    // STEP 2: CREATE PAYMENT INTENT WITH VERIFIED DESTINATION
+    const paymentIntent = await createPaymentIntent({
+      amount: amount,
+      currency: currency,
+      description: description || 'Secure payment via V2 Connect',
+      metadata: {
+        ...metadata,
+        contractor_user_id: contractorUserId.toString(),
+        destination_account: destination,
+        version: 'v2_secure',
+        payment_type: 'verified_destination_charge',
+        created_at: new Date().toISOString(),
+        security_level: 'bulletproof'
+      },
+      transferData: {
+        destination: destination
+      },
+      businessAccountId: businessAccountId // Create on behalf of business if provided
+    });
+
+    console.log(`[SECURE PAYMENT V2] ✅ Payment Intent created: ${paymentIntent.id} for ${amount} ${currency} to verified account ${destination}`);
+
+    return {
+      payment_intent_id: paymentIntent.id,
+      status: paymentIntent.status || 'requires_payment_method',
+      client_secret: paymentIntent.clientSecret,
+      destination_account: destination
+    };
+  } catch (error: any) {
+    console.error('[SECURE PAYMENT V2] Error creating secure payment:', error);
+    
+    if (error.type === 'StripeInvalidRequestError') {
+      if (error.code === 'account_invalid') {
+        throw new Error('Invalid destination account - contractor setup may be incomplete');
+      }
+      throw new Error(`Payment failed: ${error.message}`);
+    }
+    
+    throw new Error(error.message || 'Payment creation failed. Please try again.');
+  }
+}
+
+/**
+ * LEGACY: V2 Enhanced Direct Payment Creation using Payment Intents with destination charges
+ * @deprecated Use createSecurePaymentV2 instead for bulletproof security
  */
 export async function createDirectPaymentV2(params: {
   destination: string;
@@ -325,6 +395,8 @@ export async function createDirectPaymentV2(params: {
   description?: string;
   metadata?: Record<string, string>;
 }): Promise<{ payment_intent_id: string; status: string; client_secret: string }> {
+  console.warn('[DEPRECATED] createDirectPaymentV2 is deprecated - use createSecurePaymentV2 instead');
+  
   try {
     const { destination, amount, currency = 'gbp', description, metadata } = params;
 
@@ -364,6 +436,88 @@ export async function createDirectPaymentV2(params: {
     }
     
     throw new Error('Payment creation failed. Please try again.');
+  }
+}
+
+/**
+ * BULLETPROOF: Resolve contractor's Stripe account ID using Stripe API as source of truth
+ * NEVER trust database account IDs - they can be stale/wrong
+ * This function queries Stripe directly and verifies contractor binding
+ */
+export async function resolveContractorAccountId(contractorUserId: number): Promise<{
+  accountId: string;
+  isValid: boolean;
+  error?: string;
+}> {
+  try {
+    console.log(`[SECURE RESOLVE] Finding Stripe account for contractor ${contractorUserId}`);
+    
+    // Step 1: List all Connect accounts on our platform
+    const accounts = await stripe.accounts.list({
+      limit: 100 // Adjust if you have more than 100 contractors
+    });
+    
+    console.log(`[SECURE RESOLVE] Found ${accounts.data.length} Connect accounts to check`);
+    
+    // Step 2: Find account with our contractor's user ID in metadata
+    for (const account of accounts.data) {
+      const metadata = account.metadata || {};
+      const platformUserId = metadata.platform_user_id;
+      
+      console.log(`[SECURE RESOLVE] Checking account ${account.id}, metadata:`, {
+        platform_user_id: platformUserId,
+        platform_env: metadata.platform_env,
+        charges_enabled: account.charges_enabled,
+        details_submitted: account.details_submitted
+      });
+      
+      // Verify this account belongs to our contractor
+      if (platformUserId === contractorUserId.toString()) {
+        console.log(`[SECURE RESOLVE] ✅ FOUND MATCH! Account ${account.id} belongs to contractor ${contractorUserId}`);
+        
+        // Step 3: Verify account is ready for payments
+        const isValid = account.charges_enabled && 
+                       account.details_submitted && 
+                       account.payouts_enabled &&
+                       (!account.requirements?.disabled_reason);
+        
+        if (!isValid) {
+          console.log(`[SECURE RESOLVE] ❌ Account ${account.id} not ready for payments:`, {
+            charges_enabled: account.charges_enabled,
+            details_submitted: account.details_submitted,
+            payouts_enabled: account.payouts_enabled,
+            disabled_reason: account.requirements?.disabled_reason
+          });
+          
+          return {
+            accountId: account.id,
+            isValid: false,
+            error: 'Contractor account not ready for payments - onboarding incomplete'
+          };
+        }
+        
+        console.log(`[SECURE RESOLVE] ✅ Account ${account.id} is VALID and ready for payments`);
+        return {
+          accountId: account.id,
+          isValid: true
+        };
+      }
+    }
+    
+    console.log(`[SECURE RESOLVE] ❌ No Stripe account found for contractor ${contractorUserId}`);
+    return {
+      accountId: '',
+      isValid: false,
+      error: 'Contractor has not completed Stripe Connect setup'
+    };
+    
+  } catch (error: any) {
+    console.error(`[SECURE RESOLVE] Error resolving account for contractor ${contractorUserId}:`, error);
+    return {
+      accountId: '',
+      isValid: false,
+      error: 'Failed to verify contractor account - please try again'
+    };
   }
 }
 
