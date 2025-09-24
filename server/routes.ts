@@ -2570,11 +2570,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Add the virtual payments to the upcoming payments
       const allUpcomingPayments = [...upcomingPayments, ...pendingContractPayments];
 
-      // Calculate total payments processed
-      const allPayments = await storage.getAllPayments(null);
-      const completedPayments = allPayments.filter(payment => payment.status === 'completed');
-      const totalPaymentsValue = completedPayments.reduce((sum, payment) => {
-        return sum + (parseFloat(payment.amount) || 0);
+      // Calculate total payments processed - USE ACCEPTED WORK REQUESTS (real payments)
+      const acceptedWorkRequests = userWorkRequests.filter(wr => wr.status === 'accepted');
+      const totalPaymentsValue = acceptedWorkRequests.reduce((sum, wr) => {
+        return sum + (parseFloat(wr.amount) || 0);
       }, 0);
 
       // Calculate total pending payments (from contracts)
