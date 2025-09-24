@@ -748,10 +748,10 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
         // Optional: Add application fee (platform fee)
         // application_fee_amount: Math.round(amountInCents * 0.03), // 3% platform fee
         
-        // Auto-confirm the payment
-        confirm: true,
-        payment_method: 'pm_card_visa', // Use test payment method for now
-        return_url: 'https://interlinc.co/payment-complete'
+        // Return client secret for frontend payment confirmation
+        automatic_payment_methods: {
+          enabled: true
+        }
       });
 
       console.log(`[V2 Payment] Payment Intent created: ${paymentIntent.id} with status: ${paymentIntent.status}`);
@@ -759,6 +759,7 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       res.json({
         success: true,
         payment_intent_id: paymentIntent.id,
+        client_secret: paymentIntent.client_secret,
         amount: parsedAmount,
         currency: currency,
         status: paymentIntent.status,
