@@ -44,6 +44,16 @@ const db = {
 export default function connectV2Routes(app, apiPath, authMiddleware) {
   const connectBasePath = `${apiPath}/connect/v2`;
 
+  // Block any V1 transfer attempts and redirect to V2
+  app.all(`${apiPath}/v1/transfers*`, (req, res) => {
+    console.error(`❌ BLOCKED V1 TRANSFER ATTEMPT: ${req.method} ${req.path}`);
+    res.status(410).json({ 
+      error: 'V1 transfers are disabled. Use V2 destination charges instead.',
+      v2_endpoint: `${connectBasePath}/create-transfer`,
+      migration_info: 'V2 uses Payment Intents with destination charges, not direct transfers'
+    });
+  });
+
   /**
    * GET /api/connect/v2/status
    * Enhanced status with real-time capability checking
@@ -728,25 +738,26 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
 
       // Convert amount to cents
       const amountInCents = Math.round(parsedAmount * 100);
-      console.log(`[V2 Payment] Creating destination charge: ${parsedAmount} ${currency.toUpperCase()} -> ${amountInCents} cents to ${destination}`);
+      console.log(`[V2 Payment] Creating V2 destination charge: ${parsedAmount} ${currency.toUpperCase()} -> ${amountInCents} cents to ${destination}`);
 
-      // Create Payment Intent with destination charge (V2 Connect approach)
+      // Create Payment Intent with destination charge (V2 Connect approach - NO V1 transfers)
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amountInCents,
         currency,
-        description: description || 'Direct payment via Connect V2',
+        description: description || 'Direct payment via Connect V2 - Destination Charge',
         metadata: {
           ...metadata,
           businessId: userId.toString(),
           version: 'v2',
-          payment_type: 'destination_charge'
+          payment_type: 'destination_charge',
+          api_version: 'v2_only',
+          transfer_method: 'destination_charge_not_transfer'
         },
         // KEY: This sends funds directly to contractor without touching platform balance
         transfer_data: {
           destination: destination
         },
-        // Optional: Add application fee (platform fee)
-        // application_fee_amount: Math.round(amountInCents * 0.03), // 3% platform fee
+        // V2 uses destination charges - no application fees needed
         
         // Return client secret for frontend payment confirmation
         automatic_payment_methods: {

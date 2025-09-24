@@ -288,7 +288,8 @@ export async function validateConnectAccountForPayment(accountId: string): Promi
 }
 
 /**
- * V2 Enhanced Direct Transfer Creation with validation
+ * V2 Enhanced Direct Payment Creation using Payment Intents (NOT transfers)
+ * This replaces the old transfer-based approach with destination charges
  */
 export async function createDirectTransferV2(params: {
   destination: string;
@@ -298,46 +299,43 @@ export async function createDirectTransferV2(params: {
   metadata?: Record<string, string>;
 }): Promise<{ transfer_id: string; status: string }> {
   try {
-    const { destination, amount, currency = 'usd', description, metadata } = params;
+    const { destination, amount, currency = 'gbp', description, metadata } = params;
 
-    // Validate destination account
-    const account = await stripe.accounts.retrieve(destination);
-    if (!account.payouts_enabled) {
-      throw new Error('Destination account is not enabled for payouts');
-    }
+    console.log(`[V2 Direct Payment] Creating Payment Intent instead of transfer for ${amount} ${currency} to ${destination}`);
 
-    // Create the transfer
-    const transfer = await stripe.transfers.create({
-      amount: Math.round(amount * 100), // Convert to cents
-      currency,
-      destination,
-      description: description || 'Direct transfer',
+    // Use createPaymentIntent with destination charge (V2 approach)
+    const paymentIntent = await createPaymentIntent({
+      amount: amount,
+      currency: currency,
+      description: description || 'Direct payment via V2 Connect',
       metadata: {
         ...metadata,
         version: 'v2',
+        payment_type: 'direct_destination_charge',
         created_at: new Date().toISOString()
+      },
+      transferData: {
+        destination: destination
       }
     });
 
-    console.log(`V2 Direct transfer created: ${transfer.id} for $${amount} to ${destination}`);
+    console.log(`V2 Payment Intent created: ${paymentIntent.id} for ${amount} ${currency} to ${destination}`);
 
     return {
-      transfer_id: transfer.id,
-      status: transfer.object === 'transfer' ? 'created' : 'pending'
+      transfer_id: paymentIntent.id, // Return payment intent ID as transfer_id for compatibility
+      status: paymentIntent.status || 'requires_payment_method'
     };
   } catch (error: any) {
-    console.error('Error creating V2 direct transfer:', error);
+    console.error('Error creating V2 direct payment:', error);
     
     if (error.type === 'StripeInvalidRequestError') {
-      if (error.code === 'insufficient_funds') {
-        throw new Error('Insufficient funds for transfer');
-      } else if (error.code === 'account_invalid') {
+      if (error.code === 'account_invalid') {
         throw new Error('Invalid destination account');
       }
-      throw new Error(`Transfer failed: ${error.message}`);
+      throw new Error(`Payment failed: ${error.message}`);
     }
     
-    throw new Error('Transfer creation failed. Please try again.');
+    throw new Error('Payment creation failed. Please try again.');
   }
 }
 

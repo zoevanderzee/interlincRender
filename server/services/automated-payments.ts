@@ -1,5 +1,5 @@
 import { storage } from '../storage';
-import { createDirectTransferV2 } from './stripe';
+import { createPaymentIntent } from './stripe';
 import { notificationService } from './notifications';
 
 interface PaymentProcessingResult {
@@ -133,7 +133,7 @@ class AutomatedPaymentService {
         };
       }
 
-      if (!transferResult || !transferResult.success) {
+      if (!transferResult || !transferResult.transfer_id) {
         console.log(`[PAYMENT_FAILED] Stripe payment creation failed`);
         return {
           success: false,
@@ -166,6 +166,7 @@ class AutomatedPaymentService {
         console.log(`✅ BUDGET UPDATED: Deducted $${totalAmount} from business user ${contract.businessId} budget`);
 
         // Create compliance log
+        const applicationFee = 0; // V2 destination charges don't require platform fees
         const logId = await this.createComplianceLog(
           payment.id,
           milestone,
