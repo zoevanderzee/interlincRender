@@ -19,6 +19,7 @@ export interface CreatePaymentIntentParams {
   };
   applicationFeeAmount?: number;
   paymentMethodTypes?: string[];
+  businessAccountId?: string; // Optional: Business account ID to create Payment Intent on behalf of
 }
 
 export interface PaymentIntentResponse {
@@ -120,7 +121,21 @@ export async function createPaymentIntent(params: CreatePaymentIntentParams): Pr
       };
     }
 
-    const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
+    // Create Payment Intent - either on behalf of business account or using platform account
+    let paymentIntent: Stripe.PaymentIntent;
+    
+    if (params.businessAccountId) {
+      // Create Payment Intent on behalf of the business account
+      // This makes the Payment Intent appear in the business account's dashboard
+      console.log(`[V2 Payment Intent] Creating on behalf of business account: ${params.businessAccountId}`);
+      paymentIntent = await stripe.paymentIntents.create(paymentIntentParams, {
+        stripeAccount: params.businessAccountId
+      });
+    } else {
+      // Create Payment Intent using platform account (original behavior)
+      console.log(`[V2 Payment Intent] Creating using platform account`);
+      paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
+    }
 
     return {
       clientSecret: paymentIntent.client_secret as string,

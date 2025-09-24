@@ -2,6 +2,7 @@
 import express from "express";
 import Stripe from "stripe";
 import { storage } from "./storage.js";
+import { createPaymentIntent } from "./services/stripe.js";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" });
 
@@ -750,11 +751,13 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       const amountInCents = Math.round(parsedAmount * 100);
       console.log(`[V2 Payment] Creating V2 destination charge: ${parsedAmount} ${currency.toUpperCase()} -> ${amountInCents} cents to ${destination}`);
 
-      // Create Payment Intent with destination charge for Standard Connect accounts
-      // Funds go directly to connected account without touching platform balance
-      // NO MANUAL TRANSFERS - NO PLATFORM BALANCE - DIRECT DESTINATION CHARGE
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: amountInCents,
+      // Create Payment Intent on behalf of business account using V2 service
+      // This makes the Payment Intent appear in the BUSINESS USER'S Stripe dashboard
+      // instead of the platform's dashboard
+      console.log(`[V2 Payment] Creating Payment Intent on behalf of business account: ${businessConnect?.accountId}`);
+      
+      const paymentIntentResult = await createPaymentIntent({
+        amount: parsedAmount, // Use original amount, not cents (service handles conversion)
         currency,
         description: description || 'Direct payment via Connect V2 - Destination Charge Only',
         metadata: {
@@ -762,21 +765,22 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
           businessId: userId.toString(),
           version: 'v2',
           payment_type: 'destination_charge_only',
-          api_version: 'v2_standard_accounts',
+          api_version: 'v2_business_account',
           flow_type: 'direct_destination_charge',
           no_manual_transfers: 'true'
         },
-        // DESTINATION CHARGE ONLY: Funds bypass platform entirely
-        // Customer pays → Connected account receives funds directly
-        // No /v1/transfers, no platform balance, no manual transfers
-        transfer_data: {
+        transferData: {
           destination: destination
         },
-        // Configure payment methods for direct processing
-        automatic_payment_methods: {
-          enabled: true
-        }
+        paymentMethodTypes: ['card'],
+        businessAccountId: businessConnect?.accountId // KEY: This makes it appear in business dashboard
       });
+      
+      const paymentIntent = {
+        id: paymentIntentResult.id,
+        client_secret: paymentIntentResult.clientSecret,
+        status: paymentIntentResult.status
+      };
 
       console.log(`[V2 Payment] Payment Intent created: ${paymentIntent.id} with status: ${paymentIntent.status}`);
 
