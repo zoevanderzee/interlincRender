@@ -782,8 +782,9 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
           flow_type: 'secure_destination_charge',
           no_manual_transfers: 'true',
           security_level: 'bulletproof'
-        },
-        businessAccountId: businessConnect?.accountId // KEY: This makes it appear in business dashboard
+        }
+        // FIXED: Use platform account instead of business account to avoid Connect network restrictions
+        // This enables proper destination charges where platform orchestrates but money flows directly: Customer → Contractor
       });
       
       console.log(`[SECURE PAYMENT] ✅ Payment Intent created securely: ${paymentResult.payment_intent_id} → verified account ${paymentResult.destination_account}`);
