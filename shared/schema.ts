@@ -176,6 +176,25 @@ export const documents = pgTable("documents", {
   description: text("description"),
 });
 
+// BULLETPROOF Connect Accounts table - SINGLE SOURCE OF TRUTH
+// This table replaces users.stripeConnectAccountId for production safety
+export const connectAccounts = pgTable("connect_accounts", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id).unique(), // ONE account per user
+  accountId: text("account_id").notNull().unique(), // ONE user per account
+  mode: text("mode").notNull(), // 'live' or 'test' - CRITICAL for environment safety
+  accountType: text("account_type").notNull().default("express"), // express, standard, custom
+  chargesEnabled: boolean("charges_enabled").notNull().default(false),
+  detailsSubmitted: boolean("details_submitted").notNull().default(false),
+  payoutsEnabled: boolean("payouts_enabled").notNull().default(false),
+  verificationStatus: text("verification_status").notNull().default("pending"), // pending, verified, rejected
+  platformSignature: text("platform_signature").notNull(), // HMAC of userId+accountId+mode for binding verification
+  stripeMetadataVerified: boolean("stripe_metadata_verified").notNull().default(false), // Whether Stripe metadata binding is verified
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  lastVerifiedAt: timestamp("last_verified_at"), // Last time we verified binding
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 // Bank Accounts table for ACH Payments
 export const bankAccounts = pgTable("bank_accounts", {
   id: serial("id").primaryKey(),
@@ -392,6 +411,20 @@ export const insertDocumentSchema = z.object({
   description: z.string().optional(),
 });
 
+// BULLETPROOF Connect Account schema - for secure account creation only
+export const insertConnectAccountSchema = z.object({
+  userId: z.number(),
+  accountId: z.string().min(1),
+  mode: z.enum(["live", "test"]),
+  accountType: z.string().default("express"),
+  chargesEnabled: z.boolean().default(false),
+  detailsSubmitted: z.boolean().default(false),
+  payoutsEnabled: z.boolean().default(false),
+  verificationStatus: z.enum(["pending", "verified", "rejected"]).default("pending"),
+  platformSignature: z.string().min(1),
+  stripeMetadataVerified: z.boolean().default(false),
+});
+
 export const insertBankAccountSchema = z.object({
   userId: z.number(),
   accountId: z.string(),
@@ -480,6 +513,9 @@ export type Document = typeof documents.$inferSelect;
 export type InsertBankAccount = z.infer<typeof insertBankAccountSchema>;
 export type BankAccount = typeof bankAccounts.$inferSelect;
 
+export type InsertConnectAccount = z.infer<typeof insertConnectAccountSchema>;
+export type ConnectAccount = typeof connectAccounts.$inferSelect;
+
 export type InsertWorkRequest = z.infer<typeof insertWorkRequestSchema>;
 export type WorkRequest = typeof workRequests.$inferSelect;
 
@@ -520,11 +556,12 @@ export const connectionRequests = pgTable("connection_requests", {
 });
 
 // Create connection request schema
-export const insertConnectionRequestSchema = createInsertSchema(connectionRequests).omit({ 
-  id: true, 
-  createdAt: true,
-  updatedAt: true,
-  contractorId: true // Will be added conditionally
+export const insertConnectionRequestSchema = z.object({
+  businessId: z.number(),
+  contractorId: z.number().optional(),
+  profileCode: z.string().optional(),
+  status: z.string().default("pending"),
+  message: z.string().optional(),
 });
 
 // Types for connection requests
