@@ -597,12 +597,15 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
 
   /**
    * POST /api/connect/v2/create-transfer
-   * Direct transfer creation for payouts
+   * V2 Connect: Direct payment using destination charges (NOT transfers)
    */
   app.post(`${connectBasePath}/create-transfer`, authMiddleware, async (req, res) => {
     try {
       const userId = getUserId(req);
-      const existing = await db.getConnect(userId);
+      const { destination, amount, description, metadata = {} } = req.body;
+
+      // Get business's Connect account for currency determination
+      const businessConnect = await db.getConnect(userId);
       
       // BULLETPROOF CURRENCY DETERMINATION
       let determinedCurrency = 'gbp'; // Default fallback
@@ -610,22 +613,21 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       // Priority 1: Request body currency (if provided and valid)
       if (req.body.currency && req.body.currency.trim() !== '') {
         determinedCurrency = req.body.currency.toLowerCase();
-        console.log(`[Transfer Currency] Using provided currency: ${determinedCurrency}`);
+        console.log(`[V2 Payment] Using provided currency: ${determinedCurrency}`);
       }
-      // Priority 2: Account's stored default currency
-      else if (existing?.defaultCurrency) {
-        determinedCurrency = existing.defaultCurrency;
-        console.log(`[Transfer Currency] Using stored default currency: ${determinedCurrency}`);
+      // Priority 2: Business account's stored default currency
+      else if (businessConnect?.defaultCurrency) {
+        determinedCurrency = businessConnect.defaultCurrency;
+        console.log(`[V2 Payment] Using business default currency: ${determinedCurrency}`);
       }
-      // Priority 3: Get fresh account data from Stripe
-      else if (existing?.accountId) {
+      // Priority 3: Get fresh business account data from Stripe
+      else if (businessConnect?.accountId) {
         try {
-          const account = await stripe.accounts.retrieve(existing.accountId);
+          const account = await stripe.accounts.retrieve(businessConnect.accountId);
           if (account.default_currency) {
             determinedCurrency = account.default_currency;
-            console.log(`[Transfer Currency] Using Stripe account currency: ${determinedCurrency}`);
+            console.log(`[V2 Payment] Using business Stripe currency: ${determinedCurrency}`);
           } else if (account.country) {
-            // Use the same mapping as in status endpoint
             const countryToCurrency = {
               'US': 'usd', 'USA': 'usd',
               'GB': 'gbp', 'UK': 'gbp', 'United Kingdom': 'gbp',
@@ -652,27 +654,27 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
               'MX': 'mxn', 'Mexico': 'mxn'
             };
             determinedCurrency = countryToCurrency[account.country] || 'gbp';
-            console.log(`[Transfer Currency] Derived from Stripe country ${account.country}: ${determinedCurrency}`);
+            console.log(`[V2 Payment] Derived from business country ${account.country}: ${determinedCurrency}`);
           }
         } catch (stripeError) {
-          console.error('[Transfer Currency] Error getting Stripe account:', stripeError);
+          console.error('[V2 Payment] Error getting business account:', stripeError);
         }
       }
       
-      console.log(`[Transfer Currency] FINAL CURRENCY: ${determinedCurrency}`);
-      
-      const { amount, description, metadata = {} } = req.body;
+      console.log(`[V2 Payment] FINAL CURRENCY: ${determinedCurrency}`);
       const currency = determinedCurrency;
 
-      // Validate amount with detailed error messages
-      console.log(`[Connect V2] Received transfer request:`, { amount, type: typeof amount, body: req.body });
-      
+      // Validate required fields
+      if (!destination) {
+        return res.status(400).json({ error: "Destination account ID is required" });
+      }
+
       if (!amount && amount !== 0) {
         return res.status(400).json({ error: "Amount is required" });
       }
       
       const parsedAmount = parseFloat(amount);
-      console.log(`[Connect V2] Parsed amount:`, { original: amount, parsed: parsedAmount, isNaN: isNaN(parsedAmount) });
+      console.log(`[V2 Payment] Parsed amount:`, { original: amount, parsed: parsedAmount, isNaN: isNaN(parsedAmount) });
       
       if (isNaN(parsedAmount)) {
         return res.status(400).json({ error: "Amount must be a valid number" });
@@ -708,42 +710,75 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
         };
         const symbol = currencySymbols[currency] || '';
         return res.status(400).json({ 
-          error: `Minimum transfer amount is ${symbol}${minAmount} ${currency.toUpperCase()}` 
+          error: `Minimum payment amount is ${symbol}${minAmount} ${currency.toUpperCase()}` 
         });
       }
 
-      if (!existing?.accountId) {
-        return res.status(404).json({ error: "No Connect account found" });
+      // Validate destination account
+      try {
+        const destinationAccount = await stripe.accounts.retrieve(destination);
+        if (!destinationAccount.charges_enabled) {
+          throw new Error('Destination account is not enabled for charges');
+        }
+        console.log(`[V2 Payment] Destination account validated: ${destination}`);
+      } catch (accountError) {
+        console.error('[V2 Payment] Invalid destination account:', accountError);
+        return res.status(400).json({ error: 'Invalid or disabled destination account' });
       }
 
-      // Convert amount to cents and ensure it's an integer
+      // Convert amount to cents
       const amountInCents = Math.round(parsedAmount * 100);
-      console.log(`[Connect V2] Creating transfer: $${parsedAmount} -> ${amountInCents} cents`);
+      console.log(`[V2 Payment] Creating destination charge: ${parsedAmount} ${currency.toUpperCase()} -> ${amountInCents} cents to ${destination}`);
 
-      // Create transfer to connected account
-      const transfer = await stripe.transfers.create({
+      // Create Payment Intent with destination charge (V2 Connect approach)
+      const paymentIntent = await stripe.paymentIntents.create({
         amount: amountInCents,
         currency,
-        destination: existing.accountId,
-        description,
+        description: description || 'Direct payment via Connect V2',
         metadata: {
           ...metadata,
-          userId: userId.toString(),
-          version: 'v2'
-        }
+          businessId: userId.toString(),
+          version: 'v2',
+          payment_type: 'destination_charge'
+        },
+        // KEY: This sends funds directly to contractor without touching platform balance
+        transfer_data: {
+          destination: destination
+        },
+        // Optional: Add application fee (platform fee)
+        // application_fee_amount: Math.round(amountInCents * 0.03), // 3% platform fee
+        
+        // Auto-confirm the payment
+        confirm: true,
+        payment_method: 'pm_card_visa', // Use test payment method for now
+        return_url: 'https://interlinc.co/payment-complete'
       });
+
+      console.log(`[V2 Payment] Payment Intent created: ${paymentIntent.id} with status: ${paymentIntent.status}`);
 
       res.json({
         success: true,
-        transfer_id: transfer.id,
-        amount: transfer.amount / 100, // Convert back to dollars
-        currency: transfer.currency,
-        status: transfer.status || 'pending'
+        payment_intent_id: paymentIntent.id,
+        amount: parsedAmount,
+        currency: currency,
+        status: paymentIntent.status,
+        destination: destination,
+        transfer_data: paymentIntent.transfer_data
       });
 
     } catch (e) {
-      console.error("[connect-v2-create-transfer]", e);
-      res.status(e.status || 500).json({ error: e.message || "Transfer creation failed" });
+      console.error("[connect-v2-destination-charge]", e);
+      
+      // Enhanced error handling for specific Stripe errors
+      if (e.type === 'StripeInvalidRequestError') {
+        if (e.code === 'account_invalid') {
+          return res.status(400).json({ error: 'Invalid destination account' });
+        } else if (e.code === 'amount_too_small') {
+          return res.status(400).json({ error: 'Payment amount is below minimum' });
+        }
+      }
+      
+      res.status(e.status || 500).json({ error: e.message || "Payment creation failed" });
     }
   });
 
