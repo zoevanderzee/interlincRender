@@ -452,20 +452,21 @@ export async function resolveContractorAccountId(contractorUserId: number): Prom
   try {
     console.log(`[SECURE RESOLVE] Finding Stripe account for contractor ${contractorUserId}`);
     
-    // Step 1: List all Connect accounts on our platform
-    const accounts = await stripe.accounts.list({
-      limit: 100 // Adjust if you have more than 100 contractors
-    });
+    // Step 1: Search ALL Connect accounts using auto-pagination
+    console.log(`[SECURE RESOLVE] Searching through all Connect accounts...`);
+    let checkedCount = 0;
     
-    console.log(`[SECURE RESOLVE] Found ${accounts.data.length} Connect accounts to check`);
-    
-    // Step 2: Find account with our contractor's user ID in metadata
-    for (const account of accounts.data) {
+    // Step 2: Find account with our contractor's user ID in metadata (backward compatible)
+    for await (const account of stripe.accounts.list({ limit: 100 }).autoPagingEach()) {
+      checkedCount++;
       const metadata = account.metadata || {};
-      const platformUserId = metadata.platform_user_id;
+      // Support both new userId format and legacy platform_user_id format
+      const platformUserId = metadata.userId || metadata.platform_user_id;
       
       console.log(`[SECURE RESOLVE] Checking account ${account.id}, metadata:`, {
-        platform_user_id: platformUserId,
+        userId: metadata.userId,
+        platform_user_id: metadata.platform_user_id,
+        resolved_id: platformUserId,
         platform_env: metadata.platform_env,
         charges_enabled: account.charges_enabled,
         details_submitted: account.details_submitted
@@ -504,7 +505,7 @@ export async function resolveContractorAccountId(contractorUserId: number): Prom
       }
     }
     
-    console.log(`[SECURE RESOLVE] ❌ No Stripe account found for contractor ${contractorUserId}`);
+    console.log(`[SECURE RESOLVE] ❌ No Stripe account found for contractor ${contractorUserId} after checking ${checkedCount} accounts`);
     return {
       accountId: '',
       isValid: false,
