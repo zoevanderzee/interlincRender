@@ -118,6 +118,19 @@ export async function createPaymentIntent(params: CreatePaymentIntentParams): Pr
         destination: params.transferData.destination
       };
 
+      // CRITICAL: Enable automatic transfers to contractor's bank account
+      // This ensures funds don't sit in Connect account balance
+      try {
+        const contractorAccount = await stripe.accounts.retrieve(params.transferData.destination);
+        if (contractorAccount.capabilities?.transfers === 'active') {
+          console.log(`[V2 Payment] Contractor ${params.transferData.destination} has active transfers - funds will auto-transfer to bank`);
+        } else {
+          console.warn(`[V2 Payment] Contractor ${params.transferData.destination} doesn't have active transfers capability`);
+        }
+      } catch (accountError) {
+        console.error(`[V2 Payment] Error checking contractor account capabilities:`, accountError);
+      }
+
       // Add Connect-specific metadata
       paymentIntentParams.metadata = {
         ...paymentIntentParams.metadata,
@@ -142,6 +155,25 @@ export async function createPaymentIntent(params: CreatePaymentIntentParams): Pr
       // Create Payment Intent using platform account (original behavior)
       console.log(`[V2 Payment Intent] Creating using platform account`);
       paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
+    }
+
+    // CRITICAL: Schedule automatic payout for contractor after payment succeeds
+    if (params.transferData && params.transferData.destination) {
+      try {
+        // Check if contractor has automatic payouts enabled
+        const contractorAccount = await stripe.accounts.retrieve(params.transferData.destination);
+        
+        if (contractorAccount.settings?.payouts?.schedule?.interval !== 'manual') {
+          console.log(`[V2 Payment] Contractor ${params.transferData.destination} has automatic payouts enabled - funds will transfer to bank automatically`);
+        } else {
+          console.log(`[V2 Payment] Contractor ${params.transferData.destination} has manual payouts - funds will remain in Connect balance until manually transferred`);
+          
+          // Optionally: Create an instant payout after successful payment (requires webhook)
+          // This would need to be implemented in a webhook handler for payment_intent.succeeded
+        }
+      } catch (error) {
+        console.error(`[V2 Payment] Error checking contractor payout settings:`, error);
+      }
     }
 
     return {

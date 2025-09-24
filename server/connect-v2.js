@@ -772,6 +772,15 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       // 1. Stripe API resolves contractor account ID (NEVER trust database)
       // 2. Creates Payment Intent with business as customer (NOT guest)
       // 3. Payment appears in BUSINESS USER'S Stripe customer record
+      
+      // CRITICAL FIX: Ensure business has Stripe customer ID
+      if (!businessUser.stripeCustomerId) {
+        console.error(`[PAYMENT ERROR] Business user ${userId} has no Stripe customer ID`);
+        return res.status(400).json({ 
+          error: 'Business account not properly set up for payments. Please contact support.' 
+        });
+      }
+
       console.log(`[SECURE PAYMENT] Creating secure Payment Intent for business customer: ${businessUser.stripeCustomerId}`);
       
       const paymentResult = await createSecurePaymentV2({
@@ -782,6 +791,7 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
         metadata: {
           ...metadata,
           businessId: userId.toString(),
+          businessCustomerId: businessUser.stripeCustomerId, // Add this for tracking
           version: 'v2_secure',
           payment_type: 'verified_destination_charge',
           api_version: 'v2_bulletproof',
@@ -790,7 +800,9 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
           security_level: 'bulletproof'
         },
         // CRITICAL: Pass business customer ID to associate payment with business, not create guest
-        businessCustomerId: businessUser.stripeCustomerId
+        businessCustomerId: businessUser.stripeCustomerId,
+        // Pass business account ID for proper "on behalf of" creation
+        businessAccountId: businessConnect?.accountId
       });
       
       console.log(`[SECURE PAYMENT] ✅ Payment Intent created securely: ${paymentResult.payment_intent_id} → verified account ${paymentResult.destination_account}`);

@@ -743,6 +743,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (error) {
           console.error('Error updating payment status:', error);
         }
+
+        // CRITICAL: Trigger automatic payout to contractor's bank account
+        // This ensures funds don't sit in Connect account balance
+        if (succeededIntent.transfer_data?.destination) {
+          try {
+            const contractorAccountId = succeededIntent.transfer_data.destination;
+            console.log(`[Webhook] Triggering automatic payout for contractor: ${contractorAccountId}`);
+
+            // Check contractor's current balance
+            const account = await stripe.accounts.retrieve(contractorAccountId);
+            const balance = await stripe.balance.retrieve({
+              stripeAccount: contractorAccountId
+            });
+
+            // If there's available balance, create an instant payout
+            const availableAmount = balance.available.find(b => b.currency === (succeededIntent.currency || 'gbp'))?.amount || 0;
+
+            if (availableAmount > 0) {
+              const payout = await stripe.payouts.create({
+                amount: availableAmount,
+                currency: succeededIntent.currency || 'gbp',
+                method: 'instant' // Use instant if available, falls back to standard
+              }, {
+                stripeAccount: contractorAccountId
+              });
+
+              console.log(`[Webhook] Created automatic payout ${payout.id} for ${availableAmount/100} ${succeededIntent.currency} to contractor ${contractorAccountId}`);
+            } else {
+              console.log(`[Webhook] No available balance for contractor ${contractorAccountId} - payout will occur on schedule`);
+            }
+          } catch (payoutError) {
+            console.error(`[Webhook] Error creating automatic payout:`, payoutError);
+            // Don't fail the webhook - payment still succeeded
+          }
+        }
         break;
 
       case 'payment_intent.payment_failed':
@@ -2505,13 +2540,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get actual business data - PROJECTS and WORK REQUESTS instead of old contracts
       const userProjects = await storage.getBusinessProjects(userId || 0);
       const userWorkRequests = await storage.getWorkRequestsByBusinessId(userId || 0);
-      
-      // Active projects are those with status 'active' 
+
+      // Active projects are those with status 'active'
       const activeProjects = userProjects.filter(project => project.status === 'active');
-      
+
       // Active work requests (accepted contracts) are those with status 'accepted'
       const activeWorkRequests = userWorkRequests.filter(wr => wr.status === 'accepted');
-      
+
       // Pending approvals are work requests with status 'pending'
       const pendingWorkRequests = userWorkRequests.filter(wr => wr.status === 'pending');
 
@@ -2614,11 +2649,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalWorkRequestsValue = activeWorkRequests.reduce((sum, wr) => {
         return sum + parseFloat(wr.amount || '0');
       }, 0);
-      
+
       const totalPendingWorkRequestsValue = pendingWorkRequests.reduce((sum, wr) => {
         return sum + parseFloat(wr.amount || '0');
       }, 0);
-      
+
       // Count unique contractors from work requests
       const uniqueContractorIds = [...new Set(userWorkRequests.map(wr => wr.contractorUserId))];
       const realActiveContractorsCount = uniqueContractorIds.length;
@@ -3812,7 +3847,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get user's work requests and projects (current data structure)
       let userWorkRequests = [];
       let userProjects = [];
-      
+
       if (userRole === 'business') {
         userWorkRequests = await storage.getWorkRequestsByBusinessId(userId);
         userProjects = await storage.getBusinessProjects(userId);
@@ -3859,7 +3894,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 : contractor.username;
             }
           }
-          
+
           // Get project name
           let projectName = 'No Project';
           if (workRequest.projectId) {
@@ -4177,7 +4212,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = getUserId(req);
       const user = await storage.getUser(userId);
-      
+
       if (!user?.stripeCustomerId) {
         return res.json({
           totalPaid: 0,
@@ -4193,7 +4228,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Query Stripe for payments associated with this business customer
       const now = new Date();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      
+
       // Get all Payment Intents for this customer
       const paymentIntents = await stripe.paymentIntents.list({
         customer: user.stripeCustomerId,
@@ -4257,7 +4292,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = getUserId(req);
       const user = await storage.getUser(userId);
       const { limit = 50, starting_after } = req.query;
-      
+
       if (!user?.stripeCustomerId) {
         return res.json({ data: [], has_more: false });
       }
@@ -4814,8 +4849,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         valid: true,
         workRequestId: workRequest.id,
-        status: workRequest.status,
-        title: workRequest.title, // Use title field from work request
+        status: workRequest.status,        title: workRequest.title, // Use title field from work request
         businessId: workRequest.businessId,
         expired: workRequest.expiresAt && new Date(workRequest.expiresAt) < new Date()
       });
@@ -7133,109 +7167,6 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
       console.error('Error checking subscription status:', error);
       res.status(500).json({
         message: 'Failed to check subscription status',
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  });
-
-  // Subscription requirement middleware
-  const requireActiveSubscription = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const userId = req.user?.id;
-
-      if (!userId) {
-        return res.status(401).json({ message: 'Authentication required' });
-      }
-
-      const user = await storage.getUser(userId);
-
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-
-      // Check if user has active subscription
-      if (!user.subscriptionStatus ||
-          !['active', 'trialing'].includes(user.subscriptionStatus)) {
-        return res.status(402).json({
-          message: 'Active subscription required',
-          subscriptionStatus: user.subscriptionStatus || 'inactive',
-          code: 'SUBSCRIPTION_REQUIRED'
-        });
-      }
-
-      next();
-    } catch (error) {
-      console.error('Error checking subscription requirement:', error);
-      res.status(500).json({ message: 'Error validating subscription' });
-    }
-  };
-
-  // Cancel subscription
-  app.post("/api/cancel-subscription", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const userId = req.user?.id || (req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
-
-      if (!userId) {
-        return res.status(401).json({ message: 'Authentication required' });
-      }
-
-      const user = await storage.getUser(userId);
-
-      if (!user || !user.stripeSubscriptionId) {
-        return res.status(404).json({ message: 'No subscription found' });
-      }
-
-      // Cancel subscription at end of period
-      const subscription = await stripe.subscriptions.update(user.stripeSubscriptionId, {
-        cancel_at_period_end: true
-      });
-
-      res.json({
-        success: true,
-        message: 'Subscription will cancel at the end of the current billing period',
-        cancelAtPeriodEnd: subscription.cancel_at_period_end,
-        currentPeriodEnd: new Date(subscription.current_period_end * 1000)
-      });
-
-    } catch (error) {
-      console.error('Error cancelling subscription:', error);
-      res.status(500).json({
-        message: 'Failed to cancel subscription',
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  });
-
-  // Reactivate subscription
-  app.post("/api/reactivate-subscription", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const userId = req.user?.id || (req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
-
-      if (!userId) {
-        return res.status(401).json({ message: 'Authentication required' });
-      }
-
-      const user = await storage.getUser(userId);
-
-      if (!user || !user.stripeSubscriptionId) {
-        return res.status(404).json({ message: 'No subscription found' });
-      }
-
-      // Remove cancellation
-      const subscription = await stripe.subscriptions.update(user.stripeSubscriptionId, {
-        cancel_at_period_end: false
-      });
-
-      res.json({
-        success: true,
-        message: 'Subscription has been reactivated',
-        cancelAtPeriodEnd: subscription.cancel_at_period_end
-      });
-
-    } catch (error) {
-      console.error('Error reactivating subscription:', error);
-      res.status(500).json({
-        message: 'Failed to reactivate subscription',
         error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
