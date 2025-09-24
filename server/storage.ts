@@ -131,6 +131,7 @@ export interface IStorage {
   getPaymentByTrolleyId(trolleyPaymentId: string): Promise<Payment | undefined>;
   getAllPayments(contractId: number | null): Promise<Payment[]>;
   getUpcomingPayments(limit: number): Promise<Payment[]>;
+  getCompletedPayments(userId: number): Promise<Payment[]>;
   getApprovedMilestonesWithoutPayments(): Promise<Milestone[]>;
   createPayment(payment: InsertPayment): Promise<Payment>;
   updatePayment(id: number, payment: Partial<InsertPayment>): Promise<Payment | undefined>;
@@ -703,6 +704,16 @@ export class MemStorage implements IStorage {
       .sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime());
 
     return pendingPayments.slice(0, limit);
+  }
+
+  async getCompletedPayments(userId: number): Promise<Payment[]> {
+    // For MemStorage, get all completed payments for contracts belonging to this user
+    const userContracts = Array.from(this.contracts.values())
+      .filter(contract => contract.businessId === userId);
+    const contractIds = userContracts.map(c => c.id);
+    
+    return Array.from(this.payments.values())
+      .filter(payment => payment.status === 'completed' && contractIds.includes(payment.contractId));
   }
 
   async createPayment(insertPayment: InsertPayment): Promise<Payment> {
@@ -1727,6 +1738,18 @@ export class DatabaseStorage implements IStorage {
       ))
       .orderBy(payments.scheduledDate)
       .limit(limit);
+  }
+
+  async getCompletedPayments(userId: number): Promise<Payment[]> {
+    // Get completed payments for contracts belonging to this business user
+    return await db
+      .select()
+      .from(payments)
+      .innerJoin(contracts, eq(payments.contractId, contracts.id))
+      .where(and(
+        eq(payments.status, 'completed'),
+        eq(contracts.businessId, userId)
+      ));
   }
 
   async createPayment(insertPayment: InsertPayment): Promise<Payment> {
