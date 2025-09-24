@@ -216,45 +216,13 @@ export default function PayContractor() {
   const handlePaymentComplete = async (paymentIntentId: string) => {
     console.log('Payment completed with intent ID:', paymentIntentId);
     
-    // Process the payment to the contractor via Connect
-    try {
-      setIsProcessing(true);
-      
-      const response = await apiRequest('POST', '/api/connect/v2/create-transfer', {
-        contractorUserId: contractor!.id,
-        amount: parseFloat(amount),
-        currency: currency,
-        description,
-        paymentIntentId, // Pass the completed payment intent
-        metadata: {
-          contractorId: contractor!.id.toString(),
-          paymentType: 'stripe_elements_payment',
-          paymentIntentId
-        }
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Transfer to contractor failed');
-      }
-
-      setPaymentSuccess(true);
-      toast({
-        title: 'Payment Successful',
-        description: `Payment of ${amount} ${currency.toUpperCase()} sent to ${contractor!.firstName} ${contractor!.lastName}`,
-      });
-
-    } catch (err: any) {
-      console.error('Transfer to contractor failed:', err);
-      setError(err.message);
-      toast({
-        title: 'Transfer Failed',
-        description: err.message,
-        variant: 'destructive'
-      });
-    } finally {
-      setIsProcessing(false);
-    }
+    // With V2 destination charges, the payment goes directly to the contractor
+    // No additional transfer is needed - just mark as successful
+    setPaymentSuccess(true);
+    toast({
+      title: 'Payment Successful',
+      description: `Payment of ${amount} ${currency.toUpperCase()} sent to ${contractor!.firstName} ${contractor!.lastName}`,
+    });
   };
 
   if (paymentSuccess) {
@@ -452,6 +420,9 @@ export default function PayContractor() {
                     amount={parseFloat(amount) * 100} // Convert to cents
                     onPaymentComplete={handlePaymentComplete}
                     isProcessing={isProcessing}
+                    contractorUserId={contractor!.id}
+                    currency={currency}
+                    description={description}
                   />
                 </div>
                 <Button 

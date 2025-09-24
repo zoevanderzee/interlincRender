@@ -116,9 +116,12 @@ interface StripeElementsProps {
   amount: number; // in cents
   onPaymentComplete: (paymentIntentId: string) => void;
   isProcessing?: boolean;
+  contractorUserId?: number;
+  currency?: string;
+  description?: string;
 }
 
-export function StripeElements({ amount, onPaymentComplete, isProcessing = false }: StripeElementsProps) {
+export function StripeElements({ amount, onPaymentComplete, isProcessing = false, contractorUserId, currency = 'gbp', description }: StripeElementsProps) {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -138,21 +141,40 @@ export function StripeElements({ amount, onPaymentComplete, isProcessing = false
     );
   }
 
-  // Mutation to create a payment intent
+  // Mutation to create a payment intent with V2 destination charge
   const createPaymentIntentMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest(
-        'POST',
-        '/api/create-payment-intent',
-        { amount }
-      );
-      if (!response.ok) {
-        throw new Error('Failed to create payment intent');
+      if (contractorUserId) {
+        // Use V2 destination charges for contractor payments
+        const response = await apiRequest(
+          'POST',
+          '/api/connect/v2/create-transfer',
+          { 
+            contractorUserId,
+            amount: amount / 100, // Convert back to dollars
+            currency,
+            description
+          }
+        );
+        if (!response.ok) {
+          throw new Error('Failed to create destination charge');
+        }
+        return response.json();
+      } else {
+        // Fallback to regular payment intent
+        const response = await apiRequest(
+          'POST',
+          '/api/create-payment-intent',
+          { amount }
+        );
+        if (!response.ok) {
+          throw new Error('Failed to create payment intent');
+        }
+        return response.json();
       }
-      return response.json();
     },
     onSuccess: (data) => {
-      setClientSecret(data.clientSecret);
+      setClientSecret(data.client_secret || data.clientSecret);
     },
     onError: (error: Error) => {
       toast({
