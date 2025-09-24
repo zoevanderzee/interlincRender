@@ -8,29 +8,6 @@ declare module 'express-session' {
   }
 }
 
-// COMPLETE V1 TRANSFER BLOCKING - Prevent any manual transfer attempts
-app.use('/api/v1/transfers*', (req, res) => {
-  console.error(`🚨 BLOCKED V1 TRANSFER ATTEMPT: ${req.method} ${req.path}`);
-  console.error(`Request body:`, req.body);
-  console.error(`Headers:`, req.headers);
-  res.status(410).json({ 
-    error: 'V1 transfers completely disabled. Use V2 destination charges with Payment Intents.',
-    correct_approach: 'Create PaymentIntent with transfer_data.destination for direct fund routing',
-    no_manual_transfers: 'Funds go directly from customer to connected account',
-    documentation: 'https://stripe.com/docs/connect/destination-charges'
-  });
-});
-
-// Also block any attempts to use Stripe transfers API directly
-app.use('/api/stripe/transfers*', (req, res) => {
-  console.error(`🚨 BLOCKED STRIPE TRANSFER ATTEMPT: ${req.method} ${req.path}`);
-  res.status(410).json({ 
-    error: 'Manual Stripe transfers not supported. Use destination charges with Payment Intents.',
-    correct_flow: 'PaymentIntent with transfer_data routes funds directly to connected accounts'
-  });
-});
-
-
 
 // Define AuthenticatedRequest interface
 interface AuthenticatedRequest extends Request {
