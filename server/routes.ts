@@ -8,6 +8,30 @@ declare module 'express-session' {
   }
 }
 
+// COMPLETE V1 TRANSFER BLOCKING - Prevent any manual transfer attempts
+app.use('/api/v1/transfers*', (req, res) => {
+  console.error(`🚨 BLOCKED V1 TRANSFER ATTEMPT: ${req.method} ${req.path}`);
+  console.error(`Request body:`, req.body);
+  console.error(`Headers:`, req.headers);
+  res.status(410).json({ 
+    error: 'V1 transfers completely disabled. Use V2 destination charges with Payment Intents.',
+    correct_approach: 'Create PaymentIntent with transfer_data.destination for direct fund routing',
+    no_manual_transfers: 'Funds go directly from customer to connected account',
+    documentation: 'https://stripe.com/docs/connect/destination-charges'
+  });
+});
+
+// Also block any attempts to use Stripe transfers API directly
+app.use('/api/stripe/transfers*', (req, res) => {
+  console.error(`🚨 BLOCKED STRIPE TRANSFER ATTEMPT: ${req.method} ${req.path}`);
+  res.status(410).json({ 
+    error: 'Manual Stripe transfers not supported. Use destination charges with Payment Intents.',
+    correct_flow: 'PaymentIntent with transfer_data routes funds directly to connected accounts'
+  });
+});
+
+
+
 // Define AuthenticatedRequest interface
 interface AuthenticatedRequest extends Request {
   user?: any;
@@ -2915,56 +2939,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Handle transfer.created event
-      if (event.type === 'transfer.created') {
-        const transfer = event.data.object;
-
-        // Look up payment by metadata in the transfer
-        if (transfer.metadata && transfer.metadata.paymentId) {
-          const paymentId = transfer.metadata.paymentId;
-
-          await storage.updatePaymentTransferDetails(
-            parseInt(paymentId),
-            transfer.id,
-            'created',
-            0 // Application fee is already recorded from the payment intent
-          );
-        }
-      }
-
-      // Handle transfer.paid event
-      if (event.type === 'transfer.paid') {
-        const transfer = event.data.object;
-
-        // Look up payment by metadata in the transfer
-        if (transfer.metadata && transfer.metadata.paymentId) {
-          const paymentId = transfer.metadata.paymentId;
-
-          await storage.updatePaymentTransferDetails(
-            parseInt(paymentId),
-            transfer.id,
-            'paid',
-            0 // Application fee is already recorded
-          );
-        }
-      }
-
-      // Handle transfer.failed event
-      if (event.type === 'transfer.failed') {
-        const transfer = event.data.object;
-
-        // Look up payment by metadata in the transfer
-        if (transfer.metadata && transfer.metadata.paymentId) {
-          const paymentId = transfer.metadata.paymentId;
-
-          await storage.updatePaymentTransferDetails(
-            parseInt(paymentId),
-            transfer.id,
-            'failed',
-            0 // Application fee is already recorded
-          );
-        }
-      }
+      // NO MANUAL TRANSFER WEBHOOKS - we use destination charges only
+      // Funds go directly to connected accounts, no transfers needed
 
       // Handle charge.succeeded event (for ACH payments)
       if (event.type === 'charge.succeeded') {
