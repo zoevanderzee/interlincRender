@@ -104,22 +104,24 @@ class AutomatedPaymentService {
           milestone: milestone.name
         });
 
-        // Create V2 direct transfer to contractor's account
-        const transferResult = await createDirectTransferV2({
-          destination: contractorConnect.accountId,
-          amount: Math.round(netAmount * 100), // Convert to cents
-          currency: 'usd',
+        // Create V2 Payment Intent with destination charge (no platform balance required)
+        const transferResult = await createPaymentIntent({
+          amount: netAmount,
+          currency: 'gbp',
           description: `Payment for milestone: ${milestone.name} (Project: ${milestone.contractName})`,
           metadata: {
             milestoneId: milestoneId.toString(),
             contractorId: contractor.id.toString(),
             businessId: approvedBy.toString(),
             paymentType: 'milestone_completion'
+          },
+          transferData: {
+            destination: contractorConnect.accountId
           }
         });
 
-        console.log(`✅ Stripe V2 transfer created successfully:`, {
-          transferId: transferResult.transfer_id,
+        console.log(`✅ Stripe V2 Payment Intent created successfully:`, {
+          paymentIntentId: transferResult.id,
           amount: netAmount,
           status: transferResult.status
         });
@@ -145,12 +147,12 @@ class AutomatedPaymentService {
         contractId: milestone.contractId,
         milestoneId: milestoneId,
         amount: netAmount.toFixed(2),
-        status: 'completed' as const,
-        stripeTransferId: transferResult.transfer_id,
+        status: 'requires_payment_method' as const,
+        stripePaymentIntentId: transferResult.id,
         processedAt: new Date().toISOString(),
         metadata: {
           approvedBy,
-          transferStatus: transferResult.status
+          paymentIntentStatus: transferResult.status
         }
       };
 
