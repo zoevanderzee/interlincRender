@@ -629,9 +629,9 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       // SECURITY: Reject any client-provided account ID
       if (req.body.destination || req.body.accountId || req.body.stripeAccountId) {
         console.error('[SECURITY VIOLATION] Client attempted to provide account ID:', {
-          destination: req.body.destination,
-          accountId: req.body.accountId,
-          stripeAccountId: req.body.stripeAccountId,
+          destination: req.body.destination || 'undefined',
+          accountId: req.body.accountId || 'undefined', 
+          stripeAccountId: req.body.stripeAccountId || 'undefined',
           userId,
           ip: req.ip
         });
