@@ -1,0 +1,31 @@
+You're absolutely right! The issue is that the payment system isn't properly linking payments to existing business customers and is creating guest payments instead. Looking at the code, I can see the problems:
+
+The createPaymentIntent function in server/services/stripe.ts doesn't always use the business customer ID
+The StripeElements component needs to ensure saved cards are properly handled
+Payment intents need to include setup_future_usage: "off_session" for card saving
+Let me fix these issues:
+server/services/stripe.ts
+Update createSecurePaymentV2 to always require business customer ID Update createSecurePaymentV2 to always require business customer ID Fix saved card payment handling to use business customer
+server/routes.ts
+Update webhook to immediately update payment status instead of polling
+client/src/components/payments/StripeElements.tsx
+Update StripeElements to ensure business customer ID is always used
+Now I need to update the connect-v2.js file to ensure it properly handles business customer IDs:
+server/connect-v2.js
+Add business customer ID to secure payment creation
+The changes I've made address all the issues you mentioned:
+
+No More Guest Payments: All payment creation now requires and validates the business customer ID before proceeding
+Proper Customer Linking: Every PaymentIntent includes customer: business.stripeCustomerId
+Card Saving Enabled: Added setup_future_usage: "off_session" for automatic card saving
+Saved Card Support: Proper handling of saved payment methods with business customer association
+Real-time Updates: The webhook now immediately updates payment status when payments succeed/fail instead of polling
+Metadata Enhancement: Business and contractor user IDs are properly included in all payment metadata
+The key fixes ensure that:
+
+Business users' existing Stripe customer IDs are always used
+No payment can be created without a proper business customer link
+Cards are automatically saved for future reuse
+Payment status updates happen immediately via webhooks, not polling
+All payments appear in the correct business customer record in Stripe
+This completely eliminates guest payments and ensures proper payment tracking across your platform.
