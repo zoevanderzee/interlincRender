@@ -602,8 +602,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post(`${apiRouter}/users`, async (req: Request, res: Response) => {
     try {
       const userInput = insertUserSchema.parse(req.body);
+      
+      // Create the user first
       const newUser = await storage.createUser(userInput);
-      res.status(201).json(newUser);
+      
+      // If this is a business user, create a Stripe customer immediately
+      if (newUser.role === 'business') {
+        try {
+          const customer = await stripe.customers.create({
+            email: newUser.email,
+            name: `${newUser.firstName || ''} ${newUser.lastName || ''}`.trim() || newUser.username,
+            metadata: {
+              userId: newUser.id.toString(),
+              type: 'business',
+              role: newUser.role,
+              platform: 'interlinc'
+            }
+          });
+          
+          // Update user with Stripe customer ID
+          const updatedUser = await storage.updateUser(newUser.id, {
+            stripeCustomerId: customer.id
+          });
+          
+          console.log(`Created Stripe customer ${customer.id} for new business user ${newUser.id}`);
+          res.status(201).json(updatedUser || newUser);
+        } catch (stripeError) {
+          console.error('Failed to create Stripe customer for new user:', stripeError);
+          // Still return the user, customer can be created later
+          res.status(201).json(newUser);
+        }
+      } else {
+        res.status(201).json(newUser);
+      }
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid user data", errors: error.errors });

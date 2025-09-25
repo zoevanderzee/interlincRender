@@ -1,4 +1,3 @@
-
 import Stripe from 'stripe';
 import { Payment, User } from '@shared/schema';
 
@@ -21,6 +20,8 @@ export interface CreatePaymentIntentParams {
   paymentMethodTypes?: string[];
   businessAccountId?: string; // Optional: Business account ID to create Payment Intent on behalf of
   businessCustomerId?: string; // Optional: Business Stripe customer ID to associate payment
+  paymentMethodId?: string; // Optional: Payment method ID for saved card payments
+  saveCard?: boolean; // Optional: Whether to save the card for future use
 }
 
 export interface PaymentIntentResponse {
@@ -52,10 +53,10 @@ export async function createPaymentIntent(params: CreatePaymentIntentParams): Pr
   try {
     // Convert amount to cents and ensure minimum amounts per currency
     const currency = params.currency.toLowerCase();
-    
+
     // Enhanced currency validation for Connect accounts
     console.log(`[Payment Intent V2] Creating payment for ${params.amount} ${currency.toUpperCase()}`);
-    
+
     const minimumAmounts = {
       'usd': 50, // 50 cents = $0.50
       'gbp': 30, // 30 pence = £0.30
@@ -101,7 +102,7 @@ export async function createPaymentIntent(params: CreatePaymentIntentParams): Pr
         }
         accountType = account.type || 'unknown';
         console.log(`[V2 Destination Charge] Account ${account.id} is type '${accountType}' - charges enabled: ${account.charges_enabled}`);
-        
+
         // Both Express and Standard accounts support destination charges
         if (!['express', 'standard'].includes(accountType)) {
           console.warn(`Account ${account.id} is type '${accountType}', may not support destination charges`);
@@ -143,7 +144,7 @@ export async function createPaymentIntent(params: CreatePaymentIntentParams): Pr
 
     // Create Payment Intent - either on behalf of business account or using platform account
     let paymentIntent: Stripe.PaymentIntent;
-    
+
     if (params.businessAccountId) {
       // Create Payment Intent on behalf of the business account
       // This makes the Payment Intent appear in the business account's dashboard
@@ -162,12 +163,12 @@ export async function createPaymentIntent(params: CreatePaymentIntentParams): Pr
       try {
         // Check if contractor has automatic payouts enabled
         const contractorAccount = await stripe.accounts.retrieve(params.transferData.destination);
-        
+
         if (contractorAccount.settings?.payouts?.schedule?.interval !== 'manual') {
           console.log(`[V2 Payment] Contractor ${params.transferData.destination} has automatic payouts enabled - funds will transfer to bank automatically`);
         } else {
           console.log(`[V2 Payment] Contractor ${params.transferData.destination} has manual payouts - funds will remain in Connect balance until manually transferred`);
-          
+
           // Optionally: Create an instant payout after successful payment (requires webhook)
           // This would need to be implemented in a webhook handler for payment_intent.succeeded
         }
@@ -183,7 +184,7 @@ export async function createPaymentIntent(params: CreatePaymentIntentParams): Pr
     };
   } catch (error: any) {
     console.error('Error creating V2 payment intent:', error);
-    
+
     // Enhanced error handling with specific error codes
     if (error.type === 'StripeCardError') {
       throw new Error(`Payment failed: ${error.message}`);
@@ -196,7 +197,7 @@ export async function createPaymentIntent(params: CreatePaymentIntentParams): Pr
     } else if (error.type === 'StripeRateLimitError') {
       throw new Error('Too many requests. Please wait a moment and try again.');
     }
-    
+
     throw error;
   }
 }
@@ -268,11 +269,11 @@ export async function createConnectAccountV2(contractor: User, options: {
     };
   } catch (error: any) {
     console.error('Error creating V2 Connect account:', error);
-    
+
     if (error.type === 'StripeInvalidRequestError') {
       throw new Error(`Account creation failed: ${error.message}`);
     }
-    
+
     throw new Error('Failed to create payment processing account. Please try again.');
   }
 }
@@ -296,7 +297,7 @@ export async function getConnectAccountStatusV2(accountId: string): Promise<Conn
 
     // Determine verification status based on multiple factors
     let verification_status: 'pending' | 'verified' | 'rejected' = 'pending';
-    
+
     // Check for blocking requirements first
     const hasBlockingRequirements = requirements?.disabled_reason ||
                                    (requirements?.currently_due?.length || 0) > 0 ||
@@ -308,7 +309,7 @@ export async function getConnectAccountStatusV2(accountId: string): Promise<Conn
       // Check if critical capabilities are active
       const cardPaymentsActive = capabilities?.card_payments === 'active';
       const transfersActive = capabilities?.transfers === 'active';
-      
+
       verification_status = (cardPaymentsActive && transfersActive) ? 'verified' : 'pending';
     }
 
@@ -323,11 +324,11 @@ export async function getConnectAccountStatusV2(accountId: string): Promise<Conn
     };
   } catch (error: any) {
     console.error('Error checking V2 Connect account status:', error);
-    
+
     if (error.type === 'StripeInvalidRequestError' && error.code === 'resource_missing') {
       throw new Error('Connect account not found');
     }
-    
+
     throw new Error('Failed to check account status');
   }
 }
@@ -338,14 +339,14 @@ export async function getConnectAccountStatusV2(accountId: string): Promise<Conn
 export async function validateConnectAccountForPayment(accountId: string): Promise<boolean> {
   try {
     const status = await getConnectAccountStatusV2(accountId);
-    
-    const isValid = status.verification_status === 'verified' && 
-                   status.charges_enabled && 
+
+    const isValid = status.verification_status === 'verified' &&
+                   status.charges_enabled &&
                    status.payouts_enabled &&
                    !status.disabled_reason;
 
     console.log(`[Connect Validation] Account ${accountId} valid for payments:`, isValid);
-    
+
     return isValid;
   } catch (error) {
     console.error(`[Connect Validation] Failed to validate account ${accountId}:`, error);
@@ -366,24 +367,26 @@ export async function createSecurePaymentV2(params: {
   metadata?: Record<string, string>;
   businessAccountId?: string; // Business account for "on behalf of" creation
   businessCustomerId?: string; // Business Stripe customer ID to prevent guest payments
+  paymentMethodId?: string; // Payment method ID for saved card payments
+  saveCard?: boolean; // Whether to save the card for future use
 }): Promise<{ payment_intent_id: string; status: string; client_secret: string; destination_account: string }> {
   try {
-    const { contractorUserId, amount, currency = 'gbp', description, metadata, businessAccountId } = params;
+    const { contractorUserId, amount, currency = 'gbp', description, metadata, businessAccountId, businessCustomerId } = params;
 
     console.log(`[SECURE PAYMENT V2] Creating payment for contractor ${contractorUserId}, amount: ${amount} ${currency}`);
 
     // STEP 1: RESOLVE CONTRACTOR ACCOUNT ID USING STRIPE API (NEVER TRUST DATABASE)
     const accountResolution = await resolveContractorAccountId(contractorUserId);
-    
+
     if (!accountResolution.isValid) {
       throw new Error(accountResolution.error || 'Contractor account not valid for payments');
     }
-    
+
     const destination = accountResolution.accountId;
     console.log(`[SECURE PAYMENT V2] ✅ Resolved contractor ${contractorUserId} → Stripe account ${destination}`);
 
     // STEP 2: CREATE PAYMENT INTENT WITH VERIFIED DESTINATION AND BUSINESS CUSTOMER
-    const paymentIntent = await createPaymentIntent({
+    const paymentIntentParams = {
       amount: amount,
       currency: currency,
       description: description || 'Secure payment via V2 Connect',
@@ -400,27 +403,58 @@ export async function createSecurePaymentV2(params: {
         destination: destination
       },
       businessAccountId: businessAccountId, // Create on behalf of business if provided
-      businessCustomerId: params.businessCustomerId // Associate with business customer
-    });
-
-    console.log(`[SECURE PAYMENT V2] ✅ Payment Intent created: ${paymentIntent.id} for ${amount} ${currency} to verified account ${destination}`);
-
-    return {
-      payment_intent_id: paymentIntent.id,
-      status: paymentIntent.status || 'requires_payment_method',
-      client_secret: paymentIntent.clientSecret,
-      destination_account: destination
+      businessCustomerId: params.businessCustomerId, // Associate with business customer
+      saveCard: params.saveCard
     };
+
+    // If using a saved payment method, handle differently
+    if (params.paymentMethodId) {
+      // For saved cards, create and confirm payment intent directly
+      console.log(`[SECURE PAYMENT V2] Using saved payment method: ${params.paymentMethodId}`);
+
+      const amountInCents = Math.round(amount * 100);
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amountInCents,
+        currency: currency,
+        customer: params.businessCustomerId,
+        payment_method: params.paymentMethodId,
+        confirmation_method: 'automatic',
+        confirm: true,
+        off_session: true, // This is an off-session payment
+        description: description || 'Secure payment via saved card',
+        metadata: paymentIntentParams.metadata,
+        transfer_data: {
+          destination: destination
+        }
+      });
+
+      return {
+        payment_intent_id: paymentIntent.id,
+        status: paymentIntent.status || 'requires_payment_method',
+        client_secret: paymentIntent.client_secret || '',
+        destination_account: destination
+      };
+    } else {
+      // For new cards, use the standard flow
+      const paymentIntent = await createPaymentIntent(paymentIntentParams);
+
+      return {
+        payment_intent_id: paymentIntent.id,
+        status: paymentIntent.status || 'requires_payment_method',
+        client_secret: paymentIntent.clientSecret,
+        destination_account: destination
+      };
+    }
   } catch (error: any) {
     console.error('[SECURE PAYMENT V2] Error creating secure payment:', error);
-    
+
     if (error.type === 'StripeInvalidRequestError') {
       if (error.code === 'account_invalid') {
         throw new Error('Invalid destination account - contractor setup may be incomplete');
       }
       throw new Error(`Payment failed: ${error.message}`);
     }
-    
+
     throw new Error(error.message || 'Payment creation failed. Please try again.');
   }
 }
@@ -437,7 +471,7 @@ export async function createDirectPaymentV2(params: {
   metadata?: Record<string, string>;
 }): Promise<{ payment_intent_id: string; status: string; client_secret: string }> {
   console.warn('[DEPRECATED] createDirectPaymentV2 is deprecated - use createSecurePaymentV2 instead');
-  
+
   try {
     const { destination, amount, currency = 'gbp', description, metadata } = params;
 
@@ -468,14 +502,14 @@ export async function createDirectPaymentV2(params: {
     };
   } catch (error: any) {
     console.error('Error creating V2 direct payment:', error);
-    
+
     if (error.type === 'StripeInvalidRequestError') {
       if (error.code === 'account_invalid') {
         throw new Error('Invalid destination account');
       }
       throw new Error(`Payment failed: ${error.message}`);
     }
-    
+
     throw new Error('Payment creation failed. Please try again.');
   }
 }
@@ -492,21 +526,21 @@ export async function resolveContractorAccountId(contractorUserId: number): Prom
 }> {
   try {
     console.log(`[SECURE RESOLVE] Finding Stripe account for contractor ${contractorUserId}`);
-    
+
     // Step 1: Search ALL Connect accounts using auto-pagination
     console.log(`[SECURE RESOLVE] Searching through all Connect accounts...`);
     let checkedCount = 0;
     let foundAccount: { accountId: string; isValid: boolean; error?: string } | null = null;
-    
+
     // Step 2: Find account with our contractor's user ID in metadata (backward compatible)
     await stripe.accounts.list({ limit: 100 }).autoPagingEach(async (account) => {
       if (foundAccount) return false; // Stop iteration if we found the account
-      
+
       checkedCount++;
       const metadata = account.metadata || {};
       // Support both new userId format and legacy platform_user_id format
       const platformUserId = metadata.userId || metadata.platform_user_id;
-      
+
       console.log(`[SECURE RESOLVE] Checking account ${account.id}, metadata:`, {
         userId: metadata.userId,
         platform_user_id: metadata.platform_user_id,
@@ -515,17 +549,17 @@ export async function resolveContractorAccountId(contractorUserId: number): Prom
         charges_enabled: account.charges_enabled,
         details_submitted: account.details_submitted
       });
-      
+
       // Verify this account belongs to our contractor
       if (platformUserId === contractorUserId.toString()) {
         console.log(`[SECURE RESOLVE] ✅ FOUND MATCH! Account ${account.id} belongs to contractor ${contractorUserId}`);
-        
+
         // Step 3: Verify account is ready for payments
-        const isValid = account.charges_enabled && 
-                       account.details_submitted && 
+        const isValid = account.charges_enabled &&
+                       account.details_submitted &&
                        account.payouts_enabled &&
                        (!account.requirements?.disabled_reason);
-        
+
         if (!isValid) {
           console.log(`[SECURE RESOLVE] ❌ Account ${account.id} not ready for payments:`, {
             charges_enabled: account.charges_enabled,
@@ -533,7 +567,7 @@ export async function resolveContractorAccountId(contractorUserId: number): Prom
             payouts_enabled: account.payouts_enabled,
             disabled_reason: account.requirements?.disabled_reason
           });
-          
+
           foundAccount = {
             accountId: account.id,
             isValid: false,
@@ -546,22 +580,22 @@ export async function resolveContractorAccountId(contractorUserId: number): Prom
             isValid: true
           };
         }
-        
+
         return false; // Stop iteration after finding match
       }
     });
-    
+
     if (foundAccount) {
       return foundAccount;
     }
-    
+
     console.log(`[SECURE RESOLVE] ❌ No Stripe account found for contractor ${contractorUserId} after checking ${checkedCount} accounts`);
     return {
       accountId: '',
       isValid: false,
       error: 'Contractor has not completed Stripe Connect setup'
     };
-    
+
   } catch (error: any) {
     console.error(`[SECURE RESOLVE] Error resolving account for contractor ${contractorUserId}:`, error);
     return {
@@ -576,7 +610,7 @@ export async function resolveContractorAccountId(contractorUserId: number): Prom
  * V2 Enhanced Capability Management
  */
 export async function updateAccountCapabilities(
-  accountId: string, 
+  accountId: string,
   capabilities: Record<string, { requested: boolean }>
 ): Promise<{ success: boolean; capabilities: Stripe.Account.Capabilities | null }> {
   try {
@@ -592,7 +626,7 @@ export async function updateAccountCapabilities(
     };
   } catch (error: any) {
     console.error('Error updating V2 capabilities:', error);
-    
+
     throw new Error(`Failed to update payment capabilities: ${error.message}`);
   }
 }
@@ -635,7 +669,7 @@ export async function addBankAccountV2(
     throw new Error('Failed to create bank account');
   } catch (error: any) {
     console.error('Error adding V2 bank account:', error);
-    
+
     if (error.type === 'StripeInvalidRequestError') {
       if (error.code === 'routing_number_invalid') {
         throw new Error('Invalid routing number provided');
@@ -644,7 +678,7 @@ export async function addBankAccountV2(
       }
       throw new Error(`Bank account validation failed: ${error.message}`);
     }
-    
+
     throw new Error('Failed to add bank account. Please verify your information.');
   }
 }
@@ -675,7 +709,7 @@ export async function uploadVerificationDocument(
 
     // Update account with document
     const updateData: any = {};
-    
+
     if (purpose === 'identity_document') {
       updateData.individual = {
         verification: {
@@ -694,11 +728,11 @@ export async function uploadVerificationDocument(
     };
   } catch (error: any) {
     console.error('Error uploading V2 verification document:', error);
-    
+
     if (error.type === 'StripeInvalidRequestError') {
       throw new Error(`Document upload failed: ${error.message}`);
     }
-    
+
     throw new Error('Failed to upload verification document. Please try again.');
   }
 }
@@ -712,7 +746,7 @@ export async function retrievePaymentIntent(id: string): Promise<Stripe.PaymentI
 
 export async function processMilestonePayment(payment: Payment): Promise<PaymentIntentResponse> {
   const amount = Math.round(parseFloat(payment.amount) * 100);
-  
+
   return createPaymentIntent({
     amount,
     currency: 'usd',
@@ -756,7 +790,8 @@ export default {
   updateAccountCapabilities,
   addBankAccountV2,
   uploadVerificationDocument,
-  
+  createSecurePaymentV2,
+
   // Legacy Methods
   retrievePaymentIntent,
   processMilestonePayment,

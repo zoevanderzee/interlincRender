@@ -112,6 +112,17 @@ function StripeCheckoutForm({ clientSecret, onPaymentComplete, isProcessing }: S
   );
 }
 
+interface SavedCard {
+  id: string;
+  card: {
+    brand: string;
+    last4: string;
+    exp_month: number;
+    exp_year: number;
+  };
+  created: number;
+}
+
 interface StripeElementsProps {
   amount: number; // in cents
   onPaymentComplete: (paymentIntentId: string) => void;
@@ -119,10 +130,15 @@ interface StripeElementsProps {
   contractorUserId?: number;
   currency?: string;
   description?: string;
+  showSavedCards?: boolean;
 }
 
-export function StripeElements({ amount, onPaymentComplete, isProcessing = false, contractorUserId, currency = 'gbp', description }: StripeElementsProps) {
+export function StripeElements({ amount, onPaymentComplete, isProcessing = false, contractorUserId, currency = 'gbp', description, showSavedCards = true }: StripeElementsProps) {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [savedCards, setSavedCards] = useState<SavedCard[]>([]);
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const [useNewCard, setUseNewCard] = useState(true);
+  const [loadingSavedCards, setLoadingSavedCards] = useState(false);
   const { toast } = useToast();
 
   // If we don't have a valid public key, show error message instead
@@ -141,20 +157,46 @@ export function StripeElements({ amount, onPaymentComplete, isProcessing = false
     );
   }
 
+  // Load saved cards for business users
+  const loadSavedCards = async () => {
+    if (!showSavedCards) return;
+    
+    try {
+      setLoadingSavedCards(true);
+      const response = await apiRequest('GET', '/api/connect/v2/saved-cards');
+      if (response.ok) {
+        const data = await response.json();
+        setSavedCards(data.savedCards || []);
+      }
+    } catch (error) {
+      console.error('Failed to load saved cards:', error);
+    } finally {
+      setLoadingSavedCards(false);
+    }
+  };
+
   // Mutation to create a payment intent with V2 destination charge
   const createPaymentIntentMutation = useMutation({
     mutationFn: async () => {
       if (contractorUserId) {
         // Use V2 destination charges for contractor payments
+        const requestBody: any = { 
+          contractorUserId,
+          amount: amount / 100, // Convert back to dollars
+          currency,
+          description,
+          saveCard: true // Enable card saving by default
+        };
+
+        // If using a saved card, include the payment method ID
+        if (!useNewCard && selectedCardId) {
+          requestBody.paymentMethodId = selectedCardId;
+        }
+
         const response = await apiRequest(
           'POST',
           '/api/connect/v2/create-transfer',
-          { 
-            contractorUserId,
-            amount: amount / 100, // Convert back to dollars
-            currency,
-            description
-          }
+          requestBody
         );
         if (!response.ok) {
           throw new Error('Failed to create destination charge');
@@ -185,12 +227,22 @@ export function StripeElements({ amount, onPaymentComplete, isProcessing = false
     }
   });
 
-  // Initialize payment intent when component mounts
+  // Initialize payment intent and load saved cards when component mounts
   useEffect(() => {
     if (isValidPublicKey) {
+      loadSavedCards();
       createPaymentIntentMutation.mutate();
     }
   }, []);
+
+  // Recreate payment intent when payment method selection changes
+  useEffect(() => {
+    if (clientSecret && !useNewCard && selectedCardId) {
+      // For saved cards, we might need to recreate the payment intent
+      // depending on the implementation
+      createPaymentIntentMutation.mutate();
+    }
+  }, [useNewCard, selectedCardId]);
 
   if (!clientSecret || createPaymentIntentMutation.isPending) {
     return (
@@ -212,12 +264,123 @@ export function StripeElements({ amount, onPaymentComplete, isProcessing = false
   };
 
   return (
-    <Elements stripe={stripePromise} options={options}>
-      <StripeCheckoutForm 
-        clientSecret={clientSecret} 
-        onPaymentComplete={onPaymentComplete}
-        isProcessing={isProcessing}
-      />
-    </Elements>
+    <div className="space-y-6">
+      {/* Saved Cards Section */}
+      {showSavedCards && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-medium">Payment Method</h3>
+          
+          {loadingSavedCards ? (
+            <div className="flex items-center py-4">
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              <span>Loading saved cards...</span>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {savedCards.length > 0 && (
+                <div className="space-y-2">
+                  {savedCards.map((card) => (
+                    <label key={card.id} className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        checked={!useNewCard && selectedCardId === card.id}
+                        onChange={() => {
+                          setUseNewCard(false);
+                          setSelectedCardId(card.id);
+                        }}
+                        className="text-primary"
+                      />
+                      <div className="flex-1 p-3 border rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium">
+                            {card.card.brand.toUpperCase()} •••• {card.card.last4}
+                          </span>
+                          <span className="text-sm text-muted-foreground">
+                            {card.card.exp_month}/{card.card.exp_year}
+                          </span>
+                        </div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              )}
+              
+              <label className="flex items-center space-x-3 cursor-pointer">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  checked={useNewCard}
+                  onChange={() => {
+                    setUseNewCard(true);
+                    setSelectedCardId(null);
+                  }}
+                  className="text-primary"
+                />
+                <span>{savedCards.length > 0 ? 'Use a new card' : 'Add payment method'}</span>
+              </label>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Payment Form - only show if using new card or no saved cards UI */}
+      {(useNewCard || !showSavedCards) && (
+        <Elements stripe={stripePromise} options={options}>
+          <StripeCheckoutForm 
+            clientSecret={clientSecret} 
+            onPaymentComplete={onPaymentComplete}
+            isProcessing={isProcessing}
+          />
+        </Elements>
+      )}
+
+      {/* Direct charge button for saved cards */}
+      {!useNewCard && selectedCardId && (
+        <div className="pt-4">
+          <Button 
+            onClick={async () => {
+              // Handle saved card payment directly
+              try {
+                const response = await apiRequest('POST', '/api/connect/v2/charge-saved-card', {
+                  paymentMethodId: selectedCardId,
+                  contractorUserId,
+                  amount: amount / 100,
+                  currency,
+                  description
+                });
+                
+                if (response.ok) {
+                  const result = await response.json();
+                  onPaymentComplete(result.payment_intent_id);
+                } else {
+                  throw new Error('Payment failed');
+                }
+              } catch (error) {
+                toast({
+                  title: 'Payment failed',
+                  description: 'There was an error processing your payment.',
+                  variant: 'destructive',
+                });
+              }
+            }}
+            className="w-full"
+            disabled={isProcessing}
+          >
+            {isProcessing ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              `Pay ${new Intl.NumberFormat('en-GB', {
+                style: 'currency',
+                currency: currency.toUpperCase()
+              }).format(amount / 100)}`
+            )}
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }
