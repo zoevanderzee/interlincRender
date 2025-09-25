@@ -3194,6 +3194,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // EMERGENCY FIX: Payment reconciliation endpoint to manually record missing payments
+  app.post(`${apiRouter}/payments/reconcile`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { amount = '0.50', description = 'Manual payment reconciliation for missing 0.50 GBP payment' } = req.body;
+      const businessId = req.user?.id;
+      
+      if (!businessId) {
+        return res.status(400).json({ message: 'Authentication required' });
+      }
+      
+      console.log(`[PAYMENT RECONCILIATION] Creating missing payment record for ${amount} GBP`);
+      
+      // Create the missing payment record
+      const paymentData = {
+        contractId: 0, // Default for reconciliation
+        milestoneId: null,
+        amount: amount.toString(),
+        status: 'completed' as const,
+        stripePaymentIntentId: `reconciled_${Date.now()}`,
+        processedAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+        metadata: {
+          reconciled: true,
+          businessId: businessId,
+          description: description,
+          reconciledAt: new Date().toISOString(),
+          originalAmount: '0.50 GBP'
+        }
+      };
+      
+      const payment = await storage.createPayment(paymentData);
+      console.log(`✅ RECONCILIATION SUCCESS: Payment ${payment.id} created for ${paymentData.amount} GBP`);
+      
+      res.json({ 
+        success: true, 
+        paymentId: payment.id,
+        message: `Payment of ${paymentData.amount} GBP successfully reconciled`
+      });
+    } catch (error) {
+      console.error('Payment reconciliation error:', error);
+      res.status(500).json({ message: "Payment reconciliation failed" });
+    }
+  });
+
   // Business Onboarding Link APIs
   // Debug endpoint to check authentication status
   app.get(`${apiRouter}/session-debug`, async (req: Request, res: Response) => {
