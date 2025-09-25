@@ -862,8 +862,10 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
         return res.status(403).json({ error: "Only business users can charge saved cards" });
       }
 
-      if (!user.stripeCustomerId) {
-        return res.status(400).json({ error: "No customer account found" });
+      // Get business Connect account (required for V2 payments)
+      const businessConnect = await db.getConnect(userId);
+      if (!businessConnect || !businessConnect.accountId) {
+        return res.status(400).json({ error: "Business Connect account not found. Please complete payment setup." });
       }
 
       console.log(`[SAVED CARD PAYMENT] Creating payment with saved card ${paymentMethodId} for contractor ${contractorUserId}`);
@@ -879,7 +881,7 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
           paymentMethodId,
           version: 'v2_saved_card'
         },
-        businessCustomerId: user.stripeCustomerId,
+        businessAccountId: businessConnect.accountId,
         paymentMethodId,
         saveCard: false // Already saved
       });
