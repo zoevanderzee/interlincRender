@@ -4207,35 +4207,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create a Stripe payment intent
-  app.post(`${apiRouter}/create-payment-intent`, async (req: Request, res: Response) => {
-    try {
-      const { amount } = req.body;
-
-      if (!amount || isNaN(parseFloat(amount))) {
-        return res.status(400).json({ error: 'Invalid amount' });
-      }
-
-      // Create a PaymentIntent with the order amount and currency
-      // Convert amount to whole number of cents (Stripe requires integer)
-      const amountInCents = Math.round(parseFloat(amount));
-      console.log('Creating payment intent for amount (cents):', amountInCents);
-
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: amountInCents,
-        currency: 'usd',
-        automatic_payment_methods: {
-          enabled: true,
-        },
-      });
-
-      res.json({
-        clientSecret: paymentIntent.client_secret,
-      });
-    } catch (error: any) {
-      console.error('Error creating payment intent:', error);
-      res.status(500).json({ error: error.message });
-    }
+  // BLOCKED: Direct payment intents not allowed - Connect-only mode
+  app.post(`${apiRouter}/create-payment-intent-BLOCKED`, async (req: Request, res: Response) => {
+    console.error(`🚨 SECURITY BLOCKED: Direct payment intent attempt from ${req.ip}`);
+    res.status(410).json({ 
+      error: 'SECURITY VIOLATION: Direct payment intents are completely blocked. All payments must use Connect destination charges.',
+      correct_endpoint: '/api/connect/v2/create-transfer',
+      required_flow: 'businessAccountId + contractorUserId → Connect destination charge',
+      security_reason: 'Connect-only payment system prevents platform account usage'
+    });
   });
 
   // Get payment data for business dashboard
