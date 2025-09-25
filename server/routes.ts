@@ -2964,13 +2964,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const paymentIntent = event.data.object;
         const paymentId = paymentIntent.metadata.paymentId;
 
+        console.log(`[WEBHOOK] payment_intent.succeeded received:`, {
+          paymentIntentId: paymentIntent.id,
+          paymentId: paymentId,
+          amount: paymentIntent.amount,
+          currency: paymentIntent.currency,
+          status: paymentIntent.status
+        });
+
         if (paymentId) {
-          // Update payment status
-          await storage.updatePaymentStripeDetails(
+          // 🎯 CRITICAL FIX: Update payment status to COMPLETED when payment succeeds
+          await storage.updatePaymentStatus(
             parseInt(paymentId),
-            paymentIntent.id,
-            paymentIntent.status
+            'completed', // Mark as completed for dashboard calculations
+            {
+              stripePaymentIntentId: paymentIntent.id,
+              stripePaymentIntentStatus: paymentIntent.status,
+              completedAt: new Date().toISOString()
+            }
           );
+
+          console.log(`✅ PAYMENT COMPLETED: Payment ${paymentId} marked as completed in database`);
 
           // Check if this was a Connect payment
           if (paymentIntent.transfer_data && paymentIntent.metadata.connectAccountId) {
@@ -2986,6 +3000,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               );
             }
           }
+        } else {
+          console.warn(`[WEBHOOK] payment_intent.succeeded missing paymentId in metadata:`, paymentIntent.metadata);
         }
       }
 
