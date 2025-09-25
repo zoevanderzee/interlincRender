@@ -2636,13 +2636,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Add the virtual payments to the upcoming payments
       const allUpcomingPayments = [...upcomingPayments, ...pendingContractPayments];
 
-      // Calculate total payments processed - USE ACTUAL PAYMENTS FROM PAYMENTS TABLE
-      const completedPayments = await storage.getCompletedPayments(userId);
-      const totalPaymentsValue = completedPayments.reduce((sum, payment) => {
-        return sum + (parseFloat(payment.amount) || 0);
-      }, 0);
+      // Calculate REAL payment statistics using new business payment calculation methods
+      const businessPaymentStats = await storage.getBusinessPaymentStats(userId);
+      const totalPaymentsValue = businessPaymentStats.totalPaymentValue;
+      const currentMonthPayments = businessPaymentStats.currentMonthValue;
+      const currentYearPayments = businessPaymentStats.currentYearValue;
 
-      // Calculate total pending payments (from contracts)
+      // Calculate total pending payments (from contracts) - keep this for now as fallback
       const totalPendingValue = userContracts.reduce((sum, contract) => {
         return sum + parseFloat(contract.value.toString() || '0');
       }, 0);
@@ -2693,11 +2693,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         stats: {
           activeContractsCount: activeWorkRequests.length, // Count accepted work requests as active contracts
           pendingApprovalsCount: pendingWorkRequests.length, // Count pending work requests
-          paymentsProcessed: totalPaymentsValue, // Keep existing payment logic
+          paymentsProcessed: totalPaymentsValue, // REAL TOTAL PAYMENT VALUE from database
           totalPendingValue: totalPendingWorkRequestsValue, // Use work requests pending value
           activeContractorsCount: realActiveContractorsCount, // Count unique contractors
           pendingInvitesCount: pendingInvites.length,
-          totalProjectsCount: activeProjects.length // Count active projects
+          totalProjectsCount: activeProjects.length, // Count active projects
+          // NEW REAL PAYMENT METRICS
+          currentMonthPayments: currentMonthPayments, // Current month actual payments
+          currentYearPayments: currentYearPayments, // Current year actual payments
+          totalSuccessfulPaymentsCount: businessPaymentStats.totalSuccessfulPayments // Total count of successful payments
         },
         contracts: userContracts.filter(contract => contract.status !== 'deleted'),
         contractors: allContractors,  // Add contractors data
