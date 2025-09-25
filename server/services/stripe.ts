@@ -85,12 +85,13 @@ export async function createPaymentIntent(params: CreatePaymentIntentParams): Pr
       confirmation_method: 'automatic'
     };
 
-    // CRITICAL: REQUIRE business customer ID to prevent guest payments
-    if (!params.businessCustomerId) {
-      throw new Error('Business customer ID is required for authenticated business payments - cannot create guest payments');
+    // V2 Connect: Use business account for "on behalf of" payments, NO customer accounts needed
+    if (params.businessAccountId) {
+      console.log(`[V2 Payment Intent] Creating on behalf of business Connect account: ${params.businessAccountId}`);
+      // Don't set customer - payment will be created on behalf of business Connect account
+    } else {
+      console.log(`[V2 Payment Intent] Creating with platform account`);
     }
-    paymentIntentParams.customer = params.businessCustomerId;
-    console.log(`[V2 Payment Intent] Associating with business customer: ${params.businessCustomerId}`);
 
     // Express/Standard Connect account destination charge handling
     if (params.transferData && params.transferData.destination) {
@@ -366,13 +367,12 @@ export async function createSecurePaymentV2(params: {
   currency?: string;
   description?: string;
   metadata?: Record<string, string>;
-  businessAccountId?: string; // Business account for "on behalf of" creation
-  businessCustomerId?: string; // Business Stripe customer ID to prevent guest payments
+  businessAccountId: string; // REQUIRED: Business Connect account for "on behalf of" creation
   paymentMethodId?: string; // Payment method ID for saved card payments
   saveCard?: boolean; // Whether to save the card for future use
 }): Promise<{ payment_intent_id: string; status: string; client_secret: string; destination_account: string }> {
   try {
-    const { contractorUserId, amount, currency = 'gbp', description, metadata, businessAccountId, businessCustomerId } = params;
+    const { contractorUserId, amount, currency = 'gbp', description, metadata, businessAccountId } = params;
 
     console.log(`[SECURE PAYMENT V2] Creating payment for contractor ${contractorUserId}, amount: ${amount} ${currency}`);
 
@@ -403,8 +403,7 @@ export async function createSecurePaymentV2(params: {
       transferData: {
         destination: destination
       },
-      businessAccountId: businessAccountId, // Create on behalf of business if provided
-      businessCustomerId: params.businessCustomerId, // Associate with business customer
+      businessAccountId: businessAccountId, // REQUIRED: Create on behalf of business Connect account
       saveCard: params.saveCard
     };
 
@@ -417,7 +416,6 @@ export async function createSecurePaymentV2(params: {
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amountInCents,
         currency: currency,
-        customer: params.businessCustomerId,
         payment_method: params.paymentMethodId,
         confirmation_method: 'automatic',
         confirm: true,
@@ -426,6 +424,8 @@ export async function createSecurePaymentV2(params: {
         transfer_data: {
           destination: destination
         }
+      }, {
+        stripeAccount: businessAccountId // Create on behalf of business Connect account
       });
 
       return {

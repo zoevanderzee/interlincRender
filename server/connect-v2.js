@@ -762,26 +762,13 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       const amountInCents = Math.round(parsedAmount * 100);
       console.log(`[SECURE PAYMENT V2] Creating secure payment: ${parsedAmount} ${currency.toUpperCase()} for contractor ${contractorUserId}`);
 
-      // Get business user to ensure we have their Stripe customer ID
-      const businessUser = await db.getUser(userId);
-      if (!businessUser) {
-        return res.status(404).json({ error: "Business user not found" });
+      // Get business Connect account for "on behalf of" payment creation
+      const businessConnectAccount = await db.getConnect(userId);
+      if (!businessConnectAccount || !businessConnectAccount.accountId) {
+        return res.status(400).json({ error: "Business Connect account not found. Please complete payment setup." });
       }
 
-      // BULLETPROOF: Create Payment Intent using secure contractor resolution
-      // 1. Stripe API resolves contractor account ID (NEVER trust database)
-      // 2. Creates Payment Intent with business as customer (NOT guest)
-      // 3. Payment appears in BUSINESS USER'S Stripe customer record
-      
-      // CRITICAL FIX: Ensure business has Stripe customer ID
-      if (!businessUser.stripeCustomerId) {
-        console.error(`[PAYMENT ERROR] Business user ${userId} has no Stripe customer ID`);
-        return res.status(400).json({ 
-          error: 'Business account not properly set up for payments. Please contact support.' 
-        });
-      }
-
-      console.log(`[SECURE PAYMENT] Creating secure Payment Intent for business customer: ${businessUser.stripeCustomerId}`);
+      console.log(`[SECURE PAYMENT] Creating payment on behalf of business Connect account: ${businessConnectAccount.accountId}`);
       
       const paymentResult = await createSecurePaymentV2({
         contractorUserId: parseInt(contractorUserId), // Only accept contractor ID
@@ -791,17 +778,16 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
         metadata: {
           ...metadata,
           businessId: userId.toString(),
-          businessCustomerId: businessUser.stripeCustomerId, // Add this for tracking
+          businessAccountId: businessConnectAccount.accountId, // Track business Connect account
           version: 'v2_secure',
           payment_type: 'verified_destination_charge',
           api_version: 'v2_bulletproof',
-          flow_type: 'secure_destination_charge',
+          flow_type: 'connect_to_connect',
           no_manual_transfers: 'true',
           security_level: 'bulletproof'
         },
-        // CRITICAL: Pass business customer ID to associate payment with business, not create guest
-        businessCustomerId: businessUser.stripeCustomerId
-        // NOTE: Removed businessAccountId to fix contractor payments - platform account can see all Connect accounts
+        // CRITICAL: Pass business Connect account ID for "on behalf of" payment creation
+        businessAccountId: businessConnectAccount.accountId
       });
       
       console.log(`[SECURE PAYMENT] ✅ Payment Intent created securely: ${paymentResult.payment_intent_id} → verified account ${paymentResult.destination_account}`);
