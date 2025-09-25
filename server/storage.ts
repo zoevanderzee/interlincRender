@@ -1865,48 +1865,43 @@ export class DatabaseStorage implements IStorage {
     return log;
   }
 
-  // Business Payment Statistics - Real Data Calculations
+  // Business Payment Statistics - Real Data Calculations FROM PAYMENT_LOGS
   async getBusinessPaymentStats(businessId: number): Promise<{totalSuccessfulPayments: number, totalPaymentValue: number, currentMonthValue: number, currentYearValue: number}> {
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
     
-    // Get all successful payments for this business
+    // Get all successful payments for this business from payment_logs table
     const successfulPayments = await db
       .select()
-      .from(payments)
-      .innerJoin(contracts, eq(payments.contractId, contracts.id))
+      .from(paymentLogs)
       .where(and(
-        eq(contracts.businessId, businessId),
-        or(
-          eq(payments.status, 'completed'),
-          eq(payments.status, 'succeeded'),
-          eq(payments.status, 'paid')
-        )
+        eq(paymentLogs.businessId, businessId),
+        isNotNull(paymentLogs.paymentTimestamp) // Payment was actually processed
       ));
 
     const totalSuccessfulPayments = successfulPayments.length;
-    const totalPaymentValue = successfulPayments.reduce((sum, p) => sum + parseFloat(p.payments.amount), 0);
+    const totalPaymentValue = successfulPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
 
     // Calculate current month value
     const currentMonthValue = successfulPayments
       .filter(p => {
-        const completedDate = p.payments.completedDate || p.payments.scheduledDate;
-        if (!completedDate) return false;
-        const date = new Date(completedDate);
+        const paymentDate = p.paymentTimestamp;
+        if (!paymentDate) return false;
+        const date = new Date(paymentDate);
         return date.getFullYear() === currentYear && (date.getMonth() + 1) === currentMonth;
       })
-      .reduce((sum, p) => sum + parseFloat(p.payments.amount), 0);
+      .reduce((sum, p) => sum + parseFloat(p.amount), 0);
 
     // Calculate current year value
     const currentYearValue = successfulPayments
       .filter(p => {
-        const completedDate = p.payments.completedDate || p.payments.scheduledDate;
-        if (!completedDate) return false;
-        const date = new Date(completedDate);
+        const paymentDate = p.paymentTimestamp;
+        if (!paymentDate) return false;
+        const date = new Date(paymentDate);
         return date.getFullYear() === currentYear;
       })
-      .reduce((sum, p) => sum + parseFloat(p.payments.amount), 0);
+      .reduce((sum, p) => sum + parseFloat(p.amount), 0);
 
     return {
       totalSuccessfulPayments,
@@ -1922,20 +1917,15 @@ export class DatabaseStorage implements IStorage {
     
     const monthlyPayments = await db
       .select()
-      .from(payments)
-      .innerJoin(contracts, eq(payments.contractId, contracts.id))
+      .from(paymentLogs)
       .where(and(
-        eq(contracts.businessId, businessId),
-        or(
-          eq(payments.status, 'completed'),
-          eq(payments.status, 'succeeded'),
-          eq(payments.status, 'paid')
-        ),
-        gte(payments.completedDate, startOfMonth),
-        lte(payments.completedDate, endOfMonth)
+        eq(paymentLogs.businessId, businessId),
+        isNotNull(paymentLogs.paymentTimestamp),
+        gte(paymentLogs.paymentTimestamp, startOfMonth),
+        lte(paymentLogs.paymentTimestamp, endOfMonth)
       ));
 
-    return monthlyPayments.reduce((sum, p) => sum + parseFloat(p.payments.amount), 0);
+    return monthlyPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
   }
 
   async getBusinessAnnualPayments(businessId: number, year: number): Promise<number> {
@@ -1944,37 +1934,27 @@ export class DatabaseStorage implements IStorage {
     
     const annualPayments = await db
       .select()
-      .from(payments)
-      .innerJoin(contracts, eq(payments.contractId, contracts.id))
+      .from(paymentLogs)
       .where(and(
-        eq(contracts.businessId, businessId),
-        or(
-          eq(payments.status, 'completed'),
-          eq(payments.status, 'succeeded'),
-          eq(payments.status, 'paid')
-        ),
-        gte(payments.completedDate, startOfYear),
-        lte(payments.completedDate, endOfYear)
+        eq(paymentLogs.businessId, businessId),
+        isNotNull(paymentLogs.paymentTimestamp),
+        gte(paymentLogs.paymentTimestamp, startOfYear),
+        lte(paymentLogs.paymentTimestamp, endOfYear)
       ));
 
-    return annualPayments.reduce((sum, p) => sum + parseFloat(p.payments.amount), 0);
+    return annualPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
   }
 
   async getBusinessTotalSuccessfulPayments(businessId: number): Promise<number> {
     const successfulPayments = await db
       .select()
-      .from(payments)
-      .innerJoin(contracts, eq(payments.contractId, contracts.id))
+      .from(paymentLogs)
       .where(and(
-        eq(contracts.businessId, businessId),
-        or(
-          eq(payments.status, 'completed'),
-          eq(payments.status, 'succeeded'),
-          eq(payments.status, 'paid')
-        )
+        eq(paymentLogs.businessId, businessId),
+        isNotNull(paymentLogs.paymentTimestamp)
       ));
 
-    return successfulPayments.reduce((sum, p) => sum + parseFloat(p.payments.amount), 0);
+    return successfulPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
   }
 
   // Document CRUD methods
