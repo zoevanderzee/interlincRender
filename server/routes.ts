@@ -4008,17 +4008,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return sum;
       }, 0);
 
-      // Return budget-related information
+      // Calculate REAL budgetUsed from actual current month payments
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth() + 1;
+      const realCurrentMonthPayments = await storage.getBusinessMonthlyPayments(userId, currentYear, currentMonth);
+
+      // Return budget-related information with REAL payment data
       res.json({
         budgetCap: user.budgetCap || null,
-        budgetUsed: user.budgetUsed || '0',
+        budgetUsed: realCurrentMonthPayments.toFixed(2), // REAL current month payments from database
         budgetPeriod: user.budgetPeriod || 'yearly',
         budgetStartDate: user.budgetStartDate || null,
         budgetEndDate:null,
         budgetResetEnabled: user.budgetResetEnabled || false,
         totalProjectAllocations: totalProjectAllocations.toFixed(2),
         remainingBudget: user.budgetCap
-          ? (parseFloat(user.budgetCap.toString()) - totalProjectAllocations).toFixed(2)
+          ? (parseFloat(user.budgetCap.toString()) - realCurrentMonthPayments).toFixed(2)
           : null
       });
     } catch (error) {
