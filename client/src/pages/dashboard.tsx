@@ -347,7 +347,7 @@ const Dashboard = () => {
                 <DollarSign size={20} className="text-green-400" />
               </div>
             </div>
-            <p className="text-3xl font-bold text-white tracking-tight">${integratedData.stats.paymentsProcessed?.toLocaleString('en-US') || '0'}</p>
+            <p className="text-3xl font-bold text-white tracking-tight">{formatCurrency(integratedData.stats.paymentsProcessed || 0)}</p>
             <p className="text-xs text-muted-foreground mt-1">Total value of processed payments</p>
           </CardContent>
         </Card>

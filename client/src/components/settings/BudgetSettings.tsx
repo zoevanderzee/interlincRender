@@ -77,8 +77,8 @@ export function BudgetSettings() {
   };
 
   const formatCurrency = (value: string | null): string => {
-    if (!value) return "$0";
-    return `$${parseFloat(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (!value) return "£0.00";
+    return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(parseFloat(value));
   };
 
   const calculateUsage = (): number => {
