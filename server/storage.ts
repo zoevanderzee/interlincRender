@@ -138,6 +138,12 @@ export interface IStorage {
   updatePaymentStripeDetails(id: number, stripePaymentIntentId: string, stripePaymentIntentStatus: string): Promise<Payment | undefined>;
   updatePaymentTransferDetails(id: number, stripeTransferId: string, stripeTransferStatus: string, applicationFee: number): Promise<Payment | undefined>;
 
+  // Business Payment Statistics - Real Data Calculations
+  getBusinessPaymentStats(businessId: number): Promise<{totalSuccessfulPayments: number, totalPaymentValue: number, currentMonthValue: number, currentYearValue: number}>;
+  getBusinessMonthlyPayments(businessId: number, year: number, month: number): Promise<number>;
+  getBusinessAnnualPayments(businessId: number, year: number): Promise<number>;
+  getBusinessTotalSuccessfulPayments(businessId: number): Promise<number>;
+
   // Payment Logs for compliance
   createPaymentLog(log: any): Promise<any>;
 
@@ -1857,6 +1863,118 @@ export class DatabaseStorage implements IStorage {
       .values(logData)
       .returning();
     return log;
+  }
+
+  // Business Payment Statistics - Real Data Calculations
+  async getBusinessPaymentStats(businessId: number): Promise<{totalSuccessfulPayments: number, totalPaymentValue: number, currentMonthValue: number, currentYearValue: number}> {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    
+    // Get all successful payments for this business
+    const successfulPayments = await db
+      .select()
+      .from(payments)
+      .innerJoin(contracts, eq(payments.contractId, contracts.id))
+      .where(and(
+        eq(contracts.businessId, businessId),
+        or(
+          eq(payments.status, 'completed'),
+          eq(payments.status, 'succeeded'),
+          eq(payments.status, 'paid')
+        )
+      ));
+
+    const totalSuccessfulPayments = successfulPayments.length;
+    const totalPaymentValue = successfulPayments.reduce((sum, p) => sum + parseFloat(p.payments.amount), 0);
+
+    // Calculate current month value
+    const currentMonthValue = successfulPayments
+      .filter(p => {
+        const completedDate = p.payments.completedDate || p.payments.scheduledDate;
+        if (!completedDate) return false;
+        const date = new Date(completedDate);
+        return date.getFullYear() === currentYear && (date.getMonth() + 1) === currentMonth;
+      })
+      .reduce((sum, p) => sum + parseFloat(p.payments.amount), 0);
+
+    // Calculate current year value
+    const currentYearValue = successfulPayments
+      .filter(p => {
+        const completedDate = p.payments.completedDate || p.payments.scheduledDate;
+        if (!completedDate) return false;
+        const date = new Date(completedDate);
+        return date.getFullYear() === currentYear;
+      })
+      .reduce((sum, p) => sum + parseFloat(p.payments.amount), 0);
+
+    return {
+      totalSuccessfulPayments,
+      totalPaymentValue,
+      currentMonthValue,
+      currentYearValue
+    };
+  }
+
+  async getBusinessMonthlyPayments(businessId: number, year: number, month: number): Promise<number> {
+    const startOfMonth = new Date(year, month - 1, 1);
+    const endOfMonth = new Date(year, month, 0, 23, 59, 59, 999);
+    
+    const monthlyPayments = await db
+      .select()
+      .from(payments)
+      .innerJoin(contracts, eq(payments.contractId, contracts.id))
+      .where(and(
+        eq(contracts.businessId, businessId),
+        or(
+          eq(payments.status, 'completed'),
+          eq(payments.status, 'succeeded'),
+          eq(payments.status, 'paid')
+        ),
+        gte(payments.completedDate, startOfMonth),
+        lte(payments.completedDate, endOfMonth)
+      ));
+
+    return monthlyPayments.reduce((sum, p) => sum + parseFloat(p.payments.amount), 0);
+  }
+
+  async getBusinessAnnualPayments(businessId: number, year: number): Promise<number> {
+    const startOfYear = new Date(year, 0, 1);
+    const endOfYear = new Date(year, 11, 31, 23, 59, 59, 999);
+    
+    const annualPayments = await db
+      .select()
+      .from(payments)
+      .innerJoin(contracts, eq(payments.contractId, contracts.id))
+      .where(and(
+        eq(contracts.businessId, businessId),
+        or(
+          eq(payments.status, 'completed'),
+          eq(payments.status, 'succeeded'),
+          eq(payments.status, 'paid')
+        ),
+        gte(payments.completedDate, startOfYear),
+        lte(payments.completedDate, endOfYear)
+      ));
+
+    return annualPayments.reduce((sum, p) => sum + parseFloat(p.payments.amount), 0);
+  }
+
+  async getBusinessTotalSuccessfulPayments(businessId: number): Promise<number> {
+    const successfulPayments = await db
+      .select()
+      .from(payments)
+      .innerJoin(contracts, eq(payments.contractId, contracts.id))
+      .where(and(
+        eq(contracts.businessId, businessId),
+        or(
+          eq(payments.status, 'completed'),
+          eq(payments.status, 'succeeded'),
+          eq(payments.status, 'paid')
+        )
+      ));
+
+    return successfulPayments.reduce((sum, p) => sum + parseFloat(p.payments.amount), 0);
   }
 
   // Document CRUD methods
