@@ -92,29 +92,32 @@ export async function createPaymentIntent(params: CreatePaymentIntentParams): Pr
       throw new Error('Invalid or disabled destination account');
     }
 
-    // Create Payment Intent using correct Connect pattern
-    console.log(`[V2 Connect Payment] Creating destination charge: Business ${params.businessAccountId} → Contractor ${params.transferData.destination}`);
+    // Create Payment Intent using correct Connect destination charge pattern
+    // IMPORTANT: For card payments, on_behalf_of must be omitted when using transfer_data.destination
+    // due to Stripe's settlement country requirements
+    console.log(`[V2 Connect Payment] Creating destination charge: Platform → Contractor ${params.transferData.destination} (Business: ${params.businessAccountId})`);
     
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountInCents,
       currency: currency,
       payment_method_types: ['card'],
-      on_behalf_of: params.businessAccountId, // Business Connect account
+      // REMOVED: on_behalf_of (incompatible with card payments when different from destination)
       transfer_data: {
-        destination: params.transferData.destination, // Contractor Connect account
+        destination: params.transferData.destination, // Contractor Connect account receives funds
       },
       description: params.description,
       metadata: {
         ...params.metadata,
         contractor_account_id: params.transferData.destination,
-        business_account_id: params.businessAccountId,
+        business_account_id: params.businessAccountId, // Business tracked in metadata
         account_type: accountType,
-        version: 'v2_connect',
-        flow_type: 'destination_charge'
+        version: 'v2_destination_charge',
+        flow_type: 'platform_to_contractor',
+        payment_pattern: 'card_destination_charge'
       },
       capture_method: 'automatic',
       confirmation_method: 'automatic'
-    }); // Platform account (implicit - no stripeAccount parameter needed)
+    }); // Created on platform account, funds go directly to contractor
 
     // Check contractor payout settings for automatic transfers
     try {
