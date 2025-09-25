@@ -800,9 +800,8 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
           security_level: 'bulletproof'
         },
         // CRITICAL: Pass business customer ID to associate payment with business, not create guest
-        businessCustomerId: businessUser.stripeCustomerId,
-        // Pass business account ID for proper "on behalf of" creation
-        businessAccountId: businessConnect?.accountId
+        businessCustomerId: businessUser.stripeCustomerId
+        // NOTE: Removed businessAccountId to fix contractor payments - platform account can see all Connect accounts
       });
       
       console.log(`[SECURE PAYMENT] ✅ Payment Intent created securely: ${paymentResult.payment_intent_id} → verified account ${paymentResult.destination_account}`);
