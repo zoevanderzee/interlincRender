@@ -49,8 +49,8 @@ export function useIntegratedData() {
       return response.json();
     },
     enabled: !!user,
-    staleTime: 15000, // 15 seconds (reduced for faster updates)
-    refetchInterval: 30000, // 30 seconds (more frequent updates)
+    staleTime: 0, // Always fetch fresh data to show real payment calculations
+    refetchInterval: 10000, // 10 seconds for faster updates
     refetchOnWindowFocus: true, // Refresh when user returns to tab
     refetchOnReconnect: true, // Refresh on reconnect
   });
@@ -59,8 +59,8 @@ export function useIntegratedData() {
   const { data: budgetData, isLoading: isBudgetLoading } = useQuery({
     queryKey: ['/api/budget'],
     enabled: !!user && user.role === 'business',
-    staleTime: 30 * 1000,
-    refetchInterval: 60 * 1000,
+    staleTime: 0, // Always fetch fresh budget data to show real payment calculations  
+    refetchInterval: 10 * 1000,
   });
 
   // Connect status query - V2 only

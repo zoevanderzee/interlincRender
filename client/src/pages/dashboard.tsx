@@ -22,6 +22,7 @@ import { useIntegratedData } from "@/hooks/use-integrated-data";
 import { Contract, User, Payment, Milestone } from "@shared/schema";
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
+import { formatCurrency } from '@/lib/utils';
 
 
 // Define interface for dashboard data (this is now implicitly handled by useIntegratedData)
@@ -63,10 +64,10 @@ const Dashboard = () => {
   // Use V2 connect data from integrated hook
   const connectStatus = integratedData ? integratedData.stripeConnectData : null;
 
-  // Format the remaining budget as currency
-  const formatCurrency = (value: string | null): string => {
-    if (!value) return "$0";
-    return `$${parseFloat(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  // Format the remaining budget as currency - now uses proper GBP formatting
+  const formatBudgetCurrency = (value: string | null): string => {
+    if (!value) return "£0.00";
+    return formatCurrency(value); // Use proper GBP formatting from utils
   };
 
   // Navigate to create project page
@@ -360,8 +361,8 @@ const Dashboard = () => {
                 <Coins size={20} className="text-blue-400" />
               </div>
             </div>
-            {/* Use formatCurrency for remainingBudget from integratedData */}
-            <p className="text-3xl font-bold text-white tracking-tight">{formatCurrency(integratedData.stats.remainingBudget)}</p>
+            {/* Use proper GBP formatting for remainingBudget from integratedData */}
+            <p className="text-3xl font-bold text-white tracking-tight">{formatBudgetCurrency(integratedData.stats.remainingBudget)}</p>
             <p className="text-xs text-muted-foreground mt-1">Available outsourcing budget</p>
           </CardContent>
         </Card>
