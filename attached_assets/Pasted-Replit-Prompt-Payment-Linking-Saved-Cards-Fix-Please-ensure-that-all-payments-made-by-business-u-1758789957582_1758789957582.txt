@@ -1,0 +1,45 @@
+Replit Prompt – Payment Linking & Saved Cards Fix
+Please ensure that all payments made by business users are correctly associated with their Stripe Customer account — not as guest or anonymous payers — and that saved cards are supported.
+Here's what needs to happen in the implementation:
+🔹 1. Create and Store Stripe Customer ID
+At the time of business user signup, create a Stripe Customer:
+const customer = await stripe.customers.create({ email, metadata: { userId, type: "business" } });
+Save the customer.id to our user database (e.g. stripeCustomerId)
+🔹 2. Always Use the Customer ID When Creating PaymentIntents
+When a business initiates a payment (new or saved card), the PaymentIntent must include:
+customer: business.stripeCustomerId,
+setup_future_usage: "off_session", // Enables card reuse
+transfer_data: {
+  destination: contractor.stripeAccountId
+},
+metadata: {
+  businessUserId: ...,
+  contractorUserId: ...,
+  contractId: ...
+}
+This ensures:
+The payment is linked to the business’s Stripe Customer
+Cards can be saved and reused
+Payments are traceable to both business and contractor
+No “guest” payments occur
+🔹 3. Saved Cards Support
+List saved cards via:
+stripe.paymentMethods.list({ customer: stripeCustomerId, type: "card" });
+Allow business users to select saved cards when paying contractors
+Reuse by creating a PaymentIntent with:
+payment_method: savedCardId,
+customer: stripeCustomerId,
+off_session: true,
+confirm: true
+🔹 4. Do Not Let Stripe Create Customers Automatically
+Never let the frontend or Checkout auto-create Stripe customers without linking them to our database
+This causes “guest” payments and breaks metadata tracking
+🔹 5. Ensure Destination Charges Are Still Used
+We are using destination charges — funds should flow:
+From: customer (business)
+To: contractor’s connected account
+Without platform handling funds
+🔹 Bonus: Automatic Payouts
+Confirm contractor accounts have payouts enabled
+Optionally implement webhook for payment_intent.succeeded to confirm payout trigger
+✅ This setup ensures business payments are properly linked, saved cards can be reused securely, and destination charges route funds automatically to the contractor.
