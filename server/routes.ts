@@ -2954,10 +2954,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Webhook for Stripe events
-  app.post(`${apiRouter}/stripe-webhook`, async (req: Request, res: Response) => {
+  // CRITICAL FIX: Webhook MUST be public (outside apiRouter auth protection)
+  // Add raw body parser for webhook signature verification
+  app.use('/webhook/stripe', express.raw({type: 'application/json'}));
+  
+  // Webhook for Stripe events - PUBLIC endpoint with signature verification
+  app.post('/webhook/stripe', async (req: Request, res: Response) => {
     try {
-      const event = req.body;
+      // SECURITY: Verify webhook signature from Stripe
+      const sig = req.headers['stripe-signature'];
+      let event;
+      
+      try {
+        if (process.env.STRIPE_WEBHOOK_SECRET) {
+          event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+        } else {
+          console.warn('⚠️ STRIPE_WEBHOOK_SECRET not set - using unverified webhook');
+          event = JSON.parse(req.body.toString());
+        }
+      } catch (err) {
+        console.error('⚠️ Webhook signature verification failed:', err);
+        return res.status(400).send(`Webhook Error: ${err.message}`);
+      }
 
       // Handle payment_intent.succeeded event
       if (event.type === 'payment_intent.succeeded') {
