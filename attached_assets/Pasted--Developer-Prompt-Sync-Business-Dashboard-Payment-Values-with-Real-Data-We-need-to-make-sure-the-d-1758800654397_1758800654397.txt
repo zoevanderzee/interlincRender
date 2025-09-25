@@ -1,0 +1,30 @@
+✅ Developer Prompt: Sync Business Dashboard Payment Values with Real Data
+We need to make sure the dashboard values displayed to business users are accurately calculated and reflect their real usage within Interlinc.
+Wherever these values are shown visually on the dashboard, the following rules must apply:
+1. "Payments Processed"
+Where it appears in UI:
+Where we show the total number or value of payments processed by the business (e.g., under "Payments Processed" or similar heading).
+How to populate:
+Show the sum total of all successful payments the business has made to contractors via Interlinc.
+This should reflect only completed (succeeded) payments.
+Do not include failed, pending, or cancelled payments.
+The number should dynamically update based on the actual transactions associated with this business user.
+2. "Budget Used"
+Where it appears in UI:
+Where we show a business's current monthly usage or budget spent.
+How to populate:
+Show the total amount paid by the business in the current calendar month.
+If the business has a monthly budget set in their profile, calculate the remaining amount as well.
+Reset this value at the beginning of each new month.
+Display in the correct currency format.
+3. "Monthly Payments" and "Annual Payments"
+Where it appears in UI:
+Where we show breakdowns of spend for the current month and year.
+How to populate:
+Monthly Total: Total of all successful payments made by the business since the 1st of the current month.
+Annual Total: Total of all successful payments made by the business since January 1st of the current year.
+These values should update automatically and consistently reflect completed transactions only.
+General Notes:
+Use our internal records of payments (i.e., what we store in our database), not what appears in the Stripe dashboard — since destination charge payments don’t show under the business’s Stripe account.
+Each payment must be tied to the correct businessId or internal identifier so that totals are calculated per user.
+Use the existing visual containers in the UI (i.e., where the values are currently displayed) and ensure the variables populating those containers reflect the rules above.
