@@ -7,6 +7,7 @@ import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import { useLocation } from 'wouter';
+import { formatCurrency } from '@/lib/utils';
 
 /**
  * Stripe Checkout Implementation
@@ -99,11 +100,7 @@ export default function StripeCheckout() {
   };
 
   const formatAmount = (amount: string) => {
-    const numAmount = parseFloat(amount);
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(numAmount);
+    return formatCurrency(amount); // Use GBP formatting from utils
   };
 
   // If payment is successful, show success message

@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { CheckCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { formatCurrency } from '@/lib/utils';
 
 export default function PaymentSimulator() {
   const [amount, setAmount] = useState('100.00');
@@ -47,11 +48,7 @@ export default function PaymentSimulator() {
   };
 
   const formatAmount = (amount: string) => {
-    const numAmount = parseFloat(amount);
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(numAmount);
+    return formatCurrency(amount); // Use GBP formatting from utils
   };
 
   // If payment is successful, show success message
