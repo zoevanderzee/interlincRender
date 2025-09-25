@@ -4,6 +4,8 @@ import { loadStripe } from '@stripe/stripe-js';
 import { useMutation } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -138,6 +140,7 @@ export function StripeElements({ amount, onPaymentComplete, isProcessing = false
   const [savedCards, setSavedCards] = useState<SavedCard[]>([]);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [useNewCard, setUseNewCard] = useState(true);
+  const [saveCard, setSaveCard] = useState(false); // Default to NOT saving cards
   const [loadingSavedCards, setLoadingSavedCards] = useState(false);
   const { toast } = useToast();
 
@@ -185,7 +188,7 @@ export function StripeElements({ amount, onPaymentComplete, isProcessing = false
           amount: amount / 100, // Convert back to dollars
           currency,
           description,
-          saveCard: true // Enable card saving by default
+          saveCard: saveCard // Only save card if user explicitly chooses
         };
 
         // If using a saved card, include the payment method ID
@@ -326,13 +329,30 @@ export function StripeElements({ amount, onPaymentComplete, isProcessing = false
 
       {/* Payment Form - only show if using new card or no saved cards UI */}
       {(useNewCard || !showSavedCards) && (
-        <Elements stripe={stripePromise} options={options}>
-          <StripeCheckoutForm 
-            clientSecret={clientSecret} 
-            onPaymentComplete={onPaymentComplete}
-            isProcessing={isProcessing}
-          />
-        </Elements>
+        <div className="space-y-4">
+          {/* Optional Card Saving Checkbox */}
+          <div className="flex items-center space-x-2">
+            <Checkbox 
+              id="save-card" 
+              checked={saveCard} 
+              onCheckedChange={(checked) => setSaveCard(checked as boolean)}
+            />
+            <Label 
+              htmlFor="save-card" 
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              Save card for future payments
+            </Label>
+          </div>
+          
+          <Elements stripe={stripePromise} options={options}>
+            <StripeCheckoutForm 
+              clientSecret={clientSecret} 
+              onPaymentComplete={onPaymentComplete}
+              isProcessing={isProcessing}
+            />
+          </Elements>
+        </div>
       )}
 
       {/* Direct charge button for saved cards */}
