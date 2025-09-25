@@ -7203,9 +7203,7 @@ function registerTrolleySubmerchantRoutes(app: Express, requireAuth: any): void 
     }
   });
 
-  // Subscription requirement middleware
-  // For now, we'll just export the middleware for later use
-  (app as any).requireActiveSubscription = requireActiveSubscription;
+  // Subscription requirement middleware is available for all routes above
 
   // Register Trolley routes
   trolleyRoutes(app, "/api", requireAuth);
