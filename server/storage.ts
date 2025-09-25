@@ -1865,43 +1865,44 @@ export class DatabaseStorage implements IStorage {
     return log;
   }
 
-  // Business Payment Statistics - Real Data Calculations FROM PAYMENT_LOGS
+  // Business Payment Statistics - Real Data Calculations FROM PAYMENTS TABLE
   async getBusinessPaymentStats(businessId: number): Promise<{totalSuccessfulPayments: number, totalPaymentValue: number, currentMonthValue: number, currentYearValue: number}> {
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
     
-    // Get all successful payments for this business from payment_logs table
+    // Get all successful payments for this business from payments table
     const successfulPayments = await db
       .select()
-      .from(paymentLogs)
+      .from(payments)
+      .innerJoin(contracts, eq(payments.contractId, contracts.id))
       .where(and(
-        eq(paymentLogs.businessId, businessId),
-        isNotNull(paymentLogs.paymentTimestamp) // Payment was actually processed
+        eq(contracts.businessId, businessId),
+        eq(payments.status, 'completed')
       ));
 
     const totalSuccessfulPayments = successfulPayments.length;
-    const totalPaymentValue = successfulPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+    const totalPaymentValue = successfulPayments.reduce((sum, p) => sum + parseFloat(p.payments.amount), 0);
 
     // Calculate current month value
     const currentMonthValue = successfulPayments
       .filter(p => {
-        const paymentDate = p.paymentTimestamp;
+        const paymentDate = p.payments.completedDate;
         if (!paymentDate) return false;
         const date = new Date(paymentDate);
         return date.getFullYear() === currentYear && (date.getMonth() + 1) === currentMonth;
       })
-      .reduce((sum, p) => sum + parseFloat(p.amount), 0);
+      .reduce((sum, p) => sum + parseFloat(p.payments.amount), 0);
 
     // Calculate current year value
     const currentYearValue = successfulPayments
       .filter(p => {
-        const paymentDate = p.paymentTimestamp;
+        const paymentDate = p.payments.completedDate;
         if (!paymentDate) return false;
         const date = new Date(paymentDate);
         return date.getFullYear() === currentYear;
       })
-      .reduce((sum, p) => sum + parseFloat(p.amount), 0);
+      .reduce((sum, p) => sum + parseFloat(p.payments.amount), 0);
 
     return {
       totalSuccessfulPayments,
