@@ -1,3 +1,4 @@
+
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { useIntegratedData } from "@/hooks/use-integrated-data";
