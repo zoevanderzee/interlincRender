@@ -3206,16 +3206,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`[PAYMENT RECONCILIATION] Creating missing payment record for ${amount} GBP`);
       
-      // EMERGENCY RECONCILIATION: Create minimal payment record
+      // DIRECT PAYMENT RECONCILIATION: No contract/milestone needed for direct transfers
       const paymentData = {
-        contractId: 32, // Use any valid contract ID  
-        milestoneId: 21, // Use any valid milestone ID
+        contractId: null, // Direct payment - no contract needed
+        milestoneId: null, // Direct payment - no milestone needed  
         amount: amount.toString(), // REQUIRED: Amount as string
         status: 'completed' as const,
         scheduledDate: new Date(), // REQUIRED: Scheduled date
         completedDate: new Date(), // OPTIONAL: Completion date
         stripePaymentIntentId: `reconciled_${Date.now()}`,
-        notes: `RECONCILIATION: ${description} - Missing £0.50 payment for business ID ${businessId}`,
+        notes: `DIRECT PAYMENT RECONCILIATION: ${description} - Missing £0.50 direct payment for business ID ${businessId}`,
         triggeredBy: 'reconciliation',
         triggeredAt: new Date()
       };
