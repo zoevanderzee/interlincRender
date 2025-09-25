@@ -105,6 +105,23 @@ class AutomatedPaymentService {
           milestone: milestone.name
         });
 
+        // FIXED: Create payment record FIRST to get database ID for Stripe metadata
+        const paymentData = {
+          contractId: milestone.contractId,
+          milestoneId: milestoneId,
+          amount: netAmount.toFixed(2),
+          status: 'requires_payment_method' as const,
+          processedAt: new Date().toISOString(),
+          metadata: {
+            approvedBy,
+            paymentType: 'destination_charge',
+            destinationAccount: contractorConnect.accountId
+          }
+        };
+
+        const payment = await storage.createPayment(paymentData);
+        console.log(`✅ DATABASE PAYMENT RECORD CREATED: Payment ID ${payment.id} for milestone ${milestoneId}`);
+
         // Create Payment Intent with destination charge - funds go directly to contractor
         // NO manual transfers, NO platform balance, NO /v1/transfers calls
         transferResult = await createPaymentIntent({
@@ -112,6 +129,7 @@ class AutomatedPaymentService {
           currency: 'gbp',
           description: `Payment for milestone: ${milestone.name} (Project: ${milestone.contractName})`,
           metadata: {
+            paymentId: payment.id.toString(), // 🎯 CRITICAL FIX: Include database payment ID
             milestoneId: milestoneId.toString(),
             contractorId: contractor.id.toString(),
             businessId: approvedBy.toString(),
@@ -123,7 +141,11 @@ class AutomatedPaymentService {
           }
         });
 
+        // Update payment record with Stripe payment intent details
+        await storage.updatePaymentStripeDetails(payment.id, transferResult.id, transferResult.status);
+
         console.log(`✅ V2 destination charge created successfully (NO TRANSFERS):`, {
+          paymentId: payment.id,
           paymentIntentId: transferResult.id,
           amount: netAmount,
           status: transferResult.status
@@ -144,29 +166,8 @@ class AutomatedPaymentService {
         };
       }
 
-
-      // Create payment record for destination charge
-      const paymentData = {
-        contractId: milestone.contractId,
-        milestoneId: milestoneId,
-        amount: netAmount.toFixed(2),
-        status: 'requires_payment_method' as const,
-        stripePaymentIntentId: transferResult.id,
-        processedAt: new Date().toISOString(),
-        metadata: {
-          approvedBy,
-          paymentIntentStatus: transferResult.status,
-          paymentType: 'destination_charge',
-          destinationAccount: contractorConnect.accountId
-        }
-      };
-
-
-      // Store payment and update budget
+      // Update budget tracking and create compliance log
       try {
-        const payment = await storage.createPayment(paymentData);
-
-        // Update budget tracking
         await storage.increaseBudgetUsed(contract.businessId, totalAmount);
         console.log(`✅ BUDGET UPDATED: Deducted $${totalAmount} from business user ${contract.businessId} budget`);
 
