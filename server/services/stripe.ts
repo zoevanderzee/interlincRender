@@ -85,11 +85,12 @@ export async function createPaymentIntent(params: CreatePaymentIntentParams): Pr
       confirmation_method: 'automatic'
     };
 
-    // CRITICAL: Associate payment with business customer to prevent guest payments
-    if (params.businessCustomerId) {
-      paymentIntentParams.customer = params.businessCustomerId;
-      console.log(`[V2 Payment Intent] Associating with business customer: ${params.businessCustomerId}`);
+    // CRITICAL: REQUIRE business customer ID to prevent guest payments
+    if (!params.businessCustomerId) {
+      throw new Error('Business customer ID is required for authenticated business payments - cannot create guest payments');
     }
+    paymentIntentParams.customer = params.businessCustomerId;
+    console.log(`[V2 Payment Intent] Associating with business customer: ${params.businessCustomerId}`);
 
     // Express/Standard Connect account destination charge handling
     if (params.transferData && params.transferData.destination) {
@@ -420,7 +421,6 @@ export async function createSecurePaymentV2(params: {
         payment_method: params.paymentMethodId,
         confirmation_method: 'automatic',
         confirm: true,
-        off_session: true, // This is an off-session payment
         description: description || 'Secure payment via saved card',
         metadata: paymentIntentParams.metadata,
         transfer_data: {
