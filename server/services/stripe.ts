@@ -410,8 +410,7 @@ export async function createDirectPaymentV2(params: {
       },
       transferData: {
         destination: destination
-      },
-      businessAccountId: 'platform' // Not used in destination charges, but required by interface
+      }
     });
 
     console.log(`V2 Payment Intent created: ${paymentIntent.id} for ${amount} ${currency} to ${destination}`);
@@ -678,10 +677,6 @@ export async function processMilestonePayment(payment: Payment): Promise<Payment
       milestoneId: payment.milestoneId ? payment.milestoneId.toString() : '',
       paymentType: 'milestone'
     },
-    transferData: {
-      destination: 'acct_placeholder' // Legacy function - needs contractor account
-    },
-    businessAccountId: 'platform' // Not used in destination charges, but required by interface
   });
 }
 

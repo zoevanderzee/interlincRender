@@ -12,8 +12,7 @@ import {
   Calendar,
   Settings,
   AlertCircle,
-  CheckCircle,
-  TrendingUp
+  CheckCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -419,66 +418,42 @@ const Dashboard = () => {
       </div>
 
       {/* Quick Actions Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-6">
-        <StatsCard
-          title="Monthly Payments"
-          value={`£${(integratedData.stats.monthlyPayments || 0).toLocaleString()}`}
-          icon={<Calendar className="h-4 w-4 text-muted-foreground" />}
-        />
-        <StatsCard
-          title="Annual Payments"
-          value={`£${(integratedData.stats.annualPayments || 0).toLocaleString()}`}
-          icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />}
-        />
-        <StatsCard
-          title="Total Transactions"
-          value={integratedData.stats.paymentsCount || 0}
-          icon={<FileText className="h-4 w-4 text-muted-foreground" />}
-        />
-      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <Button
+          variant="ghost"
+          className="h-auto py-4 px-6 justify-start animate-slide-in"
+          onClick={() => navigate('/projects')}
+        >
+          <FileText className="mr-3" size={18} />
+          <div className="text-left">
+            <div className="font-medium">Projects</div>
+            <div className="text-xs text-muted-foreground">Manage all projects</div>
+          </div>
+        </Button>
 
-      <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-8 text-muted-foreground">
-              Recent contracts and payments will appear here
-            </div>
-          </CardContent>
-        </Card>
+        <Button
+          variant="ghost"
+          className="h-auto py-4 px-6 justify-start animate-slide-in"
+          onClick={() => navigate('/payments')}
+        >
+          <DollarSign className="mr-3" size={18} />
+          <div className="text-left">
+            <div className="font-medium">Payments</div>
+            <div className="text-xs text-muted-foreground">Process and track payments</div>
+          </div>
+        </Button>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Button
-              className="w-full"
-              onClick={() => navigate('/new-project')}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              New Project
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => navigate('/contractors')}
-            >
-              <Users className="mr-2 h-4 w-4" />
-              Find Contractors
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => navigate('/payments')}
-            >
-              <DollarSign className="mr-2 h-4 w-4" />
-              View Payments
-            </Button>
-          </CardContent>
-        </Card>
+        <Button
+          variant="ghost"
+          className="h-auto py-4 px-6 justify-start animate-slide-in"
+          onClick={() => navigate('/budget-oversight')}
+        >
+          <Coins className="mr-3" size={18} />
+          <div className="text-left">
+            <div className="font-medium">Budget</div>
+            <div className="text-xs text-muted-foreground">Manage budget settings</div>
+          </div>
+        </Button>
       </div>
     </>
   );

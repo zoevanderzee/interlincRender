@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,62 +21,14 @@ import {
   CheckCircle,
   Clock,
   Settings,
-  PieChart,
-  Target, // Added import for Target icon
-  Activity // Added import for Activity icon
+  PieChart
 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query"; // Added useQuery import
-import { getAuthHeaders } from "@/lib/auth"; // Assuming getAuthHeaders is available
-
-// Define StatsCard component as it's used but not defined in the original snippet
-function StatsCard({ title, value, icon }: { title: string; value: string; icon: JSX.Element }) {
-  return (
-    <Card className="bg-black border-gray-800">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-gray-400">{title}</CardTitle>
-        {icon}
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold text-white">{value}</div>
-      </CardContent>
-    </Card>
-  );
-}
-
 
 export default function BudgetOversight() {
   const { user } = useAuth();
-  // Removed useIntegratedData and useFinancialData as they seem to be replaced by useQuery calls
-  // const { data: integratedData, isLoading } = useIntegratedData();
-  // const financialData = useFinancialData();
+  const { data: integratedData, isLoading } = useIntegratedData();
+  const financialData = useFinancialData();
   const { toast } = useToast();
-
-  // Fetch budget and dashboard data
-  const { data: budgetData, isLoading: isBudgetLoading } = useQuery({
-    queryKey: ['/api/budget'],
-    queryFn: async () => {
-      const response = await fetch('/api/budget', {
-        credentials: 'include',
-        headers: getAuthHeaders()
-      });
-      if (!response.ok) throw new Error('Failed to fetch budget data');
-      return response.json();
-    }
-  });
-
-  const { data: dashboardData, isLoading: isDashboardLoading } = useQuery({
-    queryKey: ['/api/dashboard'],
-    queryFn: async () => {
-      const response = await fetch('/api/dashboard', {
-        credentials: 'include',
-        headers: getAuthHeaders()
-      });
-      if (!response.ok) throw new Error('Failed to fetch dashboard data');
-      return response.json();
-    }
-  });
-
-  const isLoading = isBudgetLoading || isDashboardLoading;
 
   // Local state for budget settings
   const [budgetCap, setBudgetCap] = useState("");
@@ -84,12 +37,12 @@ export default function BudgetOversight() {
 
   // Initialize form with current budget data
   useEffect(() => {
-    if (budgetData) { // Use fetched budgetData
-      setBudgetCap(budgetData.budgetCap || "");
-      setBudgetPeriod(budgetData.budgetPeriod || "monthly");
-      setBudgetResetEnabled(budgetData.budgetResetEnabled || false);
+    if (integratedData?.budgetData) {
+      setBudgetCap(integratedData.budgetData.budgetCap || "");
+      setBudgetPeriod(integratedData.budgetData.budgetPeriod || "monthly");
+      setBudgetResetEnabled(integratedData.budgetData.budgetResetEnabled || false);
     }
-  }, [budgetData]); // Depend on budgetData
+  }, [integratedData?.budgetData]);
 
   const updateBudgetMutation = useMutation({
     mutationFn: async (budgetData: any) => {
@@ -102,7 +55,7 @@ export default function BudgetOversight() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/budget"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] }); // Invalidate dashboard data as well
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       toast({
         title: "Budget Updated",
         description: "Your budget settings have been saved successfully.",
@@ -119,8 +72,8 @@ export default function BudgetOversight() {
 
   const handleSaveBudget = () => {
     const budgetValue = budgetCap ? parseFloat(budgetCap) : null;
-
-    if (budgetValue !== null && budgetValue <= 0) { // Check for null before comparison
+    
+    if (budgetValue && budgetValue <= 0) {
       toast({
         title: "Invalid Budget",
         description: "Budget cap must be greater than 0",
@@ -160,10 +113,10 @@ export default function BudgetOversight() {
     );
   }
 
-  const budgetUsed = parseFloat(dashboardData?.stats?.budgetUsed || "0"); // Use dashboardData
-  const budgetLimit = parseFloat(budgetData?.budgetCap || "0"); // Use budgetData
-  const remainingBudget = parseFloat(dashboardData?.stats?.budgetRemaining || "0"); // Use dashboardData
-
+  const budgetUsed = parseFloat(financialData.totalBudgetUsed || "0");
+  const budgetLimit = parseFloat(integratedData?.budgetData?.budgetCap || "0");
+  const remainingBudget = parseFloat(financialData.remainingBudget || "0");
+  
   const budgetUtilization = budgetLimit > 0 ? (budgetUsed / budgetLimit) * 100 : 0;
   const isOverBudget = budgetUsed > budgetLimit && budgetLimit > 0;
   const isNearLimit = budgetUtilization > 80 && !isOverBudget;
@@ -190,26 +143,59 @@ export default function BudgetOversight() {
 
       {/* Budget Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <StatsCard 
-          title="Budget Used" 
-          value={formatCurrency(budgetUsed)}
-          icon={<TrendingUp className="h-4 w-4 text-blue-400" />}
-        />
-        <StatsCard 
-          title="Budget Remaining" 
-          value={formatCurrency(remainingBudget)}
-          icon={isOverBudget ? <AlertTriangle className="h-4 w-4 text-red-400" /> : <TrendingUp className="h-4 w-4 text-green-400" />}
-        />
-        <StatsCard 
-          title="Budget Limit" 
-          value={budgetLimit > 0 ? formatCurrency(budgetLimit) : "No Limit"}
-          icon={<Settings className="h-4 w-4 text-purple-400" />}
-        />
-        <StatsCard 
-          title="Utilization" 
-          value={budgetLimit > 0 ? `${budgetUtilization.toFixed(1)}%` : "N/A"}
-          icon={<PieChart className="h-4 w-4 text-yellow-400" />}
-        />
+        <Card className="bg-black border-gray-800">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-gray-400">Budget Used</CardTitle>
+            <DollarSign className="h-4 w-4 text-blue-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">{formatCurrency(budgetUsed)}</div>
+            <p className="text-xs text-gray-400">Current period spending</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-black border-gray-800">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-gray-400">Budget Remaining</CardTitle>
+            {isOverBudget ? (
+              <AlertTriangle className="h-4 w-4 text-red-400" />
+            ) : (
+              <TrendingUp className="h-4 w-4 text-green-400" />
+            )}
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${isOverBudget ? 'text-red-400' : 'text-white'}`}>
+              {formatCurrency(remainingBudget)}
+            </div>
+            <p className="text-xs text-gray-400">Available to spend</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-black border-gray-800">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-gray-400">Budget Limit</CardTitle>
+            <Settings className="h-4 w-4 text-purple-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">
+              {budgetLimit > 0 ? formatCurrency(budgetLimit) : "No Limit"}
+            </div>
+            <p className="text-xs text-gray-400">Current period cap</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-black border-gray-800">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-gray-400">Utilization</CardTitle>
+            <PieChart className="h-4 w-4 text-yellow-400" />
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${isOverBudget ? 'text-red-400' : isNearLimit ? 'text-yellow-400' : 'text-white'}`}>
+              {budgetLimit > 0 ? `${budgetUtilization.toFixed(1)}%` : "N/A"}
+            </div>
+            <p className="text-xs text-gray-400">Of budget used</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Budget Progress and Alerts */}
@@ -352,28 +338,28 @@ export default function BudgetOversight() {
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-400">Active Contracts</span>
                 <span className="text-sm font-medium text-white">
-                  {dashboardData?.stats?.activeContractsCount || 0}
+                  {integratedData?.stats?.activeContractsCount || 0}
                 </span>
               </div>
-
+              
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-400">Payments Processed</span>
                 <span className="text-sm font-medium text-white">
-                  {formatCurrency(dashboardData?.stats?.paymentsProcessed || 0)}
+                  {formatCurrency(integratedData?.stats?.paymentsProcessed || 0)}
                 </span>
               </div>
 
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-400">Pending Payments</span>
                 <span className="text-sm font-medium text-white">
-                  {formatCurrency(dashboardData?.stats?.totalPendingValue || 0)}
+                  {formatCurrency(integratedData?.stats?.totalPendingValue || 0)}
                 </span>
               </div>
 
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-400">Active Contractors</span>
                 <span className="text-sm font-medium text-white">
-                  {dashboardData?.stats?.activeContractorsCount || 0}
+                  {integratedData?.stats?.activeContractorsCount || 0}
                 </span>
               </div>
             </div>
@@ -385,12 +371,12 @@ export default function BudgetOversight() {
                 <CheckCircle className="h-4 w-4 text-green-400" />
                 <span className="text-sm text-white">Budget tracking active</span>
               </div>
-
-              {budgetData?.budgetResetEnabled && ( // Use budgetData for resetEnabled
+              
+              {integratedData?.budgetData?.budgetResetEnabled && (
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-blue-400" />
                   <span className="text-sm text-white">
-                    Auto-reset: {budgetData.budgetPeriod}
+                    Auto-reset: {integratedData.budgetData.budgetPeriod}
                   </span>
                 </div>
               )}
@@ -398,61 +384,8 @@ export default function BudgetOversight() {
               <div className="flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-purple-400" />
                 <span className="text-sm text-white">
-                  {dashboardData?.payments?.length || 0} total transactions
+                  {integratedData?.payments?.length || 0} total transactions
                 </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* New section for monthly and annual payment details */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Budget Overview</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Monthly Budget</span>
-                <span className="text-sm">£{parseFloat(budgetData?.budgetCap || '0').toLocaleString()}</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2.5">
-                <div 
-                  className="bg-blue-600 h-2.5 rounded-full" 
-                  style={{ width: `${Math.min(((dashboardData?.stats?.budgetUsed || 0) / parseFloat(budgetData?.budgetCap || '1')) * 100, 100)}%` }}
-                ></div>
-              </div>
-              <div className="flex justify-between items-center text-sm text-muted-foreground">
-                <span>Used: £{(dashboardData?.stats?.budgetUsed || 0).toLocaleString()}</span>
-                <span>Remaining: £{(dashboardData?.stats?.budgetRemaining || 0).toLocaleString()}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Payment Breakdown</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">This Month</span>
-                <span className="text-sm">£{(dashboardData?.stats?.monthlyPayments || 0).toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">This Year</span>
-                <span className="text-sm">£{(dashboardData?.stats?.annualPayments || 0).toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">All Time</span>
-                <span className="text-sm">£{(dashboardData?.stats?.totalPaymentsProcessed || 0).toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Total Transactions</span>
-                <span className="text-sm">{dashboardData?.stats?.paymentsCount || 0}</span>
               </div>
             </div>
           </CardContent>

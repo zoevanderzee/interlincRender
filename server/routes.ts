@@ -602,10 +602,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post(`${apiRouter}/users`, async (req: Request, res: Response) => {
     try {
       const userInput = insertUserSchema.parse(req.body);
-
+      
       // Create the user first
       const newUser = await storage.createUser(userInput);
-
+      
       // If this is a business user, create a Stripe customer immediately
       if (newUser.role === 'business') {
         try {
@@ -619,12 +619,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
               platform: 'interlinc'
             }
           });
-
+          
           // Update user with Stripe customer ID
           const updatedUser = await storage.updateUser(newUser.id, {
             stripeCustomerId: customer.id
           });
-
+          
           console.log(`Created Stripe customer ${customer.id} for new business user ${newUser.id}`);
           res.status(201).json(updatedUser || newUser);
         } catch (stripeError) {
@@ -2859,7 +2859,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             destination: contractor.stripeConnectAccountId,
             amount: Math.round(amountInCents * 0.97) // 97% to contractor, 3% platform fee
           },
-          businessAccountId: 'platform' // Fixed: Added required parameter
+          applicationFeeAmount: Math.round(amountInCents * 0.03), // 3% platform fee
+          paymentMethodTypes: ['card']
         };
 
         console.log('[Payment Intent] Creating with params:', paymentIntentParams);
@@ -4209,7 +4210,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // BLOCKED: Direct payment intents not allowed - Connect-only mode
   app.post(`${apiRouter}/create-payment-intent-BLOCKED`, async (req: Request, res: Response) => {
     console.error(`🚨 SECURITY BLOCKED: Direct payment intent attempt from ${req.ip}`);
-    res.status(410).json({
+    res.status(410).json({ 
       error: 'SECURITY VIOLATION: Direct payment intents are completely blocked. All payments must use Connect destination charges.',
       correct_endpoint: '/api/connect/v2/create-transfer',
       required_flow: 'businessAccountId + contractorUserId → Connect destination charge',
@@ -4640,7 +4641,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   */
 
-  // NEW: Completely different endpoint path to avoid all conflicts
+  // BRAND NEW: Completely different endpoint path to avoid all conflicts
   app.post(`${apiRouter}/contractor/decline-work/:id`, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
@@ -4859,8 +4860,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         valid: true,
         workRequestId: workRequest.id,
-        status: workRequest.status,
-        title: workRequest.title, // Use title field from work request
+        status: workRequest.status,        title: workRequest.title, // Use title field from work request
         businessId: workRequest.businessId,
         expired: workRequest.expiresAt && new Date(workRequest.expiresAt) < new Date()
       });
@@ -5473,7 +5473,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Work submission not found' });
       }
 
-      // Only businesses can review submissions
+      // Only allow business owners to review submissions for their business
       if (user.role !== 'business' || submission.businessId !== user.id) {
         return res.status(403).json({ message: 'Access denied' });
       }
@@ -5663,7 +5663,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 console.log(`[APPROVAL_PAYMENT] ✅ Payment successful: $${paymentResult.payment?.amount} to contractor ${paymentResult.payment?.contractorId}`);
                 await storage.updateMilestone(autoPayMilestone.id, { status: 'completed' });
               } else {
-                console.log(`[APPROVAL_PAYMENT] ⚠️ Payment failed but work remains approved: ${paymentResult.error}`);
+                console.log(`[APPROVAL_PAYMENT] ⚠️ Payment failed but work remains approved:`, paymentResult.error);
               }
             } else {
               console.log(`[APPROVAL_PAYMENT] No auto-pay milestone found for submission ${submission.id} in contract ${workRequest.contractId}`);
@@ -6182,7 +6182,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Company profile required. Please complete Trolley onboarding first." });
       }
 
-      const { milestoneId, contractorId, amount, currency = 'GBP', memo } = req.body;
+      const { milestoneId, amount, currency = 'GBP', memo } = req.body;
 
       if (!milestoneId || !amount) {
         return res.status(400).json({ message: "Milestone ID and amount are required" });
