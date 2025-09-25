@@ -1918,15 +1918,16 @@ export class DatabaseStorage implements IStorage {
     
     const monthlyPayments = await db
       .select()
-      .from(paymentLogs)
+      .from(payments)
+      .innerJoin(contracts, eq(payments.contractId, contracts.id))
       .where(and(
-        eq(paymentLogs.businessId, businessId),
-        isNotNull(paymentLogs.paymentTimestamp),
-        gte(paymentLogs.paymentTimestamp, startOfMonth),
-        lte(paymentLogs.paymentTimestamp, endOfMonth)
+        eq(contracts.businessId, businessId),
+        eq(payments.status, 'completed'),
+        gte(payments.completedDate, startOfMonth),
+        lte(payments.completedDate, endOfMonth)
       ));
 
-    return monthlyPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+    return monthlyPayments.reduce((sum, p) => sum + parseFloat(p.payments.amount), 0);
   }
 
   async getBusinessAnnualPayments(businessId: number, year: number): Promise<number> {
@@ -1935,27 +1936,29 @@ export class DatabaseStorage implements IStorage {
     
     const annualPayments = await db
       .select()
-      .from(paymentLogs)
+      .from(payments)
+      .innerJoin(contracts, eq(payments.contractId, contracts.id))
       .where(and(
-        eq(paymentLogs.businessId, businessId),
-        isNotNull(paymentLogs.paymentTimestamp),
-        gte(paymentLogs.paymentTimestamp, startOfYear),
-        lte(paymentLogs.paymentTimestamp, endOfYear)
+        eq(contracts.businessId, businessId),
+        eq(payments.status, 'completed'),
+        gte(payments.completedDate, startOfYear),
+        lte(payments.completedDate, endOfYear)
       ));
 
-    return annualPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+    return annualPayments.reduce((sum, p) => sum + parseFloat(p.payments.amount), 0);
   }
 
   async getBusinessTotalSuccessfulPayments(businessId: number): Promise<number> {
     const successfulPayments = await db
       .select()
-      .from(paymentLogs)
+      .from(payments)
+      .innerJoin(contracts, eq(payments.contractId, contracts.id))
       .where(and(
-        eq(paymentLogs.businessId, businessId),
-        isNotNull(paymentLogs.paymentTimestamp)
+        eq(contracts.businessId, businessId),
+        eq(payments.status, 'completed')
       ));
 
-    return successfulPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+    return successfulPayments.reduce((sum, p) => sum + parseFloat(p.payments.amount), 0);
   }
 
   // Document CRUD methods
