@@ -823,80 +823,26 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
 
   /**
    * GET /api/connect/v2/saved-cards
-   * Get saved payment methods for business user
+   * DEPRECATED: Saved cards not supported in Connect-only payment flow
    */
   app.get(`${connectBasePath}/saved-cards`, authMiddleware, async (req, res) => {
-    try {
-      const userId = getUserId(req);
-      const user = await db.getUser(userId);
-      
-      if (!user || user.role !== 'business') {
-        return res.status(403).json({ error: "Only business users can access saved cards" });
-      }
-
-      if (!user.stripeCustomerId) {
-        // No customer ID means no saved cards
-        return res.json({ savedCards: [] });
-      }
-
-      const savedCards = await listSavedCards(user.stripeCustomerId);
-      
-      res.json({ savedCards });
-    } catch (e) {
-      console.error("[connect-v2-saved-cards]", e);
-      res.status(e.status || 500).json({ error: e.message || "Failed to fetch saved cards" });
-    }
+    return res.status(410).json({ 
+      error: "Saved cards are not supported. Connect-only payment flow requires fresh payment method each time.",
+      deprecated: true,
+      alternative: "Use Payment Element to collect new payment method per transaction"
+    });
   });
 
   /**
    * POST /api/connect/v2/charge-saved-card
-   * Charge a saved payment method directly
+   * DEPRECATED: Saved card payments not supported in Connect-only payment flow
    */
   app.post(`${connectBasePath}/charge-saved-card`, authMiddleware, async (req, res) => {
-    try {
-      const userId = getUserId(req);
-      const { paymentMethodId, contractorUserId, amount, currency = 'gbp', description } = req.body;
-      
-      const user = await db.getUser(userId);
-      if (!user || user.role !== 'business') {
-        return res.status(403).json({ error: "Only business users can charge saved cards" });
-      }
-
-      // Get business Connect account (required for V2 payments)
-      const businessConnect = await db.getConnect(userId);
-      if (!businessConnect || !businessConnect.accountId) {
-        return res.status(400).json({ error: "Business Connect account not found. Please complete payment setup." });
-      }
-
-      console.log(`[SAVED CARD PAYMENT] Creating payment with saved card ${paymentMethodId} for contractor ${contractorUserId}`);
-      
-      const paymentResult = await createSecurePaymentV2({
-        contractorUserId: parseInt(contractorUserId),
-        amount: parseFloat(amount),
-        currency,
-        description: description || 'Payment via saved card',
-        metadata: {
-          businessId: userId.toString(),
-          paymentMethod: 'saved_card',
-          paymentMethodId,
-          version: 'v2_saved_card'
-        },
-        businessAccountId: businessConnect.accountId,
-        paymentMethodId,
-        saveCard: false // Already saved
-      });
-
-      res.json({
-        success: true,
-        payment_intent_id: paymentResult.payment_intent_id,
-        status: paymentResult.status,
-        destination_account: paymentResult.destination_account
-      });
-
-    } catch (e) {
-      console.error("[connect-v2-charge-saved-card]", e);
-      res.status(e.status || 500).json({ error: e.message || "Failed to charge saved card" });
-    }
+    return res.status(410).json({ 
+      error: "Saved card payments are not supported. Connect-only payment flow requires fresh payment method each time.",
+      deprecated: true,
+      alternative: "Use /api/connect/v2/create-transfer with fresh Payment Element"
+    });
   });
 
   /**

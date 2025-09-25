@@ -12,16 +12,10 @@ export interface CreatePaymentIntentParams {
   currency: string;
   description: string;
   metadata?: Record<string, string>;
-  transferData?: {
-    destination: string;
-    amount?: number;
+  transferData: {
+    destination: string; // REQUIRED: Contractor Connect account for destination charge
   };
-  applicationFeeAmount?: number;
-  paymentMethodTypes?: string[];
-  businessAccountId?: string; // Optional: Business account ID to create Payment Intent on behalf of
-  businessCustomerId?: string; // Optional: Business Stripe customer ID to associate payment
-  paymentMethodId?: string; // Optional: Payment method ID for saved card payments
-  saveCard?: boolean; // Optional: Whether to save the card for future use
+  businessAccountId: string; // REQUIRED: Business Connect account ID for "on behalf of" creation
 }
 
 export interface PaymentIntentResponse {
@@ -75,90 +69,77 @@ export async function createPaymentIntent(params: CreatePaymentIntentParams): Pr
       throw new Error(`Minimum payment amount is ${symbol}${minDisplay} ${currency.toUpperCase()}`);
     }
 
+    // SECURITY: Ensure no customer IDs are ever used
+    if ('businessCustomerId' in params || 'paymentMethodId' in params || 'saveCard' in params) {
+      throw new Error('SECURITY VIOLATION: Customer IDs not allowed. Connect-only payment flow requires businessAccountId and transferData only.');
+    }
+
     const paymentIntentParams: Stripe.PaymentIntentCreateParams = {
       amount: amountInCents,
       currency: currency,
       description: params.description,
       metadata: params.metadata || {},
-      payment_method_types: params.paymentMethodTypes || ['card'],
+      payment_method_types: ['card'],
       capture_method: 'automatic',
       confirmation_method: 'automatic'
     };
 
-    // V2 Connect: Use business account for "on behalf of" payments, NO customer accounts needed
-    if (params.businessAccountId) {
-      console.log(`[V2 Payment Intent] Creating on behalf of business Connect account: ${params.businessAccountId}`);
-      // Don't set customer - payment will be created on behalf of business Connect account
-    } else {
-      console.log(`[V2 Payment Intent] Creating with platform account`);
-    }
+    console.log(`[V2 Payment Intent] Creating on behalf of business Connect account: ${params.businessAccountId}`);
 
-    // Express/Standard Connect account destination charge handling
-    if (params.transferData && params.transferData.destination) {
-      // Validate destination account supports destination charges
-      let accountType: string = 'unknown';
-      try {
-        const account = await stripe.accounts.retrieve(params.transferData.destination);
-        if (!account.charges_enabled) {
-          throw new Error('Destination account is not enabled for charges');
-        }
-        accountType = account.type || 'unknown';
-        console.log(`[V2 Destination Charge] Account ${account.id} is type '${accountType}' - charges enabled: ${account.charges_enabled}`);
-
-        // Both Express and Standard accounts support destination charges
-        if (!['express', 'standard'].includes(accountType)) {
-          console.warn(`Account ${account.id} is type '${accountType}', may not support destination charges`);
-        }
-      } catch (accountError) {
-        throw new Error('Invalid or disabled destination account');
+    // REQUIRED: Express/Standard Connect account destination charge handling
+    // Validate destination account supports destination charges
+    let accountType: string = 'unknown';
+    try {
+      const account = await stripe.accounts.retrieve(params.transferData.destination);
+      if (!account.charges_enabled) {
+        throw new Error('Destination account is not enabled for charges');
       }
+      accountType = account.type || 'unknown';
+      console.log(`[V2 Destination Charge] Account ${account.id} is type '${accountType}' - charges enabled: ${account.charges_enabled}`);
 
-      // DESTINATION CHARGE for Express/Standard accounts
-      // Funds flow directly from customer to connected account
-      // Platform never touches the money
-      paymentIntentParams.on_behalf_of = params.transferData.destination;
-      paymentIntentParams.transfer_data = {
-        destination: params.transferData.destination
-      };
-
-      // CRITICAL: Enable automatic transfers to contractor's bank account
-      // This ensures funds don't sit in Connect account balance
-      try {
-        const contractorAccount = await stripe.accounts.retrieve(params.transferData.destination);
-        if (contractorAccount.capabilities?.transfers === 'active') {
-          console.log(`[V2 Payment] Contractor ${params.transferData.destination} has active transfers - funds will auto-transfer to bank`);
-        } else {
-          console.warn(`[V2 Payment] Contractor ${params.transferData.destination} doesn't have active transfers capability`);
-        }
-      } catch (accountError) {
-        console.error(`[V2 Payment] Error checking contractor account capabilities:`, accountError);
+      // Both Express and Standard accounts support destination charges
+      if (!['express', 'standard'].includes(accountType)) {
+        console.warn(`Account ${account.id} is type '${accountType}', may not support destination charges`);
       }
-
-      // Add Connect-specific metadata
-      paymentIntentParams.metadata = {
-        ...paymentIntentParams.metadata,
-        connect_payment: 'destination_charge',
-        destination_account: params.transferData.destination,
-        account_type: accountType,
-        flow_type: 'direct_to_connected_account'
-      };
+    } catch (accountError) {
+      throw new Error('Invalid or disabled destination account');
     }
 
-    // Create Payment Intent - either on behalf of business account or using platform account
-    let paymentIntent: Stripe.PaymentIntent;
+    // DESTINATION CHARGE for Express/Standard accounts
+    // Funds flow directly from customer to connected account
+    // Platform never touches the money
+    paymentIntentParams.on_behalf_of = params.transferData.destination;
+    paymentIntentParams.transfer_data = {
+      destination: params.transferData.destination
+    };
 
-    if (params.businessAccountId) {
-      // Create Payment Intent on behalf of the business account
-      // This makes the Payment Intent appear in the business account's dashboard
-      console.log(`[V2 Payment Intent] Creating on behalf of business account: ${params.businessAccountId}`);
-      paymentIntent = await stripe.paymentIntents.create(paymentIntentParams, {
-        stripeAccount: params.businessAccountId
-      });
-    } else {
-      // Create Payment Intent using platform account (original behavior)
-      console.log(`[V2 Payment Intent] Creating using platform account`);
-      paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
+    // CRITICAL: Enable automatic transfers to contractor's bank account
+    // This ensures funds don't sit in Connect account balance
+    try {
+      const contractorAccount = await stripe.accounts.retrieve(params.transferData.destination);
+      if (contractorAccount.capabilities?.transfers === 'active') {
+        console.log(`[V2 Payment] Contractor ${params.transferData.destination} has active transfers - funds will auto-transfer to bank`);
+      } else {
+        console.warn(`[V2 Payment] Contractor ${params.transferData.destination} doesn't have active transfers capability`);
+      }
+    } catch (accountError) {
+      console.error(`[V2 Payment] Error checking contractor account capabilities:`, accountError);
     }
+
+    // Add Connect-specific metadata
+    paymentIntentParams.metadata = {
+      ...paymentIntentParams.metadata,
+      connect_payment: 'destination_charge',
+      destination_account: params.transferData.destination,
+      account_type: accountType,
+      flow_type: 'direct_to_connected_account'
+    };
+
+    // Create Payment Intent on behalf of business Connect account (ALWAYS REQUIRED)
+    console.log(`[V2 Payment Intent] Creating on behalf of business account: ${params.businessAccountId}`);
+    const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams, {
+      stripeAccount: params.businessAccountId
+    });
 
     // CRITICAL: Schedule automatic payout for contractor after payment succeeds
     if (params.transferData && params.transferData.destination) {
@@ -368,8 +349,6 @@ export async function createSecurePaymentV2(params: {
   description?: string;
   metadata?: Record<string, string>;
   businessAccountId: string; // REQUIRED: Business Connect account for "on behalf of" creation
-  paymentMethodId?: string; // Payment method ID for saved card payments
-  saveCard?: boolean; // Whether to save the card for future use
 }): Promise<{ payment_intent_id: string; status: string; client_secret: string; destination_account: string }> {
   try {
     const { contractorUserId, amount, currency = 'gbp', description, metadata, businessAccountId } = params;
@@ -386,7 +365,7 @@ export async function createSecurePaymentV2(params: {
     const destination = accountResolution.accountId;
     console.log(`[SECURE PAYMENT V2] ✅ Resolved contractor ${contractorUserId} → Stripe account ${destination}`);
 
-    // STEP 2: CREATE PAYMENT INTENT WITH VERIFIED DESTINATION AND BUSINESS CUSTOMER
+    // STEP 2: CREATE PAYMENT INTENT WITH VERIFIED DESTINATION - NO CUSTOMER ACCOUNTS
     const paymentIntentParams = {
       amount: amount,
       currency: currency,
@@ -403,48 +382,18 @@ export async function createSecurePaymentV2(params: {
       transferData: {
         destination: destination
       },
-      businessAccountId: businessAccountId, // REQUIRED: Create on behalf of business Connect account
-      saveCard: params.saveCard
+      businessAccountId: businessAccountId // REQUIRED: Create on behalf of business Connect account
     };
 
-    // If using a saved payment method, handle differently
-    if (params.paymentMethodId) {
-      // For saved cards, create and confirm payment intent directly
-      console.log(`[SECURE PAYMENT V2] Using saved payment method: ${params.paymentMethodId}`);
+    // Always use standard flow - NO saved card support in Connect-only mode
+    const paymentIntent = await createPaymentIntent(paymentIntentParams);
 
-      const amountInCents = Math.round(amount * 100);
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: amountInCents,
-        currency: currency,
-        payment_method: params.paymentMethodId,
-        confirmation_method: 'automatic',
-        confirm: true,
-        description: description || 'Secure payment via saved card',
-        metadata: paymentIntentParams.metadata,
-        transfer_data: {
-          destination: destination
-        }
-      }, {
-        stripeAccount: businessAccountId // Create on behalf of business Connect account
-      });
-
-      return {
-        payment_intent_id: paymentIntent.id,
-        status: paymentIntent.status || 'requires_payment_method',
-        client_secret: paymentIntent.client_secret || '',
-        destination_account: destination
-      };
-    } else {
-      // For new cards, use the standard flow
-      const paymentIntent = await createPaymentIntent(paymentIntentParams);
-
-      return {
-        payment_intent_id: paymentIntent.id,
-        status: paymentIntent.status || 'requires_payment_method',
-        client_secret: paymentIntent.clientSecret,
-        destination_account: destination
-      };
-    }
+    return {
+      payment_intent_id: paymentIntent.id,
+      status: paymentIntent.status || 'requires_payment_method',
+      client_secret: paymentIntent.clientSecret,
+      destination_account: destination
+    };
   } catch (error: any) {
     console.error('[SECURE PAYMENT V2] Error creating secure payment:', error);
 
