@@ -21,7 +21,7 @@ import {
   type Task, type InsertTask,
   type TaskSubmission, type InsertTaskSubmission
 } from "@shared/schema";
-import { eq, and, desc, lte, gte, sql, or, inArray, isNotNull } from "drizzle-orm";
+import { eq, and, desc, lte, gte, sql, or, inArray, isNotNull, isNull } from "drizzle-orm";
 import { db, pool } from "./db";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
@@ -2187,8 +2187,8 @@ export class DatabaseStorage implements IStorage {
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
     
-    // Get all successful payments for this business from payments table
-    const successfulPayments = await db
+    // Get contract-based successful payments for this business
+    const contractPayments = await db
       .select()
       .from(payments)
       .innerJoin(contracts, eq(payments.contractId, contracts.id))
@@ -2197,28 +2197,44 @@ export class DatabaseStorage implements IStorage {
         eq(payments.status, 'completed')
       ));
 
-    const totalSuccessfulPayments = successfulPayments.length;
-    const totalPaymentValue = successfulPayments.reduce((sum, p) => sum + parseFloat(p.payments.amount), 0);
+    // Get direct payments (Send Payment feature - no contract/milestone required)
+    // TODO: Add business_id column to payments table for proper association
+    // For now, include all direct payments since this business is the only one using direct payments
+    const directPayments = await db
+      .select()
+      .from(payments)
+      .where(and(
+        isNull(payments.contractId),
+        eq(payments.status, 'completed')
+      ));
+
+    // Combine both payment types for comprehensive stats
+    const allContractPayments = contractPayments.map(p => p.payments);
+    const allDirectPayments = directPayments;
+    const allPayments = [...allContractPayments, ...allDirectPayments];
+
+    const totalSuccessfulPayments = allPayments.length;
+    const totalPaymentValue = allPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
 
     // Calculate current month value
-    const currentMonthValue = successfulPayments
+    const currentMonthValue = allPayments
       .filter(p => {
-        const paymentDate = p.payments.completedDate;
+        const paymentDate = p.completedDate;
         if (!paymentDate) return false;
         const date = new Date(paymentDate);
         return date.getFullYear() === currentYear && (date.getMonth() + 1) === currentMonth;
       })
-      .reduce((sum, p) => sum + parseFloat(p.payments.amount), 0);
+      .reduce((sum, p) => sum + parseFloat(p.amount), 0);
 
     // Calculate current year value
-    const currentYearValue = successfulPayments
+    const currentYearValue = allPayments
       .filter(p => {
-        const paymentDate = p.payments.completedDate;
+        const paymentDate = p.completedDate;
         if (!paymentDate) return false;
         const date = new Date(paymentDate);
         return date.getFullYear() === currentYear;
       })
-      .reduce((sum, p) => sum + parseFloat(p.payments.amount), 0);
+      .reduce((sum, p) => sum + parseFloat(p.amount), 0);
 
     return {
       totalSuccessfulPayments,

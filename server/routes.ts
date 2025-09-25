@@ -3194,7 +3194,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // EMERGENCY FIX: Payment reconciliation endpoint to manually record missing payments
+  // Payment reconciliation endpoint for direct payments (completed)
   app.post(`${apiRouter}/payments/reconcile`, requireAuth, async (req: Request, res: Response) => {
     try {
       const { amount = '0.50', description = 'Manual payment reconciliation for missing 0.50 GBP payment' } = req.body;
