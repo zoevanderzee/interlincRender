@@ -3612,12 +3612,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Calculate total contracts - count active and completed work requests only
       const totalContracts = activeWorkRequests.length + completedWorkRequests.length;
 
+      // MATCH DASHBOARD LOGIC: Count unique contractors from work requests 
+      const uniqueContractorIds = [...new Set(userWorkRequests.map(wr => wr.contractorUserId))];
+      const realTotalContractors = uniqueContractorIds.length;
+
+      // MATCH DASHBOARD LOGIC: Get real payment stats from business payment stats
+      const businessPaymentStats = await storage.getBusinessPaymentStats(userId);
+      const realTotalSpent = businessPaymentStats.totalPaymentValue;
+
+      // MATCH DASHBOARD LOGIC: Calculate completion rate from work requests
+      const realCompletionRate = userWorkRequests.length > 0 
+        ? Math.round((completedWorkRequests.length / userWorkRequests.length) * 100)
+        : 0;
+
       const reportsData = {
         summary: {
           totalContracts: totalContracts,
-          totalContractors: filteredContractors.length,
-          totalSpent: totalSpent,
-          completionRate: Math.round(completionRate)
+          totalContractors: realTotalContractors,
+          totalSpent: realTotalSpent,
+          completionRate: realCompletionRate
         },
         monthlyPayments,
         contractDistribution,
