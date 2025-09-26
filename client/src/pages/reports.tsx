@@ -44,6 +44,12 @@ export default function Reports() {
     enabled: !!user
   });
 
+  // Fetch total contracts count separately
+  const { data: contractsData } = useQuery({
+    queryKey: ['/api/contracts'],
+    enabled: !!user && !isContractor
+  });
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -265,8 +271,8 @@ export default function Reports() {
             <FileText className="h-4 w-4 text-blue-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{reportData?.summary?.totalContracts || 0}</div>
-            <p className="text-xs text-gray-400">Active projects</p>
+            <div className="text-2xl font-bold text-white">{contractsData?.length || 0}</div>
+            <p className="text-xs text-gray-400">All time contracts</p>
           </CardContent>
         </Card>
 
