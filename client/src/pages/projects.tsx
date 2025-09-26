@@ -89,12 +89,12 @@ export default function Projects() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-400">Completion Rate</p>
+                  <p className="text-sm text-gray-400">Connected Companies</p>
                   <p className="text-3xl font-bold text-white">
-                    {activeAssignments.length > 0 ? '100%' : '0%'}
+                    {integratedData?.businesses?.length || 0}
                   </p>
                 </div>
-                <TrendingUp className="h-8 w-8 text-green-500" />
+                <Users className="h-8 w-8 text-purple-500" />
               </div>
             </CardContent>
           </Card>
