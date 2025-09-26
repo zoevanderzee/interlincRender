@@ -3583,10 +3583,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
         });
 
-      // Calculate total contracts (only active + completed contracts count toward total)
+      // Calculate total contracts - include both completed contracts and active work requests
       const totalContracts = contracts.filter(contract => 
         contract.status === 'active' || contract.status === 'completed'
-      ).length;
+      ).length + activeWorkRequests.length;
 
       const reportsData = {
         summary: {
