@@ -269,6 +269,19 @@ export default function SubscriptionForm({
   userId, 
   onSubscriptionComplete 
 }: SubscriptionFormProps) {
+  // Debug logging to ensure role separation
+  console.log('SubscriptionForm userRole:', userRole);
+  
+  // Validate role
+  if (userRole !== 'business' && userRole !== 'contractor') {
+    console.error('Invalid user role:', userRole);
+    return (
+      <div className="max-w-md mx-auto text-center">
+        <h2 className="text-xl font-bold text-red-500">Invalid User Role</h2>
+        <p>Unable to display subscription plans. Please contact support.</p>
+      </div>
+    );
+  }
   const [selectedPlan, setSelectedPlan] = useState<string>(userRole);
   const [clientSecret, setClientSecret] = useState<string>("");
   const [subscriptionId, setSubscriptionId] = useState<string>("");
@@ -411,11 +424,19 @@ export default function SubscriptionForm({
     return `${currency === 'GBP' ? '£' : '$'}${amount.toFixed(2)}`;
   };
 
-  // Filter plans based on user role and update prices
-  const availablePlans = (userRole === 'business' 
-    ? subscriptionPlans.filter(plan => plan.id.startsWith('business'))
-    : subscriptionPlans.filter(plan => plan.id.startsWith('contractor'))
-  ).map(plan => ({
+  // Filter plans based on user role and update prices - STRICT SEPARATION
+  const availablePlans = subscriptionPlans.filter(plan => {
+    // Contractors can ONLY see contractor plans
+    if (userRole === 'contractor') {
+      return plan.id.startsWith('contractor');
+    }
+    // Business users can ONLY see business plans
+    if (userRole === 'business') {
+      return plan.id.startsWith('business');
+    }
+    // Fallback: no plans if role is unclear
+    return false;
+  }).map(plan => ({
     ...plan,
     price: formatPrice(plan.id)
   })).filter(plan => {
@@ -429,9 +450,14 @@ export default function SubscriptionForm({
   return (
     <div className="max-w-4xl mx-auto p-6">
       <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold mb-4">Complete Your Subscription</h2>
+        <h2 className="text-3xl font-bold mb-4">
+          {userRole === 'contractor' ? 'Contractor Subscription Plans' : 'Business Subscription Plans'}
+        </h2>
         <p className="text-gray-600">
-          {userRole === 'contractor' ? 'Choose your Contractor Plan' : 'Choose your Business Plan'} subscription required to continue
+          {userRole === 'contractor' 
+            ? 'Choose your contractor plan to access the platform' 
+            : 'Choose your business plan to manage contractors and projects'
+          }
         </p>
       </div>
 

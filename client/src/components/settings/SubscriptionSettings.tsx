@@ -151,7 +151,7 @@ export function SubscriptionSettings({ user }: SubscriptionSettingsProps) {
         </CardHeader>
         <CardContent>
           <SubscriptionForm
-            userRole={user.role}
+            userRole={user.role as 'business' | 'contractor'}
             userEmail={user.email}
             userName={`${user.firstName} ${user.lastName}` || user.username}
             userId={user.id}
