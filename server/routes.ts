@@ -3583,14 +3583,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
         });
 
-      // Calculate meaningful contracts (active + completed, excluding deleted and drafts)
-      const meaningfulContracts = contracts.filter(contract => 
+      // Calculate total contracts (only active + completed contracts count toward total)
+      const totalContracts = contracts.filter(contract => 
         contract.status === 'active' || contract.status === 'completed'
-      );
+      ).length;
 
       const reportsData = {
         summary: {
-          totalContracts: meaningfulContracts.length,
+          totalContracts: totalContracts,
           totalContractors: filteredContractors.length,
           totalSpent: totalSpent,
           completionRate: Math.round(completionRate)
