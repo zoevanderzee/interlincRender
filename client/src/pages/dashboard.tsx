@@ -371,7 +371,7 @@ const Dashboard = () => {
         <Card className="animate-fade-in hover:animate-glow-pulse">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-muted-foreground text-sm font-medium">Active Projects</h3>
+              <h3 className="text-muted-foreground text-sm font-medium">Active Projects/Tasks</h3>
               <div className="p-3 rounded-xl bg-purple-500/10 backdrop-blur-sm shadow-lg transition-all duration-300 hover:scale-110">
                 <Briefcase size={20} className="text-purple-400" />
               </div>
