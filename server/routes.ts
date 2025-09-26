@@ -3966,6 +3966,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register Plaid routes
   plaidRoutes(app, apiRouter, requireAuth);
   trolleyRoutes(app, apiRouter, requireAuth);
+  
+  // Register Connect V2 routes for payment processing
+  connectV2Routes(app, apiRouter, requireAuth);
 
   // Register Firebase auth routes
   registerFirebaseRoutes(app);
