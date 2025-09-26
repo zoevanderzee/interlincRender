@@ -132,6 +132,7 @@ export interface IStorage {
   getAllPayments(contractId: number | null): Promise<Payment[]>;
   getUpcomingPayments(limit: number): Promise<Payment[]>;
   getCompletedPayments(userId: number): Promise<Payment[]>;
+  getPaymentsByContractorId(contractorId: number): Promise<Payment[]>;
   getApprovedMilestonesWithoutPayments(): Promise<Milestone[]>;
   createPayment(payment: InsertPayment): Promise<Payment>;
   updatePayment(id: number, payment: Partial<InsertPayment>): Promise<Payment | undefined>;
@@ -759,6 +760,16 @@ export class MemStorage implements IStorage {
     
     return Array.from(this.payments.values())
       .filter(payment => payment.status === 'completed' && contractIds.includes(payment.contractId));
+  }
+
+  async getPaymentsByContractorId(contractorId: number): Promise<Payment[]> {
+    // Get all payments for contracts assigned to this contractor
+    const contractorContracts = Array.from(this.contracts.values())
+      .filter(contract => contract.contractorId === contractorId);
+    const contractIds = contractorContracts.map(c => c.id);
+    
+    return Array.from(this.payments.values())
+      .filter(payment => contractIds.includes(payment.contractId));
   }
 
   async createPayment(insertPayment: InsertPayment): Promise<Payment> {
@@ -2072,6 +2083,18 @@ export class DatabaseStorage implements IStorage {
         eq(payments.status, 'completed'),
         eq(contracts.businessId, userId)
       ));
+  }
+
+  async getPaymentsByContractorId(contractorId: number): Promise<Payment[]> {
+    // Get all payments for contracts assigned to this contractor
+    const contractorPayments = await db
+      .select()
+      .from(payments)
+      .innerJoin(contracts, eq(payments.contractId, contracts.id))
+      .where(eq(contracts.contractorId, contractorId));
+
+    // Return just the payment objects
+    return contractorPayments.map(row => row.payments);
   }
 
   async createPayment(insertPayment: InsertPayment): Promise<Payment> {

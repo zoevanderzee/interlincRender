@@ -365,7 +365,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.log(`Found ${connections.length} accepted connection requests for business ID: ${currentUser.id}`);
 
             // IMPORTANT FIX: Force-add the contractor with ID 30 who accepted the connection request
-            // This is the contractor that should appear in the Contractors tab
+            // This is the contractor that should appear in the Contractors tab with workerType='freelancer' or null
             const testContractor = await storage.getUser(30);
             if (testContractor) {
               console.log("MANUALLY ADDING TEST CONTRACTOR:", JSON.stringify(testContractor));
@@ -782,16 +782,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           const paymentId = succeededIntent.metadata?.paymentId;
           const contractorAccountId = succeededIntent.transfer_data?.destination;
-          
+
           if (paymentId) {
             // Mark payment as completed in database
             await storage.updatePaymentStatus(parseInt(paymentId), 'completed');
             console.log(`✅ CONTRACTOR PAYMENT SUCCESSFUL: Payment ${paymentId} completed via destination charge to ${contractorAccountId}`);
-            
+
             // Get contractor user ID for notifications
-            if (contractorAccountId && succeededIntent.metadata?.contractorId) {
+            if (succeededIntent.metadata?.contractorId) {
               const contractorId = parseInt(succeededIntent.metadata.contractorId);
-              
+
               // Send success notification to contractor
               try {
                 await notificationService.createPaymentReceived(
@@ -816,7 +816,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const contractorAccountId = succeededIntent.transfer_data.destination;
           console.log(`✅ DESTINATION CHARGE COMPLETE: Funds already deposited to contractor account ${contractorAccountId}`);
           console.log(`💰 Amount: ${(succeededIntent.amount / 100).toFixed(2)} ${(succeededIntent.currency || 'gbp').toUpperCase()} delivered directly to contractor`);
-          
+
           // Log that no manual payout is needed with destination charges
           console.log(`🔄 AUTOMATIC PAYOUT: Stripe will handle payout to contractor's bank account according to their payout schedule`);
         }
@@ -2521,19 +2521,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Get contractor's own milestones
         const contractorMilestones = [];
-        const contractorPayments = [];
+        //const contractorPayments = []; // REMOVED - THIS WAS INCORRECTLY POPULATED
 
         for (const contract of contractorContracts) {
           const milestones = await storage.getMilestonesByContractId(contract.id);
+          // CORRECTED: Get payments specifically for this contractor
           const payments = await storage.getPaymentsByContractorId(userId); // Fetch payments for the contractor
           contractorMilestones.push(...milestones);
-          contractorPayments.push(...payments);
+          // REMOVED: Duplicate payment fetching - moved to correct location below
+          //contractorPayments.push(...payments);
         }
 
         // Active assignments are work requests with status 'assigned', 'in_review', or 'approved'
         const activeAssignments = workRequests.filter(wr =>
           ['assigned', 'in_review', 'approved'].includes(wr.status)
         );
+
+        // CORRECTED PAYMENT CALCULATION FOR CONTRACTORS
+        // Get contractor-specific payments directly
+        const contractorPayments = await storage.getPaymentsByContractorId(userId);
 
         // Calculate total earnings from completed payments
         const totalEarnings = contractorPayments
@@ -3609,7 +3615,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Calculate total contracts - count active and completed work requests only
       const totalContracts = activeWorkRequests.length + completedWorkRequests.length;
 
-      // MATCH DASHBOARD LOGIC: Count unique contractors from work requests 
+      // MATCH DASHBOARD LOGIC: Count unique contractors from work requests
       const uniqueContractorIds = [...new Set(userWorkRequests.map(wr => wr.contractorUserId))];
       const realTotalContractors = uniqueContractorIds.length;
 
@@ -3618,7 +3624,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const realTotalSpent = businessPaymentStats.totalPaymentValue;
 
       // MATCH DASHBOARD LOGIC: Calculate completion rate from work requests
-      const realCompletionRate = userWorkRequests.length > 0 
+      const realCompletionRate = userWorkRequests.length > 0
         ? Math.round((completedWorkRequests.length / userWorkRequests.length) * 100)
         : 0;
 
@@ -3963,7 +3969,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register Plaid routes
   plaidRoutes(app, apiRouter, requireAuth);
   trolleyRoutes(app, apiRouter, requireAuth);
-  
+
   // Register Connect V2 routes for payment processing
   connectV2Routes(app, apiRouter, requireAuth);
 
@@ -5257,7 +5263,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (fallbackUser) {
           userId = fallbackUser.id;
           userRole = fallbackUser.role;
-          console.log(`Using X-User-ID header fallback for connection requests: user ${userId} with role ${userRole}`);
+          console.log(`Using[
+  {
+    "file": "server/index.ts",
+    "replacements": [
+      {
+        "old": "// Get all contractor payments properly\n        const allContractorPayments = await storage.getPaymentsByContractorId(userId);\n\n        // Calculate total earnings from completed payments\n        const totalEarnings = allContractorPayments\n          .filter(p => p.status === 'completed')\n          .reduce((sum, payment) => sum + parseFloat(payment.amount), 0);\n\n        // Calculate pending earnings from work requests and pending payments\n        const pendingFromWorkRequests = workRequests\n          .filter(wr => ['assigned', 'in_review', 'approved'].includes(wr.status))\n          .reduce((sum, wr) => sum + parseFloat(wr.amount), 0);\n\n        const pendingFromPayments = allContractorPayments\n          .filter(p => ['pending', 'processing', 'scheduled'].includes(p.status))\n          .reduce((sum, payment) => sum + parseFloat(payment.amount), 0);\n",
+        "new": "// Get contractor-specific payments directly\n        const contractorPayments = await storage.getPaymentsByContractorId(userId);\n\n        // Calculate total earnings from completed payments\n        const totalEarnings = contractorPayments\n          .filter(p => p.status === 'completed')\n          .reduce((sum, payment) => sum + parseFloat(payment.amount), 0);\n\n        // Calculate pending earnings from work requests and pending payments\n        const pendingFromWorkRequests = workRequests\n          .filter(wr => ['assigned', 'in_review', 'approved'].includes(wr.status))\n          .reduce((sum, wr) => sum + parseFloat(wr.amount), 0);\n\n        const pendingFromPayments = contractorPayments\n          .filter(p => ['pending', 'processing', 'scheduled'].includes(p.status))\n          .reduce((sum, payment) => sum + parseFloat(payment.amount), 0);\n"
+      }
+    ]
+  }
+]X-User-ID header fallback for connection requests: user ${userId} with role ${userRole}`);
         }
       }
 
@@ -5779,7 +5795,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update the submission
       const updatedSubmission = await storage.updateWorkRequestSubmission(submissionId, {
         status,
-        feedback,
+        reviewNotes: feedback,
         reviewedAt: new Date()
       });
 
@@ -6543,6 +6559,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       return res.json({
         success: true,
+        submerchantId: submerchant.merchant.id,
+        isVerified: false,
         message: 'Payment account configured successfully'
       });
 
@@ -6822,4 +6840,3 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   return httpServer;
 }
-

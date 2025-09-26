@@ -185,10 +185,7 @@ const Dashboard = () => {
                 </div>
               </div>
               <p className="text-3xl font-bold text-white tracking-tight">
-                ${integratedData.payments
-                  .filter(p => p.status === 'completed')
-                  .reduce((sum, payment) => sum + parseFloat(payment.amount), 0)
-                  .toLocaleString('en-US')}
+                {formatCurrency(integratedData.stats.paymentsProcessed || 0)}
               </p>
               <p className="text-xs text-muted-foreground mt-1">Completed payments</p>
             </CardContent>
