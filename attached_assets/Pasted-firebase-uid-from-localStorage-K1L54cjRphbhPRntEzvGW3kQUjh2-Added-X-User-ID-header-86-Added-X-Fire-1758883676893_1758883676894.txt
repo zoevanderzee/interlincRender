@@ -1,0 +1,48 @@
+firebase_uid from localStorage: K1L54cjRphbhPRntEzvGW3kQUjh2
+Added X-User-ID header: 86
+Added X-Firebase-UID header: K1L54cjRphbhPRntEzvGW3kQUjh2
+API Request: GET /api/dashboard 
+Object {headers: {…}, hasCookies: false}
+Fetching data from /api/budget
+Query Request: GET /api/budget 
+Object {hasCookies: false, cookieString: "", hasUserInStorage: true}
+Fetching data from /api/reports
+Query Request: GET /api/reports 
+Object {hasCookies: false, cookieString: "", hasUserInStorage: true}
+Fetching data from /api/contracts
+Query Request: GET /api/contracts 
+Object {hasCookies: false, cookieString: "", hasUserInStorage: true}
+Query Response: GET /api/reports 
+Object {status: 500, setCookie: null, contentType: "application/json; charset=utf-8"}
+Error fetching data from /api/reports: 
+Error {status: 500, statusText: "Internal Server Error", data: {…}, isApiError: true}
+
+Query Response: GET /api/budget 
+Object {status: 200, setCookie: null, contentType: "application/json; charset=utf-8"}
+Query Response: GET /api/contracts 
+Object {status: 200, setCookie: null, contentType: "application/json; charset=utf-8"}
+API Response: GET /api/dashboard 
+Object {status: 200, setCookie: null, contentType: "application/json; charset=utf-8"}
+Fetching data from /api/reports
+Query Request: GET /api/reports 
+Object {hasCookies: false, cookieString: "", hasUserInStorage: true}
+Query Response: GET /api/reports 
+Object {status: 500, setCookie: null, contentType: "application/json; charset=utf-8"}
+Error fetching data from /api/reports: 
+Error {status: 500, statusText: "Internal Server Error", data: {…}, isApiError: true}
+
+Fetching data from /api/reports
+Query Request: GET /api/reports 
+Object {hasCookies: false, cookieString: "", hasUserInStorage: true}
+Query Response: GET /api/reports 
+Object {status: 500, setCookie: null, contentType: "application/json; charset=utf-8"}
+Error fetching data from /api/reports: 
+Error {status: 500, statusText: "Internal Server Error", data: {…}, isApiError: true}
+
+Fetching data from /api/reports
+Query Request: GET /api/reports 
+Object {hasCookies: false, cookieString: "", hasUserInStorage: true}
+Query Response: GET /api/reports 
+Object {status: 500, setCookie: null, contentType: "application/json; charset=utf-8"}
+Error fetching data from /api/reports: 
+Error {status: 500, statusText: "Internal Server Error", data: {…}, isApiError: true}

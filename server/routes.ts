@@ -3451,6 +3451,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`Generating reports for user ${userId} with role ${userRole}`);
 
+      // Get work requests for the current user (these are the actual contracts)
+      let userWorkRequests = [];
+      if (userRole === 'business') {
+        userWorkRequests = await storage.getWorkRequestsByBusinessId(userId);
+      }
+
+      // Active work requests (accepted contracts) are those with status 'accepted'
+      const activeWorkRequests = userWorkRequests.filter(wr => wr.status === 'accepted');
+
+      // Completed work requests are those with status 'completed'
+      const completedWorkRequests = userWorkRequests.filter(wr => wr.status === 'completed');
+
       // Get all contracts for the current user
       let contracts = [];
       if (userRole === 'business') {
@@ -3597,8 +3609,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
         });
 
-      // Calculate total contracts - include both completed contracts and active work requests
-      const totalContracts = activeContracts.length + completedContracts.length + activeWorkRequests.length;
+      // Calculate total contracts - count active and completed work requests only
+      const totalContracts = activeWorkRequests.length + completedWorkRequests.length;
 
       const reportsData = {
         summary: {
