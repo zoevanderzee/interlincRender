@@ -40,7 +40,7 @@ const planNameMapping: Record<string, string> = {
 export function SubscriptionSettings({ user }: SubscriptionSettingsProps) {
   const { toast } = useToast();
   const [showUpgrade, setShowUpgrade] = useState(false);
-  
+
   // Fetch current subscription details
   const { data: subscriptionData, isLoading, error } = useQuery<SubscriptionData>({
     queryKey: ['/api/subscription-status'],

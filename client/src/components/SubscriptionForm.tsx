@@ -282,6 +282,7 @@ export default function SubscriptionForm({
       </div>
     );
   }
+  
   const [selectedPlan, setSelectedPlan] = useState<string>(userRole);
   const [clientSecret, setClientSecret] = useState<string>("");
   const [subscriptionId, setSubscriptionId] = useState<string>("");
@@ -444,6 +445,9 @@ export default function SubscriptionForm({
     const priceData = prices[plan.id];
     return priceData !== undefined;
   });
+
+  // Debug logging for plan filtering
+  console.log('Available plans for', userRole + ':', availablePlans.map(p => p.id));
 
 
 
