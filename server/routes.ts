@@ -776,52 +776,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     switch (event.type) {
       case 'payment_intent.succeeded':
         const succeededIntent = event.data.object;
-        console.log(`Payment succeeded: ${succeededIntent.id}`);
+        console.log(`[WEBHOOK] Destination charge payment succeeded: ${succeededIntent.id}`);
 
-        // Update payment status in database
+        // DESTINATION CHARGE SUCCESS: Funds went directly to contractor's account
         try {
           const paymentId = succeededIntent.metadata?.paymentId;
+          const contractorAccountId = succeededIntent.transfer_data?.destination;
+          
           if (paymentId) {
+            // Mark payment as completed in database
             await storage.updatePaymentStatus(parseInt(paymentId), 'completed');
-            console.log(`Updated payment ${paymentId} status to completed`);
+            console.log(`✅ CONTRACTOR PAYMENT SUCCESSFUL: Payment ${paymentId} completed via destination charge to ${contractorAccountId}`);
+            
+            // Get contractor user ID for notifications
+            if (contractorAccountId && succeededIntent.metadata?.contractorId) {
+              const contractorId = parseInt(succeededIntent.metadata.contractorId);
+              
+              // Send success notification to contractor
+              try {
+                await notificationService.createPaymentReceived(
+                  contractorId,
+                  `£${(succeededIntent.amount / 100).toFixed(2)}`,
+                  succeededIntent.description || 'Payment received'
+                );
+                console.log(`📧 Payment success notification sent to contractor ${contractorId}`);
+              } catch (notifyError) {
+                console.error('Error sending payment notification to contractor:', notifyError);
+              }
+            }
+          } else {
+            console.warn(`[WEBHOOK] payment_intent.succeeded missing paymentId in metadata:`, succeededIntent.metadata);
           }
         } catch (error) {
-          console.error('Error updating payment status:', error);
+          console.error('Error processing destination charge success:', error);
         }
 
-        // CRITICAL: Trigger automatic payout to contractor's bank account
-        // This ensures funds don't sit in Connect account balance
+        // DESTINATION CHARGES: No manual payouts needed - funds already in contractor account
         if (succeededIntent.transfer_data?.destination) {
-          try {
-            const contractorAccountId = succeededIntent.transfer_data.destination;
-            console.log(`[Webhook] Triggering automatic payout for contractor: ${contractorAccountId}`);
-
-            // Check contractor's current balance
-            const account = await stripe.accounts.retrieve(contractorAccountId);
-            const balance = await stripe.balance.retrieve({
-              stripeAccount: contractorAccountId
-            });
-
-            // If there's available balance, create an instant payout
-            const availableAmount = balance.available.find(b => b.currency === (succeededIntent.currency || 'gbp'))?.amount || 0;
-
-            if (availableAmount > 0) {
-              const payout = await stripe.payouts.create({
-                amount: availableAmount,
-                currency: succeededIntent.currency || 'gbp',
-                method: 'instant' // Use instant if available, falls back to standard
-              }, {
-                stripeAccount: contractorAccountId
-              });
-
-              console.log(`[Webhook] Created automatic payout ${payout.id} for ${availableAmount/100} ${succeededIntent.currency} to contractor ${contractorAccountId}`);
-            } else {
-              console.log(`[Webhook] No available balance for contractor ${contractorAccountId} - payout will occur on schedule`);
-            }
-          } catch (payoutError) {
-            console.error(`[Webhook] Error creating automatic payout:`, payoutError);
-            // Don't fail the webhook - payment still succeeded
-          }
+          const contractorAccountId = succeededIntent.transfer_data.destination;
+          console.log(`✅ DESTINATION CHARGE COMPLETE: Funds already deposited to contractor account ${contractorAccountId}`);
+          console.log(`💰 Amount: ${(succeededIntent.amount / 100).toFixed(2)} ${(succeededIntent.currency || 'gbp').toUpperCase()} delivered directly to contractor`);
+          
+          // Log that no manual payout is needed with destination charges
+          console.log(`🔄 AUTOMATIC PAYOUT: Stripe will handle payout to contractor's bank account according to their payout schedule`);
         }
         break;
 
