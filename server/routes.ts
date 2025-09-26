@@ -5931,7 +5931,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 console.log(`[BULK_APPROVAL] No auto-pay milestone found for submission ${submission.id} in contract ${workRequest.contractId}`);
               }
             } catch (paymentError: any) {
-              console.log('[BULK_APPROVAL] ⚠️ Payment error for submission ${submission.id}:', paymentError.message);
+              console.log(`[BULK_APPROVAL] ⚠️ Payment error for submission ${submission.id}:`, paymentError.message);
               paymentResult = { success: false, error: paymentError.message };
               totalPaymentsFailed++;
             }
