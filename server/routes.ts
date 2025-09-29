@@ -2572,6 +2572,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const totalPendingEarnings = pendingFromWorkRequests + pendingFromPayments;
 
+        // FIX: For contractors, the relevant "businesses" are those they have accepted connection requests from.
+        // This section fetches those businesses and formats them correctly.
+        let uniqueBusinesses: any[] = [];
+        try {
+          const connections = await storage.getConnectionRequests({
+            contractorId: userId, // Use the current contractor's ID
+            status: 'accepted'
+          });
+
+          console.log(`Found ${connections.length} accepted connection requests for contractor ID: ${userId}`);
+
+          const businessIds = new Set<number>(); // Use a Set to track unique business IDs
+
+          for (const connection of connections) {
+            if (connection.businessId && !businessIds.has(connection.businessId)) {
+              const business = await storage.getUser(connection.businessId);
+              if (business && business.role === 'business') {
+                businessIds.add(business.id); // Add to set to avoid duplicates
+                uniqueBusinesses.push({
+                  id: business.id,
+                  businessName: business.companyName || `${business.firstName} ${business.lastName}`,
+                  email: business.email,
+                  companyName: business.companyName,
+                  firstName: business.firstName,
+                  lastName: business.lastName
+                });
+              }
+            }
+          }
+          console.log(`Found ${uniqueBusinesses.length} unique businesses through connections for contractor ${userId}`);
+        } catch (error) {
+          console.error("Error fetching connected businesses for contractor dashboard:", error);
+        }
+
         const dashboardData = {
           stats: {
             activeContractsCount: activeAssignments.length, // Show active assignments instead
@@ -2582,12 +2616,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             pendingInvitesCount: 0 // Not relevant for contractors
           },
           contracts: contractorContracts, // Contractor's own contracts
-          contractors: [], // Not relevant for contractors
           milestones: contractorMilestones, // Contractor's own milestones
           payments: contractorPayments, // Contractor's own payments
-          invites: [], // Not relevant for contractors
           workRequests: workRequests, // Add work requests to dashboard data
-          assignments: activeAssignments // Add active assignments specifically
+          assignments: activeAssignments, // Add active assignments specifically
+          businesses: uniqueBusinesses // Add businesses array for contractor dashboard
         };
         return res.json(dashboardData);
       }
@@ -3635,7 +3668,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const realTotalContractors = uniqueContractorIds.length;
 
       // MATCH DASHBOARD LOGIC: Get real payment stats from business payment stats
-      const businessPaymentStats = await storage.getBusinessPaymentStats(userId);
       const realTotalSpent = businessPaymentStats.totalPaymentValue;
 
       // MATCH DASHBOARD LOGIC: Calculate completion rate from work requests
