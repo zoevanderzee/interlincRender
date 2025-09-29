@@ -3402,6 +3402,7 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return result;
   }
+  }
 
   async getUnreadNotificationCount(userId: number): Promise<number> {
     const result = await db
