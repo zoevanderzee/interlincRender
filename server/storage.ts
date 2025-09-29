@@ -99,10 +99,10 @@ export interface IStorage {
   updateInviteToken(id: number, token: string): Promise<Invite | undefined>;
 
   // MULTI-TENANT SECURITY METHODS
-  async validateBusinessContractorConnection(businessId: number, contractorId: number): Promise<boolean>;
-  async getBusinessContractorsOnly(businessId: number): Promise<User[]>;
-  async getContractorBusinessesOnly(contractorId: number): Promise<User[]>;
-  async validateTenantIsolation(userId: number, targetUserId: number): Promise<{ allowed: boolean, reason: string }>;
+  validateBusinessContractorConnection(businessId: number, contractorId: number): Promise<boolean>;
+  getBusinessContractorsOnly(businessId: number): Promise<User[]>;
+  getContractorBusinessesOnly(contractorId: number): Promise<User[]>;
+  validateTenantIsolation(userId: number, targetUserId: number): Promise<{ allowed: boolean, reason: string }>;
 
 
   // Business Onboarding Links
@@ -193,9 +193,9 @@ export interface IStorage {
   updateConnectionRequest(id: number, request: Partial<InsertConnectionRequest>): Promise<ConnectionRequest | undefined>;
 
   // Notifications
-  createNotification(notification: any): Promise<any>;
-  getNotificationsByUserId(userId: number): Promise<any[]>;
-  markNotificationAsRead(id: number): Promise<any>;
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  getNotificationsByUserId(userId: number): Promise<Notification[]>;
+  markNotificationAsRead(id: number): Promise<Notification | undefined>;
   getUnreadNotificationCount(userId: number): Promise<number>;
 
   // Work Submissions
@@ -764,7 +764,7 @@ export class MemStorage implements IStorage {
     const userContracts = Array.from(this.contracts.values())
       .filter(contract => contract.businessId === userId);
     const contractIds = userContracts.map(c => c.id);
-    
+
     return Array.from(this.payments.values())
       .filter(payment => payment.status === 'completed' && contractIds.includes(payment.contractId));
   }
@@ -774,7 +774,7 @@ export class MemStorage implements IStorage {
     const contractorContracts = Array.from(this.contracts.values())
       .filter(contract => contract.contractorId === contractorId);
     const contractIds = contractorContracts.map(c => c.id);
-    
+
     return Array.from(this.payments.values())
       .filter(payment => contractIds.includes(payment.contractId));
   }
@@ -797,127 +797,6 @@ export class MemStorage implements IStorage {
       trolleyPaymentId: insertPayment.trolleyPaymentId || null,
       stripeTransferStatus: insertPayment.stripeTransferStatus || null,
       paymentProcessor: insertPayment.paymentProcessor || 'stripe',
-
-  // BULLETPROOF MULTI-TENANT SECURITY IMPLEMENTATION
-  async validateBusinessContractorConnection(businessId: number, contractorId: number): Promise<boolean> {
-    try {
-      const connections = await db
-        .select()
-        .from(connectionRequests)
-        .where(
-          and(
-            eq(connectionRequests.businessId, businessId),
-            eq(connectionRequests.contractorId, contractorId),
-            eq(connectionRequests.status, 'accepted')
-          )
-        );
-
-      return connections.length > 0;
-    } catch (error) {
-      console.error('Error validating business-contractor connection:', error);
-      return false;
-    }
-  }
-
-  async getBusinessContractorsOnly(businessId: number): Promise<User[]> {
-    try {
-      // Only return contractors with verified connections to this specific business
-      const connectedContractors = await db
-        .select({
-          contractor: users
-        })
-        .from(connectionRequests)
-        .innerJoin(users, eq(connectionRequests.contractorId, users.id))
-        .where(
-          and(
-            eq(connectionRequests.businessId, businessId),
-            eq(connectionRequests.status, 'accepted'),
-            or(
-              eq(users.role, 'contractor'),
-              eq(users.role, 'freelancer')
-            )
-          )
-        );
-
-      return connectedContractors.map(row => row.contractor);
-    } catch (error) {
-      console.error('Error fetching business contractors:', error);
-      return [];
-    }
-  }
-
-  async getContractorBusinessesOnly(contractorId: number): Promise<User[]> {
-    try {
-      // Only return businesses with verified connections to this specific contractor
-      const connectedBusinesses = await db
-        .select({
-          business: users
-        })
-        .from(connectionRequests)
-        .innerJoin(users, eq(connectionRequests.businessId, users.id))
-        .where(
-          and(
-            eq(connectionRequests.contractorId, contractorId),
-            eq(connectionRequests.status, 'accepted'),
-            eq(users.role, 'business')
-          )
-        );
-
-      return connectedBusinesses.map(row => row.business);
-    } catch (error) {
-      console.error('Error fetching contractor businesses:', error);
-      return [];
-    }
-  }
-
-  async validateTenantIsolation(userId: number, targetUserId: number): Promise<{ allowed: boolean, reason: string }> {
-    try {
-      const user = await this.getUser(userId);
-      const targetUser = await this.getUser(targetUserId);
-
-      if (!user || !targetUser) {
-        return { allowed: false, reason: 'User not found' };
-      }
-
-      // Same user can access their own data
-      if (userId === targetUserId) {
-        return { allowed: true, reason: 'Self access' };
-      }
-
-      // Business-Contractor relationship validation
-      if (user.role === 'business' && (targetUser.role === 'contractor' || targetUser.role === 'freelancer')) {
-        const hasConnection = await this.validateBusinessContractorConnection(userId, targetUserId);
-        return { 
-          allowed: hasConnection, 
-          reason: hasConnection ? 'Valid business-contractor connection' : 'No verified connection' 
-        };
-      }
-
-      if ((user.role === 'contractor' || user.role === 'freelancer') && targetUser.role === 'business') {
-        const hasConnection = await this.validateBusinessContractorConnection(targetUserId, userId);
-        return { 
-          allowed: hasConnection, 
-          reason: hasConnection ? 'Valid contractor-business connection' : 'No verified connection' 
-        };
-      }
-
-      // Cross-contractor access is not allowed
-      if ((user.role === 'contractor' || user.role === 'freelancer') && 
-          (targetUser.role === 'contractor' || targetUser.role === 'freelancer')) {
-        return { allowed: false, reason: 'Cross-contractor access denied' };
-      }
-
-      // Cross-business access is not allowed
-      if (user.role === 'business' && targetUser.role === 'business') {
-        return { allowed: false, reason: 'Cross-business access denied' };
-      }
-
-      return { allowed: false, reason: 'Unknown relationship' };
-    } catch (error) {
-      console.error('Error validating tenant isolation:', error);
-      return { allowed: false, reason: 'Validation error' };
-    }
-  }
 
       applicationFee: insertPayment.applicationFee || "0",
       triggeredBy: insertPayment.triggeredBy || 'manual',
@@ -2338,7 +2217,7 @@ export class DatabaseStorage implements IStorage {
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
-    
+
     // Get contract-based successful payments for this business
     const contractPayments = await db
       .select()
@@ -2399,7 +2278,7 @@ export class DatabaseStorage implements IStorage {
   async getBusinessMonthlyPayments(businessId: number, year: number, month: number): Promise<number> {
     const startOfMonth = new Date(year, month - 1, 1);
     const endOfMonth = new Date(year, month, 0, 23, 59, 59, 999);
-    
+
     const monthlyPayments = await db
       .select()
       .from(payments)
@@ -2417,7 +2296,7 @@ export class DatabaseStorage implements IStorage {
   async getBusinessAnnualPayments(businessId: number, year: number): Promise<number> {
     const startOfYear = new Date(year, 0, 1);
     const endOfYear = new Date(year, 11, 31, 23, 59, 59, 999);
-    
+
     const annualPayments = await db
       .select()
       .from(payments)
@@ -2742,7 +2621,7 @@ export class DatabaseStorage implements IStorage {
     return updatedWorkRequest;
   }
 
-  // Profile Codes and Connection Requests methods
+  // Profile code methods
   async generateProfileCode(userId: number): Promise<string> {
     const user = await this.getUser(userId);
     if (!user) {
@@ -3402,7 +3281,6 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return result;
   }
-  }
 
   async getUnreadNotificationCount(userId: number): Promise<number> {
     const result = await db
@@ -3753,15 +3631,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteContractMilestones(contractId: number): Promise<void> {
-    await db.delete(milestones).where(eq(milestones.contractId, contractId));
+    await this.db.delete(milestones).where(eq(milestones.contractId, contractId));
   }
 
   async deleteContractPayments(contractId: number): Promise<void> {
-    await db.delete(payments).where(eq(payments.contractId, contractId));
+    await this.db.delete(payments).where(eq(payments.contractId, contractId));
   }
 
   async deleteContractDocuments(contractId: number): Promise<void> {
-    await db.delete(documents).where(eq(documents.contractId, contractId));
+    await this.db.delete(documents).where(eq(documents.contractId, contractId));
   }
 
   // Update the existing deleteContract method to only mark as deleted
@@ -3885,7 +3763,7 @@ export class DatabaseStorage implements IStorage {
       .from(tasks)
       .innerJoin(projects, eq(tasks.projectId, projects.id))
       .where(eq(projects.businessId, businessId));
-    
+
     return result;
   }
 
@@ -3921,7 +3799,7 @@ export class DatabaseStorage implements IStorage {
     if (!validStatuses.includes(status)) {
       throw new Error(`Invalid task status: ${status}`);
     }
-    
+
     const [updatedTask] = await db
       .update(tasks)
       .set({ status })
@@ -3964,7 +3842,7 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(tasks, eq(taskSubmissions.taskId, tasks.id))
       .innerJoin(projects, eq(tasks.projectId, projects.id))
       .where(eq(projects.businessId, businessId));
-    
+
     return result;
   }
 
@@ -3997,7 +3875,7 @@ export class DatabaseStorage implements IStorage {
         .for('update');
 
       if (!submissionWithTask) return undefined;
-      
+
       // Idempotency: If already approved, return existing submission
       if (submissionWithTask.submission.status === 'approved') {
         return submissionWithTask.submission;
@@ -4046,7 +3924,7 @@ export class DatabaseStorage implements IStorage {
         .for('update');
 
       if (!submissionWithTask) return undefined;
-      
+
       // Idempotency: If already rejected, return existing submission
       if (submissionWithTask.submission.status === 'rejected') {
         return submissionWithTask.submission;
