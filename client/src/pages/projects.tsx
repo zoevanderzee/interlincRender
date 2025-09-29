@@ -91,7 +91,7 @@ export default function Projects() {
                 <div>
                   <p className="text-sm text-gray-400">Connected Companies</p>
                   <p className="text-3xl font-bold text-white">
-                    {integratedData?.businesses?.length || 0}
+                    {integratedData?.businesses?.length || integratedData?.stats?.activeContractorsCount || 0}
                   </p>
                 </div>
                 <Users className="h-8 w-8 text-purple-500" />

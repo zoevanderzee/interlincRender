@@ -65,6 +65,16 @@ const Contractors = () => {
   const contracts = (dashboardData as any)?.contracts || [];
   const isLoadingBusinesses = isLoadingWorkers;
 
+  // For contractors, the connected companies are in the businesses array from dashboard
+  const connectedCompanies = isContractor ? businessAccounts : [];
+  
+  console.log('Debug contractor businesses:', {
+    isContractor,
+    businessAccountsLength: businessAccounts?.length,
+    businessAccounts: businessAccounts,
+    dashboardData: dashboardData
+  });
+
   // All contractors from dashboard are already connected
   const connectedContractorIds = new Set(
     externalWorkers.map((worker: User) => worker.id)
@@ -123,11 +133,12 @@ const Contractors = () => {
   });
 
   // Filter businesses for contractors view
-  const filteredBusinesses = businessAccounts.filter((business) => {
+  const filteredBusinesses = connectedCompanies.filter((business) => {
     if (!business) return false;
     return (
       searchTerm === "" ||
       (business.companyName && business.companyName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (business.businessName && business.businessName.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (business.firstName && business.firstName.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (business.lastName && business.lastName.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (business.industry && business.industry.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -411,7 +422,7 @@ const Contractors = () => {
                         </div>
                         <div>
                           <h3 className="font-semibold text-white">
-                            {company.companyName || `${company.firstName} ${company.lastName}`}
+                            {company.businessName || company.companyName || `${company.firstName} ${company.lastName}`}
                           </h3>
                           <p className="text-sm text-muted-foreground">{company.industry || "Business"}</p>
                         </div>
