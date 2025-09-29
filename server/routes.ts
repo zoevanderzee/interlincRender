@@ -2572,24 +2572,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const totalPendingEarnings = pendingFromWorkRequests + pendingFromPayments;
 
-        // FIX: For contractors, the relevant "businesses" are those they have accepted connection requests from.
-        // This section fetches those businesses and formats them correctly.
+        // Get connected businesses for contractor dashboard
         let uniqueBusinesses: any[] = [];
         try {
           const connections = await storage.getConnectionRequests({
-            contractorId: userId, // Use the current contractor's ID
+            contractorId: userId,
             status: 'accepted'
           });
 
           console.log(`Found ${connections.length} accepted connection requests for contractor ID: ${userId}`);
 
-          const businessIds = new Set<number>(); // Use a Set to track unique business IDs
-
           for (const connection of connections) {
-            if (connection.businessId && !businessIds.has(connection.businessId)) {
+            if (connection.businessId) {
               const business = await storage.getUser(connection.businessId);
               if (business && business.role === 'business') {
-                businessIds.add(business.id); // Add to set to avoid duplicates
                 uniqueBusinesses.push({
                   id: business.id,
                   businessName: business.companyName || `${business.firstName} ${business.lastName}`,
@@ -2601,7 +2597,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             }
           }
-          console.log(`Found ${uniqueBusinesses.length} unique businesses through connections for contractor ${userId}`);
+          console.log(`Contractor ${userId} connected businesses:`, uniqueBusinesses.map(b => ({ id: b.id, name: b.businessName })));
         } catch (error) {
           console.error("Error fetching connected businesses for contractor dashboard:", error);
         }
