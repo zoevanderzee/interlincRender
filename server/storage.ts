@@ -98,6 +98,13 @@ export interface IStorage {
   updateInvite(id: number, invite: Partial<InsertInvite>): Promise<Invite | undefined>;
   updateInviteToken(id: number, token: string): Promise<Invite | undefined>;
 
+  // MULTI-TENANT SECURITY METHODS
+  async validateBusinessContractorConnection(businessId: number, contractorId: number): Promise<boolean>;
+  async getBusinessContractorsOnly(businessId: number): Promise<User[]>;
+  async getContractorBusinessesOnly(contractorId: number): Promise<User[]>;
+  async validateTenantIsolation(userId: number, targetUserId: number): Promise<{ allowed: boolean, reason: string }>;
+
+
   // Business Onboarding Links
   createBusinessOnboardingLink(businessId: number, workerType: string): Promise<BusinessOnboardingLink>;
   getBusinessOnboardingLink(businessId: number): Promise<BusinessOnboardingLink | undefined>;
@@ -790,6 +797,128 @@ export class MemStorage implements IStorage {
       trolleyPaymentId: insertPayment.trolleyPaymentId || null,
       stripeTransferStatus: insertPayment.stripeTransferStatus || null,
       paymentProcessor: insertPayment.paymentProcessor || 'stripe',
+
+  // BULLETPROOF MULTI-TENANT SECURITY IMPLEMENTATION
+  async validateBusinessContractorConnection(businessId: number, contractorId: number): Promise<boolean> {
+    try {
+      const connections = await db
+        .select()
+        .from(connectionRequests)
+        .where(
+          and(
+            eq(connectionRequests.businessId, businessId),
+            eq(connectionRequests.contractorId, contractorId),
+            eq(connectionRequests.status, 'accepted')
+          )
+        );
+
+      return connections.length > 0;
+    } catch (error) {
+      console.error('Error validating business-contractor connection:', error);
+      return false;
+    }
+  }
+
+  async getBusinessContractorsOnly(businessId: number): Promise<User[]> {
+    try {
+      // Only return contractors with verified connections to this specific business
+      const connectedContractors = await db
+        .select({
+          contractor: users
+        })
+        .from(connectionRequests)
+        .innerJoin(users, eq(connectionRequests.contractorId, users.id))
+        .where(
+          and(
+            eq(connectionRequests.businessId, businessId),
+            eq(connectionRequests.status, 'accepted'),
+            or(
+              eq(users.role, 'contractor'),
+              eq(users.role, 'freelancer')
+            )
+          )
+        );
+
+      return connectedContractors.map(row => row.contractor);
+    } catch (error) {
+      console.error('Error fetching business contractors:', error);
+      return [];
+    }
+  }
+
+  async getContractorBusinessesOnly(contractorId: number): Promise<User[]> {
+    try {
+      // Only return businesses with verified connections to this specific contractor
+      const connectedBusinesses = await db
+        .select({
+          business: users
+        })
+        .from(connectionRequests)
+        .innerJoin(users, eq(connectionRequests.businessId, users.id))
+        .where(
+          and(
+            eq(connectionRequests.contractorId, contractorId),
+            eq(connectionRequests.status, 'accepted'),
+            eq(users.role, 'business')
+          )
+        );
+
+      return connectedBusinesses.map(row => row.business);
+    } catch (error) {
+      console.error('Error fetching contractor businesses:', error);
+      return [];
+    }
+  }
+
+  async validateTenantIsolation(userId: number, targetUserId: number): Promise<{ allowed: boolean, reason: string }> {
+    try {
+      const user = await this.getUser(userId);
+      const targetUser = await this.getUser(targetUserId);
+
+      if (!user || !targetUser) {
+        return { allowed: false, reason: 'User not found' };
+      }
+
+      // Same user can access their own data
+      if (userId === targetUserId) {
+        return { allowed: true, reason: 'Self access' };
+      }
+
+      // Business-Contractor relationship validation
+      if (user.role === 'business' && (targetUser.role === 'contractor' || targetUser.role === 'freelancer')) {
+        const hasConnection = await this.validateBusinessContractorConnection(userId, targetUserId);
+        return { 
+          allowed: hasConnection, 
+          reason: hasConnection ? 'Valid business-contractor connection' : 'No verified connection' 
+        };
+      }
+
+      if ((user.role === 'contractor' || user.role === 'freelancer') && targetUser.role === 'business') {
+        const hasConnection = await this.validateBusinessContractorConnection(targetUserId, userId);
+        return { 
+          allowed: hasConnection, 
+          reason: hasConnection ? 'Valid contractor-business connection' : 'No verified connection' 
+        };
+      }
+
+      // Cross-contractor access is not allowed
+      if ((user.role === 'contractor' || user.role === 'freelancer') && 
+          (targetUser.role === 'contractor' || targetUser.role === 'freelancer')) {
+        return { allowed: false, reason: 'Cross-contractor access denied' };
+      }
+
+      // Cross-business access is not allowed
+      if (user.role === 'business' && targetUser.role === 'business') {
+        return { allowed: false, reason: 'Cross-business access denied' };
+      }
+
+      return { allowed: false, reason: 'Unknown relationship' };
+    } catch (error) {
+      console.error('Error validating tenant isolation:', error);
+      return { allowed: false, reason: 'Validation error' };
+    }
+  }
+
       applicationFee: insertPayment.applicationFee || "0",
       triggeredBy: insertPayment.triggeredBy || 'manual',
       triggeredAt: insertPayment.triggeredAt || null

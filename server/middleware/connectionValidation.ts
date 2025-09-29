@@ -1,14 +1,15 @@
 /**
- * CRITICAL CONNECTION VALIDATION MIDDLEWARE
+ * BULLETPROOF MULTI-TENANT VALIDATION MIDDLEWARE
  * 
- * This module enforces strict connection validation rules to prevent
- * any account confusion or unauthorized access between businesses and contractors.
+ * This module enforces ZERO-TOLERANCE tenant isolation to prevent
+ * any data leaks between businesses and contractors in a multi-tenant system.
  * 
- * ZERO TOLERANCE POLICY:
- * - Only contractors with verified connection_requests can be assigned to projects
- * - Each connection must have a unique profile_code
- * - No contractor can access business data without established connection
- * - All contractor operations must validate connection ownership
+ * ABSOLUTE REQUIREMENTS:
+ * - Each business can ONLY see their own contractors through verified connections
+ * - Each contractor can ONLY see businesses they are connected to
+ * - Profile codes must be unique per contractor (no overlaps)
+ * - All operations must validate connection ownership before data access
+ * - Cross-tenant data access is BLOCKED at the middleware level
  */
 
 import { Request, Response, NextFunction } from 'express';

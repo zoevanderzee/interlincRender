@@ -422,21 +422,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Return businesses that have contracts with this contractor AND businesses that sent work requests
           const businessesWithContracts = await storage.getBusinessesByContractorId(currentUser.id);
 
-          // Get work requests sent to this contractor to find additional businesses
-          const workRequests = await storage.getWorkRequestsByEmail(currentUser.email);
-          const businessIdsFromRequests = [...new Set(workRequests.map(wr => wr.businessId))];
+          // Get businesses through accepted connection requests (ONLY PROPER SOURCE)
+          let businessesFromConnections = [];
+          try {
+            const connections = await storage.getConnectionRequests({
+              contractorId: currentUser.id,
+              status: 'accepted'
+            });
 
-          // Get business users for work request senders
-          const businessesFromRequests = [];
-          for (const businessId of businessIdsFromRequests) {
-            const business = await storage.getUser(businessId);
-            if (business && business.role === 'business') {
-              businessesFromRequests.push(business);
+            console.log(`Found ${connections.length} accepted connection requests for contractor ID: ${currentUser.id}`);
+
+            for (const connection of connections) {
+              if (connection.businessId) {
+                const business = await storage.getUser(connection.businessId);
+                if (business && business.role === 'business') {
+                  businessesFromConnections.push(business);
+                }
+              }
             }
+
+            console.log(`Found ${businessesFromConnections.length} businesses through connections`);
+          } catch (error) {
+            console.error("Error fetching connected businesses:", error);
           }
 
-          // Combine and deduplicate businesses
-          const allBusinesses = [...businessesWithContracts, ...businessesFromRequests];
+          // SECURITY: Remove email-based business lookup - this was causing data leaks
+          // Only use connection-based businesses for proper tenant isolation
+          const businessesFromRequests = [];
+
+          // Combine businesses ONLY from contracts and verified connections (no email-based lookup)
+          const allBusinesses = [...businessesWithContracts, ...businessesFromConnections];
           const uniqueBusinesses = allBusinesses.filter((business, index, self) =>
             index === self.findIndex(b => b.id === business.id)
           );
@@ -1870,7 +1885,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('Error creating deliverable approval notification:', notificationError);
       }
 
-      // Trigger automated payment processing with idempotency
+      // Trigger automated payment processing
       const paymentResult = await automatedPaymentService.processMilestoneApproval(deliverableId, approvedBy);
 
       if (paymentResult.success) {
@@ -5263,17 +5278,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (fallbackUser) {
           userId = fallbackUser.id;
           userRole = fallbackUser.role;
-          console.log(`Using[
-  {
-    "file": "server/index.ts",
-    "replacements": [
-      {
-        "old": "// Get all contractor payments properly\n        const allContractorPayments = await storage.getPaymentsByContractorId(userId);\n\n        // Calculate total earnings from completed payments\n        const totalEarnings = allContractorPayments\n          .filter(p => p.status === 'completed')\n          .reduce((sum, payment) => sum + parseFloat(payment.amount), 0);\n\n        // Calculate pending earnings from work requests and pending payments\n        const pendingFromWorkRequests = workRequests\n          .filter(wr => ['assigned', 'in_review', 'approved'].includes(wr.status))\n          .reduce((sum, wr) => sum + parseFloat(wr.amount), 0);\n\n        const pendingFromPayments = allContractorPayments\n          .filter(p => ['pending', 'processing', 'scheduled'].includes(p.status))\n          .reduce((sum, payment) => sum + parseFloat(payment.amount), 0);\n",
-        "new": "// Get contractor-specific payments directly\n        const contractorPayments = await storage.getPaymentsByContractorId(userId);\n\n        // Calculate total earnings from completed payments\n        const totalEarnings = contractorPayments\n          .filter(p => p.status === 'completed')\n          .reduce((sum, payment) => sum + parseFloat(payment.amount), 0);\n\n        // Calculate pending earnings from work requests and pending payments\n        const pendingFromWorkRequests = workRequests\n          .filter(wr => ['assigned', 'in_review', 'approved'].includes(wr.status))\n          .reduce((sum, wr) => sum + parseFloat(wr.amount), 0);\n\n        const pendingFromPayments = contractorPayments\n          .filter(p => ['pending', 'processing', 'scheduled'].includes(p.status))\n          .reduce((sum, payment) => sum + parseFloat(payment.amount), 0);\n"
-      }
-    ]
-  }
-]X-User-ID header fallback for connection requests: user ${userId} with role ${userRole}`);
+          console.log(`Using X-User-ID header fallback for connection requests: user ${userId} with role ${userRole}`);
         }
       }
 
@@ -5865,7 +5870,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Handle 'all' projects case
       if (projectIdParam === 'all') {
-        // Get all pending submissions for this business across all projects
+        // Get all pending submissions for this business
         const allSubmissions = await storage.getWorkRequestSubmissionsByBusinessId(req.user!.id);
         targetSubmissions = allSubmissions.filter(sub => sub.status === 'pending');
       } else {

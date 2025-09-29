@@ -55,7 +55,7 @@ const Contractors = () => {
     enabled: !!user
   });
 
-  // V2: All contractor data comes from dashboard - no V1 connection requests
+  // SECURITY: All contractor data comes from verified connections only
   const connectionRequests = [];
   const isLoadingConnections = false;
 
