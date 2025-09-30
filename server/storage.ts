@@ -2094,12 +2094,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPaymentsByContractorId(contractorId: number): Promise<Payment[]> {
-    // Get all payments for contracts assigned to this contractor
+    // BULLETPROOF: Get payments ONLY for contracts specifically assigned to this contractor
+    // This ensures complete data isolation between contractors
     const contractorPayments = await db
       .select()
       .from(payments)
       .innerJoin(contracts, eq(payments.contractId, contracts.id))
-      .where(eq(contracts.contractorId, contractorId));
+      .where(
+        and(
+          eq(contracts.contractorId, contractorId),
+          isNotNull(contracts.contractorId) // Ensure contractor is actually assigned
+        )
+      );
+
+    console.log(`CONTRACTOR PAYMENTS: Found ${contractorPayments.length} payments for contractor ${contractorId}`);
 
     // Return just the payment objects
     return contractorPayments.map(row => row.payments);
