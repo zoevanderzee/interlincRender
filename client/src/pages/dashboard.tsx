@@ -149,120 +149,114 @@ const Dashboard = () => {
 
   // If user is a contractor, show a specialized contractor interface
   if (user && user.role === 'contractor') {
+    // Mock data for demonstration, replace with actual data fetching
+    const mockWorkRequests = [
+      { id: 'wr1', contractorId: user.id, contractId: 'c1', amount: '500', status: 'pending' },
+      { id: 'wr2', contractorId: user.id, contractId: 'c1', amount: '700', status: 'paid' },
+      { id: 'wr3', contractorId: user.id, contractId: 'c2', amount: '600', status: 'scheduled' },
+    ];
+
+    const mockContracts = [
+      { id: 'c1', contractorId: user.id, businessId: 'b1', status: 'active' },
+      { id: 'c2', contractorId: user.id, businessId: 'b2', status: 'active' },
+    ];
+
+    const mockPayments = [
+      { id: 'p1', contractId: 'c1', amount: '700', status: 'completed' },
+      { id: 'p2', contractId: 'c2', amount: '600', status: 'scheduled' },
+    ];
+
+    const mockMilestones = [
+      { id: 'm1', contractId: 'c1', status: 'submitted' },
+      { id: 'm2', contractId: 'c2', status: 'approved' },
+    ];
+
+    const mockBusinessAccounts = [
+      { id: 'b1', name: 'Tech Solutions Inc.' },
+      { id: 'b2', name: 'Global Enterprises' },
+    ];
+
+    // Placeholder functions - replace with actual implementations
+    const handleContractClick = (contractId: string) => { console.log(`Viewing contract: ${contractId}`); navigate(`/contracts/${contractId}`); };
+    const handleSubmitWork = (workRequestId: string) => { console.log(`Submitting work for: ${workRequestId}`); toast({ title: "Work Submitted", description: "Your work has been submitted for approval." }); };
+    const handleApproveWork = (milestoneId: string) => { console.log(`Approving work for: ${milestoneId}`); toast({ title: "Work Approved", description: "Milestone has been approved." }); };
+    const handleAcceptWorkRequest = (workRequestId: string) => { console.log(`Accepting work request: ${workRequestId}`); toast({ title: "Work Request Accepted", description: "You have accepted this work request." }); };
+
+    // Mock data for ContractorDashboard
+    const integratedData = {
+      stats: {
+        activeContractsCount: mockContracts.length,
+        paymentsProcessed: mockPayments.filter(p => p.status === 'completed').reduce((sum, p) => sum + parseFloat(p.amount), 0),
+        activeContractorsCount: 0, // Not directly applicable for contractor view
+        pendingApprovalsCount: mockMilestones.filter(m => m.status === 'submitted').length,
+        totalPendingValue: mockPayments.filter(p => p.status === 'scheduled' || p.status === 'pending').reduce((sum, p) => sum + parseFloat(p.amount), 0),
+        pendingInvitesCount: 0, // Not directly applicable
+        remainingBudget: "1500.00" // Example remaining budget
+      },
+      contracts: mockContracts,
+      contractors: [], // Contractors are not typically listed here for a contractor
+      milestones: mockMilestones,
+      payments: mockPayments,
+      businesses: mockBusinessAccounts, // Businesses the contractor is working with
+      workRequests: mockWorkRequests,
+      stripeConnectData: { hasAccount: true, verification_status: { verification_complete: true } } // Mock stripe data
+    };
+
+    const userContracts = integratedData.contracts.filter(contract => contract.contractorId === user?.id);
+    const allMilestones = integratedData.milestones;
+    const payments = integratedData.payments;
+    const businessAccounts = integratedData.businesses;
+    const workRequests = integratedData.workRequests.filter(wr => wr.contractorId === user?.id);
+    const userRole = user?.role; // Use the actual user role
+
+    // Calculate earnings for contractor
+    const contractorPayments = payments.filter((payment: Payment) => 
+      contracts.some((contract: Contract) => 
+        contract.id === payment.contractId && contract.contractorId === user?.id
+      )
+    );
+
+    const completedPayments = contractorPayments.filter((p: Payment) => p.status === 'completed');
+    const pendingPayments = contractorPayments.filter((p: Payment) => 
+      p.status === 'scheduled' || p.status === 'pending'
+    );
+
+    const totalEarnings = completedPayments.reduce((sum: number, p: Payment) => 
+      sum + parseFloat(p.amount), 0
+    );
+    const totalPendingEarnings = pendingPayments.reduce((sum: number, p: Payment) => 
+      sum + parseFloat(p.amount), 0
+    );
+
+    console.log(`CONTRACTOR ${user?.id} EARNINGS CALCULATION:`, {
+      totalPayments: contractorPayments.length,
+      completedPayments: completedPayments.length,
+      totalEarnings,
+      totalPendingEarnings
+    });
+
+    const displayStats = {
+      activeContractsCount: userContracts.length,
+      pendingApprovalCount: allMilestones.filter((m: Milestone) => m.status === 'submitted').length,
+      totalEarnings: totalEarnings,
+      pendingEarnings: totalPendingEarnings
+    };
+
     return (
-      <>
-        {/* Page Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl md:text-3xl font-semibold text-white">Contractor Dashboard</h1>
-          <p className="text-gray-400 mt-1">View your assigned projects and track your payments</p>
-        </div>
-
-        {/* Primary Metrics: 3 Key Cards for contractors */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {/* Card 1: Active Assignments */}
-          <Card className="animate-fade-in hover:animate-glow-pulse">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-muted-foreground text-sm font-medium">Active Assignments</h3>
-                <div className="p-3 rounded-xl bg-blue-500/10 backdrop-blur-sm shadow-lg transition-all duration-300 hover:scale-110">
-                  <Briefcase size={20} className="text-blue-400" />
-                </div>
-              </div>
-              <p className="text-3xl font-bold text-white tracking-tight">
-                {integratedData.workRequests ? integratedData.workRequests.length : 0}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">Current assignments in progress</p>
-            </CardContent>
-          </Card>
-
-          {/* Card 2: Total Earnings */}
-          <Card className="animate-fade-in hover:animate-glow-pulse">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-muted-foreground text-sm font-medium">Total Earnings</h3>
-                <div className="p-3 rounded-xl bg-green-500/10 backdrop-blur-sm shadow-lg transition-all duration-300 hover:scale-110">
-                  <DollarSign size={20} className="text-green-400" />
-                </div>
-              </div>
-              <p className="text-3xl font-bold text-white tracking-tight">
-                {formatCurrency(integratedData.stats.paymentsProcessed || 0)}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">Completed payments</p>
-            </CardContent>
-          </Card>
-
-          {/* Card 3: Pending Earnings */}
-          <Card className="animate-fade-in hover:animate-glow-pulse">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-muted-foreground text-sm font-medium">Pending Earnings</h3>
-                <div className="p-3 rounded-xl bg-yellow-500/10 backdrop-blur-sm shadow-lg transition-all duration-300 hover:scale-110">
-                  <Clock size={20} className="text-yellow-400" />
-                </div>
-              </div>
-              <p className="text-3xl font-bold text-white tracking-tight">
-                ${integratedData.workRequests
-                  .filter(wr => wr.status !== 'paid')
-                  .reduce((sum, workRequest) => sum + parseFloat(workRequest.amount), 0)
-                  .toLocaleString('en-US')}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">Upcoming payments</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Quick Actions for Contractors */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <Button
-            variant="ghost"
-            className="h-auto py-4 px-6 justify-start animate-slide-in"
-            onClick={() => navigate('/projects')}
-          >
-            <Briefcase className="mr-3" size={18} />
-            <div className="text-left">
-              <div className="font-medium">My Assignments</div>
-              <div className="text-xs text-muted-foreground">View your work assignments</div>
-            </div>
-          </Button>
-
-          <Button
-            variant="ghost"
-            className="h-auto py-4 px-6 justify-start animate-slide-in"
-            onClick={() => navigate('/payments')}
-          >
-            <DollarSign className="mr-3" size={18} />
-            <div className="text-left">
-              <div className="font-medium">Payments</div>
-              <div className="text-xs text-muted-foreground">View payment history</div>
-            </div>
-          </Button>
-
-          {/* Changed route from /payment-setup to /contractor-onboarding */}
-          <Button
-            variant="ghost"
-            className="h-auto py-4 px-6 justify-start animate-slide-in"
-            onClick={() => navigate('/contractor-onboarding')}
-          >
-            <Settings className="mr-3" size={18} />
-            <div className="text-left">
-              <div className="font-medium">Payment Setup</div>
-              <div className="text-xs text-muted-foreground">Configure payout details</div>
-            </div>
-          </Button>
-
-          <Button
-            variant="ghost"
-            className="h-auto py-4 px-6 justify-start animate-slide-in"
-            onClick={() => navigate('/settings')}
-          >
-            <FileText className="mr-3" size={18} />
-            <div className="text-left">
-              <div className="font-medium">Profile</div>
-              <div className="text-xs text-muted-foreground">Update your information</div>
-            </div>
-          </Button>
-        </div>
-      </>
+      <ContractorDashboard 
+        user={user}
+        userRole={user?.role || 'contractor'}
+        stats={displayStats}
+        contracts={userContracts}
+        milestones={allMilestones}
+        payments={contractorPayments}
+        businessAccounts={businessAccounts}
+        workRequests={workRequests}
+        onViewContract={handleContractClick}
+        onSubmitWork={handleSubmitWork}
+        onApproveWork={handleApproveWork}
+        onAcceptWorkRequest={handleAcceptWorkRequest}
+      />
     );
   }
 
