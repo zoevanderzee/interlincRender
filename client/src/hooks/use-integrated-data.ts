@@ -24,6 +24,7 @@ interface IntegratedData {
   invites: any[];
   projects: any[];
   workRequests: any[];
+  businesses: any[];
   walletBalance: number;
   budgetData: any;
   hasActiveSubscription: boolean;
@@ -204,6 +205,7 @@ export function useIntegratedData() {
     invites: dashboardData?.invites || [],
     projects: projectsData || [], // Use actual projects data, not contracts
     workRequests: workRequestsData || [],
+    businesses: dashboardData?.businesses || [], // Add businesses array for contractor dashboard
     walletBalance: 0, // Stripe Connect doesn't have a wallet balance concept
     budgetData: budgetData || null,
     hasActiveSubscription: user?.subscriptionStatus === 'active',

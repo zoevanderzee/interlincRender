@@ -378,17 +378,26 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Card 4: Active Contractors */}
+        {/* Card 4: Connected Companies (for contractors) or Active Contractors (for business) */}
         <Card className="animate-fade-in hover:animate-glow-pulse">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-muted-foreground text-sm font-medium">Active Contractors</h3>
+              <h3 className="text-muted-foreground text-sm font-medium">
+                {userRole === 'contractor' ? 'Connected Companies' : 'Active Contractors'}
+              </h3>
               <div className="p-3 rounded-xl bg-indigo-500/10 backdrop-blur-sm shadow-lg transition-all duration-300 hover:scale-110">
                 <Users size={20} className="text-indigo-400" />
               </div>
             </div>
-            <p className="text-3xl font-bold text-white tracking-tight">{integratedData.stats.activeContractorsCount}</p>
-            <p className="text-xs text-muted-foreground mt-1">Working professionals</p>
+            <p className="text-3xl font-bold text-white tracking-tight">
+              {userRole === 'contractor' 
+                ? (integratedData.businesses?.length || 0)
+                : integratedData.stats.activeContractorsCount
+              }
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {userRole === 'contractor' ? 'Connected businesses' : 'Working professionals'}
+            </p>
           </CardContent>
         </Card>
       </div>
