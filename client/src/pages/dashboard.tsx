@@ -377,20 +377,20 @@ const Dashboard = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-muted-foreground text-sm font-medium">
-                {userRole === 'contractor' ? 'Connected Companies' : 'Active Contractors'}
+                {user?.role === 'contractor' ? 'Connected Companies' : 'Active Contractors'}
               </h3>
               <div className="p-3 rounded-xl bg-indigo-500/10 backdrop-blur-sm shadow-lg transition-all duration-300 hover:scale-110">
                 <Users size={20} className="text-indigo-400" />
               </div>
             </div>
             <p className="text-3xl font-bold text-white tracking-tight">
-              {userRole === 'contractor' 
+              {user?.role === 'contractor' 
                 ? (integratedData.businesses?.length || 0)
                 : integratedData.stats.activeContractorsCount
               }
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              {userRole === 'contractor' ? 'Connected businesses' : 'Working professionals'}
+              {user?.role === 'contractor' ? 'Connected businesses' : 'Working professionals'}
             </p>
           </CardContent>
         </Card>
