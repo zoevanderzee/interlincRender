@@ -2572,6 +2572,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const totalPendingEarnings = pendingFromWorkRequests + pendingFromPayments;
 
+        console.log(`CONTRACTOR ${userId} EARNINGS CALCULATION:`, {
+          totalPayments: contractorPayments.length,
+          completedPayments: contractorPayments.filter(p => p.status === 'completed').length,
+          totalEarnings: totalEarnings,
+          totalPendingEarnings: totalPendingEarnings
+        });
+
         // Get connected businesses for contractor dashboard
         let uniqueBusinesses: any[] = [];
         try {
@@ -2606,10 +2613,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           stats: {
             activeContractsCount: activeAssignments.length, // Show active assignments instead
             pendingApprovalsCount: contractorMilestones.filter(m => m.status === 'completed' || m.status === 'submitted').length,
-            paymentsProcessed: totalEarnings, // Show total earnings amount
+            paymentsProcessed: totalEarnings, // BULLETPROOF: Show total completed payment earnings
             totalPendingValue: totalPendingEarnings, // Show pending earnings
             activeContractorsCount: 0, // Not relevant for contractors
-            pendingInvitesCount: 0 // Not relevant for contractors
+            pendingInvitesCount: 0, // Not relevant for contractors
+            // Additional contractor-specific stats
+            totalSuccessfulPayments: contractorPayments.filter(p => p.status === 'completed').length,
+            totalPaymentValue: totalEarnings // Same as paymentsProcessed for contractors
           },
           contracts: contractorContracts, // Contractor's own contracts
           milestones: contractorMilestones, // Contractor's own milestones

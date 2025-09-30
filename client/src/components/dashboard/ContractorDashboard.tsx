@@ -52,9 +52,16 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
   // Active assignments from work requests (preferred) or active contracts as fallback
   const activeAssignments = dashboardData.workRequests || dashboardData.contracts.filter(c => c.status === 'Active');
   
-  // Calculate total and pending earnings from dashboard stats (server-calculated)
+  // Use server-calculated earnings from bulletproof payment data
   const totalEarnings = dashboardData.stats.paymentsProcessed || 0;
   const pendingEarnings = dashboardData.stats.totalPendingValue || 0;
+  
+  console.log('Contractor Dashboard Earnings:', {
+    totalEarnings,
+    pendingEarnings,
+    paymentsCount: dashboardData.payments?.length || 0,
+    completedPayments: dashboardData.payments?.filter(p => p.status === 'completed').length || 0
+  });
 
   return (
     <>
