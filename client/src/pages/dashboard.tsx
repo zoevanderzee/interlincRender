@@ -23,6 +23,7 @@ import { Contract, User, Payment, Milestone } from "@shared/schema";
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { formatCurrency } from '@/lib/utils';
+import { ContractorDashboard } from "@/components/dashboard/ContractorDashboard";
 
 
 // Define interface for dashboard data (this is now implicitly handled by useIntegratedData)
