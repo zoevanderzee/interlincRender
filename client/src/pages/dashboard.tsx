@@ -245,18 +245,13 @@ const Dashboard = () => {
 
     return (
       <ContractorDashboard 
-        user={user}
-        userRole={user?.role || 'contractor'}
-        stats={displayStats}
-        contracts={userContracts}
-        milestones={allMilestones}
-        payments={contractorPayments}
-        businessAccounts={businessAccounts}
-        workRequests={workRequests}
-        onViewContract={handleContractClick}
-        onSubmitWork={handleSubmitWork}
-        onApproveWork={handleApproveWork}
-        onAcceptWorkRequest={handleAcceptWorkRequest}
+        dashboardData={{
+          stats: displayStats,
+          contracts: userContracts,
+          milestones: allMilestones,
+          payments: contractorPayments,
+          workRequests: workRequests
+        }}
       />
     );
   }
