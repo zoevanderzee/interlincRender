@@ -123,8 +123,10 @@ export const deliverables = milestones;
 // Payments table
 export const payments = pgTable("payments", {
   id: serial("id").primaryKey(),
-  contractId: integer("contract_id").notNull(),
-  milestoneId: integer("milestone_id").notNull(),
+  contractId: integer("contract_id"), // Made optional for direct payments
+  milestoneId: integer("milestone_id"), // Made optional for direct payments
+  contractorId: integer("contractor_id"), // Direct link to contractor for Send Payment feature
+  workRequestId: integer("work_request_id"), // Link to work requests
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   status: text("status").notNull().default("scheduled"), // scheduled, processing, completed, failed, auto_triggered
   scheduledDate: timestamp("scheduled_date").notNull(),

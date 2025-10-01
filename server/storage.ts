@@ -2094,23 +2094,72 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPaymentsByContractorId(contractorId: number): Promise<Payment[]> {
-    // BULLETPROOF: Get payments ONLY for contracts specifically assigned to this contractor
-    // This ensures complete data isolation between contractors
-    const contractorPayments = await db
-      .select()
+    // BULLETPROOF: Multi-source contractor payment aggregation
+    // Get payments from ALL sources where this contractor is the recipient
+    
+    // 1. Contract-based payments (traditional model)
+    const contractPayments = await db
+      .select({
+        payment: payments,
+        contract: contracts
+      })
       .from(payments)
       .innerJoin(contracts, eq(payments.contractId, contracts.id))
       .where(
         and(
           eq(contracts.contractorId, contractorId),
-          isNotNull(contracts.contractorId) // Ensure contractor is actually assigned
+          isNotNull(contracts.contractorId)
         )
       );
 
-    console.log(`CONTRACTOR PAYMENTS: Found ${contractorPayments.length} payments for contractor ${contractorId}`);
+    // 2. Direct payments (Send Payment feature - future enhancement)
+    // When we add contractorId directly to payments table
+    const directPayments = await db
+      .select()
+      .from(payments)
+      .where(
+        and(
+          eq(payments.contractorId, contractorId), // This column doesn't exist yet but will be added
+          isNull(payments.contractId) // Direct payments have no contract
+        )
+      );
 
-    // Return just the payment objects
-    return contractorPayments.map(row => row.payments);
+    // 3. Work request based payments (current active model)
+    const workRequestPayments = await db
+      .select({
+        payment: payments,
+        workRequest: workRequests
+      })
+      .from(payments)
+      .innerJoin(workRequests, eq(payments.workRequestId, workRequests.id))
+      .where(eq(workRequests.contractorUserId, contractorId));
+
+    // Combine all payment sources
+    const allContractorPayments = [
+      ...contractPayments.map(row => row.payment),
+      ...workRequestPayments.map(row => row.payment)
+      // ...directPayments (when implemented)
+    ];
+
+    // Remove duplicates based on payment ID
+    const uniquePayments = allContractorPayments.filter((payment, index, self) =>
+      index === self.findIndex(p => p.id === payment.id)
+    );
+
+    console.log(`CONTRACTOR ${contractorId} EARNINGS CALCULATION:`, {
+      contractPayments: contractPayments.length,
+      workRequestPayments: workRequestPayments.length,
+      totalUniquePayments: uniquePayments.length,
+      completedPayments: uniquePayments.filter(p => p.status === 'completed').length,
+      totalEarnings: uniquePayments
+        .filter(p => p.status === 'completed')
+        .reduce((sum, p) => sum + parseFloat(p.amount), 0),
+      totalPendingEarnings: uniquePayments
+        .filter(p => p.status !== 'completed')
+        .reduce((sum, p) => sum + parseFloat(p.amount), 0)
+    });
+
+    return uniquePayments;
   }
 
   async createPayment(insertPayment: InsertPayment): Promise<Payment> {
@@ -2330,6 +2379,56 @@ export class DatabaseStorage implements IStorage {
       ));
 
     return successfulPayments.reduce((sum, p) => sum + parseFloat(p.payments.amount), 0);
+  }
+
+  // CONTRACTOR EARNINGS STATISTICS - Real Data Calculations
+  async getContractorEarningsStats(contractorId: number): Promise<{
+    totalEarnings: number,
+    pendingEarnings: number,
+    completedPaymentsCount: number,
+    pendingPaymentsCount: number,
+    currentMonthEarnings: number,
+    currentYearEarnings: number
+  }> {
+    const contractorPayments = await this.getPaymentsByContractorId(contractorId);
+    
+    const completedPayments = contractorPayments.filter(p => p.status === 'completed');
+    const pendingPayments = contractorPayments.filter(p => 
+      p.status === 'scheduled' || p.status === 'pending' || p.status === 'processing'
+    );
+    
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    
+    // Calculate current month earnings
+    const currentMonthEarnings = completedPayments
+      .filter(p => {
+        const paymentDate = p.completedDate;
+        if (!paymentDate) return false;
+        const date = new Date(paymentDate);
+        return date.getFullYear() === currentYear && (date.getMonth() + 1) === currentMonth;
+      })
+      .reduce((sum, p) => sum + parseFloat(p.amount), 0);
+
+    // Calculate current year earnings
+    const currentYearEarnings = completedPayments
+      .filter(p => {
+        const paymentDate = p.completedDate;
+        if (!paymentDate) return false;
+        const date = new Date(paymentDate);
+        return date.getFullYear() === currentYear;
+      })
+      .reduce((sum, p) => sum + parseFloat(p.amount), 0);
+    
+    return {
+      totalEarnings: completedPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0),
+      pendingEarnings: pendingPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0),
+      completedPaymentsCount: completedPayments.length,
+      pendingPaymentsCount: pendingPayments.length,
+      currentMonthEarnings,
+      currentYearEarnings
+    };
   }
 
   // Document CRUD methods

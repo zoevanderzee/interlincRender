@@ -2747,7 +2747,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Continue with empty invites array
       }
 
-      // Calculate real stats from work requests and projects
+      // Calculate total work requests value
       const totalWorkRequestsValue = activeWorkRequests.reduce((sum, wr) => {
         return sum + parseFloat(wr.amount || '0');
       }, 0);
