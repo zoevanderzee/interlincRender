@@ -123,25 +123,31 @@ export const deliverables = milestones;
 // Payments table
 export const payments = pgTable("payments", {
   id: serial("id").primaryKey(),
-  contractId: integer("contract_id"), // Made optional for direct payments
-  milestoneId: integer("milestone_id"), // Made optional for direct payments
-  contractorId: integer("contractor_id"), // Direct link to contractor for Send Payment feature
-  workRequestId: integer("work_request_id"), // Link to work requests
+  contractId: integer("contract_id").references(() => contracts.id), // Made optional for direct payments
+  milestoneId: integer("milestone_id").references(() => milestones.id), // Made optional for direct payments
+  contractorId: integer("contractor_id").references(() => users.id), // Direct link to contractor for Send Payment feature
+  businessId: integer("business_id").references(() => users.id), // Link to the business making the payment
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
-  status: text("status").notNull().default("scheduled"), // scheduled, processing, completed, failed, auto_triggered
+  status: varchar("status", { length: 50 }).default("scheduled").notNull(), // scheduled, processing, completed, failed, auto_triggered
   scheduledDate: timestamp("scheduled_date").notNull(),
   completedDate: timestamp("completed_date"),
   notes: text("notes"),
-  stripePaymentIntentId: text("stripe_payment_intent_id"), // Stripe Payment Intent ID
-  stripePaymentIntentStatus: text("stripe_payment_intent_status"), // Stripe Payment Intent Status
-  stripeTransferId: text("stripe_transfer_id"), // Stripe Transfer ID for Connect payouts
-  trolleyBatchId: text("trolley_batch_id"), // Trolley batch ID for Embedded Payouts
-  trolleyPaymentId: text("trolley_payment_id"), // Trolley payment ID for tracking
-  stripeTransferStatus: text("stripe_transfer_status"), // Status of the Stripe Transfer
-  paymentProcessor: text("payment_processor").default("stripe"), // Payment processor used
+  stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 255 }), // Stripe Payment Intent ID
+  stripePaymentIntentStatus: varchar("stripe_payment_intent_status", { length: 50 }), // Stripe Payment Intent Status
+  stripeTransferId: varchar("stripe_transfer_id", { length: 255 }), // Stripe Transfer ID for Connect payouts
+  stripeTransferStatus: varchar("stripe_transfer_status", { length: 50 }), // Status of the Stripe Transfer
+  trolleyBatchId: varchar("trolley_batch_id", { length: 255 }), // Trolley batch ID for Embedded Payouts
+  trolleyPaymentId: varchar("trolley_payment_id", { length: 255 }), // Trolley payment ID for tracking
+  paymentProcessor: varchar("payment_processor", { length: 50 }).default("stripe"), // Payment processor used
+  paymentMethod: varchar("payment_method", { length: 50 }).default('stripe_connect'), // Method used for payment, e.g., 'stripe_connect'
+  destinationAccountId: varchar("destination_account_id", { length: 255 }), // Stripe/Trolley account ID of the recipient
   applicationFee: decimal("application_fee", { precision: 10, scale: 2 }).default("0"), // Platform fee
-  triggeredBy: text("triggered_by").default("manual"), // manual, auto_approval, scheduled
+  platformFeeAmount: decimal("platform_fee_amount", { precision: 10, scale: 2 }).default("0"), // Actual amount of the platform fee
+  netAmount: decimal("net_amount", { precision: 10, scale: 2 }), // Amount received by the contractor after fees
+  grossAmount: decimal("gross_amount", { precision: 10, scale: 2 }), // Total amount before any fees
+  triggeredBy: varchar("triggered_by", { length: 50 }).default("manual"), // manual, auto_approval, scheduled
   triggeredAt: timestamp("triggered_at"), // When the payment was automatically triggered
+  workRequestId: integer("work_request_id").references(() => workRequests.id) // Link to work requests
 });
 
 // Payment Compliance Logs table - for audit trail and structured data compliance
@@ -261,12 +267,12 @@ export const workRequestSubmissions = pgTable("work_request_submissions", {
   workRequestId: integer("work_request_id").notNull().references(() => workRequests.id),
   contractorId: integer("contractor_id").notNull().references(() => users.id),
   businessId: integer("business_id").notNull().references(() => users.id),
-  title: text("title").notNull(),
-  description: text("description").notNull(),
+  title: text("title").min(1),
+  description: text("description").min(1),
   notes: text("notes"), // Additional notes from contractor
   attachmentUrls: jsonb("attachment_urls"), // Array of file URLs
-  submissionType: text("submission_type").notNull().default("digital"), // "digital" or "physical"
-  status: text("status").notNull().default("pending"), // pending, approved, rejected, revision_requested
+  submissionType: text("submission_type").default("digital"), // "digital" or "physical"
+  status: text("status").default("pending"), // pending, approved, rejected, revision_requested
   submittedAt: timestamp("submitted_at").notNull().defaultNow(),
   reviewedAt: timestamp("reviewed_at"),
   reviewNotes: text("review_notes"), // Feedback from business owner
@@ -424,8 +430,10 @@ export const insertMilestoneSchema = z.object({
 // Deliverable schemas - aliases for milestone schemas but with deliverable-focused naming
 export const insertDeliverableSchema = insertMilestoneSchema;
 export const insertPaymentSchema = z.object({
-  contractId: z.number(),
-  milestoneId: z.number(),
+  contractId: z.number().optional(), // Made optional for direct payments
+  milestoneId: z.number().optional(), // Made optional for direct payments
+  contractorId: z.number(), // Direct link to contractor for Send Payment feature
+  businessId: z.number(), // Link to the business making the payment
   amount: z.string(),
   status: z.string().default("scheduled"),
   scheduledDate: z.date(),
@@ -435,7 +443,12 @@ export const insertPaymentSchema = z.object({
   stripeTransferId: z.string().optional(),
   stripeTransferStatus: z.string().optional(),
   paymentProcessor: z.string().default("stripe"),
+  paymentMethod: z.string().default('stripe_connect'),
+  destinationAccountId: z.string().optional(),
   applicationFee: z.string().default("0"),
+  platformFeeAmount: z.string().default("0"),
+  netAmount: z.string().optional(),
+  grossAmount: z.string().optional(),
   triggeredBy: z.string().default("manual"),
 });
 

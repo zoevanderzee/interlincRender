@@ -129,12 +129,18 @@ class AutomatedPaymentService {
           currency: 'gbp',
           description: `Payment for milestone: ${milestone.name} (Project: ${milestone.contractName})`,
           metadata: {
-            paymentId: payment.id.toString(), // 🎯 CRITICAL FIX: Include database payment ID
+            paymentId: payment.id.toString(),
             milestoneId: milestoneId.toString(),
             contractorId: contractor.id.toString(),
             businessId: approvedBy.toString(),
+            contractId: milestone.contractId.toString(),
             paymentType: 'milestone_completion',
-            flow_type: 'destination_charge_standard_account'
+            flow_type: 'destination_charge_standard_account',
+            platform: 'interlinc',
+            timestamp: new Date().toISOString(),
+            net_amount: netAmount.toString(),
+            gross_amount: grossAmount.toString(),
+            platform_fee: platformFee.toString()
           },
           transferData: {
             destination: contractorConnect.accountId

@@ -2122,10 +2122,23 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(workRequests, eq(payments.workRequestId, workRequests.id))
       .where(eq(workRequests.contractorUserId, contractorId));
 
-    // Combine all payment sources (excluding direct payments for now since column doesn't exist)
+    // 3. Direct payments (Send Payment feature) - Add contractorId column to payments table
+    const directPayments = await db
+      .select()
+      .from(payments)
+      .where(
+        and(
+          eq(payments.contractorId, contractorId),
+          isNull(payments.contractId),
+          isNull(payments.workRequestId)
+        )
+      );
+
+    // Combine all payment sources
     const allContractorPayments = [
       ...contractPayments.map(row => row.payment),
-      ...workRequestPayments.map(row => row.payment)
+      ...workRequestPayments.map(row => row.payment),
+      ...directPayments
     ];
 
     // Remove duplicates based on payment ID
@@ -2136,6 +2149,7 @@ export class DatabaseStorage implements IStorage {
     console.log(`CONTRACTOR ${contractorId} EARNINGS CALCULATION:`, {
       contractPayments: contractPayments.length,
       workRequestPayments: workRequestPayments.length,
+      directPayments: directPayments.length,
       totalUniquePayments: uniquePayments.length,
       completedPayments: uniquePayments.filter(p => p.status === 'completed').length,
       totalEarnings: uniquePayments
@@ -2262,37 +2276,23 @@ export class DatabaseStorage implements IStorage {
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
 
-    // Get contract-based successful payments for this business
-    const contractPayments = await db
-      .select()
-      .from(payments)
-      .innerJoin(contracts, eq(payments.contractId, contracts.id))
-      .where(and(
-        eq(contracts.businessId, businessId),
-        eq(payments.status, 'completed')
-      ));
-
-    // Get direct payments (Send Payment feature - no contract/milestone required)
-    // TODO: Add business_id column to payments table for proper association
-    // For now, include all direct payments since this business is the only one using direct payments
-    const directPayments = await db
+    // Get all payments made by this business (using new businessId column when available)
+    const businessPayments = await db
       .select()
       .from(payments)
       .where(and(
-        isNull(payments.contractId),
+        or(
+          eq(payments.businessId, businessId), // Direct business payments
+          sql`${payments.contractId} IN (SELECT id FROM ${contracts} WHERE business_id = ${businessId})` // Contract-based payments
+        ),
         eq(payments.status, 'completed')
       ));
 
-    // Combine both payment types for comprehensive stats
-    const allContractPayments = contractPayments.map(p => p.payments);
-    const allDirectPayments = directPayments;
-    const allPayments = [...allContractPayments, ...allDirectPayments];
-
-    const totalSuccessfulPayments = allPayments.length;
-    const totalPaymentValue = allPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+    const totalSuccessfulPayments = businessPayments.length;
+    const totalPaymentValue = businessPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
 
     // Calculate current month value
-    const currentMonthValue = allPayments
+    const currentMonthValue = businessPayments
       .filter(p => {
         const paymentDate = p.completedDate;
         if (!paymentDate) return false;
@@ -2302,7 +2302,7 @@ export class DatabaseStorage implements IStorage {
       .reduce((sum, p) => sum + parseFloat(p.amount), 0);
 
     // Calculate current year value
-    const currentYearValue = allPayments
+    const currentYearValue = businessPayments
       .filter(p => {
         const paymentDate = p.completedDate;
         if (!paymentDate) return false;
