@@ -267,8 +267,8 @@ export const workRequestSubmissions = pgTable("work_request_submissions", {
   workRequestId: integer("work_request_id").notNull().references(() => workRequests.id),
   contractorId: integer("contractor_id").notNull().references(() => users.id),
   businessId: integer("business_id").notNull().references(() => users.id),
-  title: text("title").min(1),
-  description: text("description").min(1),
+  title: text("title"),
+  description: text("description"),
   notes: text("notes"), // Additional notes from contractor
   attachmentUrls: jsonb("attachment_urls"), // Array of file URLs
   submissionType: text("submission_type").default("digital"), // "digital" or "physical"
