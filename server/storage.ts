@@ -2112,19 +2112,7 @@ export class DatabaseStorage implements IStorage {
         )
       );
 
-    // 2. Direct payments (Send Payment feature - future enhancement)
-    // When we add contractorId directly to payments table
-    const directPayments = await db
-      .select()
-      .from(payments)
-      .where(
-        and(
-          eq(payments.contractorId, contractorId), // This column doesn't exist yet but will be added
-          isNull(payments.contractId) // Direct payments have no contract
-        )
-      );
-
-    // 3. Work request based payments (current active model)
+    // 2. Work request based payments (current active model)
     const workRequestPayments = await db
       .select({
         payment: payments,
@@ -2134,11 +2122,10 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(workRequests, eq(payments.workRequestId, workRequests.id))
       .where(eq(workRequests.contractorUserId, contractorId));
 
-    // Combine all payment sources
+    // Combine all payment sources (excluding direct payments for now since column doesn't exist)
     const allContractorPayments = [
       ...contractPayments.map(row => row.payment),
       ...workRequestPayments.map(row => row.payment)
-      // ...directPayments (when implemented)
     ];
 
     // Remove duplicates based on payment ID
