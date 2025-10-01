@@ -211,7 +211,7 @@ const Dashboard = () => {
 
     // Calculate earnings for contractor
     const contractorPayments = payments.filter((payment: Payment) => 
-      contracts.some((contract: Contract) => 
+      mockContracts.some((contract: Contract) => 
         contract.id === payment.contractId && contract.contractorId === user?.id
       )
     );
