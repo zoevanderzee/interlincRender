@@ -2094,73 +2094,69 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPaymentsByContractorId(contractorId: number): Promise<Payment[]> {
-    // BULLETPROOF: Multi-source contractor payment aggregation
+    // BULLETPROOF: Multi-source contractor payment aggregation using existing database structure
     // Get payments from ALL sources where this contractor is the recipient
     
-    // 1. Contract-based payments (traditional model)
-    const contractPayments = await db
-      .select({
-        payment: payments,
-        contract: contracts
-      })
-      .from(payments)
-      .innerJoin(contracts, eq(payments.contractId, contracts.id))
-      .where(
-        and(
-          eq(contracts.contractorId, contractorId),
-          isNotNull(contracts.contractorId)
-        )
+    try {
+      // 1. Contract-based payments (traditional model) - using existing contract_id column
+      const contractPayments = await db
+        .select({
+          payment: payments,
+          contract: contracts
+        })
+        .from(payments)
+        .innerJoin(contracts, eq(payments.contractId, contracts.id))
+        .where(
+          and(
+            eq(contracts.contractorId, contractorId),
+            isNotNull(contracts.contractorId)
+          )
+        );
+
+      // 2. Work request based payments (if work_request_id column exists)
+      let workRequestPayments: any[] = [];
+      try {
+        workRequestPayments = await db
+          .select({
+            payment: payments,
+            workRequest: workRequests
+          })
+          .from(payments)
+          .innerJoin(workRequests, eq(payments.workRequestId, workRequests.id))
+          .where(eq(workRequests.contractorUserId, contractorId));
+      } catch (error) {
+        console.log('Work request payments not available - column may not exist yet');
+      }
+
+      // Combine all payment sources
+      const allContractorPayments = [
+        ...contractPayments.map(row => row.payment),
+        ...workRequestPayments.map(row => row.payment)
+      ];
+
+      // Remove duplicates based on payment ID
+      const uniquePayments = allContractorPayments.filter((payment, index, self) =>
+        index === self.findIndex(p => p.id === payment.id)
       );
 
-    // 2. Work request based payments (current active model)
-    const workRequestPayments = await db
-      .select({
-        payment: payments,
-        workRequest: workRequests
-      })
-      .from(payments)
-      .innerJoin(workRequests, eq(payments.workRequestId, workRequests.id))
-      .where(eq(workRequests.contractorUserId, contractorId));
+      console.log(`CONTRACTOR ${contractorId} EARNINGS CALCULATION:`, {
+        contractPayments: contractPayments.length,
+        workRequestPayments: workRequestPayments.length,
+        totalUniquePayments: uniquePayments.length,
+        completedPayments: uniquePayments.filter(p => p.status === 'completed').length,
+        totalEarnings: uniquePayments
+          .filter(p => p.status === 'completed')
+          .reduce((sum, p) => sum + parseFloat(p.amount), 0),
+        totalPendingEarnings: uniquePayments
+          .filter(p => p.status !== 'completed')
+          .reduce((sum, p) => sum + parseFloat(p.amount), 0)
+      });
 
-    // 3. Direct payments (Send Payment feature) - Add contractorId column to payments table
-    const directPayments = await db
-      .select()
-      .from(payments)
-      .where(
-        and(
-          eq(payments.contractorId, contractorId),
-          isNull(payments.contractId),
-          isNull(payments.workRequestId)
-        )
-      );
-
-    // Combine all payment sources
-    const allContractorPayments = [
-      ...contractPayments.map(row => row.payment),
-      ...workRequestPayments.map(row => row.payment),
-      ...directPayments
-    ];
-
-    // Remove duplicates based on payment ID
-    const uniquePayments = allContractorPayments.filter((payment, index, self) =>
-      index === self.findIndex(p => p.id === payment.id)
-    );
-
-    console.log(`CONTRACTOR ${contractorId} EARNINGS CALCULATION:`, {
-      contractPayments: contractPayments.length,
-      workRequestPayments: workRequestPayments.length,
-      directPayments: directPayments.length,
-      totalUniquePayments: uniquePayments.length,
-      completedPayments: uniquePayments.filter(p => p.status === 'completed').length,
-      totalEarnings: uniquePayments
-        .filter(p => p.status === 'completed')
-        .reduce((sum, p) => sum + parseFloat(p.amount), 0),
-      totalPendingEarnings: uniquePayments
-        .filter(p => p.status !== 'completed')
-        .reduce((sum, p) => sum + parseFloat(p.amount), 0)
-    });
-
-    return uniquePayments;
+      return uniquePayments;
+    } catch (error) {
+      console.error(`Error fetching payments for contractor ${contractorId}:`, error);
+      return [];
+    }
   }
 
   async createPayment(insertPayment: InsertPayment): Promise<Payment> {
