@@ -1,7 +1,6 @@
 // Export Helper Functions for Data Room Compliance
 import { storage } from './storage';
-import { db } from './db';
-import { invoices, users } from '@shared/schema';
+import { db, invoices, users } from './db';
 import { and, eq, or, desc, sql } from 'drizzle-orm';
 
 export async function generateComplianceExport(userId: number, userRole: string) {
