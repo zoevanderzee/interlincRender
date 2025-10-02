@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { Contract, Payment, Milestone } from '@shared/schema';
+import { useAuth } from '@/hooks/use-auth';
 import { DollarSign, FileText, Calendar, Clock, AlertTriangle, CheckCircle, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -53,15 +54,25 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
   // Active assignments from work requests (preferred) or active contracts as fallback
   const activeAssignments = dashboardData.workRequests || dashboardData.contracts.filter(c => c.status === 'Active');
 
-  // Use server-calculated earnings from bulletproof payment data
-  const totalEarnings = dashboardData.stats.paymentsProcessed || 0;
-  const pendingEarnings = dashboardData.stats.totalPendingValue || 0;
+  // Fetch contractor earnings from their Connect account
+  const { data: contractorEarnings, isLoading: isLoadingEarnings } = useQuery({
+    queryKey: ['/api/contractors/earnings'],
+    queryFn: () => fetch('/api/contractors/earnings', {
+      credentials: 'include'
+    }).then(res => res.json()),
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
 
-  console.log('Contractor Dashboard Earnings:', {
+  // Use Connect account data as source of truth
+  const totalEarnings = contractorEarnings?.totalEarnings || 0;
+  const pendingEarnings = contractorEarnings?.pendingEarnings || 0;
+
+  console.log('Contractor Dashboard Earnings (from Connect account):', {
     totalEarnings,
     pendingEarnings,
-    paymentsCount: dashboardData.payments?.length || 0,
-    completedPayments: dashboardData.payments?.filter(p => p.status === 'completed').length || 0
+    availableBalance: contractorEarnings?.availableBalance || 0,
+    pendingBalance: contractorEarnings?.pendingBalance || 0,
+    currency: contractorEarnings?.currency || 'gbp'
   });
 
   return (

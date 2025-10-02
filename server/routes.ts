@@ -4422,6 +4422,117 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // CONTRACTOR EARNINGS - Get earnings from contractor's Connect account
+  app.get(`${apiRouter}/contractors/earnings`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = getUserId(req);
+      const user = await storage.getUser(userId!);
+
+      if (!user) {
+        return res.status(401).json({ error: 'User not found' });
+      }
+
+      // Contractor must have a Connect account
+      if (!user.stripeConnectAccountId) {
+        return res.json({
+          pendingEarnings: 0,
+          totalEarnings: 0,
+          availableBalance: 0,
+          pendingBalance: 0,
+          currency: 'gbp',
+          lastUpdated: new Date(),
+          message: 'Connect account not set up'
+        });
+      }
+
+      // Import contractor earnings service
+      const { getContractorEarnings } = await import('./services/contractor-earnings');
+      
+      // Fetch earnings from contractor's Connect account
+      const earnings = await getContractorEarnings(user.stripeConnectAccountId);
+
+      console.log(`[Contractor Earnings API] User ${userId} earnings:`, earnings);
+
+      res.json(earnings);
+    } catch (error: any) {
+      console.error('[Contractor Earnings API] Error:', error);
+      res.status(500).json({ 
+        error: 'Failed to fetch contractor earnings',
+        message: error.message 
+      });
+    }
+  });
+
+  // CONTRACTOR TRANSACTIONS - Get transaction history from Connect account
+  app.get(`${apiRouter}/contractors/transactions`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = getUserId(req);
+      const user = await storage.getUser(userId!);
+      const { limit = 50 } = req.query;
+
+      if (!user?.stripeConnectAccountId) {
+        return res.json({ transactions: [] });
+      }
+
+      const { getContractorTransactions } = await import('./services/contractor-earnings');
+      const transactions = await getContractorTransactions(
+        user.stripeConnectAccountId,
+        parseInt(limit as string)
+      );
+
+      res.json({ transactions });
+    } catch (error: any) {
+      console.error('[Contractor Transactions API] Error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // CONTRACTOR PAYOUTS - Get payout history from Connect account
+  app.get(`${apiRouter}/contractors/payouts`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = getUserId(req);
+      const user = await storage.getUser(userId!);
+      const { limit = 50 } = req.query;
+
+      if (!user?.stripeConnectAccountId) {
+        return res.json({ payouts: [] });
+      }
+
+      const { getContractorPayouts } = await import('./services/contractor-earnings');
+      const payouts = await getContractorPayouts(
+        user.stripeConnectAccountId,
+        parseInt(limit as string)
+      );
+
+      res.json({ payouts });
+    } catch (error: any) {
+      console.error('[Contractor Payouts API] Error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // CONTRACTOR EARNINGS RECONCILIATION - Force refresh from Stripe
+  app.post(`${apiRouter}/contractors/earnings/reconcile`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = getUserId(req);
+      const user = await storage.getUser(userId!);
+
+      if (!user?.stripeConnectAccountId) {
+        return res.status(400).json({ error: 'No Connect account found' });
+      }
+
+      const { reconcileContractorEarnings } = await import('./services/contractor-earnings');
+      const earnings = await reconcileContractorEarnings(user.stripeConnectAccountId);
+
+      console.log(`[Contractor Earnings Reconcile] User ${userId} reconciled:`, earnings);
+
+      res.json(earnings);
+    } catch (error: any) {
+      console.error('[Contractor Earnings Reconcile] Error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Get payment data for business dashboard
   app.get(`${apiRouter}/payments/dashboard-data`, requireAuth, async (req: Request, res: Response) => {
     try {

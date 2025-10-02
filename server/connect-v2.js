@@ -1,4 +1,3 @@
-
 import express from "express";
 import Stripe from "stripe";
 import { storage } from "./storage.js";
@@ -48,7 +47,7 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
   // Block any V1 transfer attempts and redirect to V2
   app.all(`${apiPath}/v1/transfers*`, (req, res) => {
     console.error(`❌ BLOCKED V1 TRANSFER ATTEMPT: ${req.method} ${req.path}`);
-    res.status(410).json({ 
+    res.status(410).json({
       error: 'V1 transfers are completely disabled. Use V2 destination charges with Standard accounts.',
       v2_endpoint: `${connectBasePath}/create-transfer`,
       migration_info: 'V2 uses destination charges - funds go directly to connected Standard accounts without platform balance',
@@ -59,7 +58,7 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
   // Also block any attempts to use Stripe transfers API directly
   app.all(`${apiPath}/stripe/transfers*`, (req, res) => {
     console.error(`❌ BLOCKED DIRECT STRIPE TRANSFER ATTEMPT: ${req.method} ${req.path}`);
-    res.status(410).json({ 
+    res.status(410).json({
       error: 'Direct Stripe transfers not supported with Standard accounts. Use destination charges.',
       correct_approach: 'Payment Intents with transfer_data for Standard Connect accounts'
     });
@@ -106,24 +105,24 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       // Function to determine currency from country code
       const getCurrencyFromCountry = (countryCode) => {
         if (!countryCode) return 'usd';
-        
+
         // Try exact match first
         const exactMatch = countryToCurrency[countryCode];
         if (exactMatch) return exactMatch;
-        
+
         // Try case-insensitive match
         const lowerCaseMatch = Object.keys(countryToCurrency).find(
           key => key.toLowerCase() === countryCode.toLowerCase()
         );
         if (lowerCaseMatch) return countryToCurrency[lowerCaseMatch];
-        
+
         // Default fallback
         return 'usd';
       };
 
       if (!existing?.accountId) {
-        return res.json({ 
-          hasAccount: false, 
+        return res.json({
+          hasAccount: false,
           needsOnboarding: true,
           version: 'v2',
           country: 'GB', // Default country
@@ -200,7 +199,7 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
           console.error('[Connect V2] Error updating capabilities:', capError);
         }
       }
-      
+
       // Check individual capability statuses after update
       const updatedAccount = await stripe.accounts.retrieve(existing.accountId);
       const currentCapabilities = updatedAccount.capabilities || {};
@@ -212,7 +211,7 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
         sepa_debit_payments: currentCapabilities.sepa_debit_payments,
         instant_payouts: currentCapabilities.instant_payouts
       };
-      
+
       const capabilityStatuses = {};
       Object.entries(allCapabilities).forEach(([key, value]) => {
         if (value && value !== 'not_requested') {
@@ -221,8 +220,8 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       });
 
       // Determine if account is fully operational based on real Stripe data
-      const isFullyVerified = updatedAccount.charges_enabled && 
-                             updatedAccount.details_submitted && 
+      const isFullyVerified = updatedAccount.charges_enabled &&
+                             updatedAccount.details_submitted &&
                              updatedAccount.payouts_enabled &&
                              !requirements.disabled_reason &&
                              (requirements.currently_due || []).length === 0 &&
@@ -277,14 +276,14 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
         payoutsEnabled: updatedAccount.payouts_enabled,
         isFullyVerified,
         version: 'v2',
-        
+
         verification_status: {
           details_submitted: updatedAccount.details_submitted,
           charges_enabled: updatedAccount.charges_enabled,
           payouts_enabled: updatedAccount.payouts_enabled,
           verification_complete: isFullyVerified
         },
-        
+
         requirements: {
           currently_due: requirements.currently_due || [],
           past_due: requirements.past_due || [],
@@ -292,9 +291,9 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
           disabled_reason: requirements.disabled_reason || null,
           is_complete: !hasRequirements
         },
-        
+
         capabilities: capabilityStatuses,
-        
+
         payment_methods: {
           card: capabilityStatuses.card_payments === 'active',
           ach: capabilityStatuses.us_bank_account_ach_payments === 'active',
@@ -329,7 +328,7 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       // Validate country and determine currency
       const countryToCurrency = {
         'US': 'usd',
-        'GB': 'gbp', 
+        'GB': 'gbp',
         'CA': 'cad',
         'AU': 'aud',
         'DE': 'eur',
@@ -344,7 +343,7 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       };
 
       const defaultCurrency = countryToCurrency[country] || 'usd';
-      
+
       console.log(`Creating V2 Connect account for user ${userId} in country ${country} with currency ${defaultCurrency}`);
 
       const existing = await db.getConnect(userId);
@@ -399,8 +398,8 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       const account = await stripe.accounts.create(accountConfig);
 
       // Store account info
-      await db.setConnect(userId, { 
-        accountId: account.id, 
+      await db.setConnect(userId, {
+        accountId: account.id,
         accountType: account.type,
         country: country,
         defaultCurrency: defaultCurrency,
@@ -569,14 +568,14 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
 
     } catch (e) {
       console.error("[connect-v2-add-bank-account]", e);
-      
+
       // Handle specific Stripe permission errors
       if (e.type === 'StripePermissionError' || e.code === 'oauth_not_supported') {
-        return res.status(400).json({ 
-          error: "Bank account setup must be completed through the onboarding process. Please complete account setup first." 
+        return res.status(400).json({
+          error: "Bank account setup must be completed through the onboarding process. Please complete account setup first."
         });
       }
-      
+
       res.status(e.status || 500).json({ error: e.message || "Bank account setup failed" });
     }
   });
@@ -597,7 +596,7 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
 
       // Update account capabilities
       const updateData = { capabilities: {} };
-      
+
       capabilities.forEach(capability => {
         updateData.capabilities[capability] = { requested: true };
       });
@@ -625,34 +624,34 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
     try {
       const userId = getUserId(req);
       const { contractorUserId, amount, description, metadata = {} } = req.body;
-      
+
       // SECURITY: Reject any client-provided account ID
       if (req.body.destination || req.body.accountId || req.body.stripeAccountId) {
         console.error('[SECURITY VIOLATION] Client attempted to provide account ID:', {
           destination: req.body.destination || 'undefined',
-          accountId: req.body.accountId || 'undefined', 
+          accountId: req.body.accountId || 'undefined',
           stripeAccountId: req.body.stripeAccountId || 'undefined',
           userId,
           ip: req.ip
         });
-        return res.status(400).json({ 
-          error: 'Security violation: Account IDs cannot be provided by client. Only contractor ID accepted.' 
+        return res.status(400).json({
+          error: 'Security violation: Account IDs cannot be provided by client. Only contractor ID accepted.'
         });
       }
-      
+
       // Validate required fields
       if (!contractorUserId) {
         return res.status(400).json({ error: "Contractor user ID is required" });
       }
-      
+
       console.log(`[SECURE PAYMENT] Business ${userId} creating payment to contractor ${contractorUserId}`);
 
       // Get business's Connect account for currency determination
       const businessConnect = await db.getConnect(userId);
-      
+
       // BULLETPROOF CURRENCY DETERMINATION
       let determinedCurrency = 'gbp'; // Default fallback
-      
+
       // Priority 1: Request body currency (if provided and valid)
       if (req.body.currency && req.body.currency.trim() !== '') {
         determinedCurrency = req.body.currency.toLowerCase();
@@ -703,7 +702,7 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
           console.error('[V2 Payment] Error getting business account:', stripeError);
         }
       }
-      
+
       console.log(`[V2 Payment] FINAL CURRENCY: ${determinedCurrency}`);
       const currency = determinedCurrency;
 
@@ -713,18 +712,18 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       if (!amount && amount !== 0) {
         return res.status(400).json({ error: "Amount is required" });
       }
-      
+
       const parsedAmount = parseFloat(amount);
       console.log(`[V2 Payment] Parsed amount:`, { original: amount, parsed: parsedAmount, isNaN: isNaN(parsedAmount) });
-      
+
       if (isNaN(parsedAmount)) {
         return res.status(400).json({ error: "Amount must be a valid number" });
       }
-      
+
       if (parsedAmount <= 0) {
         return res.status(400).json({ error: "Amount must be greater than 0" });
       }
-      
+
       // Country-specific minimum amounts
       const minimumAmounts = {
         'usd': 0.50,
@@ -750,8 +749,8 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
           'hkd': 'HK$'
         };
         const symbol = currencySymbols[currency] || '';
-        return res.status(400).json({ 
-          error: `Minimum payment amount is ${symbol}${minAmount} ${currency.toUpperCase()}` 
+        return res.status(400).json({
+          error: `Minimum payment amount is ${symbol}${minAmount} ${currency.toUpperCase()}`
         });
       }
 
@@ -769,7 +768,7 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       }
 
       console.log(`[SECURE PAYMENT] Creating payment on behalf of business Connect account: ${businessConnectAccount.accountId}`);
-      
+
       const paymentResult = await createSecurePaymentV2({
         contractorUserId: parseInt(contractorUserId), // Only accept contractor ID
         amount: parsedAmount, // Use original amount, not cents (service handles conversion)
@@ -789,7 +788,7 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
         // CRITICAL: Pass business Connect account ID for "on behalf of" payment creation
         businessAccountId: businessConnectAccount.accountId
       });
-      
+
       console.log(`[SECURE PAYMENT] ✅ Payment Intent created securely: ${paymentResult.payment_intent_id} → verified account ${paymentResult.destination_account}`);
 
       res.json({
@@ -807,7 +806,7 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
 
     } catch (e) {
       console.error("[connect-v2-destination-charge]", e);
-      
+
       // Enhanced error handling for specific Stripe errors
       if (e.type === 'StripeInvalidRequestError') {
         if (e.code === 'account_invalid') {
@@ -816,7 +815,7 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
           return res.status(400).json({ error: 'Payment amount is below minimum' });
         }
       }
-      
+
       res.status(e.status || 500).json({ error: e.message || "Payment creation failed" });
     }
   });
@@ -826,7 +825,7 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
    * DEPRECATED: Saved cards not supported in Connect-only payment flow
    */
   app.get(`${connectBasePath}/saved-cards`, authMiddleware, async (req, res) => {
-    return res.status(410).json({ 
+    return res.status(410).json({
       error: "Saved cards are not supported. Connect-only payment flow requires fresh payment method each time.",
       deprecated: true,
       alternative: "Use Payment Element to collect new payment method per transaction"
@@ -838,7 +837,7 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
    * DEPRECATED: Saved card payments not supported in Connect-only payment flow
    */
   app.post(`${connectBasePath}/charge-saved-card`, authMiddleware, async (req, res) => {
-    return res.status(410).json({ 
+    return res.status(410).json({
       error: "Saved card payments are not supported. Connect-only payment flow requires fresh payment method each time.",
       deprecated: true,
       alternative: "Use /api/connect/v2/create-transfer with fresh Payment Element"
@@ -977,4 +976,62 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       res.status(e.status || 500).json({ error: e.message || "Verification failed" });
     }
   });
+
+  /**
+   * POST /api/connect/v2/webhook
+   * Stripe webhook handler for Connect events
+   */
+  app.post(`${connectBasePath}/webhook`, express.raw({ type: 'application/json' }), async (req, res) => {
+    const sig = req.headers['stripe-signature'];
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+    if (!webhookSecret) {
+      console.warn('[connect-v2-webhook] No webhook secret configured');
+      return res.status(400).json({ error: 'Webhook secret not configured' });
+    }
+
+    let event;
+    try {
+      event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+    } catch (err) {
+      console.error('[connect-v2-webhook] Webhook signature verification failed:', err.message);
+      return res.status(400).json({ error: 'Webhook signature verification failed' });
+    }
+
+    console.log(`[connect-v2-webhook] Received event: ${event.type}`);
+
+    // Handle contractor-specific events
+    try {
+      const contractorWebhooks = require('./services/contractor-webhooks');
+
+      switch (event.type) {
+        case 'balance.available':
+          await contractorWebhooks.handleBalanceAvailable(event);
+          break;
+        case 'payout.paid':
+          await contractorWebhooks.handlePayoutPaid(event);
+          break;
+        case 'payout.failed':
+          await contractorWebhooks.handlePayoutFailed(event);
+          break;
+        default:
+          console.log(`[connect-v2-webhook] Unhandled event type: ${event.type}`);
+      }
+    } catch (err) {
+      console.error('[connect-v2-webhook] Error processing webhook:', err);
+      return res.status(500).json({ error: 'Webhook processing failed' });
+    }
+
+    res.json({ received: true });
+  });
+
+  /**
+   * POST /api/connect/v2/webhook (legacy handler kept for compatibility)
+   */
+  app.post(`${connectBasePath}/webhook-legacy`, express.raw({ type: 'application/json' }), async (req, res) => {
+    // This route is kept for backward compatibility but new events should be handled by the new webhook endpoint.
+    // It's recommended to migrate to the new endpoint and phase this out.
+    res.status(410).json({ message: "This webhook endpoint is legacy and will be removed. Please use /api/connect/v2/webhook." });
+  });
+
 }
