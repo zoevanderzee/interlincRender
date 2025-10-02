@@ -1,3 +1,4 @@
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
@@ -6,38 +7,38 @@
 
 @layer base {
   :root {
-    /* Premium Color Palette - Charcoal to Deep Navy */
-    --background: 222 47% 2%;
+    /* Luxury Navy Blue Color Palette */
+    --background: 210 60% 8%;
     --foreground: 0 0% 98%;
-    --card: 225 39% 7%;
+    --card: 215 50% 12%;
     --card-foreground: 0 0% 98%;
-    --popover: 225 39% 7%;
+    --popover: 215 50% 12%;
     --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 100%;
-    --primary-foreground: 222 47% 2%;
-    --secondary: 222 47% 11%;
+    --primary: 217 91% 70%;
+    --primary-foreground: 210 60% 8%;
+    --secondary: 215 40% 18%;
     --secondary-foreground: 0 0% 98%;
-    --muted: 222 47% 11%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 222 47% 11%;
-    --accent-foreground: 0 0% 98%;
+    --muted: 215 40% 18%;
+    --muted-foreground: 0 0% 70%;
+    --accent: 217 91% 70%;
+    --accent-foreground: 210 60% 8%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 222 47% 15%;
-    --input: 222 47% 15%;
-    --ring: 0 0% 100%;
-    --sidebar-background: 222 47% 2%;
+    --border: 215 40% 22%;
+    --input: 215 40% 22%;
+    --ring: 217 91% 70%;
+    --sidebar-background: 210 60% 8%;
     --sidebar-foreground: 0 0% 98%;
-    --sidebar-border: 222 47% 15%;
-    --sidebar-primary: 0 0% 100%;
-    --sidebar-primary-foreground: 222 47% 2%;
-    --sidebar-accent: 222 47% 11%;
+    --sidebar-border: 215 40% 22%;
+    --sidebar-primary: 217 91% 70%;
+    --sidebar-primary-foreground: 210 60% 8%;
+    --sidebar-accent: 215 40% 18%;
     --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-ring: 0 0% 100%;
+    --sidebar-ring: 217 91% 70%;
 
     /* Gradient Variables */
-    --card-gradient: linear-gradient(135deg, hsl(225, 39%, 7%) 0%, hsl(222, 47%, 4%) 100%);
-    --border-gradient: linear-gradient(135deg, hsl(222, 47%, 15%) 0%, hsl(220, 40%, 25%) 100%);
+    --card-gradient: linear-gradient(135deg, hsl(215, 50%, 12%) 0%, hsl(210, 60%, 10%) 100%);
+    --border-gradient: linear-gradient(135deg, hsl(215, 40%, 22%) 0%, hsl(217, 91%, 70%, 0.2) 100%);
     
     /* Animation Variables */
     --transition-smooth: all 400ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -51,11 +52,11 @@
   body {
     font-family: 'SF Pro Display', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     @apply antialiased text-white min-h-screen;
-    background: linear-gradient(135deg, hsl(222, 47%, 2%) 0%, hsl(220, 39%, 1%) 100%);
+    background: linear-gradient(135deg, hsl(210, 60%, 8%) 0%, hsl(215, 55%, 6%) 100%);
     
     /* Subtle texture overlay */
     background-image: 
-      radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 0);
+      radial-gradient(circle at 1px 1px, rgba(107, 154, 255, 0.03) 1px, transparent 0);
     background-size: 20px 20px;
   }
   
@@ -84,7 +85,7 @@
   /* Premium Card Styling with Gradients */
   .card {
     background: var(--card-gradient);
-    border: 1px solid transparent;
+    border: 1px solid hsl(215, 40%, 22%);
     background-clip: padding-box;
     position: relative;
     transition: var(--transition-smooth);
@@ -101,14 +102,17 @@
     mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     mask-composite: xor;
     pointer-events: none;
+    opacity: 0.6;
   }
 
   .card:hover {
     transform: translateY(-2px);
+    border-color: hsl(217, 91%, 70%, 0.3);
     box-shadow: 
-      0 20px 25px -5px rgba(0, 0, 0, 0.3),
-      0 10px 10px -5px rgba(0, 0, 0, 0.2),
-      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      0 20px 25px -5px rgba(0, 0, 0, 0.4),
+      0 10px 10px -5px rgba(0, 0, 0, 0.3),
+      0 0 20px rgba(107, 154, 255, 0.1),
+      inset 0 1px 0 rgba(107, 154, 255, 0.1);
   }
 
   /* Premium Button Styling */
@@ -131,8 +135,8 @@
     position: absolute;
     inset: 0;
     background: radial-gradient(600px circle at var(--mouse-x) var(--mouse-y), 
-      rgba(255, 255, 255, 0.1), 
-      rgba(255, 255, 255, 0.05), 
+      rgba(107, 154, 255, 0.15), 
+      rgba(107, 154, 255, 0.08), 
       transparent 40%);
     border-radius: inherit;
     opacity: 0;
@@ -145,33 +149,35 @@
     font-family: 'SF Pro Text', 'Inter', sans-serif;
     font-weight: 500;
     letter-spacing: 0.025em;
-    border: 1px solid transparent;
-    background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+    border: 1px solid hsl(215, 40%, 22%);
+    background: linear-gradient(135deg, rgba(107, 154, 255, 0.15) 0%, rgba(107, 154, 255, 0.08) 100%);
     backdrop-filter: blur(10px);
     transition: var(--transition-elegant);
   }
 
   .badge:hover {
     transform: scale(1.05);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 12px rgba(107, 154, 255, 0.2);
   }
 
   /* Premium Input Styling */
   input, textarea, select {
     background: linear-gradient(135deg, 
-      rgba(255, 255, 255, 0.05) 0%, 
-      rgba(255, 255, 255, 0.02) 100%);
+      rgba(107, 154, 255, 0.08) 0%, 
+      rgba(107, 154, 255, 0.04) 100%);
     backdrop-filter: blur(10px);
+    border: 1px solid hsl(215, 40%, 22%);
     transition: var(--transition-smooth);
   }
 
   input:focus, textarea:focus, select:focus {
     background: linear-gradient(135deg, 
-      rgba(255, 255, 255, 0.08) 0%, 
-      rgba(255, 255, 255, 0.04) 100%);
+      rgba(107, 154, 255, 0.12) 0%, 
+      rgba(107, 154, 255, 0.06) 100%);
+    border-color: hsl(217, 91%, 70%);
     box-shadow: 
-      0 0 0 3px rgba(255, 255, 255, 0.1),
-      0 4px 12px rgba(0, 0, 0, 0.15);
+      0 0 0 3px rgba(107, 154, 255, 0.15),
+      0 4px 12px rgba(107, 154, 255, 0.2);
     transform: translateY(-1px);
   }
 
@@ -179,9 +185,9 @@
   .skeleton {
     background: linear-gradient(
       110deg,
-      rgba(255, 255, 255, 0.03) 0%,
-      rgba(255, 255, 255, 0.08) 50%,
-      rgba(255, 255, 255, 0.03) 100%
+      rgba(107, 154, 255, 0.05) 0%,
+      rgba(107, 154, 255, 0.12) 50%,
+      rgba(107, 154, 255, 0.05) 100%
     );
     background-size: 200% 100%;
     animation: shimmer 2s infinite ease-in-out;
@@ -204,14 +210,14 @@
 
   ::-webkit-scrollbar-thumb {
     background: linear-gradient(135deg, 
-      hsl(var(--border)) 0%, 
-      hsl(var(--accent)) 100%);
+      hsl(217, 91%, 70%) 0%, 
+      hsl(217, 91%, 60%) 100%);
     border-radius: 3px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
     background: linear-gradient(135deg, 
-      hsl(var(--accent)) 0%, 
-      hsl(var(--primary)) 100%);
+      hsl(217, 91%, 75%) 0%, 
+      hsl(217, 91%, 65%) 100%);
   }
 }

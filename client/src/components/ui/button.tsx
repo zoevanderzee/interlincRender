@@ -9,15 +9,15 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-gradient-to-r from-white to-gray-100 text-black shadow-lg hover:shadow-xl hover:from-gray-50 hover:to-white border border-white/10",
+        default: "bg-gradient-to-r from-[#6b9aff] to-[#7ca5ff] text-[#0a1628] shadow-lg hover:shadow-xl hover:from-[#7ca5ff] hover:to-[#8db0ff] border border-[#6b9aff]/20 font-semibold",
         destructive:
           "bg-gradient-to-r from-red-600 to-red-500 text-white shadow-lg hover:shadow-xl hover:from-red-500 hover:to-red-400 border border-red-400/20",
         outline:
-          "border border-white/20 bg-gradient-to-r from-white/5 to-white/10 backdrop-blur-sm hover:from-white/10 hover:to-white/15 hover:border-white/30 text-white shadow-md hover:shadow-lg",
+          "border border-[#6b9aff]/30 bg-gradient-to-r from-[#6b9aff]/10 to-[#6b9aff]/5 backdrop-blur-sm hover:from-[#6b9aff]/20 hover:to-[#6b9aff]/10 hover:border-[#6b9aff]/50 text-white shadow-md hover:shadow-lg",
         secondary:
-          "bg-gradient-to-r from-gray-700 to-gray-600 text-white shadow-lg hover:shadow-xl hover:from-gray-600 hover:to-gray-500 border border-gray-500/20",
-        ghost: "hover:bg-gradient-to-r hover:from-white/10 hover:to-white/5 text-white hover:shadow-md",
-        link: "text-white underline-offset-4 hover:underline hover:text-white/80",
+          "bg-gradient-to-r from-[#0f1f3a] to-[#1a2b4a] text-white shadow-lg hover:shadow-xl hover:from-[#1a2b4a] hover:to-[#253655] border border-[#6b9aff]/10",
+        ghost: "hover:bg-gradient-to-r hover:from-[#6b9aff]/15 hover:to-[#6b9aff]/5 text-white hover:shadow-md",
+        link: "text-[#6b9aff] underline-offset-4 hover:underline hover:text-[#7ca5ff]",
       },
       size: {
         default: "h-11 px-6 py-2.5",
