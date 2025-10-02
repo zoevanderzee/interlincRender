@@ -66,13 +66,22 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
   // Use Connect account data as source of truth
   const totalEarnings = contractorEarnings?.totalEarnings || 0;
   const pendingEarnings = contractorEarnings?.pendingEarnings || 0;
+  const currency = contractorEarnings?.currency || 'GBP';
+
+  // Format currency based on Connect account settings
+  const formatEarnings = (amount: number) => {
+    return new Intl.NumberFormat('en-GB', {
+      style: 'currency',
+      currency: currency
+    }).format(amount);
+  };
 
   console.log('Contractor Dashboard Earnings (from Connect account):', {
     totalEarnings,
     pendingEarnings,
     availableBalance: contractorEarnings?.availableBalance || 0,
     pendingBalance: contractorEarnings?.pendingBalance || 0,
-    currency: contractorEarnings?.currency || 'gbp'
+    currency
   });
 
   return (
@@ -108,7 +117,7 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
                 <DollarSign size={20} className="text-green-400" />
               </div>
             </div>
-            <p className="text-3xl font-bold text-white tracking-tight">${totalEarnings.toLocaleString('en-US')}</p>
+            <p className="text-3xl font-bold text-white tracking-tight">{formatEarnings(totalEarnings)}</p>
             <p className="text-xs text-muted-foreground mt-1">Completed payments</p>
           </CardContent>
         </Card>
@@ -122,7 +131,7 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
                 <Clock size={20} className="text-yellow-400" />
               </div>
             </div>
-            <p className="text-3xl font-bold text-white tracking-tight">${pendingEarnings.toLocaleString('en-US')}</p>
+            <p className="text-3xl font-bold text-white tracking-tight">{formatEarnings(pendingEarnings)}</p>
             <p className="text-xs text-muted-foreground mt-1">Upcoming payments</p>
           </CardContent>
         </Card>
@@ -230,7 +239,7 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
                     <div className="flex justify-between">
                       <span className="text-gray-400">Value</span>
                       <span className="text-white">
-                        ${parseFloat(assignment.amount || assignment.value || 0).toLocaleString('en-US')}
+                        {formatEarnings(parseFloat(assignment.amount || assignment.value || 0))}
                       </span>
                     </div>
                   </div>
@@ -281,7 +290,7 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
                 <Card key={payment.id} className="bg-zinc-900 border-zinc-800">
                   <CardHeader className="pb-2">
                     <div className="flex justify-between items-start">
-                      <CardTitle className="text-white">${parseFloat(payment.amount).toLocaleString('en-US')}</CardTitle>
+                      <CardTitle className="text-white">{formatEarnings(parseFloat(payment.amount))}</CardTitle>
                       <div className="px-2 py-1 bg-yellow-500/20 rounded text-xs text-yellow-400">
                         {payment.status}
                       </div>

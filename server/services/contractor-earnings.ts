@@ -60,14 +60,15 @@ export async function getContractorEarnings(contractorConnectAccountId: string):
       .filter(p => p.status === 'paid' || p.status === 'in_transit')
       .reduce((sum, payout) => sum + payout.amount, 0);
 
-    const currency = balance.available[0]?.currency || 'gbp';
+    // Get the actual currency from the Connect account
+    const currency = balance.available[0]?.currency?.toUpperCase() || 'GBP';
 
     return {
       pendingEarnings: (pendingAmount + availableAmount) / 100, // Convert from cents
       totalEarnings: totalEarnings / 100,
       availableBalance: availableAmount / 100,
       pendingBalance: pendingAmount / 100,
-      currency,
+      currency, // Will be GBP, USD, EUR, etc. based on Connect account
       lastUpdated: new Date()
     };
   } catch (error: any) {
