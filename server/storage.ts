@@ -2094,11 +2094,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPaymentsByContractorId(contractorId: number): Promise<Payment[]> {
-    // BULLETPROOF: Multi-source contractor payment aggregation using existing database structure
+    // BULLETPROOF: Multi-source contractor payment aggregation
     // Get payments from ALL sources where this contractor is the recipient
     
     try {
-      // 1. Contract-based payments (traditional model) - using existing contract_id column
+      // 1. Direct payments (using businessId column) - NO CONTRACT NEEDED
+      let directPayments: Payment[] = [];
+      try {
+        directPayments = await db
+          .select()
+          .from(payments)
+          .where(
+            and(
+              eq(payments.contractorId, contractorId),
+              isNotNull(payments.contractorId)
+            )
+          );
+        console.log(`Found ${directPayments.length} direct payments for contractor ${contractorId}`);
+      } catch (error) {
+        console.log('Direct payments query failed - contractorId column may not exist yet');
+      }
+
+      // 2. Contract-based payments (traditional model)
       const contractPayments = await db
         .select({
           payment: payments,
@@ -2113,7 +2130,7 @@ export class DatabaseStorage implements IStorage {
           )
         );
 
-      // 2. Work request based payments (if work_request_id column exists)
+      // 3. Work request based payments
       let workRequestPayments: any[] = [];
       try {
         workRequestPayments = await db
@@ -2130,6 +2147,7 @@ export class DatabaseStorage implements IStorage {
 
       // Combine all payment sources
       const allContractorPayments = [
+        ...directPayments,
         ...contractPayments.map(row => row.payment),
         ...workRequestPayments.map(row => row.payment)
       ];
@@ -2140,6 +2158,7 @@ export class DatabaseStorage implements IStorage {
       );
 
       console.log(`CONTRACTOR ${contractorId} EARNINGS CALCULATION:`, {
+        directPayments: directPayments.length,
         contractPayments: contractPayments.length,
         workRequestPayments: workRequestPayments.length,
         totalUniquePayments: uniquePayments.length,
