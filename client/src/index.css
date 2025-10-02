@@ -8,7 +8,7 @@
 @layer base {
   :root {
     /* Luxury Navy Blue Color Palette */
-    --background: 210 60% 8%;
+    --background: 215 50% 10%;
     --foreground: 0 0% 98%;
     --card: 215 50% 12%;
     --card-foreground: 0 0% 98%;
@@ -52,7 +52,7 @@
   body {
     font-family: 'SF Pro Display', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     @apply antialiased text-white min-h-screen;
-    background: #0a1628;
+    background: #0f1a2e !important;
     
     /* Subtle texture overlay */
     background-image: 
