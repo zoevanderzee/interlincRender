@@ -459,7 +459,7 @@ export default function AuthPage() {
             emailVerified: result.user.emailVerified,
             displayName: result.user.displayName || ""
           });
-          
+
           const syncResponse = await fetch("/api/sync-firebase-user", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -471,7 +471,7 @@ export default function AuthPage() {
             }),
             credentials: 'include'
           });
-          
+
           console.log("Sync response status:", syncResponse.status);
 
           if (syncResponse.ok) {
@@ -546,13 +546,13 @@ export default function AuthPage() {
           }
         } catch (syncError: any) {
           console.error("Backend sync error:", syncError);
-          
+
           // Try to get more specific error information
           let errorMessage = "Authentication succeeded but failed to sync with backend";
           if (syncError.message && syncError.message.includes('Failed to sync with backend:')) {
             errorMessage = syncError.message;
           }
-          
+
           throw new Error(errorMessage);
         }
       } else {
@@ -721,8 +721,46 @@ export default function AuthPage() {
   // Show forgot password form if requested
   if (showForgotPassword) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-8">
-        <ForgotPasswordForm onBack={() => setShowForgotPassword(false)} />
+      <div className="min-h-screen flex flex-col md:flex-row">
+        {/* Auth Forms Section */}
+        <div className="w-full md:w-1/2 flex items-center justify-center p-8">
+          <div className="w-full max-w-md">
+            <ForgotPasswordForm onBack={() => setShowForgotPassword(false)} />
+          </div>
+        </div>
+        {/* Hero Section */}
+        <div className="hidden lg:flex lg:w-1/2 items-center justify-center p-12" style={{ background: 'linear-gradient(135deg, hsl(215, 50%, 12%) 0%, hsl(210, 60%, 10%) 100%)' }}>
+          <div className="max-w-lg text-white">
+            <h1 className="text-4xl font-bold mb-6">Interlinc</h1>
+            <h2 className="text-3xl font-semibold mb-4">Connect. Create. Collaborate.</h2>
+            <p className="text-muted-foreground mb-8 text-lg">
+              Outsourcing, Simplified. Manage people, payments, and projects with clarity, control, and zero invoicing.
+            </p>
+            <div className="space-y-4">
+              <div className="flex items-start">
+                <div className="bg-white rounded-full h-6 w-6 flex items-center justify-center text-black mr-4 mt-1">✓</div>
+                <div>
+                  <h3 className="text-white font-medium text-lg">No Invoices. No Hassle.</h3>
+                  <p className="text-muted-foreground">Streamline payments with built-in workflows and milestone approvals — no manual paperwork.</p>
+                </div>
+              </div>
+              <div className="flex items-start">
+                <div className="bg-white rounded-full h-6 w-6 flex items-center justify-center text-black mr-4 mt-1">✓</div>
+                <div>
+                  <h3 className="text-white font-medium text-lg">Real-Time Financial Visibility</h3>
+                  <p className="text-muted-foreground">Track budgets, teams, and progress in one place with compliance-ready data capture.</p>
+                </div>
+              </div>
+              <div className="flex items-start">
+                <div className="bg-white rounded-full h-6 w-6 flex items-center justify-center text-black mr-4 mt-1">✓</div>
+                <div>
+                  <h3 className="text-white font-medium text-lg">Smarter Payouts. Faster Turnarounds.</h3>
+                  <p className="text-muted-foreground">Trigger payments on your terms — once work is approved, your teams get paid seamlessly.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -730,25 +768,63 @@ export default function AuthPage() {
   // Show email verification form if requested
   if (showEmailVerification && verificationData) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-8">
-        <EmailVerificationForm 
-          email={verificationData.email}
-          userId={verificationData.userId}
-          verificationToken={verificationData.verificationToken}
-          registrationData={verificationData.registrationData}
-          onBack={() => {
-            setShowEmailVerification(false);
-            setVerificationData(null);
-          }}
-          onVerified={(userData) => {
-            setShowEmailVerification(false);
-            setVerificationData(null);
-            // Set the registered user data from the sync response
-            setRegisteredUser(userData);
-            // After verification, show subscription form
-            setShowSubscription(true);
-          }}
-        />
+      <div className="min-h-screen flex flex-col md:flex-row">
+        {/* Auth Forms Section */}
+        <div className="w-full md:w-1/2 flex items-center justify-center p-8">
+          <div className="w-full max-w-md">
+            <EmailVerificationForm 
+              email={verificationData.email}
+              userId={verificationData.userId}
+              verificationToken={verificationData.verificationToken}
+              registrationData={verificationData.registrationData}
+              onBack={() => {
+                setShowEmailVerification(false);
+                setVerificationData(null);
+              }}
+              onVerified={(userData) => {
+                setShowEmailVerification(false);
+                setVerificationData(null);
+                // Set the registered user data from the sync response
+                setRegisteredUser(userData);
+                // After verification, show subscription form
+                setShowSubscription(true);
+              }}
+            />
+          </div>
+        </div>
+        {/* Hero Section */}
+        <div className="hidden lg:flex lg:w-1/2 items-center justify-center p-12" style={{ background: 'linear-gradient(135deg, hsl(215, 50%, 12%) 0%, hsl(210, 60%, 10%) 100%)' }}>
+          <div className="max-w-lg text-white">
+            <h1 className="text-4xl font-bold mb-6">Interlinc</h1>
+            <h2 className="text-3xl font-semibold mb-4">Connect. Create. Collaborate.</h2>
+            <p className="text-muted-foreground mb-8 text-lg">
+              Outsourcing, Simplified. Manage people, payments, and projects with clarity, control, and zero invoicing.
+            </p>
+            <div className="space-y-4">
+              <div className="flex items-start">
+                <div className="bg-white rounded-full h-6 w-6 flex items-center justify-center text-black mr-4 mt-1">✓</div>
+                <div>
+                  <h3 className="text-white font-medium text-lg">No Invoices. No Hassle.</h3>
+                  <p className="text-muted-foreground">Streamline payments with built-in workflows and milestone approvals — no manual paperwork.</p>
+                </div>
+              </div>
+              <div className="flex items-start">
+                <div className="bg-white rounded-full h-6 w-6 flex items-center justify-center text-black mr-4 mt-1">✓</div>
+                <div>
+                  <h3 className="text-white font-medium text-lg">Real-Time Financial Visibility</h3>
+                  <p className="text-muted-foreground">Track budgets, teams, and progress in one place with compliance-ready data capture.</p>
+                </div>
+              </div>
+              <div className="flex items-start">
+                <div className="bg-white rounded-full h-6 w-6 flex items-center justify-center text-black mr-4 mt-1">✓</div>
+                <div>
+                  <h3 className="text-white font-medium text-lg">Smarter Payouts. Faster Turnarounds.</h3>
+                  <p className="text-muted-foreground">Trigger payments on your terms — once work is approved, your teams get paid seamlessly.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -756,34 +832,97 @@ export default function AuthPage() {
   // Show subscription form after successful registration
   if (showSubscription && registeredUser) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-8">
-        <SubscriptionForm
-          userRole={registeredUser.role as 'business' | 'contractor'}
-          userEmail={registeredUser.email}
-          userName={registeredUser.username}
-          userId={registeredUser.id}
-          onSubscriptionComplete={() => {
-            setShowSubscription(false);
-            setRegisteredUser(null);
-            toast({
-              title: "Welcome to Interlinc!",
-              description: "Your account is ready.",
-            });
-            // User is now logged in via the subscription completion, redirect to dashboard
-            window.location.href = "/";
-          }}
-        />
+      <div className="min-h-screen flex flex-col md:flex-row">
+        {/* Auth Forms Section */}
+        <div className="w-full md:w-1/2 flex items-center justify-center p-8">
+          <div className="w-full max-w-md">
+            <SubscriptionForm
+              userRole={registeredUser.role as 'business' | 'contractor'}
+              userEmail={registeredUser.email}
+              userName={registeredUser.username}
+              userId={registeredUser.id}
+              onSubscriptionComplete={() => {
+                setShowSubscription(false);
+                setRegisteredUser(null);
+                toast({
+                  title: "Welcome to Interlinc!",
+                  description: "Your account is ready.",
+                });
+                // User is now logged in via the subscription completion, redirect to dashboard
+                window.location.href = "/";
+              }}
+            />
+          </div>
+        </div>
+        {/* Hero Section */}
+        <div className="hidden lg:flex lg:w-1/2 items-center justify-center p-12" style={{ background: 'linear-gradient(135deg, hsl(215, 50%, 12%) 0%, hsl(210, 60%, 10%) 100%)' }}>
+          <div className="max-w-lg text-white">
+            <h1 className="text-4xl font-bold mb-6">Interlinc</h1>
+            <h2 className="text-3xl font-semibold mb-4">Connect. Create. Collaborate.</h2>
+            <p className="text-muted-foreground mb-8 text-lg">
+              Outsourcing, Simplified. Manage people, payments, and projects with clarity, control, and zero invoicing.
+            </p>
+            <div className="space-y-4">
+              <div className="flex items-start">
+                <div className="bg-white rounded-full h-6 w-6 flex items-center justify-center text-black mr-4 mt-1">✓</div>
+                <div>
+                  <h3 className="text-white font-medium text-lg">No Invoices. No Hassle.</h3>
+                  <p className="text-muted-foreground">Streamline payments with built-in workflows and milestone approvals — no manual paperwork.</p>
+                </div>
+              </div>
+              <div className="flex items-start">
+                <div className="bg-white rounded-full h-6 w-6 flex items-center justify-center text-black mr-4 mt-1">✓</div>
+                <div>
+                  <h3 className="text-white font-medium text-lg">Real-Time Financial Visibility</h3>
+                  <p className="text-muted-foreground">Track budgets, teams, and progress in one place with compliance-ready data capture.</p>
+                </div>
+              </div>
+              <div className="flex items-start">
+                <div className="bg-white rounded-full h-6 w-6 flex items-center justify-center text-black mr-4 mt-1">✓</div>
+                <div>
+                  <h3 className="text-white font-medium text-lg">Smarter Payouts. Faster Turnarounds.</h3>
+                  <p className="text-muted-foreground">Trigger payments on your terms — once work is approved, your teams get paid seamlessly.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black flex flex-col md:flex-row">
-      {/* Auth Forms Section */}
-      <div className="w-full md:w-1/2 flex items-center justify-center p-8">
+    <div className="min-h-screen flex" style={{ background: 'linear-gradient(135deg, hsl(210, 60%, 8%) 0%, hsl(215, 55%, 6%) 100%)' }}>
+      {/* Left Panel - Login/Register Form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
+          {/* Logo */}
           <div className="flex justify-center mb-8">
-            <img src={Logo} alt="Interlinc Logo" className="h-16" />
+            <img src={Logo} alt="Interlinc" className="h-16" />
+          </div>
+
+          {/* Tab Navigation */}
+          <div className="flex gap-4 mb-8">
+            <button
+              onClick={() => setActiveTab('login')}
+              className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
+                activeTab === 'login'
+                  ? 'bg-gradient-to-r from-[#6b9aff] to-[#7ca5ff] text-[#0a1628]'
+                  : 'bg-gradient-to-r from-[#0f1f3a] to-[#1a2b4a] text-white border border-[#6b9aff]/10 hover:border-[#6b9aff]/30'
+              }`}
+            >
+              Login
+            </button>
+            <button
+              onClick={() => setActiveTab('register')}
+              className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
+                activeTab === 'register'
+                  ? 'bg-gradient-to-r from-[#6b9aff] to-[#7ca5ff] text-[#0a1628]'
+                  : 'bg-gradient-to-r from-[#0f1f3a] to-[#1a2b4a] text-white border border-[#6b9aff]/10 hover:border-[#6b9aff]/30'
+              }`}
+            >
+              Register
+            </button>
           </div>
 
           <Tabs defaultValue="login" value={activeTab} onValueChange={setActiveTab}>
@@ -1113,39 +1252,34 @@ export default function AuthPage() {
         </div>
       </div>
 
-      {/* Hero Section */}
-      <div className="w-full md:w-1/2 bg-zinc-900 p-12 flex items-center">
-        <div className="max-w-lg mx-auto">
-          <h1 className="text-4xl font-bold text-white mb-6">
-            Interlinc
-          </h1>
-          <h2 className="text-2xl font-semibold text-white mb-4">
-            Connect. Create. Collaborate.
-          </h2>
-          <p className="text-zinc-400 mb-6">
-            Outsourcing, Simplified.
-            Manage people, payments, and projects with clarity, control, and zero invoicing.
+      {/* Right Panel - Hero Section */}
+      <div className="hidden lg:flex lg:w-1/2 items-center justify-center p-12" style={{ background: 'linear-gradient(135deg, hsl(215, 50%, 12%) 0%, hsl(210, 60%, 10%) 100%)' }}>
+        <div className="max-w-lg text-white">
+          <h1 className="text-4xl font-bold mb-6">Interlinc</h1>
+          <h2 className="text-3xl font-semibold mb-4">Connect. Create. Collaborate.</h2>
+          <p className="text-muted-foreground mb-8 text-lg">
+            Outsourcing, Simplified. Manage people, payments, and projects with clarity, control, and zero invoicing.
           </p>
           <div className="space-y-4">
             <div className="flex items-start">
               <div className="bg-white rounded-full h-6 w-6 flex items-center justify-center text-black mr-4 mt-1">✓</div>
               <div>
                 <h3 className="text-white font-medium text-lg">No Invoices. No Hassle.</h3>
-                <p className="text-zinc-400">Streamline payments with built-in workflows and milestone approvals — no manual paperwork.</p>
+                <p className="text-muted-foreground">Streamline payments with built-in workflows and milestone approvals — no manual paperwork.</p>
               </div>
             </div>
             <div className="flex items-start">
               <div className="bg-white rounded-full h-6 w-6 flex items-center justify-center text-black mr-4 mt-1">✓</div>
               <div>
                 <h3 className="text-white font-medium text-lg">Real-Time Financial Visibility</h3>
-                <p className="text-zinc-400">Track budgets, teams, and progress in one place with compliance-ready data capture.</p>
+                <p className="text-muted-foreground">Track budgets, teams, and progress in one place with compliance-ready data capture.</p>
               </div>
             </div>
             <div className="flex items-start">
               <div className="bg-white rounded-full h-6 w-6 flex items-center justify-center text-black mr-4 mt-1">✓</div>
               <div>
                 <h3 className="text-white font-medium text-lg">Smarter Payouts. Faster Turnarounds.</h3>
-                <p className="text-zinc-400">Trigger payments on your terms — once work is approved, your teams get paid seamlessly.</p>
+                <p className="text-muted-foreground">Trigger payments on your terms — once work is approved, your teams get paid seamlessly.</p>
               </div>
             </div>
           </div>
