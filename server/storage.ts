@@ -151,9 +151,24 @@ export interface IStorage {
   getBusinessMonthlyPayments(businessId: number, year: number, month: number): Promise<number>;
   getBusinessAnnualPayments(businessId: number, year: number): Promise<number>;
   getBusinessTotalSuccessfulPayments(businessId: number): Promise<number>;
+  getContractorEarningsStats(contractorId: number): Promise<{
+    totalEarnings: number,
+    pendingEarnings: number,
+    completedPaymentsCount: number,
+    pendingPaymentsCount: number,
+    currentMonthEarnings: number,
+    currentYearEarnings: number
+  }>;
 
   // Payment Logs for compliance
   createPaymentLog(log: any): Promise<any>;
+  getPaymentLogs(paymentId: number): Promise<any[]>;
+
+  // Invoices
+  getInvoicesByBusinessId(businessId: number): Promise<any[]>;
+  getInvoicesByContractorId(contractorId: number): Promise<any[]>;
+  getInvoice(invoiceId: number): Promise<any | null>;
+  getInvoiceByPaymentId(paymentId: number): Promise<any | null>;
 
   // Documents
   getDocument(id: number): Promise<Document | undefined>;
@@ -185,12 +200,6 @@ export interface IStorage {
   getWorkRequestSubmissionsByContractorId(contractorId: number): Promise<WorkRequestSubmission[]>;
   createWorkRequestSubmission(submission: InsertWorkRequestSubmission): Promise<WorkRequestSubmission>;
   updateWorkRequestSubmission(id: number, submission: Partial<InsertWorkRequestSubmission>): Promise<WorkRequestSubmission | undefined>;
-
-  // Profile Codes and Connection Requests (methods already declared above)
-  // Removing duplicate declarations
-  getConnectionRequestByProfileCode(businessId: number, profileCode: string): Promise<ConnectionRequest | undefined>;
-  createConnectionRequest(request: InsertConnectionRequest): Promise<ConnectionRequest>;
-  updateConnectionRequest(id: number, request: Partial<InsertConnectionRequest>): Promise<ConnectionRequest | undefined>;
 
   // Notifications
   createNotification(notification: InsertNotification): Promise<Notification>;
@@ -1384,6 +1393,11 @@ export class MemStorage implements IStorage {
   async getBusinessAnnualPayments(businessId: number, year: number): Promise<number> { return Promise.resolve(0); }
   async getBusinessTotalSuccessfulPayments(businessId: number): Promise<number> { return Promise.resolve(0); }
   async createPaymentLog(log: any): Promise<any> { return Promise.resolve({} as any); }
+  async getPaymentLogs(paymentId: number): Promise<any[]> { return Promise.resolve([]); }
+  async getInvoicesByBusinessId(businessId: number): Promise<any[]> { return Promise.resolve([]); }
+  async getInvoicesByContractorId(contractorId: number): Promise<any[]> { return Promise.resolve([]); }
+  async getInvoice(invoiceId: number): Promise<any | null> { return Promise.resolve(null); }
+  async getInvoiceByPaymentId(paymentId: number): Promise<any | null> { return Promise.resolve(null); }
   async getUserBankAccounts(userId: number): Promise<any[]> { return Promise.resolve([]); }
   async getUserBankAccount(userId: number, accountId: string): Promise<any> { return Promise.resolve(undefined); }
   async saveUserBankAccount(userId: number, bankAccountData: any): Promise<any> { return Promise.resolve({} as any); }
@@ -1440,7 +1454,6 @@ export class MemStorage implements IStorage {
   async getProjectWorkRequests(projectId: number): Promise<any[]> { return Promise.resolve([]); }
   async updateWorkRequestStatus(id: number, status: string): Promise<any> { return Promise.resolve(undefined); }
   async updateWorkRequestContract(id: number, contractId: number): Promise<any> { return Promise.resolve(undefined); }
-  async getContractByWorkRequestId(workRequestId: number): Promise<any> { return Promise.resolve(undefined); }
   async ensureContractWorkRequestConsistency(contractorId: number, deliverableName: string): Promise<any> { return Promise.resolve({ contract: null, workRequest: null, businessId: null }); }
 }
 
@@ -2096,7 +2109,7 @@ export class DatabaseStorage implements IStorage {
   async getPaymentsByContractorId(contractorId: number): Promise<Payment[]> {
     // BULLETPROOF: Multi-source contractor payment aggregation
     // Get payments from ALL sources where this contractor is the recipient
-    
+
     try {
       // 1. Direct payments (using businessId column) - NO CONTRACT NEEDED
       let directPayments: Payment[] = [];
@@ -2393,16 +2406,16 @@ export class DatabaseStorage implements IStorage {
     currentYearEarnings: number
   }> {
     const contractorPayments = await this.getPaymentsByContractorId(contractorId);
-    
+
     const completedPayments = contractorPayments.filter(p => p.status === 'completed');
     const pendingPayments = contractorPayments.filter(p => 
       p.status === 'scheduled' || p.status === 'pending' || p.status === 'processing'
     );
-    
+
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
-    
+
     // Calculate current month earnings
     const currentMonthEarnings = completedPayments
       .filter(p => {
@@ -2422,7 +2435,7 @@ export class DatabaseStorage implements IStorage {
         return date.getFullYear() === currentYear;
       })
       .reduce((sum, p) => sum + parseFloat(p.amount), 0);
-    
+
     return {
       totalEarnings: completedPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0),
       pendingEarnings: pendingPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0),
@@ -2818,17 +2831,38 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getConnectionRequestsByBusinessId(businessId: number): Promise<ConnectionRequest[]> {
-    return db
+    return await db
       .select()
       .from(connectionRequests)
-      .where(eq(connectionRequests.businessId, businessId));
+      .where(eq(connectionRequests.businessId, businessId))
+      .orderBy(desc(connectionRequests.createdAt));
   }
 
   async getConnectionRequestsByContractorId(contractorId: number): Promise<ConnectionRequest[]> {
-    return db
+    return await db
       .select()
       .from(connectionRequests)
-      .where(eq(connectionRequests.contractorId, contractorId));
+      .where(eq(connectionRequests.contractorId, contractorId))
+      .orderBy(desc(connectionRequests.createdAt));
+  }
+
+  async getConnectionRequests(filters: { businessId?: number, contractorId?: number, status?: string }): Promise<ConnectionRequest[]> {
+    let query = db.select().from(connectionRequests);
+
+    // Apply filters
+    if (filters.businessId !== undefined) {
+      query = query.where(eq(connectionRequests.businessId, filters.businessId));
+    }
+
+    if (filters.contractorId !== undefined) {
+      query = query.where(eq(connectionRequests.contractorId, filters.contractorId));
+    }
+
+    if (filters.status !== undefined) {
+      query = query.where(eq(connectionRequests.status, filters.status));
+    }
+
+    return await query.orderBy(desc(connectionRequests.createdAt));
   }
 
   async getConnectionRequestByProfileCode(businessId: number, profileCode: string): Promise<ConnectionRequest | undefined> {
@@ -2846,7 +2880,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createConnectionRequest(request: InsertConnectionRequest): Promise<ConnectionRequest> {
-    // If a profile code is provided, try to find the corresponding contractor
+    // Find contractor by profile code if provided
     let contractorId = null;
     if (request.profileCode) {
       const contractor = await this.getUserByProfileCode(request.profileCode);
@@ -2855,7 +2889,7 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
-    const [connectionRequest] = await db
+    const [newRequest] = await db
       .insert(connectionRequests)
       .values({
         ...request,
@@ -2865,18 +2899,33 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
 
-    return connectionRequest;
+    return newRequest;
   }
 
-  async updateConnectionRequest(id: number, requestData: Partial<InsertConnectionRequest>): Promise<ConnectionRequest | undefined> {
+  async updateConnectionRequest(id: number, updates: Partial<InsertConnectionRequest>): Promise<ConnectionRequest | undefined> {
     const [updatedRequest] = await db
       .update(connectionRequests)
       .set({
-        ...requestData,
+        ...updates,
         updatedAt: new Date()
       })
       .where(eq(connectionRequests.id, id))
       .returning();
+
+    // If connection request is being accepted, automatically add to business_workers table
+    if (updatedRequest && updates.status === 'accepted' && updatedRequest.contractorId && updatedRequest.businessId) {
+      try {
+        await this.upsertBusinessWorker({
+          businessId: updatedRequest.businessId,
+          contractorUserId: updatedRequest.contractorId,
+          status: 'active'
+        });
+        console.log(`Added contractor ${updatedRequest.contractorId} to business_workers table for business ${updatedRequest.businessId}`);
+      } catch (error) {
+        console.error('Error adding contractor to business_workers table:', error);
+        // Continue even if this fails
+      }
+    }
 
     return updatedRequest;
   }
@@ -3740,15 +3789,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteContractMilestones(contractId: number): Promise<void> {
-    await this.db.delete(milestones).where(eq(milestones.contractId, contractId));
+    await db.delete(milestones).where(eq(milestones.contractId, contractId));
   }
 
   async deleteContractPayments(contractId: number): Promise<void> {
-    await this.db.delete(payments).where(eq(payments.contractId, contractId));
+    await db.delete(payments).where(eq(payments.contractId, contractId));
   }
 
   async deleteContractDocuments(contractId: number): Promise<void> {
-    await this.db.delete(documents).where(eq(documents.contractId, contractId));
+    await db.delete(documents).where(eq(documents.contractId, contractId));
   }
 
   // Update the existing deleteContract method to only mark as deleted
@@ -3802,19 +3851,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteWorkRequest(id: number): Promise<void> {
-    await this.db.delete(workRequests).where(eq(workRequests.id, id));
+    await db.delete(workRequests).where(eq(workRequests.id, id));
   }
 
   async deleteContract(id: number): Promise<void> {
-    await this.db.delete(contracts).where(eq(contracts.id, id));
+    await db.delete(contracts).where(eq(contracts.id, id));
   }
 
   async deleteContractMilestones(contractId: number): Promise<void> {
-    await this.db.delete(milestones).where(eq(milestones.contractId, contractId));
+    await db.delete(milestones).where(eq(milestones.contractId, contractId));
   }
 
   async deleteContractPayments(contractId: number): Promise<void> {
-    await this.db.delete(payments).where(eq(payments.contractId, contractId));
+    await db.delete(payments).where(eq(payments.contractId, contractId));
   }
 
   // Project methods
@@ -4143,6 +4192,37 @@ export class DatabaseStorage implements IStorage {
       console.error(`DB: Error ensuring data consistency:`, error);
       return { contract: null, workRequest: null, businessId: null };
     }
+  }
+
+  // Invoice retrieval methods
+  async getPaymentLogs(paymentId: number): Promise<any[]> {
+    return await db.select().from(paymentLogs).where(eq(paymentLogs.paymentId, paymentId));
+  }
+
+  // Get invoices for business user
+  async getInvoicesByBusinessId(businessId: number): Promise<any[]> {
+    const { invoices } = await import('@shared/schema');
+    return await db.select().from(invoices).where(eq(invoices.businessId, businessId)).orderBy(desc(invoices.createdAt));
+  }
+
+  // Get invoices for contractor user
+  async getInvoicesByContractorId(contractorId: number): Promise<any[]> {
+    const { invoices } = await import('@shared/schema');
+    return await db.select().from(invoices).where(eq(invoices.contractorId, contractorId)).orderBy(desc(invoices.createdAt));
+  }
+
+  // Get invoice by ID
+  async getInvoice(invoiceId: number): Promise<any | null> {
+    const { invoices } = await import('@shared/schema');
+    const [invoice] = await db.select().from(invoices).where(eq(invoices.id, invoiceId));
+    return invoice || null;
+  }
+
+  // Get invoice by payment ID
+  async getInvoiceByPaymentId(paymentId: number): Promise<any | null> {
+    const { invoices } = await import('@shared/schema');
+    const [invoice] = await db.select().from(invoices).where(eq(invoices.paymentId, paymentId));
+    return invoice || null;
   }
 }
 

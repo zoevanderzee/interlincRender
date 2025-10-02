@@ -153,23 +153,73 @@ export const payments = pgTable("payments", {
 // Payment Compliance Logs table - for audit trail and structured data compliance
 export const paymentLogs = pgTable("payment_logs", {
   id: serial("id").primaryKey(),
-  paymentId: integer("payment_id").notNull(),
-  contractId: integer("contract_id").notNull(),
-  milestoneId: integer("milestone_id").notNull(),
-  businessId: integer("business_id").notNull(),
-  contractorId: integer("contractor_id").notNull(),
+  paymentId: integer("payment_id").references(() => payments.id).notNull(),
+  contractId: integer("contract_id").references(() => contracts.id).notNull(),
+  milestoneId: integer("milestone_id").references(() => milestones.id),
+  businessId: integer("business_id").references(() => users.id).notNull(),
+  contractorId: integer("contractor_id").references(() => users.id).notNull(),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
-  applicationFee: decimal("application_fee", { precision: 10, scale: 2 }).notNull(),
-  netAmount: decimal("net_amount", { precision: 10, scale: 2 }).notNull(), // Amount after platform fee
-  currency: text("currency").default("USD"),
-  triggerEvent: text("trigger_event").notNull(), // "milestone_approved", "manual_payment", "scheduled_payment"
-  approvalTimestamp: timestamp("approval_timestamp").notNull(),
-  paymentTimestamp: timestamp("payment_timestamp").notNull(),
-  processorReference: text("processor_reference"), // Stripe payment intent ID
-  transferReference: text("transfer_reference"), // Stripe transfer ID
-  deliverableReference: text("deliverable_reference"), // Reference to submitted deliverable
-  complianceData: jsonb("compliance_data"), // Structured data for tax/audit purposes
-  createdAt: timestamp("created_at").defaultNow(),
+  applicationFee: decimal("application_fee", { precision: 10, scale: 2 }),
+  netAmount: decimal("net_amount", { precision: 10, scale: 2 }),
+  triggerEvent: varchar("trigger_event", { length: 50 }).notNull(),
+  approvalTimestamp: timestamp("approval_timestamp"),
+  paymentTimestamp: timestamp("payment_timestamp"),
+  processorReference: varchar("processor_reference", { length: 255 }),
+  transferReference: varchar("transfer_reference", { length: 255 }),
+  deliverableReference: varchar("deliverable_reference", { length: 500 }),
+  complianceData: jsonb("compliance_data"),
+  createdAt: timestamp("created_at").defaultNow().notNull()
+});
+
+// Auto-generated invoices table
+export const invoices = pgTable("invoices", {
+  id: serial("id").primaryKey(),
+  invoiceNumber: varchar("invoice_number", { length: 100 }).notNull().unique(),
+  paymentId: integer("payment_id").references(() => payments.id).notNull(),
+  contractId: integer("contract_id").references(() => contracts.id),
+  milestoneId: integer("milestone_id").references(() => milestones.id),
+  businessId: integer("business_id").references(() => users.id).notNull(),
+  contractorId: integer("contractor_id").references(() => users.id).notNull(),
+
+  // Invoice details
+  issueDate: timestamp("issue_date").notNull(),
+  dueDate: timestamp("due_date"),
+  paidDate: timestamp("paid_date"),
+
+  // Amounts
+  grossAmount: decimal("gross_amount", { precision: 10, scale: 2 }).notNull(),
+  platformFee: decimal("platform_fee", { precision: 10, scale: 2 }).default("0"),
+  netAmount: decimal("net_amount", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 3 }).default("GBP"),
+
+  // Business details
+  businessName: varchar("business_name", { length: 255 }),
+  businessAddress: text("business_address"),
+  businessTaxId: varchar("business_tax_id", { length: 100 }),
+
+  // Contractor details
+  contractorName: varchar("contractor_name", { length: 255 }),
+  contractorAddress: text("contractor_address"),
+  contractorTaxId: varchar("contractor_tax_id", { length: 100 }),
+
+  // Work description
+  description: text("description").notNull(),
+  workReference: varchar("work_reference", { length: 255 }),
+
+  // Payment details
+  stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 255 }),
+  stripeTransactionId: varchar("stripe_transaction_id", { length: 255 }),
+  paymentMethod: varchar("payment_method", { length: 50 }),
+
+  // Status
+  status: varchar("status", { length: 50 }).default("paid").notNull(),
+
+  // Compliance
+  invoiceData: jsonb("invoice_data"), // Full structured invoice data
+
+  // Immutable after creation
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull()
 });
 
 // Documents table
@@ -302,6 +352,7 @@ export const taskSubmissions = pgTable("task_submissions", {
   id: serial("id").primaryKey(),
   taskId: integer("task_id").notNull().references(() => tasks.id),
   contractorId: integer("contractor_id").notNull().references(() => users.id),
+  businessId: integer("business_id").notNull().references(() => users.id),
   note: text("note"), // Contractor's submission notes
   files: jsonb("files"), // Array of file objects {url, name, type, size}
   status: text("status").notNull().default("submitted"), // submitted, approved, rejected
@@ -563,12 +614,52 @@ export const insertTaskSchema = z.object({
 export const insertTaskSubmissionSchema = z.object({
   taskId: z.number(),
   contractorId: z.number(),
+  businessId: z.number(),
   note: z.string().optional(),
-  files: z.any().optional(), // Array of file objects
+  files: z.any().optional(), // Array of file objects {url, name, type, size}
   status: z.enum(["submitted", "approved", "rejected"]).default("submitted"),
   approverId: z.number().optional(),
   rejectionReason: z.string().optional(),
   paymentId: z.number().optional(),
+});
+
+// Insert invoice schema
+export const insertInvoiceSchema = z.object({
+  invoiceNumber: z.string().min(1),
+  paymentId: z.number(),
+  contractId: z.number().optional(),
+  milestoneId: z.number().optional(),
+  businessId: z.number(),
+  contractorId: z.number(),
+  issueDate: z.union([z.string(), z.date()]).transform((val) => {
+    if (typeof val === 'string') return new Date(val);
+    return val;
+  }),
+  dueDate: z.union([z.string(), z.date()]).transform((val) => {
+    if (typeof val === 'string') return new Date(val);
+    return val;
+  }).optional(),
+  paidDate: z.union([z.string(), z.date()]).transform((val) => {
+    if (typeof val === 'string') return new Date(val);
+    return val;
+  }).optional(),
+  grossAmount: z.string(),
+  platformFee: z.string().default("0"),
+  netAmount: z.string(),
+  currency: z.string().default("GBP"),
+  businessName: z.string().optional(),
+  businessAddress: z.string().optional(),
+  businessTaxId: z.string().optional(),
+  contractorName: z.string().optional(),
+  contractorAddress: z.string().optional(),
+  contractorTaxId: z.string().optional(),
+  description: z.string(),
+  workReference: z.string().optional(),
+  stripePaymentIntentId: z.string().optional(),
+  stripeTransactionId: z.string().optional(),
+  paymentMethod: z.string().optional(),
+  status: z.string().default("paid"),
+  invoiceData: z.any().optional(),
 });
 
 // Types
@@ -734,3 +825,7 @@ export type BusinessOnboardingLink = typeof businessOnboardingLinks.$inferSelect
 
 export type InsertBusinessOnboardingUsage = z.infer<typeof insertBusinessOnboardingUsageSchema>;
 export type BusinessOnboardingUsage = typeof businessOnboardingUsage.$inferSelect;
+
+// Type for invoice
+export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
+export type Invoice = typeof invoices.$inferSelect;

@@ -803,6 +803,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
             await storage.updatePaymentStatus(parseInt(paymentId), 'completed');
             console.log(`✅ CONTRACTOR PAYMENT SUCCESSFUL: Payment ${paymentId} completed via destination charge to ${contractorAccountId}`);
 
+            // 🎯 AUTO-GENERATE INVOICE
+            try {
+              const { invoiceGenerator } = await import('./services/invoice-generator');
+              const invoiceId = await invoiceGenerator.generateInvoiceForPayment({
+                paymentId: parseInt(paymentId),
+                stripePaymentIntentId: succeededIntent.id,
+                stripeTransactionId: succeededIntent.charges?.data?.[0]?.id
+              });
+              console.log(`📄 AUTO-GENERATED INVOICE: Invoice ${invoiceId} created for payment ${paymentId}`);
+            } catch (invoiceError) {
+              console.error('Error auto-generating invoice:', invoiceError);
+              // Don't fail the webhook if invoice generation fails
+            }
+
             // Get contractor user ID for notifications
             if (succeededIntent.metadata?.contractorId) {
               const contractorId = parseInt(succeededIntent.metadata.contractorId);
