@@ -115,8 +115,122 @@ export class InvoiceGeneratorService {
       }
     };
 
-    // Insert invoice into database
-    const [invoice] = await db.insert(invoices).values({
+    // BUSINESS COPY - Proof of Expense (what they paid)
+    const businessInvoiceData = {
+      invoice_number: invoiceNumber,
+      invoice_type: 'business_expense',
+      issue_date: new Date().toISOString(),
+      due_date: new Date().toISOString(),
+      paid_date: payment.completedDate || new Date().toISOString(),
+      
+      // Business is the buyer/payer
+      buyer: {
+        name: businessUser.companyName || businessUser.username,
+        email: businessUser.email,
+        address: businessUser.address || 'Address on file',
+        tax_id: businessUser.taxId || null
+      },
+      
+      // Contractor is the seller/payee
+      seller: {
+        name: contractorUser.username,
+        email: contractorUser.email,
+        address: contractorUser.address || 'Address on file',
+        tax_id: contractorUser.taxId || null
+      },
+      
+      line_items: [
+        {
+          description: description,
+          quantity: 1,
+          unit_price: grossAmount,
+          total: grossAmount
+        }
+      ],
+      
+      amounts: {
+        gross_amount: grossAmount,
+        taxes: 0, // No VAT applied
+        total_paid: grossAmount,
+        currency: 'GBP'
+      },
+      
+      payment_details: {
+        method: 'Stripe Connect',
+        stripe_payment_intent: stripePaymentIntentId,
+        stripe_transaction: stripeTransactionId,
+        status: 'paid',
+        paid_at: payment.completedDate || new Date().toISOString()
+      },
+      
+      compliance: {
+        invoice_type: 'e-invoice',
+        standard: 'UK MTD compliant',
+        generated_by: 'Interlinc automated system',
+        generated_at: new Date().toISOString(),
+        footer: 'Invoice issued by Interlinc on behalf of contractors using Stripe Connect. Retain for your tax records.'
+      }
+    };
+
+    // CONTRACTOR COPY - Proof of Income (what they received)
+    const contractorInvoiceData = {
+      invoice_number: invoiceNumber,
+      invoice_type: 'contractor_income',
+      issue_date: new Date().toISOString(),
+      due_date: new Date().toISOString(),
+      paid_date: payment.completedDate || new Date().toISOString(),
+      
+      // Contractor is the payee
+      payee: {
+        name: contractorUser.username,
+        email: contractorUser.email,
+        address: contractorUser.address || 'Address on file',
+        tax_id: contractorUser.taxId || null
+      },
+      
+      // Business is the payer
+      payer: {
+        name: businessUser.companyName || businessUser.username,
+        email: businessUser.email,
+        address: businessUser.address || 'Address on file',
+        tax_id: businessUser.taxId || null
+      },
+      
+      line_items: [
+        {
+          description: description,
+          quantity: 1,
+          unit_price: grossAmount,
+          total: grossAmount
+        }
+      ],
+      
+      amounts: {
+        gross_amount: grossAmount,
+        stripe_fees: platformFee,
+        net_received: netAmount,
+        currency: 'GBP'
+      },
+      
+      payment_details: {
+        method: 'Stripe Connect',
+        stripe_payment_intent: stripePaymentIntentId,
+        stripe_transaction: stripeTransactionId,
+        status: 'paid',
+        paid_at: payment.completedDate || new Date().toISOString()
+      },
+      
+      compliance: {
+        invoice_type: 'payment_receipt',
+        standard: 'UK MTD compliant',
+        generated_by: 'Interlinc automated system',
+        generated_at: new Date().toISOString(),
+        footer: 'This document serves as proof of payment. Funds processed by Interlinc via Stripe Connect. Retain for your records.'
+      }
+    };
+
+    // Insert BUSINESS invoice (expense proof)
+    const [businessInvoice] = await db.insert(invoices).values({
       invoiceNumber,
       paymentId,
       contractId: payment.contractId,
@@ -129,8 +243,8 @@ export class InvoiceGeneratorService {
       paidDate: payment.completedDate || new Date(),
       
       grossAmount: grossAmount.toFixed(2),
-      platformFee: platformFee.toFixed(2),
-      netAmount: netAmount.toFixed(2),
+      platformFee: '0.00', // Business doesn't see platform fees
+      netAmount: grossAmount.toFixed(2), // Business sees full amount paid
       currency: 'GBP',
       
       businessName: businessUser.companyName || businessUser.username,
@@ -141,7 +255,7 @@ export class InvoiceGeneratorService {
       contractorAddress: contractorUser.address || null,
       contractorTaxId: contractorUser.taxId || null,
       
-      description,
+      description: `Invoice - ${description}`,
       workReference,
       
       stripePaymentIntentId,
@@ -149,14 +263,53 @@ export class InvoiceGeneratorService {
       paymentMethod: 'Stripe Connect',
       
       status: 'paid',
-      invoiceData
+      invoiceData: businessInvoiceData
     }).returning();
 
-    console.log(`✅ AUTO-GENERATED INVOICE: ${invoiceNumber} for payment ${paymentId}`);
-    console.log(`   Business: ${businessUser.username} → Contractor: ${contractorUser.username}`);
-    console.log(`   Amount: £${grossAmount.toFixed(2)} (Net: £${netAmount.toFixed(2)})`);
+    // Insert CONTRACTOR invoice (income proof)
+    const [contractorInvoice] = await db.insert(invoices).values({
+      invoiceNumber: `${invoiceNumber}-C`, // Add suffix to distinguish contractor copy
+      paymentId,
+      contractId: payment.contractId,
+      milestoneId: payment.milestoneId,
+      businessId: businessUser.id,
+      contractorId: contractorUser.id,
+      
+      issueDate: new Date(),
+      dueDate: new Date(),
+      paidDate: payment.completedDate || new Date(),
+      
+      grossAmount: grossAmount.toFixed(2),
+      platformFee: platformFee.toFixed(2), // Contractor sees the fees deducted
+      netAmount: netAmount.toFixed(2), // Contractor sees net amount received
+      currency: 'GBP',
+      
+      businessName: businessUser.companyName || businessUser.username,
+      businessAddress: businessUser.address || null,
+      businessTaxId: businessUser.taxId || null,
+      
+      contractorName: contractorUser.username,
+      contractorAddress: contractorUser.address || null,
+      contractorTaxId: contractorUser.taxId || null,
+      
+      description: `Payment Receipt - ${description}`,
+      workReference,
+      
+      stripePaymentIntentId,
+      stripeTransactionId: stripeTransactionId || null,
+      paymentMethod: 'Stripe Connect',
+      
+      status: 'paid',
+      invoiceData: contractorInvoiceData
+    }).returning();
 
-    return invoice.id;
+    console.log(`✅ AUTO-GENERATED DUAL INVOICES for payment ${paymentId}`);
+    console.log(`   📄 Business Invoice: ${invoiceNumber} (Expense Proof)`);
+    console.log(`   📄 Contractor Invoice: ${invoiceNumber}-C (Income Proof)`);
+    console.log(`   Business: ${businessUser.username} → Contractor: ${contractorUser.username}`);
+    console.log(`   Business Paid: £${grossAmount.toFixed(2)} | Contractor Received: £${netAmount.toFixed(2)}`);
+
+    return businessInvoice.id;
   }
 
   /**

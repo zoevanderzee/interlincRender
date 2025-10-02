@@ -1,5 +1,6 @@
 // Export Helper Functions for Data Room Compliance
 import { storage } from './storage';
+import { db, invoices, users, and, eq, or, desc, sql } from '../db'; // Assuming db and schema are set up correctly
 
 export async function generateComplianceExport(userId: number, userRole: string) {
   const exportData: any = {
@@ -16,7 +17,7 @@ export async function generateComplianceExport(userId: number, userRole: string)
       const contracts = await storage.getContractsByBusinessId(userId);
       const payments = await storage.getPaymentsByBusinessId(userId);
       const milestones = [];
-      
+
       for (const contract of contracts) {
         const contractMilestones = await storage.getMilestonesByContractId(contract.id);
         milestones.push(...contractMilestones);
@@ -62,7 +63,7 @@ export async function generateComplianceExport(userId: number, userRole: string)
       const contracts = await storage.getContractsByContractorId(userId);
       const payments = [];
       const milestones = [];
-      
+
       for (const contract of contracts) {
         const contractPayments = await storage.getPaymentsByContractId(contract.id);
         const contractMilestones = await storage.getMilestonesByContractId(contract.id);
@@ -112,62 +113,64 @@ export async function generateComplianceExport(userId: number, userRole: string)
   }
 }
 
-export async function generateInvoiceExport(userId: number, userRole: string) {
-  const invoices = [];
-  
+export async function generateInvoiceExport(userId: number): Promise<any[]> {
   try {
-    let payments = [];
-    
-    if (userRole === 'business') {
-      payments = await storage.getPaymentsByBusinessId(userId);
-    } else if (userRole === 'contractor') {
-      const contracts = await storage.getContractsByContractorId(userId);
-      for (const contract of contracts) {
-        const contractPayments = await storage.getPaymentsByContractId(contract.id);
-        payments.push(...contractPayments);
-      }
+    const user = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!user || user.length === 0) {
+      return [];
     }
 
-    for (const payment of payments) {
-      const contract = await storage.getContract(payment.contractId);
-      const milestone = payment.milestoneId ? await storage.getMilestone(payment.milestoneId) : null;
-      const businessUser = contract ? await storage.getUser(contract.businessId) : null;
-      const contractorUser = contract ? await storage.getUser(contract.contractorId) : null;
+    const userRole = user[0].role;
 
-      invoices.push({
-        invoiceNumber: `INV-${payment.id}-${new Date(payment.scheduledDate).getFullYear()}`,
-        paymentId: payment.id,
-        contractId: payment.contractId,
-        milestoneId: payment.milestoneId,
-        amount: payment.amount,
-        currency: 'GBP',
-        status: payment.status,
-        issuedDate: payment.scheduledDate,
-        paidDate: payment.completedDate,
-        dueDate: payment.scheduledDate,
-        contractName: contract?.contractName || 'Unknown Project',
-        milestoneName: milestone?.name || 'Payment',
-        businessName: businessUser?.username || 'Unknown Business',
-        contractorName: contractorUser?.username || 'Unknown Contractor',
-        businessEmail: businessUser?.email,
-        contractorEmail: contractorUser?.email,
-        paymentProcessor: payment.paymentProcessor,
-        transactionId: payment.stripePaymentIntentId || payment.trolleyPaymentId,
-        notes: payment.notes,
-        taxRate: 0, // UK e-invoicing compliance
-        taxAmount: 0,
-        netAmount: payment.amount,
-        grossAmount: payment.amount
-      });
-    }
+    // Get invoices filtered by user perspective
+    // Business users see invoices WITHOUT the -C suffix (expense proof)
+    // Contractors see invoices WITH the -C suffix (income proof)
+    const userInvoices = await db
+      .select()
+      .from(invoices)
+      .where(
+        userRole === 'business'
+          ? and(
+              eq(invoices.businessId, userId),
+              sql`${invoices.invoiceNumber} NOT LIKE '%-C'`
+            )
+          : and(
+              eq(invoices.contractorId, userId),
+              sql`${invoices.invoiceNumber} LIKE '%-C'`
+            )
+      )
+      .orderBy(desc(invoices.createdAt));
 
-    return {
-      exportDate: new Date().toISOString(),
-      userId,
-      userRole,
-      totalInvoices: invoices.length,
-      invoices
-    };
+    return userInvoices.map(invoice => ({
+      invoiceNumber: invoice.invoiceNumber,
+      paymentId: invoice.paymentId,
+      contractId: invoice.contractId,
+      milestoneId: invoice.milestoneId,
+      amount: invoice.amount,
+      currency: invoice.currency,
+      status: invoice.status,
+      issuedDate: invoice.issuedDate,
+      paidDate: invoice.paidDate,
+      dueDate: invoice.dueDate,
+      contractName: invoice.contractName,
+      milestoneName: invoice.milestoneName,
+      businessName: invoice.businessName,
+      contractorName: invoice.contractorName,
+      businessEmail: invoice.businessEmail,
+      contractorEmail: invoice.contractorEmail,
+      paymentProcessor: invoice.paymentProcessor,
+      transactionId: invoice.transactionId,
+      notes: invoice.notes,
+      taxRate: invoice.taxRate,
+      taxAmount: invoice.taxAmount,
+      netAmount: invoice.netAmount,
+      grossAmount: invoice.grossAmount
+    }));
   } catch (error) {
     console.error('Error generating invoice export:', error);
     throw error;
@@ -177,7 +180,7 @@ export async function generateInvoiceExport(userId: number, userRole: string) {
 export async function generatePaymentExport(userId: number, userRole: string) {
   try {
     let payments = [];
-    
+
     if (userRole === 'business') {
       payments = await storage.getPaymentsByBusinessId(userId);
     } else if (userRole === 'contractor') {
@@ -189,11 +192,11 @@ export async function generatePaymentExport(userId: number, userRole: string) {
     }
 
     const enrichedPayments = [];
-    
+
     for (const payment of payments) {
       const contract = await storage.getContract(payment.contractId);
       const milestone = payment.milestoneId ? await storage.getMilestone(payment.milestoneId) : null;
-      
+
       enrichedPayments.push({
         ...payment,
         contractName: contract?.contractName || 'Unknown',
@@ -220,13 +223,13 @@ export async function generatePaymentExport(userId: number, userRole: string) {
 export async function generateCSVExport(userId: number, userRole: string, type: string) {
   try {
     let csvData = '';
-    
+
     if (type === 'payments') {
       const paymentData = await generatePaymentExport(userId, userRole);
-      
+
       // CSV Headers
       csvData = 'Payment ID,Contract Name,Milestone,Amount,Status,Scheduled Date,Completed Date,Payment Processor,Transaction ID,Notes\n';
-      
+
       // CSV Rows
       for (const payment of paymentData.payments) {
         const row = [
@@ -245,10 +248,10 @@ export async function generateCSVExport(userId: number, userRole: string, type: 
       }
     } else if (type === 'invoices') {
       const invoiceData = await generateInvoiceExport(userId, userRole);
-      
+
       // CSV Headers
       csvData = 'Invoice Number,Contract Name,Amount,Status,Issue Date,Paid Date,Business,Contractor,Payment Processor,Transaction ID\n';
-      
+
       // CSV Rows
       for (const invoice of invoiceData.invoices) {
         const row = [
