@@ -54,13 +54,34 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
   // Active assignments from work requests (preferred) or active contracts as fallback
   const activeAssignments = dashboardData.workRequests || dashboardData.contracts.filter(c => c.status === 'Active');
 
-  // Fetch contractor earnings from their Connect account
-  const { data: contractorEarnings, isLoading: isLoadingEarnings } = useQuery({
+  // Fetch contractor earnings from Stripe Connect
+  const { data: contractorEarnings, isLoading: earningsLoading } = useQuery({
     queryKey: ['/api/contractors/earnings'],
-    queryFn: () => fetch('/api/contractors/earnings', {
-      credentials: 'include'
-    }).then(res => res.json()),
-    refetchInterval: 30000, // Refresh every 30 seconds
+    queryFn: async () => {
+      const userId = localStorage.getItem('user_id');
+      const firebaseUid = localStorage.getItem('firebase_uid');
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+
+      if (userId) {
+        headers['X-User-ID'] = userId;
+      }
+      if (firebaseUid) {
+        headers['X-Firebase-UID'] = firebaseUid;
+      }
+
+      const response = await fetch('/api/contractors/earnings', {
+        credentials: 'include',
+        headers
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch earnings');
+      }
+      return response.json();
+    },
+    refetchInterval: 30000 // Refetch every 30 seconds
   });
 
   // Use Connect account data as source of truth

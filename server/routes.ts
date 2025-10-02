@@ -4423,10 +4423,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // CONTRACTOR EARNINGS - Get earnings from contractor's Connect account
-  app.get(`${apiRouter}/contractors/earnings`, requireAuth, async (req: Request, res: Response) => {
+  app.get(`${apiRouter}/contractors/earnings`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
-      const userId = getUserId(req);
-      const user = await storage.getUser(userId!);
+      // Get user ID from session or X-User-ID header fallback
+      let userId = req.user?.id;
+
+      // Use X-User-ID header fallback if session auth failed
+      if (!userId && req.headers['x-user-id']) {
+        userId = parseInt(req.headers['x-user-id'] as string);
+      }
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const contractorId = req.query.contractorId ? parseInt(req.query.contractorId as string) : userId;
+      const user = await storage.getUser(userId); // Use the authenticated user ID
 
       if (!user) {
         return res.status(401).json({ error: 'User not found' });
@@ -4456,9 +4468,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(earnings);
     } catch (error: any) {
       console.error('[Contractor Earnings API] Error:', error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: 'Failed to fetch contractor earnings',
-        message: error.message 
+        message: error.message
       });
     }
   });
