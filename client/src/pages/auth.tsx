@@ -729,7 +729,7 @@ export default function AuthPage() {
           </div>
         </div>
         {/* Hero Section */}
-        <div className="hidden lg:flex lg:w-1/2 items-center justify-center p-12" style={{ background: 'linear-gradient(135deg, hsl(215, 50%, 12%) 0%, hsl(210, 60%, 10%) 100%)' }}>
+        <div className="hidden lg:flex lg:w-1/2 items-center justify-center p-12" style={{ background: 'linear-gradient(135deg, #1a2b4a 0%, #0f1f3a 100%)' }}>
           <div className="max-w-lg text-white">
             <h1 className="text-4xl font-bold mb-6">Interlinc</h1>
             <h2 className="text-3xl font-semibold mb-4">Connect. Create. Collaborate.</h2>
@@ -793,7 +793,7 @@ export default function AuthPage() {
           </div>
         </div>
         {/* Hero Section */}
-        <div className="hidden lg:flex lg:w-1/2 items-center justify-center p-12" style={{ background: 'linear-gradient(135deg, hsl(215, 50%, 12%) 0%, hsl(210, 60%, 10%) 100%)' }}>
+        <div className="hidden lg:flex lg:w-1/2 items-center justify-center p-12" style={{ background: 'linear-gradient(135deg, #1a2b4a 0%, #0f1f3a 100%)' }}>
           <div className="max-w-lg text-white">
             <h1 className="text-4xl font-bold mb-6">Interlinc</h1>
             <h2 className="text-3xl font-semibold mb-4">Connect. Create. Collaborate.</h2>
@@ -855,7 +855,7 @@ export default function AuthPage() {
           </div>
         </div>
         {/* Hero Section */}
-        <div className="hidden lg:flex lg:w-1/2 items-center justify-center p-12" style={{ background: 'linear-gradient(135deg, hsl(215, 50%, 12%) 0%, hsl(210, 60%, 10%) 100%)' }}>
+        <div className="hidden lg:flex lg:w-1/2 items-center justify-center p-12" style={{ background: 'linear-gradient(135deg, #1a2b4a 0%, #0f1f3a 100%)' }}>
           <div className="max-w-lg text-white">
             <h1 className="text-4xl font-bold mb-6">Interlinc</h1>
             <h2 className="text-3xl font-semibold mb-4">Connect. Create. Collaborate.</h2>
@@ -1253,7 +1253,7 @@ export default function AuthPage() {
       </div>
 
       {/* Right Panel - Hero Section */}
-      <div className="hidden lg:flex lg:w-1/2 items-center justify-center p-12" style={{ background: 'linear-gradient(135deg, hsl(215, 50%, 12%) 0%, hsl(210, 60%, 10%) 100%)' }}>
+      <div className="hidden lg:flex lg:w-1/2 items-center justify-center p-12" style={{ background: 'linear-gradient(135deg, #1a2b4a 0%, #0f1f3a 100%)' }}>
         <div className="max-w-lg text-white">
           <h1 className="text-4xl font-bold mb-6">Interlinc</h1>
           <h2 className="text-3xl font-semibold mb-4">Connect. Create. Collaborate.</h2>
