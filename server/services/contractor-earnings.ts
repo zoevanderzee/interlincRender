@@ -64,8 +64,8 @@ export async function getContractorEarnings(contractorConnectAccountId: string):
     const currency = balance.available[0]?.currency?.toUpperCase() || 'GBP';
 
     return {
-      pendingEarnings: (pendingAmount + availableAmount) / 100, // Convert from cents
-      totalEarnings: totalEarnings / 100,
+      pendingEarnings: pendingAmount / 100, // Only pending (still being processed by Stripe)
+      totalEarnings: totalEarnings / 100, // NOT CHANGED - completed payouts already in bank
       availableBalance: availableAmount / 100,
       pendingBalance: pendingAmount / 100,
       currency, // Will be GBP, USD, EUR, etc. based on Connect account
