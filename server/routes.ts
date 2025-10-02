@@ -4202,7 +4202,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return sum;
       }, 0);
 
-      // Calculate REAL budgetUsed from actual current month payments
+      // Calculate budgetUsed from actual current month payments
       const now = new Date();
       const currentYear = now.getFullYear();
       const currentMonth = now.getMonth() + 1;
@@ -4447,7 +4447,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Import contractor earnings service
       const { getContractorEarnings } = await import('./services/contractor-earnings');
-      
+
       // Fetch earnings from contractor's Connect account
       const earnings = await getContractorEarnings(user.stripeConnectAccountId);
 
