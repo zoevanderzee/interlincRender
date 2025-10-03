@@ -19,7 +19,7 @@ const Layout = ({ children }: LayoutProps) => {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-black text-white">
+    <div className="flex h-screen overflow-hidden text-white">
       {/* Sidebar */}
       <Sidebar 
         isOpen={sidebarOpen} 
