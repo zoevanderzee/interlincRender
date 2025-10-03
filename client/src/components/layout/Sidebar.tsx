@@ -28,7 +28,7 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
   // For mobile display
   if (!isOpen && !isMobileOpen) {
     return (
-      <div className="hidden md:flex flex-col bg-black border-r border-zinc-800 w-16 overflow-y-auto transition-all duration-300 ease-in-out">
+      <div className="hidden md:flex flex-col bg-[#0f1a2e] border-r border-zinc-800 w-16 overflow-y-auto transition-all duration-300 ease-in-out">
         <div className="flex justify-center py-4 border-b border-zinc-800">
           <img src={logoImage} alt="InterLinc Logo" className="h-8" />
         </div>
@@ -144,7 +144,7 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
   return (
     <div className={`
       ${isMobileOpen ? "fixed inset-y-0 left-0 z-30" : "hidden md:flex"} 
-      flex-col bg-black border-r border-zinc-800 w-64 overflow-y-auto transition-all duration-300 ease-in-out
+      flex-col bg-[#0f1a2e] border-r border-zinc-800 w-64 overflow-y-auto transition-all duration-300 ease-in-out
     `}>
       <div className="flex items-center justify-between p-4 border-b border-zinc-800">
         <div className="flex items-center">
