@@ -2107,28 +2107,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPaymentsByContractorId(contractorId: number): Promise<Payment[]> {
-    // BULLETPROOF: Multi-source contractor payment aggregation
-    // Get payments from ALL sources where this contractor is the recipient
-
     try {
-      // 1. Direct payments (using businessId column) - NO CONTRACT NEEDED
-      let directPayments: Payment[] = [];
-      try {
-        directPayments = await db
-          .select()
-          .from(payments)
-          .where(
-            and(
-              eq(payments.contractorId, contractorId),
-              isNotNull(payments.contractorId)
-            )
-          );
-        console.log(`Found ${directPayments.length} direct payments for contractor ${contractorId}`);
-      } catch (error) {
-        console.log('Direct payments query failed - contractorId column may not exist yet');
-      }
-
-      // 2. Contract-based payments (traditional model)
+      // Get payments through contract relationship (existing schema)
       const contractPayments = await db
         .select({
           payment: payments,
@@ -2143,48 +2123,20 @@ export class DatabaseStorage implements IStorage {
           )
         );
 
-      // 3. Work request based payments
-      let workRequestPayments: any[] = [];
-      try {
-        workRequestPayments = await db
-          .select({
-            payment: payments,
-            workRequest: workRequests
-          })
-          .from(payments)
-          .innerJoin(workRequests, eq(payments.workRequestId, workRequests.id))
-          .where(eq(workRequests.contractorUserId, contractorId));
-      } catch (error) {
-        console.log('Work request payments not available - column may not exist yet');
-      }
-
-      // Combine all payment sources
-      const allContractorPayments = [
-        ...directPayments,
-        ...contractPayments.map(row => row.payment),
-        ...workRequestPayments.map(row => row.payment)
-      ];
-
-      // Remove duplicates based on payment ID
-      const uniquePayments = allContractorPayments.filter((payment, index, self) =>
-        index === self.findIndex(p => p.id === payment.id)
-      );
+      const contractorPayments = contractPayments.map(row => row.payment);
 
       console.log(`CONTRACTOR ${contractorId} EARNINGS CALCULATION:`, {
-        directPayments: directPayments.length,
-        contractPayments: contractPayments.length,
-        workRequestPayments: workRequestPayments.length,
-        totalUniquePayments: uniquePayments.length,
-        completedPayments: uniquePayments.filter(p => p.status === 'completed').length,
-        totalEarnings: uniquePayments
+        totalPayments: contractorPayments.length,
+        completedPayments: contractorPayments.filter(p => p.status === 'completed').length,
+        totalEarnings: contractorPayments
           .filter(p => p.status === 'completed')
           .reduce((sum, p) => sum + parseFloat(p.amount), 0),
-        totalPendingEarnings: uniquePayments
+        totalPendingEarnings: contractorPayments
           .filter(p => p.status !== 'completed')
           .reduce((sum, p) => sum + parseFloat(p.amount), 0)
       });
 
-      return uniquePayments;
+      return contractorPayments;
     } catch (error) {
       console.error(`Error fetching payments for contractor ${contractorId}:`, error);
       return [];
