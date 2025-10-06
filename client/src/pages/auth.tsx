@@ -474,50 +474,72 @@ export default function AuthPage() {
 
           console.log("Sync response status:", syncResponse.status);
 
-          if (syncResponse.ok) {
-            const userData = await syncResponse.json();
-            console.log("Backend sync successful:", userData);
-
-            // Store authentication data in localStorage
-            localStorage.setItem('user_id', userData.id.toString());
-            localStorage.setItem('firebase_uid', result.user.uid);
-
-            toast({
-              title: "Login Successful",
-              description: "Welcome back!",
-            });
-
-            // Check if user requires subscription
-            const needsSubscription = requiresSubscription(userData);
-
-            if (needsSubscription) {
-              console.log('User needs subscription, showing subscription form');
-              setShowSubscription(true);
-              setRegisteredUser({
-                id: userData.id,
-                email: userData.email,
-                username: userData.username,
-                role: userData.role
-              });
-            } else {
-              console.log("User has active subscription, redirecting to dashboard");
-              window.location.href = '/';
+          if (!syncResponse.ok) {
+            let syncErrorData;
+            try {
+              syncErrorData = await syncResponse.json();
+            } catch {
+              syncErrorData = { error: "Failed to parse error response" };
             }
-          } else {
-            const syncErrorData = await syncResponse.json();
             console.error("Backend sync failed:", syncErrorData);
             throw new Error(`Failed to sync with backend: ${syncErrorData.details || syncErrorData.error || 'Unknown error'}`);
+          }
+
+          // Parse the response
+          let userData;
+          try {
+            const responseText = await syncResponse.text();
+            console.log("Raw sync response:", responseText);
+            userData = JSON.parse(responseText);
+            console.log("Backend sync successful:", userData);
+          } catch (parseError) {
+            console.error("Failed to parse sync response:", parseError);
+            throw new Error("Backend returned invalid JSON response");
+          }
+
+          // Validate we got the required user data
+          if (!userData || !userData.id || !userData.email) {
+            console.error("Invalid user data received:", userData);
+            throw new Error("Backend returned incomplete user data");
+          }
+
+          // Store authentication data in localStorage
+          localStorage.setItem('user_id', userData.id.toString());
+          localStorage.setItem('firebase_uid', result.user.uid);
+
+          toast({
+            title: "Login Successful",
+            description: "Welcome back!",
+          });
+
+          // Check if user requires subscription
+          const needsSubscription = requiresSubscription(userData);
+
+          if (needsSubscription) {
+            console.log('User needs subscription, showing subscription form');
+            setShowSubscription(true);
+            setRegisteredUser({
+              id: userData.id,
+              email: userData.email,
+              username: userData.username,
+              role: userData.role
+            });
+          } else {
+            console.log("User has active subscription, redirecting to dashboard");
+            window.location.href = '/';
           }
         } catch (syncError: any) {
           console.error("Backend sync error:", syncError);
 
-          // Try to get more specific error information
-          let errorMessage = "Authentication succeeded but failed to sync with backend";
-          if (syncError.message && syncError.message.includes('Failed to sync with backend:')) {
-            errorMessage = syncError.message;
-          }
+          // Show specific error message to user
+          toast({
+            title: "Login Failed", 
+            description: syncError.message || "Failed to complete authentication. Please try again.",
+            variant: "destructive",
+          });
 
-          throw new Error(errorMessage);
+          // Re-throw to trigger the outer error handler
+          throw syncError;
         }
       } else {
         setLoginErrors({
