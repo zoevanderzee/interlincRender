@@ -521,21 +521,9 @@ export default function AuthPage() {
                 needsSubscription
               });
 
-              if (needsSubscription) {
-                console.log('User needs subscription, showing subscription form');
-                // Show subscription form directly without redirect
-                setShowSubscription(true);
-                setRegisteredUser({
-                  id: userData.id,
-                  email: userData.email,
-                  username: userData.username,
-                  role: userData.role
-                });
-              } else {
-                console.log("User has active subscription or is invited, redirecting to dashboard");
-                // Redirect to dashboard
-                window.location.href = '/';
-              }
+              // Always redirect to dashboard after successful login
+              console.log("Login successful, redirecting to dashboard");
+              window.location.href = '/';
             } else {
               throw new Error("Failed to retrieve user data from backend");
             }
