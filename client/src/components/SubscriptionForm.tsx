@@ -411,18 +411,21 @@ export default function SubscriptionForm({
     const interval = priceData.interval;
     const intervalCount = priceData.interval_count || 1;
     
-    // Handle free plans
-    if (amount === 0) {
+    // Only show "Free" for contractor base plan (explicitly free)
+    if (amount === 0 && planId === 'contractor') {
       return "Free";
     }
     
+    // Format currency symbol
+    const currencySymbol = currency === 'GBP' ? '£' : currency === 'USD' ? '$' : currency === 'EUR' ? '€' : currency;
+    
     if (interval === 'month') {
-      return `${currency === 'GBP' ? '£' : '$'}${amount.toFixed(2)}${intervalCount === 1 ? '/month' : `/${intervalCount} months`}`;
+      return `${currencySymbol}${amount.toFixed(2)}${intervalCount === 1 ? '/month' : `/${intervalCount} months`}`;
     } else if (interval === 'year') {
-      return `${currency === 'GBP' ? '£' : '$'}${amount.toFixed(2)}${intervalCount === 1 ? '/year' : `/${intervalCount} years`}`;
+      return `${currencySymbol}${amount.toFixed(2)}${intervalCount === 1 ? '/year' : `/${intervalCount} years`}`;
     }
     
-    return `${currency === 'GBP' ? '£' : '$'}${amount.toFixed(2)}`;
+    return `${currencySymbol}${amount.toFixed(2)}`;
   };
 
   // Filter plans based on user role and update prices - STRICT SEPARATION
