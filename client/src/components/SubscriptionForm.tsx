@@ -440,10 +440,15 @@ export default function SubscriptionForm({
     }
     // Fallback: no plans if role is unclear
     return false;
-  }).map(plan => ({
-    ...plan,
-    price: formatPrice(plan.id)
-  })).filter(plan => {
+  }).map(plan => {
+    const priceData = prices[plan.id];
+    return {
+      ...plan,
+      // Use actual Stripe product name if available, otherwise use plan name
+      name: priceData?.name || plan.name,
+      price: formatPrice(plan.id)
+    };
+  }).filter(plan => {
     // Only filter out plans with completely missing price data
     const priceData = prices[plan.id];
     return priceData !== undefined;

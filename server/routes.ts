@@ -3964,20 +3964,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
             amount: 0,
             currency: 'gbp',
             interval: 'month',
-            interval_count: 1
+            interval_count: 1,
+            name: planId === 'contractor' ? 'Free' : 'Contractor Pro'
           };
           console.log(`Plan ${planId}: Free (no price ID)`);
         } else {
           try {
             console.log(`Fetching price ${priceId} for plan ${planId}...`);
-            const price = await stripe.prices.retrieve(priceId);
+            const price = await stripe.prices.retrieve(priceId, {
+              expand: ['product']
+            });
+            
+            // Get product name from Stripe
+            const product = price.product as any;
+            const productName = typeof product === 'string' 
+              ? planId 
+              : (product?.name || planId);
+            
             prices[planId] = {
               amount: price.unit_amount || 0,
               currency: price.currency || 'gbp',
               interval: price.recurring?.interval || 'month',
-              interval_count: price.recurring?.interval_count || 1
+              interval_count: price.recurring?.interval_count || 1,
+              name: productName
             };
-            console.log(`Plan ${planId}: ${price.unit_amount} ${price.currency} per ${price.recurring?.interval}`);
+            console.log(`Plan ${planId}: ${productName} - ${price.unit_amount} ${price.currency} per ${price.recurring?.interval}`);
           } catch (priceError: any) {
             console.error(`Error fetching price ${priceId} for ${planId}:`, priceError.message);
             // Return error info instead of fallback
@@ -3986,6 +3997,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               currency: 'gbp',
               interval: 'month',
               interval_count: 1,
+              name: planId,
               error: `Failed to fetch: ${priceError.message}`
             };
           }
