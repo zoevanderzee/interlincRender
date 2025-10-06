@@ -1,0 +1,44 @@
+The above error occurred in the <SubscriptionForm> component:
+
+SubscriptionForm@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/src/components/SubscriptionForm.tsx:167:11
+div
+Subscribe@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/src/pages/subscribe.tsx:26:49
+main
+div
+div
+Layout@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/src/components/layout/Layout.tsx:22:5
+Route@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js:323:14
+ProtectedRoute@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/src/components/auth/ProtectedRoute.tsx:26:5
+Switch@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js:380:27
+Router
+AuthProvider@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/src/hooks/use-auth.tsx:27:5
+QueryClientProvider@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js:2805:9
+ErrorBoundary@
+App
+QueryClientProvider@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js:2805:9
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
+Error caught by ErrorBoundary: 
+ReferenceError {}
+ 
+Object {componentStack: "↵SubscriptionForm@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/s…"}
+
+API Response: GET /api/dashboard 
+Object {status: 402, setCookie: null, contentType: "application/json; charset=utf-8"}
+Query Response: GET /api/projects 
+Object {status: 200, setCookie: null, contentType: "application/json; charset=utf-8"}
+Query Response: GET /api/work-requests 
+Object {status: 402, setCookie: null, contentType: "application/json; charset=utf-8"}
+Error fetching data from /api/work-requests: 
+Error {status: 402, statusText: "Payment Required", data: {…}, isApiError: true}
+
+Query Response: GET /api/budget 
+Object {status: 402, setCookie: null, contentType: "application/json; charset=utf-8"}
+Error fetching data from /api/budget: 
+Error {status: 402, statusText: "Payment Required", data: {…}, isApiError: true}
+
+Query Response: GET /api/notifications/count 
+Object {status: 402, setCookie: null, contentType: "application/json; charset=utf-8"}
+Error fetching data from /api/notifications/count: 
+Error {status: 402, statusText: "Payment Required", data: {…}, isApiError: true}
+
