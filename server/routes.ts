@@ -3948,8 +3948,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const priceIdMap = {
         'business-starter': 'price_1SFIvtF4bfRUGDn9MWvE1imT', // Starter plan
         'business': 'price_1SFIv5F4bfRUGDn9qeJh0VYX', // Standard plan
-        'business-enterprise': 'price_1Ricn6F4bfRUGDn91XzkPq5F', // Enterprise plan
-        'business-annual': 'price_1RgRilF4bfRUGDn9jMnjAo96', // Annual plan
+        'business-enterprise': 'price_1RgRilF4bfRUGDn9jMnjAo96', // Enterprise plan (£899.00/month)
+        'business-annual': 'price_1Ricn6F4bfRUGDn91XzkPq5F', // Annual plan
         'contractor': null, // Free plan - no Price ID needed
         'contractor-pro': null // Set to null until valid contractor pro price ID provided
       };
