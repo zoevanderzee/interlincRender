@@ -478,35 +478,52 @@ export default function AuthPage() {
             const syncData = await syncResponse.json();
             console.log("Backend sync successful:", syncData);
 
-            // CRITICAL: Use the traditional login endpoint to establish a proper session
-            const loginResponse = await fetch("/api/login", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                username: loginForm.username,
-                password: loginForm.password
-              }),
+            // Now fetch the user data using Firebase UID header
+            const userResponse = await fetch('/api/user', {
+              headers: {
+                'X-Firebase-UID': result.user.uid,
+                'Content-Type': 'application/json'
+              },
               credentials: 'include'
             });
 
-            if (loginResponse.ok) {
-              const userData = await loginResponse.json();
-              console.log("Session established via /api/login:", userData);
+            if (userResponse.ok) {
+              const userData = await userResponse.json();
+              console.log("User data retrieved:", userData);
 
-              // Store authentication data in localStorage as backup
+              // Store authentication data in localStorage for future requests
               localStorage.setItem('user_id', userData.id.toString());
               localStorage.setItem('firebase_uid', result.user.uid);
+              console.log("Authentication data stored:");
+              console.log("- user_id:", userData.id);
+              console.log("- firebase_uid:", result.user.uid);
 
               toast({
                 title: "Login Successful",
                 description: "Welcome back!",
               });
 
-              // Check if user requires subscription
+              // Check if user requires subscription using the actual userData object
+              console.log('Checking subscription for user:', {
+                id: userData.id,
+                subscriptionStatus: userData.subscriptionStatus,
+                invited: userData.invited,
+                role: userData.role
+              });
+
               const needsSubscription = requiresSubscription(userData);
+
+              console.log('Subscription check after sync:', {
+                userId: userData.id,
+                subscriptionStatus: userData.subscriptionStatus,
+                invited: userData.invited,
+                role: userData.role,
+                needsSubscription
+              });
 
               if (needsSubscription) {
                 console.log('User needs subscription, showing subscription form');
+                // Show subscription form directly without redirect
                 setShowSubscription(true);
                 setRegisteredUser({
                   id: userData.id,
@@ -515,11 +532,12 @@ export default function AuthPage() {
                   role: userData.role
                 });
               } else {
-                console.log("User has active subscription, redirecting to dashboard");
+                console.log("User has active subscription or is invited, redirecting to dashboard");
+                // Redirect to dashboard
                 window.location.href = '/';
               }
             } else {
-              throw new Error("Failed to establish session after Firebase auth");
+              throw new Error("Failed to retrieve user data from backend");
             }
           } else {
             const syncErrorData = await syncResponse.json();
