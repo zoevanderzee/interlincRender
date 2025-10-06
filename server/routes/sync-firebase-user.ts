@@ -1,4 +1,3 @@
-
 import type { Express } from "express";
 import { storage } from "../storage";
 import { z } from "zod";
@@ -50,14 +49,10 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
           });
         });
 
-        // Return full user object
-        return res.json({
-          id: existingUser.id,
-          email: existingUser.email,
-          username: existingUser.username,
-          role: existingUser.role,
-          subscriptionStatus: existingUser.subscriptionStatus,
-          invited: existingUser.invited
+        return res.json({ 
+          success: true, 
+          message: "User metadata synced",
+          userId: existingUser.id
         });
       }
 
@@ -95,14 +90,10 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
           req.session.userId = retryUser.id;
           req.session.user = retryUser;
           
-          // Return full user object for retry case
-          return res.json({
-            id: retryUser.id,
-            email: retryUser.email,
-            username: retryUser.username,
-            role: retryUser.role,
-            subscriptionStatus: retryUser.subscriptionStatus,
-            invited: retryUser.invited
+          return res.json({ 
+            success: true, 
+            message: "User found and synced",
+            userId: retryUser.id
           });
         }
         
@@ -130,14 +121,10 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
         });
       });
 
-      // Return full user object for new user
-      return res.json({
-        id: newUser.id,
-        email: newUser.email,
-        username: newUser.username,
-        role: newUser.role,
-        subscriptionStatus: newUser.subscriptionStatus,
-        invited: newUser.invited
+      return res.json({ 
+        success: true, 
+        message: "User metadata created",
+        userId: newUser.id
       });
 
     } catch (error: any) {

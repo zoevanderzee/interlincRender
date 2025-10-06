@@ -474,72 +474,86 @@ export default function AuthPage() {
 
           console.log("Sync response status:", syncResponse.status);
 
-          if (!syncResponse.ok) {
-            let syncErrorData;
-            try {
-              syncErrorData = await syncResponse.json();
-            } catch {
-              syncErrorData = { error: "Failed to parse error response" };
+          if (syncResponse.ok) {
+            const syncData = await syncResponse.json();
+            console.log("Backend sync successful:", syncData);
+
+            // Now fetch the user data using Firebase UID header
+            const userResponse = await fetch('/api/user', {
+              headers: {
+                'X-Firebase-UID': result.user.uid,
+                'Content-Type': 'application/json'
+              },
+              credentials: 'include'
+            });
+
+            if (userResponse.ok) {
+              const userData = await userResponse.json();
+              console.log("User data retrieved:", userData);
+
+              // Store authentication data in localStorage for future requests
+              localStorage.setItem('user_id', userData.id.toString());
+              localStorage.setItem('firebase_uid', result.user.uid);
+              console.log("Authentication data stored:");
+              console.log("- user_id:", userData.id);
+              console.log("- firebase_uid:", result.user.uid);
+
+              toast({
+                title: "Login Successful",
+                description: "Welcome back!",
+              });
+
+              // Check if user requires subscription using the actual userData object
+              console.log('Checking subscription for user:', {
+                id: userData.id,
+                subscriptionStatus: userData.subscriptionStatus,
+                invited: userData.invited,
+                role: userData.role
+              });
+
+              const needsSubscription = requiresSubscription(userData);
+
+              console.log('Subscription check after sync:', {
+                userId: userData.id,
+                subscriptionStatus: userData.subscriptionStatus,
+                invited: userData.invited,
+                role: userData.role,
+                needsSubscription
+              });
+
+              if (needsSubscription) {
+                console.log('User needs subscription, showing subscription form');
+                // Show subscription form directly without redirect
+                setShowSubscription(true);
+                setRegisteredUser({
+                  id: userData.id,
+                  email: userData.email,
+                  username: userData.username,
+                  role: userData.role
+                });
+              } else {
+                console.log("User has active subscription or is invited, redirecting to dashboard");
+                // Redirect to dashboard
+                window.location.href = '/';
+              }
+            } else {
+              throw new Error("Failed to retrieve user data from backend");
             }
+          } else {
+            const syncErrorData = await syncResponse.json();
             console.error("Backend sync failed:", syncErrorData);
             throw new Error(`Failed to sync with backend: ${syncErrorData.details || syncErrorData.error || 'Unknown error'}`);
-          }
-
-          // Parse the response
-          let userData;
-          try {
-            const responseText = await syncResponse.text();
-            console.log("Raw sync response:", responseText);
-            userData = JSON.parse(responseText);
-            console.log("Backend sync successful:", userData);
-          } catch (parseError) {
-            console.error("Failed to parse sync response:", parseError);
-            throw new Error("Backend returned invalid JSON response");
-          }
-
-          // Validate we got the required user data
-          if (!userData || !userData.id || !userData.email) {
-            console.error("Invalid user data received:", userData);
-            throw new Error("Backend returned incomplete user data");
-          }
-
-          // Store authentication data in localStorage
-          localStorage.setItem('user_id', userData.id.toString());
-          localStorage.setItem('firebase_uid', result.user.uid);
-
-          toast({
-            title: "Login Successful",
-            description: "Welcome back!",
-          });
-
-          // Check if user requires subscription
-          const needsSubscription = requiresSubscription(userData);
-
-          if (needsSubscription) {
-            console.log('User needs subscription, showing subscription form');
-            setShowSubscription(true);
-            setRegisteredUser({
-              id: userData.id,
-              email: userData.email,
-              username: userData.username,
-              role: userData.role
-            });
-          } else {
-            console.log("User has active subscription, redirecting to dashboard");
-            window.location.href = '/';
           }
         } catch (syncError: any) {
           console.error("Backend sync error:", syncError);
 
-          // Show specific error message to user
-          toast({
-            title: "Login Failed", 
-            description: syncError.message || "Failed to complete authentication. Please try again.",
-            variant: "destructive",
-          });
+          // Try to get more specific error information
+          let errorMessage = "Authentication succeeded but failed to sync with backend";
+          if (syncError.message && syncError.message.includes('Failed to sync with backend:')) {
+            errorMessage = syncError.message;
+          }
 
-          // Re-throw to trigger the outer error handler
-          throw syncError;
+          throw new Error(errorMessage);
         }
       } else {
         setLoginErrors({

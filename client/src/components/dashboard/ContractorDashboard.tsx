@@ -51,9 +51,8 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
            paymentDate <= thirtyDaysFromNow;
   });
 
-  // Active assignments from work requests - MUST match the filtering in projects.tsx
-  // Only show work requests with status 'accepted' to match "My Assignments" page
-  const activeAssignments = (dashboardData.workRequests || []).filter((req: any) => req.status === 'accepted');
+  // Active assignments from work requests (preferred) or active contracts as fallback
+  const activeAssignments = dashboardData.workRequests || dashboardData.contracts.filter(c => c.status === 'Active');
 
   // Fetch contractor earnings from Stripe Connect
   const { data: contractorEarnings, isLoading: earningsLoading } = useQuery({
