@@ -475,69 +475,33 @@ export default function AuthPage() {
           console.log("Sync response status:", syncResponse.status);
 
           if (syncResponse.ok) {
-            const syncData = await syncResponse.json();
-            console.log("Backend sync successful:", syncData);
+            const userData = await syncResponse.json();
+            console.log("Backend sync successful:", userData);
 
-            // Now fetch the user data using Firebase UID header
-            const userResponse = await fetch('/api/user', {
-              headers: {
-                'X-Firebase-UID': result.user.uid,
-                'Content-Type': 'application/json'
-              },
-              credentials: 'include'
+            // Store authentication data in localStorage
+            localStorage.setItem('user_id', userData.id.toString());
+            localStorage.setItem('firebase_uid', result.user.uid);
+
+            toast({
+              title: "Login Successful",
+              description: "Welcome back!",
             });
 
-            if (userResponse.ok) {
-              const userData = await userResponse.json();
-              console.log("User data retrieved:", userData);
+            // Check if user requires subscription
+            const needsSubscription = requiresSubscription(userData);
 
-              // Store authentication data in localStorage for future requests
-              localStorage.setItem('user_id', userData.id.toString());
-              localStorage.setItem('firebase_uid', result.user.uid);
-              console.log("Authentication data stored:");
-              console.log("- user_id:", userData.id);
-              console.log("- firebase_uid:", result.user.uid);
-
-              toast({
-                title: "Login Successful",
-                description: "Welcome back!",
-              });
-
-              // Check if user requires subscription using the actual userData object
-              console.log('Checking subscription for user:', {
+            if (needsSubscription) {
+              console.log('User needs subscription, showing subscription form');
+              setShowSubscription(true);
+              setRegisteredUser({
                 id: userData.id,
-                subscriptionStatus: userData.subscriptionStatus,
-                invited: userData.invited,
+                email: userData.email,
+                username: userData.username,
                 role: userData.role
               });
-
-              const needsSubscription = requiresSubscription(userData);
-
-              console.log('Subscription check after sync:', {
-                userId: userData.id,
-                subscriptionStatus: userData.subscriptionStatus,
-                invited: userData.invited,
-                role: userData.role,
-                needsSubscription
-              });
-
-              if (needsSubscription) {
-                console.log('User needs subscription, showing subscription form');
-                // Show subscription form directly without redirect
-                setShowSubscription(true);
-                setRegisteredUser({
-                  id: userData.id,
-                  email: userData.email,
-                  username: userData.username,
-                  role: userData.role
-                });
-              } else {
-                console.log("User has active subscription or is invited, redirecting to dashboard");
-                // Redirect to dashboard
-                window.location.href = '/';
-              }
             } else {
-              throw new Error("Failed to retrieve user data from backend");
+              console.log("User has active subscription, redirecting to dashboard");
+              window.location.href = '/';
             }
           } else {
             const syncErrorData = await syncResponse.json();
