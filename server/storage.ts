@@ -2108,7 +2108,8 @@ export class DatabaseStorage implements IStorage {
 
   async getPaymentsByContractorId(contractorId: number): Promise<Payment[]> {
     try {
-      // Get payments through contract relationship (existing schema)
+      // Get payments through contract relationship only
+      // The payments table links to contracts, and contracts link to contractors
       const contractPayments = await db
         .select({
           payment: payments,
@@ -2116,12 +2117,7 @@ export class DatabaseStorage implements IStorage {
         })
         .from(payments)
         .innerJoin(contracts, eq(payments.contractId, contracts.id))
-        .where(
-          and(
-            eq(contracts.contractorId, contractorId),
-            isNotNull(contracts.contractorId)
-          )
-        );
+        .where(eq(contracts.contractorId, contractorId));
 
       const contractorPayments = contractPayments.map(row => row.payment);
 
