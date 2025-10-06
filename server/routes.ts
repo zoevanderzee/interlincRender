@@ -3944,7 +3944,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get subscription prices endpoint
   app.get(`${apiRouter}/subscription-prices`, async (req: Request, res: Response) => {
     try {
-      // Return the subscription prices for all plans
+      // Return the subscription prices for all plans with consistent structure
       const prices = {
         'business-starter': {
           amount: 100, // £1.00 in pence
@@ -3984,6 +3984,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       };
 
+      console.log('Returning subscription prices:', Object.keys(prices));
       res.json(prices);
     } catch (error: any) {
       console.error('Error fetching subscription prices:', error);
