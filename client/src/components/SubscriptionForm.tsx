@@ -201,6 +201,64 @@ export default function SubscriptionForm({
   const [loadingPrices, setLoadingPrices] = useState(true);
   const { toast } = useToast();
 
+  // Define subscription plans function first - before using it
+  const getSubscriptionPlans = (): SubscriptionPlan[] => [
+    {
+      id: "business-starter",
+      name: prices["business-starter"]?.name || "Starter",
+      price: "Loading...",
+      description: "Perfect for small businesses just getting started",
+      features: [
+        "Up to 5 contractors",
+        "Basic project management",
+        "Payment processing",
+        "Email support",
+        "Essential features"
+      ]
+    },
+    {
+      id: "business",
+      name: prices["business"]?.name || "Standard",
+      price: "Loading...",
+      description: "Perfect for businesses managing contractors and projects",
+      features: [
+        "Unlimited contractors",
+        "Project milestone tracking",
+        "Automated payments",
+        "Budget management",
+        "Advanced reporting",
+        "Priority support"
+      ]
+    },
+    {
+      id: "business-enterprise",
+      name: prices["business-enterprise"]?.name || "Enterprise",
+      price: "Loading...",
+      description: "For large organizations with advanced needs",
+      features: [
+        "Everything in Standard",
+        "Custom integrations",
+        "Dedicated account manager",
+        "SLA guarantees",
+        "Advanced security",
+        "Custom workflows"
+      ]
+    },
+    {
+      id: "business-annual",
+      name: prices["business-annual"]?.name || "Annual",
+      price: "Loading...",
+      description: "Save with annual billing - all Standard features included",
+      features: [
+        "Everything in Standard Plan",
+        "Annual billing saves money",
+        "Priority support",
+        "Extended data retention",
+        "Advanced reporting"
+      ]
+    }
+  ];
+
   // Fetch real prices from Stripe
   useEffect(() => {
     const fetchPrices = async () => {
@@ -338,6 +396,9 @@ export default function SubscriptionForm({
     return `${currencySymbol}${amount.toFixed(2)}`;
   };
 
+  // Get subscription plans using the function defined earlier
+  const subscriptionPlans = getSubscriptionPlans();
+
   // Filter plans based on user role and update prices - STRICT SEPARATION
   const availablePlans = subscriptionPlans.filter(plan => {
     // Contractors can ONLY see contractor plans
@@ -366,67 +427,6 @@ export default function SubscriptionForm({
 
   // Debug logging for plan filtering
   console.log('Available plans for', userRole + ':', availablePlans.map(p => p.id));
-
-
-  // Subscription plans with real-time pricing from Stripe
-  const getSubscriptionPlans = (): SubscriptionPlan[] => [
-    {
-      id: "business-starter",
-      name: prices["business-starter"]?.name || "Starter",
-      price: "Loading...",
-      description: "Perfect for small businesses just getting started",
-      features: [
-        "Up to 5 contractors",
-        "Basic project management",
-        "Payment processing",
-        "Email support",
-        "Essential features"
-      ]
-    },
-    {
-      id: "business",
-      name: prices["business"]?.name || "Standard",
-      price: "Loading...",
-      description: "Perfect for businesses managing contractors and projects",
-      features: [
-        "Unlimited contractors",
-        "Project milestone tracking",
-        "Automated payments",
-        "Budget management",
-        "Advanced reporting",
-        "Priority support"
-      ]
-    },
-    {
-      id: "business-enterprise",
-      name: prices["business-enterprise"]?.name || "Enterprise",
-      price: "Loading...",
-      description: "For large organizations with advanced needs",
-      features: [
-        "Everything in Standard",
-        "Custom integrations",
-        "Dedicated account manager",
-        "SLA guarantees",
-        "Advanced security",
-        "Custom workflows"
-      ]
-    },
-    {
-      id: "business-annual",
-      name: prices["business-annual"]?.name || "Annual",
-      price: "Loading...",
-      description: "Save with annual billing - all Standard features included",
-      features: [
-        "Everything in Standard Plan",
-        "Annual billing saves money",
-        "Priority support",
-        "Extended data retention",
-        "Advanced reporting"
-      ]
-    }
-  ];
-
-  const subscriptionPlans = getSubscriptionPlans();
 
 
 
