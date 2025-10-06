@@ -3941,50 +3941,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get subscription prices endpoint
+  // Get subscription prices endpoint - fetches real-time prices from Stripe
   app.get(`${apiRouter}/subscription-prices`, async (req: Request, res: Response) => {
     try {
-      // Return the subscription prices for all plans with consistent structure
-      const prices = {
-        'business-starter': {
-          amount: 100, // £1.00 in pence
-          currency: 'gbp',
-          interval: 'month',
-          interval_count: 1
-        },
-        'business': {
-          amount: 2500, // £25.00 in pence
-          currency: 'gbp',
-          interval: 'month',
-          interval_count: 1
-        },
-        'business-enterprise': {
-          amount: 10000, // £100.00 in pence
-          currency: 'gbp',
-          interval: 'month',
-          interval_count: 1
-        },
-        'business-annual': {
-          amount: 25000, // £250.00 in pence (annual)
-          currency: 'gbp',
-          interval: 'year',
-          interval_count: 1
-        },
-        'contractor': {
-          amount: 0, // Free
-          currency: 'gbp',
-          interval: 'month',
-          interval_count: 1
-        },
-        'contractor-pro': {
-          amount: 1500, // £15.00 in pence
-          currency: 'gbp',
-          interval: 'month',
-          interval_count: 1
-        }
+      // Map of plan IDs to Stripe Price IDs
+      const priceIdMap = {
+        'business-starter': 'price_1R3fE9F4bfRUGDn90V6OjLvz', // Test Plan £1.00/month
+        'business': 'price_1QutIuF4bfRUGDn9n9GBPdgG', // Standard £49.99/month
+        'business-enterprise': 'price_1QutRyF4bfRUGDn9QY1THXZS', // Enterprise £200.00/month
+        'business-annual': 'price_1R0MlKF4bfRUGDn9RbbJQTiN', // Annual £1,200.00/year
+        'contractor': null, // Free plan - no Price ID needed
+        'contractor-pro': 'price_1QutjGF4bfRUGDn90v7mGlnO' // Contractor Pro £15.00/month
       };
 
-      console.log('Returning subscription prices:', Object.keys(prices));
+      const prices: Record<string, any> = {};
+
+      // Fetch each price from Stripe
+      for (const [planId, priceId] of Object.entries(priceIdMap)) {
+        if (priceId === null) {
+          // Free plan
+          prices[planId] = {
+            amount: 0,
+            currency: 'gbp',
+            interval: 'month',
+            interval_count: 1
+          };
+        } else {
+          try {
+            const price = await stripe.prices.retrieve(priceId);
+            prices[planId] = {
+              amount: price.unit_amount || 0,
+              currency: price.currency,
+              interval: price.recurring?.interval || 'month',
+              interval_count: price.recurring?.interval_count || 1
+            };
+          } catch (priceError) {
+            console.error(`Error fetching price ${priceId} for ${planId}:`, priceError);
+            // Fallback to default if Stripe fetch fails
+            prices[planId] = {
+              amount: 0,
+              currency: 'gbp',
+              interval: 'month',
+              interval_count: 1
+            };
+          }
+        }
+      }
+
+      console.log('Returning subscription prices from Stripe:', Object.keys(prices));
       res.json(prices);
     } catch (error: any) {
       console.error('Error fetching subscription prices:', error);
