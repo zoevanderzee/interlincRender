@@ -3944,14 +3944,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get subscription prices endpoint - fetches real-time prices from Stripe
   app.get(`${apiRouter}/subscription-prices`, async (req: Request, res: Response) => {
     try {
-      // Map of plan IDs to Stripe Price IDs
+      // Map of plan IDs to Stripe Price IDs - UPDATED WITH CORRECT IDs
       const priceIdMap = {
-        'business-starter': 'price_1R3fE9F4bfRUGDn90V6OjLvz', // Test Plan £1.00/month
-        'business': 'price_1QutIuF4bfRUGDn9n9GBPdgG', // Standard £49.99/month
-        'business-enterprise': 'price_1QutRyF4bfRUGDn9QY1THXZS', // Enterprise £200.00/month
-        'business-annual': 'price_1R0MlKF4bfRUGDn9RbbJQTiN', // Annual £1,200.00/year
+        'business-starter': 'price_1SFIvtF4bfRUGDn9MWvE1imT', // Starter plan
+        'business': 'price_1SFIv5F4bfRUGDn9qeJh0VYX', // Standard plan
+        'business-enterprise': 'price_1Ricn6F4bfRUGDn91XzkPq5F', // Enterprise plan
+        'business-annual': 'price_1RgRilF4bfRUGDn9jMnjAo96', // Annual plan
         'contractor': null, // Free plan - no Price ID needed
-        'contractor-pro': 'price_1QutjGF4bfRUGDn90v7mGlnO' // Contractor Pro £15.00/month
+        'contractor-pro': null // Set to null until valid contractor pro price ID provided
       };
 
       const prices: Record<string, any> = {};
@@ -3966,29 +3966,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
             interval: 'month',
             interval_count: 1
           };
+          console.log(`Plan ${planId}: Free (no price ID)`);
         } else {
           try {
+            console.log(`Fetching price ${priceId} for plan ${planId}...`);
             const price = await stripe.prices.retrieve(priceId);
             prices[planId] = {
               amount: price.unit_amount || 0,
-              currency: price.currency,
+              currency: price.currency || 'gbp',
               interval: price.recurring?.interval || 'month',
               interval_count: price.recurring?.interval_count || 1
             };
-          } catch (priceError) {
-            console.error(`Error fetching price ${priceId} for ${planId}:`, priceError);
-            // Fallback to default if Stripe fetch fails
+            console.log(`Plan ${planId}: ${price.unit_amount} ${price.currency} per ${price.recurring?.interval}`);
+          } catch (priceError: any) {
+            console.error(`Error fetching price ${priceId} for ${planId}:`, priceError.message);
+            // Return error info instead of fallback
             prices[planId] = {
               amount: 0,
               currency: 'gbp',
               interval: 'month',
-              interval_count: 1
+              interval_count: 1,
+              error: `Failed to fetch: ${priceError.message}`
             };
           }
         }
       }
 
-      console.log('Returning subscription prices from Stripe:', Object.keys(prices));
+      console.log('Subscription prices fetched:', prices);
       res.json(prices);
     } catch (error: any) {
       console.error('Error fetching subscription prices:', error);
