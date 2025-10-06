@@ -2544,50 +2544,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Get contractor's own contracts
         const contractorContracts = await storage.getContractsByContractorId(userId);
 
-        // Get contractor's work requests (assignments)
+        // Get contractor's work requests (assignments) - SAME AS ASSIGNMENTS PAGE
         const workRequests = await storage.getWorkRequestsByContractorId(userId);
 
         // Get contractor's own milestones
         const contractorMilestones = [];
-        //const contractorPayments = []; // REMOVED - THIS WAS INCORRECTLY POPULATED
-
         for (const contract of contractorContracts) {
           const milestones = await storage.getMilestonesByContractId(contract.id);
-          // CORRECTED: Get payments specifically for this contractor
-          const payments = await storage.getPaymentsByContractorId(userId); // Fetch payments for the contractor
           contractorMilestones.push(...milestones);
-          // REMOVED: Duplicate payment fetching - moved to correct location below
-          //contractorPayments.push(...payments);
         }
 
-        // Active assignments are work requests with status 'assigned', 'in_review', or 'approved'
-        const activeAssignments = workRequests.filter(wr =>
-          ['assigned', 'in_review', 'approved'].includes(wr.status)
-        );
+        // Active assignments - EXACT SAME FILTER AS ASSIGNMENTS PAGE
+        const activeAssignments = workRequests.filter(wr => wr.status === 'accepted');
 
-        // CORRECTED PAYMENT CALCULATION FOR CONTRACTORS
-        // Get contractor-specific payments directly
-        const contractorPayments = await storage.getPaymentsByContractorId(userId);
+        // Calculate total earnings from accepted work requests - MATCH ASSIGNMENTS PAGE LOGIC
+        const totalEarnings = workRequests
+          .filter(wr => wr.status === 'accepted')
+          .reduce((sum, wr) => sum + parseFloat(wr.amount || 0), 0);
 
-        // Calculate total earnings from completed payments
-        const totalEarnings = contractorPayments
-          .filter(p => p.status === 'completed')
-          .reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
-
-        // Calculate pending earnings from work requests and pending payments
-        const pendingFromWorkRequests = workRequests
-          .filter(wr => ['assigned', 'in_review', 'approved'].includes(wr.status))
-          .reduce((sum, wr) => sum + parseFloat(wr.amount), 0);
-
-        const pendingFromPayments = contractorPayments
-          .filter(p => ['pending', 'processing', 'scheduled'].includes(p.status))
-          .reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
-
-        const totalPendingEarnings = pendingFromWorkRequests + pendingFromPayments;
+        // Calculate pending earnings from work requests
+        const totalPendingEarnings = workRequests
+          .filter(wr => ['pending', 'assigned'].includes(wr.status))
+          .reduce((sum, wr) => sum + parseFloat(wr.amount || 0), 0);
 
         console.log(`CONTRACTOR ${userId} EARNINGS CALCULATION:`, {
-          totalPayments: contractorPayments.length,
-          completedPayments: contractorPayments.filter(p => p.status === 'completed').length,
+          totalWorkRequests: workRequests.length,
+          acceptedAssignments: activeAssignments.length,
           totalEarnings: totalEarnings,
           totalPendingEarnings: totalPendingEarnings
         });
@@ -2624,21 +2606,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const dashboardData = {
           stats: {
-            activeContractsCount: activeAssignments.length, // Show active assignments instead
+            activeContractsCount: activeAssignments.length, // EXACT COUNT FROM ASSIGNMENTS PAGE
             pendingApprovalsCount: contractorMilestones.filter(m => m.status === 'completed' || m.status === 'submitted').length,
-            paymentsProcessed: totalEarnings, // BULLETPROOF: Show total completed payment earnings
-            totalPendingValue: totalPendingEarnings, // Show pending earnings
+            paymentsProcessed: totalEarnings, // Total from accepted work requests
+            totalPendingValue: totalPendingEarnings, // Pending from work requests
             activeContractorsCount: 0, // Not relevant for contractors
             pendingInvitesCount: 0, // Not relevant for contractors
-            // Additional contractor-specific stats
-            totalSuccessfulPayments: contractorPayments.filter(p => p.status === 'completed').length,
-            totalPaymentValue: totalEarnings // Same as paymentsProcessed for contractors
           },
           contracts: contractorContracts, // Contractor's own contracts
           milestones: contractorMilestones, // Contractor's own milestones
-          payments: contractorPayments, // Contractor's own payments
-          workRequests: workRequests, // Add work requests to dashboard data
-          assignments: activeAssignments, // Add active assignments specifically
+          payments: [], // Empty array - not using broken payment query
+          workRequests: workRequests, // SAME DATA AS ASSIGNMENTS PAGE
+          assignments: activeAssignments, // SAME FILTER AS ASSIGNMENTS PAGE
           businesses: uniqueBusinesses // Add businesses array for contractor dashboard
         };
         return res.json(dashboardData);
