@@ -22,96 +22,6 @@ interface SubscriptionPlan {
   recommended?: boolean;
 }
 
-const subscriptionPlans: SubscriptionPlan[] = [
-  {
-    id: "business-starter",
-    name: "Test Plan",
-    price: "Loading...",
-    description: "Try the platform with full features at a minimal cost",
-    features: [
-      "Full platform access",
-      "Test all features",
-      "Perfect for evaluation",
-      "Upgrade anytime",
-      "Email support"
-    ]
-  },
-  {
-    id: "business",
-    name: "Standard",
-    price: "Loading...",
-    description: "Perfect for businesses managing contractors and projects",
-    features: [
-      "Unlimited contractor management",
-      "Project milestone tracking",
-      "Automated payments",
-      "Budget management",
-      "Data room access",
-      "Advanced reporting",
-      "Priority support"
-    ],
-    recommended: true
-  },
-  {
-    id: "business-enterprise",
-    name: "Enterprise",
-    price: "Loading...",
-    description: "Advanced features for large businesses with complex needs",
-    features: [
-      "Everything in Standard Plan",
-      "White-label options",
-      "Custom integrations",
-      "Dedicated account manager",
-      "Advanced analytics",
-      "SLA guarantees",
-      "24/7 phone support"
-    ]
-  },
-  {
-    id: "business-annual",
-    name: "Business Annual",
-    price: "Loading...",
-    description: "Get the full Standard Plan features with annual billing",
-    features: [
-      "Everything in Standard Plan",
-      "Annual billing discount",
-      "Priority support",
-      "Extended data retention",
-      "Advanced reporting"
-    ]
-  },
-  {
-    id: "contractor",
-    name: "Contractor Basic",
-    price: "Loading...",
-    description: "Essential tools for independent contractors",
-    features: [
-      "Profile management",
-      "Work submissions",
-      "Payment tracking",
-      "Project collaboration",
-      "Basic reporting",
-      "Email support"
-    ]
-  },
-  {
-    id: "contractor-pro",
-    name: "Contractor Pro",
-    price: "Loading...",
-    description: "Advanced tools for professional contractors",
-    features: [
-      "Everything in Basic Plan",
-      "Advanced analytics",
-      "Priority support",
-      "Custom invoicing",
-      "Extended file storage",
-      "API access",
-      "White-label options"
-    ],
-    recommended: true
-  }
-];
-
 interface SubscriptionFormProps {
   userRole: 'business' | 'contractor';
   userEmail: string;
@@ -137,7 +47,7 @@ const CheckoutForm = ({
 
   useEffect(() => {
     if (!elements) return;
-    
+
     // Listen for the payment element to be ready
     const paymentElement = elements.getElement('payment');
     if (paymentElement) {
@@ -175,7 +85,7 @@ const CheckoutForm = ({
 
     try {
       console.log('Starting payment confirmation for subscription:', subscriptionId);
-      
+
       const { error } = await stripe.confirmPayment({
         elements,
         confirmParams: {
@@ -186,7 +96,7 @@ const CheckoutForm = ({
 
       if (error) {
         console.error('Stripe payment confirmation error:', error);
-        
+
         // Provide specific error messages for common payment issues
         let errorMessage = error.message;
         if (error.code === 'authentication_required') {
@@ -202,7 +112,7 @@ const CheckoutForm = ({
         } else if (error.code === 'generic_decline') {
           errorMessage = "Your card was declined. Please contact your bank for more information or use a different card.";
         }
-        
+
         toast({
           title: "Payment Failed",
           description: errorMessage,
@@ -212,13 +122,13 @@ const CheckoutForm = ({
       }
 
       console.log('Payment confirmed successfully, completing subscription...');
-      
+
       // Complete subscription on backend
       const completeResponse = await apiRequest("POST", "/api/complete-subscription", {
         subscriptionId,
         userId
       });
-      
+
       if (!completeResponse.ok) {
         const errorData = await completeResponse.json();
         console.error('Complete subscription error:', errorData);
@@ -226,14 +136,14 @@ const CheckoutForm = ({
       }
 
       console.log('Subscription completed successfully');
-      
+
       toast({
         title: "Subscription Activated",
         description: "Welcome! Your subscription is now active.",
       });
 
       onComplete();
-      
+
     } catch (error: any) {
       console.error('Subscription activation error:', error);
       toast({
@@ -271,7 +181,7 @@ export default function SubscriptionForm({
 }: SubscriptionFormProps) {
   // Debug logging to ensure role separation
   console.log('SubscriptionForm userRole:', userRole);
-  
+
   // Validate role
   if (userRole !== 'business' && userRole !== 'contractor') {
     console.error('Invalid user role:', userRole);
@@ -282,7 +192,7 @@ export default function SubscriptionForm({
       </div>
     );
   }
-  
+
   const [selectedPlan, setSelectedPlan] = useState<string>(userRole);
   const [clientSecret, setClientSecret] = useState<string>("");
   const [subscriptionId, setSubscriptionId] = useState<string>("");
@@ -329,7 +239,7 @@ export default function SubscriptionForm({
 
       setSubscriptionId(data.subscriptionId);
       setSelectedPlan(planId);
-      
+
       // Check if this is a free subscription (no clientSecret)
       if (data.clientSecret) {
         // Paid subscription - show payment form
@@ -402,29 +312,29 @@ export default function SubscriptionForm({
   // Helper function to format price
   const formatPrice = (planId: string) => {
     if (loadingPrices) return "Loading...";
-    
+
     const priceData = prices[planId];
     if (!priceData) return "Price unavailable";
-    
+
     const amount = priceData.amount / 100; // Convert cents to pounds
     const currency = priceData.currency.toUpperCase();
     const interval = priceData.interval;
     const intervalCount = priceData.interval_count || 1;
-    
+
     // Only show "Free" for contractor base plan (explicitly free)
     if (amount === 0 && planId === 'contractor') {
       return "Free";
     }
-    
+
     // Format currency symbol
     const currencySymbol = currency === 'GBP' ? '£' : currency === 'USD' ? '$' : currency === 'EUR' ? '€' : currency;
-    
+
     if (interval === 'month') {
       return `${currencySymbol}${amount.toFixed(2)}${intervalCount === 1 ? '/month' : `/${intervalCount} months`}`;
     } else if (interval === 'year') {
       return `${currencySymbol}${amount.toFixed(2)}${intervalCount === 1 ? '/year' : `/${intervalCount} years`}`;
     }
-    
+
     return `${currencySymbol}${amount.toFixed(2)}`;
   };
 
@@ -458,6 +368,67 @@ export default function SubscriptionForm({
   console.log('Available plans for', userRole + ':', availablePlans.map(p => p.id));
 
 
+  // Subscription plans with real-time pricing from Stripe
+  const getSubscriptionPlans = (): SubscriptionPlan[] => [
+    {
+      id: "business-starter",
+      name: prices["business-starter"]?.name || "Starter",
+      price: "Loading...",
+      description: "Perfect for small businesses just getting started",
+      features: [
+        "Up to 5 contractors",
+        "Basic project management",
+        "Payment processing",
+        "Email support",
+        "Essential features"
+      ]
+    },
+    {
+      id: "business",
+      name: prices["business"]?.name || "Standard",
+      price: "Loading...",
+      description: "Perfect for businesses managing contractors and projects",
+      features: [
+        "Unlimited contractors",
+        "Project milestone tracking",
+        "Automated payments",
+        "Budget management",
+        "Advanced reporting",
+        "Priority support"
+      ]
+    },
+    {
+      id: "business-enterprise",
+      name: prices["business-enterprise"]?.name || "Enterprise",
+      price: "Loading...",
+      description: "For large organizations with advanced needs",
+      features: [
+        "Everything in Standard",
+        "Custom integrations",
+        "Dedicated account manager",
+        "SLA guarantees",
+        "Advanced security",
+        "Custom workflows"
+      ]
+    },
+    {
+      id: "business-annual",
+      name: prices["business-annual"]?.name || "Annual",
+      price: "Loading...",
+      description: "Save with annual billing - all Standard features included",
+      features: [
+        "Everything in Standard Plan",
+        "Annual billing saves money",
+        "Priority support",
+        "Extended data retention",
+        "Advanced reporting"
+      ]
+    }
+  ];
+
+  const subscriptionPlans = getSubscriptionPlans();
+
+
 
   return (
     <div className="max-w-4xl mx-auto p-6">
@@ -478,53 +449,60 @@ export default function SubscriptionForm({
           ? 'grid md:grid-cols-2 gap-6 max-w-4xl' 
           : 'grid md:grid-cols-3 gap-6 max-w-5xl'
       } mx-auto`}>
-        {availablePlans.map((plan) => (
-          <Card 
-            key={plan.id} 
-            className={`relative cursor-pointer transition-all hover:shadow-lg ${
-              selectedPlan === plan.id ? 'ring-2 ring-blue-500' : ''
-            }`}
-            onClick={() => setSelectedPlan(plan.id)}
-          >
-            {plan.recommended && (
-              <Badge className="absolute -top-2 left-1/2 transform -translate-x-1/2">
-                Recommended
-              </Badge>
-            )}
-            
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                {plan.name}
-                <span className="text-2xl font-bold text-blue-600">
-                  {plan.price}
-                </span>
-              </CardTitle>
-              <CardDescription>{plan.description}</CardDescription>
-            </CardHeader>
-            
-            <CardContent>
-              <ul className="space-y-3">
-                {plan.features.map((feature, index) => (
-                  <li key={index} className="flex items-center">
-                    <Check className="h-4 w-4 text-green-500 mr-3 flex-shrink-0" />
-                    <span className="text-sm">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-              
-              <Button 
-                className="w-full mt-6"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handlePlanSelect(plan.id);
-                }}
-                variant={selectedPlan === plan.id ? "default" : "outline"}
-              >
-                {selectedPlan === plan.id ? "Selected" : "Choose Plan"}
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
+        {getSubscriptionPlans().map((plan) => {
+              const priceInfo = prices[plan.id];
+              const displayPrice = priceInfo 
+                ? formatPrice(plan.id) // Use formatPrice helper for consistent formatting
+                : plan.price;
+
+              return (
+                <Card
+                  key={plan.id}
+                  className={`relative cursor-pointer transition-all hover:shadow-lg ${
+                    selectedPlan === plan.id ? 'ring-2 ring-blue-500' : ''
+                  }`}
+                  onClick={() => setSelectedPlan(plan.id)}
+                >
+                  {plan.recommended && (
+                    <Badge className="absolute -top-2 left-1/2 transform -translate-x-1/2">
+                      Recommended
+                    </Badge>
+                  )}
+
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      {plan.name}
+                      <span className="text-2xl font-bold text-blue-600">
+                        {displayPrice}
+                      </span>
+                    </CardTitle>
+                    <CardDescription>{plan.description}</CardDescription>
+                  </CardHeader>
+
+                  <CardContent>
+                    <ul className="space-y-3">
+                      {plan.features.map((feature, index) => (
+                        <li key={index} className="flex items-center">
+                          <Check className="h-4 w-4 text-green-500 mr-3 flex-shrink-0" />
+                          <span className="text-sm">{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    <Button 
+                      className="w-full mt-6"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handlePlanSelect(plan.id);
+                      }}
+                      variant={selectedPlan === plan.id ? "default" : "outline"}
+                    >
+                      {selectedPlan === plan.id ? "Selected" : "Choose Plan"}
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
       </div>
     </div>
   );
