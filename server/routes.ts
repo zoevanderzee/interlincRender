@@ -3941,6 +3941,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get subscription prices endpoint
+  app.get(`${apiRouter}/subscription-prices`, async (req: Request, res: Response) => {
+    try {
+      // Return the subscription prices for all plans
+      const prices = {
+        'business-starter': {
+          amount: 100, // £1.00 in pence
+          currency: 'gbp',
+          interval: 'month',
+          interval_count: 1
+        },
+        'business': {
+          amount: 2500, // £25.00 in pence
+          currency: 'gbp',
+          interval: 'month',
+          interval_count: 1
+        },
+        'business-enterprise': {
+          amount: 10000, // £100.00 in pence
+          currency: 'gbp',
+          interval: 'month',
+          interval_count: 1
+        },
+        'business-annual': {
+          amount: 25000, // £250.00 in pence (annual)
+          currency: 'gbp',
+          interval: 'year',
+          interval_count: 1
+        },
+        'contractor': {
+          amount: 0, // Free
+          currency: 'gbp',
+          interval: 'month',
+          interval_count: 1
+        },
+        'contractor-pro': {
+          amount: 1500, // £15.00 in pence
+          currency: 'gbp',
+          interval: 'month',
+          interval_count: 1
+        }
+      };
+
+      res.json(prices);
+    } catch (error: any) {
+      console.error('Error fetching subscription prices:', error);
+      res.status(500).json({
+        message: "Error fetching subscription prices",
+        error: error.message
+      });
+    }
+  });
+
   // Subscription endpoint for companies
   app.post(`${apiRouter}/get-or-create-subscription`, async (req: Request, res: Response) => {
     try {
