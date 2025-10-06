@@ -2112,8 +2112,7 @@ export class DatabaseStorage implements IStorage {
       // The payments table links to contracts, and contracts link to contractors
       const contractPayments = await db
         .select({
-          payment: payments,
-          contract: contracts
+          payment: payments
         })
         .from(payments)
         .innerJoin(contracts, eq(payments.contractId, contracts.id))
