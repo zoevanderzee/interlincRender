@@ -89,6 +89,10 @@ app.use((req, res, next) => {
   registerBusinessWorkerRoutes(app, requireAuth);
   registerContractorsWithIdsRoutes(app, requireAuth);
 
+  // CRITICAL: Register sync route BEFORE Vite middleware to prevent route interception
+  const { registerSyncFirebaseUserRoutes } = await import("./routes/sync-firebase-user");
+  registerSyncFirebaseUserRoutes(app);
+
   // Use our error logger middleware
   app.use(errorLogger);
 
