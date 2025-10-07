@@ -24,7 +24,7 @@ function Subscribe() {
 
   if (isLoading || userLoading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="min-h-screen text-white flex items-center justify-center" style={{ background: '#0f1a2e' }}>
         <div className="flex flex-col items-center">
           <Loader2 className="h-12 w-12 animate-spin text-indigo-500 mb-4" />
           <p className="text-lg">Loading subscription options...</p>
@@ -35,7 +35,7 @@ function Subscribe() {
 
   if (error || !currentUser) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
+      <div className="min-h-screen text-white flex items-center justify-center p-4" style={{ background: '#0f1a2e' }}>
         <Card className="max-w-md w-full bg-black text-white border border-gray-800">
           <CardHeader>
             <CardTitle className="text-xl font-bold text-red-500">Authentication Error</CardTitle>
@@ -63,7 +63,7 @@ function Subscribe() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen text-white" style={{ background: '#0f1a2e' }}>
       <SubscriptionForm
         userRole={currentUser.role as 'business' | 'contractor'}
         userEmail={currentUser.email}
