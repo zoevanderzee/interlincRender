@@ -2873,6 +2873,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`[Subscription] Created new Stripe customer ${customerId} for user ${user.id}`);
         } else {
           console.log(`[Subscription] Using existing Stripe customer ${customerId} for user ${user.id}`);
+          
+          // CRITICAL FIX: Cancel ALL existing subscriptions to prevent currency conflicts
+          const existingSubscriptions = await stripe.subscriptions.list({
+            customer: customerId,
+            status: 'all',
+            limit: 100
+          });
+
+          console.log(`[Subscription] Found ${existingSubscriptions.data.length} existing subscriptions for customer ${customerId}`);
+
+          for (const existingSub of existingSubscriptions.data) {
+            if (['active', 'trialing', 'incomplete', 'incomplete_expired', 'past_due'].includes(existingSub.status)) {
+              console.log(`[Subscription] Canceling existing subscription ${existingSub.id} (status: ${existingSub.status})`);
+              await stripe.subscriptions.cancel(existingSub.id);
+            }
+          }
         }
 
         // Create the subscription using the verified Stripe Price ID
