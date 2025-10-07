@@ -2874,7 +2874,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else {
           console.log(`[Subscription] Using existing Stripe customer ${customerId} for user ${user.id}`);
           
-          // CRITICAL FIX: Cancel ALL existing subscriptions to prevent currency conflicts
+          // Cancel ONLY trialing, incomplete, or past_due subscriptions to prevent currency conflicts
           const existingSubscriptions = await stripe.subscriptions.list({
             customer: customerId,
             status: 'all',
@@ -2884,9 +2884,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`[Subscription] Found ${existingSubscriptions.data.length} existing subscriptions for customer ${customerId}`);
 
           for (const existingSub of existingSubscriptions.data) {
-            if (['active', 'trialing', 'incomplete', 'incomplete_expired', 'past_due'].includes(existingSub.status)) {
-              console.log(`[Subscription] Canceling existing subscription ${existingSub.id} (status: ${existingSub.status})`);
+            // Only cancel non-active subscriptions (trialing, incomplete, past_due)
+            if (['trialing', 'incomplete', 'incomplete_expired', 'past_due'].includes(existingSub.status)) {
+              console.log(`[Subscription] Canceling non-active subscription ${existingSub.id} (status: ${existingSub.status})`);
               await stripe.subscriptions.cancel(existingSub.id);
+            } else if (existingSub.status === 'active') {
+              console.log(`[Subscription] Preserving active subscription ${existingSub.id}`);
             }
           }
         }
