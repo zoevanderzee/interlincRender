@@ -205,22 +205,23 @@ export default function SubscriptionForm({
   const getSubscriptionPlans = (): SubscriptionPlan[] => [
     {
       id: "business-starter",
-      name: prices["business-starter"]?.name || "Starter",
+      name: "Enterprise Annual",
       price: "Loading...",
-      description: "Perfect for small businesses just getting started",
+      description: "Annual enterprise plan with all features",
       features: [
-        "Up to 5 contractors",
-        "Basic project management",
-        "Payment processing",
-        "Email support",
-        "Essential features"
+        "Everything in Enterprise",
+        "Annual billing saves money",
+        "Dedicated account manager",
+        "SLA guarantees",
+        "Advanced security",
+        "Custom workflows"
       ]
     },
     {
       id: "business",
-      name: prices["business"]?.name || "Standard",
+      name: "SME Monthly",
       price: "Loading...",
-      description: "Perfect for businesses managing contractors and projects",
+      description: "Perfect for small to medium businesses",
       features: [
         "Unlimited contractors",
         "Project milestone tracking",
@@ -232,11 +233,11 @@ export default function SubscriptionForm({
     },
     {
       id: "business-enterprise",
-      name: prices["business-enterprise"]?.name || "Enterprise",
+      name: "Enterprise Monthly",
       price: "Loading...",
       description: "For large organizations with advanced needs",
       features: [
-        "Everything in Standard",
+        "Everything in SME",
         "Custom integrations",
         "Dedicated account manager",
         "SLA guarantees",
@@ -246,11 +247,11 @@ export default function SubscriptionForm({
     },
     {
       id: "business-annual",
-      name: prices["business-annual"]?.name || "Annual",
+      name: "SME Annual",
       price: "Loading...",
-      description: "Save with annual billing - all Standard features included",
+      description: "Save with annual billing for SME features",
       features: [
-        "Everything in Standard Plan",
+        "Everything in SME Monthly",
         "Annual billing saves money",
         "Priority support",
         "Extended data retention",
@@ -412,11 +413,9 @@ export default function SubscriptionForm({
     // Fallback: no plans if role is unclear
     return false;
   }).map(plan => {
-    const priceData = prices[plan.id];
     return {
       ...plan,
-      // Use actual Stripe product name if available, otherwise use plan name
-      name: priceData?.name || plan.name,
+      // Use hardcoded plan name - ignore Stripe product name
       price: formatPrice(plan.id)
     };
   }).filter(plan => {

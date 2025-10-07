@@ -30,10 +30,10 @@ interface SubscriptionData {
 }
 
 const planNameMapping: Record<string, string> = {
-  'business-starter': 'Starter',
-  'business': 'Standard', 
-  'business-enterprise': 'Enterprise',
-  'business-annual': 'Annual',
+  'business-starter': 'Enterprise Annual',
+  'business': 'SME Monthly', 
+  'business-enterprise': 'Enterprise Monthly',
+  'business-annual': 'SME Annual',
   'contractor': 'Free',
   'contractor-pro': 'Contractor Pro'
 };
