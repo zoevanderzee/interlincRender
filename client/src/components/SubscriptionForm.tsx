@@ -31,27 +31,21 @@ interface SubscriptionFormProps {
 }
 
 const CheckoutForm = ({ 
-  planId,
-  userId, 
-  userEmail,
-  userName,
-  onComplete,
-  onCreateSubscription
+  userId,
+  subscriptionId,
+  clientSecret,
+  onComplete
 }: { 
-  planId: string;
   userId: number;
-  userEmail: string;
-  userName: string;
+  subscriptionId: string;
+  clientSecret: string;
   onComplete: () => void;
-  onCreateSubscription: (planId: string) => Promise<{ subscriptionId: string; clientSecret: string }>;
 }) => {
   const stripe = useStripe();
   const elements = useElements();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
   const [isElementReady, setIsElementReady] = useState(false);
-  const [subscriptionId, setSubscriptionId] = useState<string>("");
-  const [clientSecret, setClientSecret] = useState<string>("");
 
   useEffect(() => {
     if (elements) {
@@ -74,18 +68,12 @@ const CheckoutForm = ({
     setIsProcessing(true);
 
     try {
-      // Step 1: Create subscription and get payment intent
-      console.log('Creating subscription for plan:', planId);
-      const { subscriptionId: newSubId, clientSecret: newClientSecret } = await onCreateSubscription(planId);
-      setSubscriptionId(newSubId);
-      setClientSecret(newClientSecret);
+      console.log('Starting payment confirmation for subscription:', subscriptionId);
 
-      console.log('Starting payment confirmation for subscription:', newSubId);
-
-      // Step 2: Confirm payment with the client secret
+      // Confirm payment with the client secret
       const { error } = await stripe.confirmPayment({
         elements,
-        clientSecret: newClientSecret,
+        clientSecret,
         confirmParams: {
           return_url: `${window.location.origin}/subscription-success`,
         },
@@ -121,9 +109,9 @@ const CheckoutForm = ({
 
       console.log('Payment confirmed successfully, completing subscription...');
 
-      // Step 3: Complete subscription on backend
+      // Complete subscription on backend
       const completeResponse = await apiRequest("POST", "/api/complete-subscription", {
-        subscriptionId: newSubId,
+        subscriptionId,
         userId
       });
 
@@ -291,26 +279,10 @@ export default function SubscriptionForm({
         throw new Error('Price information not available for this plan');
       }
 
-      // Set the selected plan - show payment form immediately without creating subscription
       setSelectedPlan(planId);
-      setShowPayment(true);
 
-    } catch (error) {
-      console.error('[Subscription] Error:', error);
-      toast({
-        title: "Plan Selection Error",
-        description: error instanceof Error ? error.message : "Failed to select plan",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // NEW: Create subscription only when user submits payment
-  const createSubscriptionWithPayment = async (planId: string) => {
-    try {
+      // Create subscription and get clientSecret
       console.log('[Subscription] Creating subscription with plan:', planId);
-
-      // Create subscription with Stripe - backend will use correct Price ID
       const response = await apiRequest("POST", "/api/create-subscription", {
         planType: planId,
         email: userEmail,
@@ -326,14 +298,18 @@ export default function SubscriptionForm({
 
       console.log('[Subscription] ✅ Subscription created:', data.subscriptionId);
 
-      return {
-        subscriptionId: data.subscriptionId,
-        clientSecret: data.clientSecret
-      };
+      // Set the client secret and subscription ID, then show payment form
+      setClientSecret(data.clientSecret);
+      setSubscriptionId(data.subscriptionId);
+      setShowPayment(true);
 
     } catch (error) {
       console.error('[Subscription] Error:', error);
-      throw error;
+      toast({
+        title: "Plan Selection Error",
+        description: error instanceof Error ? error.message : "Failed to select plan",
+        variant: "destructive",
+      });
     }
   };
 
@@ -342,7 +318,14 @@ export default function SubscriptionForm({
     onSubscriptionComplete();
   };
 
-  if (showPayment) {
+  if (showPayment && clientSecret) {
+    const options = {
+      clientSecret,
+      appearance: {
+        theme: 'stripe' as const,
+      },
+    };
+
     return (
       <div className="max-w-md mx-auto">
         <Card>
@@ -353,14 +336,12 @@ export default function SubscriptionForm({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Elements stripe={stripePromise}>
+            <Elements stripe={stripePromise} options={options}>
               <CheckoutForm 
-                planId={selectedPlan}
                 userId={userId}
-                userEmail={userEmail}
-                userName={userName}
+                subscriptionId={subscriptionId}
+                clientSecret={clientSecret}
                 onComplete={handleSubscriptionComplete}
-                onCreateSubscription={createSubscriptionWithPayment}
               />
             </Elements>
           </CardContent>
