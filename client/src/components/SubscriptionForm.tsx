@@ -325,16 +325,6 @@ export default function SubscriptionForm({
   };
 
   if (showPayment && clientSecret) {
-    // Configure Stripe Elements options - card and Apple Pay/Link only
-    const options = {
-      clientSecret,
-      mode: 'subscription' as const,
-      appearance: {
-        theme: 'stripe' as const,
-      },
-      loader: 'always' as const,
-    };
-
     return (
       <div className="max-w-md mx-auto">
         <Card>
@@ -345,7 +335,7 @@ export default function SubscriptionForm({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Elements stripe={stripePromise} options={options}>
+            <Elements stripe={stripePromise} options={{ clientSecret }}>
               <CheckoutForm 
                 subscriptionId={subscriptionId}
                 userId={userId}
