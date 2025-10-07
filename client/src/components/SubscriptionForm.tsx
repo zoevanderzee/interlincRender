@@ -237,12 +237,12 @@ export default function SubscriptionForm({
       price: "Loading...",
       description: "For large organizations with advanced needs",
       features: [
-        "Everything in SME",
-        "Custom integrations",
-        "Dedicated account manager",
-        "SLA guarantees",
-        "Advanced security",
-        "Custom workflows"
+        "Unlimited contractors",
+        "Unlimited workforce management",
+        "Fast-track issue resolution with 24/7 availability",
+        "Team access",
+        "Scalable infrastructure built for enterprise workloads",
+        "Everything in SME"
       ]
     },
     {
