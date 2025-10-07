@@ -285,6 +285,8 @@ export default function SubscriptionForm({
 
   const handlePlanSelect = async (planId: string) => {
     try {
+      console.log('[Subscription] Creating subscription for plan:', planId);
+      
       const response = await apiRequest("POST", "/api/create-subscription", {
         planType: planId,
         email: userEmail,
@@ -297,16 +299,20 @@ export default function SubscriptionForm({
         throw new Error(data.message || 'Failed to create subscription');
       }
 
+      console.log('[Subscription] Subscription created:', data);
+
       setSubscriptionId(data.subscriptionId);
       setSelectedPlan(planId);
 
       // Check if this is a free subscription (no clientSecret)
       if (data.clientSecret) {
         // Paid subscription - show payment form
+        console.log('[Subscription] Showing payment form with clientSecret');
         setClientSecret(data.clientSecret);
         setShowPayment(true);
       } else {
         // Free subscription - complete immediately by calling complete subscription API
+        console.log('[Subscription] Free subscription - completing immediately');
         try {
           const completeResponse = await apiRequest("POST", "/api/complete-subscription", {
             subscriptionId: data.subscriptionId,
@@ -323,6 +329,7 @@ export default function SubscriptionForm({
           });
           onSubscriptionComplete();
         } catch (completeError) {
+          console.error('[Subscription] Free subscription activation error:', completeError);
           toast({
             title: "Activation Error",
             description: "Your subscription was created but could not be activated. Please contact support.",
@@ -332,6 +339,7 @@ export default function SubscriptionForm({
       }
 
     } catch (error) {
+      console.error('[Subscription] Subscription creation error:', error);
       toast({
         title: "Subscription Error",
         description: error instanceof Error ? error.message : "Failed to create subscription",

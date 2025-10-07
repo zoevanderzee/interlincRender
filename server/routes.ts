@@ -1434,13 +1434,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create notification when contractor submits work (marks milestone as completed)
       if (updateData.status === 'completed' && userRole === 'contractor') {
         try {
-          await notificationService.createWorkSubmission(
-            contract.businessId,
-            updatedMilestone.name,
-            contract.contractName || "Project",
-            userId
-          );
-          console.log(`Created work submission notification for business ${contract.businessId}`);
+          const contract = await storage.getContract(updatedMilestone.contractId);
+          if (contract) {
+            await notificationService.createWorkSubmission(
+              contract.businessId,
+              updatedMilestone.name,
+              contract.contractName || "Project",
+              userId
+            );
+            console.log(`Created work submission notification for business ${contract.businessId}`);
+          }
         } catch (notificationError) {
           console.error('Error creating work submission notification:', notificationError);
         }
@@ -2810,1213 +2813,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
 
-  // Stripe integration routes
-
-  // Create payment intent for contractor payment
-  app.post(`${apiRouter}/create-payment-intent`, requireAuth, async (req: Request, res: Response) => {
-    try {
-      const { amount, description, contractorId, connectedAccountId } = req.body;
-
-      // Get user ID from session or X-User-ID header fallback
-      let businessId = req.user?.id;
-
-      // Use X-User-ID header fallback if session auth failed
-      if (!businessId && req.headers['x-user-id']) {
-        businessId = parseInt(req.headers['x-user-id'] as string);
-      }
-
-      console.log('[Payment Intent] Request:', { amount, description, contractorId, connectedAccountId, businessId });
-
-      if (!businessId) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
-      if (!amount || !contractorId) {
-        return res.status(400).json({ error: "Amount and contractor ID are required" });
-      }
-
-      // Validate amount
-      const amountNum = parseFloat(amount);
-      if (isNaN(amountNum) || amountNum <= 0) {
-        return res.status(400).json({ error: "Invalid payment amount" });
-      }
-
-      if (amountNum < 0.5) {
-        return res.status(400).json({ error: "Minimum payment amount is $0.50" });
-      }
-
-      // Convert amount to cents
-      const amountInCents = Math.round(amountNum * 100);
-
-      // Get contractor details
-      const contractor = await storage.getUser(contractorId);
-      if (!contractor) {
-        return res.status(404).json({ error: "Contractor not found" });
-      }
-
-      console.log('[Payment Intent] Contractor:', {
-        id: contractor.id,
-        email: contractor.email,
-        stripeConnectAccountId: contractor.stripeConnectAccountId
-      });
-
-      // Check if contractor has V2 Connect account setup
-      if (!contractor.stripeConnectAccountId) {
-        return res.status(400).json({
-          error: "Contractor payment setup incomplete. Please ask the contractor to complete their payment account setup.",
-          code: "CONNECT_ACCOUNT_REQUIRED"
-        });
-      }
-
-      // Validate Connect account status using V2 service
-      let accountValid = false;
-      try {
-        const accountStatus = await stripeService.getConnectAccountStatusV2(contractor.stripeConnectAccountId);
-
-        // Account is valid if it has charges enabled and no blocking requirements
-        accountValid = accountStatus.charges_enabled &&
-                       accountStatus.payouts_enabled &&
-                       !accountStatus.disabled_reason &&
-                       (accountStatus.requirements?.currently_due?.length || 0) === 0 &&
-                       (accountStatus.requirements?.past_due?.length || 0) === 0;
-
-        console.log('[Payment Intent] Connect account status:', {
-          accountId: contractor.stripeConnectAccountId,
-          verificationStatus: accountStatus.verification_status,
-          chargesEnabled: accountStatus.charges_enabled,
-          payoutsEnabled: accountStatus.payouts_enabled,
-          hasRequirements: (accountStatus.requirements?.currently_due?.length || 0) > 0,
-          accountValid: accountValid
-        });
-
-        if (!accountValid) {
-          // Provide more specific error messages
-          if (!accountStatus.charges_enabled) {
-            return res.status(400).json({
-              error: "Contractor's account cannot accept charges yet. Please complete account verification.",
-              code: "CONNECT_CHARGES_DISABLED"
-            });
-          } else if (!accountStatus.payouts_enabled) {
-            return res.status(400).json({
-              error: "Contractor's account cannot receive payouts yet. Please complete account verification.",
-              code: "CONNECT_PAYOUTS_DISABLED"
-            });
-          } else if ((accountStatus.requirements?.currently_due?.length || 0) > 0) {
-            return res.status(400).json({
-              error: "Contractor has pending verification requirements. Please complete account setup.",
-              code: "CONNECT_REQUIREMENTS_PENDING"
-            });
-          } else {
-            return res.status(400).json({
-              error: "Contractor's payment account is not ready for payments. Please complete verification.",
-              code: "CONNECT_ACCOUNT_NOT_READY"
-            });
-          }
-        }
-      } catch (connectError) {
-        console.error('[Payment Intent] Connect account validation error:', connectError);
-        return res.status(400).json({
-          error: "Unable to verify contractor's payment account. Please ensure they have completed account setup.",
-          code: "CONNECT_ACCOUNT_VALIDATION_FAILED"
-        });
-      }
-
-      // Get contractor's Connect account to determine currency
-      let accountCurrency = 'usd'; // default
-      try {
-        const account = await stripe.accounts.retrieve(contractor.stripeConnectAccountId);
-        accountCurrency = account.default_currency || account.country === 'GB' ? 'gbp' : 'usd';
-        console.log(`[Payment Intent] Detected account currency: ${accountCurrency} for country: ${account.country}`);
-      } catch (accountError) {
-        console.log(`[Payment Intent] Could not detect account currency, using USD:`, accountError.message);
-      }
-
-      // Create V2 enhanced payment intent
-      try {
-        const paymentIntentParams = {
-          amount: amountNum,
-          currency: accountCurrency,
-          description: description || 'Contractor payment',
-          metadata: {
-            businessId: businessId.toString(),
-            contractorId: contractorId.toString(),
-            paymentType: 'contractor_payment',
-            version: 'v2'
-          },
-          transferData: {
-            destination: contractor.stripeConnectAccountId,
-            amount: Math.round(amountInCents * 0.97) // 97% to contractor, 3% platform fee
-          },
-          applicationFeeAmount: Math.round(amountInCents * 0.03), // 3% platform fee
-          paymentMethodTypes: ['card']
-        };
-
-        console.log('[Payment Intent] Creating with params:', paymentIntentParams);
-
-        const paymentIntent = await stripeService.createPaymentIntent(paymentIntentParams);
-
-        console.log('[Payment Intent] Created successfully:', {
-          id: paymentIntent.id,
-          status: paymentIntent.status
-        });
-
-        res.json({
-          clientSecret: paymentIntent.clientSecret,
-          paymentIntentId: paymentIntent.id,
-          status: paymentIntent.status
-        });
-
-      } catch (stripeError: any) {
-        console.error('[Payment Intent] Stripe creation error:', stripeError);
-
-        // Handle specific Stripe errors
-        if (stripeError.type === 'StripeInvalidRequestError') {
-          return res.status(400).json({
-            error: `Payment setup error: ${stripeError.message}`,
-            code: "STRIPE_INVALID_REQUEST"
-          });
-        } else if (stripeError.type === 'StripePermissionError') {
-          return res.status(400).json({
-            error: "Insufficient permissions for this payment. Please contact support.",
-            code: "STRIPE_PERMISSION_ERROR"
-          });
-        } else {
-          return res.status(500).json({
-            error: "Payment processing temporarily unavailable. Please try again.",
-            code: "STRIPE_SERVICE_ERROR"
-          });
-        }
-      }
-
-    } catch (error: any) {
-      console.error('[Payment Intent] Unexpected error:', error);
-      res.status(500).json({
-        error: "Failed to initialize payment. Please try again.",
-        code: "PAYMENT_INITIALIZATION_FAILED"
-      });
-    }
-  });
-
-  // Create payment intent for a specific payment
-  app.post(`${apiRouter}/payments/:id/create-intent`, requireAuth, async (req: Request, res: Response) => {
-    try {
-      const paymentId = parseInt(req.params.id);
-      const payment = await storage.getPayment(paymentId);
-
-      if (!payment) {
-        return res.status(404).json({ message: "Payment not found" });
-      }
-
-      // Check if payment already has a Stripe payment intent
-      if (payment.stripePaymentIntentId) {
-        // If payment intent exists, retrieve it and return client secret
-        const existingIntent = await stripeService.retrievePaymentIntent(payment.stripePaymentIntentId);
-        return res.json({
-          clientSecret: existingIntent.client_secret,
-          paymentIntentId: payment.stripePaymentIntentId,
-          status: existingIntent.status
-        });
-      }
-
-      // Create a new payment intent
-      const paymentIntent = await stripeService.processMilestonePayment(payment);
-
-      // Update payment with Stripe payment intent details
-      await storage.updatePaymentStripeDetails(
-        paymentId,
-        paymentIntent.id,
-        'requires_payment_method'
-      );
-
-      res.json({
-        clientSecret: paymentIntent.clientSecret,
-        paymentIntentId: paymentIntent.id
-      });
-    } catch (error) {
-      console.error('Error creating payment intent:', error);
-      res.status(500).json({ message: "Error creating payment intent" });
-    }
-  });
-
-  // CRITICAL FIX: Webhook MUST be public (outside apiRouter auth protection)
-  // Add raw body parser for webhook signature verification
-  app.use('/webhook/stripe', express.raw({type: 'application/json'}));
-
-  // Webhook for Stripe events - PUBLIC endpoint with signature verification
-  app.post('/webhook/stripe', async (req: Request, res: Response) => {
-    try {
-      // SECURITY: Verify webhook signature from Stripe
-      const sig = req.headers['stripe-signature'];
-      let event;
-
-      try {
-        if (process.env.STRIPE_WEBHOOK_SECRET) {
-          event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
-        } else {
-          console.warn('⚠️ STRIPE_WEBHOOK_SECRET not set - using unverified webhook');
-          event = JSON.parse(req.body.toString());
-        }
-      } catch (err) {
-        console.error('⚠️ Webhook signature verification failed:', err);
-        return res.status(400).send(`Webhook Error: ${err.message}`);
-      }
-
-      // Handle payment_intent.succeeded event
-      if (event.type === 'payment_intent.succeeded') {
-        const paymentIntent = event.data.object;
-        const paymentId = paymentIntent.metadata.paymentId;
-
-        console.log(`[WEBHOOK] payment_intent.succeeded received:`, {
-          paymentIntentId: paymentIntent.id,
-          paymentId: paymentId,
-          amount: paymentIntent.amount,
-          currency: paymentIntent.currency,
-          status: paymentIntent.status
-        });
-
-        if (paymentId) {
-          // 🎯 CRITICAL FIX: Update payment status to COMPLETED when payment succeeds
-          await storage.updatePaymentStatus(
-            parseInt(paymentId),
-            'completed', // Mark as completed for dashboard calculations
-            {
-              stripePaymentIntentId: paymentIntent.id,
-              stripePaymentIntentStatus: paymentIntent.status,
-              completedAt: new Date().toISOString()
-            }
-          );
-
-          console.log(`✅ PAYMENT COMPLETED: Payment ${paymentId} marked as completed in database`);
-
-          // Check if this was a Connect payment
-          if (paymentIntent.transfer_data && paymentIntent.metadata.connectAccountId) {
-            console.log('Processing Connect payment success', paymentId, paymentIntent.id);
-
-            // For Connect payments, we might need to track the transfer separately
-            if (paymentIntent.transfer) {
-              await storage.updatePaymentTransferDetails(
-                parseInt(paymentId),
-                paymentIntent.transfer,
-                'pending', // Transfer is created but not yet complete
-                parseFloat(paymentIntent.application_fee_amount) / 100 // Convert from cents
-              );
-            }
-          }
-        } else {
-          console.warn(`[WEBHOOK] payment_intent.succeeded missing paymentId in metadata:`, paymentIntent.metadata);
-        }
-      }
-
-      // Handle payment_intent.payment_failed event
-      if (event.type === 'payment_intent.payment_failed') {
-        const paymentIntent = event.data.object;
-        const paymentId = paymentIntent.metadata.paymentId;
-
-        if (paymentId) {
-          await storage.updatePaymentStripeDetails(
-            parseInt(paymentId),
-            paymentIntent.id,
-            paymentIntent.status
-          );
-        }
-      }
-
-      // NO MANUAL TRANSFER WEBHOOKS - we use destination charges only
-      // Funds go directly to connected accounts, no transfers needed
-
-      // Handle charge.succeeded event (for ACH payments)
-      if (event.type === 'charge.succeeded') {
-        const charge = event.data.object;
-
-        // Look up payment by metadata in the charge
-        if (charge.metadata && charge.metadata.paymentId) {
-          const paymentId = charge.metadata.paymentId;
-
-          // Update payment status to completed
-          const payment = await storage.updatePaymentStatus(
-            parseInt(paymentId),
-            'completed',
-            {
-              stripePaymentIntentId: charge.id,
-              stripePaymentIntentStatus: charge.status
-            }
-          );
-
-          console.log(`ACH Payment ${paymentId} marked as completed`);
-
-          // Create notification for payment completion
-          try {
-            const contract = await storage.getContract(payment.contractId);
-            if (contract) {
-              await notificationService.createPaymentCompleted(
-                contract.contractorId,
-                `£${parseFloat(payment.amount).toFixed(2)}`,
-                contract.contractName || "Project"
-              );
-            }
-          } catch (notificationError) {
-            console.error('Error creating payment completion notification:', notificationError);
-          }
-
-          // Email notifications disabled
-          console.log(`Payment ${paymentId} completed - email notifications disabled`);
-
-          // Handle transfer to contractor if this was a Connect payment
-          if (charge.transfer && charge.transfer_data && charge.transfer_data.destination) {
-            const transferAmount = charge.transfer_data.amount || (charge.amount - (charge.application_fee_amount || 0));
-            const applicationFee = charge.application_fee_amount || 0;
-
-            await storage.updatePaymentTransferDetails(
-              parseInt(paymentId),
-              charge.transfer,
-              'pending', // Transfer is created but not yet paid
-              applicationFee
-            );
-
-            console.log(`ACH Payment ${paymentId} transfer ${charge.transfer} recorded`);
-          }
-        }
-      }
-
-      // Handle charge.pending event (for ACH payments)
-      if (event.type === 'charge.pending') {
-        const charge = event.data.object;
-
-        // Look up payment by metadata in the charge
-        if (charge.metadata && charge.metadata.paymentId) {
-          const paymentId = charge.metadata.paymentId;
-
-          // Update payment status to pending
-          const payment = await storage.updatePaymentStatus(
-            parseInt(paymentId),
-            'pending',
-            {
-              stripePaymentIntentId: charge.id,
-              stripePaymentIntentStatus: charge.status
-            }
-          );
-
-          console.log(`ACH Payment ${paymentId} marked as pending`);
-
-          // Email notifications disabled
-          console.log(`Payment ${paymentId} pending - email notifications disabled`);
-        }
-      }
-
-      // Handle charge.failed event (for ACH payments)
-      if (event.type === 'charge.failed') {
-        const charge = event.data.object;
-
-        // Look up payment by metadata in the charge
-        if (charge.metadata && charge.metadata.paymentId) {
-          const paymentId = charge.metadata.paymentId;
-
-          // Update payment status to failed
-          const payment = await storage.updatePaymentStatus(
-            parseInt(paymentId),
-            'failed',
-            {
-              stripePaymentIntentId: charge.id,
-              stripePaymentIntentStatus: charge.status,
-              failureReason: charge.failure_message || 'Payment failed'
-            }
-          );
-
-          console.log(`ACH Payment ${paymentId} marked as failed: ${charge.failure_message}`);
-
-          // Email notifications disabled
-          console.log(`Payment ${paymentId} failed - email notifications disabled`);
-        }
-      }
-
-      // Handle account.updated event
-      if (event.type === 'account.updated') {
-        const account = event.data.object;
-        console.log('Processing account.updated event:', account.id);
-
-        // If user_id is in metadata, update the user's account status
-        if (account.metadata && account.metadata.userId) {
-          const userId = account.metadata.userId;
-          console.log('Updating Connect account status for user:', userId);
-
-          // Update the user's Connect account status
-          await storage.updateUserConnectAccount(
-            parseInt(userId),
-            account.id,
-            account.charges_enabled
-          );
-
-          console.log('Connect account status updated, charges_enabled:', account.charges_enabled);
-        } else {
-          console.log('No userId in metadata, trying to find user by Connect account ID');
-
-          // If no userId in metadata, try to find the user by Connect account ID
-          try {
-            const users = await storage.getUsersByConnectAccountId(account.id);
-            if (users && users.length > 0) {
-              const user = users[0];
-              console.log('Found user by Connect account ID:', user.id);
-
-              await storage.updateUserConnectAccount(
-                user.id,
-                account.id,
-                account.charges_enabled
-              );
-
-              console.log('Connect account status updated for found user, charges_enabled:', account.charges_enabled);
-            }
-          } catch (err) {
-            console.error('Error finding user by Connect account ID:', err);
-          }
-        }
-      }
-
-      res.json({ received: true });
-    } catch (error) {
-      console.error('Error processing webhook:', error);
-      res.status(500).json({ message: "Error processing webhook" });
-    }
-  });
-
-  // Payment reconciliation endpoint for direct payments (completed)
-  app.post(`${apiRouter}/payments/reconcile`, requireAuth, async (req: Request, res: Response) => {
-    try {
-      const { amount = '0.50', description = 'Manual payment reconciliation for missing 0.50 GBP payment' } = req.body;
-      const businessId = req.user?.id;
-
-      if (!businessId) {
-        return res.status(400).json({ message: 'Authentication required' });
-      }
-
-      console.log(`[PAYMENT RECONCILIATION] Creating missing payment record for ${amount} GBP`);
-
-      // DIRECT PAYMENT RECONCILIATION: No contract/milestone needed for direct transfers
-      const paymentData = {
-        contractId: null, // Direct payment - no contract needed
-        milestoneId: null, // Direct payment - no milestone needed
-        amount: amount.toString(), // REQUIRED: Amount as string
-        status: 'completed' as const,
-        scheduledDate: new Date(), // REQUIRED: Scheduled date
-        completedDate: new Date(), // OPTIONAL: Completion date
-        stripePaymentIntentId: `reconciled_${Date.now()}`,
-        notes: `DIRECT PAYMENT RECONCILIATION: ${description} - Missing £0.50 direct payment for business ID ${businessId}`,
-        triggeredBy: 'reconciliation',
-        triggeredAt: new Date()
-      };
-
-      console.log('[PAYMENT RECONCILIATION] Attempting to create payment with data:', JSON.stringify(paymentData, null, 2));
-
-      const payment = await storage.createPayment(paymentData);
-
-      if (!payment || !payment.id) {
-        console.error('[PAYMENT RECONCILIATION] ❌ Failed to create payment - no payment object returned');
-        return res.status(500).json({ message: 'Failed to create payment record' });
-      }
-
-      console.log(`✅ RECONCILIATION SUCCESS: Payment ${payment.id} created for ${paymentData.amount} GBP`);
-
-      res.status(201).json({
-        success: true,
-        paymentId: payment.id,
-        amount: paymentData.amount,
-        contractId: paymentData.contractId,
-        milestoneId: paymentData.milestoneId,
-        message: `Payment of ${paymentData.amount} GBP successfully reconciled`
-      });
-    } catch (error) {
-      console.error('❌ Payment reconciliation error:', error);
-      console.error('Error details:', {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-      });
-      res.status(500).json({
-        message: "Payment reconciliation failed",
-        error: error.message
-      });
-    }
-  });
-
-  // Business Onboarding Link APIs
-  // Debug endpoint to check authentication status
-  app.get(`${apiRouter}/session-debug`, async (req: Request, res: Response) => {
-    console.log("Session debug request received, auth status:", req.isAuthenticated());
-
-    if (req.isAuthenticated()) {
-      res.json({
-        isAuthenticated: true,
-        user: {
-          id: req.user?.id,
-          username: req.user?.username,
-          role: req.user?.role
-        },
-        session: req.session
-      });
-    } else {
-      res.json({
-        isAuthenticated: false,
-        session: req.session
-      });
-    }
-  });
-
-  // Business invite link generation endpoint
-  app.post(`${apiRouter}/business/invite-link`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
-    try {
-      // Only business users can create invite links
-      if (req.user!.role !== 'business') {
-        return res.status(403).json({ message: "Only business accounts can generate invite links" });
-      }
-
-      const { workerType = 'contractor' } = req.body;
-
-      // Create or update the business invite link
-      const link = await storage.createBusinessOnboardingLink(req.user!.id, workerType);
-
-      // Get the app URL
-      const appUrl = `${req.protocol}://${req.get('host')}`;
-
-      // Create a simpler, direct link format
-      const businessName = req.user?.company || `${req.user?.firstName || ''} ${req.user?.lastName || ''}`.trim();
-      const inviteUrl = `${appUrl}/auth?invite=contractor&email=direct&token=${link.token}&businessId=${req.user!.id}&workerType=${workerType}`;
-
-      res.json({
-        token: link.token,
-        workerType: link.workerType,
-        active: link.active,
-        url: inviteUrl
-      });
-    } catch (error: any) {
-      console.error("Error generating business invite link:", error);
-      res.status(500).json({ message: "Error generating business invite link" });
-    }
-  });
-
-  app.get(`${apiRouter}/business/verify-token`, async (req: Request, res: Response) => {
-    try {
-      const { token, businessId } = req.query;
-
-      console.log("Verifying token:", { token, businessId, query: req.query });
-
-      if (!token || !businessId) {
-        return res.status(400).json({
-          valid: false,
-          message: "Token and businessId are required"
-        });
-      }
-
-      // Verify the token is valid
-      const tokenInfo = await storage.verifyOnboardingToken(token as string);
-
-      console.log("Token info result:", tokenInfo);
-
-      if (!tokenInfo || tokenInfo.businessId !== parseInt(businessId as string)) {
-        return res.status(400).json({
-          valid: false,
-          message: "Invalid or expired token"
-        });
-      }
-
-      // Get business info to return with verification
-      const business = await storage.getUser(parseInt(businessId as string));
-
-      res.json({
-        valid: true,
-        businessId: tokenInfo.businessId,
-        workerType: tokenInfo.workerType,
-        businessName: business ? `${business.company || business.firstName + ' ' + business.lastName}` : "Business"
-      });
-    } catch (error) {
-      console.error("Error verifying business token:", error);
-      res.status(500).json({
-        valid: false,
-        message: "Error verifying business token"
-      });
-    }
-  });
-
-  app.get(`${apiRouter}/business/invite-link`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
-    try {
-      // Only business users can view their invite links
-      if (req.user!.role !== 'business') {
-        return res.status(403).json({ message: "Only business accounts can access invite links" });
-      }
-
-      const link = await storage.getBusinessOnboardingLink(req.user!.id);
-
-      if (!link) {
-        return res.status(404).json({ message: "No active invite link found" });
-      }
-
-      // Get the app URL
-      const appUrl = `${req.protocol}://${req.get('host')}`;
-
-      // Return the link with the same simplified URL format
-      const businessName = req.user?.company || `${req.user?.firstName || ''} ${req.user?.lastName || ''}`.trim();
-      const inviteUrl = `${appUrl}/auth?invite=contractor&email=direct&token=${link.token}&businessId=${req.user!.id}&workerType=${link.workerType}`;
-
-      res.json({
-        token: link.token,
-        workerType: link.workerType,
-        active: link.active,
-        url: inviteUrl
-      });
-    } catch (error: any) {
-      console.error("Error fetching business invite link:", error);
-      res.status(500).json({ message: "Error fetching business invite link" });
-    }
-  });
-
-  app.delete(`${apiRouter}/business/invite-link`, requireAuth, async (req: Request, res: Response) => {
-    try {
-      // Only business users can deactivate their invite links
-      if (req.user!.role !== 'business') {
-        return res.status(403).json({ message: "Only business accounts can manage invite links" });
-      }
-
-      // Deactivate the invite link by setting active to false
-      await storage.updateBusinessOnboardingLink(req.user!.id, { active: false });
-
-      res.status(200).json({ message: "Invite link deactivated successfully" });
-    } catch (error: any) {
-      console.error("Error deactivating business invite link:", error);
-      res.status(500).json({ message: "Error deactivating business invite link" });
-    }
-  });
-
-  // Reports API endpoint - integrates with real payment and project data
-  app.get(`${apiRouter}/reports`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
-    try {
-      const timeRange = req.query.timeRange as string || 'year';
-
-      // Get the authenticated user ID - use X-User-ID header as a fallback
-      let userId: number | undefined;
-      let userRole: string = 'business';
-
-      // First try to get user from the session
-      if (req.user) {
-        userId = req.user.id;
-        userRole = req.user.role || 'business';
-      } else {
-        // Fallback to X-User-ID header
-        const userIdHeader = req.headers['x-user-id'];
-        if (userIdHeader) {
-          userId = parseInt(userIdHeader.toString(), 10);
-
-          // Get user role from storage
-          try {
-            const user = await storage.getUser(userId);
-            if (user) {
-              userRole = user.role || 'business';
-            }
-          } catch (err) {
-            console.error('Error getting user from X-User-ID header:', err);
-          }
-        }
-      }
-
-      if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
-      }
-
-      console.log(`Generating reports for user ${userId} with role ${userRole}`);
-
-      // Get work requests for the current user (these are the actual contracts)
-      let userWorkRequests = [];
-      if (userRole === 'business') {
-        userWorkRequests = await storage.getWorkRequestsByBusinessId(userId);
-      }
-
-      // Active work requests (accepted contracts) are those with status 'accepted'
-      const activeWorkRequests = userWorkRequests.filter(wr => wr.status === 'accepted');
-
-      // Completed work requests are those with status 'completed'
-      const completedWorkRequests = userWorkRequests.filter(wr => wr.status === 'completed');
-
-      // Get all contracts for the current user
-      let contracts = [];
-      if (userRole === 'business') {
-        contracts = await storage.getContractsByBusinessId(userId);
-      } else if (userRole === 'contractor') {
-        contracts = await storage.getContractsByContractorId(userId);
-      } else {
-        contracts = await storage.getAllContracts();
-      }
-
-      // Filter out deleted contracts
-      contracts = contracts.filter(contract => contract.status !== 'deleted');
-
-      // Get only payments related to the user's contracts
-      const contractIds = contracts.map(contract => contract.id);
-      console.log(`Filtering payments for contract IDs: ${contractIds.join(', ')}`);
-
-      // Only get payments for the filtered contracts
-      let payments = await storage.getAllPayments(null);
-      if (contractIds.length > 0) {
-        payments = payments.filter(payment => contractIds.includes(payment.contractId));
-      } else {
-        payments = []; // No contracts means no payments
-      }
-
-      // Get only milestones related to the user's contracts
-      let milestones = await storage.getAllMilestones();
-      if (contractIds.length > 0) {
-        milestones = milestones.filter(milestone => contractIds.includes(milestone.contractId));
-      } else {
-        milestones = []; // No contracts means no milestones
-      }
-
-      // Get the list of contractor IDs from the user's contracts
-      const contractorIds = contracts
-        .filter(contract => contract.contractorId !== null)
-        .map(contract => contract.contractorId as number);
-
-      // Filter contractors to only include those associated with the user's contracts
-      const filteredContractors = contractorIds.length > 0
-        ? contracts.filter(contractor => contractorIds.includes(contractor.id))
-        : [];
-
-      // Calculate contract status counts
-      const activeContracts = contracts.filter(contract => contract.status === 'active');
-      const completedContracts = contracts.filter(contract => contract.status === 'completed');
-      const pendingContracts = contracts.filter(contract =>
-        contract.status === 'pending_approval' || contract.status === 'pending');
-
-      // Calculate average contract value
-      const totalContractValue = contracts.reduce((total, contract) =>
-        total + parseFloat(contract.value.toString() || '0'), 0);
-      const avgContractValue = contracts.length > 0 ? totalContractValue / contracts.length : 0;
-
-      // Calculate completion rate
-      const completionRate = contracts.length > 0
-        ? (completedContracts.length / contracts.length) * 100
-        : 0;
-
-      // Group payments by month
-      const paymentsByMonth = [];
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const currentYear = new Date().getFullYear();
-
-      // Initialize months with zero values
-      months.forEach((month, index) => {
-        paymentsByMonth.push({
-          month,
-          value: 0
-        });
-      });
-
-      // Sum payments by month
-      payments.forEach(payment => {
-        // Use scheduledDate since createdAt might not exist on payment object
-        const paymentDate = new Date(payment.scheduledDate || new Date());
-        if (paymentDate.getFullYear() === currentYear) {
-          const monthIndex = paymentDate.getMonth();
-          paymentsByMonth[monthIndex].value += parseFloat(payment.amount?.toString() || '0');
-        }
-      });
-
-      // Get top contractors by payment amount
-      const contractorPayments = new Map();
-      payments.forEach(payment => {
-        const contract = contracts.find(c => c.id === payment.contractId);
-        if (contract && contract.contractorId) {
-          const contractorId = contract.contractorId;
-          const amount = parseFloat(payment.amount?.toString() || '0');
-
-          if (contractorPayments.has(contractorId)) {
-            contractorPayments.set(contractorId, contractorPayments.get(contractorId) + amount);
-          } else {
-            contractorPayments.set(contractorId, amount);
-          }
-        }
-      });
-
-      // Convert to array and sort by amount
-      const topContractorsArray = Array.from(contractorPayments.entries())
-        .map(([contractorId, amount]) => {
-          const contractor = filteredContractors.find(c => c.id === contractorId);
-          return {
-            id: contractorId,
-            name: contractor ? `${contractor.firstName} ${contractor.lastName}` : 'Unknown',
-            amount
-          };
-        })
-        .sort((a, b) => b.amount - a.amount)
-        .slice(0, 5);
-
-      // Calculate total spending amount for business metrics
-      const totalSpent = payments.reduce((sum, payment) => {
-        const amount = parseFloat(payment.amount) || 0;
-        return sum + amount;
-      }, 0);
-
-      // Generate monthly payments data for chart
-      const monthlyPayments = paymentsByMonth.map(monthData => ({
-        month: monthData.month,
-        amount: monthData.totalAmount
-      }));
-
-      // Convert contract status data for pie chart
-      const contractDistribution = [
-        { name: 'Active', value: activeContracts.length },
-        { name: 'Completed', value: completedContracts.length },
-        { name: 'Pending', value: pendingContracts.length }
-      ].filter(item => item.value > 0); // Only show categories with data
-
-      // Generate recent activity data
-      const recentActivity = payments
-        .slice(0, 10) // Get latest 10 payments
-        .map(payment => {
-          const contract = contracts.find(c => c.id === payment.contractId);
-          const contractor = filteredContractors.find(c => c.id === contract?.contractorId);
-
-          return {
-            date: payment.scheduledDate || payment.completedDate || new Date(),
-            contractor: contractor ? `${contractor.firstName} ${contractor.lastName}` : 'Unknown',
-            project: contract?.contractName || 'Unknown Project',
-            activity: payment.status === 'completed' ? 'Payment Completed' : 'Payment Scheduled',
-            amount: parseFloat(payment.amount) || 0
-          };
-        });
-
-      // Calculate total contracts - count active and completed work requests only
-      const totalContracts = activeWorkRequests.length + completedWorkRequests.length;
-
-      // MATCH DASHBOARD LOGIC: Count unique contractors from work requests
-      const uniqueContractorIds = [...new Set(userWorkRequests.map(wr => wr.contractorUserId))];
-      const realTotalContractors = uniqueContractorIds.length;
-
-      // MATCH DASHBOARD LOGIC: Get real payment stats from business payment stats
-      const realTotalSpent = businessPaymentStats.totalPaymentValue;
-
-      // MATCH DASHBOARD LOGIC: Calculate completion rate from work requests
-      const realCompletionRate = userWorkRequests.length > 0
-        ? Math.round((completedWorkRequests.length / userWorkRequests.length) * 100)
-        : 0;
-
-      const reportsData = {
-        summary: {
-          totalContracts: totalContracts,
-          totalContractors: realTotalContractors,
-          totalSpent: realTotalSpent,
-          completionRate: realCompletionRate
-        },
-        monthlyPayments,
-        contractDistribution,
-        recentActivity
-      };
-
-      res.json(reportsData);
-    } catch (error) {
-      console.error('Error generating reports:', error);
-      res.status(500).json({ message: "Error generating reports" });
-    }
-  });
-
-  // Update payment status from Stripe
-  app.post(`${apiRouter}/payments/:id/update-status`, async (req: Request, res: Response) => {
-    try {
-      const paymentId = parseInt(req.params.id);
-      const { stripePaymentIntentId } = req.body;
-
-      if (!stripePaymentIntentId) {
-        return res.status(400).json({ message: "Stripe payment intent ID is required" });
-      }
-
-      const paymentIntent = await stripeService.retrievePaymentIntent(stripePaymentIntentId);
-
-      await storage.updatePaymentStripeDetails(
-        paymentId,
-        stripePaymentIntentId,
-        paymentIntent.status
-      );
-
-      const updatedPayment = await storage.getPayment(paymentId);
-      res.json(updatedPayment);
-    } catch (error) {
-      console.error('Error updating payment status:', error);
-      res.status(500).json({ message: "Error updating payment status" });
-    }
-  });
-
-  // Stripe Connect endpoints for contractors
-
-  // Create a Stripe Connect account for a contractor
-  app.post(`${apiRouter}/contractors/:id/connect-account`, requireAuth, async (req: Request, res: Response) => {
-    try {
-      const contractorId = parseInt(req.params.id);
-      const contractor = await storage.getUser(contractorId);
-
-      if (!contractor) {
-        return res.status(404).json({ message: "Contractor not found" });
-      }
-
-      // Check if the contractor already has a Connect account
-      if (contractor.stripeConnectAccountId) {
-        const accountStatus = await stripeService.checkConnectAccountStatus(contractor.stripeConnectAccountId);
-
-        if (accountStatus) {
-          return res.status(400).json({
-            message: "Contractor already has a Connect account that is fully set up",
-            accountId: contractor.stripeConnectAccountId
-          });
-        }
-
-        // If account exists but not fully set up, generate new onboarding link
-        try {
-          const account = await stripe.accountLinks.create({
-            account: contractor.stripeConnectAccountId,
-            refresh_url: `${process.env.FRONTEND_URL || 'http://localhost:5000'}/contractors/onboarding/refresh`,
-            return_url: `${process.env.FRONTEND_URL || 'http://localhost:5000'}/contractors/onboarding/complete`,
-            type: 'account_onboarding',
-          });
-
-          return res.json({
-            accountId: contractor.stripeConnectAccountId,
-            accountLink: account.url,
-            status: 'pending'
-          });
-        } catch (error) {
-          // If we get an error retrieving the account, create a new one
-          console.log('Error retrieving Connect account, creating a new one:', error);
-        }
-      }
-
-      // Create a new Connect account
-      const connectAccount = await stripeService.createConnectAccount(contractor);
-
-      // Update the contractor with the Connect account ID
-      await storage.updateUserConnectAccount(contractorId, connectAccount.id);
-
-      res.status(201).json({
-        accountId: connectAccount.id,
-        accountLink: connectAccount.accountLink,
-        status: 'pending'
-      });
-    } catch (error) {
-      console.error('Error creating Connect account:', error);
-      res.status(500).json({ message: "Error creating Connect account" });
-    }
-  });
-
-  // Get contractor Connect account status
-  app.get(`${apiRouter}/contractors/:id/connect-status`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
-    try {
-      const contractorId = parseInt(req.params.id);
-      const contractor = await storage.getUser(contractorId);
-
-      if (!contractor) {
-        return res.status(404).json({ message: "Contractor not found" });
-      }
-
-      if (!contractor.stripeConnectAccountId) {
-        return res.json({ status: 'not_created' });
-      }
-
-      // Check if this is a simulated account (for testing)
-      const isSimulated = contractor.stripeConnectAccountId.startsWith('acct_') &&
-                          contractor.payoutEnabled === true;
-
-      let accountStatus = false;
-
-      if (isSimulated) {
-        // For simulated accounts, use the stored payoutEnabled status
-        accountStatus = contractor.payoutEnabled || false;
-        console.log('Using simulated Connect account status:', accountStatus);
-      } else {
-        // For real accounts, check with Stripe
-        accountStatus = await stripeService.checkConnectAccountStatus(contractor.stripeConnectAccountId);
-      }
-
-      // Update the user record with the latest status
-      await storage.updateUserConnectAccount(
-        contractorId,
-        contractor.stripeConnectAccountId,
-        accountStatus
-      );
-
-      res.json({
-        status: accountStatus ? 'active' : 'pending',
-        accountId: contractor.stripeConnectAccountId,
-        payoutEnabled: accountStatus
-      });
-    } catch (error) {
-      console.error('Error checking Connect account status:', error);
-      res.status(500).json({ message: "Error checking Connect account status" });
-    }
-  });
-
-  // Create a payment direct to contractor via Connect
-  app.post(`${apiRouter}/payments/:id/pay-contractor`, requireAuth, async (req: Request, res: Response) => {
-    try {
-      const paymentId = parseInt(req.params.id);
-      const payment = await storage.getPayment(paymentId);
-
-      if (!payment) {
-        return res.status(404).json({ message: "Payment not found" });
-      }
-
-      // Get contract to find contractor
-      const contract = await storage.getContract(payment.contractId);
-      if (!contract) {
-        return res.status(404).json({ message: "Contract not found" });
-      }
-
-      // Get contractor to check Connect account
-      const contractor = await storage.getUser(contract.contractorId);
-      if (!contractor) {
-        return res.status(404).json({ message: "Contractor not found" });
-      }
-
-      // Check if contractor has a Connect account
-      if (!contractor.stripeConnectAccountId) {
-        return res.status(400).json({ message: "Contractor doesn't have a Connect account set up" });
-      }
-
-      // Check if this is a simulated account (for testing)
-      const isSimulated = contractor.stripeConnectAccountId.startsWith('acct_') &&
-                          contractor.payoutEnabled === true;
-
-      let accountStatus = false;
-
-      if (isSimulated) {
-        // For simulated accounts, use the stored payoutEnabled status
-        accountStatus = contractor.payoutEnabled || false;
-        console.log('Using simulated Connect account status for payment:', accountStatus);
-      } else {
-        // For real accounts, check with Stripe
-        accountStatus = await stripeService.checkConnectAccountStatus(contractor.stripeConnectAccountId);
-      }
-
-      if (!accountStatus) {
-        return res.status(400).json({ message: "Contractor's Connect account is not fully set up" });
-      }
-
-      // Calculate platform fee (5% by default)
-      const amount = parseFloat(payment.amount);
-      const platformFee = amount * 0.05;
-
-      let paymentIntent;
-
-      // Process real payment through Trolley
-      console.log('🔴 PROCESSING REAL TROLLEY PAYMENT');
-
-      const { trolleyApi } = await import('./services/trolley-api');
-
-      // Create real Trolley payment to contractor
-      const paymentData = {
-        recipientId: contractor.trolleyRecipientId,
-        amount: payment.amount,
-        currency: 'USD',
-        description: `Payment for milestone: ${payment.description || 'Contractor payment'}`,
-        externalId: `payment_${paymentId}_${Date.now()}`
-      };
-
-      const trolleyPayment = await trolleyApi.createPayment(paymentData);
-
-      if (!trolleyPayment.success) {
-        return res.status(400).json({ message: trolleyPayment.error });
-      }
-
-      // Update payment with Trolley payment details
-      await storage.updatePayment(paymentId, {
-        trolleyPaymentId: trolleyPayment.paymentId,
-        paymentProcessor: 'trolley',
-        status: 'processing'
-      });
-
-      paymentIntent = {
-        id: trolleyPayment.paymentId,
-        status: 'processing'
-      };
-
-      res.json({
-        paymentId: paymentIntent.id,
-        status: paymentIntent.status,
-        message: 'Real Trolley payment initiated successfully'
-      });
-    } catch (error) {
-      console.error('Error creating direct payment:', error);
-      res.status(500).json({ message: "Error creating direct payment" });
-    }
-  });
-
-  // Get subscription prices endpoint - fetches real-time prices from Stripe
-  app.get(`${apiRouter}/subscription-prices`, async (req: Request, res: Response) => {
-    try {
-      // Map of plan IDs to Stripe Price IDs - CORRECTED MAPPINGS
-      const priceIdMap = {
-        'business-starter': 'price_1SFIvtF4bfRUGDn9MWvE1imT', // Enterprise Annual £8,990.00/year
-        'business': 'price_1Ricn6F4bfRUGDn91XzkPq5F', // SME Monthly £199.00/month
-        'business-enterprise': 'price_1RgRilF4bfRUGDn9jMnjAo96', // Enterprise Monthly £899.00/month
-        'business-annual': 'price_1SFIv5F4bfRUGDn9qeJh0VYX', // SME Annual £1,990.00/year
-        'contractor': null, // Free plan - no Price ID needed
-        'contractor-pro': null // Set to null until valid contractor pro price ID provided
-      };
-
-      const prices: Record<string, any> = {};
-
-      // Fetch each price from Stripe
-      for (const [planId, priceId] of Object.entries(priceIdMap)) {
-        if (priceId === null) {
-          // Free plan
-          prices[planId] = {
-            amount: 0,
-            currency: 'gbp',
-            interval: 'month',
-            interval_count: 1,
-            name: planId === 'contractor' ? 'Free' : 'Contractor Pro'
-          };
-          console.log(`Plan ${planId}: Free (no price ID)`);
-        } else {
-          try {
-            console.log(`Fetching price ${priceId} for plan ${planId}...`);
-            const price = await stripe.prices.retrieve(priceId, {
-              expand: ['product']
-            });
-            
-            // Get product name from Stripe
-            const product = price.product as any;
-            const productName = typeof product === 'string' 
-              ? planId 
-              : (product?.name || planId);
-            
-            prices[planId] = {
-              amount: price.unit_amount || 0,
-              currency: price.currency || 'gbp',
-              interval: price.recurring?.interval || 'month',
-              interval_count: price.recurring?.interval_count || 1,
-              name: productName
-            };
-            console.log(`Plan ${planId}: ${productName} - ${price.unit_amount} ${price.currency} per ${price.recurring?.interval}`);
-          } catch (priceError: any) {
-            console.error(`Error fetching price ${priceId} for ${planId}:`, priceError.message);
-            // Return error info instead of fallback
-            prices[planId] = {
-              amount: 0,
-              currency: 'gbp',
-              interval: 'month',
-              interval_count: 1,
-              name: planId,
-              error: `Failed to fetch: ${priceError.message}`
-            };
-          }
-        }
-      }
-
-      console.log('Subscription prices fetched:', prices);
-      res.json(prices);
-    } catch (error: any) {
-      console.error('Error fetching subscription prices:', error);
-      res.status(500).json({
-        message: "Error fetching subscription prices",
-        error: error.message
-      });
-    }
-  });
-
   // Subscription endpoint for companies
-  app.post(`${apiRouter}/get-or-create-subscription`, async (req: Request, res: Response) => {
+  app.post(`${apiRouter}/create-subscription`, async (req: Request, res: Response) => {
     try {
       // In a real application, this would check if the user is authenticated
       // and retrieve their user ID from the session
@@ -4071,12 +2869,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           payment_settings: {
             save_default_payment_method: 'on_subscription'
           },
-          expand: ['latest_invoice.payment_intent']
+          expand: ['latest_invoice.payment_intent'],
+          metadata: {
+            userId: user.id.toString()
+          }
         });
 
         // Extract client secret from subscription
-        const latestInvoice = subscription.latest_invoice as Stripe.Invoice;
-        const paymentIntent = latestInvoice.payment_intent as Stripe.PaymentIntent;
+        const latestInvoice = subscription.latest_invoice as any;
+        const paymentIntent = latestInvoice?.payment_intent as any;
 
         // Update user with Stripe information
         await storage.updateUserStripeInfo(user.id, {
@@ -4087,7 +2888,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Return subscription details
         res.json({
           subscriptionId: subscription.id,
-          clientSecret: paymentIntent.client_secret,
+          clientSecret: paymentIntent?.client_secret,
           customerId: customer.id
         });
       } catch (error: any) {
@@ -4106,7 +2907,124 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Register Plaid routes
+  // Complete subscription endpoint - activates subscription after payment
+  app.post(`${apiRouter}/complete-subscription`, async (req: Request, res: Response) => {
+    try {
+      const { subscriptionId, userId } = req.body;
+
+      console.log('[Complete Subscription] Request:', { subscriptionId, userId });
+
+      if (!subscriptionId || !userId) {
+        return res.status(400).json({ message: 'Subscription ID and User ID are required' });
+      }
+
+      // Retrieve subscription to verify payment
+      const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+
+      if (subscription.status !== 'active') {
+        return res.status(400).json({
+          message: 'Subscription payment not completed',
+          status: subscription.status
+        });
+      }
+
+      // Update user subscription status in database
+      await storage.updateUser(userId, {
+        subscriptionStatus: 'active',
+        stripeSubscriptionId: subscriptionId
+      });
+
+      console.log('[Complete Subscription] User subscription activated:', userId);
+
+      res.json({
+        success: true,
+        message: 'Subscription activated successfully'
+      });
+
+    } catch (error: any) {
+      console.error('[Complete Subscription] Error:', error);
+      res.status(500).json({
+        message: error.message || 'Failed to complete subscription'
+      });
+    }
+  });
+
+
+  // Subscription prices endpoint - fetches real-time prices from Stripe
+  app.get(`${apiRouter}/subscription-prices`, async (req: Request, res: Response) => {
+    try {
+      // Map of plan IDs to Stripe Price IDs - CORRECTED MAPPINGS
+      const priceIdMap = {
+        'business-starter': 'price_1SFIvtF4bfRUGDn9MWvE1imT', // Enterprise Annual £8,990.00/year
+        'business': 'price_1Ricn6F4bfRUGDn91XzkPq5F', // SME Monthly £199.00/month
+        'business-enterprise': 'price_1RgRilF4bfRUGDn9jMnjAo96', // Enterprise Monthly £899.00/month
+        'business-annual': 'price_1SFIv5F4bfRUGDn9qeJh0VYX', // SME Annual £1,990.00/year
+        'contractor': null, // Free plan - no Price ID needed
+        'contractor-pro': null // Set to null until valid contractor pro price ID provided
+      };
+
+      const prices: Record<string, any> = {};
+
+      // Fetch each price from Stripe
+      for (const [planId, priceId] of Object.entries(priceIdMap)) {
+        if (priceId === null) {
+          // Free plan
+          prices[planId] = {
+            amount: 0,
+            currency: 'gbp',
+            interval: 'month',
+            interval_count: 1,
+            name: planId === 'contractor' ? 'Free' : 'Contractor Pro'
+          };
+          console.log(`Plan ${planId}: Free (no price ID)`);
+        } else {
+          try {
+            console.log(`Fetching price ${priceId} for plan ${planId}...`);
+            const price = await stripe.prices.retrieve(priceId, {
+              expand: ['product']
+            });
+
+            // Get product name from Stripe
+            const product = price.product as any;
+            const productName = typeof product === 'string'
+              ? planId
+              : (product?.name || planId);
+
+            prices[planId] = {
+              amount: price.unit_amount || 0,
+              currency: price.currency || 'gbp',
+              interval: price.recurring?.interval || 'month',
+              interval_count: price.recurring?.interval_count || 1,
+              name: productName
+            };
+            console.log(`Plan ${planId}: ${productName} - ${price.unit_amount} ${price.currency} per ${price.recurring?.interval}`);
+          } catch (priceError: any) {
+            console.error(`Error fetching price ${priceId} for ${planId}:`, priceError.message);
+            // Return error info instead of fallback
+            prices[planId] = {
+              amount: 0,
+              currency: 'gbp',
+              interval: 'month',
+              interval_count: 1,
+              name: planId,
+              error: `Failed to fetch: ${priceError.message}`
+            };
+          }
+        }
+      }
+
+      console.log('Subscription prices fetched:', prices);
+      res.json(prices);
+    } catch (error: any) {
+      console.error('Error fetching subscription prices:', error);
+      res.status(500).json({
+        message: "Error fetching subscription prices",
+        error: error.message
+      });
+    }
+  });
+
+  // register Plaid routes
   plaidRoutes(app, apiRouter, requireAuth);
   trolleyRoutes(app, apiRouter, requireAuth);
 
@@ -5179,7 +4097,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post(`${apiRouter}/profile-code/generate`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
-    try {
+    try{
       // Generate a new profile code for the authenticated user
       let userId = req.user?.id;
       let userRole = req.user?.role;
@@ -5318,7 +4236,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Only businesses can create connection requests
       if (currentUser && currentUser.role !== 'business') {
-        return res.status.status(403).json({ message: "Only businesses can create connection requests" });
+        return res.status(403).json({ message: "Only businesses can create connection requests" });
       }
 
       // First check if the profile code is valid
@@ -5517,7 +4435,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const link = await storage.getBusinessOnboardingLink(businessId);
 
       if (!link) {
-        return res.status(404).json({ message: "No onboarding link found" });
+        return res.status(404).json({ message: "No active onboarding link found" });
       }
 
       // Get application URL, handling both Replit and local environments
