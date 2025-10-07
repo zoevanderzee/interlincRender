@@ -443,12 +443,12 @@ export default function SubscriptionForm({
             {userRole === 'contractor' ? 'Contractor Subscription Plans' : 'Business Subscription Plans'}
           </h2>
           {userRole === 'business' && (
-            <div className="flex items-center gap-3 bg-[#0a1628] border border-[#3b4a6f] rounded-lg p-1">
+            <div className="flex items-center gap-3 bg-gradient-to-r from-[#1a2b4a]/40 to-[#0f1f3a]/40 border border-[#6b9aff]/30 rounded-lg p-1 backdrop-blur-sm">
               <button
                 onClick={() => setBillingPeriod('monthly')}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                   billingPeriod === 'monthly'
-                    ? 'bg-[#6b7cff] text-white'
+                    ? 'bg-gradient-to-r from-[#6b9aff] to-[#7ca5ff] text-[#0a1628] font-semibold'
                     : 'text-gray-400 hover:text-white'
                 }`}
               >
@@ -458,11 +458,11 @@ export default function SubscriptionForm({
                 onClick={() => setBillingPeriod('annual')}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                   billingPeriod === 'annual'
-                    ? 'bg-[#6b7cff] text-white'
+                    ? 'bg-gradient-to-r from-[#6b9aff] to-[#7ca5ff] text-[#0a1628] font-semibold'
                     : 'text-gray-400 hover:text-white'
                 }`}
               >
-                Annual <span className="text-[#8b9cff] ml-1">(Save 17%)</span>
+                Annual <span className={billingPeriod === 'annual' ? 'text-[#0a1628]/80 ml-1' : 'text-[#8b9cff] ml-1'}>(Save 17%)</span>
               </button>
             </div>
           )}
@@ -481,13 +481,13 @@ export default function SubscriptionForm({
         {availablePlans.map((plan) => (
           <Card
             key={plan.id}
-            className={`relative cursor-pointer transition-all hover:shadow-lg bg-[#0a1628] border-[#3b4a6f] ${
-              selectedPlan === plan.id ? 'ring-2 ring-[#6b7cff] border-[#6b7cff]' : ''
+            className={`relative cursor-pointer transition-all hover:shadow-lg ${
+              selectedPlan === plan.id ? 'ring-2 ring-[#6b9aff] border-[#6b9aff]' : ''
             }`}
             onClick={() => setSelectedPlan(plan.id)}
           >
             {plan.recommended && (
-              <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-[#7b8cff] to-[#9b7cff] text-white border-none">
+              <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-[#6b9aff] to-[#7ca5ff] text-[#0a1628] border-none font-semibold">
                 Most Popular
               </Badge>
             )}
@@ -496,7 +496,7 @@ export default function SubscriptionForm({
               <CardTitle className="flex flex-col gap-4">
                 <span className="text-xl font-semibold text-white tracking-tight">{plan.name}</span>
                 <div>
-                  <span className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#7b8cff] to-[#9b7cff] tracking-tight break-words">
+                  <span className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#6b9aff] to-[#7ca5ff] tracking-tight break-words">
                     {plan.price}
                   </span>
                   {billingPeriod === 'annual' && (
@@ -513,7 +513,7 @@ export default function SubscriptionForm({
               <ul className="space-y-4 mb-10">
                 {plan.features.map((feature, index) => (
                   <li key={index} className="flex items-start">
-                    <Check className="h-5 w-5 text-[#6b7cff] mr-3 flex-shrink-0 mt-0.5" />
+                    <Check className="h-5 w-5 text-[#6b9aff] mr-3 flex-shrink-0 mt-0.5" />
                     <span className="text-sm leading-relaxed text-gray-300">{feature}</span>
                   </li>
                 ))}
@@ -522,8 +522,8 @@ export default function SubscriptionForm({
               <Button 
                 className={`w-full h-11 text-base font-medium ${
                   selectedPlan === plan.id 
-                    ? 'bg-gradient-to-r from-[#7b8cff] to-[#9b7cff] hover:from-[#6b7cff] hover:to-[#8b6cff] text-white' 
-                    : 'bg-transparent border-[#3b4a6f] text-white hover:bg-[#1e3a5f] hover:border-[#6b7cff]'
+                    ? 'bg-gradient-to-r from-[#6b9aff] to-[#7ca5ff] hover:from-[#7ca5ff] hover:to-[#8db0ff] text-[#0a1628]' 
+                    : 'bg-transparent text-white'
                 }`}
                 onClick={(e) => {
                   e.stopPropagation();
