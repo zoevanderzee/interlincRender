@@ -481,7 +481,8 @@ export default function SubscriptionForm({
         {availablePlans.map((plan) => (
           <Card
             key={plan.id}
-            className={`relative cursor-pointer transition-all hover:shadow-lg bg-card/50 ${
+            style={{ background: 'hsl(215, 50%, 12%)' }}
+            className={`relative cursor-pointer transition-all hover:shadow-lg ${
               selectedPlan === plan.id ? 'ring-2 ring-primary border-primary' : ''
             }`}
             onClick={() => setSelectedPlan(plan.id)}
