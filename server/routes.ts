@@ -2874,44 +2874,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else {
           console.log(`[Subscription] Using existing Stripe customer ${customerId} for user ${user.id}`);
           
-          // Cancel ONLY trialing, incomplete, or past_due subscriptions to prevent currency conflicts
-          const existingSubscriptions = await stripe.subscriptions.list({
-            customer: customerId,
-            status: 'all',
-            limit: 100
-          });
+          try {
+            // Verify customer exists and cancel non-active subscriptions
+            const existingSubscriptions = await stripe.subscriptions.list({
+              customer: customerId,
+              status: 'all',
+              limit: 100
+            });
 
-          console.log(`[Subscription] Found ${existingSubscriptions.data.length} existing subscriptions for customer ${customerId}`);
+            console.log(`[Subscription] Found ${existingSubscriptions.data.length} existing subscriptions for customer ${customerId}`);
 
-          for (const existingSub of existingSubscriptions.data) {
-            // Only cancel non-active subscriptions (trialing, incomplete, past_due)
-            if (['trialing', 'incomplete', 'incomplete_expired', 'past_due'].includes(existingSub.status)) {
-              console.log(`[Subscription] Canceling non-active subscription ${existingSub.id} (status: ${existingSub.status})`);
-              await stripe.subscriptions.cancel(existingSub.id);
-            } else if (existingSub.status === 'active') {
-              console.log(`[Subscription] Preserving active subscription ${existingSub.id}`);
+            for (const existingSub of existingSubscriptions.data) {
+              // Only cancel non-active subscriptions (trialing, incomplete, past_due)
+              if (['trialing', 'incomplete', 'incomplete_expired', 'past_due'].includes(existingSub.status)) {
+                console.log(`[Subscription] Canceling non-active subscription ${existingSub.id} (status: ${existingSub.status})`);
+                await stripe.subscriptions.cancel(existingSub.id);
+              } else if (existingSub.status === 'active') {
+                console.log(`[Subscription] Preserving active subscription ${existingSub.id}`);
+              }
+            }
+          } catch (customerError: any) {
+            // Handle invalid/deleted customer ID
+            if (customerError.code === 'resource_missing' || customerError.message?.includes('No such customer')) {
+              console.log(`[Subscription] Customer ${customerId} no longer exists in Stripe, creating new customer`);
+              const newCustomer = await stripe.customers.create({
+                email: user.email,
+                name: `${user.firstName} ${user.lastName}`,
+                metadata: {
+                  userId: user.id.toString(),
+                  replacedCustomerId: customerId
+                }
+              });
+              customerId = newCustomer.id;
+              console.log(`[Subscription] Created replacement customer ${customerId} for user ${user.id}`);
+            } else {
+              throw customerError;
             }
           }
         }
 
         // Create the subscription using the verified Stripe Price ID
-        const subscription = await stripe.subscriptions.create({
-          customer: customerId,
-          items: [
-            {
-              price: priceId // Use verified Stripe Price ID from map
+        let subscription;
+        try {
+          subscription = await stripe.subscriptions.create({
+            customer: customerId,
+            items: [
+              {
+                price: priceId // Use verified Stripe Price ID from map
+              }
+            ],
+            payment_behavior: 'default_incomplete',
+            payment_settings: {
+              save_default_payment_method: 'on_subscription'
+            },
+            expand: ['latest_invoice.payment_intent'],
+            metadata: {
+              userId: user.id.toString(),
+              planType: planType
             }
-          ],
-          payment_behavior: 'default_incomplete',
-          payment_settings: {
-            save_default_payment_method: 'on_subscription'
-          },
-          expand: ['latest_invoice.payment_intent'],
-          metadata: {
-            userId: user.id.toString(),
-            planType: planType
+          });
+        } catch (subscriptionError: any) {
+          // Handle invalid customer ID during subscription creation
+          if (subscriptionError.code === 'resource_missing' || subscriptionError.message?.includes('No such customer')) {
+            console.log(`[Subscription] Customer ${customerId} invalid during subscription creation, creating new customer`);
+            const newCustomer = await stripe.customers.create({
+              email: user.email,
+              name: `${user.firstName} ${user.lastName}`,
+              metadata: {
+                userId: user.id.toString(),
+                replacedCustomerId: customerId
+              }
+            });
+            customerId = newCustomer.id;
+            console.log(`[Subscription] Created replacement customer ${customerId}, retrying subscription creation`);
+            
+            // Retry subscription creation with new customer
+            subscription = await stripe.subscriptions.create({
+              customer: customerId,
+              items: [
+                {
+                  price: priceId
+                }
+              ],
+              payment_behavior: 'default_incomplete',
+              payment_settings: {
+                save_default_payment_method: 'on_subscription'
+              },
+              expand: ['latest_invoice.payment_intent'],
+              metadata: {
+                userId: user.id.toString(),
+                planType: planType
+              }
+            });
+          } else {
+            throw subscriptionError;
           }
-        });
+        }
 
         // Extract client secret from subscription
         const latestInvoice = subscription.latest_invoice as any;

@@ -41,13 +41,14 @@ export function EmailVerificationForm({
         // Email is verified, sync with database
         try {
           const syncPayload = {
-            firebaseUid: user.uid,
+            uid: user.uid,
             email: user.email,
             emailVerified: true,
-            ...registrationData
+            displayName: user.displayName || '',
+            registrationData: registrationData
           };
 
-          const syncResponse = await apiRequest('POST', '/api/sync-user', syncPayload);
+          const syncResponse = await apiRequest('POST', '/api/sync-firebase-user', syncPayload);
 
           if (syncResponse.ok) {
             const syncData = await syncResponse.json();
@@ -107,13 +108,14 @@ export function EmailVerificationForm({
         if (auth.currentUser.emailVerified) {
           // Now sync the user with the database
           const syncPayload = {
-            firebaseUid: auth.currentUser.uid,
+            uid: auth.currentUser.uid,
             email: auth.currentUser.email,
             emailVerified: true,
-            ...registrationData
+            displayName: auth.currentUser.displayName || '',
+            registrationData: registrationData
           };
 
-          const syncResponse = await apiRequest('POST', '/api/sync-user', syncPayload);
+          const syncResponse = await apiRequest('POST', '/api/sync-firebase-user', syncPayload);
 
           if (syncResponse.ok) {
             const syncData = await syncResponse.json();

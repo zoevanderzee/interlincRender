@@ -6,14 +6,23 @@ const syncFirebaseUserSchema = z.object({
   uid: z.string(),
   email: z.string().email(),
   emailVerified: z.boolean(),
-  displayName: z.string().optional()
+  displayName: z.string().optional(),
+  registrationData: z.object({
+    role: z.enum(['business', 'contractor']),
+    firstName: z.string().optional(),
+    lastName: z.string().optional(),
+    username: z.string().optional(),
+    company: z.string().optional(),
+    position: z.string().optional(),
+    workerType: z.string().optional()
+  }).optional()
 });
 
 export function registerSyncFirebaseUserRoutes(app: Express) {
   // Endpoint to sync Firebase user metadata to PostgreSQL (optional)
   app.post("/api/sync-firebase-user", async (req, res) => {
     try {
-      const { uid, email, emailVerified, displayName } = syncFirebaseUserSchema.parse(req.body);
+      const { uid, email, emailVerified, displayName, registrationData } = syncFirebaseUserSchema.parse(req.body);
 
       // Check if user already exists by email (case-insensitive)
       let existingUser = await storage.getUserByEmail(email.toLowerCase());
@@ -24,18 +33,33 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
       }
 
       if (existingUser) {
-        // Update existing user with Firebase UID and verification status
-        const result = await storage.updateUser(existingUser.id, { 
+        // Build update data - always update Firebase UID and email verification
+        const updateData: any = { 
           firebaseUid: uid,
           emailVerified: emailVerified 
-        });
+        };
+        
+        // If registration data is provided, update role and profile fields
+        if (registrationData) {
+          updateData.role = registrationData.role;
+          if (registrationData.firstName) updateData.firstName = registrationData.firstName;
+          if (registrationData.lastName) updateData.lastName = registrationData.lastName;
+          if (registrationData.username) updateData.username = registrationData.username;
+          if (registrationData.company) updateData.companyName = registrationData.company;
+          if (registrationData.position) updateData.position = registrationData.position;
+          if (registrationData.workerType) updateData.workerType = registrationData.workerType;
+          console.log(`Updating existing user ${existingUser.id} with role: ${registrationData.role}`);
+        }
+        
+        const result = await storage.updateUser(existingUser.id, updateData);
+        const updatedUser = result || existingUser;
 
         // User found and synced successfully  
-        console.log(`User metadata synced for user ID ${existingUser.id} (${existingUser.username})`);
+        console.log(`User metadata synced for user ID ${updatedUser.id} (${updatedUser.username}) with role: ${updatedUser.role}`);
 
-        // Ensure session is properly set
-        req.session.userId = existingUser.id;
-        req.session.user = existingUser;
+        // Ensure session is properly set with updated user data
+        req.session.userId = updatedUser.id;
+        req.session.user = updatedUser;
 
         await new Promise<void>((resolve, reject) => {
           req.session.save((err) => {
@@ -43,7 +67,7 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
               console.error('Session save error:', err);
               reject(err);
             } else {
-              console.log(`Session saved for user ${existingUser.id}`);
+              console.log(`Session saved for user ${updatedUser.id}`);
               resolve();
             }
           });
@@ -52,7 +76,8 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
         return res.json({ 
           success: true, 
           message: "User metadata synced",
-          userId: existingUser.id
+          userId: updatedUser.id,
+          user: updatedUser
         });
       }
 
@@ -61,12 +86,15 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
       
       // Create user record for Firebase authentication
       const userData = {
-        email: email.toLowerCase(), // Normalize email to lowercase
-        username: email.split('@')[0].toLowerCase() + '_' + Date.now(), // Ensure unique username
-        firstName: displayName?.split(' ')[0] || 'User',
-        lastName: displayName?.split(' ').slice(1).join(' ') || '',
-        password: 'firebase_managed', // Not used for authentication
-        role: 'business' as const, // Default to business for new accounts
+        email: email.toLowerCase(),
+        username: registrationData?.username || email.split('@')[0].toLowerCase() + '_' + Date.now(),
+        firstName: registrationData?.firstName || displayName?.split(' ')[0] || 'User',
+        lastName: registrationData?.lastName || displayName?.split(' ').slice(1).join(' ') || '',
+        password: 'firebase_managed',
+        role: registrationData?.role || 'business', // Use the role the user selected!
+        workerType: registrationData?.workerType || null,
+        companyName: registrationData?.company || null,
+        position: registrationData?.position || null,
         firebaseUid: uid,
         emailVerified: emailVerified,
         subscriptionStatus: 'inactive' as const
