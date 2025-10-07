@@ -63,14 +63,24 @@ function Subscribe() {
   };
 
   return (
-    <div className="min-h-screen text-white" style={{ background: '#0f1a2e' }}>
-      <SubscriptionForm
-        userRole={currentUser.role as 'business' | 'contractor'}
-        userEmail={currentUser.email}
-        userName={currentUser.username || currentUser.first_name || 'User'}
-        userId={currentUser.id}
-        onSubscriptionComplete={handleSubscriptionComplete}
-      />
+    <div className="min-h-screen text-white relative overflow-hidden">
+      {/* Luxury gradient background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-[#0a0f1e] via-[#0f1a2e] to-[#1a2b4a]" />
+      
+      {/* Animated gradient orbs */}
+      <div className="absolute top-0 -left-40 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute bottom-0 -right-40 w-80 h-80 bg-indigo-500/20 rounded-full blur-3xl animate-pulse delay-1000" />
+      
+      {/* Content */}
+      <div className="relative z-10">
+        <SubscriptionForm
+          userRole={currentUser.role as 'business' | 'contractor'}
+          userEmail={currentUser.email}
+          userName={currentUser.username || currentUser.first_name || 'User'}
+          userId={currentUser.id}
+          onSubscriptionComplete={handleSubscriptionComplete}
+        />
+      </div>
     </div>
   );
 }

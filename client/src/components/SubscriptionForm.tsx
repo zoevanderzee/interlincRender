@@ -437,75 +437,91 @@ export default function SubscriptionForm({
 
   return (
     <div className="max-w-4xl mx-auto p-6">
-      <div className="text-center mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-3xl font-bold text-foreground">
-            {userRole === 'contractor' ? 'Contractor Subscription Plans' : 'Business Subscription Plans'}
+      <div className="text-center mb-12">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-white via-blue-100 to-blue-200 bg-clip-text text-transparent">
+            {userRole === 'contractor' ? 'Contractor Plans' : 'Business Plans'}
           </h2>
           {userRole === 'business' && (
-            <div className="flex items-center gap-3 bg-card border border-border rounded-lg p-1 backdrop-blur-sm">
+            <div className="flex items-center gap-2 bg-gradient-to-r from-white/10 to-white/5 border border-white/20 rounded-xl p-1.5 backdrop-blur-xl shadow-lg">
               <button
                 onClick={() => setBillingPeriod('monthly')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 ${
                   billingPeriod === 'monthly'
-                    ? 'bg-primary text-primary-foreground font-semibold'
-                    : 'text-muted-foreground hover:text-foreground'
+                    ? 'bg-gradient-to-r from-primary to-indigo-500 text-white shadow-lg shadow-primary/30'
+                    : 'text-blue-200/70 hover:text-white hover:bg-white/10'
                 }`}
               >
                 Monthly
               </button>
               <button
                 onClick={() => setBillingPeriod('annual')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 relative ${
                   billingPeriod === 'annual'
-                    ? 'bg-primary text-primary-foreground font-semibold'
-                    : 'text-muted-foreground hover:text-foreground'
+                    ? 'bg-gradient-to-r from-primary to-indigo-500 text-white shadow-lg shadow-primary/30'
+                    : 'text-blue-200/70 hover:text-white hover:bg-white/10'
                 }`}
               >
-                Annual <span className={billingPeriod === 'annual' ? 'opacity-80 ml-1' : 'text-primary/70 ml-1'}>(Save 17%)</span>
+                Annual 
+                <span className={`ml-1.5 text-xs px-2 py-0.5 rounded-full ${
+                  billingPeriod === 'annual' 
+                    ? 'bg-white/20' 
+                    : 'bg-primary/20 text-primary'
+                }`}>
+                  Save 17%
+                </span>
               </button>
             </div>
           )}
         </div>
-        <p className="text-muted-foreground">
+        <p className="text-lg text-blue-200/70 font-light max-w-2xl mx-auto">
           {userRole === 'contractor' 
-            ? 'Choose your contractor plan to access the platform' 
+            ? 'Unlock premium features and grow your freelance business' 
             : billingPeriod === 'monthly'
-              ? 'Choose your business plan to manage contractors and projects'
-              : 'Save with annual billing - all features included'
+              ? 'Scale your team with powerful contractor management tools'
+              : 'Get the best value with annual billing - all premium features included'
           }
         </p>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+      <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
         {availablePlans.map((plan) => (
           <Card
             key={plan.id}
-            style={{ background: 'hsl(215, 50%, 12%)' }}
-            className={`relative cursor-pointer transition-all hover:shadow-lg ${
-              selectedPlan === plan.id ? 'ring-2 ring-primary border-primary' : ''
+            className={`relative cursor-pointer transition-all duration-500 backdrop-blur-xl border-2 ${
+              selectedPlan === plan.id 
+                ? 'ring-4 ring-primary/50 border-primary shadow-2xl shadow-primary/20 scale-[1.02]' 
+                : 'border-white/10 hover:border-primary/50 hover:shadow-xl hover:shadow-primary/10 hover:scale-[1.01]'
             }`}
+            style={{ 
+              background: 'linear-gradient(135deg, rgba(107, 154, 255, 0.08) 0%, rgba(15, 26, 46, 0.95) 50%, rgba(26, 43, 74, 0.85) 100%)'
+            }}
             onClick={() => setSelectedPlan(plan.id)}
           >
+            {/* Premium gradient border effect */}
+            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary/30 via-transparent to-indigo-500/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+            
             {plan.recommended && (
-              <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-primary text-primary-foreground border-none font-semibold">
-                Most Popular
+              <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-primary to-indigo-500 text-white border-none font-bold shadow-lg shadow-primary/50 px-4 py-1.5">
+                ✨ Most Popular
               </Badge>
             )}
 
-            <CardHeader className="space-y-5 pb-8">
-              <CardTitle className="flex flex-col gap-4">
-                <span className="text-xl font-semibold text-foreground tracking-tight">{plan.name}</span>
-                <div>
-                  <span className="text-3xl font-bold text-primary tracking-tight break-words">
+            <CardHeader className="space-y-6 pb-8 pt-8">
+              <CardTitle className="flex flex-col gap-5">
+                <span className="text-2xl font-bold text-white tracking-tight bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">
+                  {plan.name}
+                </span>
+                <div className="relative">
+                  <span className="text-5xl font-extrabold bg-gradient-to-r from-primary via-blue-400 to-indigo-400 bg-clip-text text-transparent tracking-tight break-words">
                     {plan.price}
                   </span>
                   {billingPeriod === 'annual' && (
-                    <p className="text-sm text-muted-foreground mt-2">Billed yearly</p>
+                    <p className="text-sm text-blue-300/70 mt-3 font-medium">Billed annually • Save 17%</p>
                   )}
                 </div>
               </CardTitle>
-              <CardDescription className="text-sm leading-relaxed text-muted-foreground min-h-[40px]">
+              <CardDescription className="text-base leading-relaxed text-blue-200/70 min-h-[40px] font-light">
                 {plan.description}
               </CardDescription>
             </CardHeader>
@@ -513,22 +529,28 @@ export default function SubscriptionForm({
             <CardContent className="pt-0 pb-8 px-6">
               <ul className="space-y-4 mb-10">
                 {plan.features.map((feature, index) => (
-                  <li key={index} className="flex items-start">
-                    <Check className="h-5 w-5 text-primary mr-3 flex-shrink-0 mt-0.5" />
-                    <span className="text-sm leading-relaxed text-foreground">{feature}</span>
+                  <li key={index} className="flex items-start group">
+                    <div className="h-6 w-6 rounded-full bg-gradient-to-br from-primary/20 to-indigo-500/20 flex items-center justify-center mr-3 flex-shrink-0 mt-0.5 border border-primary/30">
+                      <Check className="h-4 w-4 text-primary" />
+                    </div>
+                    <span className="text-base leading-relaxed text-blue-100/90 font-light group-hover:text-white transition-colors">{feature}</span>
                   </li>
                 ))}
               </ul>
 
               <Button 
-                className="w-full h-11 text-base font-medium"
+                className={`w-full h-12 text-base font-semibold transition-all duration-300 ${
+                  selectedPlan === plan.id 
+                    ? 'bg-gradient-to-r from-primary to-indigo-500 hover:from-primary/90 hover:to-indigo-500/90 shadow-xl shadow-primary/30' 
+                    : 'bg-gradient-to-r from-white/10 to-white/5 hover:from-white/20 hover:to-white/10 border border-white/20 hover:border-primary/50'
+                }`}
                 onClick={(e) => {
                   e.stopPropagation();
                   handlePlanSelect(plan.id);
                 }}
                 variant={selectedPlan === plan.id ? "default" : "outline"}
               >
-                {selectedPlan === plan.id ? "Selected" : "Choose Plan"}
+                {selectedPlan === plan.id ? "✓ Selected" : "Get Started →"}
               </Button>
             </CardContent>
           </Card>
