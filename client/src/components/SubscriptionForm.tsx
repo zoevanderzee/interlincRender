@@ -31,32 +31,26 @@ interface SubscriptionFormProps {
 }
 
 const CheckoutForm = ({ 
-  subscriptionId, 
+  planId,
   userId, 
-  onComplete 
+  userEmail,
+  userName,
+  onComplete,
+  onCreateSubscription
 }: { 
-  subscriptionId: string; 
-  userId: number; 
+  planId: string;
+  userId: number;
+  userEmail: string;
+  userName: string;
   onComplete: () => void;
+  onCreateSubscription: (planId: string) => Promise<{ subscriptionId: string; clientSecret: string }>;
 }) => {
   const stripe = useStripe();
   const elements = useElements();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isElementReady, setIsElementReady] = useState(false);
-
-  useEffect(() => {
-    if (!elements) return;
-
-    // Listen for the payment element to be ready
-    const paymentElement = elements.getElement('payment');
-    if (paymentElement) {
-      paymentElement.on('ready', () => {
-        console.log('PaymentElement is ready');
-        setIsElementReady(true);
-      });
-    }
-  }, [elements]);
+  const [subscriptionId, setSubscriptionId] = useState<string>("");
+  const [clientSecret, setClientSecret] = useState<string>("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,24 +64,21 @@ const CheckoutForm = ({
       return;
     }
 
-    // Check if payment element is complete and valid
-    const { error: submitError } = await elements.submit();
-    if (submitError) {
-      toast({
-        title: "Payment Information Required",
-        description: submitError.message || "Please complete the payment information.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsProcessing(true);
 
     try {
-      console.log('Starting payment confirmation for subscription:', subscriptionId);
+      // Step 1: Create subscription and get payment intent
+      console.log('Creating subscription for plan:', planId);
+      const { subscriptionId: newSubId, clientSecret: newClientSecret } = await onCreateSubscription(planId);
+      setSubscriptionId(newSubId);
+      setClientSecret(newClientSecret);
 
+      console.log('Starting payment confirmation for subscription:', newSubId);
+
+      // Step 2: Confirm payment with the client secret
       const { error } = await stripe.confirmPayment({
         elements,
+        clientSecret: newClientSecret,
         confirmParams: {
           return_url: `${window.location.origin}/subscription-success`,
         },
@@ -123,9 +114,9 @@ const CheckoutForm = ({
 
       console.log('Payment confirmed successfully, completing subscription...');
 
-      // Complete subscription on backend
+      // Step 3: Complete subscription on backend
       const completeResponse = await apiRequest("POST", "/api/complete-subscription", {
-        subscriptionId,
+        subscriptionId: newSubId,
         userId
       });
 
@@ -293,10 +284,24 @@ export default function SubscriptionForm({
         throw new Error('Price information not available for this plan');
       }
 
-      // Set the selected plan
+      // Set the selected plan - show payment form immediately without creating subscription
       setSelectedPlan(planId);
+      setShowPayment(true);
 
-      console.log('[Subscription] Creating subscription with plan:', planId, 'Price ID:', priceData.priceId);
+    } catch (error) {
+      console.error('[Subscription] Error:', error);
+      toast({
+        title: "Plan Selection Error",
+        description: error instanceof Error ? error.message : "Failed to select plan",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // NEW: Create subscription only when user submits payment
+  const createSubscriptionWithPayment = async (planId: string) => {
+    try {
+      console.log('[Subscription] Creating subscription with plan:', planId);
 
       // Create subscription with Stripe - backend will use correct Price ID
       const response = await apiRequest("POST", "/api/create-subscription", {
@@ -313,19 +318,15 @@ export default function SubscriptionForm({
       }
 
       console.log('[Subscription] ✅ Subscription created:', data.subscriptionId);
-      console.log('[Subscription] Client secret received, showing payment form');
 
-      setSubscriptionId(data.subscriptionId);
-      setClientSecret(data.clientSecret);
-      setShowPayment(true);
+      return {
+        subscriptionId: data.subscriptionId,
+        clientSecret: data.clientSecret
+      };
 
     } catch (error) {
       console.error('[Subscription] Error:', error);
-      toast({
-        title: "Subscription Error",
-        description: error instanceof Error ? error.message : "Failed to create subscription",
-        variant: "destructive",
-      });
+      throw error;
     }
   };
 
@@ -334,7 +335,7 @@ export default function SubscriptionForm({
     onSubscriptionComplete();
   };
 
-  if (showPayment && clientSecret) {
+  if (showPayment) {
     return (
       <div className="max-w-md mx-auto">
         <Card>
@@ -345,11 +346,14 @@ export default function SubscriptionForm({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Elements stripe={stripePromise} options={{ clientSecret }}>
+            <Elements stripe={stripePromise}>
               <CheckoutForm 
-                subscriptionId={subscriptionId}
+                planId={selectedPlan}
                 userId={userId}
+                userEmail={userEmail}
+                userName={userName}
                 onComplete={handleSubscriptionComplete}
+                onCreateSubscription={createSubscriptionWithPayment}
               />
             </Elements>
           </CardContent>
