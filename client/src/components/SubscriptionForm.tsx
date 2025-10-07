@@ -409,7 +409,7 @@ export default function SubscriptionForm({
     }
     // Business users can ONLY see business plans
     if (userRole === 'business') {
-      const isAnnual = plan.id.includes('annual') || plan.id.includes('starter');
+      const isAnnual = plan.id.includes('annual');
       if (billingPeriod === 'monthly') {
         return plan.id.startsWith('business') && !isAnnual;
       } else {
