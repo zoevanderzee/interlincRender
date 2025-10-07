@@ -1,0 +1,30 @@
+Something went wrong
+
+We've encountered an unexpected error. You can try refreshing the page or return to the dashboard.
+
+IntegrationError: Invalid value for elements(): `paymentMethodTypes` is only applicable when a `mode` is set.
+
+
+Elements2@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@stripe_react-stripe-js.js:284:27
+div
+_c9@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/src/components/ui/card.tsx:114:10
+div
+_c@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/src/components/ui/card.tsx:20:9
+div
+SubscriptionForm@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/src/components/SubscriptionForm.tsx:167:11
+div
+div
+Subscribe@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/src/pages/subscribe.tsx:26:49
+main
+div
+div
+Layout@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/src/components/layout/Layout.tsx:22:5
+Route@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js:323:14
+ProtectedRoute@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/src/components/auth/ProtectedRoute.tsx:26:5
+Switch@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js:380:27
+Router
+AuthProvider@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/src/hooks/use-auth.tsx:27:5
+QueryClientProvider@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js:2805:9
+ErrorBoundary@
+App
+QueryClientProvider@https://868c3391-b574-439c-93ff-85093e0fe991-00-lnwoym6ne9i5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js:2805:9
