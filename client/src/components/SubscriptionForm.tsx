@@ -446,7 +446,7 @@ export default function SubscriptionForm({
       <div className={`${
         userRole === 'contractor' 
           ? 'grid md:grid-cols-2 gap-6 max-w-4xl' 
-          : 'grid md:grid-cols-3 gap-6 max-w-5xl'
+          : 'grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl'
       } mx-auto`}>
         {availablePlans.map((plan) => (
           <Card
@@ -462,28 +462,30 @@ export default function SubscriptionForm({
               </Badge>
             )}
 
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                {plan.name}
-                <span className="text-2xl font-bold text-blue-600">
+            <CardHeader className="space-y-3 pb-4">
+              <CardTitle className="flex flex-col gap-2">
+                <span className="text-xl font-semibold">{plan.name}</span>
+                <span className="text-2xl font-bold text-blue-600 break-words">
                   {plan.price}
                 </span>
               </CardTitle>
-              <CardDescription>{plan.description}</CardDescription>
+              <CardDescription className="text-sm leading-relaxed">
+                {plan.description}
+              </CardDescription>
             </CardHeader>
 
-            <CardContent>
-              <ul className="space-y-3">
+            <CardContent className="pt-2">
+              <ul className="space-y-3 mb-6">
                 {plan.features.map((feature, index) => (
-                  <li key={index} className="flex items-center">
-                    <Check className="h-4 w-4 text-green-500 mr-3 flex-shrink-0" />
-                    <span className="text-sm">{feature}</span>
+                  <li key={index} className="flex items-start">
+                    <Check className="h-4 w-4 text-green-500 mr-3 flex-shrink-0 mt-0.5" />
+                    <span className="text-sm leading-relaxed">{feature}</span>
                   </li>
                 ))}
               </ul>
 
               <Button 
-                className="w-full mt-6"
+                className="w-full"
                 onClick={(e) => {
                   e.stopPropagation();
                   handlePlanSelect(plan.id);
