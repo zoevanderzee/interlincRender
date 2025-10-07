@@ -2836,38 +2836,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
+      // Map plan types to actual Stripe Price IDs
+      const priceIdMap: Record<string, string> = {
+        'business-starter': 'price_1SFIvtF4bfRUGDn9MWvE1imT', // Enterprise Annual £8,990.00/year
+        'business': 'price_1Ricn6F4bfRUGDn91XzkPq5F', // SME Monthly £199.00/month
+        'business-enterprise': 'price_1RgRilF4bfRUGDn9jMnjAo96', // Enterprise Monthly £899.00/month
+        'business-annual': 'price_1SFIv5F4bfRUGDn9qeJh0VYX', // SME Annual £1,990.00/year
+        'contractor': '', // Free plan - no Price ID
+        'contractor-pro': '' // Set to empty until valid contractor pro price ID provided
+      };
+
+      const priceId = priceIdMap[planType];
+      
+      if (!priceId) {
+        return res.status(400).json({ 
+          message: "Invalid plan type or plan not available",
+          planType 
+        });
+      }
+
       try {
-        // Create a customer in Stripe if they don't have one
-        const customer = await stripe.customers.create({
-          email: user.email,
-          name: `${user.firstName} ${user.lastName}`,
-          metadata: {
-            userId: user.id.toString()
-          }
-        });
+        // Create or get Stripe customer
+        let customerId = user.stripeCustomerId;
+        
+        if (!customerId) {
+          const customer = await stripe.customers.create({
+            email: user.email,
+            name: `${user.firstName} ${user.lastName}`,
+            metadata: {
+              userId: user.id.toString()
+            }
+          });
+          customerId = customer.id;
+        }
 
-        // Create a product for the subscription
-        const product = await stripe.products.create({
-          name: 'Premium Plan',
-          description: 'Monthly subscription to CD Smart Contract Platform'
-        });
-
-        // Create a price for the product
-        const price = await stripe.prices.create({
-          product: product.id,
-          unit_amount: 9900, // $99.00
-          currency: 'usd',
-          recurring: {
-            interval: 'month'
-          }
-        });
-
-        // Create the subscription
+        // Create the subscription using the actual Stripe Price ID
         const subscription = await stripe.subscriptions.create({
-          customer: customer.id,
+          customer: customerId,
           items: [
             {
-              price: price.id
+              price: priceId // Use actual Stripe Price ID
             }
           ],
           payment_behavior: 'default_incomplete',
@@ -2876,7 +2884,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
           expand: ['latest_invoice.payment_intent'],
           metadata: {
-            userId: user.id.toString()
+            userId: user.id.toString(),
+            planType: planType
           }
         });
 
@@ -2886,15 +2895,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Update user with Stripe information
         await storage.updateUserStripeInfo(user.id, {
-          stripeCustomerId: customer.id,
+          stripeCustomerId: customerId,
           stripeSubscriptionId: subscription.id
         });
+
+        console.log(`[Subscription] Created subscription ${subscription.id} with price ${priceId} for user ${user.id}`);
 
         // Return subscription details
         res.json({
           subscriptionId: subscription.id,
           clientSecret: paymentIntent?.client_secret,
-          customerId: customer.id
+          customerId: customerId
         });
       } catch (error: any) {
         console.error('Error creating subscription:', error.message);
