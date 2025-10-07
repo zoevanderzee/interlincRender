@@ -289,14 +289,16 @@ export default function SubscriptionForm({
 
       // Validate that we have price data for this plan
       const priceData = prices[planId];
-      if (!priceData) {
+      if (!priceData || !priceData.priceId) {
         throw new Error('Price information not available for this plan');
       }
 
-      // Set the selected plan and immediately show payment form
+      // Set the selected plan
       setSelectedPlan(planId);
 
-      // Create subscription with Stripe using the plan ID (backend will map to correct price)
+      console.log('[Subscription] Creating subscription with plan:', planId, 'Price ID:', priceData.priceId);
+
+      // Create subscription with Stripe - backend will use correct Price ID
       const response = await apiRequest("POST", "/api/create-subscription", {
         planType: planId,
         email: userEmail,
@@ -306,10 +308,12 @@ export default function SubscriptionForm({
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to create subscription');
+        console.error('[Subscription] Error response:', data);
+        throw new Error(data.error || data.message || 'Failed to create subscription');
       }
 
-      console.log('[Subscription] Got client secret, showing payment form');
+      console.log('[Subscription] ✅ Subscription created:', data.subscriptionId);
+      console.log('[Subscription] Client secret received, showing payment form');
 
       setSubscriptionId(data.subscriptionId);
       setClientSecret(data.clientSecret);

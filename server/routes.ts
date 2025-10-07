@@ -2836,33 +2836,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Fetch the actual Stripe Price IDs from the subscription-prices endpoint
-      // This ensures we always use the correct, up-to-date prices
-      const pricesResponse = await fetch(`${req.protocol}://${req.get('host')}/api/subscription-prices`);
-      const pricesData = await pricesResponse.json();
+      // Map plan types to correct Stripe Price IDs
+      const priceIdMap: Record<string, string> = {
+        'business-starter': 'price_1SFIvtF4bfRUGDn9MWvE1imT', // Enterprise Annual £8,990.00/year
+        'business': 'price_1Ricn6F4bfRUGDn91XzkPq5F', // SME Monthly £199.00/month
+        'business-enterprise': 'price_1RgRilF4bfRUGDn9jMnjAo96', // Enterprise Monthly £899.00/month
+        'business-annual': 'price_1SFIv5F4bfRUGDn9qeJh0VYX', // SME Annual £1,990.00/year
+      };
+
+      const priceId = priceIdMap[planType];
       
-      // Extract the Stripe Price ID for this plan type
-      const planPriceData = pricesData[planType];
-      
-      if (!planPriceData) {
+      if (!priceId) {
+        console.error(`[Subscription] Invalid plan type: ${planType}`);
         return res.status(400).json({ 
           message: "Invalid plan type or price not configured",
-          planType 
+          planType,
+          availablePlans: Object.keys(priceIdMap)
         });
       }
 
-      // For free plans, handle separately
-      if (planPriceData.amount === 0 || !planPriceData.priceId) {
-        return res.status(400).json({
-          message: "Free plans don't require payment setup",
-          planType
-        });
-      }
-
-      // Use the Price ID from the API response
-      const priceId = planPriceData.priceId;
-      
-      console.log(`[Subscription] Using Price ID ${priceId} for plan ${planType}`);
+      console.log(`[Subscription] Using verified Price ID ${priceId} for plan ${planType}`);
 
       try {
         // Create or get Stripe customer
@@ -2877,14 +2870,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           });
           customerId = customer.id;
+          console.log(`[Subscription] Created new Stripe customer ${customerId} for user ${user.id}`);
+        } else {
+          console.log(`[Subscription] Using existing Stripe customer ${customerId} for user ${user.id}`);
         }
 
-        // Create the subscription using the actual Stripe Price ID
+        // Create the subscription using the verified Stripe Price ID
         const subscription = await stripe.subscriptions.create({
           customer: customerId,
           items: [
             {
-              price: priceId // Use actual Stripe Price ID
+              price: priceId // Use verified Stripe Price ID from map
             }
           ],
           payment_behavior: 'default_incomplete',
@@ -2908,7 +2904,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           stripeSubscriptionId: subscription.id
         });
 
-        console.log(`[Subscription] Created subscription ${subscription.id} with price ${priceId} for user ${user.id}`);
+        console.log(`[Subscription] ✅ Successfully created subscription ${subscription.id} with price ${priceId} (${planType}) for user ${user.id}`);
 
         // Return subscription details
         res.json({
@@ -2917,14 +2913,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           customerId: customerId
         });
       } catch (error: any) {
-        console.error('Error creating subscription:', error.message);
+        console.error('[Subscription] Stripe error:', error.message);
         return res.status(400).json({
           message: "Error creating subscription",
           error: error.message
         });
       }
     } catch (error: any) {
-      console.error('Error in subscription endpoint:', error);
+      console.error('[Subscription] Fatal error:', error);
       res.status(500).json({
         message: "Error processing subscription request",
         error: error.message
