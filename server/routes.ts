@@ -2403,8 +2403,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(403).json({ message: "Access denied: Cannot access other business documents" });
         }
         if (userRole === 'contractor' && contract.contractorId !== userId) {
-          console.log(`SECURITY BLOCK: Contractor user ${userId} attempted to access document ${id} for contract assigned to contractor ${contract.contractorId}`);
-          return res.status(403).json({ message: "Access denied: Cannot access other contractor documents" });
+          console.log(`SECURITY BLOCK: Business user ${userId} attempted to access documents for contract ${contractId} owned by business ${contract.businessId}`);
+          return res.status(403).json({ message: "Access denied: Cannot access other business documents" });
         }
 
         documents = await storage.getDocumentsByContractId(contractId);
@@ -2814,22 +2814,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
   // Subscription endpoint for companies
-  app.post(`${apiRouter}/create-subscription`, async (req: Request, res: Response) => {
+  app.post(`${apiRouter}/create-subscription`, requireAuth, async (req: Request, res: Response) => {
     try {
-      // In a real application, this would check if the user is authenticated
-      // and retrieve their user ID from the session
-      // For this demo, we'll simulate user authentication
-      const userId = 1; // Default to first user for demo
+      const { planType, email, customerName } = req.body;
 
-      // Get user details
+      console.log(`[Subscription] Creating subscription for plan: ${planType}, email: ${email}`);
+
+      // Get user ID from authenticated session or header
+      let userId = req.user?.id;
+      if (!userId && req.headers['x-user-id']) {
+        userId = parseInt(req.headers['x-user-id'] as string);
+      }
+
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // Get user from database
       const user = await storage.getUser(userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-
-      // Check if user already has a subscription
-      // In a real app, you'd have a stripeSubscriptionId field on the user
-      // For demo purposes, we're always creating a new subscription
 
       try {
         // Create a customer in Stripe if they don't have one
@@ -4551,7 +4556,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Work Request Submissions Routes
+  // Work Request Submission Routes
   app.post('/api/work-request-submissions', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const { workRequestId, title, description, notes, attachmentUrls, submissionType } = req.body;
