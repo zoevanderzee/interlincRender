@@ -513,9 +513,16 @@ export default function SubscriptionForm({
                   {plan.name}
                 </span>
                 <div className="relative">
-                  <span className="text-5xl font-extrabold bg-gradient-to-r from-primary via-blue-400 to-indigo-400 bg-clip-text text-transparent tracking-tight break-words">
-                    {plan.price}
-                  </span>
+                  <div className="flex flex-col items-start">
+                    <span className="text-5xl font-extrabold bg-gradient-to-r from-primary via-blue-400 to-indigo-400 bg-clip-text text-transparent tracking-tight break-words">
+                      {plan.price.split('/')[0]}
+                    </span>
+                    {plan.price.includes('/') && (
+                      <span className="text-sm text-blue-300/70 font-medium mt-1">
+                        /{plan.price.split('/')[1]}
+                      </span>
+                    )}
+                  </div>
                   {billingPeriod === 'annual' && (
                     <p className="text-sm text-blue-300/70 mt-3 font-medium">Billed annually • Save 17%</p>
                   )}
