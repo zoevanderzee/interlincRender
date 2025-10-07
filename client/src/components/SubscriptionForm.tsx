@@ -443,13 +443,13 @@ export default function SubscriptionForm({
             {userRole === 'contractor' ? 'Contractor Subscription Plans' : 'Business Subscription Plans'}
           </h2>
           {userRole === 'business' && (
-            <div className="flex items-center gap-3 bg-gradient-to-r from-[#1a2b4a]/40 to-[#0f1f3a]/40 border border-[#6b9aff]/30 rounded-lg p-1 backdrop-blur-sm">
+            <div className="flex items-center gap-3 bg-gradient-to-r from-[hsl(215,50%,12%)] to-[hsl(210,60%,10%)] border border-[hsl(215,40%,22%)] rounded-lg p-1 backdrop-blur-sm">
               <button
                 onClick={() => setBillingPeriod('monthly')}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                   billingPeriod === 'monthly'
-                    ? 'bg-gradient-to-r from-[#6b9aff] to-[#7ca5ff] text-[#0a1628] font-semibold'
-                    : 'text-gray-400 hover:text-white'
+                    ? 'bg-gradient-to-r from-[hsl(217,91%,70%)] to-[hsl(217,91%,75%)] text-[hsl(210,60%,8%)] font-semibold'
+                    : 'text-muted-foreground hover:text-white'
                 }`}
               >
                 Monthly
@@ -458,11 +458,11 @@ export default function SubscriptionForm({
                 onClick={() => setBillingPeriod('annual')}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                   billingPeriod === 'annual'
-                    ? 'bg-gradient-to-r from-[#6b9aff] to-[#7ca5ff] text-[#0a1628] font-semibold'
-                    : 'text-gray-400 hover:text-white'
+                    ? 'bg-gradient-to-r from-[hsl(217,91%,70%)] to-[hsl(217,91%,75%)] text-[hsl(210,60%,8%)] font-semibold'
+                    : 'text-muted-foreground hover:text-white'
                 }`}
               >
-                Annual <span className={billingPeriod === 'annual' ? 'text-[#0a1628]/80 ml-1' : 'text-[#8b9cff] ml-1'}>(Save 17%)</span>
+                Annual <span className={billingPeriod === 'annual' ? 'text-[hsl(210,60%,8%)]/80 ml-1' : 'text-[hsl(217,91%,70%)]/70 ml-1'}>(Save 17%)</span>
               </button>
             </div>
           )}
@@ -482,29 +482,29 @@ export default function SubscriptionForm({
           <Card
             key={plan.id}
             className={`relative cursor-pointer transition-all hover:shadow-lg ${
-              selectedPlan === plan.id ? 'ring-2 ring-[#6b9aff] border-[#6b9aff]' : ''
+              selectedPlan === plan.id ? 'ring-2 ring-primary border-primary' : ''
             }`}
             onClick={() => setSelectedPlan(plan.id)}
           >
             {plan.recommended && (
-              <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-[#6b9aff] to-[#7ca5ff] text-[#0a1628] border-none font-semibold">
+              <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-primary to-[hsl(217,91%,75%)] text-primary-foreground border-none font-semibold">
                 Most Popular
               </Badge>
             )}
 
             <CardHeader className="space-y-5 pb-8">
               <CardTitle className="flex flex-col gap-4">
-                <span className="text-xl font-semibold text-white tracking-tight">{plan.name}</span>
+                <span className="text-xl font-semibold text-foreground tracking-tight">{plan.name}</span>
                 <div>
-                  <span className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#6b9aff] to-[#7ca5ff] tracking-tight break-words">
+                  <span className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary to-[hsl(217,91%,75%)] tracking-tight break-words">
                     {plan.price}
                   </span>
                   {billingPeriod === 'annual' && (
-                    <p className="text-sm text-gray-400 mt-2">Billed yearly</p>
+                    <p className="text-sm text-muted-foreground mt-2">Billed yearly</p>
                   )}
                 </div>
               </CardTitle>
-              <CardDescription className="text-sm leading-relaxed text-gray-400 min-h-[40px]">
+              <CardDescription className="text-sm leading-relaxed text-muted-foreground min-h-[40px]">
                 {plan.description}
               </CardDescription>
             </CardHeader>
@@ -513,8 +513,8 @@ export default function SubscriptionForm({
               <ul className="space-y-4 mb-10">
                 {plan.features.map((feature, index) => (
                   <li key={index} className="flex items-start">
-                    <Check className="h-5 w-5 text-[#6b9aff] mr-3 flex-shrink-0 mt-0.5" />
-                    <span className="text-sm leading-relaxed text-gray-300">{feature}</span>
+                    <Check className="h-5 w-5 text-primary mr-3 flex-shrink-0 mt-0.5" />
+                    <span className="text-sm leading-relaxed text-foreground">{feature}</span>
                   </li>
                 ))}
               </ul>
@@ -522,8 +522,8 @@ export default function SubscriptionForm({
               <Button 
                 className={`w-full h-11 text-base font-medium ${
                   selectedPlan === plan.id 
-                    ? 'bg-gradient-to-r from-[#6b9aff] to-[#7ca5ff] hover:from-[#7ca5ff] hover:to-[#8db0ff] text-[#0a1628]' 
-                    : 'bg-transparent text-white'
+                    ? 'bg-gradient-to-r from-primary to-[hsl(217,91%,75%)] hover:from-[hsl(217,91%,75%)] hover:to-[hsl(217,91%,80%)] text-primary-foreground' 
+                    : 'bg-transparent text-foreground'
                 }`}
                 onClick={(e) => {
                   e.stopPropagation();
