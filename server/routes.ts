@@ -3944,12 +3944,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get subscription prices endpoint - fetches real-time prices from Stripe
   app.get(`${apiRouter}/subscription-prices`, async (req: Request, res: Response) => {
     try {
-      // Map of plan IDs to Stripe Price IDs - UPDATED WITH CORRECT IDs
+      // Map of plan IDs to Stripe Price IDs - CORRECTED MAPPINGS
       const priceIdMap = {
-        'business-starter': 'price_1SFIvtF4bfRUGDn9MWvE1imT', // Starter plan
-        'business': 'price_1SFIv5F4bfRUGDn9qeJh0VYX', // Standard plan
-        'business-enterprise': 'price_1RgRilF4bfRUGDn9jMnjAo96', // Enterprise plan (£899.00/month)
-        'business-annual': 'price_1Ricn6F4bfRUGDn91XzkPq5F', // Annual plan
+        'business-starter': 'price_1SFIvtF4bfRUGDn9MWvE1imT', // Enterprise Annual £8,990.00/year
+        'business': 'price_1Ricn6F4bfRUGDn91XzkPq5F', // SME Monthly £199.00/month
+        'business-enterprise': 'price_1RgRilF4bfRUGDn9jMnjAo96', // Enterprise Monthly £899.00/month
+        'business-annual': 'price_1SFIv5F4bfRUGDn9qeJh0VYX', // SME Annual £1,990.00/year
         'contractor': null, // Free plan - no Price ID needed
         'contractor-pro': null // Set to null until valid contractor pro price ID provided
       };
