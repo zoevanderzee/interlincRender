@@ -81,20 +81,29 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
         });
       }
 
-      // Log this case but don't treat it as an error - this happens for new Firebase users
-      console.log(`Creating new user account for email ${email} with Firebase UID ${uid}`);
+      // VALIDATION: registrationData with role is REQUIRED for new users
+      if (!registrationData || !registrationData.role) {
+        console.error(`Registration data or role missing for new user: ${email}`);
+        return res.status(400).json({
+          success: false,
+          error: 'Registration data with role is required for new user creation',
+          details: 'Role must be either "business" or "contractor"'
+        });
+      }
+
+      console.log(`Creating new user account for email ${email} with Firebase UID ${uid} and role ${registrationData.role}`);
       
       // Create user record for Firebase authentication
       const userData = {
         email: email.toLowerCase(),
-        username: registrationData?.username || email.split('@')[0].toLowerCase() + '_' + Date.now(),
-        firstName: registrationData?.firstName || displayName?.split(' ')[0] || 'User',
-        lastName: registrationData?.lastName || displayName?.split(' ').slice(1).join(' ') || '',
+        username: registrationData.username || email.split('@')[0].toLowerCase() + '_' + Date.now(),
+        firstName: registrationData.firstName || displayName?.split(' ')[0] || 'User',
+        lastName: registrationData.lastName || displayName?.split(' ').slice(1).join(' ') || '',
         password: 'firebase_managed',
-        role: registrationData?.role || 'business', // Use the role the user selected!
-        workerType: registrationData?.workerType || null,
-        companyName: registrationData?.company || null,
-        position: registrationData?.position || null,
+        role: registrationData.role, // NO FALLBACK - role is required and validated above
+        workerType: registrationData.workerType || null,
+        companyName: registrationData.company || null,
+        position: registrationData.position || null,
         firebaseUid: uid,
         emailVerified: emailVerified,
         subscriptionStatus: 'inactive' as const
