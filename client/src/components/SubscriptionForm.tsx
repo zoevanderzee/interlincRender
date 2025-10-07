@@ -465,7 +465,7 @@ export default function SubscriptionForm({
             <CardHeader className="space-y-5 pb-8">
               <CardTitle className="flex flex-col gap-4">
                 <span className="text-xl font-semibold text-white tracking-tight">{plan.name}</span>
-                <span className="text-4xl font-bold text-[#5b7cff] tracking-tight">
+                <span className="text-3xl font-bold text-[#5b7cff] tracking-tight break-words">
                   {plan.price}
                 </span>
               </CardTitle>
