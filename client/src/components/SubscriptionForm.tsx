@@ -285,8 +285,12 @@ export default function SubscriptionForm({
 
   const handlePlanSelect = async (planId: string) => {
     try {
-      console.log('[Subscription] Creating subscription for plan:', planId);
-      
+      console.log('[Subscription] Selected plan:', planId);
+
+      // Set the selected plan and immediately show payment form
+      setSelectedPlan(planId);
+
+      // Create subscription with Stripe to get clientSecret
       const response = await apiRequest("POST", "/api/create-subscription", {
         planType: planId,
         email: userEmail,
@@ -299,47 +303,14 @@ export default function SubscriptionForm({
         throw new Error(data.message || 'Failed to create subscription');
       }
 
-      console.log('[Subscription] Subscription created:', data);
+      console.log('[Subscription] Got client secret, showing payment form');
 
       setSubscriptionId(data.subscriptionId);
-      setSelectedPlan(planId);
-
-      // Check if this is a free subscription (no clientSecret)
-      if (data.clientSecret) {
-        // Paid subscription - show payment form
-        console.log('[Subscription] Showing payment form with clientSecret');
-        setClientSecret(data.clientSecret);
-        setShowPayment(true);
-      } else {
-        // Free subscription - complete immediately by calling complete subscription API
-        console.log('[Subscription] Free subscription - completing immediately');
-        try {
-          const completeResponse = await apiRequest("POST", "/api/complete-subscription", {
-            subscriptionId: data.subscriptionId,
-            userId: userId
-          });
-
-          if (!completeResponse.ok) {
-            throw new Error('Failed to activate free subscription');
-          }
-
-          toast({
-            title: "Subscription Complete!",
-            description: "Your free subscription has been activated.",
-          });
-          onSubscriptionComplete();
-        } catch (completeError) {
-          console.error('[Subscription] Free subscription activation error:', completeError);
-          toast({
-            title: "Activation Error",
-            description: "Your subscription was created but could not be activated. Please contact support.",
-            variant: "destructive",
-          });
-        }
-      }
+      setClientSecret(data.clientSecret);
+      setShowPayment(true);
 
     } catch (error) {
-      console.error('[Subscription] Subscription creation error:', error);
+      console.error('[Subscription] Error:', error);
       toast({
         title: "Subscription Error",
         description: error instanceof Error ? error.message : "Failed to create subscription",
@@ -506,7 +477,7 @@ export default function SubscriptionForm({
             }}
             onClick={() => setSelectedPlan(plan.id)}
           >
-            
+
             {plan.recommended && (
               <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-primary to-indigo-500 text-white border-none font-bold shadow-lg shadow-primary/50 px-4 py-1.5">
                 ✨ Most Popular
