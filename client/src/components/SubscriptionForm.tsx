@@ -206,7 +206,7 @@ export default function SubscriptionForm({
   const getSubscriptionPlans = (): SubscriptionPlan[] => [
     {
       id: "business",
-      name: "SME Monthly",
+      name: "SME",
       price: "Loading...",
       description: "Perfect for small to medium businesses",
       features: [
@@ -233,7 +233,7 @@ export default function SubscriptionForm({
     },
     {
       id: "business-enterprise",
-      name: "Enterprise Monthly",
+      name: "Enterprise",
       price: "Loading...",
       description: "For large organizations with advanced needs",
       features: [
