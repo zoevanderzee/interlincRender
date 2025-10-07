@@ -325,14 +325,14 @@ export default function SubscriptionForm({
   };
 
   if (showPayment && clientSecret) {
-    // Configure Stripe Elements options - card and Apple Pay only
+    // Configure Stripe Elements options - card and Apple Pay/Link only
     const options = {
       clientSecret,
+      mode: 'subscription' as const,
       appearance: {
         theme: 'stripe' as const,
       },
       loader: 'always' as const,
-      paymentMethodTypes: ['card'], // Only card payments (includes Apple Pay automatically on supported devices)
     };
 
     return (
