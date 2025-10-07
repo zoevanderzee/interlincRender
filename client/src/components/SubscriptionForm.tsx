@@ -210,12 +210,12 @@ export default function SubscriptionForm({
       price: "Loading...",
       description: "Perfect for small to medium businesses",
       features: [
-        "Unlimited contractors",
+        "Up to 50 active contractors",
         "Project milestone tracking",
-        "Automated payments",
-        "Budget management",
-        "Advanced reporting",
-        "Priority support"
+        "Automated milestone-based payments",
+        "Budget and expense management",
+        "Standard analytics & reporting",
+        "24 hour email support"
       ]
     },
     {
