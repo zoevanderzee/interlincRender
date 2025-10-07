@@ -199,6 +199,7 @@ export default function SubscriptionForm({
   const [showPayment, setShowPayment] = useState(false);
   const [prices, setPrices] = useState<Record<string, any>>({});
   const [loadingPrices, setLoadingPrices] = useState(true);
+  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual'>('monthly');
   const { toast } = useToast();
 
   // Define subscription plans function first - before using it
@@ -400,7 +401,7 @@ export default function SubscriptionForm({
   // Get subscription plans using the function defined earlier
   const subscriptionPlans = getSubscriptionPlans();
 
-  // Filter plans based on user role and update prices - STRICT SEPARATION
+  // Filter plans based on user role, billing period, and update prices - STRICT SEPARATION
   const availablePlans = subscriptionPlans.filter(plan => {
     // Contractors can ONLY see contractor plans
     if (userRole === 'contractor') {
@@ -408,7 +409,12 @@ export default function SubscriptionForm({
     }
     // Business users can ONLY see business plans
     if (userRole === 'business') {
-      return plan.id.startsWith('business');
+      const isAnnual = plan.id.includes('annual') || plan.id.includes('starter');
+      if (billingPeriod === 'monthly') {
+        return plan.id.startsWith('business') && !isAnnual;
+      } else {
+        return plan.id.startsWith('business') && isAnnual;
+      }
     }
     // Fallback: no plans if role is unclear
     return false;
@@ -432,22 +438,46 @@ export default function SubscriptionForm({
   return (
     <div className="max-w-4xl mx-auto p-6">
       <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold mb-4">
-          {userRole === 'contractor' ? 'Contractor Subscription Plans' : 'Business Subscription Plans'}
-        </h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-3xl font-bold">
+            {userRole === 'contractor' ? 'Contractor Subscription Plans' : 'Business Subscription Plans'}
+          </h2>
+          {userRole === 'business' && (
+            <div className="flex items-center gap-3 bg-[#0a1628] border border-[#2e4a6f] rounded-lg p-1">
+              <button
+                onClick={() => setBillingPeriod('monthly')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  billingPeriod === 'monthly'
+                    ? 'bg-[#5b7cff] text-white'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                Monthly
+              </button>
+              <button
+                onClick={() => setBillingPeriod('annual')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  billingPeriod === 'annual'
+                    ? 'bg-[#5b7cff] text-white'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                Annual <span className="text-green-400 ml-1">(Save 17%)</span>
+              </button>
+            </div>
+          )}
+        </div>
         <p className="text-gray-600">
           {userRole === 'contractor' 
             ? 'Choose your contractor plan to access the platform' 
-            : 'Choose your business plan to manage contractors and projects'
+            : billingPeriod === 'monthly'
+              ? 'Choose your business plan to manage contractors and projects'
+              : 'Save with annual billing - all features included'
           }
         </p>
       </div>
 
-      <div className={`${
-        userRole === 'contractor' 
-          ? 'grid md:grid-cols-2 gap-6 max-w-5xl' 
-          : 'grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-[1400px]'
-      } mx-auto`}>
+      <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
         {availablePlans.map((plan) => (
           <Card
             key={plan.id}
@@ -465,9 +495,14 @@ export default function SubscriptionForm({
             <CardHeader className="space-y-5 pb-8">
               <CardTitle className="flex flex-col gap-4">
                 <span className="text-xl font-semibold text-white tracking-tight">{plan.name}</span>
-                <span className="text-3xl font-bold text-[#5b7cff] tracking-tight break-words">
-                  {plan.price}
-                </span>
+                <div>
+                  <span className="text-3xl font-bold text-[#5b7cff] tracking-tight break-words">
+                    {plan.price}
+                  </span>
+                  {billingPeriod === 'annual' && (
+                    <p className="text-sm text-gray-400 mt-2">Billed yearly</p>
+                  )}
+                </div>
               </CardTitle>
               <CardDescription className="text-sm leading-relaxed text-gray-400 min-h-[40px]">
                 {plan.description}
