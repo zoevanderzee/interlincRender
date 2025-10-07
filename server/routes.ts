@@ -2813,7 +2813,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
 
-  // Subscription endpoint for companies
+  // Subscription endpoint for companies - NO subscription required (users are creating one)
   app.post(`${apiRouter}/create-subscription`, requireAuth, async (req: Request, res: Response) => {
     try {
       const { planType, email, customerName } = req.body;
