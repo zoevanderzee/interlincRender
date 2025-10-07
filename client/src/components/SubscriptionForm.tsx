@@ -436,8 +436,8 @@ export default function SubscriptionForm({
 
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <div className="text-center mb-12">
+    <div className="max-w-3xl mx-auto p-4">
+      <div className="text-center mb-8">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-white via-blue-100 to-blue-200 bg-clip-text text-transparent">
             {userRole === 'contractor' ? 'Contractor Plans' : 'Business Plans'}
@@ -507,8 +507,8 @@ export default function SubscriptionForm({
               </Badge>
             )}
 
-            <CardHeader className="space-y-6 pb-8 pt-8">
-              <CardTitle className="flex flex-col gap-5">
+            <CardHeader className="space-y-4 pb-6 pt-6">
+              <CardTitle className="flex flex-col gap-3">
                 <span className="text-2xl font-bold text-white tracking-tight bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">
                   {plan.name}
                 </span>
@@ -526,8 +526,8 @@ export default function SubscriptionForm({
               </CardDescription>
             </CardHeader>
 
-            <CardContent className="pt-0 pb-8 px-6">
-              <ul className="space-y-4 mb-10">
+            <CardContent className="pt-0 pb-6 px-5">
+              <ul className="space-y-3 mb-6">
                 {plan.features.map((feature, index) => (
                   <li key={index} className="flex items-start group">
                     <div className="h-6 w-6 rounded-full bg-gradient-to-br from-primary/20 to-indigo-500/20 flex items-center justify-center mr-3 flex-shrink-0 mt-0.5 border border-primary/30">
@@ -539,7 +539,7 @@ export default function SubscriptionForm({
               </ul>
 
               <Button 
-                className={`w-full h-12 text-base font-semibold transition-all duration-300 ${
+                className={`w-full h-10 text-sm font-semibold transition-all duration-300 ${
                   selectedPlan === plan.id 
                     ? 'bg-gradient-to-r from-primary to-indigo-500 hover:from-primary/90 hover:to-indigo-500/90 shadow-xl shadow-primary/30' 
                     : 'bg-gradient-to-r from-white/10 to-white/5 hover:from-white/20 hover:to-white/10 border border-white/20 hover:border-primary/50'
