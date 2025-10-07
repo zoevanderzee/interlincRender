@@ -445,14 +445,14 @@ export default function SubscriptionForm({
 
       <div className={`${
         userRole === 'contractor' 
-          ? 'grid md:grid-cols-2 gap-8 max-w-5xl' 
-          : 'grid md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl'
+          ? 'grid md:grid-cols-2 gap-6 max-w-5xl' 
+          : 'grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-[1400px]'
       } mx-auto`}>
         {availablePlans.map((plan) => (
           <Card
             key={plan.id}
-            className={`relative cursor-pointer transition-all hover:shadow-lg bg-[#0a1628] border-[#1e3a5f] ${
-              selectedPlan === plan.id ? 'ring-2 ring-[#5b7cff]' : ''
+            className={`relative cursor-pointer transition-all hover:shadow-lg bg-[#0a1628] border-[#2e4a6f] ${
+              selectedPlan === plan.id ? 'ring-2 ring-[#5b7cff] border-[#5b7cff]' : ''
             }`}
             onClick={() => setSelectedPlan(plan.id)}
           >
@@ -462,33 +462,33 @@ export default function SubscriptionForm({
               </Badge>
             )}
 
-            <CardHeader className="space-y-4 pb-6">
-              <CardTitle className="flex flex-col gap-3">
-                <span className="text-lg font-semibold text-white">{plan.name}</span>
-                <span className="text-3xl font-bold text-[#5b7cff]">
+            <CardHeader className="space-y-5 pb-8">
+              <CardTitle className="flex flex-col gap-4">
+                <span className="text-xl font-semibold text-white tracking-tight">{plan.name}</span>
+                <span className="text-4xl font-bold text-[#5b7cff] tracking-tight">
                   {plan.price}
                 </span>
               </CardTitle>
-              <CardDescription className="text-sm leading-relaxed text-gray-400">
+              <CardDescription className="text-sm leading-relaxed text-gray-400 min-h-[40px]">
                 {plan.description}
               </CardDescription>
             </CardHeader>
 
-            <CardContent className="pt-0 pb-6">
-              <ul className="space-y-3 mb-8">
+            <CardContent className="pt-0 pb-8 px-6">
+              <ul className="space-y-4 mb-10">
                 {plan.features.map((feature, index) => (
                   <li key={index} className="flex items-start">
-                    <Check className="h-4 w-4 text-[#5b7cff] mr-3 flex-shrink-0 mt-0.5" />
+                    <Check className="h-5 w-5 text-[#5b7cff] mr-3 flex-shrink-0 mt-0.5" />
                     <span className="text-sm leading-relaxed text-gray-300">{feature}</span>
                   </li>
                 ))}
               </ul>
 
               <Button 
-                className={`w-full ${
+                className={`w-full h-11 text-base font-medium ${
                   selectedPlan === plan.id 
                     ? 'bg-[#5b7cff] hover:bg-[#4a6be6] text-white' 
-                    : 'bg-transparent border-[#1e3a5f] text-white hover:bg-[#1e3a5f]'
+                    : 'bg-transparent border-[#2e4a6f] text-white hover:bg-[#1e3a5f] hover:border-[#5b7cff]'
                 }`}
                 onClick={(e) => {
                   e.stopPropagation();
