@@ -449,60 +449,53 @@ export default function SubscriptionForm({
           ? 'grid md:grid-cols-2 gap-6 max-w-4xl' 
           : 'grid md:grid-cols-3 gap-6 max-w-5xl'
       } mx-auto`}>
-        {getSubscriptionPlans().map((plan) => {
-              const priceInfo = prices[plan.id];
-              const displayPrice = priceInfo 
-                ? formatPrice(plan.id) // Use formatPrice helper for consistent formatting
-                : plan.price;
+        {availablePlans.map((plan) => (
+          <Card
+            key={plan.id}
+            className={`relative cursor-pointer transition-all hover:shadow-lg ${
+              selectedPlan === plan.id ? 'ring-2 ring-blue-500' : ''
+            }`}
+            onClick={() => setSelectedPlan(plan.id)}
+          >
+            {plan.recommended && (
+              <Badge className="absolute -top-2 left-1/2 transform -translate-x-1/2">
+                Recommended
+              </Badge>
+            )}
 
-              return (
-                <Card
-                  key={plan.id}
-                  className={`relative cursor-pointer transition-all hover:shadow-lg ${
-                    selectedPlan === plan.id ? 'ring-2 ring-blue-500' : ''
-                  }`}
-                  onClick={() => setSelectedPlan(plan.id)}
-                >
-                  {plan.recommended && (
-                    <Badge className="absolute -top-2 left-1/2 transform -translate-x-1/2">
-                      Recommended
-                    </Badge>
-                  )}
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                {plan.name}
+                <span className="text-2xl font-bold text-blue-600">
+                  {plan.price}
+                </span>
+              </CardTitle>
+              <CardDescription>{plan.description}</CardDescription>
+            </CardHeader>
 
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      {plan.name}
-                      <span className="text-2xl font-bold text-blue-600">
-                        {displayPrice}
-                      </span>
-                    </CardTitle>
-                    <CardDescription>{plan.description}</CardDescription>
-                  </CardHeader>
+            <CardContent>
+              <ul className="space-y-3">
+                {plan.features.map((feature, index) => (
+                  <li key={index} className="flex items-center">
+                    <Check className="h-4 w-4 text-green-500 mr-3 flex-shrink-0" />
+                    <span className="text-sm">{feature}</span>
+                  </li>
+                ))}
+              </ul>
 
-                  <CardContent>
-                    <ul className="space-y-3">
-                      {plan.features.map((feature, index) => (
-                        <li key={index} className="flex items-center">
-                          <Check className="h-4 w-4 text-green-500 mr-3 flex-shrink-0" />
-                          <span className="text-sm">{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-
-                    <Button 
-                      className="w-full mt-6"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handlePlanSelect(plan.id);
-                      }}
-                      variant={selectedPlan === plan.id ? "default" : "outline"}
-                    >
-                      {selectedPlan === plan.id ? "Selected" : "Choose Plan"}
-                    </Button>
-                  </CardContent>
-                </Card>
-              );
-            })}
+              <Button 
+                className="w-full mt-6"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handlePlanSelect(plan.id);
+                }}
+                variant={selectedPlan === plan.id ? "default" : "outline"}
+              >
+                {selectedPlan === plan.id ? "Selected" : "Choose Plan"}
+              </Button>
+            </CardContent>
+          </Card>
+        ))}
       </div>
     </div>
   );
