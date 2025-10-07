@@ -439,17 +439,17 @@ export default function SubscriptionForm({
     <div className="max-w-4xl mx-auto p-6">
       <div className="text-center mb-8">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-3xl font-bold">
+          <h2 className="text-3xl font-bold text-foreground">
             {userRole === 'contractor' ? 'Contractor Subscription Plans' : 'Business Subscription Plans'}
           </h2>
           {userRole === 'business' && (
-            <div className="flex items-center gap-3 bg-gradient-to-r from-[hsl(215,50%,12%)] to-[hsl(210,60%,10%)] border border-[hsl(215,40%,22%)] rounded-lg p-1 backdrop-blur-sm">
+            <div className="flex items-center gap-3 bg-card border border-border rounded-lg p-1 backdrop-blur-sm">
               <button
                 onClick={() => setBillingPeriod('monthly')}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                   billingPeriod === 'monthly'
-                    ? 'bg-gradient-to-r from-[hsl(217,91%,70%)] to-[hsl(217,91%,75%)] text-[hsl(210,60%,8%)] font-semibold'
-                    : 'text-muted-foreground hover:text-white'
+                    ? 'bg-primary text-primary-foreground font-semibold'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 Monthly
@@ -458,16 +458,16 @@ export default function SubscriptionForm({
                 onClick={() => setBillingPeriod('annual')}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                   billingPeriod === 'annual'
-                    ? 'bg-gradient-to-r from-[hsl(217,91%,70%)] to-[hsl(217,91%,75%)] text-[hsl(210,60%,8%)] font-semibold'
-                    : 'text-muted-foreground hover:text-white'
+                    ? 'bg-primary text-primary-foreground font-semibold'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                Annual <span className={billingPeriod === 'annual' ? 'text-[hsl(210,60%,8%)]/80 ml-1' : 'text-[hsl(217,91%,70%)]/70 ml-1'}>(Save 17%)</span>
+                Annual <span className={billingPeriod === 'annual' ? 'opacity-80 ml-1' : 'text-primary/70 ml-1'}>(Save 17%)</span>
               </button>
             </div>
           )}
         </div>
-        <p className="text-gray-600">
+        <p className="text-muted-foreground">
           {userRole === 'contractor' 
             ? 'Choose your contractor plan to access the platform' 
             : billingPeriod === 'monthly'
@@ -487,7 +487,7 @@ export default function SubscriptionForm({
             onClick={() => setSelectedPlan(plan.id)}
           >
             {plan.recommended && (
-              <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-primary to-[hsl(217,91%,75%)] text-primary-foreground border-none font-semibold">
+              <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-primary text-primary-foreground border-none font-semibold">
                 Most Popular
               </Badge>
             )}
@@ -496,7 +496,7 @@ export default function SubscriptionForm({
               <CardTitle className="flex flex-col gap-4">
                 <span className="text-xl font-semibold text-foreground tracking-tight">{plan.name}</span>
                 <div>
-                  <span className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary to-[hsl(217,91%,75%)] tracking-tight break-words">
+                  <span className="text-3xl font-bold text-primary tracking-tight break-words">
                     {plan.price}
                   </span>
                   {billingPeriod === 'annual' && (
@@ -520,11 +520,7 @@ export default function SubscriptionForm({
               </ul>
 
               <Button 
-                className={`w-full h-11 text-base font-medium ${
-                  selectedPlan === plan.id 
-                    ? 'bg-gradient-to-r from-primary to-[hsl(217,91%,75%)] hover:from-[hsl(217,91%,75%)] hover:to-[hsl(217,91%,80%)] text-primary-foreground' 
-                    : 'bg-transparent text-foreground'
-                }`}
+                className="w-full h-11 text-base font-medium"
                 onClick={(e) => {
                   e.stopPropagation();
                   handlePlanSelect(plan.id);
