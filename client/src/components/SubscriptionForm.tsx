@@ -204,20 +204,6 @@ export default function SubscriptionForm({
   // Define subscription plans function first - before using it
   const getSubscriptionPlans = (): SubscriptionPlan[] => [
     {
-      id: "business-starter",
-      name: "Enterprise Annual",
-      price: "Loading...",
-      description: "Annual enterprise plan with all features",
-      features: [
-        "Everything in Enterprise",
-        "Annual billing saves money",
-        "Dedicated account manager",
-        "SLA guarantees",
-        "Advanced security",
-        "Custom workflows"
-      ]
-    },
-    {
       id: "business",
       name: "SME Monthly",
       price: "Loading...",
@@ -229,6 +215,19 @@ export default function SubscriptionForm({
         "Budget management",
         "Advanced reporting",
         "Priority support"
+      ]
+    },
+    {
+      id: "business-annual",
+      name: "SME Annual",
+      price: "Loading...",
+      description: "Save with annual billing for SME features",
+      features: [
+        "Everything in SME Monthly",
+        "Annual billing saves money",
+        "Priority support",
+        "Extended data retention",
+        "Advanced reporting"
       ]
     },
     {
@@ -246,16 +245,17 @@ export default function SubscriptionForm({
       ]
     },
     {
-      id: "business-annual",
-      name: "SME Annual",
+      id: "business-starter",
+      name: "Enterprise Annual",
       price: "Loading...",
-      description: "Save with annual billing for SME features",
+      description: "Annual enterprise plan with all features",
       features: [
-        "Everything in SME Monthly",
+        "Everything in Enterprise",
         "Annual billing saves money",
-        "Priority support",
-        "Extended data retention",
-        "Advanced reporting"
+        "Dedicated account manager",
+        "SLA guarantees",
+        "Advanced security",
+        "Custom workflows"
       ]
     }
   ];
