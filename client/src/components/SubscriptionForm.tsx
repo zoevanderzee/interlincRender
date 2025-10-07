@@ -488,18 +488,16 @@ export default function SubscriptionForm({
         {availablePlans.map((plan) => (
           <Card
             key={plan.id}
-            className={`relative cursor-pointer transition-all duration-500 backdrop-blur-xl border-2 ${
+            className={`relative cursor-pointer transition-all duration-300 backdrop-blur-xl border-2 ${
               selectedPlan === plan.id 
                 ? 'ring-4 ring-primary/50 border-primary shadow-2xl shadow-primary/20 scale-[1.02]' 
                 : 'border-white/10 hover:border-primary/50 hover:shadow-xl hover:shadow-primary/10 hover:scale-[1.01]'
             }`}
             style={{ 
-              background: 'linear-gradient(135deg, rgba(107, 154, 255, 0.08) 0%, rgba(15, 26, 46, 0.95) 50%, rgba(26, 43, 74, 0.85) 100%)'
+              background: 'linear-gradient(135deg, rgba(107, 154, 255, 0.06) 0%, rgba(15, 26, 46, 1) 60%, rgba(15, 26, 46, 1) 100%)'
             }}
             onClick={() => setSelectedPlan(plan.id)}
           >
-            {/* Premium gradient border effect */}
-            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary/30 via-transparent to-indigo-500/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
             
             {plan.recommended && (
               <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-primary to-indigo-500 text-white border-none font-bold shadow-lg shadow-primary/50 px-4 py-1.5">
