@@ -246,7 +246,7 @@ export default function SubscriptionForm({
       ]
     },
     {
-      id: "business-starter",
+      id: "business-enterprise-annual",
       name: "Enterprise Annual",
       price: "Loading...",
       description: "Annual enterprise plan with all features",
