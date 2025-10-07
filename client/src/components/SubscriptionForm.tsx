@@ -325,6 +325,16 @@ export default function SubscriptionForm({
   };
 
   if (showPayment && clientSecret) {
+    // Configure Stripe Elements options - card and Apple Pay only
+    const options = {
+      clientSecret,
+      appearance: {
+        theme: 'stripe' as const,
+      },
+      loader: 'always' as const,
+      paymentMethodTypes: ['card'], // Only card payments (includes Apple Pay automatically on supported devices)
+    };
+
     return (
       <div className="max-w-md mx-auto">
         <Card>
@@ -335,15 +345,6 @@ export default function SubscriptionForm({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {/* Configure Stripe Elements options - card and Apple Pay only */}
-            const options = {
-              clientSecret,
-              appearance: {
-                theme: 'stripe' as const,
-              },
-              loader: 'always' as const,
-              paymentMethodTypes: ['card'], // Only card payments (includes Apple Pay automatically on supported devices)
-            };
             <Elements stripe={stripePromise} options={options}>
               <CheckoutForm 
                 subscriptionId={subscriptionId}
