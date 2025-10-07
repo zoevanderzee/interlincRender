@@ -193,16 +193,7 @@ export default function SubscriptionForm({
     );
   }
 
-  const [selectedPlan, setSelectedPlan] = useState<string>(userRole);
-  const [clientSecret, setClientSecret] = useState<string>("");
-  const [subscriptionId, setSubscriptionId] = useState<string>("");
-  const [showPayment, setShowPayment] = useState(false);
-  const [prices, setPrices] = useState<Record<string, any>>({});
-  const [loadingPrices, setLoadingPrices] = useState(true);
-  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual'>('monthly');
-  const { toast } = useToast();
-
-  // Define subscription plans function first - before using it
+  // Define subscription plans function FIRST - before state initialization
   const getSubscriptionPlans = (): SubscriptionPlan[] => [
     {
       id: "business",
@@ -260,6 +251,15 @@ export default function SubscriptionForm({
       ]
     }
   ];
+
+  const [selectedPlan, setSelectedPlan] = useState<string>(userRole);
+  const [clientSecret, setClientSecret] = useState<string>("");
+  const [subscriptionId, setSubscriptionId] = useState<string>("");
+  const [showPayment, setShowPayment] = useState(false);
+  const [prices, setPrices] = useState<Record<string, any>>({});
+  const [loadingPrices, setLoadingPrices] = useState(true);
+  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual'>('monthly');
+  const { toast } = useToast();
 
   // Fetch real prices from Stripe
   useEffect(() => {
@@ -331,7 +331,7 @@ export default function SubscriptionForm({
           <CardHeader>
             <CardTitle>Complete Your Subscription</CardTitle>
             <CardDescription>
-              {subscriptionPlans.find(p => p.id === selectedPlan)?.name} - {subscriptionPlans.find(p => p.id === selectedPlan)?.price}
+              {getSubscriptionPlans().find(p => p.id === selectedPlan)?.name} - {getSubscriptionPlans().find(p => p.id === selectedPlan)?.price}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -377,11 +377,8 @@ export default function SubscriptionForm({
     return `${currencySymbol}${amount.toFixed(2)}`;
   };
 
-  // Get subscription plans using the function defined earlier
-  const subscriptionPlans = getSubscriptionPlans();
-
   // Filter plans based on user role, billing period, and update prices - STRICT SEPARATION
-  const availablePlans = subscriptionPlans.filter(plan => {
+  const availablePlans = getSubscriptionPlans().filter(plan => {
     // Contractors can ONLY see contractor plans
     if (userRole === 'contractor') {
       return plan.id.startsWith('contractor');
