@@ -49,8 +49,15 @@ const CheckoutForm = ({
   const elements = useElements();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isElementReady, setIsElementReady] = useState(false);
   const [subscriptionId, setSubscriptionId] = useState<string>("");
   const [clientSecret, setClientSecret] = useState<string>("");
+
+  useEffect(() => {
+    if (elements) {
+      setIsElementReady(true);
+    }
+  }, [elements]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
