@@ -289,10 +289,10 @@ export function setupAuth(app: Express) {
         workerType = req.body.workerType || null;
       }
 
-      // Add worker type from invite if available
+      // Preserve exact username - no modifications
       const userData = {
         ...req.body,
-        username: req.body.username || req.body.email.split('@')[0], // Use exact username provided by user, fallback to email prefix
+        username: req.body.username, // Use EXACT username from registration form
         password: hashedPassword,
         role: role,
         workerType: workerType,

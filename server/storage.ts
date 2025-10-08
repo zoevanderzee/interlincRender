@@ -472,12 +472,8 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.userId++;
-    // Ensure username is exactly what was provided - no modifications
-    const userData = {
-      ...insertUser,
-      username: insertUser.username || insertUser.email.split('@')[0] // Only fallback if no username provided
-    };
-    const user = { ...userData, id } as User;
+    // Use EXACT username provided - no modifications whatsoever
+    const user = { ...insertUser, id } as User;
     this.users.set(id, user);
     return user;
   }
@@ -1763,12 +1759,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    // Ensure username is exactly what was provided - no modifications
-    const userData = {
-      ...insertUser,
-      username: insertUser.username || insertUser.email.split('@')[0] // Only fallback if no username provided
-    };
-    const [user] = await db.insert(users).values(userData).returning();
+    // Use EXACT username provided - no modifications whatsoever
+    const [user] = await db.insert(users).values(insertUser).returning();
     return user;
   }
 
