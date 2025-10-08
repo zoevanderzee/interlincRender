@@ -2330,15 +2330,14 @@ export class DatabaseStorage implements IStorage {
     const startOfMonth = new Date(year, month - 1, 1);
     const endOfMonth = new Date(year, month, 0, 23, 59, 59, 999);
 
-    // Get payments for this business using contract relationship
+    // BULLETPROOF: Query payments.businessId directly - includes both contract AND direct payments
     const businessPayments = await db
       .select({
         amount: payments.amount
       })
       .from(payments)
-      .innerJoin(contracts, eq(payments.contractId, contracts.id))
       .where(and(
-        eq(contracts.businessId, businessId),
+        eq(payments.businessId, businessId),
         eq(payments.status, 'completed'),
         gte(payments.completedDate, startOfMonth),
         lte(payments.completedDate, endOfMonth)
@@ -2351,15 +2350,14 @@ export class DatabaseStorage implements IStorage {
     const startOfYear = new Date(year, 0, 1);
     const endOfYear = new Date(year, 11, 31, 23, 59, 59, 999);
 
-    // Get payments for this business using contract relationship
+    // BULLETPROOF: Query payments.businessId directly - includes both contract AND direct payments
     const businessPayments = await db
       .select({
         amount: payments.amount
       })
       .from(payments)
-      .innerJoin(contracts, eq(payments.contractId, contracts.id))
       .where(and(
-        eq(contracts.businessId, businessId),
+        eq(payments.businessId, businessId),
         eq(payments.status, 'completed'),
         gte(payments.completedDate, startOfYear),
         lte(payments.completedDate, endOfYear)
@@ -2369,15 +2367,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getBusinessTotalSuccessfulPayments(businessId: number): Promise<number> {
-    // Get payments for this business using contract relationship
+    // BULLETPROOF: Query payments.businessId directly - includes both contract AND direct payments
     const businessPayments = await db
       .select({
         amount: payments.amount
       })
       .from(payments)
-      .innerJoin(contracts, eq(payments.contractId, contracts.id))
       .where(and(
-        eq(contracts.businessId, businessId),
+        eq(payments.businessId, businessId),
         eq(payments.status, 'completed')
       ));
 
