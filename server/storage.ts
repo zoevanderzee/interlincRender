@@ -139,6 +139,7 @@ export interface IStorage {
   getAllPayments(contractId: number | null): Promise<Payment[]>;
   getUpcomingPayments(limit: number): Promise<Payment[]>;
   getCompletedPayments(userId: number): Promise<Payment[]>;
+  getPaymentsByBusinessId(businessId: number): Promise<Payment[]>;
   getPaymentsByContractorId(contractorId: number): Promise<Payment[]>;
   getApprovedMilestonesWithoutPayments(): Promise<Milestone[]>;
   createPayment(payment: InsertPayment): Promise<Payment>;
@@ -777,6 +778,12 @@ export class MemStorage implements IStorage {
 
     return Array.from(this.payments.values())
       .filter(payment => payment.status === 'completed' && contractIds.includes(payment.contractId));
+  }
+
+  async getPaymentsByBusinessId(businessId: number): Promise<Payment[]> {
+    // Get all payments made by this business (includes both contract and direct payments)
+    return Array.from(this.payments.values())
+      .filter(payment => payment.businessId === businessId);
   }
 
   async getPaymentsByContractorId(contractorId: number): Promise<Payment[]> {
@@ -2110,6 +2117,28 @@ export class DatabaseStorage implements IStorage {
         eq(payments.status, 'completed'),
         eq(contracts.businessId, userId)
       ));
+  }
+
+  async getPaymentsByBusinessId(businessId: number): Promise<Payment[]> {
+    try {
+      // BULLETPROOF: Query payments.businessId directly - includes both contract AND direct payments
+      const businessPayments = await db
+        .select()
+        .from(payments)
+        .where(eq(payments.businessId, businessId));
+
+      console.log(`BUSINESS ${businessId} PAYMENT QUERY:`, {
+        totalPayments: businessPayments.length,
+        completedPayments: businessPayments.filter(p => p.status === 'completed').length,
+        directPayments: businessPayments.filter(p => !p.contractId).length,
+        contractPayments: businessPayments.filter(p => p.contractId).length
+      });
+
+      return businessPayments;
+    } catch (error) {
+      console.error(`Error fetching payments for business ${businessId}:`, error);
+      return [];
+    }
   }
 
   async getPaymentsByContractorId(contractorId: number): Promise<Payment[]> {

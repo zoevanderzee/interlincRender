@@ -2244,28 +2244,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         payments = await storage.getPaymentsByContractId(contractId);
       } else {
-        // SECURITY: Only get payments for user's own contracts
-        let userContracts = [];
+        // SECURITY: Query payments directly by businessId or contractorId - includes ALL payments (contract + direct)
         if (userRole === 'business') {
-          userContracts = await storage.getContractsByBusinessId(userId);
+          payments = await storage.getPaymentsByBusinessId(userId);
+          console.log(`SECURITY: Retrieved ${payments.length} payments for business ${userId} (includes direct payments)`);
         } else if (userRole === 'contractor') {
-          userContracts = await storage.getContractsByContractorId(userId);
+          payments = await storage.getPaymentsByContractorId(userId);
+          console.log(`SECURITY: Retrieved ${payments.length} payments for contractor ${userId}`);
+        } else {
+          payments = [];
         }
-
-        console.log(`SECURITY: Found ${userContracts.length} contracts for user ${userId}`);
-
-        const userContractIds = userContracts
-          .filter(contract => contract.status !== 'deleted')
-          .map(contract => contract.id);
-
-        const allUserPayments = await storage.getAllPayments(null);
-        payments = allUserPayments.filter(payment => userContractIds.includes(payment.contractId));
 
         if (upcoming) {
           payments = payments.slice(0, 10); // Limit for dashboard
         }
-
-        console.log(`SECURITY: After filtering for user's contracts: ${payments.length} payments remaining`);
       }
 
       res.json(payments);
