@@ -1125,7 +1125,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch(`${apiRouter}/contracts/:id`, async (req: Request, res: Response) => {
+  app.patch(`${apiRouter}/contracts/:id`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       const updateData = req.body;
@@ -1137,14 +1137,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Project not found" });
       }
 
-      // Just assign the contractor - no complex validation
+      // SECURITY: Get user ID from session or X-User-ID header
+      const userId = req.user?.id || (req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
+
+      if (!userId) {
+        console.log("No user ID found when updating contract");
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      // SECURITY: Only business owner can update their contracts
+      if (userId !== existingContract.businessId) {
+        console.log(`SECURITY BLOCK: User ${userId} attempted to update contract ${id} owned by business ${existingContract.businessId}`);
+        return res.status(403).json({ message: "Access denied: Cannot update other business contracts" });
+      }
+
+      // Validated - proceed with update
       const updatedContract = await storage.updateContract(id, updateData);
 
       if (!updatedContract) {
         return res.status(404).json({ message: "Failed to update contract" });
       }
 
-      console.log(`✅ Contractor assigned successfully`);
+      console.log(`✅ Contractor assigned successfully by authorized user ${userId}`);
       res.json(updatedContract);
     } catch (error) {
       console.error(`Error updating contract:`, error);
