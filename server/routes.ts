@@ -2818,6 +2818,145 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Reports Analytics Endpoint
+  app.get(`${apiRouter}/reports`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      const userRole = req.user?.role || 'business';
+
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      if (userRole === 'contractor') {
+        // CONTRACTOR REPORTS
+        const workRequests = await storage.getWorkRequestsByContractorId(userId);
+        const contractorPayments = await storage.getPaymentsByContractorId(userId);
+
+        // Calculate summary stats
+        const totalContracts = workRequests.filter(wr => 
+          ['assigned', 'in_review', 'approved'].includes(wr.status)
+        ).length;
+        
+        const completedContracts = workRequests.filter(wr => 
+          wr.status === 'completed'
+        ).length;
+        
+        const totalEarnings = contractorPayments
+          .filter(p => p.status === 'completed')
+          .reduce((sum, p) => sum + parseFloat(p.amount), 0);
+
+        // Monthly payments (last 12 months)
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const now = new Date();
+        const monthlyPayments = [];
+        
+        for (let i = 11; i >= 0; i--) {
+          const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const monthTotal = contractorPayments
+            .filter(p => {
+              if (!p.completedDate || p.status !== 'completed') return false;
+              const paymentDate = new Date(p.completedDate);
+              return paymentDate.getMonth() === date.getMonth() && 
+                     paymentDate.getFullYear() === date.getFullYear();
+            })
+            .reduce((sum, p) => sum + parseFloat(p.amount), 0);
+          
+          monthlyPayments.push({
+            name: monthNames[date.getMonth()],
+            amount: monthTotal
+          });
+        }
+
+        // Contract distribution (by type/category)
+        const contractDistribution = [
+          { name: 'Active', value: totalContracts },
+          { name: 'Completed', value: completedContracts },
+          { name: 'Pending', value: workRequests.filter(wr => wr.status === 'pending').length }
+        ].filter(item => item.value > 0);
+
+        return res.json({
+          summary: {
+            totalContracts,
+            completedContracts,
+            totalEarnings
+          },
+          monthlyPayments,
+          contractDistribution
+        });
+
+      } else {
+        // BUSINESS REPORTS
+        const workRequests = await storage.getWorkRequestsByBusinessId(userId);
+        const businessPayments = await storage.getPaymentsByBusinessId(userId);
+        
+        // Calculate summary stats
+        const totalContracts = workRequests.filter(wr => 
+          wr.status === 'accepted'
+        ).length;
+        
+        const completedContracts = workRequests.filter(wr => 
+          wr.status === 'completed'
+        ).length;
+        
+        const totalSpent = businessPayments
+          .filter(p => p.status === 'completed')
+          .reduce((sum, p) => sum + parseFloat(p.amount), 0);
+
+        const uniqueContractorIds = [...new Set(workRequests.map(wr => wr.contractorUserId))];
+        const totalContractors = uniqueContractorIds.length;
+
+        const completionRate = totalContracts > 0 
+          ? Math.round((completedContracts / totalContracts) * 100) 
+          : 0;
+
+        // Monthly payments (last 12 months)
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const now = new Date();
+        const monthlyPayments = [];
+        
+        for (let i = 11; i >= 0; i--) {
+          const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const monthTotal = businessPayments
+            .filter(p => {
+              if (!p.completedDate || p.status !== 'completed') return false;
+              const paymentDate = new Date(p.completedDate);
+              return paymentDate.getMonth() === date.getMonth() && 
+                     paymentDate.getFullYear() === date.getFullYear();
+            })
+            .reduce((sum, p) => sum + parseFloat(p.amount), 0);
+          
+          monthlyPayments.push({
+            name: monthNames[date.getMonth()],
+            amount: monthTotal
+          });
+        }
+
+        // Contract distribution (by status)
+        const contractDistribution = [
+          { name: 'Active', value: totalContracts },
+          { name: 'Completed', value: completedContracts },
+          { name: 'Pending', value: workRequests.filter(wr => wr.status === 'pending').length }
+        ].filter(item => item.value > 0);
+
+        return res.json({
+          summary: {
+            totalContracts,
+            completedContracts,
+            totalSpent,
+            totalContractors,
+            completionRate
+          },
+          monthlyPayments,
+          contractDistribution
+        });
+      }
+
+    } catch (error) {
+      console.error("Reports error:", error);
+      res.status(500).json({ message: "Error fetching reports data", error: String(error) });
+    }
+  });
 
   // Subscription endpoint for companies - NO subscription required (users are creating one)
   app.post(`${apiRouter}/create-subscription`, requireAuth, async (req: Request, res: Response) => {
