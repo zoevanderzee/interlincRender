@@ -1,0 +1,44 @@
+Prompt: Full Data Integrity, User Isolation & Scalable Integration Validation
+Goal:
+Ensure every component, page, and system interaction across the platform accurately displays the correct data for the authenticated user, pulls that data from the correct source, and maintains total data isolation between accounts.
+Each account operates within its own database environment, guaranteeing no data crossover or leakage — now or at scale.
+Core Validation Objectives
+Data Accuracy and Source Validation
+Confirm that every displayed value, chart, metric, table, or list directly reflects real data from the correct backend source tied to that user.
+No component should rely on cached, static, or global state data that could misrepresent real-time values.
+Each request, query, and component must explicitly fetch from the user’s dedicated data source or schema.
+User Isolation Enforcement
+Each account has its own fully isolated database or namespace.
+Validate that no query, API endpoint, or data fetch can access or reference another user’s data — even indirectly.
+All backend operations must validate the UserID, tenant_id, or account key before performing any read, write, or update action.
+Confirm that the frontend never displays or caches data outside the authenticated user’s scope.
+Page-Level Integration Completeness
+Every page must be fully integrated with live backend endpoints for the current user.
+No placeholder data or test values are allowed in production views.
+Ensure that authentication tokens or headers (e.g., X-User-ID) are always included in API calls and are correctly validated server-side.
+Each user flow — dashboard, project view, payments, settings, analytics — must reflect only that user’s dataset.
+Session and Context Management
+When users log out, switch accounts, or refresh sessions, all local data, caches, and global state must reset completely.
+Validate that session handling, browser storage, and real-time updates (sockets, subscriptions, etc.) never persist or leak another user’s data.
+Test with concurrent sessions (different users, browsers, devices) to confirm absolute isolation.
+Scalability and Performance Integrity
+Architecture must scale horizontally without compromising isolation — each account’s data operations remain contained to their database or partition.
+Validate that increased user load, data volume, or concurrent interactions never cause data overlap or performance degradation.
+Indexing, caching, and load-balancing layers must all maintain strict tenant-level separation.
+Scaling should never merge or pool user datasets for optimization.
+Security and Compliance
+Validate encryption of all data in transit and at rest within each account’s isolated environment.
+Confirm that no shared API keys, environments, or configurations could bridge user datasets.
+Conduct stress testing and simulated breaches to ensure isolation holds under load.
+Audit & QA Checklist
+ Each displayed value matches backend truth for that user.
+ Each API request includes and validates the correct UserID or account key.
+ Each page pulls live data from the correct user database.
+ No component uses global state or shared cache across users.
+ Logging in/out clears all user data and resets context.
+ Concurrent sessions show zero cross-data exposure.
+ System scaling does not affect isolation or performance.
+ All network layers (load balancers, caches, CDNs) maintain strict tenant separation.
+Success Condition
+The system must guarantee that every user’s data is accurate, private, and isolated — every component reflects only their authenticated environment.
+No user should ever experience data crossover, leakage, or incorrect information — even as the platform scales to thousands of concurrent users.
