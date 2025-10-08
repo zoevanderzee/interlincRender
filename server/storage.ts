@@ -2084,7 +2084,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUpcomingPayments(limit: number): Promise<Payment[]> {
-    return await db
+    const upcomingPayments = await db
       .select()
       .from(payments)
       .where(
@@ -2096,6 +2096,8 @@ export class DatabaseStorage implements IStorage {
       )
       .orderBy(payments.scheduledDate)
       .limit(limit);
+    
+    return upcomingPayments;
   }
 
   async getCompletedPayments(userId: number): Promise<Payment[]> {
@@ -2302,7 +2304,8 @@ export class DatabaseStorage implements IStorage {
     const startOfMonth = new Date(year, month - 1, 1);
     const endOfMonth = new Date(year, month, 0, 23, 59, 59, 999);
 
-    const monthlyPayments = await db
+    // Get payments directly linked to this business
+    const directPayments = await db
       .select()
       .from(payments)
       .where(and(
@@ -2312,14 +2315,15 @@ export class DatabaseStorage implements IStorage {
         lte(payments.completedDate, endOfMonth)
       ));
 
-    return monthlyPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+    return directPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
   }
 
   async getBusinessAnnualPayments(businessId: number, year: number): Promise<number> {
     const startOfYear = new Date(year, 0, 1);
     const endOfYear = new Date(year, 11, 31, 23, 59, 59, 999);
 
-    const annualPayments = await db
+    // Get payments directly linked to this business
+    const directPayments = await db
       .select()
       .from(payments)
       .where(and(
@@ -2329,11 +2333,12 @@ export class DatabaseStorage implements IStorage {
         lte(payments.completedDate, endOfYear)
       ));
 
-    return annualPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+    return directPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
   }
 
   async getBusinessTotalSuccessfulPayments(businessId: number): Promise<number> {
-    const successfulPayments = await db
+    // Get payments directly linked to this business
+    const directPayments = await db
       .select()
       .from(payments)
       .where(and(
@@ -2341,7 +2346,7 @@ export class DatabaseStorage implements IStorage {
         eq(payments.status, 'completed')
       ));
 
-    return successfulPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+    return directPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
   }
 
   // CONTRACTOR EARNINGS STATISTICS - Real Data Calculations
