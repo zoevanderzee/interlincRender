@@ -2304,49 +2304,58 @@ export class DatabaseStorage implements IStorage {
     const startOfMonth = new Date(year, month - 1, 1);
     const endOfMonth = new Date(year, month, 0, 23, 59, 59, 999);
 
-    // Get payments directly linked to this business
-    const directPayments = await db
-      .select()
+    // Get payments for this business using contract relationship
+    const businessPayments = await db
+      .select({
+        amount: payments.amount
+      })
       .from(payments)
+      .innerJoin(contracts, eq(payments.contractId, contracts.id))
       .where(and(
-        eq(payments.businessId, businessId),
+        eq(contracts.businessId, businessId),
         eq(payments.status, 'completed'),
         gte(payments.completedDate, startOfMonth),
         lte(payments.completedDate, endOfMonth)
       ));
 
-    return directPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+    return businessPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
   }
 
   async getBusinessAnnualPayments(businessId: number, year: number): Promise<number> {
     const startOfYear = new Date(year, 0, 1);
     const endOfYear = new Date(year, 11, 31, 23, 59, 59, 999);
 
-    // Get payments directly linked to this business
-    const directPayments = await db
-      .select()
+    // Get payments for this business using contract relationship
+    const businessPayments = await db
+      .select({
+        amount: payments.amount
+      })
       .from(payments)
+      .innerJoin(contracts, eq(payments.contractId, contracts.id))
       .where(and(
-        eq(payments.businessId, businessId),
+        eq(contracts.businessId, businessId),
         eq(payments.status, 'completed'),
         gte(payments.completedDate, startOfYear),
         lte(payments.completedDate, endOfYear)
       ));
 
-    return directPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+    return businessPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
   }
 
   async getBusinessTotalSuccessfulPayments(businessId: number): Promise<number> {
-    // Get payments directly linked to this business
-    const directPayments = await db
-      .select()
+    // Get payments for this business using contract relationship
+    const businessPayments = await db
+      .select({
+        amount: payments.amount
+      })
       .from(payments)
+      .innerJoin(contracts, eq(payments.contractId, contracts.id))
       .where(and(
-        eq(payments.businessId, businessId),
+        eq(contracts.businessId, businessId),
         eq(payments.status, 'completed')
       ));
 
-    return directPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+    return businessPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
   }
 
   // CONTRACTOR EARNINGS STATISTICS - Real Data Calculations
