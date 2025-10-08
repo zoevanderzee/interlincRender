@@ -125,6 +125,8 @@ export const payments = pgTable("payments", {
   id: serial("id").primaryKey(),
   contractId: integer("contract_id").references(() => contracts.id), // Made optional for direct payments
   milestoneId: integer("milestone_id").references(() => milestones.id), // Made optional for direct payments
+  businessId: integer("business_id").references(() => users.id).notNull(), // Business that made the payment - REQUIRED for all payments
+  contractorId: integer("contractor_id").references(() => users.id), // Contractor receiving payment - optional for direct payments
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   status: varchar("status", { length: 50 }).default("scheduled").notNull(), // scheduled, processing, completed, failed, auto_triggered
   scheduledDate: timestamp("scheduled_date").notNull(),
