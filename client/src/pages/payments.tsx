@@ -1,7 +1,7 @@
 
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
-import { useIntegratedData } from "@/hooks/use-integrated-data";
+import { useQuery } from "@tanstack/react-query";
 import { formatCurrency } from "@/lib/utils";
 import {
   Table,
@@ -27,17 +27,24 @@ import {
 export default function Payments() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
-  const { data: integratedData, isLoading } = useIntegratedData();
+  
+  // Fetch payments directly from the payments endpoint
+  const { data: payments = [], isLoading: isLoadingPayments } = useQuery<Payment[]>({
+    queryKey: ['/api/payments'],
+    enabled: !!user
+  });
+
+  // Fetch contracts for display names
+  const { data: contracts = [], isLoading: isLoadingContracts } = useQuery<Contract[]>({
+    queryKey: ['/api/contracts'],
+    enabled: !!user
+  });
 
   const isContractor = user?.role === 'contractor';
+  const isLoading = isLoadingPayments || isLoadingContracts;
 
-  const payments = integratedData?.payments || [];
-  const contracts = integratedData?.contracts || [];
-
-  // Filter out payments that do not have a corresponding contract
-  const safePayments = payments.filter((payment: Payment) =>
-    contracts.some((contract: Contract) => contract.id === payment.contractId)
-  );
+  // Use ALL payments - including direct payments without contracts
+  const safePayments = payments;
 
   if (isLoading) {
     return (
@@ -60,7 +67,8 @@ export default function Payments() {
   const totalProcessing = processingPayments.reduce((sum: number, p: Payment) => sum + parseFloat(p.amount), 0);
 
   // Get contract details for payment context
-  const getContractName = (contractId: number) => {
+  const getContractName = (contractId: number | null) => {
+    if (!contractId) return 'Direct Payment';
     const contract = contracts.find((c: Contract) => c.id === contractId);
     return contract?.contractName || `Contract #${contractId}`;
   };
@@ -275,7 +283,7 @@ export default function Payments() {
                 {safePayments.map((payment: Payment) => (
                   <TableRow key={payment.id} className="border-gray-800">
                     <TableCell className="text-white">
-                      {payment.contractId ? `Contract #${payment.contractId}` : 'Contract'}
+                      {payment.contractId ? `Contract #${payment.contractId}` : 'Direct Payment'}
                     </TableCell>
                     <TableCell className="text-gray-300">
                       {getContractName(payment.contractId)}
