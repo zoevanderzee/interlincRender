@@ -2084,14 +2084,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUpcomingPayments(limit: number): Promise<Payment[]> {
-    const now = new Date();
     return await db
       .select()
       .from(payments)
       .where(
         or(
           eq(payments.status, 'scheduled'),
-          eq(payments.status, 'pending')
+          eq(payments.status, 'pending'),
+          eq(payments.status, 'processing')
         )
       )
       .orderBy(payments.scheduledDate)
