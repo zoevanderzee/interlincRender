@@ -70,6 +70,12 @@ const CheckoutForm = ({
     try {
       console.log('Starting payment confirmation for subscription:', subscriptionId);
 
+      // Submit the payment elements first (required by Stripe)
+      const { error: submitError } = await elements.submit();
+      if (submitError) {
+        throw new Error(submitError.message);
+      }
+
       // Confirm payment with the client secret
       const { error } = await stripe.confirmPayment({
         elements,
