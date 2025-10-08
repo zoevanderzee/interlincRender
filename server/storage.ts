@@ -2257,18 +2257,19 @@ export class DatabaseStorage implements IStorage {
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
 
-    // Get all payments made by this business (using new businessId column when available)
-    const businessPayments = await db
-      .select()
+    // Get all payments made by this business through contracts
+    const businessPaymentsResult = await db
+      .select({
+        payment: payments
+      })
       .from(payments)
+      .innerJoin(contracts, eq(payments.contractId, contracts.id))
       .where(and(
-        or(
-          eq(payments.businessId, businessId), // Direct business payments
-          sql`${payments.contractId} IN (SELECT id FROM ${contracts} WHERE business_id = ${businessId})` // Contract-based payments
-        ),
+        eq(contracts.businessId, businessId),
         eq(payments.status, 'completed')
       ));
 
+    const businessPayments = businessPaymentsResult.map(row => row.payment);
     const totalSuccessfulPayments = businessPayments.length;
     const totalPaymentValue = businessPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
 

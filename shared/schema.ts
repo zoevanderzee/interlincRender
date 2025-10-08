@@ -125,8 +125,6 @@ export const payments = pgTable("payments", {
   id: serial("id").primaryKey(),
   contractId: integer("contract_id").references(() => contracts.id), // Made optional for direct payments
   milestoneId: integer("milestone_id").references(() => milestones.id), // Made optional for direct payments
-  contractorId: integer("contractor_id").references(() => users.id), // Direct link to contractor
-  businessId: integer("business_id").references(() => users.id), // Link to the business making the payment
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   status: varchar("status", { length: 50 }).default("scheduled").notNull(), // scheduled, processing, completed, failed, auto_triggered
   scheduledDate: timestamp("scheduled_date").notNull(),
@@ -134,20 +132,14 @@ export const payments = pgTable("payments", {
   notes: text("notes"),
   stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 255 }), // Stripe Payment Intent ID
   stripePaymentIntentStatus: varchar("stripe_payment_intent_status", { length: 50 }), // Stripe Payment Intent Status
+  paymentProcessor: varchar("payment_processor", { length: 50 }), // Payment processor used
   stripeTransferId: varchar("stripe_transfer_id", { length: 255 }), // Stripe Transfer ID for Connect payouts
   stripeTransferStatus: varchar("stripe_transfer_status", { length: 50 }), // Status of the Stripe Transfer
-  trolleyBatchId: varchar("trolley_batch_id", { length: 255 }), // Trolley batch ID for Embedded Payouts
-  trolleyPaymentId: varchar("trolley_payment_id", { length: 255 }), // Trolley payment ID for tracking
-  paymentProcessor: varchar("payment_processor", { length: 50 }).default("stripe"), // Payment processor used
-  paymentMethod: varchar("payment_method", { length: 50 }).default('stripe_connect'), // Method used for payment, e.g., 'stripe_connect'
-  destinationAccountId: varchar("destination_account_id", { length: 255 }), // Stripe/Trolley account ID of the recipient
-  applicationFee: decimal("application_fee", { precision: 10, scale: 2 }).default("0"), // Platform fee
-  platformFeeAmount: decimal("platform_fee_amount", { precision: 10, scale: 2 }).default("0"), // Actual amount of the platform fee
-  netAmount: decimal("net_amount", { precision: 10, scale: 2 }), // Amount received by the contractor after fees
-  grossAmount: decimal("gross_amount", { precision: 10, scale: 2 }), // Total amount before any fees
-  triggeredBy: varchar("triggered_by", { length: 50 }).default("manual"), // manual, auto_approval, scheduled
+  applicationFee: decimal("application_fee", { precision: 10, scale: 2 }), // Platform fee
+  triggeredBy: varchar("triggered_by", { length: 50 }), // manual, auto_approval, scheduled
   triggeredAt: timestamp("triggered_at"), // When the payment was automatically triggered
-  workRequestId: integer("work_request_id").references(() => workRequests.id) // Link to work requests
+  trolleyBatchId: varchar("trolley_batch_id", { length: 255 }), // Trolley batch ID for Embedded Payouts
+  trolleyPaymentId: varchar("trolley_payment_id", { length: 255 }) // Trolley payment ID for tracking
 });
 
 // Payment Compliance Logs table - for audit trail and structured data compliance
