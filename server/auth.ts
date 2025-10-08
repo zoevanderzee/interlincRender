@@ -292,6 +292,7 @@ export function setupAuth(app: Express) {
       // Add worker type from invite if available
       const userData = {
         ...req.body,
+        username: req.body.username || req.body.email.split('@')[0], // Use exact username provided by user, fallback to email prefix
         password: hashedPassword,
         role: role,
         workerType: workerType,
@@ -845,7 +846,7 @@ export function setupAuth(app: Express) {
   // Create strict authentication middleware for payment operations (no header fallbacks)
   const requireStrictAuth = async (req: any, res: any, next: any) => {
     console.log("Strict auth check for payment operation:", req.isAuthenticated(), "Session ID:", req.sessionID);
-    
+
     // Only allow session-based authentication for payment operations
     if (req.isAuthenticated()) {
       console.log(`Payment operation authorized via session for user:`, req.user?.email);
