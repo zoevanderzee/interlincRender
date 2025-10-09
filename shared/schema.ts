@@ -291,10 +291,11 @@ export const projects = pgTable("projects", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Work Requests table (updated to follow specification)
+// Work Requests table (updated to support both projects and tasks)
 export const workRequests = pgTable("work_requests", {
   id: serial("id").primaryKey(),
-  projectId: integer("project_id").notNull().references(() => projects.id),
+  projectId: integer("project_id").references(() => projects.id), // Made optional - can link to project OR task
+  taskId: integer("task_id").references(() => tasks.id), // New field - can link to task OR project
   contractorUserId: integer("contractor_user_id").notNull().references(() => users.id),
   title: text("title").notNull(),
   description: text("description").notNull(),
@@ -554,9 +555,10 @@ export const insertProjectSchema = z.object({
   updatedAt: z.date().optional(),
 });
 
-// Work Request schema with proper date handling (updated for specification)
+// Work Request schema with proper date handling (updated to support tasks)
 export const insertWorkRequestSchema = z.object({
-  projectId: z.number(),
+  projectId: z.number().optional(),
+  taskId: z.number().optional(),
   contractorUserId: z.number(),
   title: z.string(),
   description: z.string(),
@@ -570,7 +572,13 @@ export const insertWorkRequestSchema = z.object({
   }),
   currency: z.string().default("USD"),
   status: z.string().default("assigned"),
-});
+}).refine(
+  (data) => data.projectId !== undefined || data.taskId !== undefined,
+  {
+    message: "Either projectId or taskId must be provided",
+    path: ["projectId"]
+  }
+);
 
 // Work Request update schema (for status updates)
 export const updateWorkRequestSchema = z.object({

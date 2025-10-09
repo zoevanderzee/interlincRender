@@ -84,19 +84,15 @@ function NewTaskContent() {
         throw new Error('User not authenticated');
       }
 
-      // First, check if a "Quick Tasks" project already exists
+      // First, create a task in the tasks table
       const projectsResponse = await apiRequest("GET", "/api/projects");
       const projects = await projectsResponse.json();
       
       let project;
       const quickTasksProject = projects.find((p: any) => p.name === "Quick Tasks");
       
-      if (quickTasksProject) {
-        // Use existing Quick Tasks project
-        project = quickTasksProject;
-        console.log('Using existing Quick Tasks project:', project.id);
-      } else {
-        // Create a "Quick Tasks" project only if it doesn't exist
+      if (!quickTasksProject) {
+        // Create Quick Tasks project if it doesn't exist
         const projectResponse = await apiRequest("POST", "/api/projects", {
           name: "Quick Tasks",
           businessId: parseInt(currentUserId),
@@ -112,21 +108,37 @@ function NewTaskContent() {
 
         const projectResult = await projectResponse.json();
         project = projectResult.data;
-        console.log('Created new Quick Tasks project:', project.id);
+      } else {
+        project = quickTasksProject;
       }
 
-      if (!project || !project.id) {
-        throw new Error('Failed to get project ID');
-      }
-
-      // Then create a work request for the task
-      const workRequestResponse = await apiRequest("POST", `/api/projects/${project.id}/work-requests`, {
+      // Create task in tasks table
+      const taskResponse = await apiRequest("POST", `/api/projects/${project.id}/tasks`, {
         projectId: project.id,
+        title: data.name,
+        description: data.description,
+        contractorId: data.contractorUserId,
+        amount: data.budget,
+        currency: "USD",
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        status: "open"
+      });
+
+      if (!taskResponse.ok) {
+        const errorData = await taskResponse.json();
+        throw new Error(errorData.message || 'Failed to create task');
+      }
+
+      const task = await taskResponse.json();
+
+      // Then create a work request linked to the task (not project)
+      const workRequestResponse = await apiRequest("POST", `/api/projects/${project.id}/work-requests`, {
+        taskId: task.id, // Use taskId instead of projectId
         contractorUserId: data.contractorUserId,
         title: data.name,
         description: data.description,
         deliverableDescription: data.description,
-        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Default 30 days
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         amount: parseFloat(data.budget),
         currency: "USD"
       });

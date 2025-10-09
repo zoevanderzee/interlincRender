@@ -22,10 +22,9 @@ export default function Projects() {
   
   const isContractor = user?.role === 'contractor';
   
-  // Helper to identify Quick Tasks project
-  const isQuickTask = (workRequest: any) => {
-    const quickTasksProject = projects.find((p: any) => p.name === 'Quick Tasks');
-    return workRequest.projectId === quickTasksProject?.id;
+  // Helper to identify tasks vs projects - tasks have taskId, projects have projectId
+  const isTask = (workRequest: any) => {
+    return !!workRequest.taskId; // If taskId exists, it's a task
   };
   
   // Fetch dedicated dashboard stats
@@ -59,9 +58,9 @@ export default function Projects() {
 
   // SECURITY: Contractors should see their accepted work assignments only
   if (isContractor) {
-    // Filter out Quick Tasks - those appear in Tasks tab
+    // Filter out tasks - those appear in Tasks tab (tasks have taskId)
     const activeAssignments = workRequests.filter((req: any) => 
-      req.status === 'accepted' && !isQuickTask(req)
+      req.status === 'accepted' && !isTask(req)
     );
 
     return (
@@ -419,10 +418,8 @@ export default function Projects() {
             {/* Tasks Stats */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               {(() => {
-                // Find the Quick Tasks project and filter work requests
-                const quickTasksProject = projects.find(p => p.name === 'Quick Tasks');
-                const quickTasksWorkRequests = quickTasksProject ? 
-                  workRequests.filter(wr => wr.projectId === quickTasksProject.id) : [];
+                // Filter work requests that have taskId (these are tasks, not project assignments)
+                const taskWorkRequests = workRequests.filter(wr => !!wr.taskId);
                 
                 return (
                   <>
@@ -432,7 +429,7 @@ export default function Projects() {
                           <div>
                             <p className="text-sm text-gray-400">Active Tasks</p>
                             <p className="text-3xl font-bold text-white">
-                              {quickTasksWorkRequests.filter((wr: any) => wr.status === 'accepted').length}
+                              {taskWorkRequests.filter((wr: any) => wr.status === 'accepted').length}
                             </p>
                           </div>
                           <User className="h-8 w-8 text-green-500" />
@@ -446,7 +443,7 @@ export default function Projects() {
                           <div>
                             <p className="text-sm text-gray-400">Completed Tasks</p>
                             <p className="text-3xl font-bold text-white">
-                              {quickTasksWorkRequests.filter((wr: any) => wr.status === 'paid').length}
+                              {taskWorkRequests.filter((wr: any) => wr.status === 'paid').length}
                             </p>
                           </div>
                           <FileText className="h-8 w-8 text-blue-500" />
@@ -460,7 +457,7 @@ export default function Projects() {
                           <div>
                             <p className="text-sm text-gray-400">Total Task Value</p>
                             <p className="text-3xl font-bold text-white">
-                              {formatCurrency(quickTasksWorkRequests.reduce((sum: number, wr: any) => sum + parseFloat(wr.amount || 0), 0))}
+                              {formatCurrency(taskWorkRequests.reduce((sum: number, wr: any) => sum + parseFloat(wr.amount || 0), 0))}
                             </p>
                           </div>
                           <DollarSign className="h-8 w-8 text-yellow-500" />
@@ -474,7 +471,7 @@ export default function Projects() {
                           <div>
                             <p className="text-sm text-gray-400">Accepted Tasks</p>
                             <p className="text-3xl font-bold text-white">
-                              {quickTasksWorkRequests.filter((wr: any) => wr.status === 'accepted').length}
+                              {taskWorkRequests.filter((wr: any) => wr.status === 'accepted').length}
                             </p>
                           </div>
                           <Users className="h-8 w-8 text-purple-500" />
@@ -490,13 +487,11 @@ export default function Projects() {
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-white">Recent Tasks</h3>
               {(() => {
-                // Find the Quick Tasks project
-                const quickTasksProject = projects.find(p => p.name === 'Quick Tasks');
-                const quickTasksWorkRequests = quickTasksProject ? 
-                  workRequests.filter(wr => wr.projectId === quickTasksProject.id) : [];
+                // Filter work requests that have taskId
+                const taskWorkRequests = workRequests.filter(wr => !!wr.taskId);
                 
-                return quickTasksWorkRequests.length > 0 ? (
-                  quickTasksWorkRequests.slice(0, 10).map((task: any) => {
+                return taskWorkRequests.length > 0 ? (
+                  taskWorkRequests.slice(0, 10).map((task: any) => {
                     // Get contractor info
                     const contractor = contractors.find(c => c.id === task.contractorUserId);
                     const contractorName = contractor ? 
