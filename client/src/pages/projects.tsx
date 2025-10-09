@@ -10,6 +10,7 @@ import { useLocation } from "wouter";
 import { SubmitWorkModal } from "@/components/SubmitWorkModal";
 import { useIntegratedData } from "@/hooks/use-integrated-data";
 import { formatCurrency } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
 
 
 export default function Projects() {
@@ -20,6 +21,12 @@ export default function Projects() {
   const { data: integratedData, isLoading } = useIntegratedData();
   
   const isContractor = user?.role === 'contractor';
+  
+  // Fetch dedicated dashboard stats
+  const { data: dashboardStats } = useQuery({
+    queryKey: ['/api/dashboard/stats'],
+    enabled: !!user && user.role === 'business'
+  });
   
   const projects = integratedData?.projects || [];
   const contracts = integratedData?.contracts || [];
@@ -243,7 +250,7 @@ export default function Projects() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-400">Assigned Projects</p>
-                <p className="text-3xl font-bold text-white">{assignedProjects.length}</p>
+                <p className="text-3xl font-bold text-white">{dashboardStats?.assignedProjects || 0}</p>
               </div>
               <Users className="h-8 w-8 text-green-500" />
             </div>
