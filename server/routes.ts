@@ -350,6 +350,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const workRequests = await storage.getWorkRequestsByBusinessId(userId);
         const acceptedWorkRequests = workRequests.filter(wr => wr.status === 'accepted');
         
+        console.log(`DASHBOARD STATS - Business ${userId}: Total work requests: ${workRequests.length}, Accepted: ${acceptedWorkRequests.length}`);
+        
         // Get payment stats
         const paymentStats = await storage.getBusinessPaymentStats(userId);
         
@@ -370,6 +372,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const earnings = await storage.getContractorEarningsStats(userId);
         const workRequests = await storage.getWorkRequestsByContractorId(userId);
         const acceptedRequests = workRequests.filter(wr => wr.status === 'accepted');
+        
+        console.log(`DASHBOARD STATS - Contractor ${userId}: Total work requests: ${workRequests.length}, Accepted: ${acceptedRequests.length}`);
         
         return res.json({
           assignedProjects: acceptedRequests.length,
