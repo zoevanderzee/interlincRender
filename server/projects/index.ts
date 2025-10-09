@@ -84,7 +84,7 @@ export function registerProjectRoutes(app: Express) {
   // Create a new project
   app.post("/api/projects", async (req, res) => {
     try {
-      const { name, businessId, description, budget } = req.body;
+      const { name, businessId, description, budget, deadline } = req.body;
 
       if (!name || !businessId) {
         return res.status(400).json({
@@ -97,7 +97,8 @@ export function registerProjectRoutes(app: Express) {
         name,
         businessId,
         description,
-        budget: budget ? budget.toString() : null
+        budget: budget ? budget.toString() : null,
+        deadline: deadline ? new Date(deadline) : null
       });
 
       console.log(`[PROJECT_CREATED] id=${project.id} business=${businessId} name=${name}`);

@@ -17,10 +17,11 @@ import { apiRequest } from "@/lib/queryClient";
 
 const projectFormSchema = z.object({
   name: z.string().min(1, "Project name is required"),
-  description: z.string().optional(),
+  description: z.string().min(1, "Description is required"),
   budget: z.string().min(1, "Budget is required").refine((val) => !isNaN(parseFloat(val)), {
     message: "Budget must be a valid number",
   }),
+  deadline: z.string().optional(),
 });
 
 type ProjectFormData = z.infer<typeof projectFormSchema>;
@@ -36,6 +37,7 @@ export default function NewProject() {
       name: "",
       description: "",
       budget: "",
+      deadline: "",
     },
   });
 
@@ -96,8 +98,28 @@ export default function NewProject() {
             Create New Project
           </h1>
           <p className="text-zinc-400 mt-1">
-            Create a project that can be assigned to contractors
+            Projects can have multiple contractors assigned with individual tasks and budgets
           </p>
+        </div>
+      </div>
+
+      {/* Info Card */}
+      <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4 mb-6">
+        <div className="flex items-start gap-3">
+          <div className="text-blue-400 mt-0.5">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-blue-300 mb-1">Multi-Contractor Project</h3>
+            <p className="text-sm text-blue-200/80">
+              This is for larger projects with multiple contractors. After creating the project, you can assign contractors with their own deliverables and payment amounts.
+            </p>
+            <p className="text-sm text-blue-200/80 mt-2">
+              <strong>For quick single-contractor tasks</strong>, use the "Tasks" tab instead.
+            </p>
+          </div>
         </div>
       </div>
 
@@ -105,7 +127,8 @@ export default function NewProject() {
       <div className="bg-black p-6 rounded-lg shadow-sm border border-zinc-800">
         <Card className="bg-transparent border-0">
           <CardHeader>
-            <CardTitle className="text-white">Project Details</CardTitle>
+            <CardTitle className="text-white">Project Information</CardTitle>
+            <p className="text-sm text-gray-400 mt-2">Set the overall project details and total budget</p>
           </CardHeader>
           <CardContent>
             <Form {...form}>
@@ -115,14 +138,15 @@ export default function NewProject() {
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-white">Project Name</FormLabel>
+                      <FormLabel className="text-white">Project Name *</FormLabel>
                       <FormControl>
                         <Input 
-                          placeholder="Enter project name"
+                          placeholder="e.g., Website Redesign Project"
                           className="bg-zinc-900 border-zinc-700 text-white"
                           {...field} 
                         />
                       </FormControl>
+                      <p className="text-xs text-gray-400 mt-1">A clear name that describes the overall project</p>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -133,38 +157,63 @@ export default function NewProject() {
                   name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-white">Description</FormLabel>
+                      <FormLabel className="text-white">Project Description *</FormLabel>
                       <FormControl>
                         <Textarea 
-                          placeholder="Describe what this project involves"
+                          placeholder="Describe the project scope, goals, and what contractors will be working on..."
                           className="bg-zinc-900 border-zinc-700 text-white"
                           rows={4}
                           {...field} 
                         />
                       </FormControl>
+                      <p className="text-xs text-gray-400 mt-1">Provide context that will be shared with all assigned contractors</p>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="budget"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-white">Budget ($)</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number"
-                          placeholder="0.00"
-                          className="bg-zinc-900 border-zinc-700 text-white"
-                          {...field} 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormField
+                    control={form.control}
+                    name="budget"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-white">Total Project Budget (£) *</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="0.00"
+                            className="bg-zinc-900 border-zinc-700 text-white"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <p className="text-xs text-gray-400 mt-1">Overall budget for all contractors</p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="deadline"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-white">Project Deadline</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="date"
+                            className="bg-zinc-900 border-zinc-700 text-white"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <p className="text-xs text-gray-400 mt-1">Optional: Overall project completion date</p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
                 <div className="flex space-x-4 pt-4">
                   <Button 

@@ -285,6 +285,7 @@ export const projects = pgTable("projects", {
   name: text("name").notNull(),
   description: text("description"),
   budget: decimal("budget", { precision: 15, scale: 2 }),
+  deadline: timestamp("deadline"),
   status: text("status").notNull().default("active"), // active, completed, archived
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
