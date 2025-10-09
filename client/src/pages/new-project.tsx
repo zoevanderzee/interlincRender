@@ -53,6 +53,7 @@ export default function NewProject() {
         description: data.description,
         budget: data.budget,
         businessId: parseInt(userId),
+        deadline: data.deadline || null,
       });
       return response.json();
     },
