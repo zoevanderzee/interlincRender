@@ -375,7 +375,7 @@ const Dashboard = () => {
               </div>
             </div>
             <p className="text-3xl font-bold text-white tracking-tight">
-              {dashboardStats ? dashboardStats.assignedProjects : 0}
+              {dashboardStats?.assignedProjects || 0}
             </p>
             <p className="text-xs text-muted-foreground mt-1">Accepted work assignments</p>
           </CardContent>
