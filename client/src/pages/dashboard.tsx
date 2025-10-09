@@ -363,6 +363,7 @@ const Dashboard = () => {
                 <Briefcase size={20} className="text-purple-400" />
               </div>
             </div>
+            {/* Count accepted work requests as "Assigned Projects" */}
             <p className="text-3xl font-bold text-white tracking-tight">{integratedData.stats.activeContractsCount}</p>
             <p className="text-xs text-muted-foreground mt-1">Current ongoing contracts</p>
           </CardContent>
