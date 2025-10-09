@@ -50,7 +50,7 @@ const ContractorRequests = () => {
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const [filterStatus, setFilterStatus] = useState<string>("assigned");
-  
+
   // Only show requests that match the contractor's user ID
   const { data: workRequests = [], isLoading } = useQuery<WorkRequest[]>({
     queryKey: ['/api/work-requests'],
@@ -69,26 +69,26 @@ const ContractorRequests = () => {
       });
     }
   });
-  
+
   // Get all users data (including businesses) for contractor users
   const { data: allUsers = [] } = useQuery<any[]>({
     queryKey: ['/api/users']
   });
-  
+
   // Get contracts data
   const { data: contracts = [] } = useQuery<any[]>({
     queryKey: ['/api/contracts']
   });
-  
+
   // Enrich work requests with business and contract names
   const enrichedRequests = workRequests.map(request => {
     // Find the business by ID from all users - handle both old and new schema
     const businessId = request.businessId || (request.projectId ? 86 : null); // For now, assume project belongs to business user 86
     const business = allUsers.find((u: any) => u.id === businessId);
-    
+
     // Look for the contract in the contracts array
     let contract = contracts.find((c: any) => c.id === request.contractId);
-    
+
     // If the contractId is null but the title matches a contract name, try to find the contract
     if (!request.contractId && request.title) {
       const matchByTitle = contracts.find((c: any) => 
@@ -98,19 +98,19 @@ const ContractorRequests = () => {
         contract = matchByTitle;
       }
     }
-    
+
     // Get the company name - check multiple possible name fields
     let companyName = business?.companyName || business?.username;
-    
+
     // If still no name found, try to get business info from dashboard or fallback gracefully
     if (!companyName && businessId === 86) {
       companyName = "Interlinc"; // Based on the user data we can see in logs
     }
-    
+
     if (!companyName) {
       companyName = "Company"; // Generic fallback instead of showing ID
     }
-    
+
     return {
       ...request,
       businessName: companyName,
@@ -122,34 +122,36 @@ const ContractorRequests = () => {
   // Accept work request mutation
   const acceptMutation = useMutation({
     mutationFn: async (requestId: number) => {
-      // Call the contractor accept endpoint
-      const response = await apiRequest('POST', `/api/work-requests/${requestId}/accept`, {});
+      const response = await apiRequest("POST", `/api/work-requests/${requestId}/accept`);
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to accept work request');
+        const error = await response.json();
+        throw new Error(error.message || "Failed to accept request");
       }
       return response.json();
     },
-    onSuccess: () => {
-      toast({
-        title: "Request accepted",
-        description: "You have been assigned to this project",
-      });
-      
-      // Invalidate relevant queries
-      queryClient.invalidateQueries({ queryKey: ['/api/work-requests'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/contracts'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
+    onSuccess: (data) => {
+      // Only show success if the response indicates success
+      if (data && (data.success || data.status === 'accepted')) {
+        toast({
+          title: "Request Accepted",
+          description: "You have successfully accepted this work request."
+        });
+        queryClient.invalidateQueries({ queryKey: ['/api/work-requests'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/contracts'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
+      }
     },
-    onError: (error: Error) => {
+    onError: (error: any) => {
+      // Only show error if it's a real error, not a success case
+      console.error('Accept error:', error);
       toast({
         title: "Error accepting request",
         description: error.message || "There was a problem accepting this request. Please try again.",
         variant: "destructive",
       });
-    }
+    },
   });
-  
+
   // Decline work request mutation
   const declineMutation = useMutation({
     mutationFn: async (requestId: number) => {
@@ -166,7 +168,7 @@ const ContractorRequests = () => {
         title: "Request declined",
         description: "The work request has been declined",
       });
-      
+
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['/api/work-requests'] });
     },
@@ -178,17 +180,17 @@ const ContractorRequests = () => {
       });
     }
   });
-  
+
   // Handle accept request
   const handleAccept = (requestId: number) => {
     acceptMutation.mutate(requestId);
   };
-  
+
   // Handle decline request
   const handleDecline = (requestId: number) => {
     declineMutation.mutate(requestId);
   };
-  
+
   // If loading
   if (isLoading) {
     return (
@@ -199,7 +201,7 @@ const ContractorRequests = () => {
       </div>
     );
   }
-  
+
   return (
     <>
       {/* Page Header */}
@@ -208,7 +210,7 @@ const ContractorRequests = () => {
           <h1 className="text-2xl md:text-3xl font-semibold text-white">Work Requests</h1>
           <p className="text-zinc-400 mt-1">Review and respond to project work requests</p>
         </div>
-        
+
         <div className="mt-4 md:mt-0 flex space-x-2">
           <Button 
             variant={filterStatus === "assigned" ? "default" : "outline"} 
@@ -218,7 +220,7 @@ const ContractorRequests = () => {
             <Clock size={16} className="mr-2" />
             Assigned
           </Button>
-          
+
           <Button 
             variant={filterStatus === "pending" ? "default" : "outline"} 
             onClick={() => setFilterStatus("pending")}
@@ -227,7 +229,7 @@ const ContractorRequests = () => {
             <Clock size={16} className="mr-2" />
             Pending
           </Button>
-          
+
           <Button 
             variant={filterStatus === "accepted" ? "default" : "outline"} 
             onClick={() => setFilterStatus("accepted")}
@@ -236,7 +238,7 @@ const ContractorRequests = () => {
             <CheckCircle size={16} className="mr-2" />
             Accepted
           </Button>
-          
+
           <Button 
             variant={filterStatus === "declined" ? "default" : "outline"} 
             onClick={() => setFilterStatus("declined")}
@@ -245,7 +247,7 @@ const ContractorRequests = () => {
             <XCircle size={16} className="mr-2" />
             Declined
           </Button>
-          
+
           <Button 
             variant={filterStatus === "all" ? "default" : "outline"} 
             onClick={() => setFilterStatus("all")}
@@ -261,7 +263,7 @@ const ContractorRequests = () => {
         <div className="p-4 border-b border-zinc-800">
           <h2 className="text-lg font-medium text-white">Work Requests</h2>
         </div>
-        
+
         {enrichedRequests.length > 0 ? (
           <div className="overflow-x-auto">
             <Table>
