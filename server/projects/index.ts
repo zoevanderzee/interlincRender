@@ -314,6 +314,12 @@ export function registerProjectRoutes(app: Express) {
         });
       }
 
+      // DETECT IF THIS IS A TASK OR PROJECT ASSIGNMENT
+      const isTask = !!workRequest.taskId;
+      const isProject = !!workRequest.projectId && !workRequest.taskId;
+      
+      console.log(`[WR_ACCEPT] workRequestId=${workRequestId} isTask=${isTask} isProject=${isProject} taskId=${workRequest.taskId || 'none'} projectId=${workRequest.projectId || 'none'}`);
+
       // Verify this contractor is assigned to this work request
       if (workRequest.contractorUserId !== currentUserId) {
         return res.status(403).json({
@@ -327,7 +333,8 @@ export function registerProjectRoutes(app: Express) {
         return res.json({
           ok: true,
           status: "accepted",
-          message: "Already accepted"
+          message: "Already accepted",
+          type: isTask ? "task" : "project"
         });
       }
 
@@ -354,7 +361,8 @@ export function registerProjectRoutes(app: Express) {
       }
 
       // Create contract when work request is accepted
-      const contractCode = `WR-${workRequestId}-${Date.now().toString(36).toUpperCase()}`;
+      const contractType = isTask ? "TASK" : "PROJECT";
+      const contractCode = `${contractType}-${workRequestId}-${Date.now().toString(36).toUpperCase()}`;
       const contractName = `${workRequest.title} - ${business.companyName || business.firstName + ' ' + business.lastName}`;
       
       const contract = await storage.createContract({
@@ -363,7 +371,7 @@ export function registerProjectRoutes(app: Express) {
         businessId: project.businessId,
         projectId: workRequest.projectId,
         contractorId: currentUserId,
-        description: workRequest.description || `Contract for work request: ${workRequest.title}`,
+        description: workRequest.description || `Contract for ${contractType.toLowerCase()} work request: ${workRequest.title}`,
         status: "active",
         value: workRequest.amount,
         contractorBudget: workRequest.amount,
@@ -387,12 +395,13 @@ export function registerProjectRoutes(app: Express) {
         submissionType: 'digital'
       });
 
-      console.log(`[WORK_REQUEST_ACCEPTED] workRequestId=${workRequestId} contractorId=${currentUserId} contractId=${contract.id} milestoneId=${milestone.id} amount=${workRequest.amount}`);
+      console.log(`[WORK_REQUEST_ACCEPTED] type=${contractType} workRequestId=${workRequestId} contractorId=${currentUserId} contractId=${contract.id} milestoneId=${milestone.id} amount=${workRequest.amount} taskId=${workRequest.taskId || 'none'}`);
 
       res.json({
         ok: true,
         status: "accepted",
-        message: "Work request accepted successfully",
+        message: `${contractType} work request accepted successfully`,
+        type: isTask ? "task" : "project",
         contractId: contract.id,
         milestoneId: milestone.id
       });
