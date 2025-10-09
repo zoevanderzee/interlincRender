@@ -123,7 +123,12 @@ const ContractorRequests = () => {
   const acceptMutation = useMutation({
     mutationFn: async (requestId: number) => {
       // Call the contractor accept endpoint
-      return await apiRequest('POST', `/api/work-requests/${requestId}/accept`, {});
+      const response = await apiRequest('POST', `/api/work-requests/${requestId}/accept`, {});
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to accept work request');
+      }
+      return response.json();
     },
     onSuccess: () => {
       toast({
@@ -136,10 +141,10 @@ const ContractorRequests = () => {
       queryClient.invalidateQueries({ queryKey: ['/api/contracts'] });
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
         title: "Error accepting request",
-        description: "There was a problem accepting this request. Please try again.",
+        description: error.message || "There was a problem accepting this request. Please try again.",
         variant: "destructive",
       });
     }
@@ -149,7 +154,12 @@ const ContractorRequests = () => {
   const declineMutation = useMutation({
     mutationFn: async (requestId: number) => {
       // Call the contractor decline endpoint
-      return await apiRequest('POST', `/api/work-requests/${requestId}/decline`, {});
+      const response = await apiRequest('POST', `/api/work-requests/${requestId}/decline`, {});
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to decline work request');
+      }
+      return response.json();
     },
     onSuccess: () => {
       toast({
@@ -160,7 +170,7 @@ const ContractorRequests = () => {
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['/api/work-requests'] });
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
         title: "Error declining request",
         description: "There was a problem declining this request. Please try again.",
