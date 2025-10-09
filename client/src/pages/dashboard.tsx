@@ -65,8 +65,10 @@ const Dashboard = () => {
   // Fetch dedicated dashboard stats for accurate metrics
   const { data: dashboardStats } = useQuery({
     queryKey: ['/api/dashboard/stats'],
-    enabled: !!user
+    enabled: !!user && user.role === 'business'
   });
+
+  console.log('Dashboard Stats from dedicated endpoint:', dashboardStats);
 
   // Use V2 connect data from integrated hook
   const connectStatus = integratedData ? integratedData.stripeConnectData : null;
