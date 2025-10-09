@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,20 +18,20 @@ export default function Projects() {
   const [submitWorkModalOpen, setSubmitWorkModalOpen] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
   const { data: integratedData, isLoading } = useIntegratedData();
-  
+
   const isContractor = user?.role === 'contractor';
-  
+
   // Helper to identify tasks vs projects - tasks have taskId, projects have projectId
   const isTask = (workRequest: any) => {
     return !!workRequest.taskId; // If taskId exists, it's a task
   };
-  
+
   // Fetch dedicated dashboard stats
   const { data: dashboardStats } = useQuery({
     queryKey: ['/api/dashboard/stats'],
     enabled: !!user && user.role === 'business'
   });
-  
+
   const projects = integratedData?.projects || [];
   const contracts = integratedData?.contracts || [];
   const contractors = integratedData?.contractors || [];
@@ -85,7 +84,7 @@ export default function Projects() {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-zinc-900 border-zinc-800">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -201,7 +200,7 @@ export default function Projects() {
       </div>
     );
   }
-  
+
   // Filter out Quick Tasks from project metrics
   const realProjects = projects.filter((project: any) => project.name !== 'Quick Tasks');
   const activeProjects = realProjects.filter((project: any) => project.status === 'active');
@@ -297,12 +296,12 @@ export default function Projects() {
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-semibold text-white">Your Projects</h2>
         </div>
-        
+
         {projects.filter((project: any) => project.name !== 'Quick Tasks').length > 0 ? (
           projects.filter((project: any) => project.name !== 'Quick Tasks').map((project: any) => {
             const projectContracts = contracts.filter((contract: any) => contract.projectId === project.id);
             const isAssigned = projectContracts.length > 0;
-            
+
             return (
               <Card key={project.id} className="bg-zinc-900 border-zinc-800">
                 <CardHeader>
@@ -418,9 +417,13 @@ export default function Projects() {
             {/* Tasks Stats */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               {(() => {
-                // Filter work requests that have taskId (these are tasks, not project assignments)
-                const taskWorkRequests = workRequests.filter(wr => !!wr.taskId);
-                
+                // Filter work requests that have taskId (both taskId and projectId exist, taskId indicates it's a task)
+                const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
+                const taskWorkRequests = workRequests.filter(wr => {
+                  const project = projects.find(p => p.id === wr.projectId);
+                  return !!wr.taskId && project?.businessId === currentUserId;
+                });
+
                 return (
                   <>
                     <Card className="bg-zinc-900 border-zinc-800">
@@ -487,9 +490,13 @@ export default function Projects() {
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-white">Recent Tasks</h3>
               {(() => {
-                // Filter work requests that have taskId
-                const taskWorkRequests = workRequests.filter(wr => !!wr.taskId);
-                
+                // Filter work requests that have taskId (indicates it's a task, not project assignment)
+                const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
+                const taskWorkRequests = workRequests.filter(wr => {
+                  const project = projects.find(p => p.id === wr.projectId);
+                  return !!wr.taskId && project?.businessId === currentUserId;
+                });
+
                 return taskWorkRequests.length > 0 ? (
                   taskWorkRequests.slice(0, 10).map((task: any) => {
                     // Get contractor info
@@ -499,7 +506,7 @@ export default function Projects() {
                         `${contractor.firstName} ${contractor.lastName}` : 
                         contractor.username) : 
                       'Unknown Contractor';
-                    
+
                     return (
                       <Card key={task.id} className="bg-zinc-900 border-zinc-800">
                         <CardHeader>
@@ -574,7 +581,7 @@ export default function Projects() {
           </div>
         </TabsContent>
 
-        
+
       </Tabs>
     </div>
   );
