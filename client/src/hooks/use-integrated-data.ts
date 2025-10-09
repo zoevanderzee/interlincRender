@@ -106,7 +106,7 @@ export function useIntegratedData() {
     select: (data) => {
       if (!user?.id || !Array.isArray(data)) return [];
       return data.filter((request: any) =>
-        request.contractorUserId === user.id || request.businessUserId === user.id
+        request.contractorUserId === user.id || request.businessId === user.id
       );
     }
   });
