@@ -161,9 +161,23 @@ function Router() {
         </Layout>
       </ProtectedRoute>
 
-      <ProtectedRoute path="/projects/new" component={NewProject} />
-      <Route path="/tasks/new" component={NewTask} />
-      <Route path="/projects/:id" component={ProjectDetails} />
+      <Route path="/projects/new">
+        <Layout>
+          <NewProject />
+        </Layout>
+      </Route>
+
+      <Route path="/tasks/new">
+        <Layout>
+          <NewTask />
+        </Layout>
+      </Route>
+
+      <Route path="/projects/:id">
+        <Layout>
+          <ProjectDetails />
+        </Layout>
+      </Route>
 
 
       <ProtectedRoute path="/contractors">
