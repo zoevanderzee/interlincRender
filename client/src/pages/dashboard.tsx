@@ -219,21 +219,21 @@ const Dashboard = () => {
     const userRole = user?.role; // Use the actual user role
 
     // Calculate earnings for contractor
-    const contractorPayments = payments.filter((payment: Payment) => 
-      mockContracts.some((contract: Contract) => 
+    const contractorPayments = payments.filter((payment: Payment) =>
+      mockContracts.some((contract: Contract) =>
         contract.id === payment.contractId && contract.contractorId === user?.id
       )
     );
 
     const completedPayments = contractorPayments.filter((p: Payment) => p.status === 'completed');
-    const pendingPayments = contractorPayments.filter((p: Payment) => 
+    const pendingPayments = contractorPayments.filter((p: Payment) =>
       p.status === 'scheduled' || p.status === 'pending'
     );
 
-    const totalEarnings = completedPayments.reduce((sum: number, p: Payment) => 
+    const totalEarnings = completedPayments.reduce((sum: number, p: Payment) =>
       sum + parseFloat(p.amount), 0
     );
-    const totalPendingEarnings = pendingPayments.reduce((sum: number, p: Payment) => 
+    const totalPendingEarnings = pendingPayments.reduce((sum: number, p: Payment) =>
       sum + parseFloat(p.amount), 0
     );
 
@@ -252,7 +252,7 @@ const Dashboard = () => {
     };
 
     return (
-      <ContractorDashboard 
+      <ContractorDashboard
         dashboardData={{
           stats: displayStats,
           contracts: userContracts,
@@ -375,7 +375,7 @@ const Dashboard = () => {
               </div>
             </div>
             <p className="text-3xl font-bold text-white tracking-tight">
-              {dashboardStats?.assignedProjects ?? integratedData.stats.activeContractsCount}
+              {dashboardStats ? dashboardStats.assignedProjects : 0}
             </p>
             <p className="text-xs text-muted-foreground mt-1">Accepted work assignments</p>
           </CardContent>
@@ -393,7 +393,7 @@ const Dashboard = () => {
               </div>
             </div>
             <p className="text-3xl font-bold text-white tracking-tight">
-              {user?.role === 'contractor' 
+              {user?.role === 'contractor'
                 ? (integratedData.businesses?.length || 0)
                 : (dashboardStats?.activeContractors ?? integratedData.stats.activeContractorsCount)
               }
