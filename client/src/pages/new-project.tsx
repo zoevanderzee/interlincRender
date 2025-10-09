@@ -40,10 +40,17 @@ export default function NewProject() {
 
   const createProjectMutation = useMutation({
     mutationFn: async (data: ProjectFormData) => {
+      // Get current user ID from localStorage for businessId
+      const userId = localStorage.getItem('user_id');
+      if (!userId) {
+        throw new Error('User not authenticated');
+      }
+
       const response = await apiRequest("POST", "/api/projects", {
         name: data.name,
         description: data.description,
         budget: data.budget,
+        businessId: parseInt(userId),
       });
       return response.json();
     },
