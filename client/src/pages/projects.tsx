@@ -432,7 +432,7 @@ export default function Projects() {
                           <div>
                             <p className="text-sm text-gray-400">Active Tasks</p>
                             <p className="text-3xl font-bold text-white">
-                              {quickTasksWorkRequests.filter((wr: any) => wr.status === 'assigned').length}
+                              {quickTasksWorkRequests.filter((wr: any) => wr.status === 'accepted').length}
                             </p>
                           </div>
                           <User className="h-8 w-8 text-green-500" />
