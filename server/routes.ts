@@ -350,7 +350,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const workRequests = await storage.getWorkRequestsByBusinessId(userId);
         const acceptedWorkRequests = workRequests.filter(wr => wr.status === 'accepted');
         
-        console.log(`DASHBOARD STATS - Business ${userId}: Total work requests: ${workRequests.length}, Accepted: ${acceptedWorkRequests.length}`);
+        // Get all projects and filter out Quick Tasks
+        const allProjects = await storage.getBusinessProjects(userId);
+        const realProjects = allProjects.filter(p => p.name !== 'Quick Tasks');
+        
+        // Count projects that have at least one accepted work request
+        const projectsWithAcceptedWork = realProjects.filter(project => 
+          acceptedWorkRequests.some(wr => wr.projectId === project.id)
+        ).length;
+        
+        console.log(`DASHBOARD STATS - Business ${userId}: Total projects: ${realProjects.length}, Projects with accepted work: ${projectsWithAcceptedWork}, Total work requests: ${workRequests.length}, Accepted: ${acceptedWorkRequests.length}`);
         
         // Get payment stats
         const paymentStats = await storage.getBusinessPaymentStats(userId);
@@ -359,7 +368,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const contractors = await storage.getContractorsByBusinessId(userId);
         
         return res.json({
-          assignedProjects: acceptedWorkRequests.length,
+          assignedProjects: projectsWithAcceptedWork,
+          activeAssignments: acceptedWorkRequests.length,
           paymentsProcessed: paymentStats.totalPaymentValue,
           activeContractors: contractors.length,
           remainingBudget: user.budgetCap ? 
