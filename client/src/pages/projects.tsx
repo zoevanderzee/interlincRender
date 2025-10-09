@@ -22,6 +22,12 @@ export default function Projects() {
   
   const isContractor = user?.role === 'contractor';
   
+  // Helper to identify Quick Tasks project
+  const isQuickTask = (workRequest: any) => {
+    const quickTasksProject = projects.find((p: any) => p.name === 'Quick Tasks');
+    return workRequest.projectId === quickTasksProject?.id;
+  };
+  
   // Fetch dedicated dashboard stats
   const { data: dashboardStats } = useQuery({
     queryKey: ['/api/dashboard/stats'],
@@ -53,10 +59,9 @@ export default function Projects() {
 
   // SECURITY: Contractors should see their accepted work assignments only
   if (isContractor) {
-    // Get Quick Tasks project ID to filter it out from regular assignments
-    const quickTasksProject = projects.find((p: any) => p.name === 'Quick Tasks');
+    // Filter out Quick Tasks - those appear in Tasks tab
     const activeAssignments = workRequests.filter((req: any) => 
-      req.status === 'accepted' && req.projectId !== quickTasksProject?.id
+      req.status === 'accepted' && !isQuickTask(req)
     );
 
     return (

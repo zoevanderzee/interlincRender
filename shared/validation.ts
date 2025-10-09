@@ -1,3 +1,21 @@
+
+// Work Request Type Guards
+export const QUICK_TASKS_PROJECT_NAME = 'Quick Tasks' as const;
+
+export function isTaskWorkRequest(workRequest: any, projects: any[]): boolean {
+  const quickTasksProject = projects.find((p: any) => p.name === QUICK_TASKS_PROJECT_NAME);
+  return workRequest.projectId === quickTasksProject?.id;
+}
+
+export function isProjectWorkRequest(workRequest: any, projects: any[]): boolean {
+  return !isTaskWorkRequest(workRequest, projects);
+}
+
+export function validateWorkRequestType(workRequest: any): 'task' | 'project' {
+  // Add metadata field to explicitly mark type
+  return workRequest.metadata?.type || (workRequest.projectName === QUICK_TASKS_PROJECT_NAME ? 'task' : 'project');
+}
+
 import { z } from 'zod';
 
 // Form validation error message constants
