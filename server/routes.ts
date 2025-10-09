@@ -331,6 +331,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Protected routes - require authentication
 
+  // Business Dashboard Stats - Scalable endpoint for dashboard metrics
+  app.get(`${apiRouter}/dashboard/stats`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id || (req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Business-specific stats
+      if (user.role === 'business') {
+        const workRequests = await storage.getWorkRequestsByBusinessId(userId);
+        const acceptedWorkRequests = workRequests.filter(wr => wr.status === 'accepted');
+        
+        // Get payment stats
+        const paymentStats = await storage.getBusinessPaymentStats(userId);
+        
+        // Get contractor count
+        const contractors = await storage.getContractorsByBusinessId(userId);
+        
+        return res.json({
+          assignedProjects: acceptedWorkRequests.length,
+          paymentsProcessed: paymentStats.totalPaymentValue,
+          activeContractors: contractors.length,
+          remainingBudget: user.budgetCap ? 
+            (parseFloat(user.budgetCap) - parseFloat(user.budgetUsed || "0")).toString() : null
+        });
+      }
+      
+      // Contractor-specific stats
+      if (user.role === 'contractor') {
+        const earnings = await storage.getContractorEarningsStats(userId);
+        const workRequests = await storage.getWorkRequestsByContractorId(userId);
+        const acceptedRequests = workRequests.filter(wr => wr.status === 'accepted');
+        
+        return res.json({
+          assignedProjects: acceptedRequests.length,
+          totalEarnings: earnings.totalEarnings,
+          pendingEarnings: earnings.pendingEarnings,
+          completedPayments: earnings.completedPaymentsCount
+        });
+      }
+
+      res.json({
+        assignedProjects: 0,
+        paymentsProcessed: 0,
+        activeContractors: 0
+      });
+    } catch (error) {
+      console.error("Error fetching dashboard stats:", error);
+      res.status(500).json({ message: "Error fetching dashboard stats" });
+    }
+  });
+
   // User routes
   app.get(`${apiRouter}/users`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
