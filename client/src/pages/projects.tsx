@@ -53,7 +53,11 @@ export default function Projects() {
 
   // SECURITY: Contractors should see their accepted work assignments only
   if (isContractor) {
-    const activeAssignments = workRequests.filter((req: any) => req.status === 'accepted');
+    // Get Quick Tasks project ID to filter it out from regular assignments
+    const quickTasksProject = projects.find((p: any) => p.name === 'Quick Tasks');
+    const activeAssignments = workRequests.filter((req: any) => 
+      req.status === 'accepted' && req.projectId !== quickTasksProject?.id
+    );
 
     return (
       <div className="space-y-6">
@@ -194,9 +198,11 @@ export default function Projects() {
     );
   }
   
-  const activeProjects = projects.filter((project: any) => project.status === 'active');
-  const assignedProjects = projects.filter((project: any) => contracts.some((contract: any) => contract.projectId === project.id));
-  const totalValue = projects.reduce((sum: number, project: any) => sum + parseFloat(project.budget || 0), 0);
+  // Filter out Quick Tasks from project metrics
+  const realProjects = projects.filter((project: any) => project.name !== 'Quick Tasks');
+  const activeProjects = realProjects.filter((project: any) => project.status === 'active');
+  const assignedProjects = realProjects.filter((project: any) => contracts.some((contract: any) => contract.projectId === project.id));
+  const totalValue = realProjects.reduce((sum: number, project: any) => sum + parseFloat(project.budget || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -238,7 +244,7 @@ export default function Projects() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-400">Total Projects</p>
-                <p className="text-3xl font-bold text-white">{integratedData?.stats?.totalProjectsCount || projects.length}</p>
+                <p className="text-3xl font-bold text-white">{realProjects.length}</p>
               </div>
               <FileText className="h-8 w-8 text-blue-500" />
             </div>
@@ -288,8 +294,8 @@ export default function Projects() {
           <h2 className="text-xl font-semibold text-white">Your Projects</h2>
         </div>
         
-        {projects.filter(project => project.name !== 'Quick Tasks').length > 0 ? (
-          projects.filter(project => project.name !== 'Quick Tasks').map((project: any) => {
+        {projects.filter((project: any) => project.name !== 'Quick Tasks').length > 0 ? (
+          projects.filter((project: any) => project.name !== 'Quick Tasks').map((project: any) => {
             const projectContracts = contracts.filter((contract: any) => contract.projectId === project.id);
             const isAssigned = projectContracts.length > 0;
             
