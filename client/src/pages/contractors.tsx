@@ -67,7 +67,7 @@ const Contractors = () => {
 
   // For contractors, the connected companies are in the businesses array from dashboard
   const connectedCompanies = isContractor ? businessAccounts : [];
-
+  
   console.log('Debug contractor businesses:', {
     isContractor,
     businessAccountsLength: businessAccounts?.length,
@@ -370,7 +370,8 @@ const Contractors = () => {
             </>
           ) : (
             <>
-              <TabsTrigger value="contractors">Contractors</TabsTrigger>
+              <TabsTrigger value="contractors">Sub Contractors</TabsTrigger>
+              <TabsTrigger value="freelancers">Contractors</TabsTrigger>
               <TabsTrigger value="invites">Pending Invites</TabsTrigger>
             </>
           )}
