@@ -26,14 +26,6 @@ export default function ConnectionsPage() {
   const [location, navigate] = useLocation();
   const isContractor = user?.role === "contractor";
 
-  // TODO: Connect to real pending invitations API when implemented
-  const pendingInvitations = [];
-
-  const handleCancelInvite = async (inviteId: string) => {
-    // TODO: Implement cancellation logic when API is ready
-    console.log(`Cancelling invite: ${inviteId}`);
-  };
-
   return (
     <div className="container py-6 max-w-6xl">
       <div className="flex items-center justify-between mb-6">
@@ -79,66 +71,6 @@ export default function ConnectionsPage() {
 
           <ConnectionRequestsList />
         </div>
-
-        {/* Pending Invitations Section */}
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Pending Invitations</CardTitle>
-            <CardDescription>
-              These are invitations that have been sent but not yet accepted.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Invitation</TableHead>
-                  <TableHead>Recipient</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Sent</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pendingInvitations.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground">
-                      No pending invitations
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  pendingInvitations.map((invite) => (
-                    <TableRow key={invite.id}>
-                      <TableCell>{invite.id}</TableCell>
-                      <TableCell>{invite.recipientEmail || invite.recipientUserId}</TableCell>
-                      <TableCell>
-                        <Badge variant={invite.inviteType === 'project' ? 'default' : 'secondary'}>
-                          {invite.inviteType}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{invite.status}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        {new Date(invite.createdAt).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleCancelInvite(invite.id)}
-                        >
-                          Cancel
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
