@@ -98,46 +98,46 @@ export default function ConnectionsPage() {
         </div>
 
         {/* Pending Invitations Section */}
-        <Card className="mt-6 bg-gradient-to-br from-[hsl(215,50%,12%)] to-[hsl(210,60%,10%)] border-[hsl(215,40%,22%)]">
+        <Card className="mt-6">
           <CardHeader>
-            <CardTitle className="text-white">Pending Invitations</CardTitle>
-            <CardDescription className="text-[hsl(0,0%,70%)]">
+            <CardTitle>Pending Invitations</CardTitle>
+            <CardDescription>
               These are invitations that have been sent but not yet accepted.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
-                <TableRow className="border-[hsl(215,40%,22%)] hover:bg-[hsl(215,40%,18%)]">
-                  <TableHead className="text-[hsl(0,0%,70%)]">Invitation</TableHead>
-                  <TableHead className="text-[hsl(0,0%,70%)]">Recipient</TableHead>
-                  <TableHead className="text-[hsl(0,0%,70%)]">Type</TableHead>
-                  <TableHead className="text-[hsl(0,0%,70%)]">Status</TableHead>
-                  <TableHead className="text-[hsl(0,0%,70%)]">Sent</TableHead>
-                  <TableHead className="text-[hsl(0,0%,70%)]">Actions</TableHead>
+                <TableRow>
+                  <TableHead>Invitation</TableHead>
+                  <TableHead>Recipient</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Sent</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {pendingInvitations.length === 0 ? (
-                  <TableRow className="border-[hsl(215,40%,22%)] hover:bg-[hsl(215,40%,18%)]">
-                    <TableCell colSpan={6} className="text-center text-[hsl(0,0%,70%)]">
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-muted-foreground">
                       No pending invitations
                     </TableCell>
                   </TableRow>
                 ) : (
                   pendingInvitations.map((invite) => (
-                    <TableRow key={invite.id} className="border-[hsl(215,40%,22%)] hover:bg-[hsl(215,40%,18%)]">
-                      <TableCell className="text-white">{invite.id}</TableCell>
-                      <TableCell className="text-white">{invite.recipientEmail || invite.recipientUserId}</TableCell>
+                    <TableRow key={invite.id}>
+                      <TableCell>{invite.id}</TableCell>
+                      <TableCell>{invite.recipientEmail || invite.recipientUserId}</TableCell>
                       <TableCell>
                         <Badge variant={invite.inviteType === 'project' ? 'default' : 'secondary'}>
                           {invite.inviteType}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="warning">{invite.status}</Badge>
+                        <Badge variant="secondary">{invite.status}</Badge>
                       </TableCell>
-                      <TableCell className="text-white">
+                      <TableCell>
                         {new Date(invite.createdAt).toLocaleDateString()}
                       </TableCell>
                       <TableCell>
@@ -145,7 +145,6 @@ export default function ConnectionsPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => handleCancelInvite(invite.id)}
-                          className="border-[hsl(217,91%,70%)] text-[hsl(217,91%,70%)] hover:bg-[hsl(217,91%,70%)] hover:text-[hsl(210,60%,8%)]"
                         >
                           Cancel
                         </Button>
