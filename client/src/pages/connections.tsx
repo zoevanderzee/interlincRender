@@ -26,29 +26,12 @@ export default function ConnectionsPage() {
   const [location, navigate] = useLocation();
   const isContractor = user?.role === "contractor";
 
-  // Dummy data for pendingInvitations and handleCancelInvite for demonstration purposes
-  const pendingInvitations = [
-    {
-      id: "inv_123",
-      recipientEmail: "test@example.com",
-      recipientUserId: null,
-      inviteType: "project",
-      status: "pending",
-      createdAt: "2023-01-01T10:00:00Z",
-    },
-    {
-      id: "inv_456",
-      recipientEmail: null,
-      recipientUserId: "user_abc",
-      inviteType: "connection",
-      status: "pending",
-      createdAt: "2023-01-02T11:00:00Z",
-    },
-  ];
+  // TODO: Connect to real pending invitations API when implemented
+  const pendingInvitations = [];
 
-  const handleCancelInvite = (inviteId) => {
+  const handleCancelInvite = async (inviteId: string) => {
+    // TODO: Implement cancellation logic when API is ready
     console.log(`Cancelling invite: ${inviteId}`);
-    // Implement actual cancellation logic here
   };
 
   return (
