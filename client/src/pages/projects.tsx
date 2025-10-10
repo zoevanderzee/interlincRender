@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Calendar, DollarSign, Users, FileText, TrendingUp, Eye, User } from "lucide-react";
+import { Plus, Calendar, DollarSign, Users, FileText, TrendingUp, Eye, User, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { SubmitWorkModal } from "@/components/SubmitWorkModal";
@@ -472,12 +472,16 @@ export default function Projects() {
                       <CardContent className="pt-6">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-sm text-gray-400">Accepted Tasks</p>
+                            <p className="text-sm text-gray-400">Overdue Tasks</p>
                             <p className="text-3xl font-bold text-white">
-                              {taskWorkRequests.filter((wr: any) => wr.status === 'accepted').length}
+                              {taskWorkRequests.filter((wr: any) => 
+                                wr.status === 'accepted' && 
+                                wr.dueDate && 
+                                new Date(wr.dueDate) < new Date()
+                              ).length}
                             </p>
                           </div>
-                          <Users className="h-8 w-8 text-purple-500" />
+                          <AlertTriangle className="h-8 w-8 text-red-500" />
                         </div>
                       </CardContent>
                     </Card>
