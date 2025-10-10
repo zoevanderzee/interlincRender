@@ -2566,18 +2566,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getWorkRequestsByBusinessId(businessId: number): Promise<WorkRequest[]> {
-    const businessProjects = await db.select().from(projects).where(eq(projects.businessId, businessId));
-    const projectIds = businessProjects.map(p => p.id);
-
-    if (projectIds.length === 0) {
-      return [];
-    }
-
-    return db
+    const results = await db
       .select({
         id: workRequests.id,
         projectId: workRequests.projectId,
-        taskId: workRequests.taskId,
         contractorUserId: workRequests.contractorUserId,
         title: workRequests.title,
         description: workRequests.description,
@@ -2586,11 +2578,15 @@ export class DatabaseStorage implements IStorage {
         amount: workRequests.amount,
         currency: workRequests.currency,
         status: workRequests.status,
-        createdAt: workRequests.createdAt
+        createdAt: workRequests.createdAt,
+        businessId: projects.businessId
       })
       .from(workRequests)
-      .where(inArray(workRequests.projectId, projectIds))
+      .innerJoin(projects, eq(workRequests.projectId, projects.id))
+      .where(eq(projects.businessId, businessId))
       .orderBy(desc(workRequests.createdAt));
+
+    return results;
   }
 
   async getWorkRequestsByContractorId(contractorId: number): Promise<WorkRequest[]> {

@@ -294,8 +294,7 @@ export const projects = pgTable("projects", {
 // Work Requests table (updated to support both projects and tasks)
 export const workRequests = pgTable("work_requests", {
   id: serial("id").primaryKey(),
-  projectId: integer("project_id").references(() => projects.id), // Made optional - can link to project OR task
-  taskId: integer("task_id").references(() => tasks.id), // New field - can link to task OR project
+  projectId: integer("project_id").references(() => projects.id),
   contractorUserId: integer("contractor_user_id").notNull().references(() => users.id),
   title: text("title").notNull(),
   description: text("description").notNull(),
