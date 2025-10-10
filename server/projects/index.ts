@@ -63,7 +63,10 @@ export function registerProjectRoutes(app: Express) {
       if (isNaN(projectId)) {
         return res.status(400).json({ error: "Invalid project ID. Must be a number." });
       }
+      
       const project = await storage.getProject(projectId);
+      
+      console.log(`[PROJECT_DETAILS] projectId=${projectId} userId=${userId} found=${!!project} businessId=${project?.businessId}`);
       
       if (!project) {
         return res.status(404).json({ error: "Project not found" });

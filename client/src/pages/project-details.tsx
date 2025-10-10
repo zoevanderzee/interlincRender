@@ -141,13 +141,15 @@ export default function ProjectDetails() {
   // Fetch project details
   const { data: project, isLoading: isLoadingProject } = useQuery<Project>({
     queryKey: [`/api/projects/${projectId}`],
-    enabled: !!projectId
+    enabled: !!projectId,
+    retry: 1
   });
 
   // Fetch work requests for this project
   const { data: workRequests = [], isLoading: isLoadingWorkRequests } = useQuery<WorkRequest[]>({
     queryKey: [`/api/projects/${projectId}/work-requests`],
-    enabled: !!projectId
+    enabled: !!projectId,
+    retry: 1
   });
 
   // Fetch contractor details for each work request
@@ -188,11 +190,12 @@ export default function ProjectDetails() {
     enabled: contracts.length > 0
   });
 
-  if (isLoadingProject) {
+  if (isLoadingProject || isLoadingWorkRequests) {
     return (
       <div className="animate-pulse space-y-6">
         <div className="h-12 bg-gray-800 rounded w-1/3"></div>
         <div className="h-64 bg-gray-800 rounded"></div>
+        <div className="h-48 bg-gray-800 rounded"></div>
       </div>
     );
   }
@@ -209,6 +212,13 @@ export default function ProjectDetails() {
       </div>
     );
   }
+
+  console.log('Project Details Page:', {
+    projectId,
+    project,
+    workRequestsCount: workRequests.length,
+    workRequests
+  });
 
   const getContractorName = (workRequest: any): string => {
     // Use contractor name from work request data if available
