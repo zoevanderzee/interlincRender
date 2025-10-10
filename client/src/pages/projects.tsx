@@ -417,11 +417,11 @@ export default function Projects() {
             {/* Tasks Stats */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               {(() => {
-                // Filter work requests that have taskId (both taskId and projectId exist, taskId indicates it's a task)
+                // Filter work requests for Quick Tasks project
                 const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
                 const taskWorkRequests = workRequests.filter(wr => {
                   const project = projects.find(p => p.id === wr.projectId);
-                  return !!wr.taskId && project?.businessId === currentUserId;
+                  return project?.name === 'Quick Tasks' && project?.businessId === currentUserId;
                 });
 
                 return (
@@ -490,11 +490,11 @@ export default function Projects() {
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-white">Recent Tasks</h3>
               {(() => {
-                // Filter work requests that have taskId (indicates it's a task, not project assignment)
+                // Filter work requests for Quick Tasks project
                 const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
                 const taskWorkRequests = workRequests.filter(wr => {
                   const project = projects.find(p => p.id === wr.projectId);
-                  return !!wr.taskId && project?.businessId === currentUserId;
+                  return project?.name === 'Quick Tasks' && project?.businessId === currentUserId;
                 });
 
                 return taskWorkRequests.length > 0 ? (
