@@ -2103,7 +2103,7 @@ export class DatabaseStorage implements IStorage {
       )
       .orderBy(payments.scheduledDate)
       .limit(limit);
-    
+
     return upcomingPayments;
   }
 
@@ -2566,45 +2566,31 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getWorkRequestsByBusinessId(businessId: number): Promise<WorkRequest[]> {
-    try {
-      console.log(`Getting work requests for business ID: ${businessId}`);
-      const results = await db
-        .select()
-        .from(workRequests)
-        .innerJoin(projects, eq(workRequests.projectId, projects.id))
-        .where(eq(projects.businessId, businessId));
+    const businessProjects = await db.select().from(projects).where(eq(projects.businessId, businessId));
+    const projectIds = businessProjects.map(p => p.id);
 
-      return results.map(row => {
-        const wr = row.work_requests;
-        return {
-          id: wr.id,
-          title: wr.title,
-          description: wr.description,
-          businessId: wr.business_id,
-          recipientEmail: wr.recipient_email,
-          status: wr.status,
-          budgetMin: wr.budget_min,
-          budgetMax: wr.budget_max,
-          dueDate: wr.due_date,
-          skills: wr.skills,
-          attachmentUrls: wr.attachment_urls,
-          tokenHash: wr.token_hash,
-          createdAt: wr.created_at,
-          expiresAt: wr.expires_at,
-          contractId: wr.contract_id,
-          contractorId: wr.contractor_id,
-          projectId: wr.project_id,
-          amount: wr.amount,
-          currency: wr.currency,
-          contractorUserId: wr.contractor_user_id,
-          deliverableDescription: wr.deliverable_description,
-          projectName: row.projects.name
-        };
-      });
-    } catch (error) {
-      console.error('Error getting work requests by business ID:', error);
+    if (projectIds.length === 0) {
       return [];
     }
+
+    return db
+      .select({
+        id: workRequests.id,
+        projectId: workRequests.projectId,
+        taskId: workRequests.taskId,
+        contractorUserId: workRequests.contractorUserId,
+        title: workRequests.title,
+        description: workRequests.description,
+        deliverableDescription: workRequests.deliverableDescription,
+        dueDate: workRequests.dueDate,
+        amount: workRequests.amount,
+        currency: workRequests.currency,
+        status: workRequests.status,
+        createdAt: workRequests.createdAt
+      })
+      .from(workRequests)
+      .where(inArray(workRequests.projectId, projectIds))
+      .orderBy(desc(workRequests.createdAt));
   }
 
   async getWorkRequestsByContractorId(contractorId: number): Promise<WorkRequest[]> {
@@ -3063,127 +3049,6 @@ export class DatabaseStorage implements IStorage {
       .returning();
 
     return usage;
-  }
-
-  // Profile code methods
-
-  async getUserByProfileCode(profileCode: string): Promise<User | undefined> {
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.profileCode, profileCode));
-
-    return user;
-  }
-
-  // Connection requests methods
-  async getConnectionRequest(id: number): Promise<ConnectionRequest | undefined> {
-    const [request] = await db
-      .select()
-      .from(connectionRequests)
-      .where(eq(connectionRequests.id, id));
-
-    return request;
-  }
-
-  async getConnectionRequestsByBusinessId(businessId: number): Promise<ConnectionRequest[]> {
-    return await db
-      .select()
-      .from(connectionRequests)
-      .where(eq(connectionRequests.businessId, businessId))
-      .orderBy(desc(connectionRequests.createdAt));
-  }
-
-  async getConnectionRequestsByContractorId(contractorId: number): Promise<ConnectionRequest[]> {
-    return await db
-      .select()
-      .from(connectionRequests)
-      .where(eq(connectionRequests.contractorId, contractorId))
-      .orderBy(desc(connectionRequests.createdAt));
-  }
-
-  async getConnectionRequests(filters: { businessId?: number, contractorId?: number, status?: string }): Promise<ConnectionRequest[]> {
-    let query = db.select().from(connectionRequests);
-
-    // Apply filters
-    if (filters.businessId !== undefined) {
-      query = query.where(eq(connectionRequests.businessId, filters.businessId));
-    }
-
-    if (filters.contractorId !== undefined) {
-      query = query.where(eq(connectionRequests.contractorId, filters.contractorId));
-    }
-
-    if (filters.status !== undefined) {
-      query = query.where(eq(connectionRequests.status, filters.status));
-    }
-
-    return await query.orderBy(desc(connectionRequests.createdAt));
-  }
-
-  async getConnectionRequestByProfileCode(businessId: number, profileCode: string): Promise<ConnectionRequest | undefined> {
-    const [request] = await db
-      .select()
-      .from(connectionRequests)
-      .where(
-        and(
-          eq(connectionRequests.businessId, businessId),
-          eq(connectionRequests.profileCode, profileCode)
-        )
-      );
-
-    return request;
-  }
-
-  async createConnectionRequest(request: InsertConnectionRequest): Promise<ConnectionRequest> {
-    // Find contractor by profile code if provided
-    let contractorId = null;
-    if (request.profileCode) {
-      const contractor = await this.getUserByProfileCode(request.profileCode);
-      if (contractor) {
-        contractorId = contractor.id;
-      }
-    }
-
-    const [newRequest] = await db
-      .insert(connectionRequests)
-      .values({
-        ...request,
-        contractorId,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      })
-      .returning();
-
-    return newRequest;
-  }
-
-  async updateConnectionRequest(id: number, updates: Partial<InsertConnectionRequest>): Promise<ConnectionRequest | undefined> {
-    const [updatedRequest] = await db
-      .update(connectionRequests)
-      .set({
-        ...updates,
-        updatedAt: new Date()
-      })
-      .where(eq(connectionRequests.id, id))
-      .returning();
-
-    // If connection request is being accepted, automatically add to business_workers table
-    if (updatedRequest && updates.status === 'accepted' && updatedRequest.contractorId && updatedRequest.businessId) {
-      try {
-        await this.upsertBusinessWorker({
-          businessId: updatedRequest.businessId,
-          contractorUserId: updatedRequest.contractorId,
-          status: 'active'
-        });
-        console.log(`Added contractor ${updatedRequest.contractorId} to business_workers table for business ${updatedRequest.businessId}`);
-      } catch (error) {
-        console.error('Error adding contractor to business_workers table:', error);
-        // Continue even if this fails
-      }
-    }
-
-    return updatedRequest;
   }
 
   // Budget Management Methods
