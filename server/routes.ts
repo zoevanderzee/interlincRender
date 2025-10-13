@@ -369,17 +369,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const contractors = await storage.getContractorsByBusinessId(userId);
 
         // BULLETPROOF PENDING PAYMENTS CALCULATION
-        // Calculate total pending value = active project budgets + accepted task values
-        const activeProjectsValue = realProjects
+        // Find Quick Tasks project
+        const quickTasksProject = allProjects.find(p => p.name === 'Quick Tasks');
+        const quickTasksProjectId = quickTasksProject?.id;
+
+        // Calculate Projects Total Value (NON-Quick Tasks active project budgets)
+        const projectsTotalValue = realProjects
           .filter(p => p.status === 'active')
           .reduce((sum, p) => sum + parseFloat(p.budget || '0'), 0);
 
-        const acceptedTasksValue = acceptedWorkRequests
+        // Calculate Total Task Value (ALL work requests in Quick Tasks project)
+        const totalTaskValue = workRequests
+          .filter(wr => wr.projectId === quickTasksProjectId)
           .reduce((sum, wr) => sum + parseFloat(wr.amount || '0'), 0);
 
-        const totalPendingValue = activeProjectsValue + acceptedTasksValue;
+        // Pending Payments = Projects Total Value + Total Task Value
+        const totalPendingValue = projectsTotalValue + totalTaskValue;
 
-        console.log(`PENDING PAYMENTS CALCULATION: Active Projects Value: £${activeProjectsValue.toFixed(2)}, Accepted Tasks Value: £${acceptedTasksValue.toFixed(2)}, Total Pending: £${totalPendingValue.toFixed(2)}`);
+        console.log(`PENDING PAYMENTS CALCULATION: Projects Total Value: £${projectsTotalValue.toFixed(2)}, Total Task Value: £${totalTaskValue.toFixed(2)}, Pending Payments: £${totalPendingValue.toFixed(2)}`);
 
         return res.json({
           assignedProjects: projectsWithAcceptedWork,
@@ -2868,15 +2875,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return sum + parseFloat(wr.amount || '0');
       }, 0);
 
-      // Calculate Projects Total Value (sum of all active projects budgets)
-      const projectsTotalValue = activeProjects.reduce((sum, project) => {
-        return sum + parseFloat(project.budget?.toString() || '0');
-      }, 0);
+      // Find the Quick Tasks project (special project for one-off tasks)
+      const quickTasksProject = userProjects.find(p => p.name === 'Quick Tasks');
+      const quickTasksProjectId = quickTasksProject?.id;
 
-      // Calculate Total Task Value (sum of all work requests)
-      const totalTaskValue = userWorkRequests.reduce((sum, wr) => {
-        return sum + parseFloat(wr.amount || '0');
-      }, 0);
+      // Calculate Projects Total Value (sum of NON-Quick Tasks active project budgets)
+      const projectsTotalValue = activeProjects
+        .filter(project => project.id !== quickTasksProjectId)
+        .reduce((sum, project) => {
+          return sum + parseFloat(project.budget?.toString() || '0');
+        }, 0);
+
+      // Calculate Total Task Value (sum of work requests in Quick Tasks project only)
+      const totalTaskValue = userWorkRequests
+        .filter(wr => wr.projectId === quickTasksProjectId)
+        .reduce((sum, wr) => {
+          return sum + parseFloat(wr.amount || '0');
+        }, 0);
 
       // Pending Payments = Projects Total Value + Total Task Value
       const pendingPaymentsTotal = projectsTotalValue + totalTaskValue;
