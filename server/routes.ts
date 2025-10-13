@@ -368,17 +368,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Get contractor count
         const contractors = await storage.getContractorsByBusinessId(userId);
 
-        // SIMPLE BULLETPROOF PENDING PAYMENTS CALCULATION
-        // Total Project Values + Total Task Values (all projects, all tasks)
-        const allProjectsValue = realProjects
+        // BULLETPROOF PENDING PAYMENTS CALCULATION
+        // Calculate total pending value = active project budgets + accepted task values
+        const activeProjectsValue = realProjects
+          .filter(p => p.status === 'active')
           .reduce((sum, p) => sum + parseFloat(p.budget || '0'), 0);
 
-        const allTasksValue = workRequests
+        const acceptedTasksValue = acceptedWorkRequests
           .reduce((sum, wr) => sum + parseFloat(wr.amount || '0'), 0);
 
-        const totalPendingValue = allProjectsValue + allTasksValue;
+        const totalPendingValue = activeProjectsValue + acceptedTasksValue;
 
-        console.log(`PENDING PAYMENTS CALCULATION: All Projects Value: £${allProjectsValue.toFixed(2)}, All Tasks Value: £${allTasksValue.toFixed(2)}, Total Pending: £${totalPendingValue.toFixed(2)}`);
+        console.log(`PENDING PAYMENTS CALCULATION: Active Projects Value: £${activeProjectsValue.toFixed(2)}, Accepted Tasks Value: £${acceptedTasksValue.toFixed(2)}, Total Pending: £${totalPendingValue.toFixed(2)}`);
 
         return res.json({
           assignedProjects: projectsWithAcceptedWork,

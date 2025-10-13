@@ -71,9 +71,27 @@ export async function apiRequest(
       defaultHeaders['X-CSRF-Token'] = csrfToken;
     }
 
-    // Session-based authentication - rely on cookies, not localStorage
-    // The session cookie will be sent automatically with credentials: "include"
-    // No need for custom authentication headers - the session cookie handles everything
+    // Add authentication headers required by backend
+    const userId = localStorage.getItem('user_id');
+    const firebaseUid = localStorage.getItem('firebase_uid');
+
+    console.log('Authentication headers check:');
+    console.log('user_id from localStorage:', userId);
+    console.log('firebase_uid from localStorage:', firebaseUid);
+
+    if (userId) {
+      defaultHeaders['X-User-ID'] = userId;
+      console.log('Added X-User-ID header:', userId);
+    }
+
+    if (firebaseUid) {
+      defaultHeaders['X-Firebase-UID'] = firebaseUid;
+      console.log('Added X-Firebase-UID header:', firebaseUid);
+    }
+
+    if (!userId && !firebaseUid) {
+      console.log('No authentication headers available - user not logged in');
+    }
 
     const headers: Record<string, string> = { ...defaultHeaders, ...(customHeaders || {}) };
 
