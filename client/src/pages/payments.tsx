@@ -40,6 +40,12 @@ export default function Payments() {
     enabled: !!user
   });
 
+  // Fetch dashboard stats for accurate pending payments calculation
+  const { data: dashboardStats } = useQuery<{ totalPendingValue: number }>({
+    queryKey: ['/api/dashboard/stats'],
+    enabled: !!user && user?.role === 'business'
+  });
+
   const isContractor = user?.role === 'contractor';
   const isLoading = isLoadingPayments || isLoadingContracts;
 
@@ -63,7 +69,13 @@ export default function Payments() {
   const processingPayments = safePayments.filter((p: Payment) => p.status === 'processing');
 
   const totalEarned = completedPayments.reduce((sum: number, p: Payment) => sum + parseFloat(p.amount), 0);
-  const totalPending = pendingPayments.reduce((sum: number, p: Payment) => sum + parseFloat(p.amount), 0);
+  
+  // For business users, use dashboard calculation (Projects + Tasks)
+  // For contractors, use payments table calculation
+  const totalPending = user?.role === 'business' && dashboardStats?.totalPendingValue !== undefined
+    ? dashboardStats.totalPendingValue
+    : pendingPayments.reduce((sum: number, p: Payment) => sum + parseFloat(p.amount), 0);
+    
   const totalProcessing = processingPayments.reduce((sum: number, p: Payment) => sum + parseFloat(p.amount), 0);
 
   // Get contract details for payment context
@@ -228,7 +240,7 @@ export default function Payments() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-white">{formatCurrency(totalPending)}</div>
-            <p className="text-xs text-gray-400">{pendingPayments.length} payments scheduled</p>
+            <p className="text-xs text-gray-400">Projects & tasks value</p>
           </CardContent>
         </Card>
 
