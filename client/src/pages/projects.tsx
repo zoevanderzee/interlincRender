@@ -419,10 +419,17 @@ export default function Projects() {
               {(() => {
                 // Filter work requests for Quick Tasks project
                 const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
-                const taskWorkRequests = workRequests.filter(wr => {
-                  const project = projects.find(p => p.id === wr.projectId);
-                  return project?.name === 'Quick Tasks' && project?.businessId === currentUserId;
-                });
+                
+                // Find Quick Tasks project first
+                const quickTasksProject = projects.find(p => p.name === 'Quick Tasks' && p.businessId === currentUserId);
+                
+                // Filter work requests that belong to Quick Tasks project
+                const taskWorkRequests = quickTasksProject 
+                  ? workRequests.filter(wr => wr.projectId === quickTasksProject.id)
+                  : [];
+
+                console.log('Quick Tasks Project:', quickTasksProject);
+                console.log('Task Work Requests:', taskWorkRequests);
 
                 return (
                   <>
@@ -446,7 +453,7 @@ export default function Projects() {
                           <div>
                             <p className="text-sm text-gray-400">Completed Tasks</p>
                             <p className="text-3xl font-bold text-white">
-                              {taskWorkRequests.filter((wr: any) => wr.status === 'paid').length}
+                              {taskWorkRequests.filter((wr: any) => wr.status === 'completed' || wr.status === 'paid').length}
                             </p>
                           </div>
                           <FileText className="h-8 w-8 text-blue-500" />
@@ -496,10 +503,14 @@ export default function Projects() {
               {(() => {
                 // Filter work requests for Quick Tasks project
                 const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
-                const taskWorkRequests = workRequests.filter(wr => {
-                  const project = projects.find(p => p.id === wr.projectId);
-                  return project?.name === 'Quick Tasks' && project?.businessId === currentUserId;
-                });
+                
+                // Find Quick Tasks project first
+                const quickTasksProject = projects.find(p => p.name === 'Quick Tasks' && p.businessId === currentUserId);
+                
+                // Filter work requests that belong to Quick Tasks project
+                const taskWorkRequests = quickTasksProject 
+                  ? workRequests.filter(wr => wr.projectId === quickTasksProject.id)
+                  : [];
 
                 return taskWorkRequests.length > 0 ? (
                   taskWorkRequests.slice(0, 10).map((task: any) => {
