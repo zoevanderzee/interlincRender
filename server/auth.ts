@@ -586,61 +586,23 @@ export function setupAuth(app: Express) {
     }
   });
 
-  // Get current user route - Updated for Firebase Auth
+  // Get current user route - Session-based authentication only
   app.get("/api/user", async (req, res) => {
-    console.log("Auth check for session:", req.sessionID, "Authenticated:", req.isAuthenticated());
-
-    // Log request headers for debugging
-    console.log("User API request headers:", {
-      cookie: req.headers.cookie,
-      'user-agent': req.headers['user-agent'],
-      'x-user-id': req.headers['x-user-id'],
-      'x-firebase-uid': req.headers['x-firebase-uid']
+    console.log("Auth check for /api/user:", {
+      sessionID: req.sessionID,
+      isAuthenticated: req.isAuthenticated(),
+      hasSessionCookie: !!req.headers.cookie,
+      passportUser: req.session?.passport?.user
     });
 
-    // Priority 1: Check if user is authenticated via PostgreSQL session
-    if (req.isAuthenticated()) {
-      // Return user info without the password
+    // Use ONLY session-based authentication
+    if (req.isAuthenticated() && req.user) {
       const { password, ...userInfo } = req.user as Express.User;
       return res.json(userInfo);
     }
 
-    // Priority 2: Check for Firebase UID header (Firebase Auth)
-    const firebaseUID = req.headers['x-firebase-uid'];
-    if (firebaseUID) {
-      try {
-        const user = await storage.getUserByFirebaseUID(firebaseUID as string);
-        if (user) {
-          console.log(`Firebase Auth: User found via UID ${firebaseUID}`);
-          // Return user info without the password
-          const { password, ...userInfo } = user;
-          return res.json(userInfo);
-        }
-      } catch (error) {
-        console.error('Error in Firebase UID auth for /api/user:', error);
-      }
-    }
-
-    // Priority 3: Fallback - Check X-User-ID header for localStorage-based authentication
-    const userIdHeader = req.headers['x-user-id'];
-    if (userIdHeader) {
-      try {
-        const userId = parseInt(userIdHeader as string);
-        if (!isNaN(userId)) {
-          const user = await storage.getUser(userId);
-          if (user) {
-            console.log(`Authenticating /api/user request via X-User-ID header: ${userId}`);
-            // Return user info without the password
-            const { password, ...userInfo } = user;
-            return res.json(userInfo);
-          }
-        }
-      } catch (error) {
-        console.error('Error in X-User-ID fallback for /api/user:', error);
-      }
-    }
-
-    // If all authentication methods fail
+    // If session authentication fails, return 401
+    console.log("Session authentication failed for /api/user");
     return res.status(401).json({ error: "Not authenticated" });
   });
 
