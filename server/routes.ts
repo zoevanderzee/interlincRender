@@ -43,14 +43,14 @@ import stripeService from "./services/stripe";
 import notificationService from "./services/notifications";
 import automatedPaymentService from "./services/automated-payments";
 import {generateComplianceExport, generateInvoiceExport, generatePaymentExport, generateCSVExport} from './export-helpers';
-import { trolleySdk } from "./trolley-sdk-service";
-import { trolleySubmerchantService, type TrolleySubmerchantData } from "./services/trolley-submerchant";
-import { trolleyService } from "./trolley-service";
+import {trolleySdk} from "./trolley-sdk-service";
+import {trolleySubmerchantService, type TrolleySubmerchantData} from "./services/trolley-submerchant";
+import {trolleyService} from "./trolley-service";
 import {setupAuth} from "./auth";
 import {db} from "./db";
 import {sql, eq, and, or, desc, inArray} from "drizzle-orm";
 // Legacy object storage import removed - now using custom file storage
-import { FileStorageService, uploadMiddleware } from "./fileStorage";
+import {FileStorageService, uploadMiddleware} from "./fileStorage";
 import plaidRoutes from "./plaid-routes";
 import trolleyRoutes from "./trolley-routes";
 import trolleyTestRoutes from "./trolley-test-routes";
@@ -66,7 +66,8 @@ import {registerProjectRoutes} from "./projects/index";
 import {registerTaskRoutes} from "./tasks/index";
 // import { generateWorkRequestToken } from "./services/email"; // Not needed for now
 // Schema tables imported from shared/schema instead
-import { registerContractorAssignmentRoutes } from "./contractor-assignment";
+import {registerContractorAssignmentRoutes} from "./contractor-assignment";
+import {trolleyApi} from "./trolley-api";
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
@@ -87,7 +88,7 @@ function getUserId(req: Request): number | null {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication
-  const { requireAuth, requireStrictAuth } = setupAuth(app);
+  const {requireAuth, requireStrictAuth} = setupAuth(app);
 
   // API routes prefix
   const apiRouter = "/api";
@@ -103,18 +104,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (!userId) {
-        return res.status(401).json({ message: 'Authentication required' });
+        return res.status(401).json({message: 'Authentication required'});
       }
 
       const user = await storage.getUser(userId);
 
       if (!user) {
-        return res.status(404).json({ message: 'User not found' });
+        return res.status(404).json({message: 'User not found'});
       }
 
       // Check if user has active subscription
       if (!user.subscriptionStatus ||
-          !['active', 'trialing'].includes(user.subscriptionStatus)) {
+        !['active', 'trialing'].includes(user.subscriptionStatus)) {
         console.log(`SUBSCRIPTION BLOCK: User ${userId} (${user.username}) has subscription status: ${user.subscriptionStatus || 'inactive'}`);
         return res.status(402).json({
           message: 'Active subscription required',
@@ -127,7 +128,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       next();
     } catch (error) {
       console.error('Error checking subscription requirement:', error);
-      res.status(500).json({ message: 'Error validating subscription' });
+      res.status(500).json({message: 'Error validating subscription'});
     }
   };
 
@@ -302,14 +303,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin endpoint to create session for testing
   app.post(`${apiRouter}/admin/create-session`, async (req: Request, res: Response) => {
     try {
-      const { email } = req.body;
+      const {email} = req.body;
       if (email !== 'zoevdzee@interlinc.co') {
-        return res.status(403).json({ error: 'Access denied' });
+        return res.status(403).json({error: 'Access denied'});
       }
 
       const user = await storage.getUserByEmail(email);
       if (!user) {
-        return res.status(404).json({ error: 'User not found' });
+        return res.status(404).json({error: 'User not found'});
       }
 
       // Create session
@@ -317,13 +318,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       req.session.save((err) => {
         if (err) {
           console.error('Session save error:', err);
-          return res.status(500).json({ error: 'Session creation failed' });
+          return res.status(500).json({error: 'Session creation failed'});
         }
-        res.json({ message: 'Session created successfully', userId: user.id });
+        res.json({message: 'Session created successfully', userId: user.id});
       });
     } catch (error) {
       console.error('Admin session creation error:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({error: 'Internal server error'});
     }
   });
 
@@ -335,56 +336,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get(`${apiRouter}/dashboard/stats`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
       const userId = req.user?.id || (req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
-      
+
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       const user = await storage.getUser(userId);
       if (!user) {
-        return res.status(404).json({ message: "User not found" });
+        return res.status(404).json({message: "User not found"});
       }
 
       // Business-specific stats
       if (user.role === 'business') {
         const workRequests = await storage.getWorkRequestsByBusinessId(userId);
         const acceptedWorkRequests = workRequests.filter(wr => wr.status === 'accepted');
-        
+
         // Get all projects and filter out Quick Tasks
         const allProjects = await storage.getBusinessProjects(userId);
         const realProjects = allProjects.filter(p => p.name !== 'Quick Tasks');
-        
+
         // Count projects that have at least one accepted work request
-        const projectsWithAcceptedWork = realProjects.filter(project => 
+        const projectsWithAcceptedWork = realProjects.filter(project =>
           acceptedWorkRequests.some(wr => wr.projectId === project.id)
         ).length;
-        
+
         console.log(`DASHBOARD STATS - Business ${userId}: Total projects: ${realProjects.length}, Projects with accepted work: ${projectsWithAcceptedWork}, Total work requests: ${workRequests.length}, Accepted: ${acceptedWorkRequests.length}`);
-        
+
         // Get payment stats
         const paymentStats = await storage.getBusinessPaymentStats(userId);
-        
+
         // Get contractor count
         const contractors = await storage.getContractorsByBusinessId(userId);
-        
+
         return res.json({
           assignedProjects: projectsWithAcceptedWork,
           activeAssignments: acceptedWorkRequests.length,
           paymentsProcessed: paymentStats.totalPaymentValue,
           activeContractors: contractors.length,
-          remainingBudget: user.budgetCap ? 
+          remainingBudget: user.budgetCap ?
             (parseFloat(user.budgetCap) - parseFloat(user.budgetUsed || "0")).toString() : null
         });
       }
-      
+
       // Contractor-specific stats
       if (user.role === 'contractor') {
         const earnings = await storage.getContractorEarningsStats(userId);
         const workRequests = await storage.getWorkRequestsByContractorId(userId);
         const acceptedRequests = workRequests.filter(wr => wr.status === 'accepted');
-        
+
         console.log(`DASHBOARD STATS - Contractor ${userId}: Total work requests: ${workRequests.length}, Accepted: ${acceptedRequests.length}`);
-        
+
         return res.json({
           assignedProjects: acceptedRequests.length,
           totalEarnings: earnings.totalEarnings,
@@ -400,7 +401,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error fetching dashboard stats:", error);
-      res.status(500).json({ message: "Error fetching dashboard stats" });
+      res.status(500).json({message: "Error fetching dashboard stats"});
     }
   });
 
@@ -551,7 +552,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(users);
     } catch (error) {
       console.error("Error fetching users:", error);
-      res.status(500).json({ message: "Error fetching users" });
+      res.status(500).json({message: "Error fetching users"});
     }
   });
 
@@ -566,12 +567,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!userId) {
         console.log("No user ID found when accessing contractors");
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       const user = await storage.getUser(userId);
       if (!user || user.role !== 'business') {
-        return res.status(403).json({ message: "Only business users can access contractors" });
+        return res.status(403).json({message: "Only business users can access contractors"});
       }
 
       console.log(`Getting connected contractors for business user: ${userId}`);
@@ -677,7 +678,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(enhancedContractors);
     } catch (error) {
       console.error("Error fetching contractors:", error);
-      res.status(500).json({ message: "Error fetching contractors" });
+      res.status(500).json({message: "Error fetching contractors"});
     }
   });
 
@@ -687,12 +688,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(id);
 
       if (!user) {
-        return res.status(404).json({ message: "User not found" });
+        return res.status(404).json({message: "User not found"});
       }
 
       res.json(user);
     } catch (error) {
-      res.status(500).json({ message: "Error fetching user" });
+      res.status(500).json({message: "Error fetching user"});
     }
   });
 
@@ -734,9 +735,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid user data", errors: error.errors });
+        return res.status(400).json({message: "Invalid user data", errors: error.errors});
       }
-      res.status(500).json({ message: "Error creating user" });
+      res.status(500).json({message: "Error creating user"});
     }
   });
 
@@ -766,7 +767,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(invites);
     } catch (error) {
-      res.status(500).json({ message: "Error fetching invites" });
+      res.status(500).json({message: "Error fetching invites"});
     }
   });
 
@@ -776,12 +777,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const invite = await storage.getInvite(id);
 
       if (!invite) {
-        return res.status(404).json({ message: "Invite not found" });
+        return res.status(404).json({message: "Invite not found"});
       }
 
       res.json(invite);
     } catch (error) {
-      res.status(500).json({ message: "Error fetching invite" });
+      res.status(500).json({message: "Error fetching invite"});
     }
   });
 
@@ -816,10 +817,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       if (error instanceof z.ZodError) {
         console.error("[Invite Creation] Validation error:", JSON.stringify(error.errors));
-        return res.status(400).json({ message: "Invalid invite data", errors: error.errors });
+        return res.status(400).json({message: "Invalid invite data", errors: error.errors});
       }
       console.error('[Invite Creation] Error:', error);
-      res.status(500).json({ message: "Error creating invite" });
+      res.status(500).json({message: "Error creating invite"});
     }
   });
 
@@ -831,12 +832,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedInvite = await storage.updateInvite(id, updateData);
 
       if (!updatedInvite) {
-        return res.status(404).json({ message: "Invite not found" });
+        return res.status(404).json({message: "Invite not found"});
       }
 
       res.json(updatedInvite);
     } catch (error) {
-      res.status(500).json({ message: "Error updating invite" });
+      res.status(500).json({message: "Error updating invite"});
     }
   });
 
@@ -850,19 +851,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       if (!endpointSecret) {
         console.error('STRIPE_WEBHOOK_SECRET not configured');
-        return res.status(400).json({ error: 'Webhook secret not configured' });
+        return res.status(400).json({error: 'Webhook secret not configured'});
       }
 
-      event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+      event = stripe.webhooks.constructEvent(req.body, sig!, endpointSecret);
     } catch (err: any) {
       console.error(`Webhook signature verification failed: ${err.message}`);
-      return res.status(400).json({ error: `Webhook Error: ${err.message}` });
+      return res.status(400).json({error: `Webhook Error: ${err.message}`});
     }
 
     // Handle the event
     switch (event.type) {
       case 'payment_intent.succeeded':
-        const succeededIntent = event.data.object;
+        const succeededIntent = event.data.object as any;
         console.log(`[WEBHOOK] Destination charge payment succeeded: ${succeededIntent.id}`);
 
         // DESTINATION CHARGE SUCCESS: Funds went directly to contractor's account
@@ -877,7 +878,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             // 🎯 AUTO-GENERATE INVOICE
             try {
-              const { invoiceGenerator } = await import('./services/invoice-generator');
+              const {invoiceGenerator} = await import('./services/invoice-generator');
               const invoiceId = await invoiceGenerator.generateInvoiceForPayment({
                 paymentId: parseInt(paymentId),
                 stripePaymentIntentId: succeededIntent.id,
@@ -924,7 +925,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         break;
 
       case 'payment_intent.payment_failed':
-        const failedIntent = event.data.object;
+        const failedIntent = event.data.object as any;
         const errorMessage = failedIntent.last_payment_error?.message || 'Payment failed';
         console.log(`Payment failed: ${failedIntent.id}, ${errorMessage}`);
 
@@ -941,7 +942,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         break;
 
       case 'payment_intent.processing':
-        const processingIntent = event.data.object;
+        const processingIntent = event.data.object as any;
         console.log(`Payment processing: ${processingIntent.id}`);
 
         // Update payment status to processing
@@ -970,7 +971,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const invite = await storage.getInvite(id);
 
       if (!invite) {
-        return res.status(404).json({ message: "Invite not found" });
+        return res.status(404).json({message: "Invite not found"});
       }
 
       // Generate a token for this invite
@@ -995,7 +996,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("[Invite Link] Generated URL:", inviteUrl);
 
       // Store the token in the database using updateInvite
-      await storage.updateInvite(id, { token });
+      await storage.updateInvite(id, {token});
 
       console.log(`[Invite Link] Generated link for invite ID ${invite.id} with token ${token}`);
 
@@ -1007,7 +1008,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error generating invitation link:", error);
-      res.status(500).json({ message: "Error generating invitation link" });
+      res.status(500).json({message: "Error generating invitation link"});
     }
   });
 
@@ -1035,7 +1036,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // SECURITY: Contractors can only access their own contracts
       if (userRole === 'contractor' && contractorId && contractorId !== userId) {
         console.log(`SECURITY BLOCK: Contractor ${userId} attempted to access other contractor ${contractorId} data`);
-        return res.status(403).json({ message: "Access denied: Contractors can only view their own contracts" });
+        return res.status(403).json({message: "Access denied: Contractors can only view their own contracts"});
       }
 
       console.log(`Fetching contracts for user ID ${userId} with role ${userRole}`);
@@ -1051,13 +1052,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (businessId && businessId !== userId) {
         // Users can only access their own business data
         console.log(`SECURITY BLOCK: User ${userId} attempted to access business ${businessId} data`);
-        return res.status(403).json({ message: "Access denied: Cannot access other business data" });
+        return res.status(403).json({message: "Access denied: Cannot access other business data"});
       }
 
       if (contractorId && contractorId !== userId) {
         // Users can only access their own contractor data
         console.log(`SECURITY BLOCK: User ${userId} attempted to access contractor ${contractorId} data`);
-        return res.status(403).json({ message: "Access denied: Cannot access other contractor data" });
+        return res.status(403).json({message: "Access denied: Cannot access other contractor data"});
       }
 
       if (businessId && businessId === userId) {
@@ -1083,7 +1084,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Log filtered contracts for debugging
-      console.log(`Filtered contracts for user ${userId}: ${JSON.stringify(contracts.map(c => ({ id: c.id, name: c.contractName, businessId: c.businessId })))}`);
+      console.log(`Filtered contracts for user ${userId}: ${JSON.stringify(contracts.map(c => ({id: c.id, name: c.contractName, businessId: c.businessId})))}`);
 
       // Filter out deleted projects - they should only appear in data room
       const activeContracts = contracts.filter(contract => contract.status !== 'deleted');
@@ -1091,7 +1092,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(activeContracts);
     } catch (error) {
       console.error("Error fetching contracts:", error);
-      res.status(500).json({ message: "Error fetching contracts" });
+      res.status(500).json({message: "Error fetching contracts"});
     }
   });
 
@@ -1115,13 +1116,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get the contract first to check ownership
       const contract = await storage.getContract(id);
       if (!contract) {
-        return res.status(404).json({ message: "Contract not found" });
+        return res.status(404).json({message: "Contract not found"});
       }
 
       // SECURITY: Contractors can only access their own contracts
       if (userRole === 'contractor' && contract.contractorId !== userId) {
         console.log(`SECURITY BLOCK: Contractor ${userId} attempted to access contract ${id} owned by contractor ${contract.contractorId}`);
-        return res.status(403).json({ message: "Access denied: Contractors can only view their own contracts" });
+        return res.status(403).json({message: "Access denied: Contractors can only view their own contracts"});
       }
 
       // Detailed debugging for authentication
@@ -1131,25 +1132,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`GET /contracts/${id} - User from session:`, req.user);
 
       if (!contract) {
-        return res.status(404).json({ message: "Contract not found" });
+        return res.status(404).json({message: "Contract not found"});
       }
 
       // Additional user verification for access control
       if (!userId) {
         console.log("No user ID found when accessing contract detail");
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       // Only business users who own the contract can access it
       if (userRole !== 'business' || contract.businessId !== userId) {
         console.log(`Access denied for user ${userId} with role ${userRole} trying to access contract ${id} owned by business ${contract.businessId}`);
-        return res.status(403).json({ message: "Access denied" });
+        return res.status(403).json({message: "Access denied"});
       }
 
       res.json(contract);
     } catch (error) {
       console.error("Error fetching contract:", error);
-      res.status(500).json({ message: "Error fetching contract" });
+      res.status(500).json({message: "Error fetching contract"});
     }
   });
 
@@ -1191,10 +1192,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       if (error instanceof z.ZodError) {
         console.error("[Contract Creation] Validation error:", JSON.stringify(error.errors));
-        return res.status(400).json({ message: "Invalid contract data", errors: error.errors });
+        return res.status(400).json({message: "Invalid contract data", errors: error.errors});
       }
       console.error("[Contract Creation] Error:", error);
-      res.status(500).json({ message: "Error creating contract" });
+      res.status(500).json({message: "Error creating contract"});
     }
   });
 
@@ -1207,7 +1208,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const existingContract = await storage.getContract(id);
       if (!existingContract) {
-        return res.status(404).json({ message: "Project not found" });
+        return res.status(404).json({message: "Project not found"});
       }
 
       // SECURITY: Get user ID from session or X-User-ID header
@@ -1215,20 +1216,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!userId) {
         console.log("No user ID found when updating contract");
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       // SECURITY: Only business owner can update their contracts
       if (userId !== existingContract.businessId) {
         console.log(`SECURITY BLOCK: User ${userId} attempted to update contract ${id} owned by business ${existingContract.businessId}`);
-        return res.status(403).json({ message: "Access denied: Cannot update other business contracts" });
+        return res.status(403).json({message: "Access denied: Cannot update other business contracts"});
       }
 
       // Validated - proceed with update
       const updatedContract = await storage.updateContract(id, updateData);
 
       if (!updatedContract) {
-        return res.status(404).json({ message: "Failed to update contract" });
+        return res.status(404).json({message: "Failed to update contract"});
       }
 
       console.log(`✅ Contractor assigned successfully by authorized user ${userId}`);
@@ -1248,7 +1249,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const contract = await storage.getContract(id);
 
       if (!contract) {
-        return res.status(404).json({ message: "Project not found" });
+        return res.status(404).json({message: "Project not found"});
       }
 
       // Get user ID from session or X-User-ID header
@@ -1256,13 +1257,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!userId) {
         console.log("No user ID found when deleting contract");
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       // Check if user has permission (is the business owner of the contract)
       if (userId !== contract.businessId) {
         console.log(`User ${userId} tried to delete contract ${id} owned by business ${contract.businessId}`);
-        return res.status(403).json({ message: "You don't have permission to delete this project" });
+        return res.status(403).json({message: "You don't have permission to delete this project"});
       }
 
       console.log(`User ${userId} is deleting contract ${id}`);
@@ -1281,7 +1282,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        return res.status(200).json({ message: "Project permanently deleted" });
+        return res.status(200).json({message: "Project permanently deleted"});
       } else {
         // Normal soft delete (mark as deleted)
         const deleted = await storage.deleteContract(id);
@@ -1292,11 +1293,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        res.status(200).json({ message: "Project deleted successfully" });
+        res.status(200).json({message: "Project deleted successfully"});
       }
     } catch (error) {
       console.error("Error deleting contract:", error);
-      res.status(500).json({ message: "Error deleting project" });
+      res.status(500).json({message: "Error deleting project"});
     }
   });
 
@@ -1320,7 +1321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       let milestones;
@@ -1328,15 +1329,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // SECURITY: Check if the contract belongs to the authenticated user
         const contract = await storage.getContract(contractId);
         if (!contract) {
-          return res.status(404).json({ message: "Contract not found" });
+          return res.status(404).json({message: "Contract not found"});
         }
 
         // Verify user has access to this contract
         if (userRole === 'business' && contract.businessId !== userId) {
-          return res.status(403).json({ message: "Access denied: Cannot access other business data" });
+          return res.status(403).json({message: "Access denied: Cannot access other business data"});
         }
         if (userRole === 'contractor' && contract.contractorId !== userId) {
-          return res.status(403).json({ message: "Access denied: Cannot access other contractor data" });
+          return res.status(403).json({message: "Access denied: Cannot access other contractor data"});
         }
 
         if (contract.status === 'deleted') {
@@ -1371,7 +1372,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(milestones);
     } catch (error) {
       console.error("Error fetching milestones:", error);
-      res.status(500).json({ message: "Error fetching milestones" });
+      res.status(500).json({message: "Error fetching milestones"});
     }
   });
 
@@ -1382,31 +1383,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userRole = req.user?.role || 'business';
 
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       const milestone = await storage.getMilestone(id);
       if (!milestone) {
-        return res.status(404).json({ message: "Milestone not found" });
+        return res.status(404).json({message: "Milestone not found"});
       }
 
       // SECURITY: Verify user has access to this milestone's contract
       const contract = await storage.getContract(milestone.contractId);
       if (!contract) {
-        return res.status(404).json({ message: "Contract not found" });
+        return res.status(404).json({message: "Contract not found"});
       }
 
       if (userRole === 'business' && contract.businessId !== userId) {
-        return res.status(403).json({ message: "Access denied: Cannot access other business data" });
+        return res.status(403).json({message: "Access denied: Cannot access other business data"});
       }
       if (userRole === 'contractor' && contract.contractorId !== userId) {
-        return res.status(403).json({ message: "Access denied: Cannot access other contractor data" });
+        return res.status(403).json({message: "Access denied: Cannot access other contractor data"});
       }
 
       res.json(milestone);
     } catch (error) {
       console.error("Error fetching milestone:", error);
-      res.status(500).json({ message: "Error fetching milestone" });
+      res.status(500).json({message: "Error fetching milestone"});
     }
   });
 
@@ -1416,7 +1417,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userRole = req.user?.role || 'business';
 
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       const milestoneInput = insertMilestoneSchema.parse(req.body);
@@ -1424,24 +1425,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // SECURITY: Verify user has access to create milestones for this contract
       const contract = await storage.getContract(milestoneInput.contractId);
       if (!contract) {
-        return res.status(404).json({ message: "Contract not found" });
+        return res.status(404).json({message: "Contract not found"});
       }
 
       if (userRole === 'business' && contract.businessId !== userId) {
-        return res.status(403).json({ message: "Access denied: Cannot create milestones for other business contracts" });
+        return res.status(403).json({message: "Access denied: Cannot create milestones for other business contracts"});
       }
       if (userRole === 'contractor' && contract.contractorId !== userId) {
-        return res.status(403).json({ message: "Access denied: Cannot create milestones for other contractor contracts" });
+        return res.status(403).json({message: "Access denied: Cannot create milestones for other contractor contracts"});
       }
 
       const newMilestone = await storage.createMilestone(milestoneInput);
       res.status(201).json(newMilestone);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid deliverable data", errors: error.errors });
+        return res.status(400).json({message: "Invalid deliverable data", errors: error.errors});
       }
       console.error("Error creating milestone:", error);
-      res.status(500).json({ message: "Error creating milestone" });
+      res.status(500).json({message: "Error creating milestone"});
     }
   });
 
@@ -1464,7 +1465,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       console.log(`Updating milestone ${id} for user ${userId} with role ${userRole}`);
@@ -1473,7 +1474,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existingMilestone = await storage.getMilestone(id);
       if (!existingMilestone) {
         console.log(`Milestone ${id} not found`);
-        return res.status(404).json({ message: "Milestone not found" });
+        return res.status(404).json({message: "Milestone not found"});
       }
 
       console.log(`Found milestone ${id} for contract ${existingMilestone.contractId}`);
@@ -1481,7 +1482,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const contract = await storage.getContract(existingMilestone.contractId);
       if (!contract) {
         console.log(`Contract ${existingMilestone.contractId} not found for milestone ${id}`);
-        return res.status(404).json({ message: "Contract not found" });
+        return res.status(404).json({message: "Contract not found"});
       }
 
       console.log(`Found contract ${contract.id}: businessId=${contract.businessId}, contractorId=${contract.contractorId}`);
@@ -1498,11 +1499,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           if (!hasWorkRequest) {
             console.log(`Contractor ${userId} has no access to contract ${contract.id}`);
-            return res.status(403).json({ message: "Access denied: You are not assigned to this project" });
+            return res.status(403).json({message: "Access denied: You are not assigned to this project"});
           }
         }
       } else if (userRole === 'business' && contract.businessId !== userId) {
-        return res.status(403).json({ message: "Access denied: Cannot update other business milestones" });
+        return res.status(403).json({message: "Access denied: Cannot update other business milestones"});
       }
 
       // Set submittedAt timestamp when status changes to completed
@@ -1513,7 +1514,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedMilestone = await storage.updateMilestone(id, updateData);
 
       if (!updatedMilestone) {
-        return res.status(404).json({ message: "Milestone not found after update" });
+        return res.status(404).json({message: "Milestone not found after update"});
       }
 
       console.log(`Successfully updated milestone ${id}`);
@@ -1539,7 +1540,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(updatedMilestone);
     } catch (error) {
       console.error("Error updating milestone:", error);
-      res.status(500).json({ message: "Error updating milestone" });
+      res.status(500).json({message: "Error updating milestone"});
     }
   });
 
@@ -1548,10 +1549,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const milestoneId = parseInt(req.params.id);
       const approvedBy = req.user?.id;
-      const { approvalNotes } = req.body;
+      const {approvalNotes} = req.body;
 
       if (!approvedBy) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       // Update milestone status to approved
@@ -1562,7 +1563,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       if (!updatedMilestone) {
-        return res.status(404).json({ message: "Milestone not found" });
+        return res.status(404).json({message: "Milestone not found"});
       }
 
       // Create notification for milestone approval
@@ -1582,13 +1583,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get contract and contractor details for payment
       const contract = await storage.getContract(updatedMilestone.contractId);
       if (!contract) {
-        return res.status(404).json({ message: "Contract not found" });
+        return res.status(404).json({message: "Contract not found"});
       }
 
       // Get contractor details
       const contractor = await storage.getUser(contract.contractorId);
       if (!contractor || !contractor.stripeConnectAccountId) {
-        return res.status(400).json({ message: "Contractor not found or not set up for Stripe payments" });
+        return res.status(400).json({message: "Contractor not found or not set up for Stripe payments"});
       }
 
       // Trigger automated Stripe payment
@@ -1647,7 +1648,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error) {
       console.error("Error approving milestone:", error);
-      res.status(500).json({ message: "Error approving milestone" });
+      res.status(500).json({message: "Error approving milestone"});
     }
   });
 
@@ -1663,12 +1664,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userRole = req.user?.role || 'business';
 
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       // Ensure user can only access their own business deliverables
       if (userRole === 'business' && businessId && businessId !== userId) {
-        return res.status(403).json({ message: "Access denied: Cannot access other business data" });
+        return res.status(403).json({message: "Access denied: Cannot access other business data"});
       }
 
       const targetBusinessId = businessId || userId;
@@ -1709,7 +1710,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(submittedDeliverables);
     } catch (error) {
       console.error("Error fetching submitted deliverables:", error);
-      res.status(500).json({ message: "Error fetching submitted deliverables" });
+      res.status(500).json({message: "Error fetching submitted deliverables"});
     }
   });
 
@@ -1722,7 +1723,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userRole = req.user?.role || 'business';
 
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       let deliverables;
@@ -1730,15 +1731,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // SECURITY: Check if the contract belongs to the authenticated user
         const contract = await storage.getContract(contractId);
         if (!contract) {
-          return res.status(404).json({ message: "Contract not found" });
+          return res.status(404).json({message: "Contract not found"});
         }
 
         // Verify user has access to this contract
         if (userRole === 'business' && contract.businessId !== userId) {
-          return res.status(403).json({ message: "Access denied: Cannot access other business data" });
+          return res.status(403).json({message: "Access denied: Cannot access other business data"});
         }
         if (userRole === 'contractor' && contract.contractorId !== userId) {
-          return res.status(403).json({ message: "Access denied: Cannot access other contractor data" });
+          return res.status(403).json({message: "Access denied: Cannot access other contractor data"});
         }
 
         if (contract.status === 'deleted') {
@@ -1773,7 +1774,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(deliverables);
     } catch (error) {
       console.error("Error fetching deliverables:", error);
-      res.status(500).json({ message: "Error fetching deliverables" });
+      res.status(500).json({message: "Error fetching deliverables"});
     }
   });
 
@@ -1784,7 +1785,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userRole = req.user?.role || 'business';
 
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       // Log incoming request for diagnostics
@@ -1815,14 +1816,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // SECURITY: Verify user has access to create deliverables for this contract
       const contract = await storage.getContract(normalizedInput.contractId);
       if (!contract) {
-        return res.status(404).json({ message: "Contract not found" });
+        return res.status(404).json({message: "Contract not found"});
       }
 
       if (userRole === 'business' && contract.businessId !== userId) {
-        return res.status(403).json({ message: "Access denied: Cannot create deliverables for other business contracts" });
+        return res.status(403).json({message: "Access denied: Cannot create deliverables for other business contracts"});
       }
       if (userRole === 'contractor' && contract.contractorId !== userId) {
-        return res.status(403).json({ message: "Access denied: Cannot create deliverables for other contractor contracts" });
+        return res.status(403).json({message: "Access denied: Cannot create deliverables for other contractor contracts"});
       }
 
       // Create the milestone/deliverable using normalized data
@@ -1866,7 +1867,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (!userId) {
-        return res.status(401).json({ message: 'Authentication required' });
+        return res.status(401).json({message: 'Authentication required'});
       }
 
       console.log(`Processing deliverable submission for work request ${workRequestId} by user ${userId}`);
@@ -1874,7 +1875,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get the work request first
       const workRequest = await storage.getWorkRequest(workRequestId);
       if (!workRequest) {
-        return res.status(404).json({ message: 'Work request not found' });
+        return res.status(404).json({message: 'Work request not found'});
       }
 
       console.log(`Found work request: ${workRequest.title}`);
@@ -1885,7 +1886,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Verify the user has permission to submit this deliverable
       if (userRole === 'contractor' && workRequest.contractorUserId !== userId) {
-        return res.status(403).json({ message: 'Not authorized to submit this deliverable' });
+        return res.status(403).json({message: 'Not authorized to submit this deliverable'});
       }
 
       // Find the corresponding milestone/deliverable by matching the work request title
@@ -1896,7 +1897,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       if (!matchingMilestone) {
-        return res.status(404).json({ message: 'Corresponding deliverable not found' });
+        return res.status(404).json({message: 'Corresponding deliverable not found'});
       }
 
       // Proceed with deliverable update
@@ -1912,7 +1913,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedDeliverable = await storage.updateMilestone(matchingMilestone.id, updateData);
 
       if (!updatedDeliverable) {
-        return res.status(404).json({ message: 'Failed to update deliverable' });
+        return res.status(404).json({message: 'Failed to update deliverable'});
       }
 
       console.log(`Successfully updated deliverable ${matchingMilestone.id}`);
@@ -1920,7 +1921,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error) {
       console.error('Error submitting deliverable:', error);
-      res.status(500).json({ message: 'Internal server error' });
+      res.status(500).json({message: 'Internal server error'});
     }
   });
 
@@ -1929,16 +1930,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const deliverableId = parseInt(req.params.id);
       const approvedBy = req.user?.id;
-      const { approvalNotes } = req.body;
+      const {approvalNotes} = req.body;
 
       if (!approvedBy) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       // Get current deliverable to check status transition
       const currentDeliverable = await storage.getMilestone(deliverableId);
       if (!currentDeliverable) {
-        return res.status(404).json({ message: "Deliverable not found" });
+        return res.status(404).json({message: "Deliverable not found"});
       }
 
       // Check if already approved (idempotency)
@@ -1971,7 +1972,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       if (!updatedDeliverable) {
-        return res.status(404).json({ message: "Deliverable not found after update" });
+        return res.status(404).json({message: "Deliverable not found after update"});
       }
 
       // Create notification for deliverable approval
@@ -2030,7 +2031,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const projectId = parseInt(req.params.projectId);
 
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       // Log incoming request for diagnostics
@@ -2063,11 +2064,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // SECURITY: Verify user has access to assign deliverables for this project/contract
       const contract = await storage.getContract(projectId);
       if (!contract) {
-        return res.status(404).json({ message: "Project not found" });
+        return res.status(404).json({message: "Project not found"});
       }
 
       if (userRole === 'business' && contract.businessId !== userId) {
-        return res.status(403).json({ message: "Access denied: Cannot assign deliverables for other business projects" });
+        return res.status(403).json({message: "Access denied: Cannot assign deliverables for other business projects"});
       }
 
       // Create the deliverable assignment using normalized data
@@ -2105,26 +2106,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       const userId = req.user?.id;
       const userRole = req.user?.role || 'business';
-      const { notes } = req.body;
+      const {notes} = req.body;
 
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       // Get milestone and verify access
       const milestone = await storage.getMilestone(id);
       if (!milestone) {
-        return res.status(404).json({ message: "Milestone not found" });
+        return res.status(404).json({message: "Milestone not found"});
       }
 
       const contract = await storage.getContract(milestone.contractId);
       if (!contract) {
-        return res.status(404).json({ message: "Contract not found" });
+        return res.status(404).json({message: "Contract not found"});
       }
 
       // Only businesses can reject milestones
       if (userRole !== 'business' || contract.businessId !== userId) {
-        return res.status(403).json({ message: "Access denied: Only contract owner can reject milestones" });
+        return res.status(403).json({message: "Access denied: Only contract owner can reject milestones"});
       }
 
       // Update milestone status
@@ -2135,10 +2136,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         rejectionNotes: notes
       });
 
-      res.json({ success: true, milestone: updatedMilestone });
+      res.json({success: true, milestone: updatedMilestone});
     } catch (error) {
       console.error("Error rejecting milestone:", error);
-      res.status(500).json({ message: "Error rejecting milestone" });
+      res.status(500).json({message: "Error rejecting milestone"});
     }
   });
 
@@ -2149,7 +2150,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user?.id;
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       const user = await storage.getUser(userId);
@@ -2179,7 +2180,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(formattedMethods);
     } catch (error: any) {
       console.error('Error fetching payment methods:', error);
-      res.status(500).json({ message: "Error fetching payment methods" });
+      res.status(500).json({message: "Error fetching payment methods"});
     }
   });
 
@@ -2187,14 +2188,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user?.id;
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
-      const { type, card, billing_details } = req.body;
+      const {type, card, billing_details} = req.body;
 
       let user = await storage.getUser(userId);
       if (!user) {
-        return res.status(404).json({ message: "User not found" });
+        return res.status(404).json({message: "User not found"});
       }
 
       // Create Stripe customer if doesn't exist
@@ -2206,7 +2207,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         user = await storage.updateStripeCustomerId(userId, customer.id);
         if (!user?.stripeCustomerId) {
-          return res.status(500).json({ message: "Failed to create customer" });
+          return res.status(500).json({message: "Failed to create customer"});
         }
       }
 
@@ -2237,7 +2238,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error: any) {
       console.error('Error adding payment method:', error);
-      res.status(500).json({ message: error.message || "Error adding payment method" });
+      res.status(500).json({message: error.message || "Error adding payment method"});
     }
   });
 
@@ -2247,12 +2248,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const paymentMethodId = req.params.id;
 
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       const user = await storage.getUser(userId);
       if (!user?.stripeCustomerId) {
-        return res.status(404).json({ message: "No Stripe customer found" });
+        return res.status(404).json({message: "No Stripe customer found"});
       }
 
       // Set as default payment method for invoices
@@ -2262,10 +2263,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
       });
 
-      res.json({ message: "Default payment method updated" });
+      res.json({message: "Default payment method updated"});
     } catch (error: any) {
       console.error('Error setting default payment method:', error);
-      res.status(500).json({ message: "Error setting default payment method" });
+      res.status(500).json({message: "Error setting default payment method"});
     }
   });
 
@@ -2276,10 +2277,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Detach payment method from customer
       await stripe.paymentMethods.detach(paymentMethodId);
 
-      res.json({ message: "Payment method removed" });
+      res.json({message: "Payment method removed"});
     } catch (error: any) {
       console.error('Error removing payment method:', error);
-      res.status(500).json({ message: "Error removing payment method" });
+      res.status(500).json({message: "Error removing payment method"});
     }
   });
 
@@ -2290,7 +2291,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userRole = req.user?.role || 'business';
 
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       const contractId = req.query.contractId ? parseInt(req.query.contractId as string) : null;
@@ -2303,16 +2304,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // SECURITY: Verify user has access to this contract
         const contract = await storage.getContract(contractId);
         if (!contract) {
-          return res.status(404).json({ message: "Contract not found" });
+          return res.status(404).json({message: "Contract not found"});
         }
 
         if (userRole === 'business' && contract.businessId !== userId) {
           console.log(`SECURITY BLOCK: Business user ${userId} attempted to access payments for contract ${contractId} owned by business ${contract.businessId}`);
-          return res.status(403).json({ message: "Access denied: Cannot access other business payments" });
+          return res.status(403).json({message: "Access denied: Cannot access other business payments"});
         }
         if (userRole === 'contractor' && contract.contractorId !== userId) {
           console.log(`SECURITY BLOCK: Contractor user ${userId} attempted to access payments for contract ${contractId} assigned to contractor ${contract.contractorId}`);
-          return res.status(403).json({ message: "Access denied: Cannot access other contractor payments" });
+          return res.status(403).json({message: "Access denied: Cannot access other contractor payments"});
         }
 
         payments = await storage.getPaymentsByContractId(contractId);
@@ -2336,7 +2337,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(payments);
     } catch (error) {
       console.error("Error fetching payments:", error);
-      res.status(500).json({ message: "Error fetching payments" });
+      res.status(500).json({message: "Error fetching payments"});
     }
   });
 
@@ -2347,33 +2348,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userRole = req.user?.role || 'business';
 
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       const payment = await storage.getPayment(id);
       if (!payment) {
-        return res.status(404).json({ message: "Payment not found" });
+        return res.status(404).json({message: "Payment not found"});
       }
 
       // SECURITY: Verify user has access to this payment's contract
       const contract = await storage.getContract(payment.contractId);
       if (!contract) {
-        return res.status(404).json({ message: "Contract not found" });
+        return res.status(404).json({message: "Contract not found"});
       }
 
       if (userRole === 'business' && contract.businessId !== userId) {
         console.log(`SECURITY BLOCK: Business user ${userId} attempted to access payment ${id} for contract owned by business ${contract.businessId}`);
-        return res.status(403).json({ message: "Access denied: Cannot access other business payments" });
+        return res.status(403).json({message: "Access denied: Cannot access other business payments"});
       }
       if (userRole === 'contractor' && contract.contractorId !== userId) {
         console.log(`SECURITY BLOCK: Contractor user ${userId} attempted to access payment ${id} for contract assigned to contractor ${contract.contractorId}`);
-        return res.status(403).json({ message: "Access denied: Cannot access other contractor payments" });
+        return res.status(403).json({message: "Access denied: Cannot access other contractor payments"});
       }
 
       res.json(payment);
     } catch (error) {
       console.error("Error fetching payment:", error);
-      res.status(500).json({ message: "Error fetching payment" });
+      res.status(500).json({message: "Error fetching payment"});
     }
   });
 
@@ -2383,7 +2384,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userRole = req.user?.role || 'business';
 
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       const paymentInput = insertPaymentSchema.parse(req.body);
@@ -2391,26 +2392,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // SECURITY: Verify user has access to create payments for this contract
       const contract = await storage.getContract(paymentInput.contractId);
       if (!contract) {
-        return res.status(404).json({ message: "Contract not found" });
+        return res.status(404).json({message: "Contract not found"});
       }
 
       if (userRole === 'business' && contract.businessId !== userId) {
         console.log(`SECURITY BLOCK: Business user ${userId} attempted to create payment for contract owned by business ${contract.businessId}`);
-        return res.status(403).json({ message: "Access denied: Cannot create payments for other business contracts" });
+        return res.status(403).json({message: "Access denied: Cannot create payments for other business contracts"});
       }
       if (userRole === 'contractor' && contract.contractorId !== userId) {
         console.log(`SECURITY BLOCK: Contractor user ${userId} attempted to create payment for contract assigned to contractor ${contract.contractorId}`);
-        return res.status(403).json({ message: "Access denied: Cannot create payments for other contractor contracts" });
+        return res.status(403).json({message: "Access denied: Cannot create payments for other contractor contracts"});
       }
 
       const newPayment = await storage.createPayment(paymentInput);
       res.status(201).json(newPayment);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid payment data", errors: error.errors });
+        return res.status(400).json({message: "Invalid payment data", errors: error.errors});
       }
       console.error("Error creating payment:", error);
-      res.status(500).json({ message: "Error creating payment" });
+      res.status(500).json({message: "Error creating payment"});
     }
   });
 
@@ -2422,39 +2423,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userRole = req.user?.role || 'business';
 
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       // SECURITY: Verify user has access to update this payment
       const existingPayment = await storage.getPayment(id);
       if (!existingPayment) {
-        return res.status(404).json({ message: "Payment not found" });
+        return res.status(404).json({message: "Payment not found"});
       }
 
       const contract = await storage.getContract(existingPayment.contractId);
       if (!contract) {
-        return res.status(404).json({ message: "Contract not found" });
+        return res.status(404).json({message: "Contract not found"});
       }
 
       if (userRole === 'business' && contract.businessId !== userId) {
         console.log(`SECURITY BLOCK: Business user ${userId} attempted to update payment ${id} for contract owned by business ${contract.businessId}`);
-        return res.status(403).json({ message: "Access denied: Cannot update other business payments" });
+        return res.status(403).json({message: "Access denied: Cannot update other business payments"});
       }
       if (userRole === 'contractor' && contract.contractorId !== userId) {
         console.log(`SECURITY BLOCK: Contractor user ${userId} attempted to update payment ${id} for contract assigned to contractor ${contract.contractorId}`);
-        return res.status(403).json({ message: "Access denied: Cannot update other contractor payments" });
+        return res.status(403).json({message: "Access denied: Cannot update other contractor payments"});
       }
 
       const updatedPayment = await storage.updatePayment(id, updateData);
 
       if (!updatedPayment) {
-        return res.status(404).json({ message: "Payment not found" });
+        return res.status(404).json({message: "Payment not found"});
       }
 
       res.json(updatedPayment);
     } catch (error) {
       console.error("Error updating payment:", error);
-      res.status(500).json({ message: "Error updating payment" });
+      res.status(500).json({message: "Error updating payment"});
     }
   });
 
@@ -2466,7 +2467,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userRole = req.user?.role || 'business';
 
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       let documents = [];
@@ -2474,16 +2475,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // SECURITY: Verify user has access to this contract
         const contract = await storage.getContract(contractId);
         if (!contract) {
-          return res.status(404).json({ message: "Contract not found" });
+          return res.status(404).json({message: "Contract not found"});
         }
 
         if (userRole === 'business' && contract.businessId !== userId) {
           console.log(`SECURITY BLOCK: Business user ${userId} attempted to access documents for contract ${contractId} owned by business ${contract.businessId}`);
-          return res.status(403).json({ message: "Access denied: Cannot access other business documents" });
+          return res.status(403).json({message: "Access denied: Cannot access other business documents"});
         }
         if (userRole === 'contractor' && contract.contractorId !== userId) {
           console.log(`SECURITY BLOCK: Business user ${userId} attempted to access documents for contract ${contractId} owned by business ${contract.businessId}`);
-          return res.status(403).json({ message: "Access denied: Cannot access other business documents" });
+          return res.status(403).json({message: "Access denied: Cannot access other business documents"});
         }
 
         documents = await storage.getDocumentsByContractId(contractId);
@@ -2508,7 +2509,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(documents);
     } catch (error) {
       console.error("Error fetching documents:", error);
-      res.status(500).json({ message: "Error fetching documents" });
+      res.status(500).json({message: "Error fetching documents"});
     }
   });
 
@@ -2518,12 +2519,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user?.id;
 
       if (!userId) {
-        return res.status(401).json({ message: 'Authentication required' });
+        return res.status(401).json({message: 'Authentication required'});
       }
 
       const userRole = req.user?.role || 'business';
       if (userRole !== 'business') {
-        return res.status(403).json({ message: 'Only business users can access deleted projects' });
+        return res.status(403).json({message: 'Only business users can access deleted projects'});
       }
 
       const deletedContracts = await storage.getDeletedContractsByBusinessId(userId);
@@ -2532,7 +2533,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(deletedContracts);
     } catch (error) {
       console.error('Error fetching deleted contracts:', error);
-      res.status(500).json({ message: 'Error fetching deleted contracts' });
+      res.status(500).json({message: 'Error fetching deleted contracts'});
     }
   });
 
@@ -2543,33 +2544,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userRole = req.user?.role || 'business';
 
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       const document = await storage.getDocument(id);
       if (!document) {
-        return res.status(404).json({ message: "Document not found" });
+        return res.status(404).json({message: "Document not found"});
       }
 
       // SECURITY: Verify user has access to this document's contract
       const contract = await storage.getContract(document.contractId);
       if (!contract) {
-        return res.status(404).json({ message: "Contract not found" });
+        return res.status(404).json({message: "Contract not found"});
       }
 
       if (userRole === 'business' && contract.businessId !== userId) {
         console.log(`SECURITY BLOCK: Business user ${userId} attempted to access documents for contract ${contractId} owned by business ${contract.businessId}`);
-        return res.status(403).json({ message: "Access denied: Cannot access other business documents" });
+        return res.status(403).json({message: "Access denied: Cannot access other business documents"});
       }
       if (userRole === 'contractor' && contract.contractorId !== userId) {
         console.log(`SECURITY BLOCK: Contractor user ${userId} attempted to access document ${id} for contract assigned to contractor ${contract.contractorId}`);
-        return res.status(403).json({ message: "Access denied: Cannot access other contractor documents" });
+        return res.status(403).json({message: "Access denied: Cannot access other contractor documents"});
       }
 
       res.json(document);
     } catch (error) {
       console.error("Error fetching document:", error);
-      res.status(500).json({ message: "Error fetching document" });
+      res.status(500).json({message: "Error fetching document"});
     }
   });
 
@@ -2579,7 +2580,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userRole = req.user?.role || 'business';
 
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       const documentInput = insertDocumentSchema.parse(req.body);
@@ -2587,26 +2588,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // SECURITY: Verify user has access to create documents for this contract
       const contract = await storage.getContract(documentInput.contractId);
       if (!contract) {
-        return res.status(404).json({ message: "Contract not found" });
+        return res.status(404).json({message: "Contract not found"});
       }
 
       if (userRole === 'business' && contract.businessId !== userId) {
         console.log(`SECURITY BLOCK: Business user ${userId} attempted to create document for contract owned by business ${contract.businessId}`);
-        return res.status(403).json({ message: "Access denied: Cannot create documents for other business contracts" });
+        return res.status(403).json({message: "Access denied: Cannot create documents for other business contracts"});
       }
       if (userRole === 'contractor' && contract.contractorId !== userId) {
         console.log(`SECURITY BLOCK: Contractor user ${userId} attempted to create document for contract assigned to contractor ${contract.contractorId}`);
-        return res.status(403).json({ message: "Access denied: Cannot create documents for other contractor contracts" });
+        return res.status(403).json({message: "Access denied: Cannot create documents for other contractor contracts"});
       }
 
       const newDocument = await storage.createDocument(documentInput);
       res.status(201).json(newDocument);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid document data", errors: error.errors });
+        return res.status(400).json({message: "Invalid document data", errors: error.errors});
       }
       console.error("Error creating document:", error);
-      res.status(500).json({ message: "Error creating document" });
+      res.status(500).json({message: "Error creating document"});
     }
   });
 
@@ -2699,7 +2700,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             }
           }
-          console.log(`Contractor ${userId} connected businesses:`, uniqueBusinesses.map(b => ({ id: b.id, name: b.businessName })));
+          console.log(`Contractor ${userId} connected businesses:`, uniqueBusinesses.map(b => ({id: b.id, name: b.businessName})));
         } catch (error) {
           console.error("Error fetching connected businesses for contractor dashboard:", error);
         }
@@ -2887,7 +2888,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(dashboardData);
     } catch (error) {
       console.error("Dashboard error:", error);
-      res.status(500).json({ message: "Error fetching dashboard data", error: String(error) });
+      res.status(500).json({message: "Error fetching dashboard data", error: String(error)});
     }
   });
 
@@ -2898,7 +2899,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userRole = req.user?.role || 'business';
 
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       if (userRole === 'contractor') {
@@ -2907,14 +2908,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const contractorPayments = await storage.getPaymentsByContractorId(userId);
 
         // Calculate summary stats
-        const totalContracts = workRequests.filter(wr => 
+        const totalContracts = workRequests.filter(wr =>
           ['assigned', 'in_review', 'approved'].includes(wr.status)
         ).length;
-        
-        const completedContracts = workRequests.filter(wr => 
+
+        const completedContracts = workRequests.filter(wr =>
           wr.status === 'completed'
         ).length;
-        
+
         const totalEarnings = contractorPayments
           .filter(p => p.status === 'completed')
           .reduce((sum, p) => sum + parseFloat(p.amount), 0);
@@ -2923,18 +2924,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         const now = new Date();
         const monthlyPayments = [];
-        
+
         for (let i = 11; i >= 0; i--) {
           const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
           const monthTotal = contractorPayments
             .filter(p => {
               if (!p.completedDate || p.status !== 'completed') return false;
               const paymentDate = new Date(p.completedDate);
-              return paymentDate.getMonth() === date.getMonth() && 
-                     paymentDate.getFullYear() === date.getFullYear();
+              return paymentDate.getMonth() === date.getMonth() &&
+                paymentDate.getFullYear() === date.getFullYear();
             })
             .reduce((sum, p) => sum + parseFloat(p.amount), 0);
-          
+
           monthlyPayments.push({
             name: monthNames[date.getMonth()],
             amount: monthTotal
@@ -2943,9 +2944,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Contract distribution (by type/category)
         const contractDistribution = [
-          { name: 'Active', value: totalContracts },
-          { name: 'Completed', value: completedContracts },
-          { name: 'Pending', value: workRequests.filter(wr => wr.status === 'pending').length }
+          {name: 'Active', value: totalContracts},
+          {name: 'Completed', value: completedContracts},
+          {name: 'Pending', value: workRequests.filter(wr => wr.status === 'pending').length}
         ].filter(item => item.value > 0);
 
         return res.json({
@@ -2962,16 +2963,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // BUSINESS REPORTS
         const workRequests = await storage.getWorkRequestsByBusinessId(userId);
         const businessPayments = await storage.getPaymentsByBusinessId(userId);
-        
+
         // Calculate summary stats
-        const totalContracts = workRequests.filter(wr => 
+        const totalContracts = workRequests.filter(wr =>
           wr.status === 'accepted'
         ).length;
-        
-        const completedContracts = workRequests.filter(wr => 
+
+        const completedContracts = workRequests.filter(wr =>
           wr.status === 'completed'
         ).length;
-        
+
         const totalSpent = businessPayments
           .filter(p => p.status === 'completed')
           .reduce((sum, p) => sum + parseFloat(p.amount), 0);
@@ -2979,26 +2980,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const uniqueContractorIds = [...new Set(workRequests.map(wr => wr.contractorUserId))];
         const totalContractors = uniqueContractorIds.length;
 
-        const completionRate = totalContracts > 0 
-          ? Math.round((completedContracts / totalContracts) * 100) 
+        const completionRate = totalContracts > 0
+          ? Math.round((completedContracts / totalContracts) * 100)
           : 0;
 
         // Monthly payments (last 12 months)
         const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         const now = new Date();
         const monthlyPayments = [];
-        
+
         for (let i = 11; i >= 0; i--) {
           const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
           const monthTotal = businessPayments
             .filter(p => {
               if (!p.completedDate || p.status !== 'completed') return false;
               const paymentDate = new Date(p.completedDate);
-              return paymentDate.getMonth() === date.getMonth() && 
-                     paymentDate.getFullYear() === date.getFullYear();
+              return paymentDate.getMonth() === date.getMonth() &&
+                paymentDate.getFullYear() === date.getFullYear();
             })
             .reduce((sum, p) => sum + parseFloat(p.amount), 0);
-          
+
           monthlyPayments.push({
             name: monthNames[date.getMonth()],
             amount: monthTotal
@@ -3007,9 +3008,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Contract distribution (by status)
         const contractDistribution = [
-          { name: 'Active', value: totalContracts },
-          { name: 'Completed', value: completedContracts },
-          { name: 'Pending', value: workRequests.filter(wr => wr.status === 'pending').length }
+          {name: 'Active', value: totalContracts},
+          {name: 'Completed', value: completedContracts},
+          {name: 'Pending', value: workRequests.filter(wr => wr.status === 'pending').length}
         ].filter(item => item.value > 0);
 
         return res.json({
@@ -3027,14 +3028,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error) {
       console.error("Reports error:", error);
-      res.status(500).json({ message: "Error fetching reports data", error: String(error) });
+      res.status(500).json({message: "Error fetching reports data", error: String(error)});
     }
   });
 
   // Subscription endpoint for companies - NO subscription required (users are creating one)
   app.post(`${apiRouter}/create-subscription`, requireAuth, async (req: Request, res: Response) => {
     try {
-      const { planType, email, customerName } = req.body;
+      const {planType, email, customerName} = req.body;
 
       console.log(`[Subscription] Creating subscription for plan: ${planType}, email: ${email}`);
 
@@ -3045,13 +3046,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       // Get user from database
       const user = await storage.getUser(userId);
       if (!user) {
-        return res.status(404).json({ message: "User not found" });
+        return res.status(404).json({message: "User not found"});
       }
 
       // Map plan types to correct Stripe Price IDs
@@ -3063,10 +3064,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const priceId = priceIdMap[planType];
-      
+
       if (!priceId) {
         console.error(`[Subscription] Invalid plan type: ${planType}`);
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: "Invalid plan type or price not configured",
           planType,
           availablePlans: Object.keys(priceIdMap)
@@ -3078,7 +3079,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         // Create or get Stripe customer
         let customerId = user.stripeCustomerId;
-        
+
         if (!customerId) {
           const customer = await stripe.customers.create({
             email: user.email,
@@ -3091,7 +3092,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`[Subscription] Created new Stripe customer ${customerId} for user ${user.id}`);
         } else {
           console.log(`[Subscription] Using existing Stripe customer ${customerId} for user ${user.id}`);
-          
+
           try {
             // Verify customer exists and cancel non-active subscriptions
             const existingSubscriptions = await stripe.subscriptions.list({
@@ -3165,7 +3166,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
             customerId = newCustomer.id;
             console.log(`[Subscription] Created replacement customer ${customerId}, retrying subscription creation`);
-            
+
             // Retry subscription creation with new customer
             subscription = await stripe.subscriptions.create({
               customer: customerId,
@@ -3226,12 +3227,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Complete subscription endpoint - activates subscription after payment
   app.post(`${apiRouter}/complete-subscription`, async (req: Request, res: Response) => {
     try {
-      const { subscriptionId, userId } = req.body;
+      const {subscriptionId, userId} = req.body;
 
-      console.log('[Complete Subscription] Request:', { subscriptionId, userId });
+      console.log('[Complete Subscription] Request:', {subscriptionId, userId});
 
       if (!subscriptionId || !userId) {
-        return res.status(400).json({ message: 'Subscription ID and User ID are required' });
+        return res.status(400).json({message: 'Subscription ID and User ID are required'});
       }
 
       // Retrieve subscription to verify payment
@@ -3388,10 +3389,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userRole = req.user?.role || 'business';
 
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
-      const { month, year, type = 'both' } = req.query;
+      const {month, year, type = 'both'} = req.query;
 
       // Get user's work requests and projects (current data structure)
       let userWorkRequests = [];
@@ -3462,11 +3463,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             endDate: workRequest.dueDate || workRequest.createdAt,
             type: 'deadline',
             status: workRequest.status === 'accepted' ? 'active' :
-                   workRequest.status === 'completed' ? 'completed' :
-                   workRequest.status === 'pending' ? 'pending' : 'pending',
+              workRequest.status === 'completed' ? 'completed' :
+                workRequest.status === 'pending' ? 'pending' : 'pending',
             color: workRequest.status === 'accepted' ? '#22C55E' :
-                   workRequest.status === 'completed' ? '#3B82F6' :
-                   workRequest.status === 'pending' ? '#F59E0B' : '#EF4444'
+              workRequest.status === 'completed' ? '#3B82F6' :
+                workRequest.status === 'pending' ? '#F59E0B' : '#EF4444'
           });
         }
       }
@@ -3486,7 +3487,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(filteredEvents);
     } catch (error) {
       console.error("Error fetching calendar events:", error);
-      res.status(500).json({ message: "Error fetching calendar events" });
+      res.status(500).json({message: "Error fetching calendar events"});
     }
   });
 
@@ -3497,13 +3498,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user?.id;
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       // Get the user with budget information
       const user = await storage.getUser(userId);
       if (!user) {
-        return res.status(404).json({ message: "User not found" });
+        return res.status(404).json({message: "User not found"});
       }
 
       // Calculate project allocations from milestone payment amounts (excluding deleted contracts)
@@ -3532,7 +3533,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         budgetUsed: totalPaymentsValue.toFixed(2), // Total completed payments = budgetUsed
         budgetPeriod: user.budgetPeriod || 'yearly',
         budgetStartDate: user.budgetStartDate || null,
-        budgetEndDate:null,
+        budgetEndDate: null,
         budgetResetEnabled: user.budgetResetEnabled || false,
         totalProjectAllocations: totalProjectAllocations.toFixed(2),
         remainingBudget: user.budgetCap
@@ -3541,62 +3542,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error fetching budget information:", error);
-      res.status(500).json({ message: "Error fetching budget information" });
+      res.status(500).json({message: "Error fetching budget information"});
     }
   });
 
-  // Set budget cap for the current user
-  app.post(`${apiRouter}/budget`, requireAuth, async (req: Request, res: Response) => {
+  // Update budget settings for the current user
+  app.put(`${apiRouter}/budget`, requireAuth, async (req: Request, res: Response) => {
     try {
       const userId = req.user?.id;
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       // Validate request body
-      const { budgetCap, budgetPeriod, startDate, endDate, resetEnabled } = req.body;
+      const {budgetCap, budgetPeriod, budgetResetEnabled} = req.body;
 
-      if (!budgetCap || isNaN(parseFloat(budgetCap))) {
-        return res.status(400).json({ message: "Valid budget cap is required" });
+      if (budgetCap && isNaN(parseFloat(budgetCap))) {
+        return res.status(400).json({message: "Valid budget cap is required"});
       }
 
-      // Parse dates if provided
-      const parsedStartDate = startDate ? new Date(startDate) : undefined;
-      const parsedEndDate = endDate ? new Date(endDate) : undefined;
+      // Update budget settings
+      const updateData: any = {};
+      if (budgetCap !== undefined) {
+        updateData.budgetCap = parseFloat(budgetCap).toString();
+      }
+      if (budgetPeriod !== undefined) {
+        updateData.budgetPeriod = budgetPeriod;
+      }
+      if (budgetResetEnabled !== undefined) {
+        updateData.budgetResetEnabled = budgetResetEnabled;
+      }
 
-      // Set budget cap
-      const user = await storage.setBudgetCap(
-        userId,
-        parseFloat(budgetCap),
-        budgetPeriod || 'yearly',
-        parsedStartDate,
-        parsedEndDate
-      );
+      const user = await storage.updateUser(userId, updateData);
 
       if (!user) {
-        return res.status(404).json({ message: "User not found" });
+        return res.status(404).json({message: "User not found"});
       }
 
-      // Update reset flag if provided
-      if (resetEnabled !== undefined) {
-        await storage.updateUser(userId, { budgetResetEnabled: resetEnabled });
-      }
+      // Get business payment stats for budgetUsed
+      const businessPaymentStats = await storage.getBusinessPaymentStats(userId);
+      const totalPaymentsValue = businessPaymentStats.totalPaymentValue;
 
-      // Return updated budget information
+      // Return updated budget information with correct JSON structure
       res.json({
-        budgetCap: user.budgetCap,
-        budgetUsed: user.budgetUsed || '0',
-        budgetPeriod: user.budgetPeriod,
-        budgetStartDate: user.budgetStartDate,
-        budgetEndDate: user.budgetEndDate,
-        budgetResetEnabled: resetEnabled !== undefined ? resetEnabled : user.budgetResetEnabled,
+        success: true,
+        budgetCap: user.budgetCap || null,
+        budgetUsed: totalPaymentsValue.toFixed(2),
+        budgetPeriod: user.budgetPeriod || 'yearly',
+        budgetStartDate: user.budgetStartDate || null,
+        budgetEndDate: user.budgetEndDate || null,
+        budgetResetEnabled: user.budgetResetEnabled || false,
         remainingBudget: user.budgetCap
-          ? (parseFloat(user.budgetCap.toString()) - parseFloat(user.budgetUsed?.toString() || '0')).toFixed(2)
+          ? (parseFloat(user.budgetCap.toString()) - totalPaymentsValue).toFixed(2)
           : null
       });
     } catch (error) {
-      console.error("Error setting budget cap:", error);
-      res.status(500).json({ message: "Error setting budget cap" });
+      console.error("Error updating budget settings:", error);
+      res.status(500).json({message: "Error updating budget settings"});
     }
   });
 
@@ -3605,12 +3607,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user?.id;
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       const user = await storage.resetBudgetUsed(userId);
       if (!user) {
-        return res.status(404).json({ message: "User not found" });
+        return res.status(404).json({message: "User not found"});
       }
 
       res.json({
@@ -3626,7 +3628,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error resetting budget used:", error);
-      res.status(500).json({ message: "Error resetting budget used" });
+      res.status(500).json({message: "Error resetting budget used"});
     }
   });
 
@@ -3638,33 +3640,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user?.id;
       const contractId = parseInt(req.params.id);
-      const { contractorId, budget } = req.body;
+      const {contractorId, budget} = req.body;
 
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       if (!contractId || isNaN(contractId)) {
-        return res.status(400).json({ message: "Invalid project ID" });
+        return res.status(400).json({message: "Invalid project ID"});
       }
 
       if (!contractorId || isNaN(parseInt(contractorId))) {
-        return res.status(400).json({ message: "Invalid contractor ID" });
+        return res.status(400).json({message: "Invalid contractor ID"});
       }
 
       if (!budget || isNaN(parseFloat(budget))) {
-        return res.status(400).json({ message: "Invalid budget amount" });
+        return res.status(400).json({message: "Invalid budget amount"});
       }
 
       // Verify the user has access to this contract
       const contract = await storage.getContract(contractId);
 
       if (!contract) {
-        return res.status(404).json({ message: "Project not found" });
+        return res.status(404).json({message: "Project not found"});
       }
 
       if (contract.businessId !== userId) {
-        return res.status(403).json({ message: "You don't have permission to modify this project" });
+        return res.status(403).json({message: "You don't have permission to modify this project"});
       }
 
       // Check if contractor is linked to this business
@@ -3725,7 +3727,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error allocating budget:", error);
-      res.status(500).json({ message: "Error allocating budget" });
+      res.status(500).json({message: "Error allocating budget"});
     }
   });
 
@@ -3752,14 +3754,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (!userId) {
-        return res.status(401).json({ error: 'Not authenticated' });
+        return res.status(401).json({error: 'Not authenticated'});
       }
 
       const contractorId = req.query.contractorId ? parseInt(req.query.contractorId as string) : userId;
       const user = await storage.getUser(userId); // Use the authenticated user ID
 
       if (!user) {
-        return res.status(401).json({ error: 'User not found' });
+        return res.status(401).json({error: 'User not found'});
       }
 
       // Contractor must have a Connect account
@@ -3776,7 +3778,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Import contractor earnings service
-      const { getContractorEarnings } = await import('./services/contractor-earnings');
+      const {getContractorEarnings} = await import('./services/contractor-earnings');
 
       // Fetch earnings from contractor's Connect account
       const earnings = await getContractorEarnings(user.stripeConnectAccountId);
@@ -3798,22 +3800,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = getUserId(req);
       const user = await storage.getUser(userId!);
-      const { limit = 50 } = req.query;
+      const {limit = 50} = req.query;
 
       if (!user?.stripeConnectAccountId) {
-        return res.json({ transactions: [] });
+        return res.json({transactions: []});
       }
 
-      const { getContractorTransactions } = await import('./services/contractor-earnings');
+      const {getContractorTransactions} = await import('./services/contractor-earnings');
       const transactions = await getContractorTransactions(
         user.stripeConnectAccountId,
         parseInt(limit as string)
       );
 
-      res.json({ transactions });
+      res.json({transactions});
     } catch (error: any) {
       console.error('[Contractor Transactions API] Error:', error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({error: error.message});
     }
   });
 
@@ -3822,22 +3824,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = getUserId(req);
       const user = await storage.getUser(userId!);
-      const { limit = 50 } = req.query;
+      const {limit = 50} = req.query;
 
       if (!user?.stripeConnectAccountId) {
-        return res.json({ payouts: [] });
+        return res.json({payouts: []});
       }
 
-      const { getContractorPayouts } = await import('./services/contractor-earnings');
+      const {getContractorPayouts} = await import('./services/contractor-earnings');
       const payouts = await getContractorPayouts(
         user.stripeConnectAccountId,
         parseInt(limit as string)
       );
 
-      res.json({ payouts });
+      res.json({payouts});
     } catch (error: any) {
       console.error('[Contractor Payouts API] Error:', error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({error: error.message});
     }
   });
 
@@ -3848,10 +3850,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(userId!);
 
       if (!user?.stripeConnectAccountId) {
-        return res.status(400).json({ error: 'No Connect account found' });
+        return res.status(400).json({error: 'No Connect account found'});
       }
 
-      const { reconcileContractorEarnings } = await import('./services/contractor-earnings');
+      const {reconcileContractorEarnings} = await import('./services/contractor-earnings');
       const earnings = await reconcileContractorEarnings(user.stripeConnectAccountId);
 
       console.log(`[Contractor Earnings Reconcile] User ${userId} reconciled:`, earnings);
@@ -3859,7 +3861,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(earnings);
     } catch (error: any) {
       console.error('[Contractor Earnings Reconcile] Error:', error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({error: error.message});
     }
   });
 
@@ -3938,7 +3940,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error: any) {
       console.error('Error fetching payment dashboard data:', error);
-      res.status(500).json({ error: 'Failed to fetch payment data' });
+      res.status(500).json({error: 'Failed to fetch payment data'});
     }
   });
 
@@ -3947,10 +3949,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = getUserId(req);
       const user = await storage.getUser(userId!);
-      const { limit = 50, starting_after } = req.query;
+      const {limit = 50, starting_after} = req.query;
 
       if (!user?.stripeCustomerId) {
-        return res.json({ data: [], has_more: false });
+        return res.json({data: [], has_more: false});
       }
 
       const params: any = {
@@ -3985,17 +3987,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error: any) {
       console.error('Error fetching payment history:', error);
-      res.status(500).json({ error: 'Failed to fetch payment history' });
+      res.status(500).json({error: 'Failed to fetch payment history'});
     }
   });
 
   // Create a Stripe checkout session (for redirect flow)
   app.post(`${apiRouter}/create-checkout-session`, async (req: Request, res: Response) => {
     try {
-      const { amount, description } = req.body;
+      const {amount, description} = req.body;
 
       if (!amount || isNaN(parseFloat(amount))) {
-        return res.status(400).json({ error: 'Invalid amount' });
+        return res.status(400).json({error: 'Invalid amount'});
       }
 
       // Convert amount to whole number of cents (Stripe requires integer)
@@ -4041,7 +4043,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error('Error creating checkout session:', error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({error: error.message});
     }
   });
 
@@ -4069,7 +4071,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (currentUser && (currentUser.id === businessId || currentUser.role === 'admin')) {
           workRequests = await storage.getWorkRequestsByBusinessId(businessId);
         } else {
-          return res.status(403).json({ message: "Unauthorized to access these work requests" });
+          return res.status(403).json({message: "Unauthorized to access these work requests"});
         }
       }
       // If email is provided, find the contractor user and get their work requests
@@ -4084,7 +4086,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             workRequests = [];
           }
         } else {
-          return res.status(403).json({ message: "Unauthorized to access these work requests" });
+          return res.status(403).json({message: "Unauthorized to access these work requests"});
         }
       }
       // If pending flag is provided, get all pending work requests (admin only)
@@ -4103,7 +4105,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(workRequests);
     } catch (error) {
       console.error("Error fetching work requests:", error);
-      res.status(500).json({ message: "Error fetching work requests" });
+      res.status(500).json({message: "Error fetching work requests"});
     }
   });
 
@@ -4113,7 +4115,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const workRequest = await storage.getWorkRequest(id);
 
       if (!workRequest) {
-        return res.status(404).json({ message: "Work request not found" });
+        return res.status(404).json({message: "Work request not found"});
       }
 
       // Check permissions - only the business that created it, the email recipient, or admin can view
@@ -4125,10 +4127,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       )) {
         res.json(workRequest);
       } else {
-        res.status(403).json({ message: "Unauthorized to access this work request" });
+        res.status(403).json({message: "Unauthorized to access this work request"});
       }
     } catch (error) {
-      res.status(500).json({ message: "Error fetching work request" });
+      res.status(500).json({message: "Error fetching work request"});
     }
   });
 
@@ -4137,7 +4139,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Only business users can create work requests
       const currentUser = req.user;
       if (!currentUser || currentUser.role !== 'business') {
-        return res.status(403).json({ message: "Only business users can create work requests" });
+        return res.status(403).json({message: "Only business users can create work requests"});
       }
 
       // Parse and validate the input
@@ -4147,7 +4149,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       workRequestInput.businessId = currentUser.id;
 
       // Generate a secure token for this work request
-      const { token, tokenHash } = generateWorkRequestToken();
+      const {token, tokenHash} = generateWorkRequestToken();
 
       // Create the work request with the token hash
       const newWorkRequest = await storage.createWorkRequest(workRequestInput, tokenHash);
@@ -4178,10 +4180,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid work request data", errors: error.errors });
+        return res.status(400).json({message: "Invalid work request data", errors: error.errors});
       }
       console.error('Error creating work request:', error);
-      res.status(500).json({ message: "Error creating work request" });
+      res.status(500).json({message: "Error creating work request"});
     }
   });
 
@@ -4194,24 +4196,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get the existing work request
       const existingWorkRequest = await storage.getWorkRequest(id);
       if (!existingWorkRequest) {
-        return res.status(404).json({ message: "Work request not found" });
+        return res.status(404).json({message: "Work request not found"});
       }
 
       // Permission check - only the business that created it or an admin can update it
       if (!(currentUser && (currentUser.id === existingWorkRequest.businessId || currentUser.role === 'admin'))) {
-        return res.status(403).json({ message: "Unauthorized to update this work request" });
+        return res.status(403).json({message: "Unauthorized to update this work request"});
       }
 
       // Update the work request
       const updatedWorkRequest = await storage.updateWorkRequest(id, updateData);
 
       if (!updatedWorkRequest) {
-        return res.status(404).json({ message: "Work request not found" });
+        return res.status(404).json({message: "Work request not found"});
       }
 
       res.json(updatedWorkRequest);
     } catch (error) {
-      res.status(500).json({ message: "Error updating work request" });
+      res.status(500).json({message: "Error updating work request"});
     }
   });
 
@@ -4219,7 +4221,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post(`${apiRouter}/work-requests/:id/decline`, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
-      const { token, reason } = req.body;
+      const {token, reason} = req.body;
       console.log(`=== DECLINE ENDPOINT DEBUG ===`);
       console.log(`Request ID: ${id}`);
       console.log(`Request body:`, req.body);
@@ -4229,7 +4231,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const workRequest = await storage.getWorkRequest(id);
       if (!workRequest) {
         console.log(`Work request ${id} not found`);
-        return res.status(404).json({ message: "Work request not found" });
+        return res.status(404).json({message: "Work request not found"});
       }
 
       console.log(`Found work request:`, workRequest);
@@ -4248,7 +4250,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Check if the work request is still pending
           if (workRequest.status !== 'pending') {
             console.log(`Work request status is ${workRequest.status}, not pending`);
-            return res.status(400).json({ message: `Work request is already ${workRequest.status}` });
+            return res.status(400).json({message: `Work request is already ${workRequest.status}`});
           }
 
           console.log(`Updating work request status to declined...`);
@@ -4269,7 +4271,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If not logged in contractor, check for valid token
       if (workRequest.tokenHash && token) {
         const isValidToken = await import('./services/email').then(
-          ({ verifyWorkRequestToken }) => verifyWorkRequestToken(token, workRequest.tokenHash)
+          ({verifyWorkRequestToken}) => verifyWorkRequestToken(token, workRequest.tokenHash)
         );
 
         if (isValidToken) {
@@ -4280,10 +4282,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      return res.status(401).json({ message: "Invalid token" });
+      return res.status(401).json({message: "Invalid token"});
     } catch (error) {
       console.error('Error declining work request:', error);
-      res.status(500).json({ message: "Error declining work request" });
+      res.status(500).json({message: "Error declining work request"});
     }
   });
 
@@ -4296,12 +4298,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get the work request
       const workRequest = await storage.getWorkRequest(id);
       if (!workRequest) {
-        return res.status(404).json({ message: "Work request not found" });
+        return res.status(404).json({message: "Work request not found"});
       }
 
       // Permission check - only the business that created it or an admin can generate a link
       if (!(currentUser && (currentUser.id === workRequest.businessId || currentUser.role === 'admin'))) {
-        return res.status(403).json({ message: "Unauthorized to generate a link for this work request" });
+        return res.status(403).json({message: "Unauthorized to generate a link for this work request"});
       }
 
       // Generate a new token if needed
@@ -4313,7 +4315,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         token = tokenData.token;
 
         // Use the updateWorkRequestSchema to ensure tokenHash is accepted
-        const updateData = updateWorkRequestSchema.parse({ tokenHash: tokenData.tokenHash });
+        const updateData = updateWorkRequestSchema.parse({tokenHash: tokenData.tokenHash});
         await storage.updateWorkRequest(id, updateData);
       } else {
         // We can't retrieve the original token since we only store the hash
@@ -4322,7 +4324,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         token = tokenData.token;
 
         // Use the updateWorkRequestSchema to ensure tokenHash is accepted
-        const updateData = updateWorkRequestSchema.parse({ tokenHash: tokenData.tokenHash });
+        const updateData = updateWorkRequestSchema.parse({tokenHash: tokenData.tokenHash});
         await storage.updateWorkRequest(id, updateData);
       }
 
@@ -4337,20 +4339,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate the shareable link
       const shareableLink = `${appUrl}/work-requests/respond?token=${token}`;
 
-      res.json({ shareableLink });
+      res.json({shareableLink});
     } catch (error) {
       console.error('Error generating shareable link:', error);
-      res.status(500).json({ message: "Error generating shareable link" });
+      res.status(500).json({message: "Error generating shareable link"});
     }
   });
 
   // Endpoint to verify a work request token without accepting/declining
   app.post(`${apiRouter}/work-requests/verify-token`, async (req: Request, res: Response) => {
     try {
-      const { token } = req.body;
+      const {token} = req.body;
 
       if (!token) {
-        return res.status(400).json({ message: "Token is required" });
+        return res.status(400).json({message: "Token is required"});
       }
 
       // Hash the token for lookup
@@ -4360,12 +4362,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const workRequest = await storage.getWorkRequestByToken(tokenHash);
 
       if (!workRequest) {
-        return res.status(404).json({ message: "Invalid or expired token" });
+        return res.status(404).json({message: "Invalid or expired token"});
       }
 
       // Check if the work request is expired
       if (workRequest.expiresAt && new Date(workRequest.expiresAt) < new Date()) {
-        return res.status(400).json({ message: "Work request has expired" });
+        return res.status(400).json({message: "Work request has expired"});
       }
 
       // Return basic information about the work request
@@ -4379,7 +4381,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('Error verifying token:', error);
-      res.status(500).json({ message: "Error verifying token" });
+      res.status(500).json({message: "Error verifying token"});
     }
   });
 
@@ -4390,14 +4392,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user?.id;
 
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       // Get the user
       const user = await storage.getUser(userId);
 
       if (!user) {
-        return res.status(404).json({ message: "User not found" });
+        return res.status(404).json({message: "User not found"});
       }
 
       // Return the profile code (might be null if not generated yet)
@@ -4408,12 +4410,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error('Error retrieving profile code:', error);
-      res.status(500).json({ message: error.message });
+      res.status(500).json({message: error.message});
     }
   });
 
   app.post(`${apiRouter}/profile-code/generate`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
-    try{
+    try {
       // Generate a new profile code for the authenticated user
       let userId = req.user?.id;
       let userRole = req.user?.role;
@@ -4429,12 +4431,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       // Only contractors and freelancers can have profile codes
       if (userRole !== 'contractor' && userRole !== 'freelancer') {
-        return res.status(403).json({ message: "Only contractors and freelancers can generate profile codes" });
+        return res.status(403).json({message: "Only contractors and freelancers can generate profile codes"});
       }
 
       // Generate a new profile code
@@ -4447,7 +4449,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error('Error generating profile code:', error);
-      res.status(500).json({ message: error.message });
+      res.status(500).json({message: error.message});
     }
   });
 
@@ -4457,13 +4459,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user?.id;
 
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       // Only contractors and freelancers can have profile codes
       const userRole = req.user?.role;
       if (userRole !== 'contractor' && userRole !== 'freelancer') {
-        return res.status(403).json({ message: "Only contractors and freelancers can regenerate profile codes" });
+        return res.status(403).json({message: "Only contractors and freelancers can regenerate profile codes"});
       }
 
       // Generate a new profile code
@@ -4476,40 +4478,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error('Error regenerating profile code:', error);
-      res.status(500).json({ message: error.message });
+      res.status(500).json({message: error.message});
     }
   });
 
   app.get(`${apiRouter}/contractors/find-by-profile-code/:profileCode`, async (req: Request, res: Response) => {
     try {
-      const { profileCode } = req.params;
+      const {profileCode} = req.params;
 
       if (!profileCode) {
-        return res.status(400).json({ message: "Profile code is required" });
+        return res.status(400).json({message: "Profile code is required"});
       }
 
       // Check for X-User-ID header for auth fallback
       const userId = req.header('X-User-ID') || req.user?.id;
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       // Get user from storage to check role
       const currentUser = await storage.getUser(parseInt(userId.toString()));
       if (!currentUser) {
-        return res.status(401).json({ message: "User not found" });
+        return res.status(401).json({message: "User not found"});
       }
 
       // Only businesses can search for contractors by profile code
       if (currentUser.role !== 'business') {
-        return res.status(403).json({ message: "Only businesses can search for contractors by profile code" });
+        return res.status(403).json({message: "Only businesses can search for contractors by profile code"});
       }
 
       // Find the contractor by profile code
       const contractor = await storage.getUserByProfileCode(profileCode);
 
       if (!contractor) {
-        return res.status(404).json({ message: "No contractor found with this profile code" });
+        return res.status(404).json({message: "No contractor found with this profile code"});
       }
 
       // Return limited contractor information
@@ -4524,7 +4526,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error('Error finding contractor by profile code:', error);
-      res.status(500).json({ message: error.message });
+      res.status(500).json({message: error.message});
     }
   });
 
@@ -4532,34 +4534,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post(`${apiRouter}/connection-requests`, async (req: Request, res: Response) => {
     try {
       // Create a new connection request
-      const { profileCode, message } = req.body;
+      const {profileCode, message} = req.body;
 
       if (!profileCode) {
-        return res.status(400).json({ message: "Profile code is required" });
+        return res.status(400).json({message: "Profile code is required"});
       }
 
       // Check for X-User-ID header for auth fallback
       const userId = req.header('X-User-ID') || req.user?.id;
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       // Get user from storage to check role
       const currentUser = await storage.getUser(parseInt(userId.toString()));
       if (!currentUser) {
-        return res.status(401).json({ message: "User not found" });
+        return res.status(401).json({message: "User not found"});
       }
 
       // Only businesses can create connection requests
       if (currentUser && currentUser.role !== 'business') {
-        return res.status(403).json({ message: "Only businesses can create connection requests" });
+        return res.status(403).json({message: "Only businesses can create connection requests"});
       }
 
       // First check if the profile code is valid
       const contractor = await storage.getUserByProfileCode(profileCode);
 
       if (!contractor) {
-        return res.status(404).json({ message: "Invalid profile code. Please check and try again."});
+        return res.status(404).json({message: "Invalid profile code. Please check and try again."});
       }
 
       // Check if this contractor is already connected to this business
@@ -4570,7 +4572,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const alreadyContracted = existingContracts.some(contract => contract.contractorId === contractor.id);
 
       if (alreadyContracted) {
-        return res.status(400).json({ message: "You already have contracts with this contractor." });
+        return res.status(400).json({message: "You already have contracts with this contractor."});
       }
 
       // Check for existing connection requests with this contractor
@@ -4579,15 +4581,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Stronger validation to prevent duplicate requests:
         // 1. Check by profile code (case insensitive)
         const profileCodeMatch = req.profileCode &&
-                                profileCode &&
-                                req.profileCode.toUpperCase() === profileCode.toUpperCase();
+          profileCode &&
+          req.profileCode.toUpperCase() === profileCode.toUpperCase();
 
         // 2. Check by contractor ID directly
         const contractorIdMatch = req.contractorId === contractor.id;
 
         // Consider it a duplicate if either matches and status is pending or accepted
         return (profileCodeMatch || contractorIdMatch) &&
-               (req.status === 'pending' || req.status === 'accepted');
+          (req.status === 'pending' || req.status === 'accepted');
       });
 
       if (alreadyRequested) {
@@ -4607,7 +4609,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(createdRequest);
     } catch (error: any) {
       console.error('Error creating connection request:', error);
-      res.status(500).json({ message: error.message });
+      res.status(500).json({message: error.message});
     }
   });
 
@@ -4629,7 +4631,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       let connectionRequests = [];
@@ -4662,24 +4664,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(enrichedRequests);
     } catch (error: any) {
       console.error('Error fetching connection requests:', error);
-      res.status(500).json({ message: error.message });
+      res.status(500).json({message: error.message});
     }
   });
 
   app.patch(`${apiRouter}/connection-requests/:id`, requireAuth, async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
-      const { status } = req.body;
+      const {id} = req.params;
+      const {status} = req.body;
 
       if (!status || !['accepted', 'declined'].includes(status)) {
-        return res.status(400).json({ message: "Valid status (accepted or declined) is required" });
+        return res.status(400).json({message: "Valid status (accepted or declined) is required"});
       }
 
       // Get the connection request
       const connectionRequest = await storage.getConnectionRequest(parseInt(id));
 
       if (!connectionRequest) {
-        return res.status(404).json({ message: "Connection request not found" });
+        return res.status(404).json({message: "Connection request not found"});
       }
 
       // Check if the user is authorized to update this request
@@ -4688,12 +4690,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Only the contractor can accept/decline requests
       if ((userRole !== 'contractor' && userRole !== 'freelancer') ||
-          connectionRequest.contractorId !== userId) {
-        return res.status(403).json({ message: "You are not authorized to update this connection request" });
+        connectionRequest.contractorId !== userId) {
+        return res.status(403).json({message: "You are not authorized to update this connection request"});
       }
 
       // Update the request status
-      const updatedRequest = await storage.updateConnectionRequest(parseInt(id), { status });
+      const updatedRequest = await storage.updateConnectionRequest(parseInt(id), {status});
 
       // Create notification for connection acceptance
       if (status === 'accepted') {
@@ -4722,7 +4724,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // by either leaving workerType null or setting it to "freelancer"
           if (contractor) {
             // Clear workerType or set to "freelancer" to ensure they show in Contractors tab
-            await storage.updateUser(userId, { workerType: null });
+            await storage.updateUser(userId, {workerType: null});
             console.log(`Updated user ${userId} workerType to null after connection acceptance (previous type: ${contractor.workerType || 'null'})`);
           }
         } catch (updateError) {
@@ -4734,7 +4736,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(updatedRequest);
     } catch (error: any) {
       console.error('Error updating connection request:', error);
-      res.status(500).json({ message: error.message });
+      res.status(500).json({message: error.message});
     }
   });
 
@@ -4744,14 +4746,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const businessId = req.user?.id;
 
       if (!businessId || req.user?.role !== 'business') {
-        return res.status(403).json({ message: "Only business accounts can access onboarding links" });
+        return res.status(403).json({message: "Only business accounts can access onboarding links"});
       }
 
       // Get the business onboarding link
       const link = await storage.getBusinessOnboardingLink(businessId);
 
       if (!link) {
-        return res.status(404).json({ message: "No active onboarding link found" });
+        return res.status(404).json({message: "No active onboarding link found"});
       }
 
       // Get application URL, handling both Replit and local environments
@@ -4774,7 +4776,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error('Error retrieving business onboarding link:', error);
-      res.status(500).json({ message: error.message });
+      res.status(500).json({message: error.message});
     }
   });
 
@@ -4785,14 +4787,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user?.id || (req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
 
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       const notifications = await storage.getNotificationsByUserId(userId);
       return res.json(notifications);
     } catch (error) {
       console.error('Error fetching notifications:', error);
-      return res.status(500).json({ message: "Failed to fetch notifications" });
+      return res.status(500).json({message: "Failed to fetch notifications"});
     }
   });
 
@@ -4802,42 +4804,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user?.id || (req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
 
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       const count = await storage.getUnreadNotificationCount(userId);
-      return res.json({ count });
+      return res.json({count});
     } catch (error) {
       console.error('Error fetching notification count:', error);
-      return res.status(500).json({ message: "Failed to fetch notification count" });
+      return res.status(500).json({message: "Failed to fetch notification count"});
     }
   });
 
   app.patch(`${apiRouter}/notifications/:id/read`, requireAuth, async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
+      const {id} = req.params;
       // Get user ID from session or X-User-ID header
       const userId = req.user?.id || (req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
 
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       const notification = await storage.markNotificationAsRead(parseInt(id));
       return res.json(notification);
     } catch (error) {
       console.error('Error marking notification as read:', error);
-      return res.status(500).json({ message: "Failed to mark notification as read" });
+      return res.status(500).json({message: "Failed to mark notification as read"});
     }
   });
 
   app.post(`${apiRouter}/business-onboarding-link`, requireAuth, async (req: Request, res: Response) => {
     try {
       const businessId = req.user?.id;
-      const { workerType } = req.body;
+      const {workerType} = req.body;
 
       if (!businessId || req.user?.role !== 'business') {
-        return res.status(403).json({ message: "Only business accounts can create onboarding links" });
+        return res.status(403).json({message: "Only business accounts can create onboarding links"});
       }
 
       // Create or update the business onboarding link
@@ -4863,20 +4865,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error('Error creating business onboarding link:', error);
-      res.status(500).json({ message: error.message });
+      res.status(500).json({message: error.message});
     }
   });
 
   // Work Request Submission Routes
   app.post('/api/work-request-submissions', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const { workRequestId, title, description, notes, attachmentUrls, submissionType } = req.body;
+      const {workRequestId, title, description, notes, attachmentUrls, submissionType} = req.body;
       const contractorId = req.user!.id;
 
       // Get the work request to verify access and get business ID
       const workRequest = await storage.getWorkRequest(workRequestId);
       if (!workRequest) {
-        return res.status(404).json({ message: 'Work request not found' });
+        return res.status(404).json({message: 'Work request not found'});
       }
 
       // Verify the contractor has access to this work request (must be assigned to them)
@@ -4885,12 +4887,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasContractorAccess = workRequest.contractorId === contractorId;
 
       if (!hasEmailAccess && !hasContractorAccess) {
-        return res.status(403).json({ message: 'Access denied to this work request' });
+        return res.status(403).json({message: 'Access denied to this work request'});
       }
 
       // Verify the work request is accepted
       if (workRequest.status !== 'accepted') {
-        return res.status(400).json({ message: 'Work request must be accepted before submitting work' });
+        return res.status(400).json({message: 'Work request must be accepted before submitting work'});
       }
 
       const submission = await storage.createWorkRequestSubmission({
@@ -4912,7 +4914,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(submission);
     } catch (error: any) {
       console.error('Error creating work request submission:', error);
-      res.status(500).json({ message: error.message });
+      res.status(500).json({message: error.message});
     }
   });
 
@@ -4922,14 +4924,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Only allow contractors to see their own submissions
       if (req.user!.role === 'contractor' && req.user!.id !== contractorId) {
-        return res.status(403).json({ message: 'Access denied' });
+        return res.status(403).json({message: 'Access denied'});
       }
 
       const submissions = await storage.getWorkRequestSubmissionsByContractorId(contractorId);
       res.json(submissions);
     } catch (error: any) {
       console.error('Error fetching contractor work request submissions:', error);
-      res.status(500).json({ message: error.message });
+      res.status(500).json({message: error.message});
     }
   });
 
@@ -4937,12 +4939,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/work-request-submissions/business', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const user = req.user!;
-      console.log('Work request submissions endpoint - User:', { id: user.id, role: user.role });
+      console.log('Work request submissions endpoint - User:', {id: user.id, role: user.role});
 
       // Only allow business users to access this endpoint
       if (user.role !== 'business') {
         console.log('Access denied - user role is not business:', user.role);
-        return res.status(403).json({ message: 'Access denied - business role required' });
+        return res.status(403).json({message: 'Access denied - business role required'});
       }
 
       console.log('Fetching work request submissions for business ID:', user.id);
@@ -4951,7 +4953,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(submissions);
     } catch (error: any) {
       console.error('Error fetching business work request submissions:', error);
-      res.status(500).json({ message: error.message });
+      res.status(500).json({message: error.message});
     }
   });
 
@@ -4961,36 +4963,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Only allow business owners to see submissions for their business
       if (req.user!.role === 'business' && req.user!.id !== businessId) {
-        return res.status(403).json({ message: 'Access denied' });
+        return res.status(403).json({message: 'Access denied'});
       }
 
       const submissions = await storage.getWorkRequestSubmissionsByBusinessId(businessId);
       res.json(submissions);
     } catch (error: any) {
       console.error('Error fetching business work request submissions:', error);
-      res.status(500).json({ message: error.message });
+      res.status(500).json({message: error.message});
     }
   });
 
   app.patch('/api/work-request-submissions/:id/review', requireStrictAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const submissionId = parseInt(req.params.id);
-      const { status, feedback } = req.body;
+      const {status, feedback} = req.body;
 
       // Only businesses can review submissions
       if (req.user!.role !== 'business') {
-        return res.status(403).json({ message: 'Only businesses can review work submissions' });
+        return res.status(403).json({message: 'Only businesses can review work submissions'});
       }
 
       // Get the submission to verify access
       const submission = await storage.getWorkRequestSubmission(submissionId);
       if (!submission) {
-        return res.status(404).json({ message: 'Work submission not found' });
+        return res.status(404).json({message: 'Work submission not found'});
       }
 
       // Verify business owns this submission
       if (submission.businessId !== req.user!.id) {
-        return res.status(403).json({ message: 'Access denied' });
+        return res.status(403).json({message: 'Access denied'});
       }
 
       // Update the submission with review
@@ -5004,20 +5006,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(updatedSubmission);
     } catch (error: any) {
       console.error('Error reviewing work request submission:', error);
-      res.status(500).json({ message: error.message });
+      res.status(500).json({message: error.message});
     }
   });
 
   // Work Submissions Routes
   app.post('/api/work-submissions', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const { contractId, title, description, attachmentUrls } = req.body;
+      const {contractId, title, description, attachmentUrls} = req.body;
       const contractorId = req.user!.id;
 
       // Verify the contractor has access to this contract
       const contract = await storage.getContract(contractId);
       if (!contract || contract.contractorId !== contractorId) {
-        return res.status(403).json({ message: 'Access denied to this contract' });
+        return res.status(403).json({message: 'Access denied to this contract'});
       }
 
       const submission = await storage.createWorkSubmission({
@@ -5029,9 +5031,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       res.json(submission);
-    } catch (error: any){
+    } catch (error: any) {
       console.error('Error creating work submission:', error);
-      res.status(500).json({ message: error.message });
+      res.status(500).json({message: error.message});
     }
   });
 
@@ -5041,14 +5043,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Only allow contractors to see their own submissions
       if (req.user!.role === 'contractor' && req.user!.id !== contractorId) {
-        return res.status(403).json({ message: 'Access denied' });
+        return res.status(403).json({message: 'Access denied'});
       }
 
       const submissions = await storage.getWorkSubmissionsByContractorId(contractorId);
       res.json(submissions);
     } catch (error: any) {
       console.error('Error fetching contractor work submissions:', error);
-      res.status(500).json({ message: error.message });
+      res.status(500).json({message: error.message});
     }
   });
 
@@ -5056,12 +5058,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/work-submissions/business', requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const user = req.user!;
-      console.log('Work submissions endpoint - User:', { id: user.id, role: user.role });
+      console.log('Work submissions endpoint - User:', {id: user.id, role: user.role});
 
       // Only allow business users to access this endpoint
       if (user.role !== 'business') {
         console.log('Access denied - user role is not business:', user.role);
-        return res.status(403).json({ message: 'Access denied - business role required' });
+        return res.status(403).json({message: 'Access denied - business role required'});
       }
 
       console.log('Fetching work submissions for business ID:', user.id);
@@ -5070,7 +5072,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(submissions);
     } catch (error: any) {
       console.error('Error fetching business work submissions:', error);
-      res.status(500).json({ message: error.message });
+      res.status(500).json({message: error.message});
     }
   });
 
@@ -5080,39 +5082,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Only allow business owners to see submissions for their business
       if (req.user!.role === 'business' && req.user!.id !== businessId) {
-        return res.status(403).json({ message: 'Access denied' });
+        return res.status(403).json({message: 'Access denied'});
       }
 
       const submissions = await storage.getWorkSubmissionsByBusinessId(businessId);
       res.json(submissions);
     } catch (error: any) {
       console.error('Error fetching business work submissions:', error);
-      res.status(500).json({ message: error.message });
+      res.status(500).json({message: error.message});
     }
   });
 
   app.patch('/api/work-submissions/:id/review', requireAuth, async (req: Request, res: Response) => {
     try {
       const submissionId = parseInt(req.params.id);
-      const { status, reviewNotes } = req.body;
+      const {status, reviewNotes} = req.body;
 
       // Get the submission to verify access
       const submission = await storage.getWorkSubmission(submissionId);
       if (!submission) {
-        return res.status(404).json({ message: 'Work submission not found' });
+        return res.status(404).json({message: 'Work submission not found'});
       }
 
       // Get the contract to verify the business owner has access
       const contract = await storage.getContract(submission.contractId);
       if (!contract || contract.businessId !== req.user!.id) {
-        return res.status(403).json({ message: 'Access denied' });
+        return res.status(403).json({message: 'Access denied'});
       }
 
       const updatedSubmission = await storage.reviewWorkSubmission(submissionId, status, reviewNotes);
       res.json(updatedSubmission);
     } catch (error: any) {
       console.error('Error reviewing work submission:', error);
-      res.status(500).json({ message: error.message });
+      res.status(500).json({message: error.message});
     }
   });
 
@@ -5120,27 +5122,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/work-request-submissions/:id/review', requireStrictAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const submissionId = parseInt(req.params.id);
-      const { status, feedback } = req.body;
+      const {status, feedback} = req.body;
 
       // Only businesses can review submissions
       if (req.user!.role !== 'business') {
-        return res.status(403).json({ message: 'Only businesses can review work submissions' });
+        return res.status(403).json({message: 'Only businesses can review work submissions'});
       }
 
       // Validate status
       if (!['approved', 'rejected', 'needs_revision'].includes(status)) {
-        return res.status(400).json({ message: 'Invalid status' });
+        return res.status(400).json({message: 'Invalid status'});
       }
 
       // Get the submission to find the associated work request
       const submission = await storage.getWorkRequestSubmission(submissionId);
       if (!submission) {
-        return res.status(404).json({ message: 'Submission not found' });
+        return res.status(404).json({message: 'Submission not found'});
       }
 
       // Verify business owns this submission
       if (submission.businessId !== req.user!.id) {
-        return res.status(403).json({ message: 'Access denied' });
+        return res.status(403).json({message: 'Access denied'});
       }
 
       // Update the submission
@@ -5176,7 +5178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
               if (paymentResult.success) {
                 console.log(`[APPROVAL_PAYMENT] ✅ Payment successful: $${paymentResult.payment?.amount} to contractor ${paymentResult.payment?.contractorId}`);
-                await storage.updateMilestone(autoPayMilestone.id, { status: 'completed' });
+                await storage.updateMilestone(autoPayMilestone.id, {status: 'completed'});
               } else {
                 console.log(`[APPROVAL_PAYMENT] ⚠️ Payment failed but work remains approved:`, paymentResult.error);
               }
@@ -5185,7 +5187,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           } catch (paymentError: any) {
             console.log('[APPROVAL_PAYMENT] ⚠️ Payment processing error - work remains approved:', paymentError.message);
-            paymentResult = { success: false, error: paymentError.message };
+            paymentResult = {success: false, error: paymentError.message};
           }
         }
       }
@@ -5197,7 +5199,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error('Error reviewing work request submission:', error);
-      res.status(500).json({ message: error.message });
+      res.status(500).json({message: error.message});
     }
   });
 
@@ -5205,11 +5207,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post(`${apiRouter}/projects/:projectId/submissions/bulk-approve`, requireStrictAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const projectIdParam = req.params.projectId;
-      const { submissionIds, feedback } = req.body; // submissionIds can be array or 'all'
+      const {submissionIds, feedback} = req.body; // submissionIds can be array or 'all'
 
       // Only businesses can approve submissions
       if (req.user!.role !== 'business') {
-        return res.status(403).json({ message: 'Only businesses can approve work submissions' });
+        return res.status(403).json({message: 'Only businesses can approve work submissions'});
       }
 
       let targetSubmissions = [];
@@ -5223,13 +5225,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Handle specific project ID
         const projectId = parseInt(projectIdParam);
         if (isNaN(projectId)) {
-          return res.status(400).json({ message: 'Invalid project ID format' });
+          return res.status(400).json({message: 'Invalid project ID format'});
         }
 
         // Verify project ownership
         const project = await storage.getProject(projectId);
         if (!project || project.businessId !== req.user!.id) {
-          return res.status(403).json({ message: 'Access denied to this project' });
+          return res.status(403).json({message: 'Access denied to this project'});
         }
 
         // Get submissions for specific project
@@ -5334,7 +5336,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   console.log(`[BULK_APPROVAL] ✅ Payment successful for submission ${submission.id}: $${autoPayMilestone.paymentAmount}`);
                   totalPaymentsSuccessful++;
                   totalPaymentAmount += parseFloat(autoPayMilestone.paymentAmount);
-                  await storage.updateMilestone(autoPayMilestone.id, { status: 'completed' });
+                  await storage.updateMilestone(autoPayMilestone.id, {status: 'completed'});
                 } else {
                   console.log(`[BULK_APPROVAL] ⚠️ Payment failed for submission ${submission.id}: ${paymentResult.error}`);
                   totalPaymentsFailed++;
@@ -5344,7 +5346,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             } catch (paymentError: any) {
               console.log(`[BULK_APPROVAL] ⚠️ Payment error for submission ${submission.id}:`, paymentError.message);
-              paymentResult = { success: false, error: paymentError.message };
+              paymentResult = {success: false, error: paymentError.message};
               totalPaymentsFailed++;
             }
           }
@@ -5386,9 +5388,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error in bulk approval:', error);
-      res.status(500).json({ message: error.message });
+      res.status(500).json({message: error.message});
     }
   });
 
@@ -5399,7 +5401,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user;
       if (!user) {
-        return res.status(401).json({ message: "Not authenticated" });
+        return res.status(401).json({message: "Not authenticated"});
       }
 
       const trolleyStatus = {
@@ -5412,7 +5414,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(trolleyStatus);
     } catch (error) {
       console.error("Error fetching Trolley status:", error);
-      res.status(500).json({ message: "Error fetching Trolley status" });
+      res.status(500).json({message: "Error fetching Trolley status"});
     }
   });
 
@@ -5421,11 +5423,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user;
       if (!user || user.role !== 'business') {
-        return res.status(403).json({ message: "Only business accounts can create company profiles" });
+        return res.status(403).json({message: "Only business accounts can create company profiles"});
       }
 
       if (user.trolleyCompanyProfileId) {
-        return res.status(400).json({ message: "Company profile already exists" });
+        return res.status(400).json({message: "Company profile already exists"});
       }
 
       const companyData = {
@@ -5437,7 +5439,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await trolleyApi.createCompanyProfile(companyData);
 
       if (!result.success) {
-        return res.status(400).json({ message: result.error });
+        return res.status(400).json({message: result.error});
       }
 
       // Update user with Trolley company profile ID
@@ -5453,7 +5455,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error) {
       console.error("Error creating Trolley company profile:", error);
-      res.status(500).json({ message: "Error creating company profile" });
+      res.status(500).json({message: "Error creating company profile"});
     }
   });
 
@@ -5471,7 +5473,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user;
       if (!user || user.role !== 'business') {
-        return res.status(403).json({ message: "Only business accounts can access wallet" });
+        return res.status(403).json({message: "Only business accounts can access wallet"});
       }
 
       if (!user.trolleyCompanyProfileId) {
@@ -5498,7 +5500,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Use existing Trolley SDK service to get recipient details with balance
         const recipient = await trolleyService.getRecipient(verifiedRecipientId);
 
-        // Extract balance from recipient accounts
+        // Extractbalance from recipient accounts
         const primaryAccount = recipient.accounts?.find(acc => acc.primary) || recipient.accounts?.[0];
         const balance = {
           balance: primaryAccount?.balance || 0,
@@ -5524,7 +5526,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error) {
       console.error("Error getting wallet balance:", error);
-      res.status(500).json({ message: "Error getting wallet balance" });
+      res.status(500).json({message: "Error getting wallet balance"});
     }
   });
 
@@ -5533,11 +5535,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user;
       if (!user || user.role !== 'business') {
-        return res.status(403).json({ message: "Only business accounts can access funding history" });
+        return res.status(403).json({message: "Only business accounts can access funding history"});
       }
 
       if (!user.trolleyCompanyProfileId) {
-        return res.status(400).json({ message: "Company profile required. Please complete Trolley onboarding first." });
+        return res.status(400).json({message: "Company profile required. Please complete Trolley onboarding first."});
       }
 
       // Call live Trolley API to get real funding history
@@ -5556,7 +5558,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error) {
       console.error("Error getting funding history:", error);
-      res.status(500).json({ message: "Error getting funding history" });
+      res.status(500).json({message: "Error getting funding history"});
     }
   });
 
@@ -5565,7 +5567,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user;
       if (!user || user.role !== 'business') {
-        return res.status(403).json({ message: "Only business accounts can access bank account data" });
+        return res.status(403).json({message: "Only business accounts can access bank account data"});
       }
 
       if (!user.trolleyCompanyProfileId && !user.trolleyRecipientId) {
@@ -5581,7 +5583,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`🔴 FETCHING LIVE BANK ACCOUNT DATA for recipient: ${user.trolleyRecipientId || user.trolleyCompanyProfileId}`);
 
         // Import trolley service
-        const { trolleyService } = await import('./trolley-service');
+        const {trolleyService} = await import('./trolley-service');
         // For verified business accounts, we know they have linked bank accounts
         const bankAccounts = [{
           primary: true,
@@ -5618,7 +5620,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error) {
       console.error("Error getting bank account data:", error);
-      return res.status(500).json({ message: "Error getting bank account data" });
+      return res.status(500).json({message: "Error getting bank account data"});
     }
   });
 
@@ -5627,22 +5629,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user;
       if (!user || user.role !== 'business') {
-        return res.status(403).json({ message: "Only business accounts can fund wallets" });
+        return res.status(403).json({message: "Only business accounts can fund wallets"});
       }
 
       if (!user.trolleyCompanyProfileId && !user.trolleyRecipientId) {
-        return res.status(400).json({ message: "Company profile required. Please complete Trolley onboarding first." });
+        return res.status(400).json({message: "Company profile required. Please complete Trolley onboarding first."});
       }
 
-      const { amount } = req.body;
+      const {amount} = req.body;
       if (!amount || amount <= 0) {
-        return res.status(400).json({ message: "Valid amount required" });
+        return res.status(400).json({message: "Valid amount required"});
       }
 
       console.log(`🔴 PROCESSING LIVE MONEY TRANSFER: $${amount} for user ${user.username} (${user.email})`);
 
       // Import trolley service for API calls
-      const { trolleyService } = await import('./trolley-service');
+      const {trolleyService} = await import('./trolley-service');
 
       try {
         // Get Trolley funding instructions - bank details for manual transfer
@@ -5681,7 +5683,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error) {
       console.error("Error funding Trolley wallet:", error);
-      res.status(500).json({ message: "Error funding wallet" });
+      res.status(500).json({message: "Error funding wallet"});
     }
   });
 
@@ -5690,35 +5692,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user;
       if (!user || user.role !== 'business') {
-        return res.status(403).json({ message: "Only business accounts can process payments" });
+        return res.status(403).json({message: "Only business accounts can process payments"});
       }
 
       if (!user.trolleyCompanyProfileId && !user.trolleyRecipientId) {
-        return res.status(400).json({ message: "Company profile required. Please complete Trolley onboarding first." });
+        return res.status(400).json({message: "Company profile required. Please complete Trolley onboarding first."});
       }
 
-      const { milestoneId, amount, currency = 'GBP', memo } = req.body;
+      const {milestoneId, amount, currency = 'GBP', memo} = req.body;
 
       if (!milestoneId || !amount) {
-        return res.status(400).json({ message: "Milestone ID and amount are required" });
+        return res.status(400).json({message: "Milestone ID and amount are required"});
       }
 
       // Get milestone details
       const milestone = await storage.getMilestone(milestoneId);
       if (!milestone) {
-        return res.status(404).json({ message: "Milestone not found" });
+        return res.status(404).json({message: "Milestone not found"});
       }
 
       // Get contract to verify ownership and get contractor
       const contract = await storage.getContract(milestone.contractId);
       if (!contract || contract.businessId !== user.id) {
-        return res.status(403).json({ message: "Access denied" });
+        return res.status(403).json({message: "Access denied"});
       }
 
       // Get contractor details
       const contractor = await storage.getUser(contract.contractorId);
       if (!contractor) {
-        return res.status(404).json({ message: "Contractor not found" });
+        return res.status(404).json({message: "Contractor not found"});
       }
 
       if (!contractor.trolleyRecipientId) {
@@ -5739,7 +5741,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await trolleyApi.createPayment(paymentData);
 
       if (!result.success) {
-        return res.status(400).json({ message: result.error });
+        return res.status(400).json({message: result.error});
       }
 
       // Log payment in database
@@ -5772,32 +5774,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error) {
       console.error("Error processing Trolley milestone payment:", error);
-      res.status(500).json({ message: "Error processing payment" });
+      res.status(500).json({message: "Error processing payment"});
     }
   });
 
   // Get Trolley payment status
   app.get(`${apiRouter}/trolley/payment/:paymentId`, requireAuth, async (req: Request, res: Response) => {
     try {
-      const { paymentId } = req.params;
+      const {paymentId} = req.params;
 
       const result = await trolleyApi.getPayment(paymentId);
 
       if (!result.success) {
-        return res.status(404).json({ message: result.error });
+        return res.status(404).json({message: result.error});
       }
 
       res.json(result.payment);
     } catch (error) {
       console.error("Error fetching Trolley payment:", error);
-      res.status(500).json({ message: "Error fetching payment details" });
+      res.status(500).json({message: "Error fetching payment details"});
     }
   });
 
   // Trolley webhook endpoint for payment status updates
   app.post(`${apiRouter}/trolley/webhook`, async (req: Request, res: Response) => {
     try {
-      const { event, payment } = req.body;
+      const {event, payment} = req.body;
 
       console.log(`Received Trolley webhook: ${event} for payment ${payment.id}`);
 
@@ -5806,7 +5808,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!paymentRecord) {
         console.log(`No payment record found for Trolley payment ID: ${payment.id}`);
-        return res.status(404).json({ message: 'Payment not found' });
+        return res.status(404).json({message: 'Payment not found'});
       }
 
       // Update payment status based on webhook event
@@ -5850,10 +5852,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`Updated payment ${paymentRecord.id} status to ${newStatus}`);
 
-      res.json({ success: true, message: 'Webhook processed successfully' });
+      res.json({success: true, message: 'Webhook processed successfully'});
     } catch (error) {
       console.error('Error processing Trolley webhook:', error);
-      res.status(500).json({ message: 'Webhook processing failed' });
+      res.status(500).json({message: 'Webhook processing failed'});
     }
   });
 
@@ -5862,17 +5864,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user;
       if (!user || user.role !== 'business') {
-        return res.status(403).json({ message: "Only business accounts can auto-setup" });
+        return res.status(403).json({message: "Only business accounts can auto-setup"});
       }
 
       // Check if user already has any Trolley setup
       if (user.trolleySubmerchantId || user.trolleyVerificationToken) {
-        return res.json({ success: true, message: 'Already configured' });
+        return res.json({success: true, message: 'Already configured'});
       }
 
       console.log(`🔴 CREATING REAL TROLLEY SUBMERCHANT for business: ${user.email}`);
 
-      const { trolleySdk } = await import('./trolley-sdk-service');
+      const {trolleySdk} = await import('./trolley-sdk-service');
 
       // Create real submerchant account with business information
       const submerchantData = {
@@ -5929,7 +5931,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user;
       if (!user || user.role !== 'business') {
-        return res.status(403).json({ message: "Only business accounts can set up company profiles" });
+        return res.status(403).json({message: "Only business accounts can set up company profiles"});
       }
 
       console.log(`Setting up payment account for business: ${user.email}`);
@@ -5947,7 +5949,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🔴 CREATING REAL TROLLEY SUBMERCHANT for business: ${user.email}`);
 
-      const { trolleySdk } = await import('./trolley-sdk-service');
+      const {trolleySdk} = await import('./trolley-sdk-service');
 
       // Create real submerchant account
       const submerchantData = {
@@ -6006,7 +6008,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // registerTrolleySubmerchantRoutes(app, requireAuth); // TODO: Re-implement if needed
 
   // Register Trolley contractor routes
-  const { registerTrolleyContractorRoutes } = await import('./trolley-contractor-routes');
+  const {registerTrolleyContractorRoutes} = await import('./trolley-contractor-routes');
   registerTrolleyContractorRoutes(app, apiRouter, requireAuth);
 
   // Trolley status checking endpoint for contractors
@@ -6055,7 +6057,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         if (isActive && hasPaymentMethod && !user.payoutEnabled) {
           // Update user to enable payouts
-          await storage.updateUser(userId, { payoutEnabled: true });
+          await storage.updateUser(userId, {payoutEnabled: true});
 
           // Create success notification
           await storage.createNotification(
@@ -6063,7 +6065,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             'payment_setup_completed',
             'Payment Setup Complete',
             'Your Trolley account has been verified and you can now receive payments!',
-            { recipientId: user.trolleyRecipientId, status: recipient.status }
+            {recipientId: user.trolleyRecipientId, status: recipient.status}
           );
 
           console.log(`✅ Activated payouts for user ${userId} - Trolley recipient is now verified`);
@@ -6113,7 +6115,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userRole = req.user?.role || 'business';
 
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       const exportData = await generateComplianceExport(userId, userRole);
@@ -6123,7 +6125,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(exportData);
     } catch (error) {
       console.error("Error generating compliance export:", error);
-      res.status(500).json({ message: "Error generating export" });
+      res.status(500).json({message: "Error generating export"});
     }
   });
 
@@ -6133,7 +6135,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userRole = req.user?.role || 'business';
 
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       const invoices = await generateInvoiceExport(userId, userRole);
@@ -6143,7 +6145,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(invoices);
     } catch (error) {
       console.error("Error generating invoice export:", error);
-      res.status(500).json({ message: "Error generating invoice export" });
+      res.status(500).json({message: "Error generating invoice export"});
     }
   });
 
@@ -6153,7 +6155,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userRole = req.user?.role || 'business';
 
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       const payments = await generatePaymentExport(userId, userRole);
@@ -6163,7 +6165,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(payments);
     } catch (error) {
       console.error("Error generating payment export:", error);
-      res.status(500).json({ message: "Error generating payment export" });
+      res.status(500).json({message: "Error generating payment export"});
     }
   });
 
@@ -6171,10 +6173,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user?.id;
       const userRole = req.user?.role || 'business';
-      const { type } = req.query;
+      const {type} = req.query;
 
       if (!userId) {
-        return res.status(401).json({ message: "Authentication required" });
+        return res.status(401).json({message: "Authentication required"});
       }
 
       const csvData = await generateCSVExport(userId, userRole, type as string);
@@ -6184,7 +6186,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.send(csvData);
     } catch (error) {
       console.error("Error generating CSV export:", error);
-      res.status(500).json({ message: "Error generating CSV export" });
+      res.status(500).json({message: "Error generating CSV export"});
     }
   });
 
