@@ -2868,6 +2868,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return sum + parseFloat(wr.amount || '0');
       }, 0);
 
+      // Calculate Projects Total Value (sum of all active projects budgets)
+      const projectsTotalValue = activeProjects.reduce((sum, project) => {
+        return sum + parseFloat(project.budget?.toString() || '0');
+      }, 0);
+
+      // Calculate Total Task Value (sum of all work requests)
+      const totalTaskValue = userWorkRequests.reduce((sum, wr) => {
+        return sum + parseFloat(wr.amount || '0');
+      }, 0);
+
+      // Pending Payments = Projects Total Value + Total Task Value
+      const pendingPaymentsTotal = projectsTotalValue + totalTaskValue;
+
       // Count unique contractors from work requests
       const uniqueContractorIds = [...new Set(userWorkRequests.map(wr => wr.contractorUserId))];
       const realActiveContractorsCount = uniqueContractorIds.length;
@@ -2877,7 +2890,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           activeContractsCount: activeWorkRequests.length, // Count accepted work requests as active contracts
           pendingApprovalsCount: pendingWorkRequests.length, // Count pending work requests
           paymentsProcessed: totalPaymentsValue, // REAL TOTAL PAYMENT VALUE from database
-          totalPendingValue: totalPendingWorkRequestsValue, // Use work requests pending value
+          totalPendingValue: pendingPaymentsTotal, // Projects Total Value + Total Task Value
           activeContractorsCount: realActiveContractorsCount, // Count unique contractors
           pendingInvitesCount: pendingInvites.length,
           totalProjectsCount: activeProjects.length, // Count active projects
