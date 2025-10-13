@@ -2809,10 +2809,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const currentMonthPayments = businessPaymentStats.currentMonthValue;
       const currentYearPayments = businessPaymentStats.currentYearValue;
 
-      // Calculate total pending payments (from contracts) - keep this for now as fallback
-      const totalPendingValue = userContracts.reduce((sum, contract) => {
-        return sum + parseFloat(contract.value.toString() || '0');
-      }, 0);
+      // Calculate pending payments as sum of active contract values
+      const totalPendingValue = userContracts
+        .filter(contract => contract.status !== 'deleted' && contract.status === 'active')
+        .reduce((sum, contract) => {
+          return sum + parseFloat(contract.value.toString() || '0');
+        }, 0);
 
       // Get contractor/businesses data based on user role
       let allContractors = [];

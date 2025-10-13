@@ -350,7 +350,7 @@ export default function BudgetOversight() {
               </div>
 
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-400">Pending Payments</span>
+                <span className="text-sm text-gray-400">Allocated Budget (Active Contracts)</span>
                 <span className="text-sm font-medium text-white">
                   {formatCurrency(integratedData?.stats?.totalPendingValue || 0)}
                 </span>
