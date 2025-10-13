@@ -23,10 +23,14 @@ import {
   TrendingUp,
   CreditCard
 } from "lucide-react";
+import { useIntegratedData } from "@/hooks/use-integrated-data";
 
 export default function Payments() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
+  
+  // Get integrated dashboard data for consistent Pending Payments calculation
+  const integratedData = useIntegratedData();
   
   // Fetch payments directly from the payments endpoint
   const { data: payments = [], isLoading: isLoadingPayments } = useQuery<Payment[]>({
@@ -227,8 +231,8 @@ export default function Payments() {
             <Clock className="h-4 w-4 text-yellow-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{formatCurrency(totalPending)}</div>
-            <p className="text-xs text-gray-400">{pendingPayments.length} payments scheduled</p>
+            <div className="text-2xl font-bold text-white">{formatCurrency(integratedData?.data?.stats?.totalPendingValue || 0)}</div>
+            <p className="text-xs text-gray-400">Total project & task values</p>
           </CardContent>
         </Card>
 
