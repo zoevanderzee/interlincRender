@@ -2868,7 +2868,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // NEW REAL PAYMENT METRICS
           currentMonthPayments: currentMonthPayments, // Current month actual payments
           currentYearPayments: currentYearPayments, // Current year actual payments
-          totalSuccessfulPaymentsCount: businessPaymentStats.totalSuccessfulPayments // Total count of successful payments
+          totalSuccessfulPaymentsCount: businessPaymentStats.totalSuccessfulPayments, // Total count of successful payments
+          // BULLETPROOF: Use same calculation as budget page
+          remainingBudget: currentUser.budgetCap
+            ? (parseFloat(currentUser.budgetCap.toString()) - totalPaymentsValue).toFixed(2)
+            : null
         },
         contracts: userContracts.filter(contract => contract.status !== 'deleted'),
         contractors: allContractors,  // Add contractors data
