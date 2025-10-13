@@ -1,4 +1,4 @@
-import type { Express, Request, Response, NextFunction } from "express";
+import type {Express, Request, Response, NextFunction} from "express";
 import express from "express";
 
 // Extend session type to include userId
@@ -13,9 +13,9 @@ declare module 'express-session' {
 interface AuthenticatedRequest extends Request {
   user?: any;
 }
-import { createServer, type Server } from "http";
-import { storage } from "./storage";
-import { z } from "zod";
+import {createServer, type Server} from "http";
+import {storage} from "./storage";
+import {z} from "zod";
 import * as nodeCrypto from "crypto";
 import {
   insertUserSchema,
@@ -368,10 +368,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Get contractor count
         const contractors = await storage.getContractorsByBusinessId(userId);
 
+        // BULLETPROOF PENDING PAYMENTS CALCULATION
+        // Calculate total pending value = active project budgets + accepted task values
+        const activeProjectsValue = realProjects
+          .filter(p => p.status === 'active')
+          .reduce((sum, p) => sum + parseFloat(p.budget || '0'), 0);
+
+        const acceptedTasksValue = acceptedWorkRequests
+          .reduce((sum, wr) => sum + parseFloat(wr.amount || '0'), 0);
+
+        const totalPendingValue = activeProjectsValue + acceptedTasksValue;
+
+        console.log(`PENDING PAYMENTS CALCULATION: Active Projects Value: £${activeProjectsValue.toFixed(2)}, Accepted Tasks Value: £${acceptedTasksValue.toFixed(2)}, Total Pending: £${totalPendingValue.toFixed(2)}`);
+
         return res.json({
           assignedProjects: projectsWithAcceptedWork,
           activeAssignments: acceptedWorkRequests.length,
           paymentsProcessed: paymentStats.totalPaymentValue,
+          totalPendingValue: totalPendingValue,
           activeContractors: contractors.length,
           remainingBudget: user.budgetCap ?
             (parseFloat(user.budgetCap) - parseFloat(user.budgetUsed || "0")).toString() : null
@@ -2770,7 +2784,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // For each active contract, ensure there are payments that reflect the contract value
       // If not, create a virtual pending payment for the dashboard
       const pendingContractPayments = userContracts
-        .filter(contract => contract.status !== 'deleted')
+        .filter(contract => contract.status !== 'deleted' && contract.status === 'active')
         .map(contract => {
           // Convert contract value to number
           const contractValueNum = parseFloat(contract.value.toString());
@@ -3539,7 +3553,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         budgetUsed: totalPaymentsValue.toFixed(2), // Total completed payments = budgetUsed
         budgetPeriod: user.budgetPeriod || 'yearly',
         budgetStartDate: user.budgetStartDate || null,
-        budgetEndDate: null,
+        budgetEndDate: user.budgetEndDate || null,
         budgetResetEnabled: user.budgetResetEnabled || false,
         totalProjectAllocations: totalProjectAllocations.toFixed(2),
         remainingBudget: user.budgetCap
@@ -4426,7 +4440,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let userId = req.user?.id;
       let userRole = req.user?.role;
 
-      // Handle fallback authentication via X-User-ID header
+      // Handle      // fallback authentication via X-User-ID header
       if (!userId && req.headers['x-user-id']) {
         const fallbackUserId = parseInt(req.headers['x-user-id'] as string);
         const fallbackUser = await storage.getUser(fallbackUserId);
@@ -5506,7 +5520,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Use existing Trolley SDK service to get recipient details with balance
         const recipient = await trolleyService.getRecipient(verifiedRecipientId);
 
-        // Extractbalance from recipient accounts
+        // Extract balance from recipient accounts
         const primaryAccount = recipient.accounts?.find(acc => acc.primary) || recipient.accounts?.[0];
         const balance = {
           balance: primaryAccount?.balance || 0,
