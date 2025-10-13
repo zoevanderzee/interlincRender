@@ -46,6 +46,11 @@ export function setupAuth(app: Express) {
     process.env.SESSION_SECRET = randomBytes(32).toString("hex");
   }
 
+  // Determine if we should use secure cookies based on actual HTTPS availability
+  // Only use secure cookies if explicitly enabled or on production HTTPS domains
+  const isProductionHTTPS = process.env.NODE_ENV === 'production' && 
+    (process.env.REPLIT_DEPLOYMENT === '1' || process.env.USE_SECURE_COOKIES === 'true');
+  
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || 'interlinc-secret-key',
     resave: false,
@@ -53,12 +58,12 @@ export function setupAuth(app: Express) {
     name: 'interlinc.sid',
     rolling: false, // Don't extend session on each request to avoid issues
     cookie: {
-      secure: process.env.NODE_ENV === 'production', // true in production, false in development
+      secure: isProductionHTTPS, // Only true on actual HTTPS deployments
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
       httpOnly: true, // Security: prevent JS access
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' for production cross-origin
+      sameSite: isProductionHTTPS ? 'none' : 'lax', // 'none' only for HTTPS cross-origin
       path: '/', // Available for entire site
-      domain: process.env.NODE_ENV === 'production' ? '.interlinc.app' : undefined, // Cross-subdomain in production
+      domain: isProductionHTTPS ? '.interlinc.app' : undefined, // Cross-subdomain only on production HTTPS
     },
     // Use the storage implementation's session store
     store: storage.sessionStore
@@ -70,11 +75,15 @@ export function setupAuth(app: Express) {
     resave: sessionSettings.resave,
     saveUninitialized: sessionSettings.saveUninitialized,
     name: sessionSettings.name,
+    isProductionHTTPS,
+    environment: process.env.NODE_ENV,
+    replitDeployment: process.env.REPLIT_DEPLOYMENT,
     cookie: {
       secure: sessionSettings.cookie?.secure,
       maxAge: sessionSettings.cookie?.maxAge,
       httpOnly: sessionSettings.cookie?.httpOnly,
       sameSite: sessionSettings.cookie?.sameSite,
+      domain: sessionSettings.cookie?.domain,
     },
     storePresent: !!sessionSettings.store
   });
