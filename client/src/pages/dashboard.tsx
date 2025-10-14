@@ -81,7 +81,7 @@ const Dashboard = () => {
 
   // Navigate to create project page
   const handleNewProject = () => {
-    navigate('/contracts/new');
+    navigate('/projects/new');
   };
 
   // Navigate to add contractor page
