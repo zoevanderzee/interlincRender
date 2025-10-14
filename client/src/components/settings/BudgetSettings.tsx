@@ -59,8 +59,16 @@ export function BudgetSettings() {
   }, [budgetInfo]);
 
   const handleSubmit = () => {
+    const newBudgetCap = parseFloat(budgetCap);
+    const pendingPayments = parseFloat(budgetInfo?.totalProjectAllocations || '0');
+
+    // Client-side validation: Budget cap must be greater than pending payments
+    if (newBudgetCap <= pendingPayments) {
+      return;
+    }
+
     const data: SetBudgetParams = {
-      budgetCap: parseFloat(budgetCap),
+      budgetCap: newBudgetCap,
       budgetPeriod,
       resetEnabled,
     };
@@ -220,7 +228,7 @@ export function BudgetSettings() {
             <div className="space-y-2">
               <Label htmlFor="budgetCap">Company Budget Allocation</Label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">£</span>
                 <Input
                   id="budgetCap"
                   type="number"
@@ -230,6 +238,16 @@ export function BudgetSettings() {
                   onChange={(e) => setBudgetCap(e.target.value)}
                 />
               </div>
+              {budgetCap && parseFloat(budgetCap) <= parseFloat(budgetInfo?.totalProjectAllocations || '0') && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Budget Too Low</AlertTitle>
+                  <AlertDescription>
+                    Budget cap must be greater than your current pending payments of {formatCurrency(budgetInfo?.totalProjectAllocations || '0')}. 
+                    Minimum required: {formatCurrency((parseFloat(budgetInfo?.totalProjectAllocations || '0') + 0.01).toString())}
+                  </AlertDescription>
+                </Alert>
+              )}
               <p className="text-sm text-muted-foreground">
                 Set the total budget for your company account. Individual projects will draw from this amount. Once you hit this cap, you cannot create more projects until you increase your budget or complete existing ones.
               </p>
@@ -283,7 +301,12 @@ export function BudgetSettings() {
         </CardContent>
         <CardFooter className="flex justify-end space-x-2">
           <Button 
-            disabled={!budgetCap || isNaN(parseFloat(budgetCap)) || isSettingBudget} 
+            disabled={
+              !budgetCap || 
+              isNaN(parseFloat(budgetCap)) || 
+              isSettingBudget || 
+              parseFloat(budgetCap) <= parseFloat(budgetInfo?.totalProjectAllocations || '0')
+            } 
             onClick={handleSubmit}
           >
             {isSettingBudget ? (

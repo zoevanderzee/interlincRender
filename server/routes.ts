@@ -3609,6 +3609,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({message: "Valid budget cap is required"});
       }
 
+      // BULLETPROOF VALIDATION: Calculate pending payments
+      const allProjects = await storage.getBusinessProjects(userId);
+      const allWorkRequests = await storage.getWorkRequestsByBusinessId(userId);
+      
+      // Find Quick Tasks project
+      const quickTasksProject = allProjects.find(p => p.name === 'Quick Tasks');
+      const quickTasksProjectId = quickTasksProject?.id;
+
+      // Calculate Projects Total Value (NON-Quick Tasks active project budgets)
+      const projectsTotalValue = allProjects
+        .filter(p => p.status === 'active' && p.id !== quickTasksProjectId)
+        .reduce((sum, p) => sum + parseFloat(p.budget || '0'), 0);
+
+      // Calculate Total Task Value (ALL work requests in Quick Tasks project)
+      const totalTaskValue = allWorkRequests
+        .filter(wr => wr.projectId === quickTasksProjectId)
+        .reduce((sum, wr) => sum + parseFloat(wr.amount || '0'), 0);
+
+      // Pending Payments = Projects Total Value + Total Task Value
+      const totalPendingPayments = projectsTotalValue + totalTaskValue;
+
+      // BULLETPROOF RULE: Budget cap must be greater than pending payments
+      if (budgetCap !== undefined) {
+        const newBudgetCap = parseFloat(budgetCap);
+        if (newBudgetCap <= totalPendingPayments) {
+          return res.status(400).json({
+            message: `Budget cap must be greater than pending payments. Current pending payments: £${totalPendingPayments.toFixed(2)}`,
+            pendingPayments: totalPendingPayments.toFixed(2),
+            requestedBudgetCap: newBudgetCap.toFixed(2),
+            minimumRequired: (totalPendingPayments + 0.01).toFixed(2)
+          });
+        }
+      }
+
       // Update budget settings
       const updateData: any = {};
       if (budgetCap !== undefined) {
