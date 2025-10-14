@@ -1111,9 +1111,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Filtered contracts for user ${userId}: ${JSON.stringify(contracts.map(c => ({id: c.id, name: c.contractName, businessId: c.businessId})))}`);
 
       // Filter out deleted projects - they should only appear in data room
-      const activeContracts = contracts.filter(contract => contract.status !== 'deleted');
+      let activeContracts = contracts.filter(contract => contract.status !== 'deleted');
 
-      res.json(activeContracts);
+      // Apply status filtering if requested
+      const statusFilter = req.query.status as string;
+      if (statusFilter) {
+        const statuses = statusFilter.split(',').map(s => s.trim().toLowerCase());
+        activeContracts = activeContracts.filter(contract => {
+          const contractStatus = contract.status.toLowerCase();
+          return statuses.includes(contractStatus);
+        });
+      }
+
+      // Compute overdue status for all contracts
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Set to start of day for accurate comparison
+
+      const contractsWithOverdueStatus = activeContracts.map(contract => {
+        let isOverdue = false;
+        let daysOverdue = 0;
+        let daysRemaining = 0;
+
+        // Only compute overdue for active contracts with an end date
+        if (contract.status === 'active' && contract.endDate) {
+          const endDate = new Date(contract.endDate);
+          endDate.setHours(0, 0, 0, 0);
+
+          const diffTime = endDate.getTime() - today.getTime();
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+          if (diffDays < 0) {
+            isOverdue = true;
+            daysOverdue = Math.abs(diffDays);
+          } else {
+            daysRemaining = diffDays;
+          }
+        }
+
+        return {
+          ...contract,
+          isOverdue,
+          daysOverdue: isOverdue ? daysOverdue : null,
+          daysRemaining: !isOverdue && contract.status === 'active' ? daysRemaining : null
+        };
+      });
+
+      res.json(contractsWithOverdueStatus);
     } catch (error) {
       console.error("Error fetching contracts:", error);
       res.status(500).json({message: "Error fetching contracts"});
@@ -1171,7 +1214,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({message: "Access denied"});
       }
 
-      res.json(contract);
+      // Compute overdue status
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      let isOverdue = false;
+      let daysOverdue = 0;
+      let daysRemaining = 0;
+
+      if (contract.status === 'active' && contract.endDate) {
+        const endDate = new Date(contract.endDate);
+        endDate.setHours(0, 0, 0, 0);
+
+        const diffTime = endDate.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays < 0) {
+          isOverdue = true;
+          daysOverdue = Math.abs(diffDays);
+        } else {
+          daysRemaining = diffDays;
+        }
+      }
+
+      res.json({
+        ...contract,
+        isOverdue,
+        daysOverdue: isOverdue ? daysOverdue : null,
+        daysRemaining: !isOverdue && contract.status === 'active' ? daysRemaining : null
+      });
     } catch (error) {
       console.error("Error fetching contract:", error);
       res.status(500).json({message: "Error fetching contract"});
