@@ -1,3 +1,4 @@
+
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
@@ -69,20 +70,20 @@ export default function Calendar() {
               filterBy === 'projects' ? 'projects' : 
               filterBy === 'tasks' ? 'tasks' : 'both'
       });
-
+      
       const response = await fetch(`/api/calendar/events?${params}`, {
         credentials: 'include',
         headers: {
           'X-User-ID': user?.id?.toString() || ''
         }
       });
-
+      
       if (!response.ok) {
         throw new Error('Failed to fetch calendar events');
       }
-
+      
       const data = await response.json();
-
+      
       return data.map((event: any) => ({
         ...event,
         startDate: new Date(event.startDate),
@@ -113,7 +114,7 @@ export default function Calendar() {
     const month = currentDate.getMonth();
     const firstDay = new Date(year, month, 1);
     const startDate = new Date(firstDay);
-
+    
     const startDayOfWeek = (firstDay.getDay() + 6) % 7;
     startDate.setDate(1 - startDayOfWeek);
 
@@ -129,7 +130,7 @@ export default function Calendar() {
   // Get events for a specific day with filtering
   const getEventsForDay = (date: Date) => {
     let filteredEvents = events;
-
+    
     if (filterBy === 'active') {
       filteredEvents = events.filter(event => event.status === 'active');
     } else if (filterBy === 'completed') {
@@ -137,17 +138,11 @@ export default function Calendar() {
     } else if (filterBy === 'overdue') {
       filteredEvents = events.filter(event => event.status === 'overdue');
     }
-
-    // BULLETPROOF: Only show events on their exact due date (no date ranges)
+    
     return filteredEvents.filter(event => {
-      const eventDueDate = new Date(event.endDate);
-      const targetDate = new Date(date);
-
-      // Normalize both dates to midnight for accurate comparison
-      eventDueDate.setHours(0, 0, 0, 0);
-      targetDate.setHours(0, 0, 0, 0);
-
-      return eventDueDate.getTime() === targetDate.getTime();
+      const eventStart = new Date(event.startDate);
+      const eventEnd = new Date(event.endDate);
+      return date >= eventStart && date <= eventEnd;
     });
   };
 
@@ -193,7 +188,7 @@ export default function Calendar() {
             }
           </p>
         </div>
-
+        
         <div className="flex flex-wrap gap-3">
           <Select value={filterBy} onValueChange={setFilterBy}>
             <SelectTrigger className="w-48 bg-zinc-900 border-zinc-700 text-white">
@@ -209,7 +204,7 @@ export default function Calendar() {
               <SelectItem value="overdue">Overdue Only</SelectItem>
             </SelectContent>
           </Select>
-
+          
           {user?.role === 'business' && (
             <Button className="bg-blue-600 hover:bg-blue-700 text-white">
               <Plus className="h-4 w-4 mr-2" />
@@ -257,11 +252,11 @@ export default function Calendar() {
               >
                 <ChevronLeft className="h-5 w-5" />
               </Button>
-
+              
               <h2 className="text-2xl font-semibold text-white min-w-[200px] text-center">
                 {MONTH_NAMES[currentDate.getMonth()]} {currentDate.getFullYear()}
               </h2>
-
+              
               <Button
                 variant="ghost"
                 size="icon"
@@ -271,7 +266,7 @@ export default function Calendar() {
                 <ChevronRight className="h-5 w-5" />
               </Button>
             </div>
-
+            
             <Button
               variant="outline"
               onClick={goToToday}
@@ -282,7 +277,7 @@ export default function Calendar() {
             </Button>
           </div>
         </CardHeader>
-
+        
         <CardContent className="p-0">
           {/* Calendar Grid */}
           <div className="grid grid-cols-7">
@@ -295,13 +290,13 @@ export default function Calendar() {
                 {day}
               </div>
             ))}
-
+            
             {/* Calendar Days */}
             {calendarDays.map((date, index) => {
               const dayEvents = getEventsForDay(date);
               const isCurrentMonthDay = isCurrentMonth(date);
               const isTodayDate = isToday(date);
-
+              
               return (
                 <div
                   key={index}
@@ -318,7 +313,7 @@ export default function Calendar() {
                   `}>
                     {date.getDate()}
                   </div>
-
+                  
                   {/* Events */}
                   <div className="space-y-1">
                     {dayEvents.slice(0, 3).map(event => {
@@ -334,7 +329,7 @@ export default function Calendar() {
                         </div>
                       );
                     })}
-
+                    
                     {dayEvents.length > 3 && (
                       <div className="text-xs text-zinc-500 pl-2">
                         +{dayEvents.length - 3} more
