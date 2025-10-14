@@ -137,7 +137,7 @@ export default function Projects() {
                         )}
                       </div>
                       <div className="flex gap-2">
-                        {assignment.status === 'accepted' && isOverdue && (
+                        {isOverdue && (
                           <Badge className="bg-red-600 text-white hover:bg-red-700">
                             <AlertTriangle className="mr-1 h-3 w-3" />
                             OVERDUE
@@ -604,7 +604,7 @@ export default function Projects() {
                               </p>
                             </div>
                             <div className="flex gap-2">
-                              {['accepted', 'active', 'assigned'].includes(task.status) && isOverdue && (
+                              {isOverdue && (
                                 <Badge className="bg-red-600 text-white hover:bg-red-700">
                                   <AlertTriangle className="mr-1 h-3 w-3" />
                                   OVERDUE

@@ -4273,8 +4273,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let daysOverdue = 0;
         let daysRemaining = 0;
 
-        // Compute overdue for accepted/active work requests with a due date
-        if (['accepted', 'active', 'assigned'].includes(wr.status) && wr.dueDate) {
+        // Compute overdue for active/pending work requests with a due date (exclude completed/paid/canceled)
+        if (!['completed', 'paid', 'canceled'].includes(wr.status) && wr.dueDate) {
           const dueDate = new Date(wr.dueDate);
           dueDate.setHours(0, 0, 0, 0);
 
@@ -4293,7 +4293,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ...wr,
           isOverdue,
           daysOverdue: isOverdue ? daysOverdue : null,
-          daysRemaining: !isOverdue && ['accepted', 'active', 'assigned'].includes(wr.status) ? daysRemaining : null
+          daysRemaining: !isOverdue && !['completed', 'paid', 'canceled'].includes(wr.status) ? daysRemaining : null
         };
       });
 
@@ -4328,7 +4328,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let daysOverdue = 0;
         let daysRemaining = 0;
 
-        if (['accepted', 'active', 'assigned'].includes(workRequest.status) && workRequest.dueDate) {
+        if (!['completed', 'paid', 'canceled'].includes(workRequest.status) && workRequest.dueDate) {
           const dueDate = new Date(workRequest.dueDate);
           dueDate.setHours(0, 0, 0, 0);
 
@@ -4347,7 +4347,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ...workRequest,
           isOverdue,
           daysOverdue: isOverdue ? daysOverdue : null,
-          daysRemaining: !isOverdue && ['accepted', 'active', 'assigned'].includes(workRequest.status) ? daysRemaining : null
+          daysRemaining: !isOverdue && !['completed', 'paid', 'canceled'].includes(workRequest.status) ? daysRemaining : null
         });
       } else {
         res.status(403).json({message: "Unauthorized to access this work request"});
