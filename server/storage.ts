@@ -2590,45 +2590,29 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getWorkRequestsByContractorId(contractorId: number): Promise<WorkRequest[]> {
-    try {
-      console.log(`Getting work requests for contractor ID: ${contractorId}`);
-      const results = await db
-        .select()
-        .from(workRequests)
-        .innerJoin(projects, eq(workRequests.projectId, projects.id))
-        .where(eq(workRequests.contractorUserId, contractorId));
+    console.log(`Getting work requests for contractor ID: ${contractorId}`);
+    const results = await db
+      .select({
+        id: workRequests.id,
+        projectId: workRequests.projectId,
+        contractorUserId: workRequests.contractorUserId,
+        title: workRequests.title,
+        description: workRequests.description,
+        deliverableDescription: workRequests.deliverableDescription,
+        dueDate: workRequests.dueDate,
+        amount: workRequests.amount,
+        currency: workRequests.currency,
+        status: workRequests.status,
+        createdAt: workRequests.createdAt,
+        businessId: projects.businessId,
+        projectName: projects.name
+      })
+      .from(workRequests)
+      .innerJoin(projects, eq(workRequests.projectId, projects.id))
+      .where(eq(workRequests.contractorUserId, contractorId))
+      .orderBy(desc(workRequests.createdAt));
 
-      return results.map(row => {
-        const wr = row.work_requests;
-        return {
-          id: wr.id,
-          title: wr.title,
-          description: wr.description,
-          businessId: wr.business_id,
-          recipientEmail: wr.recipient_email,
-          status: wr.status,
-          budgetMin: wr.budget_min,
-          budgetMax: wr.budget_max,
-          dueDate: wr.due_date,
-          skills: wr.skills,
-          attachmentUrls: wr.attachment_urls,
-          tokenHash: wr.token_hash,
-          createdAt: wr.created_at,
-          expiresAt: wr.expires_at,
-          contractId: wr.contract_id,
-          contractorId: wr.contractor_id,
-          projectId: wr.project_id,
-          amount: wr.amount,
-          currency: wr.currency,
-          contractorUserId: wr.contractor_user_id,
-          deliverableDescription: wr.deliverable_description,
-          projectName: row.projects.name
-        };
-      });
-    } catch (error) {
-      console.error('Error getting work requests by contractor ID:', error);
-      return [];
-    }
+    return results;
   }
 
   async getWorkRequestsWithBusinessInfo(contractorUserId: number): Promise<any[]> {
