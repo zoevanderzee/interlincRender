@@ -290,10 +290,10 @@ export default function Projects() {
                     const taskWorkRequests = quickTasksProject 
                       ? workRequests.filter(wr => wr.projectId === quickTasksProject.id)
                       : [];
-                    
+
                     const today = new Date();
                     const normalizedToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-                    
+
                     return taskWorkRequests.filter((wr: any) => 
                       wr.status === 'accepted' && 
                       wr.dueDate && 
@@ -468,7 +468,23 @@ export default function Projects() {
                           <div>
                             <p className="text-sm text-gray-400">Active Tasks</p>
                             <p className="text-3xl font-bold text-white">
-                              {taskWorkRequests.filter((wr: any) => wr.status === 'accepted').length}
+                              {(() => {
+                                const today = new Date();
+                                const normalizedToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+                                return taskWorkRequests.filter((wr: any) => {
+                                  const isActiveStatus = wr.status === 'accepted' || 
+                                    wr.status === 'assigned' || 
+                                    wr.status === 'pending' ||
+                                    wr.status === 'in_review' ||
+                                    wr.status === 'needs_revision';
+
+                                  const isNotOverdue = !wr.dueDate || 
+                                    new Date(new Date(wr.dueDate).getFullYear(), new Date(wr.dueDate).getMonth(), new Date(wr.dueDate).getDate()) >= normalizedToday;
+
+                                  return isActiveStatus && isNotOverdue;
+                                }).length;
+                              })()}
                             </p>
                           </div>
                           <User className="h-8 w-8 text-green-500" />
@@ -513,7 +529,7 @@ export default function Projects() {
                               {(() => {
                                 const today = new Date();
                                 const normalizedToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-                                
+
                                 return taskWorkRequests.filter((wr: any) => 
                                   wr.status === 'accepted' && 
                                   wr.dueDate && 
