@@ -77,17 +77,17 @@ export default function Calendar() {
       const workRequests = await response.json();
       
       // Transform work requests to calendar events format with proper status categorization
-      return workRequests.map((wr: any) => {
+      const transformedEvents = workRequests.map((wr: any) => {
         const dueDate = wr.dueDate ? new Date(wr.dueDate) : new Date(wr.createdAt);
         const normalizedDueDate = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
         const today = new Date();
         const normalizedToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
         
-        // Determine status: active, pending, or overdue
+        // Determine status: active, pending, completed, or overdue
         let status = 'pending';
         let color = '#F59E0B'; // pending color
         
-        if (wr.status === 'completed' || wr.status === 'approved') {
+        if (wr.status === 'completed' || wr.status === 'approved' || wr.status === 'paid') {
           status = 'completed';
           color = '#3B82F6';
         } else if (wr.status === 'accepted' || wr.status === 'assigned') {
@@ -99,7 +99,7 @@ export default function Calendar() {
             status = 'active';
             color = '#22C55E';
           }
-        } else if (wr.status === 'pending' || wr.status === 'needs_revision') {
+        } else if (wr.status === 'pending' || wr.status === 'needs_revision' || wr.status === 'in_review') {
           // Check if overdue
           if (normalizedDueDate < normalizedToday) {
             status = 'overdue';
@@ -119,9 +119,15 @@ export default function Calendar() {
           endDate: normalizedDueDate,
           type: 'deadline',
           status,
-          color
+          color,
+          rawStatus: wr.status // Keep original status for reference
         };
       });
+
+      // Sort events by date (earliest first)
+      return transformedEvents.sort((a, b) => 
+        a.startDate.getTime() - b.startDate.getTime()
+      );
     },
     enabled: !!user
   });
@@ -160,10 +166,11 @@ export default function Calendar() {
     return days;
   }, [currentDate]);
 
-  // Get events for a specific day with filtering
+  // Get events for a specific day with filtering and sorting
   const getEventsForDay = (date: Date) => {
     let filteredEvents = events;
     
+    // Apply status filter
     if (filterBy === 'active') {
       filteredEvents = events.filter(event => event.status === 'active');
     } else if (filterBy === 'pending') {
@@ -174,7 +181,8 @@ export default function Calendar() {
       filteredEvents = events.filter(event => event.status === 'overdue');
     }
     
-    return filteredEvents.filter(event => {
+    // Filter by date
+    const dayEvents = filteredEvents.filter(event => {
       // Normalize both dates to midnight for exact day comparison
       const eventEndDate = new Date(event.endDate);
       const normalizedEventDate = new Date(eventEndDate.getFullYear(), eventEndDate.getMonth(), eventEndDate.getDate());
@@ -182,6 +190,15 @@ export default function Calendar() {
       
       // Event should only appear on its exact due date (endDate)
       return normalizedEventDate.getTime() === normalizedTargetDate.getTime();
+    });
+
+    // Sort by status priority: overdue > active > pending > completed
+    const statusPriority = { overdue: 1, active: 2, pending: 3, completed: 4 };
+    
+    return dayEvents.sort((a, b) => {
+      const priorityA = statusPriority[a.status as keyof typeof statusPriority] || 5;
+      const priorityB = statusPriority[b.status as keyof typeof statusPriority] || 5;
+      return priorityA - priorityB;
     });
   };
 
