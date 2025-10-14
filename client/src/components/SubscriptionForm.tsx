@@ -398,8 +398,8 @@ export default function SubscriptionForm({
         // Monthly plans: business (SME Monthly) and business-enterprise (Enterprise Monthly)
         return plan.id === 'business' || plan.id === 'business-enterprise';
       } else {
-        // Annual plans: business-annual (SME Annual) and business-enterprise-annual (Enterprise Annual)
-        return plan.id === 'business-annual' || plan.id === 'business-enterprise-annual';
+        // Annual plans: business-annual (SME Annual) and business-starter (Enterprise Annual)
+        return plan.id === 'business-annual' || plan.id === 'business-starter';
       }
     }
     // Fallback: no plans if role is unclear
