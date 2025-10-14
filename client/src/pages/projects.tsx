@@ -289,6 +289,31 @@ export default function Projects() {
             </div>
           </CardContent>
         </Card>
+
+        <Card className="bg-zinc-900 border-zinc-800">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-400">Overdue Tasks</p>
+                <p className="text-3xl font-bold text-white">
+                  {(() => {
+                    const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
+                    const quickTasksProject = projects.find(p => p.name === 'Quick Tasks' && p.businessId === currentUserId);
+                    const taskWorkRequests = quickTasksProject 
+                      ? workRequests.filter(wr => wr.projectId === quickTasksProject.id)
+                      : [];
+                    return taskWorkRequests.filter((wr: any) => 
+                      wr.status === 'accepted' && 
+                      wr.dueDate && 
+                      new Date(wr.dueDate) < new Date()
+                    ).length;
+                  })()}
+                </p>
+              </div>
+              <AlertTriangle className="h-8 w-8 text-red-500" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Projects List */}
