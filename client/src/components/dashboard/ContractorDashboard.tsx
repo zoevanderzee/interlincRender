@@ -51,8 +51,10 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
            paymentDate <= thirtyDaysFromNow;
   });
 
-  // Active assignments from work requests (preferred) or active contracts as fallback
-  const activeAssignments = dashboardData.workRequests || dashboardData.contracts.filter(c => c.status === 'Active');
+  // Active assignments from work requests (includes all statuses: assigned, accepted, in_review, etc.)
+  const activeAssignments = dashboardData.workRequests?.filter((wr: any) => 
+    ['assigned', 'accepted', 'in_review', 'approved', 'pending'].includes(wr.status)
+  ) || [];
 
   // Fetch contractor earnings from Stripe Connect
   const { data: contractorEarnings, isLoading: earningsLoading } = useQuery({

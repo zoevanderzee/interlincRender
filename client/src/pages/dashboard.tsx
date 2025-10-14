@@ -161,32 +161,12 @@ const Dashboard = () => {
 
   // If user is a contractor, show a specialized contractor interface
   if (user && user.role === 'contractor') {
-    // Mock data for demonstration, replace with actual data fetching
-    const mockWorkRequests = [
-      { id: 'wr1', contractorId: user.id, contractId: 'c1', amount: '500', status: 'pending' },
-      { id: 'wr2', contractorId: user.id, contractId: 'c1', amount: '700', status: 'paid' },
-      { id: 'wr3', contractorId: user.id, contractId: 'c2', amount: '600', status: 'scheduled' },
-    ];
-
-    const mockContracts = [
-      { id: 'c1', contractorId: user.id, businessId: 'b1', status: 'active' },
-      { id: 'c2', contractorId: user.id, businessId: 'b2', status: 'active' },
-    ];
-
-    const mockPayments = [
-      { id: 'p1', contractId: 'c1', amount: '700', status: 'completed' },
-      { id: 'p2', contractId: 'c2', amount: '600', status: 'scheduled' },
-    ];
-
-    const mockMilestones = [
-      { id: 'm1', contractId: 'c1', status: 'submitted' },
-      { id: 'm2', contractId: 'c2', status: 'approved' },
-    ];
-
-    const mockBusinessAccounts = [
-      { id: 'b1', name: 'Tech Solutions Inc.' },
-      { id: 'b2', name: 'Global Enterprises' },
-    ];
+    // Use real data from integratedData
+    const realWorkRequests = integratedData?.workRequests || [];
+    const realContracts = integratedData?.contracts || [];
+    const realPayments = integratedData?.payments || [];
+    const realMilestones = integratedData?.milestones || [];
+    const realBusinessAccounts = integratedData?.businesses || [];
 
     // Placeholder functions - replace with actual implementations
     const handleContractClick = (contractId: string) => { console.log(`Viewing contract: ${contractId}`); navigate(`/contracts/${contractId}`); };
@@ -194,62 +174,49 @@ const Dashboard = () => {
     const handleApproveWork = (milestoneId: string) => { console.log(`Approving work for: ${milestoneId}`); toast({ title: "Work Approved", description: "Milestone has been approved." }); };
     const handleAcceptWorkRequest = (workRequestId: string) => { console.log(`Accepting work request: ${workRequestId}`); toast({ title: "Work Request Accepted", description: "You have accepted this work request." }); };
 
-    // Mock data for ContractorDashboard
-    const integratedData = {
-      stats: {
-        activeContractsCount: mockContracts.length,
-        paymentsProcessed: mockPayments.filter(p => p.status === 'completed').reduce((sum, p) => sum + parseFloat(p.amount), 0),
-        activeContractorsCount: 0, // Not directly applicable for contractor view
-        pendingApprovalsCount: mockMilestones.filter(m => m.status === 'submitted').length,
-        totalPendingValue: mockPayments.filter(p => p.status === 'scheduled' || p.status === 'pending').reduce((sum, p) => sum + parseFloat(p.amount), 0),
-        pendingInvitesCount: 0, // Not directly applicable
-        remainingBudget: "1500.00" // Example remaining budget
-      },
-      contracts: mockContracts,
-      contractors: [], // Contractors are not typically listed here for a contractor
-      milestones: mockMilestones,
-      payments: mockPayments,
-      businesses: mockBusinessAccounts, // Businesses the contractor is working with
-      workRequests: mockWorkRequests,
-      stripeConnectData: { hasAccount: true, verification_status: { verification_complete: true } } // Mock stripe data
-    };
-
-    const userContracts = integratedData.contracts.filter(contract => contract.contractorId === user?.id);
-    const allMilestones = integratedData.milestones;
-    const payments = integratedData.payments;
-    const businessAccounts = integratedData.businesses;
-    const workRequests = integratedData.workRequests.filter(wr => wr.contractorId === user?.id);
+    // Use real integrated data
+    const userContracts = realContracts.filter((contract: any) => contract.contractorId === user?.id);
+    const allMilestones = realMilestones;
+    const payments = realPayments;
+    const businessAccounts = realBusinessAccounts;
+    const workRequests = realWorkRequests.filter((wr: any) => wr.contractorUserId === user?.id);
     const userRole = user?.role; // Use the actual user role
 
-    // Calculate earnings for contractor
-    const contractorPayments = payments.filter((payment: Payment) =>
-      mockContracts.some((contract: Contract) =>
+    // Calculate earnings for contractor using real data
+    const contractorPayments = payments.filter((payment: any) =>
+      userContracts.some((contract: any) =>
         contract.id === payment.contractId && contract.contractorId === user?.id
       )
     );
 
-    const completedPayments = contractorPayments.filter((p: Payment) => p.status === 'completed');
-    const pendingPayments = contractorPayments.filter((p: Payment) =>
+    const completedPayments = contractorPayments.filter((p: any) => p.status === 'completed');
+    const pendingPayments = contractorPayments.filter((p: any) =>
       p.status === 'scheduled' || p.status === 'pending'
     );
 
-    const totalEarnings = completedPayments.reduce((sum: number, p: Payment) =>
-      sum + parseFloat(p.amount), 0
+    const totalEarnings = completedPayments.reduce((sum: number, p: any) =>
+      sum + parseFloat(p.amount || '0'), 0
     );
-    const totalPendingEarnings = pendingPayments.reduce((sum: number, p: Payment) =>
-      sum + parseFloat(p.amount), 0
+    const totalPendingEarnings = pendingPayments.reduce((sum: number, p: any) =>
+      sum + parseFloat(p.amount || '0'), 0
     );
 
     console.log(`CONTRACTOR ${user?.id} EARNINGS CALCULATION:`, {
       totalPayments: contractorPayments.length,
       completedPayments: completedPayments.length,
       totalEarnings,
-      totalPendingEarnings
+      totalPendingEarnings,
+      workRequests: workRequests.length
     });
 
+    // Active assignments include all non-completed work requests
+    const activeWorkRequests = workRequests.filter((wr: any) => 
+      ['assigned', 'accepted', 'in_review', 'approved', 'pending'].includes(wr.status)
+    );
+
     const displayStats = {
-      activeContractsCount: userContracts.length,
-      pendingApprovalCount: allMilestones.filter((m: Milestone) => m.status === 'submitted').length,
+      activeContractsCount: activeWorkRequests.length,
+      pendingApprovalCount: allMilestones.filter((m: any) => m.status === 'submitted').length,
       totalEarnings: totalEarnings,
       pendingEarnings: totalPendingEarnings
     };

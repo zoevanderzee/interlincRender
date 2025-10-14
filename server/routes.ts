@@ -406,12 +406,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user.role === 'contractor') {
         const earnings = await storage.getContractorEarningsStats(userId);
         const workRequests = await storage.getWorkRequestsByContractorId(userId);
-        const acceptedRequests = workRequests.filter(wr => wr.status === 'accepted');
+        // Active assignments include: assigned (pending), accepted, in_review, approved
+        const activeRequests = workRequests.filter(wr => 
+          ['assigned', 'accepted', 'in_review', 'approved', 'pending'].includes(wr.status)
+        );
 
-        console.log(`DASHBOARD STATS - Contractor ${userId}: Total work requests: ${workRequests.length}, Accepted: ${acceptedRequests.length}`);
+        console.log(`DASHBOARD STATS - Contractor ${userId}: Total work requests: ${workRequests.length}, Active: ${activeRequests.length}, Statuses: ${workRequests.map(wr => wr.status).join(', ')}`);
 
         return res.json({
-          assignedProjects: acceptedRequests.length,
+          assignedProjects: activeRequests.length,
           totalEarnings: earnings.totalEarnings,
           pendingEarnings: earnings.pendingEarnings,
           completedPayments: earnings.completedPaymentsCount
