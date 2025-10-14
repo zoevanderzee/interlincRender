@@ -406,12 +406,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user.role === 'contractor') {
         const earnings = await storage.getContractorEarningsStats(userId);
         const workRequests = await storage.getWorkRequestsByContractorId(userId);
-        // Active assignments include: assigned (pending), accepted, in_review, approved
-        const activeRequests = workRequests.filter(wr => 
-          ['assigned', 'accepted', 'in_review', 'approved', 'pending'].includes(wr.status)
-        );
+        // Active assignments are work requests that have been ACCEPTED by the contractor
+        const activeRequests = workRequests.filter(wr => wr.status === 'accepted');
 
-        console.log(`DASHBOARD STATS - Contractor ${userId}: Total work requests: ${workRequests.length}, Active: ${activeRequests.length}, Statuses: ${workRequests.map(wr => wr.status).join(', ')}`);
+        console.log(`DASHBOARD STATS - Contractor ${userId}: Total work requests: ${workRequests.length}, Active (accepted): ${activeRequests.length}, Statuses: ${workRequests.map(wr => wr.status).join(', ')}`);
 
         return res.json({
           assignedProjects: activeRequests.length,

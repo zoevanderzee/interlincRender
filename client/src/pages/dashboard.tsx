@@ -209,10 +209,8 @@ const Dashboard = () => {
       workRequests: workRequests.length
     });
 
-    // Active assignments include all non-completed work requests
-    const activeWorkRequests = workRequests.filter((wr: any) => 
-      ['assigned', 'accepted', 'in_review', 'approved', 'pending'].includes(wr.status)
-    );
+    // Active assignments are work requests that have been ACCEPTED by the contractor
+    const activeWorkRequests = workRequests.filter((wr: any) => wr.status === 'accepted');
 
     const displayStats = {
       activeContractsCount: activeWorkRequests.length,
