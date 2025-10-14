@@ -35,6 +35,7 @@ Preferred communication style: Simple, everyday language.
 - **File Storage**: Custom in-app file storage system replaces external cloud storage for secure local file management, with upload, view, and download endpoints.
 - **Project Management**: Enhanced project creation with deadline tracking, improved UI/UX for project forms, and clear separation between multi-contractor projects and quick tasks.
 - **Contract Management**: Comprehensive contract filtering by status and automatic detection of overdue contracts based on end dates, with UI indicators.
+- **Work Request Overdue Tracking**: Automatic overdue detection for work requests (tasks) based on due_date comparison, computing isOverdue, daysOverdue, and daysRemaining fields for accepted/active/assigned work requests. Red OVERDUE badges display across both business Tasks tab and contractor assignments view.
 - **Security**: Robust data isolation for users, with authentication and ownership validation on sensitive endpoints, and optimized payment queries.
 
 # External Dependencies
