@@ -290,10 +290,14 @@ export default function Projects() {
                     const taskWorkRequests = quickTasksProject 
                       ? workRequests.filter(wr => wr.projectId === quickTasksProject.id)
                       : [];
+                    
+                    const today = new Date();
+                    const normalizedToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                    
                     return taskWorkRequests.filter((wr: any) => 
                       wr.status === 'accepted' && 
                       wr.dueDate && 
-                      new Date(wr.dueDate) < new Date()
+                      new Date(new Date(wr.dueDate).getFullYear(), new Date(wr.dueDate).getMonth(), new Date(wr.dueDate).getDate()) < normalizedToday
                     ).length;
                   })()}
                 </p>
@@ -506,11 +510,16 @@ export default function Projects() {
                           <div>
                             <p className="text-sm text-gray-400">Overdue Tasks</p>
                             <p className="text-3xl font-bold text-white">
-                              {taskWorkRequests.filter((wr: any) => 
-                                wr.status === 'accepted' && 
-                                wr.dueDate && 
-                                new Date(wr.dueDate) < new Date()
-                              ).length}
+                              {(() => {
+                                const today = new Date();
+                                const normalizedToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                                
+                                return taskWorkRequests.filter((wr: any) => 
+                                  wr.status === 'accepted' && 
+                                  wr.dueDate && 
+                                  new Date(new Date(wr.dueDate).getFullYear(), new Date(wr.dueDate).getMonth(), new Date(wr.dueDate).getDate()) < normalizedToday
+                                ).length;
+                              })()}
                             </p>
                           </div>
                           <AlertTriangle className="h-8 w-8 text-red-500" />
