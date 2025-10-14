@@ -218,8 +218,8 @@ export default function Projects() {
           </p>
         </div>
         <Button 
-          className="bg-blue-600 hover:bg-blue-700"
           onClick={() => navigate('/projects/new')}
+          className="bg-blue-600 hover:bg-blue-700"
         >
           <Plus className="mr-2 h-4 w-4" />
           New Project

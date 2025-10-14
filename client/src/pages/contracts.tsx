@@ -81,8 +81,8 @@ const Contracts = () => {
               onClick={() => navigate('/projects/new')}
               className="w-full md:w-auto bg-blue-600 hover:bg-blue-700"
             >
-              <Plus size={16} className="mr-2" />
-              Create Project
+              <Plus className="mr-2 h-4 w-4" />
+              New Project
             </Button>
           </div>
         )}
@@ -176,8 +176,8 @@ const Contracts = () => {
               onClick={() => navigate('/projects/new')}
               className="bg-blue-600 hover:bg-blue-700"
             >
-              <Plus size={16} className="mr-2" />
-              Create Project
+              <Plus className="mr-2 h-4 w-4" />
+              New Project
             </Button>
           ) : null}
         </div>

@@ -410,7 +410,7 @@ const Dashboard = () => {
         <Button
           size="lg"
           onClick={handleNewProject}
-          className="animate-scale-in"
+          className="bg-blue-600 hover:bg-blue-700 animate-scale-in"
         >
           <Plus className="mr-2" size={16} />
           New Project
