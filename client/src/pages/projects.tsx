@@ -118,24 +118,38 @@ export default function Projects() {
         <div className="space-y-4">
           <h2 className="text-xl font-semibold text-white">Active Assignments</h2>
           {activeAssignments.length > 0 ? (
-            activeAssignments.map((assignment: any) => (
-              <Card key={assignment.id} className="bg-zinc-900 border-zinc-800">
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="text-white">{assignment.title}</CardTitle>
-                      <p className="text-gray-400 text-sm mt-1">{assignment.description}</p>
-                      {(assignment.companyName || assignment.businessFirstName) && (
-                        <p className="text-blue-400 text-sm mt-1">
-                          From: {assignment.companyName || `${assignment.businessFirstName} ${assignment.businessLastName}`}
-                        </p>
-                      )}
+            activeAssignments.map((assignment: any) => {
+              // Check if assignment is overdue
+              const isOverdue = assignment.isOverdue || false;
+              const daysOverdue = assignment.daysOverdue || 0;
+
+              return (
+                <Card key={assignment.id} className="bg-zinc-900 border-zinc-800">
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className="text-white">{assignment.title}</CardTitle>
+                        <p className="text-gray-400 text-sm mt-1">{assignment.description}</p>
+                        {(assignment.companyName || assignment.businessFirstName) && (
+                          <p className="text-blue-400 text-sm mt-1">
+                            From: {assignment.companyName || `${assignment.businessFirstName} ${assignment.businessLastName}`}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        {assignment.status === 'accepted' && isOverdue && (
+                          <Badge className="bg-red-600 text-white hover:bg-red-700">
+                            <AlertTriangle className="mr-1 h-3 w-3" />
+                            OVERDUE
+                            <span className="ml-1 text-xs text-red-200">{daysOverdue} days late</span>
+                          </Badge>
+                        )}
+                        <Badge variant={assignment.status === 'accepted' ? 'default' : 'secondary'}>
+                          {assignment.status}
+                        </Badge>
+                      </div>
                     </div>
-                    <Badge variant={assignment.status === 'accepted' ? 'default' : 'secondary'}>
-                      {assignment.status}
-                    </Badge>
-                  </div>
-                </CardHeader>
+                  </CardHeader>
                 <CardContent>
                   <div className="flex justify-between items-center">
                     <div className="flex items-center space-x-4">
@@ -162,7 +176,8 @@ export default function Projects() {
                   </div>
                 </CardContent>
               </Card>
-            ))
+              );
+            })
           ) : (
             <Card className="bg-zinc-900 border-zinc-800">
               <CardContent className="pt-6 pb-6 text-center">
@@ -586,6 +601,10 @@ export default function Projects() {
                         contractor.username) : 
                       'Unknown Contractor';
 
+                    // Check if task is overdue
+                    const isOverdue = task.isOverdue || false;
+                    const daysOverdue = task.daysOverdue || 0;
+
                     return (
                       <Card key={task.id} className="bg-zinc-900 border-zinc-800">
                         <CardHeader>
@@ -597,15 +616,24 @@ export default function Projects() {
                                 Assigned to: {contractorName}
                               </p>
                             </div>
-                            <Badge variant={
-                              task.status === 'assigned' ? 'default' : 
-                              task.status === 'accepted' ? 'default' :
-                              task.status === 'in_review' ? 'secondary' :
-                              task.status === 'approved' ? 'default' :
-                              task.status === 'paid' ? 'default' : 'secondary'
-                            }>
-                              {task.status.replace('_', ' ')}
-                            </Badge>
+                            <div className="flex gap-2">
+                              {['accepted', 'active', 'assigned'].includes(task.status) && isOverdue && (
+                                <Badge className="bg-red-600 text-white hover:bg-red-700">
+                                  <AlertTriangle className="mr-1 h-3 w-3" />
+                                  OVERDUE
+                                  <span className="ml-1 text-xs text-red-200">{daysOverdue} days late</span>
+                                </Badge>
+                              )}
+                              <Badge variant={
+                                task.status === 'assigned' ? 'default' : 
+                                task.status === 'accepted' ? 'default' :
+                                task.status === 'in_review' ? 'secondary' :
+                                task.status === 'approved' ? 'default' :
+                                task.status === 'paid' ? 'default' : 'secondary'
+                              }>
+                                {task.status.replace('_', ' ')}
+                              </Badge>
+                            </div>
                           </div>
                         </CardHeader>
                         <CardContent>

@@ -4264,7 +4264,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      res.json(workRequests);
+      // Add overdue computation to work requests
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const workRequestsWithOverdueStatus = workRequests.map(wr => {
+        let isOverdue = false;
+        let daysOverdue = 0;
+        let daysRemaining = 0;
+
+        // Compute overdue for accepted/active work requests with a due date
+        if (['accepted', 'active', 'assigned'].includes(wr.status) && wr.dueDate) {
+          const dueDate = new Date(wr.dueDate);
+          dueDate.setHours(0, 0, 0, 0);
+
+          const diffTime = dueDate.getTime() - today.getTime();
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+          if (diffDays < 0) {
+            isOverdue = true;
+            daysOverdue = Math.abs(diffDays);
+          } else {
+            daysRemaining = diffDays;
+          }
+        }
+
+        return {
+          ...wr,
+          isOverdue,
+          daysOverdue: isOverdue ? daysOverdue : null,
+          daysRemaining: !isOverdue && ['accepted', 'active', 'assigned'].includes(wr.status) ? daysRemaining : null
+        };
+      });
+
+      res.json(workRequestsWithOverdueStatus);
     } catch (error) {
       console.error("Error fetching work requests:", error);
       res.status(500).json({message: "Error fetching work requests"});
@@ -4287,7 +4320,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currentUser.email === workRequest.recipientEmail ||
         currentUser.role === 'admin'
       )) {
-        res.json(workRequest);
+        // Add overdue computation
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        let isOverdue = false;
+        let daysOverdue = 0;
+        let daysRemaining = 0;
+
+        if (['accepted', 'active', 'assigned'].includes(workRequest.status) && workRequest.dueDate) {
+          const dueDate = new Date(workRequest.dueDate);
+          dueDate.setHours(0, 0, 0, 0);
+
+          const diffTime = dueDate.getTime() - today.getTime();
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+          if (diffDays < 0) {
+            isOverdue = true;
+            daysOverdue = Math.abs(diffDays);
+          } else {
+            daysRemaining = diffDays;
+          }
+        }
+
+        res.json({
+          ...workRequest,
+          isOverdue,
+          daysOverdue: isOverdue ? daysOverdue : null,
+          daysRemaining: !isOverdue && ['accepted', 'active', 'assigned'].includes(workRequest.status) ? daysRemaining : null
+        });
       } else {
         res.status(403).json({message: "Unauthorized to access this work request"});
       }
