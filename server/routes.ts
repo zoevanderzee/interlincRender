@@ -3512,10 +3512,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             startDate: workRequest.createdAt,
             endDate: workRequest.dueDate || workRequest.createdAt,
             type: 'deadline',
-            status: workRequest.status === 'accepted' ? 'active' :
+            status: workRequest.status === 'accepted' || workRequest.status === 'assigned' ? 'active' :
               workRequest.status === 'completed' ? 'completed' :
                 workRequest.status === 'pending' ? 'pending' : 'pending',
-            color: workRequest.status === 'accepted' ? '#22C55E' :
+            color: workRequest.status === 'accepted' || workRequest.status === 'assigned' ? '#22C55E' :
               workRequest.status === 'completed' ? '#3B82F6' :
                 workRequest.status === 'pending' ? '#F59E0B' : '#EF4444'
           });

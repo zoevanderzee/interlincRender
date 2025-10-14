@@ -167,8 +167,8 @@ export default function Calendar() {
   }
 
   const statusCounts = {
-    active: events.filter(e => e.status === 'active').length,
-    pending: events.filter(e => e.status === 'pending' || e.status === 'needs_revision').length,
+    active: events.filter(e => e.status === 'active' || e.status === 'accepted').length,
+    pending: events.filter(e => e.status === 'pending' || e.status === 'needs_revision' || e.status === 'assigned').length,
     overdue: events.filter(e => e.status === 'overdue').length,
     completed: events.filter(e => e.status === 'completed' || e.status === 'approved').length,
   };
