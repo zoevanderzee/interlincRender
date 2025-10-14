@@ -1,3 +1,4 @@
+
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
@@ -10,9 +11,10 @@ import {
   Calendar as CalendarIcon,
   Plus,
   Filter,
-  Users,
   Clock,
-  Target
+  CheckCircle2,
+  AlertCircle,
+  Circle
 } from "lucide-react";
 import {
   Select,
@@ -42,18 +44,19 @@ const MONTH_NAMES = [
 
 const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-// Project status colors
-const STATUS_COLORS = {
-  active: '#22C55E',    // Green
-  'in-progress': '#F59E0B', // Amber
-  overdue: '#EF4444',   // Red
-  completed: '#3B82F6', // Blue
+// Status colors matching your theme
+const STATUS_CONFIG = {
+  active: { color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)', icon: Circle },
+  pending: { color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)', icon: Clock },
+  overdue: { color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)', icon: AlertCircle },
+  completed: { color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)', icon: CheckCircle2 },
+  approved: { color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)', icon: CheckCircle2 },
+  needs_revision: { color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)', icon: AlertCircle }
 };
 
 export default function Calendar() {
   const { user } = useAuth();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedView, setSelectedView] = useState('month');
   const [filterBy, setFilterBy] = useState('all');
 
   // Real calendar events from API
@@ -81,7 +84,6 @@ export default function Calendar() {
       
       const data = await response.json();
       
-      // Convert date strings back to Date objects
       return data.map((event: any) => ({
         ...event,
         startDate: new Date(event.startDate),
@@ -111,15 +113,13 @@ export default function Calendar() {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
     const startDate = new Date(firstDay);
     
-    // Adjust to start on Monday
     const startDayOfWeek = (firstDay.getDay() + 6) % 7;
     startDate.setDate(1 - startDayOfWeek);
 
     const days = [];
-    for (let i = 0; i < 42; i++) { // 6 weeks
+    for (let i = 0; i < 42; i++) {
       const day = new Date(startDate);
       day.setDate(startDate.getDate() + i);
       days.push(day);
@@ -131,7 +131,6 @@ export default function Calendar() {
   const getEventsForDay = (date: Date) => {
     let filteredEvents = events;
     
-    // Apply status-based filtering
     if (filterBy === 'active') {
       filteredEvents = events.filter(event => event.status === 'active');
     } else if (filterBy === 'completed') {
@@ -139,7 +138,6 @@ export default function Calendar() {
     } else if (filterBy === 'overdue') {
       filteredEvents = events.filter(event => event.status === 'overdue');
     }
-    // Note: projects/tasks filtering is handled in the API query
     
     return filteredEvents.filter(event => {
       const eventStart = new Date(event.startDate);
@@ -159,22 +157,31 @@ export default function Calendar() {
 
   if (isLoading) {
     return (
-      <div className="animate-pulse space-y-6">
-        <div className="h-12 bg-gray-800 rounded w-1/3"></div>
-        <div className="h-96 bg-gray-800 rounded"></div>
+      <div className="space-y-6 p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-zinc-800 rounded w-1/4"></div>
+          <div className="h-96 bg-zinc-800 rounded"></div>
+        </div>
       </div>
     );
   }
 
+  const statusCounts = {
+    active: events.filter(e => e.status === 'active').length,
+    pending: events.filter(e => e.status === 'pending' || e.status === 'needs_revision').length,
+    overdue: events.filter(e => e.status === 'overdue').length,
+    completed: events.filter(e => e.status === 'completed' || e.status === 'approved').length,
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-semibold text-white">
+          <h1 className="text-3xl font-bold text-white">
             Project Calendar
           </h1>
-          <p className="text-gray-400 mt-1">
+          <p className="text-zinc-400 mt-1">
             {user?.role === 'business' 
               ? 'View project timelines and contractor schedules'
               : 'Track your project deadlines and availability'
@@ -182,14 +189,14 @@ export default function Calendar() {
           </p>
         </div>
         
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-3">
           <Select value={filterBy} onValueChange={setFilterBy}>
-            <SelectTrigger className="w-40 bg-gray-900 border-gray-700">
+            <SelectTrigger className="w-48 bg-zinc-900 border-zinc-700 text-white">
               <Filter className="h-4 w-4 mr-2" />
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="bg-gray-900 border-gray-700">
-              <SelectItem value="all">Both Projects & Tasks</SelectItem>
+            <SelectContent className="bg-zinc-900 border-zinc-700">
+              <SelectItem value="all">All Events</SelectItem>
               <SelectItem value="projects">Projects Only</SelectItem>
               <SelectItem value="tasks">Tasks Only</SelectItem>
               <SelectItem value="active">Active Only</SelectItem>
@@ -199,61 +206,86 @@ export default function Calendar() {
           </Select>
           
           {user?.role === 'business' && (
-            <Button className="bg-accent-600 hover:bg-accent-700">
+            <Button className="bg-blue-600 hover:bg-blue-700 text-white">
               <Plus className="h-4 w-4 mr-2" />
-              Schedule Project
+              New Project
             </Button>
           )}
         </div>
       </div>
 
-      {/* Calendar Controls */}
-      <Card className="bg-black border-gray-800">
-        <CardHeader>
+      {/* Stats Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {Object.entries(statusCounts).map(([status, count]) => {
+          const config = STATUS_CONFIG[status as keyof typeof STATUS_CONFIG];
+          const Icon = config.icon;
+          return (
+            <Card key={status} className="bg-zinc-900 border-zinc-800">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg" style={{ backgroundColor: config.bg }}>
+                      <Icon className="h-5 w-5" style={{ color: config.color }} />
+                    </div>
+                    <div>
+                      <p className="text-sm text-zinc-400 capitalize">{status}</p>
+                      <p className="text-2xl font-bold text-white">{count}</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Calendar */}
+      <Card className="bg-zinc-900 border-zinc-800">
+        <CardHeader className="border-b border-zinc-800">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Button
-                variant="outline"
-                size="sm"
+                variant="ghost"
+                size="icon"
                 onClick={() => navigateMonth('prev')}
-                className="border-gray-700 text-white hover:bg-gray-800"
+                className="text-zinc-400 hover:text-white hover:bg-zinc-800"
               >
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft className="h-5 w-5" />
               </Button>
               
-              <h2 className="text-xl font-semibold text-white">
+              <h2 className="text-2xl font-semibold text-white min-w-[200px] text-center">
                 {MONTH_NAMES[currentDate.getMonth()]} {currentDate.getFullYear()}
               </h2>
               
               <Button
-                variant="outline"
-                size="sm"
+                variant="ghost"
+                size="icon"
                 onClick={() => navigateMonth('next')}
-                className="border-gray-700 text-white hover:bg-gray-800"
+                className="text-zinc-400 hover:text-white hover:bg-zinc-800"
               >
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="h-5 w-5" />
               </Button>
             </div>
             
             <Button
               variant="outline"
-              size="sm"
               onClick={goToToday}
-              className="border-gray-700 text-white hover:bg-gray-800"
+              className="border-zinc-700 text-white hover:bg-zinc-800"
             >
+              <CalendarIcon className="h-4 w-4 mr-2" />
               Today
             </Button>
           </div>
         </CardHeader>
         
-        <CardContent>
+        <CardContent className="p-0">
           {/* Calendar Grid */}
-          <div className="grid grid-cols-7 gap-px bg-gray-800 rounded-lg overflow-hidden">
+          <div className="grid grid-cols-7">
             {/* Day Headers */}
             {DAY_NAMES.map(day => (
               <div
                 key={day}
-                className="bg-gray-900 p-3 text-center text-sm font-medium text-gray-400"
+                className="p-4 text-center text-sm font-semibold text-zinc-400 border-b border-zinc-800"
               >
                 {day}
               </div>
@@ -269,105 +301,44 @@ export default function Calendar() {
                 <div
                   key={index}
                   className={`
-                    min-h-24 p-2 bg-black border-r border-b border-gray-800 relative
-                    ${!isCurrentMonthDay ? 'opacity-40' : ''}
-                    ${isTodayDate ? 'ring-2 ring-accent-600' : ''}
-                    hover:bg-gray-900 transition-colors cursor-pointer
+                    min-h-[120px] p-3 border-r border-b border-zinc-800 relative
+                    ${!isCurrentMonthDay ? 'bg-zinc-950 opacity-50' : 'bg-zinc-900'}
+                    ${isTodayDate ? 'ring-2 ring-inset ring-blue-500' : ''}
+                    hover:bg-zinc-800 transition-colors cursor-pointer
                   `}
                 >
                   <div className={`
-                    text-sm font-medium mb-1
-                    ${isTodayDate ? 'text-accent-400' : 'text-white'}
-                    ${!isCurrentMonthDay ? 'text-gray-600' : ''}
+                    text-sm font-semibold mb-2
+                    ${isTodayDate ? 'text-blue-400' : isCurrentMonthDay ? 'text-white' : 'text-zinc-600'}
                   `}>
                     {date.getDate()}
                   </div>
                   
                   {/* Events */}
                   <div className="space-y-1">
-                    {dayEvents.slice(0, 2).map(event => (
-                      <div
-                        key={event.id}
-                        className={`
-                          px-1 py-0.5 rounded text-xs font-medium truncate
-                          cursor-pointer hover:opacity-80 transition-opacity
-                        `}
-                        style={{ backgroundColor: event.color + '20', color: event.color }}
-                        title={`${event.title} - ${event.contractorName}`}
-                      >
-                        {event.title}
-                      </div>
-                    ))}
+                    {dayEvents.slice(0, 3).map(event => {
+                      const config = STATUS_CONFIG[event.status];
+                      return (
+                        <div
+                          key={event.id}
+                          className="px-2 py-1 rounded text-xs font-medium truncate cursor-pointer hover:opacity-80 transition-opacity"
+                          style={{ backgroundColor: config.bg, color: config.color }}
+                          title={`${event.title} - ${event.contractorName}`}
+                        >
+                          {event.title}
+                        </div>
+                      );
+                    })}
                     
-                    {dayEvents.length > 2 && (
-                      <div className="text-xs text-gray-400">
-                        +{dayEvents.length - 2} more
+                    {dayEvents.length > 3 && (
+                      <div className="text-xs text-zinc-500 pl-2">
+                        +{dayEvents.length - 3} more
                       </div>
                     )}
                   </div>
                 </div>
               );
             })}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Project & Task Overview */}
-      <Card className="bg-black border-gray-800">
-        <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
-            <Target className="h-5 w-5" />
-            Projects & Tasks Overview
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded" style={{ backgroundColor: STATUS_COLORS.active }}></div>
-                <span className="text-sm text-gray-300">Active</span>
-              </div>
-              <Badge variant="outline" style={{ borderColor: STATUS_COLORS.active, color: STATUS_COLORS.active }}>
-                {events.filter(event => event.status === 'active').length}
-              </Badge>
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded" style={{ backgroundColor: STATUS_COLORS['in-progress'] }}></div>
-                <span className="text-sm text-gray-300">In Progress</span>
-              </div>
-              <Badge variant="outline" style={{ borderColor: STATUS_COLORS['in-progress'], color: STATUS_COLORS['in-progress'] }}>
-                {events.filter(event => event.status === 'pending' || event.status === 'needs_revision').length}
-              </Badge>
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded" style={{ backgroundColor: STATUS_COLORS.overdue }}></div>
-                <span className="text-sm text-gray-300">Overdue</span>
-              </div>
-              <Badge variant="outline" style={{ borderColor: STATUS_COLORS.overdue, color: STATUS_COLORS.overdue }}>
-                {events.filter(event => event.status === 'overdue').length}
-              </Badge>
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded" style={{ backgroundColor: STATUS_COLORS.completed }}></div>
-                <span className="text-sm text-gray-300">Completed</span>
-              </div>
-              <Badge variant="outline" style={{ borderColor: STATUS_COLORS.completed, color: STATUS_COLORS.completed }}>
-                {events.filter(event => event.status === 'completed' || event.status === 'approved').length}
-              </Badge>
-            </div>
-          </div>
-          
-          <div className="mt-4 pt-4 border-t border-gray-700">
-            <div className="flex items-center justify-between text-sm text-gray-400">
-              <span>Total Projects & Tasks</span>
-              <span className="font-medium text-white">{events.length}</span>
-            </div>
           </div>
         </CardContent>
       </Card>
