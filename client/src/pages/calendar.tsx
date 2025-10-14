@@ -59,19 +59,11 @@ export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [filterBy, setFilterBy] = useState('all');
 
-  // Real calendar events from API
+  // Real calendar events from API - using same endpoint as Active Assignments
   const { data: events = [], isLoading } = useQuery({
-    queryKey: ['/api/calendar/events', currentDate.getMonth(), currentDate.getFullYear(), filterBy],
+    queryKey: ['/api/work-requests', currentDate.getMonth(), currentDate.getFullYear(), filterBy],
     queryFn: async () => {
-      const params = new URLSearchParams({
-        month: currentDate.getMonth().toString(),
-        year: currentDate.getFullYear().toString(),
-        type: filterBy === 'all' ? 'both' : 
-              filterBy === 'projects' ? 'projects' : 
-              filterBy === 'tasks' ? 'tasks' : 'both'
-      });
-      
-      const response = await fetch(`/api/calendar/events?${params}`, {
+      const response = await fetch('/api/work-requests', {
         credentials: 'include',
         headers: {
           'X-User-ID': user?.id?.toString() || ''
@@ -79,16 +71,32 @@ export default function Calendar() {
       });
       
       if (!response.ok) {
-        throw new Error('Failed to fetch calendar events');
+        throw new Error('Failed to fetch work requests');
       }
       
-      const data = await response.json();
+      const workRequests = await response.json();
       
-      return data.map((event: any) => ({
-        ...event,
-        startDate: new Date(event.startDate),
-        endDate: new Date(event.endDate)
-      }));
+      // Transform work requests to calendar events format
+      return workRequests.map((wr: any) => {
+        const dueDate = wr.dueDate ? new Date(wr.dueDate) : new Date(wr.createdAt);
+        const normalizedDueDate = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+        
+        return {
+          id: `work_request_${wr.id}`,
+          title: wr.title || wr.description || 'Work Request',
+          projectName: wr.projectName || 'No Project',
+          contractorName: wr.contractorName || 'Unassigned',
+          startDate: normalizedDueDate,
+          endDate: normalizedDueDate,
+          type: 'deadline',
+          status: wr.status === 'accepted' || wr.status === 'assigned' ? 'active' :
+                  wr.status === 'completed' ? 'completed' :
+                  wr.status === 'pending' ? 'pending' : 'pending',
+          color: wr.status === 'accepted' || wr.status === 'assigned' ? '#22C55E' :
+                 wr.status === 'completed' ? '#3B82F6' :
+                 wr.status === 'pending' ? '#F59E0B' : '#EF4444'
+        };
+      });
     },
     enabled: !!user
   });
