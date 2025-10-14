@@ -391,13 +391,15 @@ export default function SubscriptionForm({
     if (userRole === 'contractor') {
       return plan.id.startsWith('contractor');
     }
+    
     // Business users can ONLY see business plans
     if (userRole === 'business') {
-      const isAnnual = plan.id.includes('annual');
       if (billingPeriod === 'monthly') {
-        return plan.id.startsWith('business') && !isAnnual;
+        // Monthly plans: business (SME Monthly) and business-enterprise (Enterprise Monthly)
+        return plan.id === 'business' || plan.id === 'business-enterprise';
       } else {
-        return plan.id.startsWith('business') && isAnnual;
+        // Annual plans: business-annual (SME Annual) and business-enterprise-annual (Enterprise Annual)
+        return plan.id === 'business-annual' || plan.id === 'business-enterprise-annual';
       }
     }
     // Fallback: no plans if role is unclear
