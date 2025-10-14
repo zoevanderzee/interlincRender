@@ -440,7 +440,7 @@ export default function Projects() {
             </div>
 
             {/* Tasks Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
               {(() => {
                 // Filter work requests for Quick Tasks project
                 const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
@@ -490,12 +490,12 @@ export default function Projects() {
                       <CardContent className="pt-6">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-sm text-gray-400">Total Task Value</p>
+                            <p className="text-sm text-gray-400">Total Tasks</p>
                             <p className="text-3xl font-bold text-white">
-                              {formatCurrency(taskWorkRequests.reduce((sum: number, wr: any) => sum + parseFloat(wr.amount || 0), 0))}
+                              {taskWorkRequests.length}
                             </p>
                           </div>
-                          <DollarSign className="h-8 w-8 text-yellow-500" />
+                          <FileText className="h-8 w-8 text-purple-500" />
                         </div>
                       </CardContent>
                     </Card>
@@ -514,6 +514,20 @@ export default function Projects() {
                             </p>
                           </div>
                           <AlertTriangle className="h-8 w-8 text-red-500" />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-zinc-900 border-zinc-800">
+                      <CardContent className="pt-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-gray-400">Total Task Value</p>
+                            <p className="text-3xl font-bold text-white">
+                              {formatCurrency(taskWorkRequests.reduce((sum: number, wr: any) => sum + parseFloat(wr.amount || 0), 0))}
+                            </p>
+                          </div>
+                          <DollarSign className="h-8 w-8 text-yellow-500" />
                         </div>
                       </CardContent>
                     </Card>
