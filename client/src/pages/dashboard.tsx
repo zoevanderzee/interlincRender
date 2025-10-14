@@ -73,6 +73,9 @@ const Dashboard = () => {
   // Use V2 connect data from integrated hook
   const connectStatus = integratedData ? integratedData.stripeConnectData : null;
 
+  // Get budget data from integrated data hook (same source as budget oversight page)
+  const budgetInfo = integratedData?.budgetData;
+
   // Format the remaining budget as currency - now uses proper GBP formatting
   const formatBudgetCurrency = (value: string | null): string => {
     if (!value) return "£0.00";
@@ -359,7 +362,7 @@ const Dashboard = () => {
               </div>
             </div>
             <p className="text-3xl font-bold text-white tracking-tight">
-              {formatBudgetCurrency(dashboardStats?.remainingBudget ?? integratedData.stats.remainingBudget)}
+              {formatBudgetCurrency(budgetInfo?.remainingBudget)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">Available outsourcing budget</p>
           </CardContent>
