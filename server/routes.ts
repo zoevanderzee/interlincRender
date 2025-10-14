@@ -2837,44 +2837,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return sum + parseFloat(contract.value.toString() || '0');
         }, 0);
 
-      // Get contractor/businesses data based on user role
-      let allContractors = [];
-      let activeContractorsCount = 0;
-
-      if (userRole === 'business') {
-        // For business users, get their contractors
-        allContractors = await storage.getContractorsByBusinessId(userId || 0);
-        activeContractorsCount = allContractors.length;
-      } else if (userRole === 'contractor') {
-        // For contractors, get businesses they work with
-        allContractors = await storage.getBusinessesByContractorId(userId || 0);
-        activeContractorsCount = 0; // Contractors don't have a contractor count
-      }
-
-      // Skip invites in dashboard for now - they're causing the error
-      let pendingInvites = [];
-      try {
-        // Only try to get invites if we have a business user
-        if (userRole === 'business' && userId) {
-          // Use the business onboarding link count instead of invites
-          const businessLink = await storage.getBusinessOnboardingLink(userId);
-          // We will just display this as a count for now
-          pendingInvites = businessLink ? [businessLink] : [];
-        }
-      } catch (inviteError) {
-        console.log("Non-critical error fetching invites for dashboard:", inviteError);
-        // Continue with empty invites array
-      }
-
-      // Calculate total work requests value
-      const totalWorkRequestsValue = activeWorkRequests.reduce((sum, wr) => {
-        return sum + parseFloat(wr.amount || '0');
-      }, 0);
-
-      const totalPendingWorkRequestsValue = pendingWorkRequests.reduce((sum, wr) => {
-        return sum + parseFloat(wr.amount || '0');
-      }, 0);
-
       // Find the Quick Tasks project (special project for one-off tasks)
       const quickTasksProject = userProjects.find(p => p.name === 'Quick Tasks');
       const quickTasksProjectId = quickTasksProject?.id;
@@ -3482,8 +3444,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create calendar events from work requests (tasks/assignments)
+      // BULLETPROOF: Only show on due date, not as date ranges
       if (type === 'both' || type === 'tasks') {
         for (const workRequest of userWorkRequests) {
+          // CRITICAL: Skip if no due date - cannot show on calendar
+          if (!workRequest.dueDate) {
+            console.log(`[Calendar] Skipping work request ${workRequest.id} - no due date`);
+            continue;
+          }
+
           // Get contractor name
           let contractorName = 'Unassigned';
           if (workRequest.contractorUserId) {
@@ -3504,13 +3473,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
 
+          // BULLETPROOF: Use dueDate for both start and end - single day event only
+          const dueDate = new Date(workRequest.dueDate);
+          dueDate.setHours(0, 0, 0, 0); // Normalize to midnight
+
           calendarEvents.push({
             id: `work_request_${workRequest.id}`,
             title: workRequest.title || workRequest.description || 'Work Request',
             projectName,
             contractorName,
-            startDate: workRequest.createdAt,
-            endDate: workRequest.dueDate || workRequest.createdAt,
+            startDate: dueDate.toISOString(),
+            endDate: dueDate.toISOString(), // Same as startDate for single-day event
             type: 'deadline',
             status: workRequest.status === 'accepted' || workRequest.status === 'assigned' ? 'active' :
               workRequest.status === 'completed' ? 'completed' :
@@ -3614,7 +3587,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // BULLETPROOF VALIDATION: Calculate pending payments
       const allProjects = await storage.getBusinessProjects(userId);
       const allWorkRequests = await storage.getWorkRequestsByBusinessId(userId);
-      
+
       // Find Quick Tasks project
       const quickTasksProject = allProjects.find(p => p.name === 'Quick Tasks');
       const quickTasksProjectId = quickTasksProject?.id;
@@ -5358,7 +5331,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`[BULK_APPROVAL] 🚀 Processing ${targetSubmissions.length} submissions with APPROVAL-FIRST approach for business ${req.user!.id}`);
 
-      // 🚀 NEW: Process ALL valid submissions - approve first, then attempt payments
+      // 🚀 NEW: Process ALL valid submissions - approve-first, then attempt payments
       for (const submission of targetSubmissions) {
         // Basic validation - only check if submission can be approved
         const workRequest = await storage.getWorkRequest(submission.workRequestId);
