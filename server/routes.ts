@@ -3105,7 +3105,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Map plan types to correct Stripe Price IDs
       const priceIdMap: Record<string, string> = {
-        'business-starter': 'price_1SFIvtF4bfRUGDn9MWvE1imT', // Enterprise Annual £8,990.00/year
+        'business-starter': 'price_1SFIvtF4bfRUGDn9MWvE1imT', // Enterprise Annual £8,990.00/year (legacy ID)
+        'business-enterprise-annual': 'price_1SFIvtF4bfRUGDn9MWvE1imT', // Enterprise Annual £8,990.00/year
         'business': 'price_1Ricn6F4bfRUGDn91XzkPq5F', // SME Monthly £199.00/month
         'business-enterprise': 'price_1RgRilF4bfRUGDn9jMnjAo96', // Enterprise Monthly £899.00/month
         'business-annual': 'price_1SFIv5F4bfRUGDn9qeJh0VYX', // SME Annual £1,990.00/year
@@ -3320,7 +3321,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Map of plan IDs to Stripe Price IDs
       const priceIdMap = {
-        'business-starter': 'price_1SFIvtF4bfRUGDn9MWvE1imT', // Enterprise Annual £8,990.00/year
+        'business-starter': 'price_1SFIvtF4bfRUGDn9MWvE1imT', // Enterprise Annual £8,990.00/year (legacy ID)
+        'business-enterprise-annual': 'price_1SFIvtF4bfRUGDn9MWvE1imT', // Enterprise Annual £8,990.00/year
         'business': 'price_1Ricn6F4bfRUGDn91XzkPq5F', // SME Monthly £199.00/month
         'business-enterprise': 'price_1RgRilF4bfRUGDn9jMnjAo96', // Enterprise Monthly £899.00/month
         'business-annual': 'price_1SFIv5F4bfRUGDn9qeJh0VYX', // SME Annual £1,990.00/year
