@@ -368,6 +368,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Get contractor count
         const contractors = await storage.getContractorsByBusinessId(userId);
 
+        // Get pending invites
+        const pendingInvites = await storage.getInvitesByBusinessId(userId);
+
         // BULLETPROOF PENDING PAYMENTS CALCULATION
         // Find Quick Tasks project
         const quickTasksProject = allProjects.find(p => p.name === 'Quick Tasks');
