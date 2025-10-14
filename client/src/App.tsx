@@ -173,11 +173,11 @@ function Router() {
         </Layout>
       </Route>
 
-      <Route path="/projects/:id">
+      <ProtectedRoute path="/project/:id">
         <Layout>
           <ProjectDetails />
         </Layout>
-      </Route>
+      </ProtectedRoute>
 
 
       <ProtectedRoute path="/contractors">
