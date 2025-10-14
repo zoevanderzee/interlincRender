@@ -76,10 +76,39 @@ export default function Calendar() {
       
       const workRequests = await response.json();
       
-      // Transform work requests to calendar events format
+      // Transform work requests to calendar events format with proper status categorization
       return workRequests.map((wr: any) => {
         const dueDate = wr.dueDate ? new Date(wr.dueDate) : new Date(wr.createdAt);
         const normalizedDueDate = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+        const today = new Date();
+        const normalizedToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        
+        // Determine status: active, pending, or overdue
+        let status = 'pending';
+        let color = '#F59E0B'; // pending color
+        
+        if (wr.status === 'completed' || wr.status === 'approved') {
+          status = 'completed';
+          color = '#3B82F6';
+        } else if (wr.status === 'accepted' || wr.status === 'assigned') {
+          // Check if overdue
+          if (normalizedDueDate < normalizedToday) {
+            status = 'overdue';
+            color = '#EF4444';
+          } else {
+            status = 'active';
+            color = '#22C55E';
+          }
+        } else if (wr.status === 'pending' || wr.status === 'needs_revision') {
+          // Check if overdue
+          if (normalizedDueDate < normalizedToday) {
+            status = 'overdue';
+            color = '#EF4444';
+          } else {
+            status = 'pending';
+            color = '#F59E0B';
+          }
+        }
         
         return {
           id: `work_request_${wr.id}`,
@@ -89,12 +118,8 @@ export default function Calendar() {
           startDate: normalizedDueDate,
           endDate: normalizedDueDate,
           type: 'deadline',
-          status: wr.status === 'accepted' || wr.status === 'assigned' ? 'active' :
-                  wr.status === 'completed' ? 'completed' :
-                  wr.status === 'pending' ? 'pending' : 'pending',
-          color: wr.status === 'accepted' || wr.status === 'assigned' ? '#22C55E' :
-                 wr.status === 'completed' ? '#3B82F6' :
-                 wr.status === 'pending' ? '#F59E0B' : '#EF4444'
+          status,
+          color
         };
       });
     },
@@ -141,8 +166,10 @@ export default function Calendar() {
     
     if (filterBy === 'active') {
       filteredEvents = events.filter(event => event.status === 'active');
+    } else if (filterBy === 'pending') {
+      filteredEvents = events.filter(event => event.status === 'pending');
     } else if (filterBy === 'completed') {
-      filteredEvents = events.filter(event => event.status === 'completed' || event.status === 'approved');
+      filteredEvents = events.filter(event => event.status === 'completed');
     } else if (filterBy === 'overdue') {
       filteredEvents = events.filter(event => event.status === 'overdue');
     }
@@ -179,10 +206,10 @@ export default function Calendar() {
   }
 
   const statusCounts = {
-    active: events.filter(e => e.status === 'active' || e.status === 'accepted').length,
-    pending: events.filter(e => e.status === 'pending' || e.status === 'needs_revision' || e.status === 'assigned').length,
+    active: events.filter(e => e.status === 'active').length,
+    pending: events.filter(e => e.status === 'pending').length,
     overdue: events.filter(e => e.status === 'overdue').length,
-    completed: events.filter(e => e.status === 'completed' || e.status === 'approved').length,
+    completed: events.filter(e => e.status === 'completed').length,
   };
 
   return (
@@ -208,12 +235,11 @@ export default function Calendar() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="bg-zinc-900 border-zinc-700">
-              <SelectItem value="all">All Events</SelectItem>
-              <SelectItem value="projects">Projects Only</SelectItem>
-              <SelectItem value="tasks">Tasks Only</SelectItem>
+              <SelectItem value="all">All Assignments</SelectItem>
               <SelectItem value="active">Active Only</SelectItem>
-              <SelectItem value="completed">Completed Only</SelectItem>
+              <SelectItem value="pending">Pending Only</SelectItem>
               <SelectItem value="overdue">Overdue Only</SelectItem>
+              <SelectItem value="completed">Completed Only</SelectItem>
             </SelectContent>
           </Select>
           
