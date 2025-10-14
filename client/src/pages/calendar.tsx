@@ -65,8 +65,8 @@ export default function Calendar() {
       const params = new URLSearchParams({
         month: currentDate.getMonth().toString(),
         year: currentDate.getFullYear().toString(),
-        type: filterBy === 'all' ? 'both' :
-              filterBy === 'projects' ? 'projects' :
+        type: filterBy === 'all' ? 'both' : 
+              filterBy === 'projects' ? 'projects' : 
               filterBy === 'tasks' ? 'tasks' : 'both'
       });
 
@@ -171,29 +171,11 @@ export default function Calendar() {
     );
   }
 
-  // Get work requests to match dashboard Active Assignments count
-  const { data: workRequests = [] } = useQuery({
-    queryKey: ['/api/work-requests'],
-    queryFn: async () => {
-      const response = await fetch('/api/work-requests', {
-        credentials: 'include',
-        headers: {
-          'X-User-ID': user?.id?.toString() || ''
-        }
-      });
-      if (!response.ok) throw new Error('Failed to fetch work requests');
-      return response.json();
-    },
-    enabled: !!user
-  });
-
-  // BULLETPROOF: Calculate stats matching dashboard Active Assignments exactly
-  // Active = accepted work requests (same as dashboard activeAssignments)
   const statusCounts = {
-    active: workRequests.filter((wr: any) => wr.status === 'accepted').length,
-    pending: workRequests.filter((wr: any) => wr.status === 'pending').length,
-    overdue: workRequests.filter((wr: any) => wr.status === 'overdue').length,
-    completed: workRequests.filter((wr: any) => wr.status === 'completed').length,
+    active: events.filter(e => e.status === 'active' || e.status === 'accepted').length,
+    pending: events.filter(e => e.status === 'pending' || e.status === 'needs_revision' || e.status === 'assigned').length,
+    overdue: events.filter(e => e.status === 'overdue').length,
+    completed: events.filter(e => e.status === 'completed' || e.status === 'approved').length,
   };
 
   return (
@@ -205,7 +187,7 @@ export default function Calendar() {
             Project Calendar
           </h1>
           <p className="text-zinc-400 mt-1">
-            {user?.role === 'business'
+            {user?.role === 'business' 
               ? 'View project timelines and contractor schedules'
               : 'Track your project deadlines and availability'
             }
