@@ -3635,7 +3635,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const newBudgetCap = parseFloat(budgetCap);
         if (newBudgetCap <= totalPendingPayments) {
           return res.status(400).json({
-            message: `Budget cap must be greater than pending payments. Current pending payments: £${totalPendingPayments.toFixed(2)}`,
+            message: `Your budget limit cannot be lower than your outstanding commitments. You currently have £${totalPendingPayments.toFixed(2)} in active projects and tasks that need to be paid. Please set your budget to at least £${(totalPendingPayments + 0.01).toFixed(2)} or complete some projects first.`,
             pendingPayments: totalPendingPayments.toFixed(2),
             requestedBudgetCap: newBudgetCap.toFixed(2),
             minimumRequired: (totalPendingPayments + 0.01).toFixed(2)

@@ -241,10 +241,10 @@ export function BudgetSettings() {
               {budgetCap && parseFloat(budgetCap) <= parseFloat(budgetInfo?.totalProjectAllocations || '0') && (
                 <Alert variant="destructive">
                   <AlertTriangle className="h-4 w-4" />
-                  <AlertTitle>Budget Too Low</AlertTitle>
+                  <AlertTitle>Budget Limit Too Low</AlertTitle>
                   <AlertDescription>
-                    Budget cap must be greater than your current pending payments of {formatCurrency(budgetInfo?.totalProjectAllocations || '0')}. 
-                    Minimum required: {formatCurrency((parseFloat(budgetInfo?.totalProjectAllocations || '0') + 0.01).toString())}
+                    Your budget limit cannot be lower than your outstanding commitments. You currently have {formatCurrency(budgetInfo?.totalProjectAllocations || '0')} in active projects and tasks. 
+                    Please set your budget to at least {formatCurrency((parseFloat(budgetInfo?.totalProjectAllocations || '0') + 0.01).toString())} or complete some projects first.
                   </AlertDescription>
                 </Alert>
               )}
