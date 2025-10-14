@@ -140,9 +140,13 @@ export default function Calendar() {
     }
     
     return filteredEvents.filter(event => {
-      const eventStart = new Date(event.startDate);
-      const eventEnd = new Date(event.endDate);
-      return date >= eventStart && date <= eventEnd;
+      // Normalize both dates to midnight for exact day comparison
+      const eventEndDate = new Date(event.endDate);
+      const normalizedEventDate = new Date(eventEndDate.getFullYear(), eventEndDate.getMonth(), eventEndDate.getDate());
+      const normalizedTargetDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      
+      // Event should only appear on its exact due date (endDate)
+      return normalizedEventDate.getTime() === normalizedTargetDate.getTime();
     });
   };
 

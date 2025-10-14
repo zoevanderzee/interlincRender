@@ -3507,13 +3507,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
 
+          // Normalize due date to midnight for exact day matching
+          const dueDate = workRequest.dueDate ? new Date(workRequest.dueDate) : new Date(workRequest.createdAt);
+          const normalizedDueDate = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+
           calendarEvents.push({
             id: `work_request_${workRequest.id}`,
             title: workRequest.title || workRequest.description || 'Work Request',
             projectName,
             contractorName,
-            startDate: workRequest.createdAt,
-            endDate: workRequest.dueDate || workRequest.createdAt,
+            startDate: normalizedDueDate,
+            endDate: normalizedDueDate,
             type: 'deadline',
             status: workRequest.status === 'accepted' || workRequest.status === 'assigned' ? 'active' :
               workRequest.status === 'completed' ? 'completed' :
