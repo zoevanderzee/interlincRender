@@ -3,10 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Contract, User } from "@shared/schema";
-import { Calendar, Briefcase, Edit, Eye, MoreHorizontal, ArrowUpDown, Search } from "lucide-react";
+import { Calendar, Briefcase, Edit, Eye, MoreHorizontal, ArrowUpDown, Search, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface ContractsTableProps {
   contracts: Contract[];
@@ -26,6 +27,7 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
   const [searchTerm, setSearchTerm] = React.useState("");
   const [sortField, setSortField] = React.useState<string>("createdAt");
   const [sortDirection, setSortDirection] = React.useState<"asc" | "desc">("desc");
+  const [statusFilter, setStatusFilter] = React.useState<string>("all");
 
   // Format date
   const formatDate = (dateString: string | Date | null) => {
@@ -56,11 +58,41 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
     return contractor ? `${contractor.firstName} ${contractor.lastName}` : 'Unknown';
   };
 
-  // Get status badge
-  const getStatusBadge = (status: string) => {
+  // Get status badge with overdue detection
+  const getStatusBadge = (contract: any) => {
+    const status = contract.status;
+    const isOverdue = contract.isOverdue || false;
+    const daysOverdue = contract.daysOverdue || 0;
+    const daysRemaining = contract.daysRemaining;
+
+    // If active contract is overdue, show red overdue badge
+    if (status === 'active' && isOverdue) {
+      return (
+        <div className="flex flex-col gap-1">
+          <Badge className="bg-red-600 hover:bg-red-700 text-white">
+            OVERDUE
+          </Badge>
+          <span className="text-xs text-red-400">{daysOverdue} days late</span>
+        </div>
+      );
+    }
+
+    // If active contract is near deadline, show warning
+    if (status === 'active' && daysRemaining !== null && daysRemaining <= 3) {
+      return (
+        <div className="flex flex-col gap-1">
+          <Badge className="bg-yellow-600 hover:bg-yellow-700 text-white">
+            Active
+          </Badge>
+          <span className="text-xs text-yellow-400">{daysRemaining} days left</span>
+        </div>
+      );
+    }
+
+    // Normal status badges
     const statusMap: Record<string, { color: string, label: string }> = {
       active: { color: "bg-green-500 hover:bg-green-600", label: "Active" },
-      draft: { color: "bg-amber-500 hover:bg-amber-600", label: "Draft" },
+      draft: { color: "bg-amber-500 hover:bg-amber-600", label: "Pending" },
       completed: { color: "bg-blue-500 hover:bg-blue-600", label: "Completed" },
       terminated: { color: "bg-red-500 hover:bg-red-600", label: "Terminated" }
     };
@@ -86,12 +118,25 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
 
   // Filter and sort contracts
   const filteredAndSortedContracts = React.useMemo(() => {
-    // Filter first - exclude deleted projects and apply search
-    const filtered = contracts.filter(contract =>
-      contract.status !== 'deleted' &&
-      (contract.contractName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      getContractorName(contract.contractorId).toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    // Filter first - exclude deleted projects and apply search and status filter
+    const filtered = contracts.filter(contract => {
+      // Exclude deleted
+      if (contract.status === 'deleted') return false;
+
+      // Apply search filter
+      const matchesSearch = contract.contractName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        getContractorName(contract.contractorId).toLowerCase().includes(searchTerm.toLowerCase());
+      
+      if (!matchesSearch) return false;
+
+      // Apply status filter
+      if (statusFilter === 'all') return true;
+      if (statusFilter === 'pending') return contract.status === 'draft';
+      if (statusFilter === 'accepted') return contract.status === 'active';
+      if (statusFilter === 'completed') return contract.status === 'completed';
+      
+      return contract.status === statusFilter;
+    });
     
     // Then sort
     return [...filtered].sort((a, b) => {
@@ -133,7 +178,7 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
         return valueA < valueB ? 1 : -1;
       }
     });
-  }, [contracts, searchTerm, sortField, sortDirection]);
+  }, [contracts, searchTerm, sortField, sortDirection, statusFilter]);
 
   return (
     <Card className="border-zinc-800 bg-zinc-900">
@@ -144,14 +189,29 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
             Recent Projects
           </CardTitle>
           
-          <div className="relative w-full md:w-60">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-500" size={16} />
-            <Input
-              className="pl-9 bg-zinc-800 border-zinc-700 text-white w-full"
-              placeholder="Search projects..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+          <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full md:w-40 bg-zinc-800 border-zinc-700 text-white">
+                <Filter className="mr-2 h-4 w-4" />
+                <SelectValue placeholder="Filter status" />
+              </SelectTrigger>
+              <SelectContent className="bg-zinc-800 border-zinc-700 text-white">
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="accepted">Accepted</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <div className="relative w-full md:w-60">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-500" size={16} />
+              <Input
+                className="pl-9 bg-zinc-800 border-zinc-700 text-white w-full"
+                placeholder="Search projects..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
           </div>
         </div>
       </CardHeader>
@@ -247,7 +307,7 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
                       </div>
                     </TableCell>
                     <TableCell>
-                      {getStatusBadge(contract.status)}
+                      {getStatusBadge(contract)}
                     </TableCell>
                     <TableCell className="text-right">
                       {isContractor ? (
