@@ -229,63 +229,73 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
         <h2 className="text-xl font-semibold text-white mb-4">Active Assignments</h2>
         {activeAssignments.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {activeAssignments.slice(0, 4).map((assignment) => (
-              <Card key={assignment.id} className="bg-zinc-900 border-zinc-800">
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-start">
-                    <CardTitle className="text-white">
-                      {assignment.title || assignment.contractName || 'Assignment'}
-                    </CardTitle>
-                    <div className="px-2 py-1 bg-blue-500/20 rounded text-xs text-blue-400">
-                      {assignment.status || assignment.contractCode || 'Active'}
+            {activeAssignments.slice(0, 4).map((assignment) => {
+              // Get status badge color based on actual work request status
+              const getStatusBadge = (status: string) => {
+                switch(status) {
+                  case 'assigned':
+                  case 'pending':
+                    return 'bg-yellow-500/20 text-yellow-400';
+                  case 'accepted':
+                    return 'bg-blue-500/20 text-blue-400';
+                  case 'in_review':
+                    return 'bg-purple-500/20 text-purple-400';
+                  case 'approved':
+                    return 'bg-green-500/20 text-green-400';
+                  default:
+                    return 'bg-gray-500/20 text-gray-400';
+                }
+              };
+
+              return (
+                <Card key={assignment.id} className="bg-zinc-900 border-zinc-800">
+                  <CardHeader className="pb-2">
+                    <div className="flex justify-between items-start">
+                      <CardTitle className="text-white">
+                        {assignment.title || 'Assignment'}
+                      </CardTitle>
+                      <div className={`px-2 py-1 rounded text-xs ${getStatusBadge(assignment.status)}`}>
+                        {assignment.status?.replace('_', ' ').toUpperCase() || 'ACTIVE'}
+                      </div>
                     </div>
-                  </div>
-                  <CardDescription className="line-clamp-2">
-                    {assignment.description || 'No description provided'}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Due Date</span>
-                      <span className="text-white">
-                        {assignment.dueDate ? format(new Date(assignment.dueDate), 'MMM d, yyyy') : 
-                         assignment.startDate ? format(new Date(assignment.startDate), 'MMM d, yyyy') : 'Not set'}
-                      </span>
+                    <CardDescription className="line-clamp-2">
+                      {assignment.description || 'No description provided'}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Due Date</span>
+                        <span className="text-white">
+                          {assignment.dueDate ? format(new Date(assignment.dueDate), 'MMM d, yyyy') : 'Not set'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Status</span>
+                        <span className="text-white capitalize">
+                          {assignment.status?.replace('_', ' ') || 'Active'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Value</span>
+                        <span className="text-white">
+                          {formatEarnings(parseFloat(assignment.amount || 0))}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Status</span>
-                      <span className="text-white capitalize">
-                        {assignment.status?.replace('_', ' ') || 'Active'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Value</span>
-                      <span className="text-white">
-                        {formatEarnings(parseFloat(assignment.amount || assignment.value || 0))}
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button 
-                    variant="ghost" 
-                    className="w-full text-accent-500 hover:text-accent-400 hover:bg-accent-500/10"
-                    onClick={() => {
-                      if (assignment.contractId) {
-                        navigate(`/contract/${assignment.contractId}`);
-                      } else if (assignment.projectId) {
-                        navigate(`/projects`);
-                      } else {
-                        navigate(`/contractor-requests`);
-                      }
-                    }}
-                  >
-                    View Details
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))}
+                  </CardContent>
+                  <CardFooter>
+                    <Button 
+                      variant="ghost" 
+                      className="w-full text-accent-500 hover:text-accent-400 hover:bg-accent-500/10"
+                      onClick={() => navigate('/contractor-requests')}
+                    >
+                      View Details
+                    </Button>
+                  </CardFooter>
+                </Card>
+              );
+            })}
           </div>
         ) : (
           <Card className="bg-zinc-900 border-zinc-800">
