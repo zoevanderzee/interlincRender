@@ -246,8 +246,8 @@ export default function Projects() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-400">Total Projects</p>
-                <p className="text-3xl font-bold text-white">{realProjects.length}</p>
+                <p className="text-sm text-gray-400">Active Projects</p>
+                <p className="text-3xl font-bold text-white">{activeProjects.length}</p>
               </div>
               <FileText className="h-8 w-8 text-blue-500" />
             </div>
@@ -258,10 +258,10 @@ export default function Projects() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-400">Active Assignments</p>
-                <p className="text-3xl font-bold text-white">{dashboardStats?.activeAssignments || 0}</p>
+                <p className="text-sm text-gray-400">Completed Projects</p>
+                <p className="text-3xl font-bold text-white">{realProjects.filter((project: any) => project.status === 'completed').length}</p>
               </div>
-              <Users className="h-8 w-8 text-green-500" />
+              <FileText className="h-8 w-8 text-green-500" />
             </div>
           </CardContent>
         </Card>
@@ -270,10 +270,10 @@ export default function Projects() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-400">Total Contractors</p>
-                <p className="text-3xl font-bold text-white">{contractors.length}</p>
+                <p className="text-sm text-gray-400">Total Projects</p>
+                <p className="text-3xl font-bold text-white">{realProjects.length}</p>
               </div>
-              <Users className="h-8 w-8 text-purple-500" />
+              <FileText className="h-8 w-8 text-purple-500" />
             </div>
           </CardContent>
         </Card>
@@ -419,10 +419,10 @@ export default function Projects() {
               {(() => {
                 // Filter work requests for Quick Tasks project
                 const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
-                
+
                 // Find Quick Tasks project first
                 const quickTasksProject = projects.find(p => p.name === 'Quick Tasks' && p.businessId === currentUserId);
-                
+
                 // Filter work requests that belong to Quick Tasks project
                 const taskWorkRequests = quickTasksProject 
                   ? workRequests.filter(wr => wr.projectId === quickTasksProject.id)
@@ -503,10 +503,10 @@ export default function Projects() {
               {(() => {
                 // Filter work requests for Quick Tasks project
                 const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
-                
+
                 // Find Quick Tasks project first
                 const quickTasksProject = projects.find(p => p.name === 'Quick Tasks' && p.businessId === currentUserId);
-                
+
                 // Filter work requests that belong to Quick Tasks project
                 const taskWorkRequests = quickTasksProject 
                   ? workRequests.filter(wr => wr.projectId === quickTasksProject.id)
