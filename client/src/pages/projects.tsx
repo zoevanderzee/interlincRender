@@ -302,11 +302,14 @@ export default function Projects() {
                   {(() => {
                     const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
                     const quickTasksProject = projects.find(p => p.name === 'Quick Tasks' && p.businessId === currentUserId);
-                    const taskWorkRequests = quickTasksProject 
-                      ? workRequests.filter(wr => wr.projectId === quickTasksProject.id)
-                      : [];
+                    const quickTasksProjectId = quickTasksProject?.id;
+                    
+                    // Count overdue work requests from ALL projects EXCEPT Quick Tasks
+                    const projectWorkRequests = workRequests.filter(wr => 
+                      wr.projectId !== quickTasksProjectId
+                    );
 
-                    return taskWorkRequests.filter((wr: any) => wr.isOverdue).length;
+                    return projectWorkRequests.filter((wr: any) => wr.isOverdue).length;
                   })()}
                 </p>
               </div>
