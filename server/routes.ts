@@ -61,6 +61,7 @@ import connectV2Routes from "./connect-v2.js";
 import {registerSyncUserRoutes} from "./routes/sync-user";
 import {setupSyncEmailVerification} from "./routes/sync-email-verification";
 import {registerSyncFirebaseUserRoutes} from "./routes/sync-firebase-user";
+import pendingRegistrationsRoutes from "./routes/pending-registrations";
 import {registerBusinessWorkerRoutes} from "./business-workers/index";
 import {registerContractorsWithIdsRoutes} from "./business-workers/contractors-with-ids";
 import {registerProjectRoutes} from "./projects/index";
@@ -3484,6 +3485,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register email verification sync routes
   setupSyncEmailVerification(app);
+
+  // Register pending registrations routes
+  app.use(pendingRegistrationsRoutes);
 
   // Register business worker routes
   registerBusinessWorkerRoutes(app, requireAuth);

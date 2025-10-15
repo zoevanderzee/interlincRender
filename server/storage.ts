@@ -1,7 +1,7 @@
 import {
   users, invites, contracts, milestones, payments, paymentLogs, documents, bankAccounts, workRequests,
   businessOnboardingLinks, businessOnboardingUsage, connectionRequests, notifications, workSubmissions, workRequestSubmissions,
-  businessWorkers, projects, tasks, taskSubmissions,
+  businessWorkers, projects, tasks, taskSubmissions, pendingRegistrations,
   type User, type InsertUser,
   type Invite, type InsertInvite,
   type Contract, type InsertContract,
@@ -19,7 +19,8 @@ import {
   type BusinessWorker, type InsertBusinessWorker,
   type Project, type InsertProject,
   type Task, type InsertTask,
-  type TaskSubmission, type InsertTaskSubmission
+  type TaskSubmission, type InsertTaskSubmission,
+  type PendingRegistration, type InsertPendingRegistration
 } from "@shared/schema";
 import { eq, and, desc, lte, gte, sql, or, inArray, isNotNull, isNull } from "drizzle-orm";
 import { db, pool } from "./db";
@@ -111,6 +112,11 @@ export interface IStorage {
   updateBusinessOnboardingLink(businessId: number, data: Partial<InsertBusinessOnboardingLink>): Promise<BusinessOnboardingLink>;
   verifyOnboardingToken(token: string): Promise<{businessId: number, workerType: string} | undefined>;
   recordOnboardingUsage(businessId: number, workerId: number, token: string): Promise<BusinessOnboardingUsage>;
+
+  // Pending Registrations
+  createPendingRegistration(registration: InsertPendingRegistration): Promise<PendingRegistration>;
+  getPendingRegistrationByEmail(email: string): Promise<PendingRegistration | undefined>;
+  deletePendingRegistrationByEmail(email: string): Promise<boolean>;
 
   // Contracts
   getContract(id: number): Promise<Contract | undefined>;
@@ -1391,6 +1397,9 @@ export class MemStorage implements IStorage {
   async updateBusinessOnboardingLink(businessId: number, data: any): Promise<any> { return Promise.resolve({} as any); }
   async verifyOnboardingToken(token: string): Promise<any> { return Promise.resolve(undefined); }
   async recordOnboardingUsage(businessId: number, workerId: number, token: string): Promise<any> { return Promise.resolve({} as any); }
+  async createPendingRegistration(registration: any): Promise<any> { return Promise.resolve({} as any); }
+  async getPendingRegistrationByEmail(email: string): Promise<any> { return Promise.resolve(undefined); }
+  async deletePendingRegistrationByEmail(email: string): Promise<boolean> { return Promise.resolve(true); }
   async getPaymentByMilestoneId(milestoneId: number): Promise<any> { return Promise.resolve(undefined); }
   async getPaymentByTrolleyId(trolleyPaymentId: string): Promise<any> { return Promise.resolve(undefined); }
   async getApprovedMilestonesWithoutPayments(): Promise<any[]> { return Promise.resolve([]); }
@@ -3029,6 +3038,51 @@ export class DatabaseStorage implements IStorage {
       .returning();
 
     return usage;
+  }
+
+  // Pending Registrations methods
+  async createPendingRegistration(registration: InsertPendingRegistration): Promise<PendingRegistration> {
+    const [pendingReg] = await db
+      .insert(pendingRegistrations)
+      .values({
+        ...registration,
+        createdAt: new Date()
+      })
+      .onConflictDoUpdate({
+        target: pendingRegistrations.email,
+        set: {
+          ...registration,
+          createdAt: new Date()
+        }
+      })
+      .returning();
+
+    return pendingReg;
+  }
+
+  async getPendingRegistrationByEmail(email: string): Promise<PendingRegistration | undefined> {
+    const [registration] = await db
+      .select()
+      .from(pendingRegistrations)
+      .where(eq(pendingRegistrations.email, email));
+
+    if (!registration) return undefined;
+
+    const hoursSinceCreation = (Date.now() - registration.createdAt.getTime()) / (1000 * 60 * 60);
+    if (hoursSinceCreation > 48) {
+      await this.deletePendingRegistrationByEmail(email);
+      return undefined;
+    }
+
+    return registration;
+  }
+
+  async deletePendingRegistrationByEmail(email: string): Promise<boolean> {
+    const result = await db
+      .delete(pendingRegistrations)
+      .where(eq(pendingRegistrations.email, email));
+
+    return true;
   }
 
   // Budget Management Methods
