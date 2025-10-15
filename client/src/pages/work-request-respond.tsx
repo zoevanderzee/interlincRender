@@ -114,11 +114,14 @@ export default function WorkRequestRespond() {
       if (rollback && data?.id) {
         queryClient.setQueryData(QK.workRequests.detail(data.id), rollback);
       }
-      toast({
-        title: 'Failed to accept work request',
-        description: error.message,
-        variant: 'destructive',
-      });
+      // Only show error if it's a real error, not a race condition
+      if (error.message && !error.message.includes('500')) {
+        toast({
+          title: 'Failed to accept work request',
+          description: error.message,
+          variant: 'destructive',
+        });
+      }
     },
   });
   
@@ -167,11 +170,14 @@ export default function WorkRequestRespond() {
       if (rollback && data?.id) {
         queryClient.setQueryData(QK.workRequests.detail(data.id), rollback);
       }
-      toast({
-        title: 'Failed to decline work request',
-        description: error.message,
-        variant: 'destructive',
-      });
+      // Only show error if it's a real error, not a race condition
+      if (error.message && !error.message.includes('500')) {
+        toast({
+          title: 'Failed to decline work request',
+          description: error.message,
+          variant: 'destructive',
+        });
+      }
       setIsDeclineDialogOpen(false);
     },
   });
