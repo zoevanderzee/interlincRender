@@ -731,9 +731,24 @@ export const businessOnboardingUsage = pgTable("business_onboarding_usage", {
   registeredAt: timestamp("registered_at").notNull().defaultNow()
 });
 
+// Pending Registrations table - temporary storage for registration data during email verification
+export const pendingRegistrations = pgTable("pending_registrations", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  role: text("role").notNull(),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  username: text("username"),
+  company: text("company"),
+  position: text("position"),
+  workerType: text("worker_type"),
+  createdAt: timestamp("created_at").notNull().defaultNow()
+});
+
 // Create insert schemas
 export const insertBusinessOnboardingLinkSchema = createInsertSchema(businessOnboardingLinks);
 export const insertBusinessOnboardingUsageSchema = createInsertSchema(businessOnboardingUsage);
+export const insertPendingRegistrationSchema = createInsertSchema(pendingRegistrations);
 
 // Connection Requests table
 export const connectionRequests = pgTable("connection_requests", {
@@ -831,3 +846,7 @@ export type BusinessOnboardingUsage = typeof businessOnboardingUsage.$inferSelec
 // Type for invoice
 export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
 export type Invoice = typeof invoices.$inferSelect;
+
+// Type for pending registration
+export type InsertPendingRegistration = z.infer<typeof insertPendingRegistrationSchema>;
+export type PendingRegistration = typeof pendingRegistrations.$inferSelect;
