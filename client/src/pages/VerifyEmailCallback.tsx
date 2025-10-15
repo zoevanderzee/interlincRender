@@ -39,17 +39,51 @@ export default function VerifyEmailCallback() {
         
         console.log(`Firebase verification successful for: ${user.email}`);
 
-        // Sync verification status to our PostgreSQL database
-        const syncResponse = await apiRequest('POST', '/api/sync-email-verification', {
-          email: user.email
-        });
+        // Retrieve registration data from localStorage
+        const storedRegistrationData = localStorage.getItem('pending_registration_data');
+        let registrationData = null;
+        
+        if (storedRegistrationData) {
+          try {
+            registrationData = JSON.parse(storedRegistrationData);
+            console.log("Retrieved registration data from localStorage:", {
+              role: registrationData.role,
+              email: registrationData.email
+            });
+          } catch (e) {
+            console.error("Failed to parse stored registration data:", e);
+          }
+        }
+
+        // Sync user to PostgreSQL database with registration data
+        const syncPayload: any = {
+          uid: user.uid,
+          email: user.email,
+          emailVerified: user.emailVerified,
+          displayName: user.displayName || ""
+        };
+
+        // Include registration data if available (critical for role assignment)
+        if (registrationData) {
+          syncPayload.registrationData = registrationData;
+          console.log("Syncing user with role:", registrationData.role);
+        } else {
+          console.warn("No registration data found in localStorage - user may not be assigned correct role");
+        }
+
+        const syncResponse = await apiRequest('POST', '/api/sync-firebase-user', syncPayload);
         
         if (!syncResponse.ok) {
           const errorData = await syncResponse.json();
-          throw new Error(errorData.error || 'Failed to sync verification to database');
+          throw new Error(errorData.error || errorData.details || 'Failed to sync user to database');
         }
         
-        console.log('Database sync successful');
+        const syncData = await syncResponse.json();
+        console.log('Database sync successful:', syncData);
+
+        // Clear the stored registration data after successful sync
+        localStorage.removeItem('pending_registration_data');
+        console.log("Cleared registration data from localStorage");
 
         setStatus('success');
         toast({
