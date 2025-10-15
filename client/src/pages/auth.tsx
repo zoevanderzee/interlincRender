@@ -453,22 +453,41 @@ export default function AuthPage() {
 
         // After successful Firebase login, get the user data from our backend
         try {
-          console.log("Attempting to sync Firebase user with backend:", {
+          // Check if there's pending registration data in localStorage
+          const storedRegistrationData = localStorage.getItem('pending_registration_data');
+          let registrationData = null;
+          
+          if (storedRegistrationData) {
+            try {
+              registrationData = JSON.parse(storedRegistrationData);
+              console.log("Found pending registration data for login:", {
+                role: registrationData.role,
+                email: registrationData.email
+              });
+            } catch (e) {
+              console.error("Failed to parse stored registration data:", e);
+            }
+          }
+
+          const syncPayload: any = {
             uid: result.user.uid,
             email: result.user.email,
             emailVerified: result.user.emailVerified,
             displayName: result.user.displayName || ""
-          });
+          };
+
+          // Include registration data if available (for first-time logins after registration)
+          if (registrationData) {
+            syncPayload.registrationData = registrationData;
+            console.log("Including registration data in login sync - role:", registrationData.role);
+          }
+
+          console.log("Attempting to sync Firebase user with backend:", syncPayload);
 
           const syncResponse = await fetch("/api/sync-firebase-user", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              uid: result.user.uid,
-              email: result.user.email,
-              emailVerified: result.user.emailVerified,
-              displayName: result.user.displayName || ""
-            }),
+            body: JSON.stringify(syncPayload),
             credentials: 'include'
           });
 
@@ -477,6 +496,12 @@ export default function AuthPage() {
           if (syncResponse.ok) {
             const syncData = await syncResponse.json();
             console.log("Backend sync successful:", syncData);
+
+            // Clear pending registration data after successful sync
+            if (registrationData) {
+              localStorage.removeItem('pending_registration_data');
+              console.log("Cleared pending registration data from localStorage");
+            }
 
             // Now fetch the user data using Firebase UID header
             const userResponse = await fetch('/api/user', {
