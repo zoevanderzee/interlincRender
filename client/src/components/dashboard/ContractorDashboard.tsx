@@ -6,6 +6,7 @@ import { DollarSign, FileText, Calendar, Clock, AlertTriangle, CheckCircle, Brie
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { format } from 'date-fns';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface DashboardData {
   stats: {
@@ -46,13 +47,13 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
 
   const upcomingPayments = dashboardData.payments.filter(payment => {
     const paymentDate = new Date(payment.scheduledDate);
-    return payment.status !== 'completed' && 
-           paymentDate >= now && 
+    return payment.status !== 'completed' &&
+           paymentDate >= now &&
            paymentDate <= thirtyDaysFromNow;
   });
 
   // Active assignments are work requests that have been ACCEPTED by the contractor
-  const activeAssignments = dashboardData.workRequests?.filter((wr: any) => 
+  const activeAssignments = dashboardData.workRequests?.filter((wr: any) =>
     wr.status === 'accepted'
   ) || [];
 
@@ -86,6 +87,36 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
     refetchInterval: 30000 // Refetch every 30 seconds
   });
 
+  // Fetch transactions from Stripe Connect
+  const { data: contractorTransactions, isLoading: transactionsLoading } = useQuery({
+    queryKey: ['/api/contractors/transactions'],
+    queryFn: async () => {
+      const userId = localStorage.getItem('user_id');
+      const firebaseUid = localStorage.getItem('firebase_uid');
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+
+      if (userId) {
+        headers['X-User-ID'] = userId;
+      }
+      if (firebaseUid) {
+        headers['X-Firebase-UID'] = firebaseUid;
+      }
+
+      const response = await fetch('/api/contractors/transactions', {
+        credentials: 'include',
+        headers
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch transactions');
+      }
+      return response.json();
+    },
+    refetchInterval: 30000 // Refetch every 30 seconds
+  });
+
   // Use Connect account data as source of truth
   const totalEarnings = contractorEarnings?.totalEarnings || 0;
   const pendingEarnings = contractorEarnings?.pendingEarnings || 0;
@@ -98,6 +129,15 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
       currency: currency
     }).format(amount);
   };
+
+  // Helper to format currency for local payments if needed (though Stripe is preferred)
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-GB', {
+      style: 'currency',
+      currency: 'GBP' // Defaulting to GBP if currency not available from Stripe
+    }).format(amount);
+  };
+
 
   console.log('Contractor Dashboard Earnings (from Connect account):', {
     totalEarnings,
@@ -162,7 +202,7 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
 
       {/* Action Buttons */}
       <div className="flex flex-wrap gap-4 mb-8">
-        <Button 
+        <Button
           size="lg"
           onClick={() => navigate('/contracts')}
           className="animate-scale-in"
@@ -171,7 +211,7 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
           View All Projects
         </Button>
 
-        <Button 
+        <Button
           variant="outline"
           size="lg"
           onClick={() => navigate('/payments')}
@@ -185,7 +225,7 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
       {/* Quick Actions Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         {/* Projects */}
-        <Button 
+        <Button
           variant="ghost"
           className="h-auto py-4 px-6 justify-start animate-slide-in"
           onClick={() => navigate('/contracts')}
@@ -198,7 +238,7 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
         </Button>
 
         {/* Payments */}
-        <Button 
+        <Button
           variant="ghost"
           className="h-auto py-4 px-6 justify-start animate-slide-in"
           onClick={() => navigate('/payments')}
@@ -211,7 +251,7 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
         </Button>
 
         {/* Settings */}
-        <Button 
+        <Button
           variant="ghost"
           className="h-auto py-4 px-6 justify-start animate-slide-in"
           onClick={() => navigate('/settings')}
@@ -285,8 +325,8 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
                     </div>
                   </CardContent>
                   <CardFooter>
-                    <Button 
-                      variant="ghost" 
+                    <Button
+                      variant="ghost"
                       className="w-full text-accent-500 hover:text-accent-400 hover:bg-accent-500/10"
                       onClick={() => navigate('/contractor-requests')}
                     >
@@ -362,6 +402,65 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
           </Card>
         )}
       </div>
+
+      {/* Payment History from Stripe Connect */}
+        <Card className="bg-black border-gray-800">
+          <CardHeader>
+            <CardTitle className="text-white">Payment History</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {transactionsLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
+                <p className="text-gray-400">Loading transactions...</p>
+              </div>
+            ) : contractorTransactions.length === 0 ? (
+              <div className="text-center py-8">
+                <DollarSign className="h-12 w-12 text-gray-600 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-400 mb-2">No payments yet</h3>
+                <p className="text-gray-500">Your payment history will appear here once you start earning</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-gray-800">
+                    <TableHead className="text-gray-400">Date</TableHead>
+                    <TableHead className="text-gray-400">Description</TableHead>
+                    <TableHead className="text-gray-400">Amount</TableHead>
+                    <TableHead className="text-gray-400">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {contractorTransactions.map((transaction: any) => (
+                    <TableRow key={transaction.id} className="border-gray-800">
+                      <TableCell className="text-white">
+                        {new Date(transaction.created).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-white">
+                        {transaction.description}
+                      </TableCell>
+                      <TableCell className="text-white font-medium">
+                        {formatEarnings(transaction.amount)}
+                      </TableCell>
+                      <TableCell>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          transaction.status === 'paid'
+                            ? 'bg-green-900/30 text-green-400'
+                            : transaction.status === 'available'
+                            ? 'bg-blue-900/30 text-blue-400'
+                            : 'bg-yellow-900/30 text-yellow-400'
+                        }`}>
+                          {transaction.status === 'paid' ? 'Paid' :
+                           transaction.status === 'available' ? 'Available' : 'Pending'}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
     </>
   );
 }
