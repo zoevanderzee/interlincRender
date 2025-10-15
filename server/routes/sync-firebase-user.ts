@@ -54,6 +54,16 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
         const result = await storage.updateUser(existingUser.id, updateData);
         const updatedUser = result || existingUser;
 
+        // Clean up pending registration data if it was used
+        if (registrationData) {
+          try {
+            await storage.deletePendingRegistrationByEmail(email.toLowerCase());
+            console.log(`Cleaned up pending registration for ${email}`);
+          } catch (cleanupError) {
+            console.error('Error cleaning up pending registration:', cleanupError);
+          }
+        }
+
         // User found and synced successfully  
         console.log(`User metadata synced for user ID ${updatedUser.id} (${updatedUser.username}) with role: ${updatedUser.role}`);
 
@@ -112,6 +122,14 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
       try {
         const newUser = await storage.createUser(userData);
         console.log(`New user created successfully: ${newUser.id} (${newUser.email})`);
+        
+        // Clean up pending registration data after successful user creation
+        try {
+          await storage.deletePendingRegistrationByEmail(email.toLowerCase());
+          console.log(`Cleaned up pending registration for ${email}`);
+        } catch (cleanupError) {
+          console.error('Error cleaning up pending registration:', cleanupError);
+        }
       } catch (createError: any) {
         console.error('Error creating new user:', createError);
         

@@ -453,20 +453,22 @@ export default function AuthPage() {
 
         // After successful Firebase login, get the user data from our backend
         try {
-          // Check if there's pending registration data in localStorage
-          const storedRegistrationData = localStorage.getItem('pending_registration_data');
+          // Check if there's pending registration data in database
           let registrationData = null;
           
-          if (storedRegistrationData) {
-            try {
-              registrationData = JSON.parse(storedRegistrationData);
+          try {
+            const pendingRegResponse = await fetch(`/api/pending-registrations/${encodeURIComponent(result.user.email || loginForm.username)}`);
+            if (pendingRegResponse.ok) {
+              registrationData = await pendingRegResponse.json();
               console.log("Found pending registration data for login:", {
                 role: registrationData.role,
                 email: registrationData.email
               });
-            } catch (e) {
-              console.error("Failed to parse stored registration data:", e);
+            } else if (pendingRegResponse.status !== 404) {
+              console.error("Error fetching pending registration:", await pendingRegResponse.text());
             }
+          } catch (e) {
+            console.error("Failed to fetch pending registration data:", e);
           }
 
           const syncPayload: any = {
@@ -498,9 +500,15 @@ export default function AuthPage() {
             console.log("Backend sync successful:", syncData);
 
             // Clear pending registration data after successful sync
-            if (registrationData) {
-              localStorage.removeItem('pending_registration_data');
-              console.log("Cleared pending registration data from localStorage");
+            if (registrationData && registrationData.email) {
+              try {
+                await fetch(`/api/pending-registrations/${encodeURIComponent(registrationData.email)}`, {
+                  method: 'DELETE'
+                });
+                console.log("Cleared pending registration data from database");
+              } catch (e) {
+                console.error("Failed to delete pending registration:", e);
+              }
             }
 
             // Now fetch the user data using Firebase UID header
@@ -600,21 +608,36 @@ export default function AuthPage() {
       const result = await signUpUser(registerData.email, registerData.password);
 
       if (result.success && result.user) {
-        // Store registration data in localStorage so it survives email verification page navigation
-        localStorage.setItem('pending_registration_data', JSON.stringify({
-          role: registerData.role,
-          firstName: registerData.firstName,
-          lastName: registerData.lastName,
-          username: registerData.username,
-          company: registerData.company,
-          position: registerData.position,
-          workerType: registerData.workerType,
-          email: registerData.email
-        }));
-        console.log("Stored registration data in localStorage for email verification:", {
-          role: registerData.role,
-          email: registerData.email
-        });
+        // Store registration data in database for email verification flow
+        try {
+          const pendingRegistrationData = {
+            role: registerData.role,
+            firstName: registerData.firstName,
+            lastName: registerData.lastName,
+            username: registerData.username,
+            company: registerData.company,
+            position: registerData.position,
+            workerType: registerData.workerType,
+            email: registerData.email
+          };
+
+          const storeResponse = await fetch('/api/pending-registrations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(pendingRegistrationData)
+          });
+
+          if (!storeResponse.ok) {
+            console.error("Failed to store registration data:", await storeResponse.text());
+          } else {
+            console.log("Stored registration data in database for email verification:", {
+              role: registerData.role,
+              email: registerData.email
+            });
+          }
+        } catch (error) {
+          console.error("Error storing registration data:", error);
+        }
 
         // Firebase user created successfully - email verification sent
         toast({
