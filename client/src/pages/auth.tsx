@@ -575,6 +575,22 @@ export default function AuthPage() {
       const result = await signUpUser(registerData.email, registerData.password);
 
       if (result.success && result.user) {
+        // Store registration data in localStorage so it survives email verification page navigation
+        localStorage.setItem('pending_registration_data', JSON.stringify({
+          role: registerData.role,
+          firstName: registerData.firstName,
+          lastName: registerData.lastName,
+          username: registerData.username,
+          company: registerData.company,
+          position: registerData.position,
+          workerType: registerData.workerType,
+          email: registerData.email
+        }));
+        console.log("Stored registration data in localStorage for email verification:", {
+          role: registerData.role,
+          email: registerData.email
+        });
+
         // Firebase user created successfully - email verification sent
         toast({
           title: "Account Created!",
