@@ -115,8 +115,8 @@ export interface IStorage {
 
   // Pending Registrations
   createPendingRegistration(registration: InsertPendingRegistration): Promise<PendingRegistration>;
-  getPendingRegistrationByEmail(email: string): Promise<PendingRegistration | undefined>;
-  deletePendingRegistrationByEmail(email: string): Promise<boolean>;
+  getPendingRegistrationByFirebaseUid(firebaseUid: string): Promise<PendingRegistration | undefined>;
+  deletePendingRegistrationByFirebaseUid(firebaseUid: string): Promise<boolean>;
 
   // Contracts
   getContract(id: number): Promise<Contract | undefined>;
@@ -1398,8 +1398,8 @@ export class MemStorage implements IStorage {
   async verifyOnboardingToken(token: string): Promise<any> { return Promise.resolve(undefined); }
   async recordOnboardingUsage(businessId: number, workerId: number, token: string): Promise<any> { return Promise.resolve({} as any); }
   async createPendingRegistration(registration: any): Promise<any> { return Promise.resolve({} as any); }
-  async getPendingRegistrationByEmail(email: string): Promise<any> { return Promise.resolve(undefined); }
-  async deletePendingRegistrationByEmail(email: string): Promise<boolean> { return Promise.resolve(true); }
+  async getPendingRegistrationByFirebaseUid(firebaseUid: string): Promise<any> { return Promise.resolve(undefined); }
+  async deletePendingRegistrationByFirebaseUid(firebaseUid: string): Promise<boolean> { return Promise.resolve(true); }
   async getPaymentByMilestoneId(milestoneId: number): Promise<any> { return Promise.resolve(undefined); }
   async getPaymentByTrolleyId(trolleyPaymentId: string): Promise<any> { return Promise.resolve(undefined); }
   async getApprovedMilestonesWithoutPayments(): Promise<any[]> { return Promise.resolve([]); }
@@ -3049,7 +3049,7 @@ export class DatabaseStorage implements IStorage {
         createdAt: new Date()
       })
       .onConflictDoUpdate({
-        target: pendingRegistrations.email,
+        target: pendingRegistrations.firebaseUid,
         set: {
           ...registration,
           createdAt: new Date()
@@ -3060,27 +3060,27 @@ export class DatabaseStorage implements IStorage {
     return pendingReg;
   }
 
-  async getPendingRegistrationByEmail(email: string): Promise<PendingRegistration | undefined> {
+  async getPendingRegistrationByFirebaseUid(firebaseUid: string): Promise<PendingRegistration | undefined> {
     const [registration] = await db
       .select()
       .from(pendingRegistrations)
-      .where(eq(pendingRegistrations.email, email));
+      .where(eq(pendingRegistrations.firebaseUid, firebaseUid));
 
     if (!registration) return undefined;
 
     const hoursSinceCreation = (Date.now() - registration.createdAt.getTime()) / (1000 * 60 * 60);
     if (hoursSinceCreation > 48) {
-      await this.deletePendingRegistrationByEmail(email);
+      await this.deletePendingRegistrationByFirebaseUid(firebaseUid);
       return undefined;
     }
 
     return registration;
   }
 
-  async deletePendingRegistrationByEmail(email: string): Promise<boolean> {
+  async deletePendingRegistrationByFirebaseUid(firebaseUid: string): Promise<boolean> {
     const result = await db
       .delete(pendingRegistrations)
-      .where(eq(pendingRegistrations.email, email));
+      .where(eq(pendingRegistrations.firebaseUid, firebaseUid));
 
     return true;
   }

@@ -28,11 +28,11 @@ router.post("/api/pending-registrations", async (req: Request, res: Response) =>
   }
 });
 
-router.get("/api/pending-registrations/:email", async (req: Request, res: Response) => {
+router.get("/api/pending-registrations/:firebaseUid", async (req: Request, res: Response) => {
   try {
-    const email = decodeURIComponent(req.params.email);
+    const firebaseUid = req.params.firebaseUid;
     
-    const pendingRegistration = await storage.getPendingRegistrationByEmail(email);
+    const pendingRegistration = await storage.getPendingRegistrationByFirebaseUid(firebaseUid);
     
     if (!pendingRegistration) {
       return res.status(404).json({ error: "No pending registration found" });
@@ -48,11 +48,11 @@ router.get("/api/pending-registrations/:email", async (req: Request, res: Respon
   }
 });
 
-router.delete("/api/pending-registrations/:email", async (req: Request, res: Response) => {
+router.delete("/api/pending-registrations/:firebaseUid", async (req: Request, res: Response) => {
   try {
-    const email = decodeURIComponent(req.params.email);
+    const firebaseUid = req.params.firebaseUid;
     
-    await storage.deletePendingRegistrationByEmail(email);
+    await storage.deletePendingRegistrationByFirebaseUid(firebaseUid);
     
     res.json({ success: true });
   } catch (error: any) {

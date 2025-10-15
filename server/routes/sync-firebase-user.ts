@@ -57,7 +57,7 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
         // Clean up pending registration data if it was used
         if (registrationData) {
           try {
-            await storage.deletePendingRegistrationByEmail(email.toLowerCase());
+            await storage.deletePendingRegistrationByFirebaseUid(uid);
             console.log(`Cleaned up pending registration for ${email}`);
           } catch (cleanupError) {
             console.error('Error cleaning up pending registration:', cleanupError);
@@ -125,7 +125,7 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
         
         // Clean up pending registration data after successful user creation
         try {
-          await storage.deletePendingRegistrationByEmail(email.toLowerCase());
+          await storage.deletePendingRegistrationByFirebaseUid(uid);
           console.log(`Cleaned up pending registration for ${email}`);
         } catch (cleanupError) {
           console.error('Error cleaning up pending registration:', cleanupError);

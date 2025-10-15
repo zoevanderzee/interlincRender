@@ -453,11 +453,11 @@ export default function AuthPage() {
 
         // After successful Firebase login, get the user data from our backend
         try {
-          // Check if there's pending registration data in database
+          // Check if there's pending registration data in database using Firebase UID
           let registrationData = null;
           
           try {
-            const pendingRegResponse = await fetch(`/api/pending-registrations/${encodeURIComponent(result.user.email || loginForm.username)}`);
+            const pendingRegResponse = await fetch(`/api/pending-registrations/${result.user.uid}`);
             if (pendingRegResponse.ok) {
               registrationData = await pendingRegResponse.json();
               console.log("Found pending registration data for login:", {
@@ -500,9 +500,9 @@ export default function AuthPage() {
             console.log("Backend sync successful:", syncData);
 
             // Clear pending registration data after successful sync
-            if (registrationData && registrationData.email) {
+            if (registrationData && registrationData.firebaseUid) {
               try {
-                await fetch(`/api/pending-registrations/${encodeURIComponent(registrationData.email)}`, {
+                await fetch(`/api/pending-registrations/${registrationData.firebaseUid}`, {
                   method: 'DELETE'
                 });
                 console.log("Cleared pending registration data from database");
@@ -611,6 +611,7 @@ export default function AuthPage() {
         // Store registration data in database for email verification flow
         try {
           const pendingRegistrationData = {
+            firebaseUid: result.user.uid,
             role: registerData.role,
             firstName: registerData.firstName,
             lastName: registerData.lastName,

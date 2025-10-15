@@ -734,7 +734,8 @@ export const businessOnboardingUsage = pgTable("business_onboarding_usage", {
 // Pending Registrations table - temporary storage for registration data during email verification
 export const pendingRegistrations = pgTable("pending_registrations", {
   id: serial("id").primaryKey(),
-  email: text("email").notNull().unique(),
+  firebaseUid: text("firebase_uid").notNull().unique(),
+  email: text("email").notNull(),
   role: text("role").notNull(),
   firstName: text("first_name"),
   lastName: text("last_name"),
