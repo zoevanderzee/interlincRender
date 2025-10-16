@@ -4,13 +4,13 @@ import { getAuth } from "firebase/auth";
 import { getAnalytics, isSupported } from "firebase/analytics";
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyD5xafZSuzQ8DfnAjboO95MQ2unyjxINIw",
-  authDomain: "interlinc-1.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "interlinc-1",
-  storageBucket: "interlinc-1.firebasestorage.app",
-  messagingSenderId: "900417123937",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:900417123937:web:d040919e22266b35609c20",
-  measurementId: "G-FPLSY4HSQJ"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyDR7mHT4DmeAswwzaupV3DivWUcvGK9XBU",
+  authDomain: "interlinc-78576.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "interlinc-78576",
+  storageBucket: "interlinc-78576.firebasestorage.app",
+  messagingSenderId: "1049882668599",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:1049882668599:web:22ef374662c2ceade819b2",
+  measurementId: "G-F2LWZWPGVN"
 };
 
 // Initialize Firebase
