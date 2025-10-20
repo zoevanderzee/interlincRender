@@ -127,43 +127,16 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
         subscriptionStatus: 'inactive' as const
       };
 
+      const newUser = await storage.createUser(userData);
+      console.log(`New user created successfully: ${newUser.id} (${newUser.email})`);
+      
+      // Clean up pending registration data after successful user creation
       try {
-        const newUser = await storage.createUser(userData);
-        console.log(`New user created successfully: ${newUser.id} (${newUser.email})`);
-        
-        // Clean up pending registration data after successful user creation
-        try {
-          await storage.deletePendingRegistrationByFirebaseUid(uid);
-          console.log(`Cleaned up pending registration for ${email}`);
-        } catch (cleanupError) {
-          console.error('Error cleaning up pending registration:', cleanupError);
-        }
-      } catch (createError: any) {
-        console.error('Error creating new user:', createError);
-        
-        // If user creation fails, try to find if user was created by someone else
-        const retryUser = await storage.getUserByEmail(email.toLowerCase());
-        if (retryUser) {
-          console.log('User was created by another process, using existing user');
-          // Update with Firebase UID if missing
-          if (!retryUser.firebaseUid) {
-            await storage.updateUser(retryUser.id, { firebaseUid: uid });
-          }
-          
-          req.session.userId = retryUser.id;
-          req.session.user = retryUser;
-          
-          return res.json({ 
-            success: true, 
-            message: "User found and synced",
-            userId: retryUser.id
-          });
-        }
-        
-        throw createError; // Re-throw if we can't recover
+        await storage.deletePendingRegistrationByFirebaseUid(uid);
+        console.log(`Cleaned up pending registration for ${email}`);
+      } catch (cleanupError) {
+        console.error('Error cleaning up pending registration:', cleanupError);
       }
-
-      const newUser = await storage.getUserByEmail(email.toLowerCase());
 
       // User created and synced successfully
       console.log(`User metadata created for user ID ${newUser.id} (${newUser.username})`);
