@@ -1971,10 +1971,10 @@ export class DatabaseStorage implements IStorage {
     try {
       console.log(`🗑️ PERMANENT DELETION: Starting complete purge for user ID ${id}`);
 
-      // 1. Delete all connection requests (as business or contractor)
-      await db.delete(connectionRequests).where(eq(connectionRequests.businessId, id));
-      await db.delete(connectionRequests).where(eq(connectionRequests.contractorId, id));
-      console.log(`  ✓ Deleted connection requests`);
+      // 1. Delete all connection requests (as business or contractor) - CRITICAL for preventing phantom data
+      const businessConnections = await db.delete(connectionRequests).where(eq(connectionRequests.businessId, id)).returning();
+      const contractorConnections = await db.delete(connectionRequests).where(eq(connectionRequests.contractorId, id)).returning();
+      console.log(`  ✓ Deleted ${businessConnections.length + contractorConnections.length} connection requests`);
 
       // 2. Delete all contracts (as business or contractor)
       await db.delete(contracts).where(eq(contracts.businessId, id));
@@ -3636,15 +3636,16 @@ export class DatabaseStorage implements IStorage {
 
       for (const req of requests) {
         // CRITICAL: Connection request MUST have been created AFTER this user account was created
-        // This prevents linking phantom data from deleted accounts that had the same email
+        // This prevents linking phantom data from deleted accounts that had the same ID
         const requestDate = new Date(req.createdAt);
         const userCreatedDate = new Date(contractor.createdAt || 0);
         
         console.log(`   Checking request ${req.id}: created ${requestDate.toISOString()}`);
         console.log(`   User created: ${userCreatedDate.toISOString()}`);
         
+        // PHANTOM DATA CHECK: If request predates user creation, it's from a deleted account
         if (requestDate < userCreatedDate) {
-          console.log(`🧹 PHANTOM DATA: Deleting connection request ${req.id} (created BEFORE user existed)`);
+          console.log(`🧹 PHANTOM DATA (TIME): Deleting connection request ${req.id} (created BEFORE current user account existed)`);
           await db.delete(connectionRequests).where(eq(connectionRequests.id, req.id));
           cleanedCount++;
           continue;
