@@ -98,6 +98,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Subscription requirement middleware
   const requireActiveSubscription = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      // Allow access to subscription-related routes without active subscription
+      const exemptPaths = [
+        '/api/subscription-prices',
+        '/api/create-subscription',
+        '/api/complete-subscription'
+      ];
+      
+      if (exemptPaths.some(path => req.path.startsWith(path))) {
+        return next();
+      }
+
       let userId = req.user?.id;
 
       // Use X-User-ID header fallback if session auth failed

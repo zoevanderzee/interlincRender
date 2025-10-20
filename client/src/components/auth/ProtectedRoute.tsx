@@ -21,11 +21,11 @@ export function ProtectedRoute({ path, children }: ProtectedRouteProps) {
     if (!isLoading && !user) {
       console.log("Force redirecting to /auth");
       setLocation("/auth");
-    } else if (!isLoading && user && requiresSubscription(user) && location !== '/subscribe') {
+    } else if (!isLoading && user && requiresSubscription(user) && path !== '/subscribe' && location !== '/subscribe') {
       console.log("Force redirecting to /subscribe - subscription required");
       setLocation("/subscribe");
     }
-  }, [isLoading, user, setLocation, location]);
+  }, [isLoading, user, setLocation, location, path]);
 
   return (
     <Route path={path}>
