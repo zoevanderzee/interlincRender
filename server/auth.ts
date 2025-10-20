@@ -6,7 +6,9 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import bcrypt from "bcrypt";
 import { storage } from "./storage";
-import { User as SelectUser } from "@shared/schema";
+import { User as SelectUser, connectionRequests } from "@shared/schema";
+import { db } from "./db";
+import { eq, or } from "drizzle-orm";
 
 declare global {
   namespace Express {
@@ -314,6 +316,30 @@ export function setupAuth(app: Express) {
       };
 
       const user = await storage.createUser(userData);
+
+      // SECURITY: Clean up any phantom connection requests from previous deleted accounts with this email
+      // This prevents data leakage when someone re-registers with the same email
+      try {
+        const allConnectionRequests = await db
+          .select()
+          .from(connectionRequests)
+          .where(or(
+            eq(connectionRequests.contractorId, user.id),
+            eq(connectionRequests.businessId, user.id)
+          ));
+        
+        // Delete any connection requests that don't match this exact user ID
+        for (const req of allConnectionRequests) {
+          // If the contractor ID matches but the request is from before this user was created
+          if (req.contractorId === user.id && req.createdAt < user.createdAt) {
+            console.log(`🧹 REGISTRATION CLEANUP: Removing phantom connection request ${req.id} from previous deleted account`);
+            await db.delete(connectionRequests).where(eq(connectionRequests.id, req.id));
+          }
+        }
+      } catch (cleanupError) {
+        console.error('Error cleaning up phantom connections during registration:', cleanupError);
+        // Continue registration even if cleanup fails
+      }
 
       // Note: Trolley accounts are created separately during business onboarding
       // and contractor payment setup - not during initial registration

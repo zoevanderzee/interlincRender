@@ -3610,10 +3610,12 @@ export class DatabaseStorage implements IStorage {
     try {
       // SECURITY: Verify contractor exists before querying connections
       const contractor = await this.getUser(contractorId);
-      if (!contractor) {
-        console.log(`Contractor ${contractorId} does not exist - cannot have connections`);
+      if (!contractor || contractor.role !== 'contractor') {
+        console.log(`Contractor ${contractorId} does not exist or is not a contractor - cannot have connections`);
         return [];
       }
+
+      console.log(`🔍 STRICT VERIFICATION: Checking connections for contractor ${contractorId} with email ${contractor.email}`);
 
       const requests = await db
         .select()
@@ -3625,13 +3627,25 @@ export class DatabaseStorage implements IStorage {
           )
         );
 
-      console.log(`Found ${requests.length} accepted connection requests for contractor ID: ${contractorId}`);
+      console.log(`Found ${requests.length} connection requests with contractor ID ${contractorId}`);
 
       const businesses: any[] = [];
+      let cleanedCount = 0;
+
       for (const req of requests) {
+        // STRICT CHECK: Verify this connection request actually belongs to THIS specific contractor ID
+        // (not a phantom from a deleted account with the same email)
+        if (req.contractorId !== contractorId) {
+          console.log(`🧹 CLEANUP: Removing connection request ${req.id} - contractor ID mismatch (expected ${contractorId}, got ${req.contractorId})`);
+          await db.delete(connectionRequests).where(eq(connectionRequests.id, req.id));
+          cleanedCount++;
+          continue;
+        }
+
         const business = await this.getUser(req.businessId);
         // Only include if business exists AND has business role
         if (business && business.role === 'business') {
+          console.log(`✅ VALID CONNECTION: Contractor ${contractorId} -> Business ${business.id} (${business.companyName || business.email})`);
           businesses.push({
             id: business.id,
             name: business.companyName || `${business.firstName} ${business.lastName}` || business.username
@@ -3640,10 +3654,11 @@ export class DatabaseStorage implements IStorage {
           // Business was deleted or invalid - clean up the stale connection request
           console.log(`🧹 CLEANUP: Removing phantom connection request ID ${req.id} - contractor ${contractorId} -> deleted/invalid business ${req.businessId}`);
           await db.delete(connectionRequests).where(eq(connectionRequests.id, req.id));
+          cleanedCount++;
         }
       }
 
-      console.log(`✅ Contractor ${contractorId} has ${businesses.length} valid business connections (cleaned up ${requests.length - businesses.length} phantom connections)`);
+      console.log(`✅ VERIFICATION COMPLETE: Contractor ${contractorId} has ${businesses.length} valid connections (cleaned up ${cleanedCount} phantom/invalid connections)`);
       return businesses;
     } catch (error) {
       console.error('Error getting accepted connection requests for contractor:', error);
