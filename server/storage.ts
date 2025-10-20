@@ -3296,19 +3296,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getConnectionRequests(filters: { businessId?: number, contractorId?: number, status?: string }): Promise<ConnectionRequest[]> {
-    let query = db.select().from(connectionRequests);
+    // Build conditions array to properly combine with AND logic
+    const conditions = [];
 
-    // Apply filters
     if (filters.businessId !== undefined) {
-      query = query.where(eq(connectionRequests.businessId, filters.businessId));
+      conditions.push(eq(connectionRequests.businessId, filters.businessId));
     }
 
     if (filters.contractorId !== undefined) {
-      query = query.where(eq(connectionRequests.contractorId, filters.contractorId));
+      conditions.push(eq(connectionRequests.contractorId, filters.contractorId));
     }
 
     if (filters.status !== undefined) {
-      query = query.where(eq(connectionRequests.status, filters.status));
+      conditions.push(eq(connectionRequests.status, filters.status));
+    }
+
+    // Apply combined filters using and()
+    let query = db.select().from(connectionRequests);
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
     }
 
     return await query.orderBy(desc(connectionRequests.createdAt));
