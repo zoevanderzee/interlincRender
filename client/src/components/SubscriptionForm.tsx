@@ -441,9 +441,9 @@ export default function SubscriptionForm({
 
 
   return (
-    <div className="max-w-3xl mx-auto p-4">
-      <div className="text-center mb-8">
-        <div className="flex items-center justify-between mb-6">
+    <div className="w-full max-w-7xl mx-auto px-4 py-8">
+      <div className="text-center mb-12">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-6">
           <h2 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-white via-blue-100 to-blue-200 bg-clip-text text-transparent">
             {userRole === 'contractor' ? 'Contractor Plans' : 'Business Plans'}
           </h2>
@@ -489,11 +489,11 @@ export default function SubscriptionForm({
         </p>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl mx-auto">
         {availablePlans.map((plan) => (
           <Card
             key={plan.id}
-            className={`relative cursor-pointer transition-all duration-300 backdrop-blur-xl border-2 ${
+            className={`relative cursor-pointer transition-all duration-300 backdrop-blur-xl border-2 flex flex-col h-full ${
               selectedPlan === plan.id 
                 ? 'ring-4 ring-primary/50 border-primary shadow-2xl shadow-primary/20 scale-[1.02]' 
                 : 'border-white/10 hover:border-primary/50 hover:shadow-xl hover:shadow-primary/10 hover:scale-[1.01]'
@@ -536,8 +536,8 @@ export default function SubscriptionForm({
               </CardDescription>
             </CardHeader>
 
-            <CardContent className="pt-0 pb-6 px-5">
-              <ul className="space-y-3 mb-6">
+            <CardContent className="pt-0 pb-6 px-5 flex flex-col flex-1">
+              <ul className="space-y-3 mb-6 flex-1">
                 {plan.features.map((feature, index) => (
                   <li key={index} className="flex items-start group">
                     <div className="h-6 w-6 rounded-full bg-gradient-to-br from-primary/20 to-indigo-500/20 flex items-center justify-center mr-3 flex-shrink-0 mt-0.5 border border-primary/30">
@@ -549,7 +549,7 @@ export default function SubscriptionForm({
               </ul>
 
               <Button 
-                className={`w-full h-10 text-sm font-semibold transition-all duration-300 ${
+                className={`w-full h-12 text-sm font-semibold transition-all duration-300 mt-auto ${
                   selectedPlan === plan.id 
                     ? 'bg-gradient-to-r from-primary to-indigo-500 hover:from-primary/90 hover:to-indigo-500/90 shadow-xl shadow-primary/30' 
                     : 'bg-gradient-to-r from-white/10 to-white/5 hover:from-white/20 hover:to-white/10 border border-white/20 hover:border-primary/50'
