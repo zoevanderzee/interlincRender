@@ -1,0 +1,31 @@
+Prompt: Prevent Residual Account Linkage After Deletion
+Objective:
+Guarantee that when an account is deleted, all associated data, metadata, and identity references are permanently and irreversibly removed, so that if a user later re-registers using the same email, the new account is treated as an entirely new identity with no inherited data, history, or relationships.
+Core Rules
+Permanent Identity Reset
+Once an account is deleted, all records tied to that account’s user_id, authentication token, or linked identifiers must be fully and permanently removed.
+The email address used for that deleted account must not act as a lookup key for restoring or reconnecting old data.
+New Account = New Identity
+If a user signs up again using the same email address, the system must generate a brand-new user_id, completely detached from any previous account.
+No attempt should be made to “restore,” “reconnect,” or “hydrate” data from backups or cached states unless explicitly requested and confirmed by an admin.
+Delete Operation Requirements
+The delete action must:
+Remove or anonymize all personal data, relationships, cached states, and stored objects.
+Purge any lingering data in background caches, index tables, or analytics logs tied to that user.
+Any asynchronous cleanup must complete before allowing re-registration with the same email.
+Authentication System Behavior
+Authentication providers (Firebase, Cognito, etc.) must treat the deleted user record as nonexistent.
+If the same email is reused for registration, it must create a completely new auth identity with no inherited UID, token, or session remnants.
+Cache & Storage Purge
+On deletion, all user-related cache entries, local storage, and backend memory objects must be invalidated.
+Cached views or pre-fetched datasets must be cleared immediately to prevent re-linking old state data to a new identity.
+Data Room and Project Isolation
+Any data in shared spaces (projects, data rooms, invoices) must either be fully removed or anonymized so it cannot be reattached to a future account using the same email.
+Audit Logging
+Every deletion must create a verifiable deletion log entry confirming that:
+The user ID and all linked data were removed.
+The deletion timestamp and confirmation event are stored for compliance.
+Validation Step
+When a new user registers with an existing email:
+The system must check if that email belongs to a deleted account and confirm the previous record has been fully purged before allowing new account creation.
+If residual data still exists, the new registration must be blocked until cleanup is complete.
