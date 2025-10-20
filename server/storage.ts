@@ -1507,40 +1507,49 @@ export class MemStorage implements IStorage {
   }
 
   async cleanupDeletedUserConnections(userId: number): Promise<void> {
+    console.log(`🧹 CLEANUP: Removing all connection data for deleted user ${userId}`);
+    
     // Remove connection requests where this user is the business
-    for (const [id, req] of this.connectionRequests.entries()) {
-      if (req.businessId === userId) {
-        console.log(`Cleaning up connection request ${id} due to deleted business ${userId}`);
-        this.connectionRequests.delete(id);
-      }
-    }
+    const businessConnections = await db
+      .delete(connectionRequests)
+      .where(eq(connectionRequests.businessId, userId))
+      .returning();
+    console.log(`  ✓ Deleted ${businessConnections.length} connection requests as business`);
+    
     // Remove connection requests where this user is the contractor
-    for (const [id, req] of this.connectionRequests.entries()) {
-      if (req.contractorId === userId) {
-        console.log(`Cleaning up connection request ${id} due to deleted contractor ${userId}`);
-        this.connectionRequests.delete(id);
-      }
-    }
-    // Note: This is a simplified cleanup. In a real DB, you'd want cascading deletes or explicit FK constraints.
+    const contractorConnections = await db
+      .delete(connectionRequests)
+      .where(eq(connectionRequests.contractorId, userId))
+      .returning();
+    console.log(`  ✓ Deleted ${contractorConnections.length} connection requests as contractor`);
+    
+    console.log(`✅ CLEANUP COMPLETE: User ${userId} has no residual connection data`);
   }
 
   async getAcceptedConnectionRequestsForContractor(contractorId: number): Promise<any[]> {
     // SECURITY: Verify contractor exists before querying connections
-    const contractor = this.users.get(contractorId);
-    if (!contractor) {
-      console.log(`Contractor ${contractorId} does not exist - cannot have connections`);
+    const contractor = await this.getUser(contractorId);
+    if (!contractor || contractor.role !== 'contractor') {
+      console.log(`Contractor ${contractorId} does not exist or is not a contractor - cannot have connections`);
       return [];
     }
 
-    const requests = Array.from(this.connectionRequests.values()).filter(
-      (req) => req.contractorId === contractorId && req.status === 'accepted'
-    );
+    // Get accepted connection requests for this contractor
+    const requests = await db
+      .select()
+      .from(connectionRequests)
+      .where(
+        and(
+          eq(connectionRequests.contractorId, contractorId),
+          eq(connectionRequests.status, 'accepted')
+        )
+      );
 
     console.log(`Found ${requests.length} accepted connection requests for contractor ID: ${contractorId}`);
 
     const businesses: any[] = [];
     for (const req of requests) {
-      const business = this.users.get(req.businessId);
+      const business = await this.getUser(req.businessId);
       // Only include if business exists AND has business role
       if (business && business.role === 'business') {
         businesses.push({
@@ -1550,7 +1559,9 @@ export class MemStorage implements IStorage {
       } else {
         // Business was deleted or invalid - clean up the stale connection request
         console.log(`🧹 CLEANUP: Removing phantom connection request ID ${req.id} - contractor ${contractorId} -> deleted/invalid business ${req.businessId}`);
-        this.connectionRequests.delete(req.id);
+        await db
+          .delete(connectionRequests)
+          .where(eq(connectionRequests.id, req.id));
       }
     }
 
@@ -2821,6 +2832,14 @@ export class DatabaseStorage implements IStorage {
 
   async getWorkRequestsByContractorId(contractorId: number): Promise<WorkRequest[]> {
     console.log(`Getting work requests for contractor ID: ${contractorId}`);
+    
+    // SECURITY: Verify contractor exists before querying their work requests
+    const contractor = await this.getUser(contractorId);
+    if (!contractor || contractor.role !== 'contractor') {
+      console.log(`Contractor ${contractorId} does not exist or is not a contractor - returning empty array`);
+      return [];
+    }
+    
     const results = await db
       .select({
         id: workRequests.id,
@@ -2839,9 +2858,10 @@ export class DatabaseStorage implements IStorage {
       })
       .from(workRequests)
       .innerJoin(projects, eq(workRequests.projectId, projects.id))
-      .where(eq(workRequests.contractorId, contractorId))
+      .where(eq(workRequests.contractorUserId, contractorId))
       .orderBy(desc(workRequests.createdAt));
 
+    console.log(`Found ${results.length} work requests for contractor ${contractorId}`);
     return results;
   }
 
