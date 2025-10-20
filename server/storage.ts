@@ -3611,11 +3611,13 @@ export class DatabaseStorage implements IStorage {
       // SECURITY: Verify contractor exists before querying connections
       const contractor = await this.getUser(contractorId);
       if (!contractor || contractor.role !== 'contractor') {
-        console.log(`Contractor ${contractorId} does not exist or is not a contractor - cannot have connections`);
+        console.log(`❌ Contractor ${contractorId} does not exist or is not a contractor - cannot have connections`);
         return [];
       }
 
-      console.log(`🔍 STRICT VERIFICATION: Checking connections for contractor ${contractorId} (created: ${contractor.createdAt})`);
+      console.log(`🔍 STRICT VERIFICATION: Checking connections for contractor ${contractorId}`);
+      console.log(`   Contractor created: ${contractor.createdAt}`);
+      console.log(`   Contractor email: ${contractor.email}`);
 
       const requests = await db
         .select()
@@ -3627,7 +3629,7 @@ export class DatabaseStorage implements IStorage {
           )
         );
 
-      console.log(`Found ${requests.length} connection requests with contractor ID ${contractorId}`);
+      console.log(`   Found ${requests.length} connection request(s) with contractor ID ${contractorId}`);
 
       const businesses: any[] = [];
       let cleanedCount = 0;
@@ -3638,8 +3640,11 @@ export class DatabaseStorage implements IStorage {
         const requestDate = new Date(req.createdAt);
         const userCreatedDate = new Date(contractor.createdAt || 0);
         
+        console.log(`   Checking request ${req.id}: created ${requestDate.toISOString()}`);
+        console.log(`   User created: ${userCreatedDate.toISOString()}`);
+        
         if (requestDate < userCreatedDate) {
-          console.log(`🧹 PHANTOM DATA CLEANUP: Removing connection request ${req.id} created ${requestDate.toISOString()} BEFORE user ${contractorId} was created ${userCreatedDate.toISOString()}`);
+          console.log(`🧹 PHANTOM DATA: Deleting connection request ${req.id} (created BEFORE user existed)`);
           await db.delete(connectionRequests).where(eq(connectionRequests.id, req.id));
           cleanedCount++;
           continue;
@@ -3648,20 +3653,19 @@ export class DatabaseStorage implements IStorage {
         const business = await this.getUser(req.businessId);
         // Only include if business exists AND has business role
         if (business && business.role === 'business') {
-          console.log(`✅ VALID CONNECTION: Contractor ${contractorId} -> Business ${business.id} (${business.companyName || business.email}) - request created ${requestDate.toISOString()}`);
+          console.log(`✅ VALID: Contractor ${contractorId} connected to Business ${business.id} (${business.companyName || business.email})`);
           businesses.push({
             id: business.id,
             name: business.companyName || `${business.firstName} ${business.lastName}` || business.username
           });
         } else {
-          // Business was deleted or invalid - clean up the stale connection request
-          console.log(`🧹 CLEANUP: Removing phantom connection request ID ${req.id} - contractor ${contractorId} -> deleted/invalid business ${req.businessId}`);
+          console.log(`🧹 STALE DATA: Deleting connection request ${req.id} (business ${req.businessId} deleted/invalid)`);
           await db.delete(connectionRequests).where(eq(connectionRequests.id, req.id));
           cleanedCount++;
         }
       }
 
-      console.log(`✅ VERIFICATION COMPLETE: Contractor ${contractorId} has ${businesses.length} valid connections (cleaned up ${cleanedCount} phantom/stale connections)`);
+      console.log(`✅ RESULT: Contractor ${contractorId} has ${businesses.length} valid connection(s) (cleaned ${cleanedCount} phantom/stale)`);
       return businesses;
     } catch (error) {
       console.error('Error getting accepted connection requests for contractor:', error);
