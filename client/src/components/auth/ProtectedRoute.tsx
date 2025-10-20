@@ -21,7 +21,7 @@ export function ProtectedRoute({ path, children }: ProtectedRouteProps) {
     if (!isLoading && !user) {
       console.log("Force redirecting to /auth");
       setLocation("/auth");
-    } else if (!isLoading && user && requiresSubscription(user) && path !== '/subscribe' && location !== '/subscribe') {
+    } else if (!isLoading && user && requiresSubscription(user) && path !== '/subscribe' && location !== '/subscribe' && !location.startsWith('/subscribe')) {
       console.log("Force redirecting to /subscribe - subscription required");
       setLocation("/subscribe");
     }

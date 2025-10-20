@@ -283,7 +283,7 @@ function Router() {
 
 
 
-      <ProtectedRoute path="/subscribe">
+      <ProtectedRoute path="/subscribe" requiresActiveSubscription={false}>
         <Layout>
           <Subscribe />
         </Layout>
