@@ -1525,34 +1525,37 @@ export class MemStorage implements IStorage {
   }
 
   async getAcceptedConnectionRequestsForContractor(contractorId: number): Promise<any[]> {
-    try {
-      const requests = Array.from(this.connectionRequests.values()).filter(
-        (req) => req.contractorId === contractorId && req.status === 'accepted'
-      );
-
-      console.log(`Found ${requests.length} accepted connection requests for contractor ID: ${contractorId}`);
-
-      const businesses: any[] = [];
-      for (const req of requests) {
-        const business = await this.getUser(req.businessId);
-        // Only include if business exists AND has business role
-        if (business && business.role === 'business') {
-          businesses.push({
-            id: business.id,
-            name: business.companyName || `${business.firstName} ${business.lastName}` || business.username
-          });
-        } else {
-          // Business was deleted or invalid - clean up the stale connection request
-          console.log(`Cleaning up stale connection request: contractor ${contractorId} -> deleted business ${req.businessId}`);
-          this.connectionRequests.delete(req.id);
-        }
-      }
-
-      return businesses;
-    } catch (error) {
-      console.error('Error getting accepted connection requests for contractor:', error);
+    // SECURITY: Verify contractor exists before querying connections
+    const contractor = this.users.get(contractorId);
+    if (!contractor) {
+      console.log(`Contractor ${contractorId} does not exist - cannot have connections`);
       return [];
     }
+
+    const requests = Array.from(this.connectionRequests.values()).filter(
+      (req) => req.contractorId === contractorId && req.status === 'accepted'
+    );
+
+    console.log(`Found ${requests.length} accepted connection requests for contractor ID: ${contractorId}`);
+
+    const businesses: any[] = [];
+    for (const req of requests) {
+      const business = this.users.get(req.businessId);
+      // Only include if business exists AND has business role
+      if (business && business.role === 'business') {
+        businesses.push({
+          id: business.id,
+          name: business.companyName || `${business.firstName} ${business.lastName}` || business.username
+        });
+      } else {
+        // Business was deleted or invalid - clean up the stale connection request
+        console.log(`🧹 CLEANUP: Removing phantom connection request ID ${req.id} - contractor ${contractorId} -> deleted/invalid business ${req.businessId}`);
+        this.connectionRequests.delete(req.id);
+      }
+    }
+
+    console.log(`✅ Contractor ${contractorId} has ${businesses.length} valid business connections (cleaned up ${requests.length - businesses.length} phantom connections)`);
+    return businesses;
   }
 
   // Add stubs for other missing methods
@@ -2836,7 +2839,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(workRequests)
       .innerJoin(projects, eq(workRequests.projectId, projects.id))
-      .where(eq(workRequests.contractorUserId, contractorId))
+      .where(eq(workRequests.contractorId, contractorId))
       .orderBy(desc(workRequests.createdAt));
 
     return results;
@@ -3585,35 +3588,43 @@ export class DatabaseStorage implements IStorage {
 
   async getAcceptedConnectionRequestsForContractor(contractorId: number): Promise<any[]> {
     try {
+      // SECURITY: Verify contractor exists before querying connections
+      const contractor = await this.getUser(contractorId);
+      if (!contractor) {
+        console.log(`Contractor ${contractorId} does not exist - cannot have connections`);
+        return [];
+      }
+
       const requests = await db
         .select()
         .from(connectionRequests)
-        .where(and(
-          eq(connectionRequests.contractorId, contractorId),
-          eq(connectionRequests.status, 'accepted')
-        ));
+        .where(
+          and(
+            eq(connectionRequests.contractorId, contractorId),
+            eq(connectionRequests.status, 'accepted')
+          )
+        );
 
       console.log(`Found ${requests.length} accepted connection requests for contractor ID: ${contractorId}`);
 
-      // Get business details for each connection and VALIDATE they still exist
-      const businesses = await Promise.all(
-        requests.map(async (req) => {
-          const business = await this.getUser(req.businessId);
-          // Only include if business exists AND has business role
-          if (business && business.role === 'business') {
-            return {
-              id: business.id,
-              name: business.companyName || `${business.firstName} ${business.lastName}` || business.username
-            };
-          }
+      const businesses: any[] = [];
+      for (const req of requests) {
+        const business = await this.getUser(req.businessId);
+        // Only include if business exists AND has business role
+        if (business && business.role === 'business') {
+          businesses.push({
+            id: business.id,
+            name: business.companyName || `${business.firstName} ${business.lastName}` || business.username
+          });
+        } else {
           // Business was deleted or invalid - clean up the stale connection request
-          console.log(`Cleaning up stale connection request: contractor ${contractorId} -> deleted business ${req.businessId}`);
+          console.log(`🧹 CLEANUP: Removing phantom connection request ID ${req.id} - contractor ${contractorId} -> deleted/invalid business ${req.businessId}`);
           await db.delete(connectionRequests).where(eq(connectionRequests.id, req.id));
-          return null;
-        })
-      );
+        }
+      }
 
-      return businesses.filter(b => b !== null);
+      console.log(`✅ Contractor ${contractorId} has ${businesses.length} valid business connections (cleaned up ${requests.length - businesses.length} phantom connections)`);
+      return businesses;
     } catch (error) {
       console.error('Error getting accepted connection requests for contractor:', error);
       return [];
