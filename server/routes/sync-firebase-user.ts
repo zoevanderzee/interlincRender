@@ -24,18 +24,13 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
     try {
       const { uid, email, emailVerified, displayName, registrationData } = syncFirebaseUserSchema.parse(req.body);
 
-      // Check if user already exists by email (case-insensitive)
-      let existingUser = await storage.getUserByEmail(email.toLowerCase());
-      
-      // Also check by Firebase UID in case email doesn't match
-      if (!existingUser) {
-        existingUser = await storage.getUserByFirebaseUID(uid);
-      }
+      // Check if user already exists by Firebase UID ONLY (not email)
+      // Email should NOT be used to find existing users - prevents linking deleted accounts
+      let existingUser = await storage.getUserByFirebaseUID(uid);
 
       if (existingUser) {
-        // Build update data - always update Firebase UID and email verification
+        // Build update data - always update email verification
         const updateData: any = { 
-          firebaseUid: uid,
           emailVerified: emailVerified 
         };
         
@@ -98,6 +93,19 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
           success: false,
           error: 'Registration data with role is required for new user creation',
           details: 'Role must be either "business" or "contractor"'
+        });
+      }
+
+      // SECURITY CHECK: Verify no existing user with this email exists
+      // This prevents resurrecting deleted accounts
+      const emailCheck = await storage.getUserByEmail(email.toLowerCase());
+      if (emailCheck) {
+        console.error(`SECURITY BLOCK: Email ${email} already exists in database (user ID: ${emailCheck.id})`);
+        console.error(`This suggests a deleted account was not properly purged. Blocking registration.`);
+        return res.status(409).json({
+          success: false,
+          error: 'Email already registered',
+          details: 'This email is already associated with an account. If you deleted your previous account, please contact support.'
         });
       }
 

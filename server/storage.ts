@@ -22,7 +22,7 @@ import {
   type TaskSubmission, type InsertTaskSubmission,
   type PendingRegistration, type InsertPendingRegistration
 } from "@shared/schema";
-import { eq, and, or, desc, sql, isNull } from "drizzle-orm";
+import { eq, and, or, desc, sql, isNull, gte, lte } from "drizzle-orm";
 import { db, pool } from "./db";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
@@ -48,6 +48,7 @@ export interface IStorage {
   updateStripeCustomerId(id: number, stripeCustomerId: string): Promise<User | undefined>;
   updateUserStripeInfo(id: number, stripeInfo: { stripeCustomerId: string, stripeSubscriptionId: string }): Promise<User | undefined>;
   updateUserConnectAccount(id: number, connectAccountId: string, payoutEnabled?: boolean): Promise<User | undefined>;
+  deleteUser(id: number): Promise<boolean>; // New method for complete user deletion
 
   // Stripe Connect account management
   getConnectForUser(userId: number): Promise<{ accountId: string, accountType: string } | null>;
@@ -504,6 +505,18 @@ export class MemStorage implements IStorage {
     const updatedUser = { ...existingUser, ...userData };
     this.users.set(id, updatedUser);
     return updatedUser;
+  }
+
+  async deleteUser(id: number): Promise<boolean> {
+    // Remove user and all associated data
+    if (this.users.has(id)) {
+      this.users.delete(id);
+      // In a real implementation, you'd also delete from related tables
+      // For MemStorage, we just remove the user from the map.
+      console.log(`User ${id} deleted from memory storage.`);
+      return true;
+    }
+    return false;
   }
 
   async updateStripeCustomerId(id: number, stripeCustomerId: string): Promise<User | undefined> {
@@ -1939,6 +1952,60 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return updatedUser;
   }
+
+  async deleteUser(id: number): Promise<boolean> {
+    try {
+      console.log(`🗑️ PERMANENT DELETION: Starting complete purge for user ID ${id}`);
+
+      // 1. Delete all connection requests (as business or contractor)
+      await db.delete(connectionRequests).where(eq(connectionRequests.businessId, id));
+      await db.delete(connectionRequests).where(eq(connectionRequests.contractorId, id));
+      console.log(`  ✓ Deleted connection requests`);
+
+      // 2. Delete all contracts (as business or contractor)
+      await db.delete(contracts).where(eq(contracts.businessId, id));
+      await db.delete(contracts).where(eq(contracts.contractorId, id));
+      console.log(`  ✓ Deleted contracts`);
+
+      // 3. Delete all payments
+      await db.delete(payments).where(eq(payments.businessId, id));
+      await db.delete(payments).where(eq(payments.contractorId, id));
+      console.log(`  ✓ Deleted payments`);
+
+      // 4. Delete all milestones
+      const userContracts = await db.select({ id: contracts.id })
+        .from(contracts)
+        .where(eq(contracts.businessId, id));
+      for (const contract of userContracts) {
+        await db.delete(milestones).where(eq(milestones.contractId, contract.id));
+      }
+      console.log(`  ✓ Deleted milestones`);
+
+      // 5. Delete all notifications
+      await db.delete(notifications).where(eq(notifications.userId, id));
+      console.log(`  ✓ Deleted notifications`);
+
+      // 6. Delete pending registrations by Firebase UID (if exists)
+      const user = await this.getUser(id);
+      if (user?.firebaseUid) {
+        await db.delete(pendingRegistrations).where(eq(pendingRegistrations.firebaseUid, user.firebaseUid));
+        console.log(`  ✓ Deleted pending registrations`);
+      }
+
+      // 7. Finally, delete the user record itself
+      await db.delete(users).where(eq(users.id, id));
+      console.log(`  ✓ Deleted user record`);
+
+      console.log(`🎯 DELETION COMPLETE: User ${id} and all associated data permanently removed`);
+      console.log(`   Email from this account can now be used for new registration as fresh identity`);
+
+      return true;
+    } catch (error) {
+      console.error('❌ Error during complete user deletion:', error);
+      return false;
+    }
+  }
+
 
   async updateStripeCustomerId(id: number, stripeCustomerId: string): Promise<User | undefined> {
     const [updatedUser] = await db
