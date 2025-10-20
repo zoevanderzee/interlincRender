@@ -21,9 +21,13 @@ export function ProtectedRoute({ path, children }: ProtectedRouteProps) {
     if (!isLoading && !user) {
       console.log("Force redirecting to /auth");
       setLocation("/auth");
-    } else if (!isLoading && user && requiresSubscription(user) && path !== '/subscribe' && location !== '/subscribe' && !location.startsWith('/subscribe')) {
-      console.log("Force redirecting to /subscribe - subscription required");
-      setLocation("/subscribe");
+    } else if (!isLoading && user && requiresSubscription(user)) {
+      // Don't redirect if already on subscription page or going there
+      if (path !== '/subscribe' && !path.startsWith('/subscribe') && 
+          location !== '/subscribe' && !location.startsWith('/subscribe')) {
+        console.log("Force redirecting to /subscribe - subscription required");
+        setLocation("/subscribe");
+      }
     }
   }, [isLoading, user, setLocation, location, path]);
 

@@ -188,6 +188,21 @@ export default function SubscriptionForm({
   // Define subscription plans function FIRST - before state initialization
   const getSubscriptionPlans = (): SubscriptionPlan[] => [
     {
+      id: "contractor-pro",
+      name: "Contractor Pro",
+      price: "Loading...",
+      description: "Premium features for professional contractors",
+      features: [
+        "Unlimited project capacity",
+        "Advanced earnings tracking",
+        "Priority payment processing",
+        "Professional invoicing",
+        "Dedicated support",
+        "Premium analytics"
+      ],
+      recommended: true
+    },
+    {
       id: "business",
       name: "SME",
       price: "Loading...",
@@ -411,7 +426,11 @@ export default function SubscriptionForm({
       price: formatPrice(plan.id)
     };
   }).filter(plan => {
-    // Only filter out plans with completely missing price data
+    // Don't filter out contractor plans even if price data is loading
+    if (userRole === 'contractor' && plan.id.startsWith('contractor')) {
+      return true;
+    }
+    // For business plans, only filter out plans with completely missing price data
     const priceData = prices[plan.id];
     return priceData !== undefined;
   });

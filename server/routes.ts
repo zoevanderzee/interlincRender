@@ -102,7 +102,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const exemptPaths = [
         '/api/subscription-prices',
         '/api/create-subscription',
-        '/api/complete-subscription'
+        '/api/complete-subscription',
+        '/subscribe' // Allow the subscription page itself
       ];
       
       if (exemptPaths.some(path => req.path.startsWith(path))) {
