@@ -3615,7 +3615,7 @@ export class DatabaseStorage implements IStorage {
         return [];
       }
 
-      console.log(`🔍 STRICT VERIFICATION: Checking connections for contractor ${contractorId} with email ${contractor.email}`);
+      console.log(`🔍 STRICT VERIFICATION: Checking connections for contractor ${contractorId} (created: ${contractor.createdAt})`);
 
       const requests = await db
         .select()
@@ -3633,10 +3633,13 @@ export class DatabaseStorage implements IStorage {
       let cleanedCount = 0;
 
       for (const req of requests) {
-        // STRICT CHECK: Verify this connection request actually belongs to THIS specific contractor ID
-        // (not a phantom from a deleted account with the same email)
-        if (req.contractorId !== contractorId) {
-          console.log(`🧹 CLEANUP: Removing connection request ${req.id} - contractor ID mismatch (expected ${contractorId}, got ${req.contractorId})`);
+        // CRITICAL: Connection request MUST have been created AFTER this user account was created
+        // This prevents linking phantom data from deleted accounts that had the same email
+        const requestDate = new Date(req.createdAt);
+        const userCreatedDate = new Date(contractor.createdAt || 0);
+        
+        if (requestDate < userCreatedDate) {
+          console.log(`🧹 PHANTOM DATA CLEANUP: Removing connection request ${req.id} created ${requestDate.toISOString()} BEFORE user ${contractorId} was created ${userCreatedDate.toISOString()}`);
           await db.delete(connectionRequests).where(eq(connectionRequests.id, req.id));
           cleanedCount++;
           continue;
@@ -3645,7 +3648,7 @@ export class DatabaseStorage implements IStorage {
         const business = await this.getUser(req.businessId);
         // Only include if business exists AND has business role
         if (business && business.role === 'business') {
-          console.log(`✅ VALID CONNECTION: Contractor ${contractorId} -> Business ${business.id} (${business.companyName || business.email})`);
+          console.log(`✅ VALID CONNECTION: Contractor ${contractorId} -> Business ${business.id} (${business.companyName || business.email}) - request created ${requestDate.toISOString()}`);
           businesses.push({
             id: business.id,
             name: business.companyName || `${business.firstName} ${business.lastName}` || business.username
@@ -3658,7 +3661,7 @@ export class DatabaseStorage implements IStorage {
         }
       }
 
-      console.log(`✅ VERIFICATION COMPLETE: Contractor ${contractorId} has ${businesses.length} valid connections (cleaned up ${cleanedCount} phantom/invalid connections)`);
+      console.log(`✅ VERIFICATION COMPLETE: Contractor ${contractorId} has ${businesses.length} valid connections (cleaned up ${cleanedCount} phantom/stale connections)`);
       return businesses;
     } catch (error) {
       console.error('Error getting accepted connection requests for contractor:', error);
