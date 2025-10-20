@@ -441,17 +441,17 @@ export default function SubscriptionForm({
 
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 py-8">
+    <div className="w-full max-w-5xl mx-auto px-4 py-8">
       <div className="text-center mb-12">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-6">
-          <h2 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-white via-blue-100 to-blue-200 bg-clip-text text-transparent">
+        <div className="flex flex-col items-center gap-4 mb-6">
+          <h2 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-white via-blue-100 to-blue-200 bg-clip-text text-transparent">
             {userRole === 'contractor' ? 'Contractor Plans' : 'Business Plans'}
           </h2>
           {userRole === 'business' && (
-            <div className="flex items-center gap-2 bg-gradient-to-r from-white/10 to-white/5 border border-white/20 rounded-xl p-1.5 backdrop-blur-xl shadow-lg">
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-white/10 to-white/5 border border-white/20 rounded-xl p-1.5 backdrop-blur-xl shadow-lg">
               <button
                 onClick={() => setBillingPeriod('monthly')}
-                className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 ${
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-300 ${
                   billingPeriod === 'monthly'
                     ? 'bg-gradient-to-r from-primary to-indigo-500 text-white shadow-lg shadow-primary/30'
                     : 'text-blue-200/70 hover:text-white hover:bg-white/10'
@@ -461,7 +461,7 @@ export default function SubscriptionForm({
               </button>
               <button
                 onClick={() => setBillingPeriod('annual')}
-                className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 relative ${
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-300 relative ${
                   billingPeriod === 'annual'
                     ? 'bg-gradient-to-r from-primary to-indigo-500 text-white shadow-lg shadow-primary/30'
                     : 'text-blue-200/70 hover:text-white hover:bg-white/10'
@@ -479,7 +479,7 @@ export default function SubscriptionForm({
             </div>
           )}
         </div>
-        <p className="text-lg text-blue-200/70 font-light max-w-2xl mx-auto">
+        <p className="text-base text-blue-200/70 font-light max-w-xl mx-auto">
           {userRole === 'contractor' 
             ? 'Unlock premium features and grow your freelance business' 
             : billingPeriod === 'monthly'
@@ -489,7 +489,7 @@ export default function SubscriptionForm({
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {availablePlans.map((plan) => (
           <Card
             key={plan.id}
