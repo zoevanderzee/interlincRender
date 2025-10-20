@@ -481,7 +481,7 @@ export default function SubscriptionForm({
         </div>
         <p className="text-base text-blue-200/70 font-light max-w-xl mx-auto">
           {userRole === 'contractor' 
-            ? 'Unlock premium features and grow your freelance business' 
+            ? 'Unlock faster payouts, priority support, and smarter tools.' 
             : billingPeriod === 'monthly'
               ? 'Scale your team with powerful contractor management tools'
               : 'Get the best value with annual billing - all premium features included'
