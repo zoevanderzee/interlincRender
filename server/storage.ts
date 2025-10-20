@@ -22,7 +22,7 @@ import {
   type TaskSubmission, type InsertTaskSubmission,
   type PendingRegistration, type InsertPendingRegistration
 } from "@shared/schema";
-import { eq, and, desc, lte, gte, sql, or, inArray, isNotNull, isNull } from "drizzle-orm";
+import { eq, and, or, desc, sql, isNull } from "drizzle-orm";
 import { db, pool } from "./db";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
@@ -81,14 +81,16 @@ export interface IStorage {
   getUserByProfileCode(profileCode: string): Promise<User | undefined>;
 
   // Connection Requests
-  createConnectionRequest(request: { businessId: number, profileCode: string, message?: string | null, status?: string }): Promise<ConnectionRequest>;
+  createConnectionRequest(request: InsertConnectionRequest): Promise<ConnectionRequest>;
   getConnectionRequest(id: number): Promise<ConnectionRequest | undefined>;
   getConnectionRequestByProfileCode(businessId: number, profileCode: string): Promise<ConnectionRequest | undefined>;
   getConnectionRequestsByBusinessId(businessId: number): Promise<ConnectionRequest[]>;
   getConnectionRequestsByContractorId(contractorId: number): Promise<ConnectionRequest[]>;
   getConnectionRequests(filters: { businessId?: number, contractorId?: number, status?: string }): Promise<ConnectionRequest[]>;
-  updateConnectionRequest(id: number, request: Partial<ConnectionRequest>): Promise<ConnectionRequest | undefined>;
+  updateConnectionRequest(id: number, request: Partial<InsertConnectionRequest>): Promise<ConnectionRequest | undefined>;
   isContractorLinkedToBusiness(businessId: number, contractorId: number): Promise<boolean>;
+  cleanupDeletedUserConnections(userId: number): Promise<void>; // New method to clean up connections for deleted users
+  getAcceptedConnectionRequestsForContractor(contractorId: number): Promise<any[]>; // Method to get valid accepted connections
 
   // Invites
   getInvite(id: number): Promise<Invite | undefined>;
@@ -442,7 +444,12 @@ export class MemStorage implements IStorage {
         .map(contract => contract.contractorId)
     );
 
-    // Then get all contractors with active contracts
+    // Also consider accepted connection requests
+    Array.from(this.connectionRequests.values())
+      .filter(req => req.businessId === businessId && req.status === 'accepted' && req.contractorId)
+      .forEach(req => contractorIds.add(req.contractorId!));
+
+    // Then get all contractors with those IDs
     return Array.from(this.users.values()).filter(
       user => contractorIds.has(user.id) && (user.role === 'contractor' || user.role === 'freelancer')
     );
@@ -470,6 +477,11 @@ export class MemStorage implements IStorage {
         .filter(contract => contract.contractorId === contractorId)
         .map(contract => contract.businessId)
     );
+
+    // Also consider accepted connection requests
+    Array.from(this.connectionRequests.values())
+      .filter(req => req.contractorId === contractorId && req.status === 'accepted' && req.businessId)
+      .forEach(req => businessIds.add(req.businessId!));
 
     // Then get all businesses
     return Array.from(this.users.values()).filter(
@@ -632,7 +644,7 @@ export class MemStorage implements IStorage {
   async createContract(insertContract: InsertContract): Promise<Contract> {
     const id = this.contractId++;
     const createdAt = new Date();
-    const contract: Contract = { 
+    const contract: Contract = {
       id,
       contractName: insertContract.contractName,
       contractCode: insertContract.contractCode,
@@ -718,7 +730,7 @@ export class MemStorage implements IStorage {
 
   async createMilestone(insertMilestone: InsertMilestone): Promise<Milestone> {
     const id = this.milestoneId++;
-    const milestone: Milestone = { 
+    const milestone: Milestone = {
       id,
       contractId: insertMilestone.contractId,
       name: insertMilestone.name,
@@ -888,7 +900,7 @@ export class MemStorage implements IStorage {
   async createDocument(insertDocument: InsertDocument): Promise<Document> {
     const id = this.documentId++;
     const uploadedAt = new Date();
-    const document: Document = { 
+    const document: Document = {
       id,
       contractId: insertDocument.contractId,
       fileName: insertDocument.fileName,
@@ -1383,15 +1395,154 @@ export class MemStorage implements IStorage {
     return Array.from(this.users.values()).find(u => u.profileCode === profileCode);
   }
 
-  // Add stubs for other missing methods...
-  async createConnectionRequest(request: any): Promise<any> { return Promise.resolve({} as any); }
-  async getConnectionRequest(id: number): Promise<any> { return Promise.resolve(undefined); }
-  async getConnectionRequestByProfileCode(businessId: number, profileCode: string): Promise<any> { return Promise.resolve(undefined); }
-  async getConnectionRequestsByBusinessId(businessId: number): Promise<any[]> { return Promise.resolve([]); }
-  async getConnectionRequestsByContractorId(contractorId: number): Promise<any[]> { return Promise.resolve([]); }
-  async getConnectionRequests(filters: any): Promise<any[]> { return Promise.resolve([]); }
-  async updateConnectionRequest(id: number, request: any): Promise<any> { return Promise.resolve(undefined); }
-  async isContractorLinkedToBusiness(businessId: number, contractorId: number): Promise<boolean> { return Promise.resolve(false); }
+  // Connection Request methods
+  async createConnectionRequest(request: InsertConnectionRequest): Promise<ConnectionRequest> {
+    const id = this.connectionRequestId++;
+    const createdAt = new Date();
+    const contractor = await this.getUserByProfileCode(request.profileCode);
+    const connectionRequest: ConnectionRequest = {
+      id,
+      businessId: request.businessId,
+      profileCode: request.profileCode,
+      contractorId: contractor ? contractor.id : null,
+      message: request.message || null,
+      status: request.status || 'pending',
+      createdAt,
+      updatedAt: createdAt
+    };
+    this.connectionRequests.set(id, connectionRequest);
+    return connectionRequest;
+  }
+
+  async getConnectionRequest(id: number): Promise<ConnectionRequest | undefined> {
+    return this.connectionRequests.get(id);
+  }
+
+  async getConnectionRequestByProfileCode(businessId: number, profileCode: string): Promise<ConnectionRequest | undefined> {
+    return Array.from(this.connectionRequests.values()).find(
+      (req) => req.businessId === businessId && req.profileCode === profileCode
+    );
+  }
+
+  async getConnectionRequestsByBusinessId(businessId: number): Promise<ConnectionRequest[]> {
+    return Array.from(this.connectionRequests.values()).filter(
+      (req) => req.businessId === businessId
+    );
+  }
+
+  async getConnectionRequestsByContractorId(contractorId: number): Promise<ConnectionRequest[]> {
+    return Array.from(this.connectionRequests.values()).filter(
+      (req) => req.contractorId === contractorId
+    );
+  }
+
+  async getConnectionRequests(filters: { businessId?: number, contractorId?: number, status?: string }): Promise<ConnectionRequest[]> {
+    let filteredRequests = Array.from(this.connectionRequests.values());
+
+    if (filters.businessId !== undefined) {
+      filteredRequests = filteredRequests.filter(req => req.businessId === filters.businessId);
+    }
+    if (filters.contractorId !== undefined) {
+      filteredRequests = filteredRequests.filter(req => req.contractorId === filters.contractorId);
+    }
+    if (filters.status !== undefined) {
+      filteredRequests = filteredRequests.filter(req => req.status === filters.status);
+    }
+
+    return filteredRequests.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  async updateConnectionRequest(id: number, requestData: Partial<ConnectionRequest>): Promise<ConnectionRequest | undefined> {
+    const existingRequest = this.connectionRequests.get(id);
+    if (!existingRequest) return undefined;
+
+    // Automatically update updatedAt timestamp
+    const updatedRequest = { ...existingRequest, ...requestData, updatedAt: new Date() };
+    this.connectionRequests.set(id, updatedRequest);
+    return updatedRequest;
+  }
+
+  async isContractorLinkedToBusiness(businessId: number, contractorId: number): Promise<boolean> {
+    // Check for direct contracts
+    const hasContract = Array.from(this.contracts.values()).some(
+      contract => contract.businessId === businessId &&
+                  contract.contractorId === contractorId &&
+                  contract.status !== 'deleted'
+    );
+    if (hasContract) return true;
+
+    // Check for accepted connection requests
+    const hasConnection = Array.from(this.connectionRequests.values()).some(
+      req => req.businessId === businessId &&
+             req.contractorId === contractorId &&
+             req.status === 'accepted'
+    );
+    if (hasConnection) return true;
+
+    // Check for accepted invites (by matching contractor's email)
+    const contractor = await this.getUser(contractorId);
+    if (contractor && contractor.email) {
+      const hasInvite = Array.from(this.invites.values()).some(
+        invite => invite.businessId === businessId &&
+                  invite.email.toLowerCase() === contractor.email.toLowerCase() &&
+                  invite.status === 'accepted'
+      );
+      if (hasInvite) return true;
+    }
+
+    return false;
+  }
+
+  async cleanupDeletedUserConnections(userId: number): Promise<void> {
+    // Remove connection requests where this user is the business
+    for (const [id, req] of this.connectionRequests.entries()) {
+      if (req.businessId === userId) {
+        console.log(`Cleaning up connection request ${id} due to deleted business ${userId}`);
+        this.connectionRequests.delete(id);
+      }
+    }
+    // Remove connection requests where this user is the contractor
+    for (const [id, req] of this.connectionRequests.entries()) {
+      if (req.contractorId === userId) {
+        console.log(`Cleaning up connection request ${id} due to deleted contractor ${userId}`);
+        this.connectionRequests.delete(id);
+      }
+    }
+    // Note: This is a simplified cleanup. In a real DB, you'd want cascading deletes or explicit FK constraints.
+  }
+
+  async getAcceptedConnectionRequestsForContractor(contractorId: number): Promise<any[]> {
+    try {
+      const requests = Array.from(this.connectionRequests.values()).filter(
+        (req) => req.contractorId === contractorId && req.status === 'accepted'
+      );
+
+      console.log(`Found ${requests.length} accepted connection requests for contractor ID: ${contractorId}`);
+
+      const businesses: any[] = [];
+      for (const req of requests) {
+        const business = await this.getUser(req.businessId);
+        // Only include if business exists AND has business role
+        if (business && business.role === 'business') {
+          businesses.push({
+            id: business.id,
+            name: business.companyName || `${business.firstName} ${business.lastName}` || business.username
+          });
+        } else {
+          // Business was deleted or invalid - clean up the stale connection request
+          console.log(`Cleaning up stale connection request: contractor ${contractorId} -> deleted business ${req.businessId}`);
+          this.connectionRequests.delete(req.id);
+        }
+      }
+
+      return businesses;
+    } catch (error) {
+      console.error('Error getting accepted connection requests for contractor:', error);
+      return [];
+    }
+  }
+
+  // Add stubs for other missing methods
   async createBusinessOnboardingLink(businessId: number, workerType: string): Promise<any> { return Promise.resolve({} as any); }
   async getBusinessOnboardingLink(businessId: number): Promise<any> { return Promise.resolve(undefined); }
   async updateBusinessOnboardingLink(businessId: number, data: any): Promise<any> { return Promise.resolve({} as any); }
@@ -2130,7 +2281,7 @@ export class DatabaseStorage implements IStorage {
 
   async getPaymentsByBusinessId(businessId: number): Promise<Payment[]> {
     try {
-      // BULLETPROOF: Query payments.businessId directly - includes both contract AND direct payments
+      // BULLETPROOF: Get ALL payments made by this business (with or without contracts)
       const businessPayments = await db
         .select()
         .from(payments)
@@ -2402,7 +2553,7 @@ export class DatabaseStorage implements IStorage {
     const contractorPayments = await this.getPaymentsByContractorId(contractorId);
 
     const completedPayments = contractorPayments.filter(p => p.status === 'completed');
-    const pendingPayments = contractorPayments.filter(p => 
+    const pendingPayments = contractorPayments.filter(p =>
       p.status === 'scheduled' || p.status === 'pending' || p.status === 'processing'
     );
 
@@ -3281,6 +3432,10 @@ export class DatabaseStorage implements IStorage {
       const contractor = await this.getUser(contractorId);
       if (!contractor || contractor.role !== 'contractor') {
         console.log(`Contractor ${contractorId} doesn't exist or isn't a contractor`);
+        // Clean up any stale connections if contractor is deleted
+        if (!contractor) {
+          await this.cleanupDeletedUserConnections(contractorId);
+        }
         return false;
       }
 
@@ -3288,6 +3443,10 @@ export class DatabaseStorage implements IStorage {
       const business = await this.getUser(businessId);
       if (!business || business.role !== 'business') {
         console.log(`Business ${businessId} doesn't exist or isn't a business`);
+        // Clean up any stale connections if business is deleted
+        if (!business) {
+          await this.cleanupDeletedUserConnections(businessId);
+        }
         return false;
       }
 
@@ -3344,6 +3503,53 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error(`Error checking contractor link:`, error);
       return false;
+    }
+  }
+
+  async cleanupDeletedUserConnections(userId: number): Promise<void> {
+    // Remove connection requests where this user is the business
+    await db.delete(connectionRequests).where(eq(connectionRequests.businessId, userId));
+    // Remove connection requests where this user is the contractor
+    await db.delete(connectionRequests).where(eq(connectionRequests.contractorId, userId));
+    // Also clean up invites
+    await db.delete(invites).where(eq(invites.businessId, userId)); // Assuming businessId here for invites cleanup
+    // Note: This is a simplified cleanup. In a real DB, you'd want cascading deletes or explicit FK constraints.
+  }
+
+  async getAcceptedConnectionRequestsForContractor(contractorId: number): Promise<any[]> {
+    try {
+      const requests = await db
+        .select()
+        .from(connectionRequests)
+        .where(and(
+          eq(connectionRequests.contractorId, contractorId),
+          eq(connectionRequests.status, 'accepted')
+        ));
+
+      console.log(`Found ${requests.length} accepted connection requests for contractor ID: ${contractorId}`);
+
+      // Get business details for each connection and VALIDATE they still exist
+      const businesses = await Promise.all(
+        requests.map(async (req) => {
+          const business = await this.getUser(req.businessId);
+          // Only include if business exists AND has business role
+          if (business && business.role === 'business') {
+            return {
+              id: business.id,
+              name: business.companyName || `${business.firstName} ${business.lastName}` || business.username
+            };
+          }
+          // Business was deleted or invalid - clean up the stale connection request
+          console.log(`Cleaning up stale connection request: contractor ${contractorId} -> deleted business ${req.businessId}`);
+          await db.delete(connectionRequests).where(eq(connectionRequests.id, req.id));
+          return null;
+        })
+      );
+
+      return businesses.filter(b => b !== null);
+    } catch (error) {
+      console.error('Error getting accepted connection requests for contractor:', error);
+      return [];
     }
   }
 
@@ -3669,10 +3875,7 @@ export class DatabaseStorage implements IStorage {
   async createWorkRequest(workRequest: Omit<InsertWorkRequest, 'createdAt'>): Promise<WorkRequest> {
     const [created] = await db
       .insert(workRequests)
-      .values({
-        ...workRequest,
-        createdAt: new Date()
-      })
+      .values(workRequest)
       .returning();
     return created;
   }
@@ -3872,8 +4075,8 @@ export class DatabaseStorage implements IStorage {
   async assignTaskToContractor(taskId: number, contractorId: number): Promise<Task | undefined> {
     const [updatedTask] = await db
       .update(tasks)
-      .set({ 
-        contractorId: contractorId, 
+      .set({
+        contractorId: contractorId,
         status: 'in_progress'
       })
       .where(eq(tasks.id, taskId))
@@ -3977,7 +4180,7 @@ export class DatabaseStorage implements IStorage {
       // Update submission status
       const [updatedSubmission] = await tx
         .update(taskSubmissions)
-        .set({ 
+        .set({
           status: 'approved',
           approverId,
           approvedAt: new Date()
@@ -4026,7 +4229,7 @@ export class DatabaseStorage implements IStorage {
       // Update submission status
       const [updatedSubmission] = await tx
         .update(taskSubmissions)
-        .set({ 
+        .set({
           status: 'rejected',
           rejectionReason,
           approverId
@@ -4056,8 +4259,8 @@ export class DatabaseStorage implements IStorage {
       console.log(`DB: Found ${workRequestsData.length} work requests for contractor ${contractorId}`);
 
       // Find work request that matches deliverable
-      const matchingWorkRequest = workRequestsData.find(wr => 
-        wr.title === deliverableName && 
+      const matchingWorkRequest = workRequestsData.find(wr =>
+        wr.title === deliverableName &&
         (wr.status === 'accepted' || wr.status === 'assigned')
       );
 
