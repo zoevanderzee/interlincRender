@@ -489,7 +489,7 @@ export default function SubscriptionForm({
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 justify-items-center">
         {availablePlans.map((plan) => (
           <Card
             key={plan.id}
