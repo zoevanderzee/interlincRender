@@ -95,7 +95,7 @@ app.use((req, res, next) => {
 
   // Register user deletion routes
   const { registerDeleteUserRoutes } = await import("./routes/delete-user");
-  registerDeleteUserRoutes(app);
+  registerDeleteUserRoutes(app, requireAuth);
 
   // Use our error logger middleware
   app.use(errorLogger);

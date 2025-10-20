@@ -10,52 +10,38 @@ const deleteUserSchema = z.object({
   message: "At least one identifier (userId, email, or firebaseUid) must be provided"
 });
 
-export function registerDeleteUserRoutes(app: Express) {
+export function registerDeleteUserRoutes(app: Express, requireAuth: any) {
   // Comprehensive user deletion endpoint - cascades through ALL related tables
-  // SECURITY: This endpoint is ONLY for administrative cleanup after Firebase account deletion
-  // It should NEVER be exposed to regular users or be publicly accessible
-  app.post("/api/delete-user", async (req, res) => {
-    // SECURITY CHECK: For now, disable this endpoint completely in production
-    // Only allow in development environment for testing
-    if (process.env.NODE_ENV === 'production') {
-      return res.status(403).json({
-        success: false,
-        error: 'This endpoint is disabled in production for security reasons',
-        details: 'Contact support for account deletion requests'
-      });
-    }
+  // Users can delete their own accounts - all data is permanently removed
+  app.post("/api/delete-user", requireAuth, async (req, res) => {
     try {
-      const { userId, email, firebaseUid } = deleteUserSchema.parse(req.body);
+      const user = (req as any).user;
       
-      // Find the user to delete
-      let userToDelete;
-      if (userId) {
-        userToDelete = await storage.getUser(userId);
-      } else if (email) {
-        userToDelete = await storage.getUserByEmail(email.toLowerCase());
-      } else if (firebaseUid) {
-        userToDelete = await storage.getUserByFirebaseUID(firebaseUid);
-      }
-
-      if (!userToDelete) {
-        return res.status(404).json({
+      if (!user) {
+        return res.status(401).json({
           success: false,
-          error: 'User not found'
+          error: 'Not authenticated'
         });
       }
 
-      console.log(`[DELETE USER] Starting complete deletion of user ${userToDelete.id} (${userToDelete.email})`);
+      console.log(`[DELETE USER] Starting complete deletion of user ${user.id} (${user.email})`);
 
       try {
-        // Use storage method to delete user and all related data
-        await storage.deleteUserCompletely(userToDelete.id);
+        // Delete the logged-in user's account and all related data
+        await storage.deleteUserCompletely(user.id);
         
-        console.log(`[DELETE USER] Successfully deleted user ${userToDelete.id} and all related data`);
+        // Destroy the session
+        req.logout((err) => {
+          if (err) {
+            console.error('[DELETE USER] Error logging out:', err);
+          }
+        });
+        
+        console.log(`[DELETE USER] Successfully deleted user ${user.id} and all related data`);
 
         return res.json({
           success: true,
-          message: 'User and all related data deleted successfully',
-          userId: userToDelete.id
+          message: 'Your account and all related data have been permanently deleted'
         });
       } catch (deleteError: any) {
         console.error('[DELETE USER] Error during deletion:', deleteError);
@@ -66,7 +52,7 @@ export function registerDeleteUserRoutes(app: Express) {
       console.error('Delete user error:', error);
       return res.status(500).json({
         success: false,
-        error: 'Failed to delete user',
+        error: 'Failed to delete account',
         details: error.message || 'Unknown error occurred'
       });
     }
