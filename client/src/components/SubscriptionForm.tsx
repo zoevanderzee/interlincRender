@@ -489,11 +489,11 @@ export default function SubscriptionForm({
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 justify-items-center">
+      <div className="flex flex-wrap justify-center gap-6 max-w-5xl mx-auto">
         {availablePlans.map((plan) => (
           <Card
             key={plan.id}
-            className={`relative cursor-pointer transition-all duration-300 backdrop-blur-xl border-2 flex flex-col h-full ${
+            className={`relative cursor-pointer transition-all duration-300 backdrop-blur-xl border-2 flex flex-col h-full w-full md:w-[calc(50%-12px)] max-w-md ${
               selectedPlan === plan.id 
                 ? 'ring-4 ring-primary/50 border-primary shadow-2xl shadow-primary/20 scale-[1.02]' 
                 : 'border-white/10 hover:border-primary/50 hover:shadow-xl hover:shadow-primary/10 hover:scale-[1.01]'
