@@ -93,6 +93,10 @@ app.use((req, res, next) => {
   const { registerSyncFirebaseUserRoutes } = await import("./routes/sync-firebase-user");
   registerSyncFirebaseUserRoutes(app);
 
+  // Register user deletion routes
+  const { registerDeleteUserRoutes } = await import("./routes/delete-user");
+  registerDeleteUserRoutes(app);
+
   // Use our error logger middleware
   app.use(errorLogger);
 

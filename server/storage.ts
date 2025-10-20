@@ -49,6 +49,7 @@ export interface IStorage {
   updateUserStripeInfo(id: number, stripeInfo: { stripeCustomerId: string, stripeSubscriptionId: string }): Promise<User | undefined>;
   updateUserConnectAccount(id: number, connectAccountId: string, payoutEnabled?: boolean): Promise<User | undefined>;
   deleteUser(id: number): Promise<boolean>; // New method for complete user deletion
+  deleteUserCompletely(userId: number): Promise<void>; // Comprehensive deletion that cascades through all tables
 
   // Stripe Connect account management
   getConnectForUser(userId: number): Promise<{ accountId: string, accountType: string } | null>;
@@ -517,6 +518,149 @@ export class MemStorage implements IStorage {
       return true;
     }
     return false;
+  }
+
+  async deleteUserCompletely(userId: number): Promise<void> {
+    console.log(`[DELETE USER COMPLETELY] Starting comprehensive deletion for user ${userId}`);
+    
+    // Delete business_workers entries (where user is business or contractor)
+    const businessWorkersToDelete = Array.from(this.businessWorkers.values())
+      .filter(bw => bw.businessId === userId || bw.contractorUserId === userId);
+    for (const bw of businessWorkersToDelete) {
+      this.businessWorkers.delete(bw.id);
+    }
+    console.log(`[DELETE USER] Deleted ${businessWorkersToDelete.length} business_workers entries`);
+
+    // Delete connection_requests (where user is business or contractor)
+    const connectionRequestsToDelete = Array.from(this.connectionRequests.values())
+      .filter(cr => cr.businessId === userId || cr.contractorId === userId);
+    for (const cr of connectionRequestsToDelete) {
+      this.connectionRequests.delete(cr.id);
+    }
+    console.log(`[DELETE USER] Deleted ${connectionRequestsToDelete.length} connection_requests`);
+
+    // Delete notifications for this user
+    const notificationsToDelete = Array.from(this.notifications.values())
+      .filter(n => n.userId === userId);
+    for (const notif of notificationsToDelete) {
+      this.notifications.delete(notif.id);
+    }
+    console.log(`[DELETE USER] Deleted ${notificationsToDelete.length} notifications`);
+
+    // Delete invites (where user is the business)
+    const invitesToDelete = Array.from(this.invites.values())
+      .filter(inv => inv.businessId === userId);
+    for (const inv of invitesToDelete) {
+      this.invites.delete(inv.id);
+    }
+    console.log(`[DELETE USER] Deleted ${invitesToDelete.length} invites`);
+
+    // Delete business_onboarding_links
+    const onboardingLinksToDelete = Array.from(this.businessOnboardingLinks.values())
+      .filter(link => link.businessId === userId);
+    for (const link of onboardingLinksToDelete) {
+      this.businessOnboardingLinks.delete(link.id);
+    }
+    console.log(`[DELETE USER] Deleted ${onboardingLinksToDelete.length} onboarding_links`);
+
+    // Delete business_onboarding_usage (where user is business or worker)
+    const onboardingUsageToDelete = Array.from(this.businessOnboardingUsage.values())
+      .filter(usage => usage.businessId === userId || usage.workerId === userId);
+    for (const usage of onboardingUsageToDelete) {
+      this.businessOnboardingUsage.delete(usage.id);
+    }
+    console.log(`[DELETE USER] Deleted ${onboardingUsageToDelete.length} onboarding_usage entries`);
+
+    // Delete work_requests (where user is contractor)
+    const workRequestsToDelete = Array.from(this.workRequests.values())
+      .filter(wr => wr.contractorUserId === userId);
+    for (const wr of workRequestsToDelete) {
+      this.workRequests.delete(wr.id);
+    }
+    console.log(`[DELETE USER] Deleted ${workRequestsToDelete.length} work_requests`);
+
+    // Delete work_request_submissions (where user is contractor or business)
+    const workSubmissionsToDelete = Array.from(this.workRequestSubmissions.values())
+      .filter((ws: any) => ws.contractorId === userId || ws.businessId === userId);
+    for (const ws of workSubmissionsToDelete) {
+      this.workRequestSubmissions.delete(ws.id);
+    }
+    console.log(`[DELETE USER] Deleted ${workSubmissionsToDelete.length} work_request_submissions`);
+
+    // Delete tasks (where user is contractor)
+    const tasksToDelete = Array.from(this.tasks.values())
+      .filter(task => task.contractorId === userId);
+    for (const task of tasksToDelete) {
+      this.tasks.delete(task.id);
+    }
+    console.log(`[DELETE USER] Deleted ${tasksToDelete.length} tasks`);
+
+    // Delete task_submissions (where user is contractor, business, or approver)
+    const taskSubmissionsToDelete = Array.from(this.taskSubmissions.values())
+      .filter((ts: any) => ts.contractorId === userId || ts.businessId === userId || ts.approverId === userId);
+    for (const ts of taskSubmissionsToDelete) {
+      this.taskSubmissions.delete(ts.id);
+    }
+    console.log(`[DELETE USER] Deleted ${taskSubmissionsToDelete.length} task_submissions`);
+
+    // Get contract IDs before deleting payments (needed for cascade)
+    const contractsToDelete = Array.from(this.contracts.values())
+      .filter(c => c.businessId === userId || c.contractorId === userId);
+    const contractIds = new Set(contractsToDelete.map(c => c.id));
+
+    // Delete payments (where user is business or contractor)
+    const paymentsToDelete = Array.from(this.payments.values())
+      .filter(p => p.businessId === userId || p.contractorId === userId);
+    for (const payment of paymentsToDelete) {
+      this.payments.delete(payment.id);
+    }
+    console.log(`[DELETE USER] Deleted ${paymentsToDelete.length} payments`);
+
+    // Delete milestones (via contracts)
+    const milestonesToDelete = Array.from(this.milestones.values())
+      .filter(m => contractIds.has(m.contractId));
+    for (const milestone of milestonesToDelete) {
+      this.milestones.delete(milestone.id);
+    }
+    console.log(`[DELETE USER] Deleted ${milestonesToDelete.length} milestones`);
+
+    // Delete documents (via contracts)
+    const documentsToDelete = Array.from(this.documents.values())
+      .filter(d => contractIds.has(d.contractId) || d.uploadedBy === userId);
+    for (const doc of documentsToDelete) {
+      this.documents.delete(doc.id);
+    }
+    console.log(`[DELETE USER] Deleted ${documentsToDelete.length} documents`);
+
+    // Delete contracts
+    for (const contract of contractsToDelete) {
+      this.contracts.delete(contract.id);
+    }
+    console.log(`[DELETE USER] Deleted ${contractsToDelete.length} contracts`);
+
+    // Delete projects (where user is business)
+    const projectsToDelete = Array.from(this.projects.values())
+      .filter(p => p.businessId === userId);
+    for (const project of projectsToDelete) {
+      this.projects.delete(project.id);
+    }
+    console.log(`[DELETE USER] Deleted ${projectsToDelete.length} projects`);
+
+    // Delete bank_accounts
+    const bankAccountsToDelete = Array.from(this.bankAccounts.values())
+      .filter(ba => ba.userId === userId);
+    for (const ba of bankAccountsToDelete) {
+      this.bankAccounts.delete(ba.id);
+    }
+    console.log(`[DELETE USER] Deleted ${bankAccountsToDelete.length} bank_accounts`);
+
+    // Finally, delete the user record
+    const deleted = await this.deleteUser(userId);
+    if (deleted) {
+      console.log(`[DELETE USER COMPLETELY] Successfully deleted user ${userId} and all related data`);
+    } else {
+      console.log(`[DELETE USER COMPLETELY] User ${userId} was not found`);
+    }
   }
 
   async updateStripeCustomerId(id: number, stripeCustomerId: string): Promise<User | undefined> {
@@ -2017,6 +2161,64 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error('❌ Error during complete user deletion:', error);
       return false;
+    }
+  }
+
+  async deleteUserCompletely(userId: number): Promise<void> {
+    console.log(`[DELETE USER COMPLETELY] Starting comprehensive deletion for user ${userId}`);
+    
+    try {
+      // Delete business_workers entries
+      await db.delete(businessWorkers).where(eq(businessWorkers.businessId, userId));
+      await db.delete(businessWorkers).where(eq(businessWorkers.contractorUserId, userId));
+      console.log(`[DELETE USER] Deleted business_workers entries`);
+
+      // Delete work_requests
+      await db.delete(workRequests).where(eq(workRequests.contractorUserId, userId));
+      console.log(`[DELETE USER] Deleted work_requests`);
+
+      // Delete work_request_submissions
+      await db.delete(workRequestSubmissions).where(eq((workRequestSubmissions as any).contractorId, userId));
+      await db.delete(workRequestSubmissions).where(eq((workRequestSubmissions as any).businessId, userId));
+      console.log(`[DELETE USER] Deleted work_request_submissions`);
+
+      // Delete tasks
+      await db.delete(tasks).where(eq(tasks.contractorId, userId));
+      console.log(`[DELETE USER] Deleted tasks`);
+
+      // Delete task_submissions
+      await db.delete(taskSubmissions).where(eq((taskSubmissions as any).contractorId, userId));
+      await db.delete(taskSubmissions).where(eq((taskSubmissions as any).businessId, userId));
+      console.log(`[DELETE USER] Deleted task_submissions`);
+
+      // Delete invites
+      await db.delete(invites).where(eq(invites.businessId, userId));
+      console.log(`[DELETE USER] Deleted invites`);
+
+      // Delete business_onboarding_links
+      await db.delete(businessOnboardingLinks).where(eq(businessOnboardingLinks.businessId, userId));
+      console.log(`[DELETE USER] Deleted business_onboarding_links`);
+
+      // Delete business_onboarding_usage
+      await db.delete(businessOnboardingUsage).where(eq(businessOnboardingUsage.businessId, userId));
+      await db.delete(businessOnboardingUsage).where(eq(businessOnboardingUsage.workerId, userId));
+      console.log(`[DELETE USER] Deleted business_onboarding_usage`);
+
+      // Delete projects
+      await db.delete(projects).where(eq(projects.businessId, userId));
+      console.log(`[DELETE USER] Deleted projects`);
+
+      // Delete bank_accounts
+      await db.delete(bankAccounts).where(eq(bankAccounts.userId, userId));
+      console.log(`[DELETE USER] Deleted bank_accounts`);
+
+      // Finally, call the existing deleteUser method to handle the rest
+      await this.deleteUser(userId);
+      
+      console.log(`[DELETE USER COMPLETELY] Successfully deleted user ${userId} and all related data`);
+    } catch (error) {
+      console.error('[DELETE USER COMPLETELY] Error:', error);
+      throw error;
     }
   }
 
