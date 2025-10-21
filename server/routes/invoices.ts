@@ -10,7 +10,7 @@ import fs from 'fs';
 const router = Router();
 
 // Get all invoices for current user
-router.get('/api/invoices', async (req, res) => {
+router.get('/invoices', async (req, res) => {
   try {
     const userId = req.session?.userId || parseInt(req.headers['x-user-id'] as string);
     
@@ -43,7 +43,7 @@ router.get('/api/invoices', async (req, res) => {
 });
 
 // Get single invoice by ID
-router.get('/api/invoices/:id', async (req, res) => {
+router.get('/invoices/:id', async (req, res) => {
   try {
     const userId = req.session?.userId || parseInt(req.headers['x-user-id'] as string);
     const invoiceId = parseInt(req.params.id);
@@ -73,7 +73,7 @@ router.get('/api/invoices/:id', async (req, res) => {
 });
 
 // Download invoice as PDF
-router.get('/api/invoices/:id/download', async (req, res) => {
+router.get('/invoices/:id/download', async (req, res) => {
   try {
     const userId = req.session?.userId || parseInt(req.headers['x-user-id'] as string);
     const invoiceId = parseInt(req.params.id);
