@@ -3478,9 +3478,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Plaid Routes
-  app.use(plaidRoutes);
-
   // Invoice Routes
   app.use(invoiceRoutes);
 
