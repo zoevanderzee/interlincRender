@@ -52,7 +52,6 @@ import {db} from "./db";
 import {sql, eq, and, or, desc, inArray} from "drizzle-orm";
 // Legacy object storage import removed - now using custom file storage
 import {FileStorageService, uploadMiddleware} from "./fileStorage";
-import plaidRoutes from "./plaid-routes";
 import trolleyRoutes from "./trolley-routes";
 import trolleyTestRoutes from "./trolley-test-routes";
 import {registerFirebaseRoutes} from "./firebase-routes";
@@ -3487,8 +3486,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Stripe Routes (payments)
 
-  // register Plaid routes
-  plaidRoutes(app, apiRouter, requireAuth);
+  // Trolley routes
   trolleyRoutes(app, apiRouter, requireAuth);
 
   // Register Connect V2 routes for payment processing
