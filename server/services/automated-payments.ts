@@ -192,6 +192,18 @@ class AutomatedPaymentService {
 
         console.log(`✅ STRIPE PAYMENT_SUCCESS: $${totalAmount} payment processed for milestone ${milestoneId}`);
 
+        // AUTO-GENERATE COMPLIANT E-INVOICES
+        try {
+          const { invoiceGenerator } = await import('./invoice-generator');
+          await invoiceGenerator.generateInvoiceForPayment({
+            paymentId: payment.id,
+            stripePaymentIntentId: transferResult.id,
+            stripeTransactionId: transferResult.id
+          });
+        } catch (invoiceError) {
+          console.error('Invoice generation failed (non-blocking):', invoiceError);
+        }
+
         return {
           success: true,
           paymentId: payment.id,
