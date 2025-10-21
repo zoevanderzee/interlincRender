@@ -1,0 +1,63 @@
+Prompt for e-Invoice Integration
+Objective:
+Enable automatic generation of globally compliant e-invoices for both the business (payer) and contractor (payee) whenever a payment is approved and the Stripe payment process is initiated or completed. The system must handle both workflow-based payments and direct payments, ensuring accurate, compliant, and transparent financial documentation for all parties.
+Functional Requirements
+Trigger Conditions
+An e-invoice must be automatically generated when:
+A business account approves a payment (either milestone-based or direct).
+Stripe confirms that the payment has been successfully initiated.
+The logic must hook into the existing payment confirmation flow without altering or duplicating current payment handling processes.
+Generation & Storage
+Each e-invoice should be generated as a secure, immutable record.
+Both business and contractor receive their own version (buyer/seller formats).
+All invoices should be stored and accessible within the Data Room page under a dedicated “Invoices” section.
+Invoices must be exportable as PDF and viewable in-app.
+Compliance Requirements
+Must follow global e-invoicing standards, including:
+Unique invoice ID and timestamp.
+Buyer and seller legal information (name, business address, tax ID/VAT/GST number if applicable).
+Currency and exchange rate (if cross-border).
+Detailed line items for services or deliverables.
+Payment reference (Stripe transaction ID or internal payment ID).
+Subtotal, taxes, fees, and total due/paid.
+Digital signature or hash for authenticity.
+Must align with core regional frameworks:
+EU: EN 16931 standard (PEPPOL compatibility for structured data).
+US/Canada: IRS/CRA compliant business receipts.
+UK: HMRC Making Tax Digital compatibility.
+APAC & LATAM: Adaptable fields for GST/VAT/CFDI compliance.
+Ensure schema flexibility to dynamically adapt per user’s registered country.
+User Visibility
+Invoices appear in the Data Room automatically after generation.
+Status should match the payment lifecycle:
+“Pending Approval” → No invoice yet.
+“Approved” → Invoice generated.
+“Completed” → Invoice marked as “Paid”.
+Both parties can view and download their respective invoices.
+Business accounts see all outgoing invoices; contractors see incoming ones.
+Security & Data Integrity
+All invoice data must be encrypted at rest and in transit.
+No manual modification after issuance.
+Only authorized users (linked to the payment) can access each invoice.
+Integration Rules
+Must use the existing payment confirmation logic (do not replace or bypass).
+Must use the same Stripe webhook confirmation flow for payment verification.
+The invoice creation logic should execute as a post-payment process — triggered only once the system confirms payment success.
+Any updates to invoice status must propagate automatically to the Data Room.
+Should reuse existing metadata models (users, projects, transactions) for relational consistency.
+Audit Trail
+Maintain a complete audit record for each invoice:
+Generation timestamp
+Linked payment ID
+Any Stripe webhook reference
+System user or process that triggered generation
+Display an “Audit” section within the Data Room for administrative visibility.
+Notifications
+Upon invoice generation, send automatic in-app and email notifications to both parties, with secure download links or Data Room reference.
+Outcome
+A unified, automated, and compliant invoicing system that:
+Requires no manual intervention.
+Functions for both milestone and direct payments.
+Meets global tax and e-invoicing standards.
+Integrates seamlessly with current Stripe and payment logic.
+Centralizes all financial documentation within the Data Room.
