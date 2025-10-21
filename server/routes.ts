@@ -70,6 +70,8 @@ import {registerTaskRoutes} from "./tasks/index";
 // Schema tables imported from shared/schema instead
 import {registerContractorAssignmentRoutes} from "./contractor-assignment";
 import {trolleyApi} from "./services/trolley-api";
+import invoiceRoutes from './routes/invoices';
+import { invoiceGenerator, generateInvoiceFromPayment } from './services/invoice-generator';
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
@@ -105,7 +107,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         '/api/complete-subscription',
         '/subscribe' // Allow the subscription page itself
       ];
-      
+
       if (exemptPaths.some(path => req.path.startsWith(path))) {
         return next();
       }
@@ -917,15 +919,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             // 🎯 AUTO-GENERATE INVOICE
             try {
-              const {invoiceGenerator} = await import('./services/invoice-generator');
-              const invoiceId = await invoiceGenerator.generateInvoiceForPayment({
-                paymentId: parseInt(paymentId),
-                stripePaymentIntentId: succeededIntent.id,
-                stripeTransactionId: succeededIntent.charges?.data?.[0]?.id
-              });
-              console.log(`📄 AUTO-GENERATED INVOICE: Invoice ${invoiceId} created for payment ${paymentId}`);
+              await generateInvoiceFromPayment(parseInt(paymentId));
             } catch (invoiceError) {
-              console.error('Error auto-generating invoice:', invoiceError);
+              console.error('Failed to auto-generate invoice:', invoiceError);
               // Don't fail the webhook if invoice generation fails
             }
 
@@ -2968,7 +2964,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const quickTasksProject = userProjects.find(p => p.name === 'Quick Tasks');
       const quickTasksProjectId = quickTasksProject?.id;
 
-      // Calculate Projects Total Value (sum of NON-Quick Tasks active project budgets)
+      // Calculate Projects Total Value (NON-Quick Tasks active project budgets)
       const projectsTotalValue = activeProjects
         .filter(project => project.id !== quickTasksProjectId)
         .reduce((sum, project) => {
@@ -3483,6 +3479,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Plaid Routes
+  app.use(plaidRoutes);
+
+  // Invoice Routes
+  app.use(invoiceRoutes);
+
+  // Stripe Routes (payments)
+
   // register Plaid routes
   plaidRoutes(app, apiRouter, requireAuth);
   trolleyRoutes(app, apiRouter, requireAuth);
@@ -3711,7 +3715,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // BULLETPROOF VALIDATION: Calculate pending payments
       const allProjects = await storage.getBusinessProjects(userId);
       const allWorkRequests = await storage.getWorkRequestsByBusinessId(userId);
-      
+
       // Find Quick Tasks project
       const quickTasksProject = allProjects.find(p => p.name === 'Quick Tasks');
       const quickTasksProjectId = quickTasksProject?.id;
@@ -5419,7 +5423,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               paymentResult = await automatedPaymentService.processApprovedWorkPayment(autoPayMilestone.id, req.user!.id);
 
               if (paymentResult.success) {
-                console.log(`[APPROVAL_PAYMENT] ✅ Payment successful: $${paymentResult.payment?.amount} to contractor ${paymentResult.payment?.contractorId}`);
+                console.log(`[APPROVAL_PAYMENT] ✅ Payment successful: $${paymentResult.payment?.amount} topaymentResult.payment?.contractorId}`);
                 await storage.updateMilestone(autoPayMilestone.id, {status: 'completed'});
               } else {
                 console.log(`[APPROVAL_PAYMENT] ⚠️ Payment failed but work remains approved:`, paymentResult.error);

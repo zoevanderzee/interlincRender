@@ -331,3 +331,45 @@ export class InvoiceGeneratorService {
 }
 
 export const invoiceGenerator = new InvoiceGeneratorService();
+
+/**
+ * Helper function to trigger invoice generation from payment webhooks
+ */
+export async function generateInvoiceFromPayment(paymentId: number): Promise<void> {
+  try {
+    const payment = await storage.getPayment(paymentId);
+    if (!payment) {
+      console.error(`Payment ${paymentId} not found for invoice generation`);
+      return;
+    }
+
+    // Only generate if payment is completed and no invoice exists yet
+    if (payment.status !== 'completed') {
+      console.log(`Payment ${paymentId} not completed, skipping invoice generation`);
+      return;
+    }
+
+    // Check if invoice already exists for this payment
+    const existingInvoices = await db
+      .select()
+      .from(invoices)
+      .where(eq(invoices.paymentId, paymentId));
+
+    if (existingInvoices.length > 0) {
+      console.log(`Invoice already exists for payment ${paymentId}, skipping`);
+      return;
+    }
+
+    // Generate invoice
+    await invoiceGenerator.generateInvoiceForPayment({
+      paymentId,
+      stripePaymentIntentId: payment.stripePaymentIntentId || '',
+      stripeTransactionId: payment.stripeTransactionId || undefined
+    });
+
+    console.log(`✅ Auto-generated invoices for payment ${paymentId}`);
+  } catch (error) {
+    console.error(`Failed to generate invoice for payment ${paymentId}:`, error);
+    throw error;
+  }
+}
