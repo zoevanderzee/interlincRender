@@ -256,6 +256,20 @@ export default function SubscriptionForm({
         "Advanced security",
         "Custom workflows"
       ]
+    },
+    {
+      id: "business-enterprise-new",
+      name: "Enterprise (New)",
+      price: "Loading...",
+      description: "Updated enterprise plan pricing",
+      features: [
+        "Unlimited contractors",
+        "Unlimited workforce management",
+        "Fast-track issue resolution with 24/7 availability",
+        "Team access",
+        "Scalable infrastructure built for enterprise workloads",
+        "Everything in SME"
+      ]
     }
   ];
 
@@ -410,8 +424,8 @@ export default function SubscriptionForm({
     // Business users can ONLY see business plans
     if (userRole === 'business') {
       if (billingPeriod === 'monthly') {
-        // Monthly plans: business (SME Monthly) and business-enterprise (Enterprise Monthly)
-        return plan.id === 'business' || plan.id === 'business-enterprise';
+        // Monthly plans: business (SME Monthly), business-enterprise (Enterprise Monthly), and business-enterprise-new
+        return plan.id === 'business' || plan.id === 'business-enterprise' || plan.id === 'business-enterprise-new';
       } else {
         // Annual plans: business-annual (SME Annual) and business-enterprise-annual (Enterprise Annual)
         return plan.id === 'business-annual' || plan.id === 'business-enterprise-annual';
