@@ -663,7 +663,7 @@ const Contractors = () => {
 
                 {/* Empty State for Freelancers */}
                 {freelancers.length === 0 && (
-                  <div className="col-span-full bg-black text-white rounded-lg shadow-sm border border-border p-8 text-center">
+                  <div className="col-span-full bg-zinc-900 text-white rounded-lg shadow-sm border border-border p-8 text-center">
                     <div className="mx-auto h-16 w-16 rounded-full bg-zinc-800 flex items-center justify-center text-white mb-4">
                       <UserIcon size={32} />
                     </div>
