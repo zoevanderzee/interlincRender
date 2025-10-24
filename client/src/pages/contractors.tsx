@@ -688,8 +688,8 @@ const Contractors = () => {
         {!isContractor && (
           <TabsContent value="invites">
             <div className="space-y-6">
-              <div className="bg-zinc-900 rounded-lg border border-border overflow-hidden">
-                <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
+              <div className="bg-zinc-900 rounded-lg border border-zinc-700 overflow-hidden">
+                <div className="px-4 py-5 sm:px-6 flex justify-between items-center bg-zinc-900">
                   <div>
                     <h3 className="text-lg font-medium text-white">Pending Invitations</h3>
                     <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
@@ -715,7 +715,7 @@ const Contractors = () => {
                         <tr>
                           <th
                             scope="col"
-                            className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+                            className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider"
                           >
                             Invitation
                           </th>
