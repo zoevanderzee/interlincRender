@@ -688,7 +688,7 @@ const Contractors = () => {
         {!isContractor && (
           <TabsContent value="invites">
             <div className="space-y-6">
-              <div className="bg-black rounded-lg border border-border overflow-hidden">
+              <div className="bg-zinc-900 rounded-lg border border-border overflow-hidden">
                 <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
                   <div>
                     <h3 className="text-lg font-medium text-white">Pending Invitations</h3>
