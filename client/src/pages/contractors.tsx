@@ -688,7 +688,7 @@ const Contractors = () => {
         {!isContractor && (
           <TabsContent value="invites">
             <div className="space-y-6">
-              <div className="bg-[#0f172a] rounded-lg border border-zinc-800 overflow-hidden">
+              <div className="bg-zinc-900 rounded-lg border border-border overflow-hidden">
                 <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
                   <div>
                     <h3 className="text-lg font-medium text-white">Pending Invitations</h3>
@@ -710,8 +710,8 @@ const Contractors = () => {
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-zinc-800">
-                      <thead className="bg-[#0f172a]">
+                    <table className="min-w-full divide-y divide-border">
+                      <thead className="bg-zinc-900">
                         <tr>
                           <th
                             scope="col"
@@ -751,7 +751,7 @@ const Contractors = () => {
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="bg-[#0f172a] divide-y divide-zinc-800">
+                      <tbody className="bg-zinc-900 divide-y divide-border">
                         {allInvites.length === 0 ? (
                           <tr>
                             <td colSpan={6} className="px-6 py-8 text-center text-sm text-muted-foreground">
