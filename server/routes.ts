@@ -3193,6 +3193,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'business-enterprise-annual': 'price_1SFIvtF4bfRUGDn9MWvE1imT', // Enterprise Annual £8,990.00/year
         'business': 'price_1Ricn6F4bfRUGDn91XzkPq5F', // SME Monthly £199.00/month
         'business-enterprise': 'price_1RgRilF4bfRUGDn9jMnjAo96', // Enterprise Monthly £899.00/month
+        'business-enterprise-new': 'price_1RgRilF4bfRUGDn9LWUhoJ6F', // Enterprise (New) business plan
         'business-annual': 'price_1SFIv5F4bfRUGDn9qeJh0VYX', // SME Annual £1,990.00/year
         'contractor-pro': 'price_1RgRm6F4bfRUGDn9TmmWXkkh' // Product: prod_Sbf6E71afc3eBj
       };
@@ -3410,6 +3411,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'business-enterprise-annual': 'price_1SFIvtF4bfRUGDn9MWvE1imT', // Enterprise Annual £8,990.00/year
         'business': 'price_1Ricn6F4bfRUGDn91XzkPq5F', // SME Monthly £199.00/month
         'business-enterprise': 'price_1RgRilF4bfRUGDn9jMnjAo96', // Enterprise Monthly £899.00/month
+        'business-enterprise-new': 'price_1RgRilF4bfRUGDn9LWUhoJ6F', // Enterprise (New) business plan
         'business-annual': 'price_1SFIv5F4bfRUGDn9qeJh0VYX', // SME Annual £1,990.00/year
         'contractor': null, // Free plan - no Price ID needed
         'contractor-pro': 'price_1RgRm6F4bfRUGDn9TmmWXkkh' // Product: prod_Sbf6E71afc3eBj
