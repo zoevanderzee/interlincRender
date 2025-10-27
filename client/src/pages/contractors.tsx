@@ -207,19 +207,16 @@ const Contractors = () => {
   // Function to generate the permanent company onboarding link using profile code
   const generateOnboardingLink = async () => {
     try {
-      let profileCode = user?.profileCode;
+      // Business users should already have a profile code from account creation
+      const profileCode = user?.profileCode;
 
-      // If no profile code exists, generate one automatically
       if (!profileCode) {
-        const response = await apiRequest("POST", "/api/profile-code/generate", {});
-        if (!response.ok) {
-          throw new Error("Failed to generate profile code");
-        }
-        const data = await response.json();
-        profileCode = data.code;
-
-        // Refresh user data to get the new profile code
-        await queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+        toast({
+          title: "Profile Code Missing",
+          description: "Your account doesn't have a profile code yet. Please contact support.",
+          variant: "destructive",
+        });
+        return;
       }
 
       const appUrl = window.location.origin;
