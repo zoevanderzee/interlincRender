@@ -255,20 +255,18 @@ export function BudgetSettings() {
 
             <div className="space-y-2">
               <Label>Budget Period</Label>
-              <RadioGroup value={budgetPeriod} onValueChange={(value) => setBudgetPeriod(value as any)}>
-                <div className="flex flex-col space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="monthly" id="monthly" />
-                    <Label htmlFor="monthly" className="cursor-pointer">Monthly</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="quarterly" id="quarterly" />
-                    <Label htmlFor="quarterly" className="cursor-pointer">Quarterly</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="yearly" id="yearly" />
-                    <Label htmlFor="yearly" className="cursor-pointer">Yearly</Label>
-                  </div>
+              <RadioGroup value={budgetPeriod} onValueChange={(value) => setBudgetPeriod(value as any)} className="flex flex-col space-y-2">
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="monthly" id="monthly" />
+                  <Label htmlFor="monthly" className="cursor-pointer font-normal">Monthly</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="quarterly" id="quarterly" />
+                  <Label htmlFor="quarterly" className="cursor-pointer font-normal">Quarterly</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="yearly" id="yearly" />
+                  <Label htmlFor="yearly" className="cursor-pointer font-normal">Yearly</Label>
                 </div>
               </RadioGroup>
             </div>

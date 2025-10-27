@@ -286,16 +286,16 @@ export default function BudgetOversight() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="budgetPeriod" className="text-white">Budget Period</Label>
+              <Label htmlFor="budgetPeriod">Budget Period</Label>
               <Select value={budgetPeriod} onValueChange={setBudgetPeriod}>
-                <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
+                <SelectTrigger>
                   <SelectValue placeholder="Select budget period" />
                 </SelectTrigger>
-                <SelectContent className="bg-zinc-900 border-zinc-700">
-                  <SelectItem value="weekly" className="text-white">Weekly</SelectItem>
-                  <SelectItem value="monthly" className="text-white">Monthly</SelectItem>
-                  <SelectItem value="quarterly" className="text-white">Quarterly</SelectItem>
-                  <SelectItem value="yearly" className="text-white">Yearly</SelectItem>
+                <SelectContent>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="quarterly">Quarterly</SelectItem>
+                  <SelectItem value="yearly">Yearly</SelectItem>
                 </SelectContent>
               </Select>
             </div>
