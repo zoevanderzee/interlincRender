@@ -3007,6 +3007,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const uniqueContractorIds = [...new Set(userWorkRequests.map(wr => wr.contractorUserId))];
       const realActiveContractorsCount = uniqueContractorIds.length;
 
+      // Get pending invites for this business
+      const pendingInvites = await storage.getInvitesByBusinessId(userId);
+
       const dashboardData = {
         stats: {
           activeContractsCount: activeWorkRequests.length, // Count accepted work requests as active contracts
