@@ -28,8 +28,8 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
   // For mobile display
   if (!isOpen && !isMobileOpen) {
     return (
-      <div className="hidden md:flex flex-col bg-[#0f1a2e] border-r border-zinc-800 w-16 overflow-y-auto transition-all duration-300 ease-in-out">
-        <div className="flex justify-center py-4 border-b border-zinc-800">
+      <div className="hidden md:flex flex-col bg-sidebar border-r border-sidebar-border w-16 overflow-y-auto transition-all duration-300 ease-in-out">
+        <div className="flex justify-center py-4 border-b border-sidebar-border">
           <img src={logoImage} alt="InterLinc Logo" className="h-8" />
         </div>
 
@@ -144,9 +144,9 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
   return (
     <div className={`
       ${isMobileOpen ? "fixed inset-y-0 left-0 z-30" : "hidden md:flex"} 
-      flex-col bg-[#0f1a2e] border-r border-zinc-800 w-64 overflow-y-auto transition-all duration-300 ease-in-out
+      flex-col bg-sidebar border-r border-sidebar-border w-64 overflow-y-auto transition-all duration-300 ease-in-out
     `}>
-      <div className="flex items-center justify-between p-4 border-b border-zinc-800">
+      <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
         <div className="flex items-center">
           <img src={logoImage} alt="InterLinc Logo" className="h-8" />
         </div>
@@ -164,12 +164,12 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
 
       <nav className="py-4 flex flex-col h-full">
         <div className="px-4 mb-4">
-          <h2 className="text-xs font-semibold text-white uppercase tracking-wider">Core</h2>
+          <h2 className="text-xs font-semibold text-sidebar-foreground uppercase tracking-wider">Core</h2>
           <ul className="mt-2 space-y-1">
             <li>
               <Link 
                 href="/" 
-                className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/") ? "bg-zinc-800 text-white" : "text-white hover:bg-zinc-800"}`}
+                className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/") ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-3" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="3" width="7" height="9"></rect>
@@ -183,7 +183,7 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
             <li>
               <Link 
                 href="/projects" 
-                className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/projects") ? "bg-zinc-800 text-white" : "text-white hover:bg-zinc-800"}`}
+                className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/projects") ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-3" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="8" y1="6" x2="21" y2="6"></line>
@@ -200,7 +200,7 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
             <li>
               <Link 
                 href="/calendar" 
-                className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/calendar") ? "bg-zinc-800 text-white" : "text-white hover:bg-zinc-800"}`}
+                className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/calendar") ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
               >
                 <Calendar className="w-5 h-5 mr-3" />
                 Calendar
@@ -210,7 +210,7 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
             <li>
               <Link 
                 href="/contractors" 
-                className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/contractors") ? "bg-zinc-800 text-white" : "text-white hover:bg-zinc-800"}`}
+                className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/contractors") ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-3" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
@@ -224,7 +224,7 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
               <li>
                 <Link 
                   href="/contractor-requests" 
-                  className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/contractor-requests") ? "bg-zinc-800 text-white" : "text-white hover:bg-zinc-800"}`}
+                  className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/contractor-requests") ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-3" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
@@ -242,12 +242,12 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
         </div>
 
         <div className="px-4 mb-4">
-          <h2 className="text-xs font-semibold text-white uppercase tracking-wider">Finance</h2>
+          <h2 className="text-xs font-semibold text-sidebar-foreground uppercase tracking-wider">Finance</h2>
           <ul className="mt-2 space-y-1">
             <li>
               <Link 
                 href="/payments" 
-                className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/payments") ? "bg-zinc-800 text-white" : "text-white hover:bg-zinc-800"}`}
+                className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/payments") ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-3" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="12" y1="1" x2="12" y2="23"></line>
@@ -260,7 +260,7 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
               <li>
                 <Link 
                   href="/budget-oversight" 
-                  className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/budget-oversight") ? "bg-zinc-800 text-white" : "text-white hover:bg-zinc-800"}`}
+                  className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/budget-oversight") ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-3" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="10"></circle>
@@ -273,7 +273,7 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
             <li>
               <Link 
                 href="/reports" 
-                className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/reports") ? "bg-zinc-800 text-white" : "text-white hover:bg-zinc-800"}`}
+                className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/reports") ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-3" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="18" y1="20" x2="18" y2="10"></line>
@@ -287,7 +287,7 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
               <li>
                 <Link 
                   href="/contractor-payment-setup" 
-                  className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/contractor-payment-setup") ? "bg-zinc-800 text-white" : "text-white hover:bg-zinc-800"}`}
+                  className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/contractor-payment-setup") ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-3" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M9 12l2 2 4-4"></path>
@@ -303,12 +303,12 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
         </div>
 
         <div className="px-4 mb-4">
-          <h2 className="text-xs font-semibold text-white uppercase tracking-wider">Documents</h2>
+          <h2 className="text-xs font-semibold text-sidebar-foreground uppercase tracking-wider">Documents</h2>
           <ul className="mt-2 space-y-1">
             <li>
               <Link 
                 href="/data-room" 
-                className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/data-room") ? "bg-zinc-800 text-white" : "text-white hover:bg-zinc-800"}`}
+                className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/data-room") ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-3" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
@@ -321,10 +321,10 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
 
 
         <div className="mt-auto px-4">
-          <div className="pt-4 border-t border-zinc-800">
+          <div className="pt-4 border-t border-sidebar-border">
             <Link 
               href="/settings" 
-              className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/settings") ? "bg-zinc-800 text-white" : "text-white hover:bg-zinc-800"}`}
+              className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/settings") ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-3" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="3"></circle>
@@ -334,7 +334,7 @@ const Sidebar = ({ isOpen, isMobileOpen, toggleSidebar, closeMobileMenu }: Sideb
             </Link>
             <Link 
               href="/help" 
-              className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/help") ? "bg-zinc-800 text-white" : "text-white hover:bg-zinc-800"}`}
+              className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${isActive("/help") ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-3" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10"></circle>
