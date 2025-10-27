@@ -455,7 +455,7 @@ export default function AuthPage() {
         try {
           // Check if there's pending registration data in database using Firebase UID
           let registrationData = null;
-          
+
           try {
             const pendingRegResponse = await fetch(`/api/pending-registrations/${result.user.uid}`);
             if (pendingRegResponse.ok) {
@@ -1004,7 +1004,7 @@ export default function AuthPage() {
                         placeholder="Enter your email"
                         value={loginForm.username}
                         onChange={handleLoginChange}
-                        className="bg-zinc-800 border-zinc-700 text-white"
+                        className="bg-[#0a1628] border-[#6b9aff]/30 text-white placeholder:text-gray-400 focus:border-[#6b9aff]"
                       />
                       {loginErrors.username && (
                         <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{loginErrors.username}</p>
@@ -1019,7 +1019,7 @@ export default function AuthPage() {
                         placeholder="Enter your password"
                         value={loginForm.password}
                         onChange={handleLoginChange}
-                        className="bg-zinc-800 border-zinc-700 text-white"
+                        className="bg-[#0a1628] border-[#6b9aff]/30 text-white placeholder:text-gray-400 focus:border-[#6b9aff]"
                       />
                       {loginErrors.password && (
                         <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{loginErrors.password}</p>
@@ -1075,7 +1075,7 @@ export default function AuthPage() {
                           placeholder="John"
                           value={registerForm.firstName}
                           onChange={handleRegisterChange}
-                          className="bg-zinc-800 border-zinc-700 text-white"
+                          className="bg-[#0a1628] border-[#6b9aff]/30 text-white placeholder:text-gray-400 focus:border-[#6b9aff]"
                         />
                         {registerErrors.firstName && (
                           <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.firstName}</p>
@@ -1089,7 +1089,7 @@ export default function AuthPage() {
                           placeholder="Doe"
                           value={registerForm.lastName}
                           onChange={handleRegisterChange}
-                          className="bg-zinc-800 border-zinc-700 text-white"
+                          className="bg-[#0a1628] border-[#6b9aff]/30 text-white placeholder:text-gray-400 focus:border-[#6b9aff]"
                         />
                         {registerErrors.lastName && (
                           <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.lastName}</p>
@@ -1106,7 +1106,7 @@ export default function AuthPage() {
                         placeholder="john.doe@example.com"
                         value={registerForm.email}
                         onChange={handleRegisterChange}
-                        className="bg-zinc-800 border-zinc-700 text-white"
+                        className="bg-[#0a1628] border-[#6b9aff]/30 text-white placeholder:text-gray-400 focus:border-[#6b9aff]"
                       />
                       {registerErrors.email && (
                         <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.email}</p>
@@ -1121,7 +1121,7 @@ export default function AuthPage() {
                         placeholder="johndoe"
                         value={registerForm.username}
                         onChange={handleRegisterChange}
-                        className="bg-zinc-800 border-zinc-700 text-white"
+                        className="bg-[#0a1628] border-[#6b9aff]/30 text-white placeholder:text-gray-400 focus:border-[#6b9aff]"
                       />
                       {registerErrors.username && (
                         <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.username}</p>
@@ -1138,7 +1138,7 @@ export default function AuthPage() {
                           placeholder="••••••••"
                           value={registerForm.password}
                           onChange={handleRegisterChange}
-                          className="bg-zinc-800 border-zinc-700 text-white"
+                          className="bg-[#0a1628] border-[#6b9aff]/30 text-white placeholder:text-gray-400 focus:border-[#6b9aff]"
                         />
                         {registerErrors.password && (
                           <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.password}</p>
@@ -1153,7 +1153,7 @@ export default function AuthPage() {
                           placeholder="••••••••"
                           value={registerForm.confirmPassword}
                           onChange={handleRegisterChange}
-                          className="bg-zinc-800 border-zinc-700 text-white"
+                          className="bg-[#0a1628] border-[#6b9aff]/30 text-white placeholder:text-gray-400 focus:border-[#6b9aff]"
                         />
                         {registerErrors.confirmPassword && (
                           <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.confirmPassword}</p>
@@ -1184,7 +1184,7 @@ export default function AuthPage() {
                           placeholder="Acme Inc."
                           value={registerForm.company}
                           onChange={handleRegisterChange}
-                          className="bg-zinc-800 border-zinc-700 text-white"
+                          className="bg-[#0a1628] border-[#6b9aff]/30 text-white placeholder:text-gray-400 focus:border-[#6b9aff]"
                         />
                         {registerErrors.company && (
                           <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.company}</p>
@@ -1200,7 +1200,7 @@ export default function AuthPage() {
                         placeholder="CEO, Project Manager, etc."
                         value={registerForm.position}
                         onChange={handleRegisterChange}
-                        className="bg-zinc-800 border-zinc-700 text-white"
+                        className="bg-[#0a1628] border-[#6b9aff]/30 text-white placeholder:text-gray-400 focus:border-[#6b9aff]"
                       />
                     </div>
                   </CardContent>
@@ -1271,7 +1271,7 @@ export default function AuthPage() {
                           placeholder="Enter your email address"
                           value={forgotPasswordForm.email}
                           onChange={handleForgotPasswordChange}
-                          className="bg-zinc-800 border-zinc-700 text-white"
+                          className="bg-[#0a1628] border-[#6b9aff]/30 text-white placeholder:text-gray-400 focus:border-[#6b9aff]"
                         />
                         {forgotPasswordError && (
                           <div className="flex items-center mt-2 text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">
