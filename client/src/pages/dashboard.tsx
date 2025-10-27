@@ -241,63 +241,7 @@ const Dashboard = () => {
         <p className="text-gray-400 mt-1">Welcome back. Here's your business overview at a glance.</p>
       </div>
 
-      {/* Connect Status Bar */}
-      <div className="mb-8">
-        {!connectStatus?.hasAccount && (
-          <Card className="border-amber-500/20">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <AlertCircle className="w-5 h-5 text-amber-400" />
-                  <div>
-                    <h3 className="font-medium text-white">Payment Processing Setup Required</h3>
-                    <p className="text-sm text-gray-400">Complete your Stripe Connect setup to receive payments</p>
-                  </div>
-                </div>
-                <Button onClick={() => navigate('/interlinc-connect-v2')} className="ml-4">
-                  Complete Setup
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-        {connectStatus?.hasAccount && !connectStatus?.verification_status?.verification_complete && (
-          <Card className="border-amber-500/20">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Clock className="w-5 h-5 text-amber-400" />
-                  <div>
-                    <h3 className="font-medium text-white">Payment Processing Pending</h3>
-                    <p className="text-sm text-gray-400">Your account is under review</p>
-                  </div>
-                </div>
-                <Button onClick={() => navigate('/interlinc-connect-v2')} variant="outline" className="ml-4">
-                  Check Status
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-        {connectStatus?.hasAccount && connectStatus?.verification_status?.verification_complete && (
-          <Card className="border-green-500/20">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <CheckCircle className="w-5 h-5 text-green-400" />
-                  <div>
-                    <h3 className="font-medium text-white">Payment Processing Active</h3>
-                    <p className="text-sm text-gray-400">Ready to process contractor payments</p>
-                  </div>
-                </div>
-                <Button onClick={() => navigate('/interlinc-connect-v2')} variant="outline" className="ml-4">
-                  Manage Account
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+      
 
       {/* Primary Metrics: 4 Key Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
