@@ -672,8 +672,8 @@ const Contractors = () => {
         {!isContractor && (
           <TabsContent value="invites">
             <div className="space-y-6">
-              <div className="bg-zinc-900 rounded-lg border border-zinc-700 overflow-hidden">
-                <div className="px-4 py-5 sm:px-6 flex justify-between items-center bg-zinc-900">
+              <div className="bg-[hsl(215,50%,12%)] dark:bg-[hsl(215,50%,12%)] rounded-lg border border-[hsl(215,40%,22%)] dark:border-[hsl(215,40%,22%)] overflow-hidden">
+                <div className="px-4 py-5 sm:px-6 flex justify-between items-center bg-[hsl(215,50%,12%)] dark:bg-[hsl(215,50%,12%)]"></div>
                   <div>
                     <h3 className="text-lg font-medium text-white">Pending Invitations</h3>
                     <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
@@ -694,8 +694,8 @@ const Contractors = () => {
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-zinc-800">
-                      <thead className="bg-zinc-900">
+                    <table className="min-w-full divide-y divide-[hsl(215,40%,22%)]">
+                      <thead className="bg-[hsl(215,50%,12%)] dark:bg-[hsl(215,50%,12%)]"></div>
                         <tr>
                           <th
                             scope="col"
@@ -735,7 +735,7 @@ const Contractors = () => {
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="bg-zinc-900 divide-y divide-zinc-800">
+                      <tbody className="bg-[hsl(215,50%,12%)] dark:bg-[hsl(215,50%,12%)] divide-y divide-[hsl(215,40%,22%)]"></div>
                         {allInvites.length === 0 ? (
                           <tr>
                             <td colSpan={6} className="px-6 py-8 text-center text-sm text-muted-foreground">
