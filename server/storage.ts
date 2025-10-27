@@ -22,7 +22,7 @@ import {
   type TaskSubmission, type InsertTaskSubmission,
   type PendingRegistration, type InsertPendingRegistration
 } from "@shared/schema";
-import { eq, and, or, desc, sql, isNull, gte, lte } from "drizzle-orm";
+import { eq, and, or, desc, sql, gte, lte } from "drizzle-orm";
 import { db, pool } from "./db";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
@@ -522,7 +522,7 @@ export class MemStorage implements IStorage {
 
   async deleteUserCompletely(userId: number): Promise<void> {
     console.log(`[DELETE USER COMPLETELY] Starting comprehensive deletion for user ${userId}`);
-    
+
     // Delete business_workers entries (where user is business or contractor)
     const businessWorkersToDelete = Array.from(this.businessWorkers.values())
       .filter(bw => bw.businessId === userId || bw.contractorUserId === userId);
@@ -1652,21 +1652,21 @@ export class MemStorage implements IStorage {
 
   async cleanupDeletedUserConnections(userId: number): Promise<void> {
     console.log(`🧹 CLEANUP: Removing all connection data for deleted user ${userId}`);
-    
+
     // Remove connection requests where this user is the business
     const businessConnections = await db
       .delete(connectionRequests)
       .where(eq(connectionRequests.businessId, userId))
       .returning();
     console.log(`  ✓ Deleted ${businessConnections.length} connection requests as business`);
-    
+
     // Remove connection requests where this user is the contractor
     const contractorConnections = await db
       .delete(connectionRequests)
       .where(eq(connectionRequests.contractorId, userId))
       .returning();
     console.log(`  ✓ Deleted ${contractorConnections.length} connection requests as contractor`);
-    
+
     console.log(`✅ CLEANUP COMPLETE: User ${userId} has no residual connection data`);
   }
 
@@ -2150,7 +2150,7 @@ export class DatabaseStorage implements IStorage {
         console.log(`  ✓ Deleted pending registrations`);
       }
 
-      // 7. Finally, delete the user record itself
+      // 7. Finally, delete the user record
       await db.delete(users).where(eq(users.id, id));
       console.log(`  ✓ Deleted user record`);
 
@@ -2166,7 +2166,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteUserCompletely(userId: number): Promise<void> {
     console.log(`[DELETE USER COMPLETELY] Starting comprehensive deletion for user ${userId}`);
-    
+
     try {
       // Delete business_workers entries
       await db.delete(businessWorkers).where(eq(businessWorkers.businessId, userId));
@@ -2214,7 +2214,7 @@ export class DatabaseStorage implements IStorage {
 
       // Finally, call the existing deleteUser method to handle the rest
       await this.deleteUser(userId);
-      
+
       console.log(`[DELETE USER COMPLETELY] Successfully deleted user ${userId} and all related data`);
     } catch (error) {
       console.error('[DELETE USER COMPLETELY] Error:', error);
@@ -3034,14 +3034,14 @@ export class DatabaseStorage implements IStorage {
 
   async getWorkRequestsByContractorId(contractorId: number): Promise<WorkRequest[]> {
     console.log(`Getting work requests for contractor ID: ${contractorId}`);
-    
+
     // SECURITY: Verify contractor exists before querying their work requests
     const contractor = await this.getUser(contractorId);
     if (!contractor || contractor.role !== 'contractor') {
       console.log(`Contractor ${contractorId} does not exist or is not a contractor - returning empty array`);
       return [];
     }
-    
+
     const results = await db
       .select({
         id: workRequests.id,
@@ -3811,7 +3811,7 @@ export class DatabaseStorage implements IStorage {
     await db.delete(connectionRequests).where(eq(connectionRequests.contractorId, userId));
     // Also clean up invites
     await db.delete(invites).where(eq(invites.businessId, userId)); // Assuming businessId here for invites cleanup
-    // Note: This is a simplified cleanup. In a real DB, you'd want cascading deletes or explicit FK constraints.
+    // Note: This is a simplified cleanup. In a real DB, you'd want to use ON DELETE CASCADE or similar.
   }
 
   async getAcceptedConnectionRequestsForContractor(contractorId: number): Promise<any[]> {
@@ -3847,10 +3847,10 @@ export class DatabaseStorage implements IStorage {
         // This prevents linking phantom data from deleted accounts that had the same ID
         const requestDate = new Date(req.createdAt);
         const userCreatedDate = new Date(contractor.createdAt || 0);
-        
+
         console.log(`   Checking request ${req.id}: created ${requestDate.toISOString()}`);
         console.log(`   User created: ${userCreatedDate.toISOString()}`);
-        
+
         // PHANTOM DATA CHECK: If request predates user creation, it's from a deleted account
         if (requestDate < userCreatedDate) {
           console.log(`🧹 PHANTOM DATA (TIME): Deleting connection request ${req.id} (created BEFORE current user account existed)`);
@@ -4316,18 +4316,6 @@ export class DatabaseStorage implements IStorage {
     await db.delete(workRequests).where(eq(workRequests.id, id));
   }
 
-  async deleteContract(id: number): Promise<void> {
-    await db.delete(contracts).where(eq(contracts.id, id));
-  }
-
-  async deleteContractMilestones(contractId: number): Promise<void> {
-    await db.delete(milestones).where(eq(milestones.contractId, contractId));
-  }
-
-  async deleteContractPayments(contractId: number): Promise<void> {
-    await db.delete(payments).where(eq(payments.contractId, contractId));
-  }
-
   // Project methods
   async getProject(id: number): Promise<Project | undefined> {
     const [project] = await db.select().from(projects).where(eq(projects.id, id));
@@ -4471,16 +4459,16 @@ export class DatabaseStorage implements IStorage {
     return newSubmission;
   }
 
-  async updateTaskSubmission(id: number, submissionData: Partial<InsertTaskSubmission>): Promise<TaskSubmission | undefined> {
-    const [updatedSubmission] = await db
+  async updateTaskSubmission(submissionId: number, updates: Partial<InsertTaskSubmission>): Promise<TaskSubmission | undefined> {
+    const [submission] = await db
       .update(taskSubmissions)
-      .set(submissionData)
-      .where(eq(taskSubmissions.id, id))
+      .set(updates)
+      .where(eq(taskSubmissions.id, submissionId))
       .returning();
-    return updatedSubmission;
+    return submission;
   }
 
-  async approveTaskSubmission(id: number, approverId: number): Promise<TaskSubmission | undefined> {
+  async approveTaskSubmission(submissionId: number, approverId: number): Promise<TaskSubmission | undefined> {
     return await db.transaction(async (tx) => {
       // Get the task submission with task info in one query with row locking
       const [submissionWithTask] = await tx
@@ -4491,7 +4479,7 @@ export class DatabaseStorage implements IStorage {
         })
         .from(taskSubmissions)
         .innerJoin(tasks, eq(taskSubmissions.taskId, tasks.id))
-        .where(eq(taskSubmissions.id, id))
+        .where(eq(taskSubmissions.id, submissionId))
         .for('update');
 
       if (!submissionWithTask) return undefined;
@@ -4514,7 +4502,7 @@ export class DatabaseStorage implements IStorage {
           approverId,
           approvedAt: new Date()
         })
-        .where(eq(taskSubmissions.id, id))
+        .where(eq(taskSubmissions.id, submissionId))
         .returning();
 
       // Update parent task status only if currently 'submitted'

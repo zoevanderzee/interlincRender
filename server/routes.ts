@@ -2056,8 +2056,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Only allow transition from assigned|in_review -> approved
-      const validTransitionStates = ['assigned', 'in_review', 'completed'];
+      // Only allow transition from assigned|in_review|completed -> approved
+      const validTransitionStates = ['assigned', 'in_review', 'completed', 'submitted'];
       if (!validTransitionStates.includes(currentDeliverable.status)) {
         return res.status(400).json({
           message: `Cannot approve deliverable from status: ${currentDeliverable.status}`,
@@ -2065,8 +2065,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Get contract and contractor details
+      const contract = await storage.getContract(currentDeliverable.contractId);
+      if (!contract) {
+        return res.status(404).json({message: "Contract not found"});
+      }
+
+      const contractor = await storage.getUser(contract.contractorId);
+      if (!contractor || !contractor.stripeConnectAccountId) {
+        return res.status(400).json({message: "Contractor payment setup incomplete"});
+      }
+
       // Create idempotency key = deliverableId + lastUpdatedAt
-      const idempotencyKey = `${deliverableId}_${currentDeliverable.updatedAt?.getTime() || Date.now()}`;
+      const idempotencyKey = `dlv_${deliverableId}_${currentDeliverable.updatedAt?.getTime() || Date.now()}`;
       console.log(`[DELIVERABLE_APPROVAL] id=${deliverableId} idempotencyKey=${idempotencyKey} fromStatus=${currentDeliverable.status}`);
 
       // Update deliverable status to approved
@@ -2082,40 +2093,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create notification for deliverable approval
       try {
-        const contract = await storage.getContract(updatedDeliverable.contractId);
-        if (contract) {
-          await notificationService.createMilestoneApproval(
-            contract.contractorId,
-            updatedDeliverable.name,
-            `£${parseFloat(updatedDeliverable.paymentAmount).toFixed(2)}`
-          );
-        }
+        await notificationService.createMilestoneApproval(
+          contract.contractorId,
+          updatedDeliverable.name,
+          `£${parseFloat(updatedDeliverable.paymentAmount).toFixed(2)}`
+        );
       } catch (notificationError) {
         console.error('Error creating deliverable approval notification:', notificationError);
       }
 
-      // Trigger automated payment processing
-      const paymentResult = await automatedPaymentService.processMilestoneApproval(deliverableId, approvedBy);
+      console.log(`[DELIVERABLE_APPROVAL] Deliverable ${deliverableId} approved, creating payment for contractor ${contractor.id}`);
 
-      if (paymentResult.success) {
+      try {
+        // Create payment record in database
+        const paymentData = {
+          contractId: contract.id,
+          milestoneId: deliverableId,
+          businessId: approvedBy,
+          contractorId: contractor.id,
+          amount: updatedDeliverable.paymentAmount,
+          status: 'processing',
+          scheduledDate: new Date(),
+          notes: `Payment for deliverable: ${updatedDeliverable.name}`,
+          stripePaymentIntentId: null,
+          stripePaymentIntentStatus: null,
+          paymentProcessor: 'stripe',
+          triggeredBy: 'deliverable_approval',
+          triggeredAt: new Date()
+        };
+
+        const payment = await storage.createPayment(paymentData);
+        console.log(`[DELIVERABLE_APPROVAL] Payment record created: ${payment.id}`);
+
+        // Create Stripe PaymentIntent with destination + on_behalf_of
+        const { createPaymentIntent } = await import('./services/stripe.js');
+        
+        const paymentIntent = await createPaymentIntent({
+          amount: parseFloat(updatedDeliverable.paymentAmount),
+          currency: 'gbp',
+          description: `Deliverable payment: ${updatedDeliverable.name}`,
+          metadata: {
+            payment_id: payment.id.toString(),
+            milestone_id: deliverableId.toString(),
+            contract_id: contract.id.toString(),
+            payment_type: 'deliverable_approval',
+            initiated_by: 'business_user',
+            idempotency_key: idempotencyKey
+          },
+          transferData: {
+            destination: contractor.stripeConnectAccountId
+          },
+          businessAccountId: approvedBy.toString() // For metadata tracking
+        });
+
+        console.log(`[DELIVERABLE_APPROVAL] Payment Intent created: ${paymentIntent.id}`);
+
+        // Update payment record with Stripe details
+        await storage.updatePaymentStripeDetails(
+          payment.id, 
+          paymentIntent.id, 
+          paymentIntent.status || 'requires_payment_method'
+        );
+
         res.json({
-          message: "Deliverable approved and payment processed automatically",
+          message: "Deliverable approved and payment created successfully",
           deliverable: updatedDeliverable,
           status: "processing",
           payment: {
-            id: paymentResult.paymentId,
-            transferId: paymentResult.transferId,
-            logId: paymentResult.logId
+            id: payment.id,
+            payment_intent_id: paymentIntent.id,
+            client_secret: paymentIntent.clientSecret,
+            status: paymentIntent.status,
+            amount: updatedDeliverable.paymentAmount,
+            currency: 'gbp'
           }
         });
-      } else {
-        // Deliverable was approved but payment failed - still return success for approval
-        console.error('Automated payment failed:', paymentResult.error);
+
+      } catch (paymentError: any) {
+        console.error(`[DELIVERABLE_APPROVAL] Payment failed:`, paymentError);
+        
         res.json({
-          message: "Deliverable approved, but automated payment failed",
+          message: "Deliverable approved but payment failed",
           deliverable: updatedDeliverable,
           status: "approved_payment_failed",
-          paymentError: paymentResult.error
+          paymentError: paymentError.message
         });
       }
 

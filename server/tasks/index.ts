@@ -299,6 +299,12 @@ export function registerTaskRoutes(app: Express) {
         return res.status(403).json({ error: "Access denied" });
       }
 
+      // Verify contractor has Connect account
+      const contractor = await storage.getUser(task.contractorId!);
+      if (!contractor || !contractor.stripeConnectAccountId) {
+        return res.status(400).json({ error: "Contractor payment setup incomplete" });
+      }
+
       // Get the latest task submission (ordered by most recent first)
       const submissions = await storage.getTaskSubmissionsByTaskId(taskId);
       const latestSubmission = submissions
@@ -312,47 +318,89 @@ export function registerTaskRoutes(app: Express) {
       // Validate review data
       const reviewData = reviewTaskSubmissionSchema.parse(req.body);
 
+      // Approve the submission first
+      const approvedSubmission = await storage.approveTaskSubmission(latestSubmission.id, userId);
+      
+      if (!approvedSubmission) {
+        return res.status(500).json({ error: "Failed to approve submission" });
+      }
+
+      // Update task status to approved
+      await storage.updateTaskStatus(taskId, 'approved');
+
+      console.log(`[TASK_APPROVAL] Task ${taskId} approved by business ${userId}, creating payment for contractor ${task.contractorId}`);
+
       try {
-        // Create payment with idempotency key
-        const idempotencyKey = `task_sub_${latestSubmission.id}`;
+        // Create payment record in database first
+        const paymentData = {
+          contractId: null, // Tasks don't have contracts
+          milestoneId: null, // Tasks don't have milestones
+          businessId: userId,
+          contractorId: task.contractorId!,
+          amount: task.amount,
+          status: 'processing',
+          scheduledDate: new Date(),
+          notes: `Payment for task: ${task.title}`,
+          stripePaymentIntentId: null,
+          stripePaymentIntentStatus: null,
+          paymentProcessor: 'stripe',
+          triggeredBy: 'task_approval',
+          triggeredAt: new Date()
+        };
+
+        const payment = await storage.createPayment(paymentData);
+        console.log(`[TASK_APPROVAL] Payment record created: ${payment.id}`);
+
+        // Create Stripe PaymentIntent with destination + on_behalf_of
+        const { createPaymentIntent } = await import('../services/stripe.js');
         
-        console.log(`[TASK_APPROVAL] Creating payment for task submission ${latestSubmission.id} with idempotency: ${idempotencyKey}`);
-        
-        const paymentResult = await createSecurePaymentV2({
-          contractorUserId: task.contractorId!,
-          amount: parseFloat(task.amount) * 100, // Convert to cents
+        const paymentIntent = await createPaymentIntent({
+          amount: parseFloat(task.amount),
           currency: task.currency.toLowerCase(),
           description: `Task payment: ${task.title}`,
           metadata: {
+            payment_id: payment.id.toString(),
             task_id: task.id.toString(),
             task_submission_id: latestSubmission.id.toString(),
             project_id: task.projectId.toString(),
-            idempotency_key: idempotencyKey,
-            payment_type: 'task_approval'
-          }
+            payment_type: 'task_approval',
+            initiated_by: 'business_user'
+          },
+          transferData: {
+            destination: contractor.stripeConnectAccountId
+          },
+          businessAccountId: userId.toString() // For metadata tracking
         });
 
-        console.log(`[TASK_APPROVAL] Payment created: ${paymentResult.payment_intent_id}`);
+        console.log(`[TASK_APPROVAL] Payment Intent created: ${paymentIntent.id}`);
 
-        // Step 3: TODO - Link payment ID to submission in database
-        // await storage.updateTaskSubmissionPaymentId(approvedSubmission.id, paymentResult.payment_intent_id);
+        // Update payment record with Stripe details
+        await storage.updatePaymentStripeDetails(
+          payment.id, 
+          paymentIntent.id, 
+          paymentIntent.status || 'requires_payment_method'
+        );
+
+        // Link payment to submission
+        await storage.updateTaskSubmission(approvedSubmission.id, {
+          paymentId: payment.id
+        });
 
         res.json({
           success: true,
           submission: approvedSubmission,
           payment: {
-            payment_intent_id: paymentResult.payment_intent_id,
-            status: paymentResult.status,
-            destination_account: paymentResult.destination_account
+            payment_intent_id: paymentIntent.id,
+            client_secret: paymentIntent.clientSecret,
+            status: paymentIntent.status,
+            amount: task.amount,
+            currency: task.currency
           },
           message: "Task approved and payment created successfully"
         });
         
       } catch (paymentError: any) {
         console.error(`[TASK_APPROVAL] Payment failed for submission ${latestSubmission.id}:`, paymentError);
-        
-        // Still approve the submission (approval first, payment second approach)
-        const approvedSubmission = await storage.approveTaskSubmission(latestSubmission.id, userId);
         
         res.json({
           success: true,
