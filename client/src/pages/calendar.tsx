@@ -275,7 +275,7 @@ export default function Calendar() {
           const config = STATUS_CONFIG[status as keyof typeof STATUS_CONFIG];
           const Icon = config.icon;
           return (
-            <Card key={status} className="bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
+            <Card key={status} className="bg-white dark:bg-[hsl(215,50%,12%)] border-zinc-200 dark:border-zinc-800">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -295,7 +295,7 @@ export default function Calendar() {
       </div>
 
       {/* Calendar */}
-      <Card className="bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
+      <Card className="bg-white dark:bg-[hsl(215,50%,12%)] border-zinc-200 dark:border-zinc-800">
         <CardHeader className="border-b border-zinc-200 dark:border-zinc-800">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -340,7 +340,7 @@ export default function Calendar() {
             {DAY_NAMES.map(day => (
               <div
                 key={day}
-                className="p-4 text-center text-sm font-semibold text-zinc-600 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800"
+                className="p-4 text-center text-sm font-semibold text-zinc-600 dark:text-white/70 border-b border-zinc-200 dark:border-zinc-800"
               >
                 {day}
               </div>
@@ -357,9 +357,9 @@ export default function Calendar() {
                   key={index}
                   className={`
                     min-h-[120px] p-3 border-r border-b relative
-                    ${!isCurrentMonthDay ? 'bg-zinc-950 dark:bg-zinc-950 bg-blue-50/30 opacity-50' : 'bg-blue-50 dark:bg-zinc-900'}
+                    ${!isCurrentMonthDay ? 'bg-blue-50/30 dark:bg-[hsl(210,60%,8%)] opacity-50' : 'bg-blue-50 dark:bg-[hsl(215,50%,12%)]'}
                     ${isTodayDate ? 'ring-2 ring-inset ring-blue-500' : ''}
-                    hover:bg-blue-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer
+                    hover:bg-blue-100 dark:hover:bg-[hsl(215,40%,18%)] transition-colors cursor-pointer
                     border-zinc-200 dark:border-zinc-800
                   `}
                 >
