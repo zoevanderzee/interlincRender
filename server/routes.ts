@@ -764,7 +764,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
 
           console.log(`Created Stripe customer ${customer.id} for new business user ${newUser.id}`);
-          res.status(201).json(updatedUser || newUser);
+          
+          // Auto-generate profile code for permanent onboarding link
+          try {
+            const profileCode = await storage.generateProfileCode(newUser.id);
+            console.log(`Auto-generated profile code ${profileCode} for new business user ${newUser.id}`);
+            
+            // Fetch updated user with profile code
+            const userWithCode = await storage.getUser(newUser.id);
+            res.status(201).json(userWithCode || updatedUser || newUser);
+          } catch (profileError) {
+            console.error('Failed to auto-generate profile code for new business user:', profileError);
+            // Non-critical - return user without profile code
+            res.status(201).json(updatedUser || newUser);
+          }
         } catch (stripeError) {
           console.error('Failed to create Stripe customer for new user:', stripeError);
           // Still return the user, customer can be created later

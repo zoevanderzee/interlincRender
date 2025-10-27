@@ -207,17 +207,23 @@ const Contractors = () => {
   // Function to generate the permanent company onboarding link using profile code
   const generateOnboardingLink = async () => {
     try {
-      if (!user?.profileCode) {
-        toast({
-          title: "Profile Code Required",
-          description: "You need a profile code to generate an onboarding link. Please set one in your settings.",
-          variant: "destructive",
-        });
-        return;
+      let profileCode = user?.profileCode;
+
+      // If no profile code exists, generate one automatically
+      if (!profileCode) {
+        const response = await apiRequest("POST", "/api/profile-code/generate", {});
+        if (!response.ok) {
+          throw new Error("Failed to generate profile code");
+        }
+        const data = await response.json();
+        profileCode = data.code;
+
+        // Refresh user data to get the new profile code
+        await queryClient.invalidateQueries({ queryKey: ['/api/user'] });
       }
 
       const appUrl = window.location.origin;
-      const onboardingUrl = `${appUrl}/join?code=${user.profileCode}`;
+      const onboardingUrl = `${appUrl}/join?code=${profileCode}`;
 
       setDirectLink(onboardingUrl);
       setIsLinkDialogOpen(true);
