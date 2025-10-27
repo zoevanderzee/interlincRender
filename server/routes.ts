@@ -3027,8 +3027,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           currentYearPayments: currentYearPayments, // Current year actual payments
           totalSuccessfulPaymentsCount: businessPaymentStats.totalSuccessfulPayments, // Total count of successful payments
           // BULLETPROOF: Use same calculation as budget page
-          remainingBudget: req.user?.budgetCap
-            ? (parseFloat(req.user.budgetCap.toString()) - totalPaymentsValue).toFixed(2)
+          remainingBudget: user.budgetCap
+            ? (parseFloat(user.budgetCap) - totalPaymentsValue).toFixed(2)
             : null
         },
         contracts: userContracts.filter(contract => contract.status !== 'deleted'),
@@ -3714,7 +3714,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         budgetResetEnabled: user.budgetResetEnabled || false,
         totalProjectAllocations: totalProjectAllocations.toFixed(2),
         remainingBudget: user.budgetCap
-          ? (parseFloat(user.budgetCap.toString()) - totalPaymentsValue).toFixed(2)
+          ? (parseFloat(user.budgetCap) - totalPaymentsValue).toFixed(2)
           : null
       });
     } catch (error) {
@@ -3804,7 +3804,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         budgetEndDate: user.budgetEndDate || null,
         budgetResetEnabled: user.budgetResetEnabled || false,
         remainingBudget: user.budgetCap
-          ? (parseFloat(user.budgetCap.toString()) - totalPaymentsValue).toFixed(2)
+          ? (parseFloat(user.budgetCap) - totalPaymentsValue).toFixed(2)
           : null
       });
     } catch (error) {

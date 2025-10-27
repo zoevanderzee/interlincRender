@@ -217,30 +217,27 @@ export default function Settings() {
                   <Button
                     type="button"
                     onClick={() => {
-                      const firstName = (document.getElementById("firstName") as HTMLInputElement).value?.trim() || "";
-                      const lastName = (document.getElementById("lastName") as HTMLInputElement).value?.trim() || "";
-                      const title = (document.getElementById("title") as HTMLInputElement).value?.trim() || "";
+                      const firstName = (document.getElementById("firstName") as HTMLInputElement).value?.trim();
+                      const lastName = (document.getElementById("lastName") as HTMLInputElement).value?.trim();
+                      const title = (document.getElementById("title") as HTMLInputElement).value?.trim();
                       
                       const formData: any = {};
                       
-                      // Only include fields that have values
-                      if (firstName) formData.firstName = firstName;
-                      if (lastName) formData.lastName = lastName;
-                      if (title) formData.title = title;
+                      // Always include firstName and lastName (can be empty strings)
+                      formData.firstName = firstName || "";
+                      formData.lastName = lastName || "";
+                      
+                      // Only include title if it has a value
+                      if (title) {
+                        formData.title = title;
+                      }
                       
                       if (user.role === "business") {
                         const companyName = (document.getElementById("companyName") as HTMLInputElement)?.value?.trim();
-                        if (companyName) formData.companyName = companyName;
-                      }
-                      
-                      // Don't send empty update
-                      if (Object.keys(formData).length === 0) {
-                        toast({
-                          title: "No changes",
-                          description: "Please enter at least one field to update.",
-                          variant: "destructive",
-                        });
-                        return;
+                        // Only include companyName if it has a value
+                        if (companyName) {
+                          formData.companyName = companyName;
+                        }
                       }
                       
                       updateProfileMutation.mutate(formData);
