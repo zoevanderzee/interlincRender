@@ -275,7 +275,7 @@ export default function Calendar() {
           const config = STATUS_CONFIG[status as keyof typeof STATUS_CONFIG];
           const Icon = config.icon;
           return (
-            <Card key={status} className="bg-zinc-900 border-zinc-800">
+            <Card key={status} className="bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -295,8 +295,8 @@ export default function Calendar() {
       </div>
 
       {/* Calendar */}
-      <Card className="bg-zinc-900 border-zinc-800">
-        <CardHeader className="border-b border-zinc-800">
+      <Card className="bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
+        <CardHeader className="border-b border-zinc-200 dark:border-zinc-800">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Button
@@ -340,7 +340,7 @@ export default function Calendar() {
             {DAY_NAMES.map(day => (
               <div
                 key={day}
-                className="p-4 text-center text-sm font-semibold text-zinc-400 border-b border-zinc-800"
+                className="p-4 text-center text-sm font-semibold text-zinc-600 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800"
               >
                 {day}
               </div>
@@ -356,15 +356,16 @@ export default function Calendar() {
                 <div
                   key={index}
                   className={`
-                    min-h-[120px] p-3 border-r border-b border-zinc-800 relative
-                    ${!isCurrentMonthDay ? 'bg-zinc-950 opacity-50' : 'bg-zinc-900'}
+                    min-h-[120px] p-3 border-r border-b relative
+                    ${!isCurrentMonthDay ? 'bg-zinc-950 dark:bg-zinc-950 bg-blue-50/30 opacity-50' : 'bg-blue-50 dark:bg-zinc-900'}
                     ${isTodayDate ? 'ring-2 ring-inset ring-blue-500' : ''}
-                    hover:bg-zinc-800 transition-colors cursor-pointer
+                    hover:bg-blue-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer
+                    border-zinc-200 dark:border-zinc-800
                   `}
                 >
                   <div className={`
                     text-sm font-semibold mb-2
-                    ${isTodayDate ? 'text-blue-400' : isCurrentMonthDay ? 'text-white' : 'text-zinc-600'}
+                    ${isTodayDate ? 'text-blue-600 dark:text-blue-400' : isCurrentMonthDay ? 'text-zinc-800 dark:text-white' : 'text-zinc-400 dark:text-zinc-600'}
                   `}>
                     {date.getDate()}
                   </div>
