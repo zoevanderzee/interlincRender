@@ -2127,7 +2127,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Create Stripe PaymentIntent with destination + on_behalf_of
         const { createPaymentIntent } = await import('./services/stripe.js');
-        
+
         const paymentIntent = await createPaymentIntent({
           amount: parseFloat(updatedDeliverable.paymentAmount),
           currency: 'gbp',
@@ -2150,8 +2150,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Update payment record with Stripe details
         await storage.updatePaymentStripeDetails(
-          payment.id, 
-          paymentIntent.id, 
+          payment.id,
+          paymentIntent.id,
           paymentIntent.status || 'requires_payment_method'
         );
 
@@ -2171,7 +2171,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       } catch (paymentError: any) {
         console.error(`[DELIVERABLE_APPROVAL] Payment failed:`, paymentError);
-        
+
         res.json({
           message: "Deliverable approved but payment failed",
           deliverable: updatedDeliverable,
@@ -5492,7 +5492,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } catch (paymentError: any) {
             console.log('[APPROVAL_PAYMENT] ⚠️ Payment processing error - work remains approved:', paymentError.message);
             paymentResult = {success: false, error: paymentError.message};
-          }
+          }}
         }
       }
 
@@ -6052,6 +6052,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const paymentRecord = await storage.createPayment({
         contractId: milestone.contractId,
         milestoneId: milestoneId,
+        businessId: user.id,
+        contractorId: contractor.id,
         amount: amount.toString(),
         status: 'processing',
         scheduledDate: new Date(),
