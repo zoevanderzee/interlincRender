@@ -356,13 +356,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({message: "Authentication required"});
       }
 
-      const user = await storage.getUser(userId);
-      if (!user) {
+      const currentUser = await storage.getUser(userId);
+      if (!currentUser) {
         return res.status(404).json({message: "User not found"});
       }
 
       // Business-specific stats
-      if (user.role === 'business') {
+      if (currentUser.role === 'business') {
         const workRequests = await storage.getWorkRequestsByBusinessId(userId);
         const acceptedWorkRequests = workRequests.filter(wr => wr.status === 'accepted');
 
@@ -412,13 +412,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           paymentsProcessed: paymentStats.totalPaymentValue,
           totalPendingValue: totalPendingValue,
           activeContractors: contractors.length,
-          remainingBudget: user.budgetCap ?
-            (parseFloat(user.budgetCap) - parseFloat(user.budgetUsed || "0")).toString() : null
+          remainingBudget: currentUser.budgetCap ?
+            (parseFloat(currentUser.budgetCap) - parseFloat(currentUser.budgetUsed || "0")).toString() : null
         });
       }
 
       // Contractor-specific stats
-      if (user.role === 'contractor') {
+      if (currentUser.role === 'contractor') {
         const earnings = await storage.getContractorEarningsStats(userId);
         const workRequests = await storage.getWorkRequestsByContractorId(userId);
         // Active assignments are work requests that have been ACCEPTED by the contractor

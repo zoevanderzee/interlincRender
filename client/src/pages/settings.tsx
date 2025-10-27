@@ -31,7 +31,15 @@ export default function Settings() {
       return res.json();
     },
     onSuccess: () => {
+      // Invalidate all queries that display user profile data (SSOT pattern)
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/work-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/contracts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      queryClient.invalidateQueries({ queryKey: ["/integrated"] });
+      
       toast({
         title: "Profile updated",
         description: "Your profile has been updated successfully.",
