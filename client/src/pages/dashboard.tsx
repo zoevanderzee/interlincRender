@@ -241,8 +241,6 @@ const Dashboard = () => {
         <p className="text-gray-400 mt-1">Welcome back. Here's your business overview at a glance.</p>
       </div>
 
-      
-
       {/* Primary Metrics: 4 Key Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {/* Card 1: Payments Processed */}
