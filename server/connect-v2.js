@@ -374,8 +374,6 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       if (existing?.accountId) {
         return res.status(409).json({ error: "Account already exists" });
       }
-
-      const user = await db.getUser(userId);
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
