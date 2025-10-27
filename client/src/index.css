@@ -208,15 +208,15 @@
 
   /* Premium Input Styling */
   input, textarea, select {
-    background: hsl(var(--input));
+    background: hsl(var(--input)) !important;
     backdrop-filter: blur(10px);
     border: 1px solid hsl(var(--border));
     transition: var(--transition-smooth);
-    color: hsl(var(--foreground));
+    color: hsl(var(--foreground)) !important;
   }
 
   input:focus, textarea:focus, select:focus {
-    background: hsl(var(--background));
+    background: hsl(var(--background)) !important;
     border-color: hsl(var(--primary));
     box-shadow: 
       0 0 0 3px hsl(var(--primary) / 0.15),
@@ -228,6 +228,20 @@
   input::placeholder, textarea::placeholder {
     color: hsl(var(--muted-foreground));
     opacity: 0.6;
+  }
+
+  /* Light mode specific overrides */
+  :root input,
+  :root textarea,
+  :root select {
+    background: white !important;
+    color: hsl(215, 60%, 20%) !important;
+  }
+
+  :root input:focus,
+  :root textarea:focus,
+  :root select:focus {
+    background: white !important;
   }
 
   /* Skeleton Loader Styling */
