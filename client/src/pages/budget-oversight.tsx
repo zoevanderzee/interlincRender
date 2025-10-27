@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -72,7 +71,7 @@ export default function BudgetOversight() {
 
   const handleSaveBudget = () => {
     const budgetValue = budgetCap ? parseFloat(budgetCap) : null;
-    
+
     if (budgetValue && budgetValue <= 0) {
       toast({
         title: "Invalid Budget",
@@ -116,7 +115,7 @@ export default function BudgetOversight() {
   const budgetUsed = parseFloat(financialData.totalBudgetUsed || "0");
   const budgetLimit = parseFloat(integratedData?.budgetData?.budgetCap || "0");
   const remainingBudget = parseFloat(financialData.remainingBudget || "0");
-  
+
   const budgetUtilization = budgetLimit > 0 ? (budgetUsed / budgetLimit) * 100 : 0;
   const isOverBudget = budgetUsed > budgetLimit && budgetLimit > 0;
   const isNearLimit = budgetUtilization > 80 && !isOverBudget;
@@ -277,7 +276,7 @@ export default function BudgetOversight() {
                   placeholder="Enter budget limit (leave empty for no limit)"
                   value={budgetCap}
                   onChange={(e) => setBudgetCap(e.target.value)}
-                  className="pl-9 bg-white dark:bg-[hsl(215,50%,12%)] border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white"
+                  className="pl-9 bg-white dark:bg-[#1a2332] border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white"
                 />
               </div>
               <p className="text-xs text-gray-400">
@@ -341,7 +340,7 @@ export default function BudgetOversight() {
                   {integratedData?.stats?.activeContractsCount || 0}
                 </span>
               </div>
-              
+
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-400">Payments Processed</span>
                 <span className="text-sm font-medium text-white">
@@ -371,7 +370,7 @@ export default function BudgetOversight() {
                 <CheckCircle className="h-4 w-4 text-green-400" />
                 <span className="text-sm text-white">Budget tracking active</span>
               </div>
-              
+
               {integratedData?.budgetData?.budgetResetEnabled && (
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-blue-400" />
