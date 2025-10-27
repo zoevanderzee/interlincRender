@@ -17,13 +17,15 @@ interface StripeCheckoutFormProps {
   clientSecret: string;
   onPaymentComplete: (paymentIntentId: string) => void;
   isProcessing: boolean;
+  showSaveCard?: boolean;
 }
 
-function StripeCheckoutForm({ clientSecret, onPaymentComplete, isProcessing }: StripeCheckoutFormProps) {
+function StripeCheckoutForm({ clientSecret, onPaymentComplete, isProcessing, showSaveCard = false }: StripeCheckoutFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isElementsReady, setIsElementsReady] = useState(false);
+  const [saveCard, setSaveCard] = useState(false);
   const { toast } = useToast();
   
   useEffect(() => {
@@ -55,6 +57,9 @@ function StripeCheckoutForm({ clientSecret, onPaymentComplete, isProcessing }: S
     const { error, paymentIntent } = await stripe.confirmPayment({
       elements,
       redirect: 'if_required',
+      confirmParams: {
+        setup_future_usage: showSaveCard && saveCard ? 'off_session' : undefined,
+      },
     });
 
     if (error) {
@@ -79,6 +84,24 @@ function StripeCheckoutForm({ clientSecret, onPaymentComplete, isProcessing }: S
   return (
     <form onSubmit={handleSubmit}>
       <PaymentElement className="mb-6" />
+      
+      {/* Save Card Option */}
+      {showSaveCard && (
+        <div className="mb-4 p-3 bg-zinc-800 border border-zinc-700 rounded-lg">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={saveCard}
+              onChange={(e) => setSaveCard(e.target.checked)}
+              className="w-4 h-4 rounded border-gray-600 text-blue-600 focus:ring-blue-500 focus:ring-offset-zinc-900"
+            />
+            <span className="text-sm text-white">Save card for future payments</span>
+          </label>
+          <p className="text-xs text-gray-400 mt-1 ml-6">
+            Your card will be securely stored for faster checkout next time
+          </p>
+        </div>
+      )}
       
       {/* Connect-Only Security Notice */}
       <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
@@ -121,6 +144,7 @@ interface StripeElementsProps {
   onPaymentComplete: (paymentIntentId: string) => void;
   isProcessing?: boolean;
   description?: string;
+  showSaveCard?: boolean;
 }
 
 export function StripeElements({ 
@@ -129,7 +153,8 @@ export function StripeElements({
   isProcessing = false, 
   contractorUserId, 
   currency = 'gbp', 
-  description 
+  description,
+  showSaveCard = false
 }: StripeElementsProps) {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const { toast } = useToast();
@@ -243,6 +268,7 @@ export function StripeElements({
           clientSecret={clientSecret}
           onPaymentComplete={onPaymentComplete}
           isProcessing={isProcessing || createPaymentIntentMutation.isPending}
+          showSaveCard={showSaveCard}
         />
       </Elements>
     </div>

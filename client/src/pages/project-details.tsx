@@ -757,6 +757,7 @@ export default function ProjectDetails() {
                 contractorUserId={selectedWorkRequest.contractorUserId}
                 onPaymentComplete={handlePaymentComplete}
                 isProcessing={isProcessingPayment}
+                showSaveCard={true}
               />
 
               <Button
