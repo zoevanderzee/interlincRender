@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { SubmitWorkModal } from "@/components/SubmitWorkModal";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatDistanceToNow } from "date-fns";
+import StripeElements from "@/components/StripeElements"; // Assuming StripeElements component exists
 
 interface Project {
   id: number;
@@ -51,20 +52,25 @@ export default function ProjectDetails() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  
+
   // State for SubmitWorkModal
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
   const [selectedDeliverable, setSelectedDeliverable] = useState<{
     id: number;
     name: string;
   } | null>(null);
-  
+
+  // State for Payment Modal
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedWorkRequest, setSelectedWorkRequest] = useState<WorkRequest | null>(null);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
   // Handle opening submit work modal
   const handleSubmitWork = (deliverableId: number, deliverableName: string) => {
     setSelectedDeliverable({ id: deliverableId, name: deliverableName });
     setSubmitModalOpen(true);
   };
-  
+
   // Handle closing submit work modal
   const handleCloseSubmitModal = () => {
     setSubmitModalOpen(false);
@@ -73,38 +79,86 @@ export default function ProjectDetails() {
 
   // Handle accepting work request (business action)
   const handleAcceptWorkRequest = async (workRequest: WorkRequest) => {
+    // Check for saved payment methods (this is a placeholder, actual check would involve an API call)
+    const hasSavedPaymentMethod = false; // Replace with actual check
+
+    if (!hasSavedPaymentMethod && user?.role === 'business') {
+      setSelectedWorkRequest(workRequest);
+      setShowPaymentModal(true);
+    } else {
+      try {
+        const response = await apiRequest("POST", `/api/work-requests/${workRequest.id}/business-accept`, {
+          allocatedBudget: parseFloat(workRequest.amount),
+          triggerPayment: true // This might be redundant if payment is handled separately
+        });
+
+        if (response.ok) {
+          toast({
+            title: "Work Request Accepted",
+            description: `Budget of $${parseFloat(workRequest.amount).toLocaleString()} allocated.`,
+          });
+
+          // Refresh all relevant data
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/work-requests`] }),
+            queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}`] }),
+            queryClient.invalidateQueries({ queryKey: ['/api/contracts'] }),
+            queryClient.invalidateQueries({ queryKey: ['/api/milestones?contractId=31'] }),
+            queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] })
+          ]);
+        } else {
+          throw new Error("Failed to accept work request");
+        }
+      } catch (error) {
+        console.error("Error accepting work request:", error);
+        toast({
+          title: "Error",
+          description: "Failed to accept work request. Please try again.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  // Handle payment completion
+  const handlePaymentComplete = async (paymentIntentId: string) => {
+    setIsProcessingPayment(true);
     try {
-      const response = await apiRequest("POST", `/api/work-requests/${workRequest.id}/business-accept`, {
-        allocatedBudget: parseFloat(workRequest.amount),
-        triggerPayment: true
+      const response = await apiRequest("POST", `/api/work-requests/${selectedWorkRequest!.id}/process-payment`, {
+        paymentIntentId: paymentIntentId,
+        allocatedBudget: parseFloat(selectedWorkRequest!.amount),
       });
 
       if (response.ok) {
         toast({
-          title: "Work Request Accepted",
-          description: `Budget of $${parseFloat(workRequest.amount).toLocaleString()} allocated and Trolley payment triggered.`,
+          title: "Payment Successful",
+          description: "Work request accepted and payment processed.",
         });
-        
-        // Refresh all relevant data
+        setShowPaymentModal(false);
+        setSelectedWorkRequest(null);
+
+        // Refresh data
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/work-requests`] }),
           queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}`] }),
           queryClient.invalidateQueries({ queryKey: ['/api/contracts'] }),
-          queryClient.invalidateQueries({ queryKey: ['/api/milestones?contractId=31'] }),
           queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] })
         ]);
       } else {
-        throw new Error("Failed to accept work request");
+        throw new Error("Payment processing failed");
       }
     } catch (error) {
-      console.error("Error accepting work request:", error);
+      console.error("Payment error:", error);
       toast({
-        title: "Error",
-        description: "Failed to accept work request. Please try again.",
+        title: "Payment Failed",
+        description: "There was an error processing your payment. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsProcessingPayment(false);
     }
   };
+
 
   // Handle rejecting work request (business action)
   const handleRejectWorkRequest = async (workRequestId: number) => {
@@ -118,7 +172,7 @@ export default function ProjectDetails() {
           title: "Work Request Rejected",
           description: "Work request has been rejected and contractor notified.",
         });
-        
+
         // Refresh all relevant data
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/work-requests`] }),
@@ -154,15 +208,15 @@ export default function ProjectDetails() {
 
   // Fetch contractor details for each work request
   const contractorIds = [...new Set(workRequests.map(wr => wr.contractorUserId))];
-  
+
   // Split work requests into pending (assigned) and accepted
   const pendingWorkRequests = workRequests.filter(wr => wr.status === 'assigned');
   const acceptedWorkRequestsData = workRequests.filter(wr => wr.status === 'accepted');
-  
+
   console.log("Work requests:", workRequests.map(wr => ({id: wr.id, status: wr.status, title: wr.title})));
   console.log("Pending work requests:", pendingWorkRequests.length);
   console.log("Current user role:", user?.role);
-  
+
   const { data: contractors = [], isLoading: isLoadingContractors } = useQuery<User[]>({
     queryKey: ['/api/users'],
     enabled: contractorIds.length > 0
@@ -225,7 +279,7 @@ export default function ProjectDetails() {
     if (workRequest.contractorName) {
       return workRequest.contractorName;
     }
-    
+
     // Fallback to lookup in contractors array
     if (isLoadingContractors) return 'Loading...';
     const contractor = contractors.find(c => c.id === workRequest.contractorUserId);
@@ -238,12 +292,12 @@ export default function ProjectDetails() {
   const handleApproveMilestone = async (milestoneId: number) => {
     try {
       await apiRequest('POST', `/api/milestones/${milestoneId}/approve`, {});
-      
+
       toast({
         title: "Milestone Approved",
         description: "Payment will be processed automatically",
       });
-      
+
       // Refresh milestone data
       queryClient.invalidateQueries({ queryKey: ['/api/milestones?contractId=31'] });
     } catch (error) {
@@ -260,12 +314,12 @@ export default function ProjectDetails() {
       await apiRequest('POST', `/api/milestones/${milestoneId}/reject`, {
         notes: "Please make revisions as discussed"
       });
-      
+
       toast({
         title: "Milestone Rejected",
         description: "Contractor has been notified to make changes",
       });
-      
+
       // Refresh milestone data
       queryClient.invalidateQueries({ queryKey: ['/api/milestones?contractId=31'] });
     } catch (error) {
@@ -284,7 +338,7 @@ export default function ProjectDetails() {
     // Find work request to get contractor ID
     const workRequest = workRequests.find(wr => wr.id === workRequestId);
     if (!workRequest) return null;
-    
+
     // Find contract by contractor ID and project ID
     return contracts.find((c: any) => 
       c.contractorId === workRequest.contractorUserId && 
@@ -418,7 +472,7 @@ export default function ProjectDetails() {
                       {workRequest.status}
                     </Badge>
                   </div>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-4">
                     <div className="flex items-center gap-2 text-gray-400">
                       <User className="h-4 w-4" />
@@ -452,7 +506,7 @@ export default function ProjectDetails() {
                       </Button>
                     </div>
                   )}
-                  
+
                   <div className="mt-3 text-xs text-gray-500">
                     Created {formatDistanceToNow(new Date(workRequest.createdAt))} ago
                   </div>
@@ -474,7 +528,7 @@ export default function ProjectDetails() {
               {acceptedWorkRequestsData.map((workRequest) => {
                 const contract = getContractForWorkRequest(workRequest.id);
                 const contractMilestones = contract ? getMilestonesForContract(contract.id) : [];
-                
+
                 return (
                   <div 
                     key={workRequest.id}
@@ -537,14 +591,14 @@ export default function ProjectDetails() {
                                   </Badge>
                                 </div>
                                 <p className="text-xs text-gray-400 mb-2">{milestone.description}</p>
-                                
+
                                 {/* Progress and submission info */}
                                 {milestone.submittedAt && (
                                   <div className="text-xs text-gray-300 mb-2">
                                     Submitted: {new Date(milestone.submittedAt).toLocaleDateString()}
                                   </div>
                                 )}
-                                
+
                                 {/* Deliverable files */}
                                 {milestone.deliverableFiles && milestone.deliverableFiles.length > 0 && (
                                   <div className="space-y-2 mb-3">
@@ -606,7 +660,7 @@ export default function ProjectDetails() {
                                     ))}
                                   </div>
                                 )}
-                                
+
                                 {/* Submit work button for contractors with assigned deliverables */}
                                 {milestone.status === 'assigned' && user?.id === workRequest.contractorUserId && (
                                   <div className="mt-3">
@@ -641,7 +695,7 @@ export default function ProjectDetails() {
                                     </Button>
                                   </div>
                                 )}
-                                
+
                                 {/* Show if already approved */}
                                 {milestone.approvedAt && (
                                   <div className="text-xs text-green-400 mt-2">
@@ -661,7 +715,7 @@ export default function ProjectDetails() {
           </CardContent>
         </Card>
       )}
-      
+
       {/* Submit Work Modal */}
       {selectedDeliverable && (
         <SubmitWorkModal
@@ -670,6 +724,55 @@ export default function ProjectDetails() {
           deliverableId={selectedDeliverable.id}
           deliverableName={selectedDeliverable.name}
         />
+      )}
+
+      {/* Payment Modal */}
+      {showPaymentModal && selectedWorkRequest && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-md bg-zinc-900 border-zinc-800">
+            <CardHeader>
+              <CardTitle className="text-white">Payment Required</CardTitle>
+              <p className="text-gray-400 text-sm mt-1">
+                Please complete payment to accept this work request
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-zinc-800 rounded-lg p-4 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Work Request:</span>
+                  <span className="text-white font-medium">{selectedWorkRequest.title}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Amount:</span>
+                  <span className="text-white font-bold">
+                    £{parseFloat(selectedWorkRequest.amount).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+
+              <StripeElements
+                amount={parseFloat(selectedWorkRequest.amount) * 100}
+                currency="gbp"
+                description={`Payment for: ${selectedWorkRequest.title}`}
+                contractorUserId={selectedWorkRequest.contractorUserId}
+                onPaymentComplete={handlePaymentComplete}
+                isProcessing={isProcessingPayment}
+              />
+
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowPaymentModal(false);
+                  setSelectedWorkRequest(null);
+                }}
+                disabled={isProcessingPayment}
+                className="w-full border-gray-700 text-white hover:bg-gray-800"
+              >
+                Cancel
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );
