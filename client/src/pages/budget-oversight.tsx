@@ -277,7 +277,7 @@ export default function BudgetOversight() {
                   placeholder="Enter budget limit (leave empty for no limit)"
                   value={budgetCap}
                   onChange={(e) => setBudgetCap(e.target.value)}
-                  className="pl-9 bg-zinc-900 border-zinc-700 text-white"
+                  className="pl-9 bg-white dark:bg-[hsl(215,50%,12%)] border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white"
                 />
               </div>
               <p className="text-xs text-gray-400">
