@@ -9,17 +9,17 @@
   :root {
     /* Light Mode - White background with dark navy text */
     --background: 0 0% 100%;
-    --foreground: 215 60% 15%;
+    --foreground: 215 60% 20%;
     --card: 0 0% 100%;
-    --card-foreground: 215 60% 15%;
+    --card-foreground: 215 60% 20%;
     --popover: 0 0% 100%;
-    --popover-foreground: 215 60% 15%;
+    --popover-foreground: 215 60% 20%;
     --primary: 217 91% 50%;
     --primary-foreground: 0 0% 100%;
     --secondary: 215 30% 95%;
-    --secondary-foreground: 215 60% 15%;
+    --secondary-foreground: 215 60% 20%;
     --muted: 215 20% 96%;
-    --muted-foreground: 215 60% 25%;
+    --muted-foreground: 215 60% 30%;
     --accent: 217 91% 50%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84.2% 60.2%;
@@ -28,12 +28,12 @@
     --input: 215 30% 95%;
     --ring: 217 91% 50%;
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 215 60% 15%;
+    --sidebar-foreground: 215 60% 20%;
     --sidebar-border: 215 30% 80%;
     --sidebar-primary: 217 91% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 215 30% 95%;
-    --sidebar-accent-foreground: 215 60% 15%;
+    --sidebar-accent-foreground: 215 60% 20%;
     --sidebar-ring: 217 91% 50%;
 
     /* Gradient Variables */
@@ -88,12 +88,21 @@
     font-family: 'SF Pro Display', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     @apply antialiased min-h-screen;
     background: hsl(var(--background)) !important;
-    color: hsl(var(--foreground));
+    color: hsl(var(--foreground)) !important;
     
     /* Subtle texture overlay */
     background-image: 
       radial-gradient(circle at 1px 1px, rgba(107, 154, 255, 0.03) 1px, transparent 0);
     background-size: 20px 20px;
+  }
+
+  /* Force proper text colors in light mode */
+  * {
+    color: inherit;
+  }
+  
+  .text-white {
+    color: hsl(var(--foreground)) !important;
   }
   
   /* Typography with SF Pro styling */
@@ -101,6 +110,7 @@
     font-family: 'SF Pro Display', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     @apply font-semibold tracking-tight;
     letter-spacing: -0.02em;
+    color: hsl(var(--foreground)) !important;
   }
   
   h1 {
