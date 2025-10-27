@@ -213,10 +213,6 @@ export default function Payments() {
             <CreditCard className="mr-2" size={16} />
             Pay Contractor
           </Button>
-          <Button className="bg-blue-600 hover:bg-blue-700">
-            <DollarSign className="mr-2" size={16} />
-            Process Payment
-          </Button>
         </div>
       </div>
 
