@@ -2127,7 +2127,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Create Stripe PaymentIntent with destination + on_behalf_of
         const { createPaymentIntent } = await import('./services/stripe.js');
-        
+
         const paymentIntent = await createPaymentIntent({
           amount: parseFloat(updatedDeliverable.paymentAmount),
           currency: 'gbp',
@@ -2150,8 +2150,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Update payment record with Stripe details
         await storage.updatePaymentStripeDetails(
-          payment.id, 
-          paymentIntent.id, 
+          payment.id,
+          paymentIntent.id,
           paymentIntent.status || 'requires_payment_method'
         );
 
@@ -2171,7 +2171,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       } catch (paymentError: any) {
         console.error(`[DELIVERABLE_APPROVAL] Payment failed:`, paymentError);
-        
+
         res.json({
           message: "Deliverable approved but payment failed",
           deliverable: updatedDeliverable,
@@ -2981,44 +2981,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .reduce((sum, contract) => {
           return sum + parseFloat(contract.value.toString() || '0');
         }, 0);
-
-      // Get contractor/businesses data based on user role
-      let allContractors = [];
-      let activeContractorsCount = 0;
-
-      if (userRole === 'business') {
-        // For business users, get their contractors
-        allContractors = await storage.getContractorsByBusinessId(userId || 0);
-        activeContractorsCount = allContractors.length;
-      } else if (userRole === 'contractor') {
-        // For contractors, get businesses they work with
-        allContractors = await storage.getBusinessesByContractorId(userId || 0);
-        activeContractorsCount = 0; // Contractors don't have a contractor count
-      }
-
-      // Skip invites in dashboard for now - they're causing the error
-      let pendingInvites = [];
-      try {
-        // Only try to get invites if we have a business user
-        if (userRole === 'business' && userId) {
-          // Use the business onboarding link count instead of invites
-          const businessLink = await storage.getBusinessOnboardingLink(userId);
-          // We will just display this as a count for now
-          pendingInvites = businessLink ? [businessLink] : [];
-        }
-      } catch (inviteError) {
-        console.log("Non-critical error fetching invites for dashboard:", inviteError);
-        // Continue with empty invites array
-      }
-
-      // Calculate total work requests value
-      const totalWorkRequestsValue = activeWorkRequests.reduce((sum, wr) => {
-        return sum + parseFloat(wr.amount || '0');
-      }, 0);
-
-      const totalPendingWorkRequestsValue = pendingWorkRequests.reduce((sum, wr) => {
-        return sum + parseFloat(wr.amount || '0');
-      }, 0);
 
       // Find the Quick Tasks project (special project for one-off tasks)
       const quickTasksProject = userProjects.find(p => p.name === 'Quick Tasks');
@@ -6052,6 +6014,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const paymentRecord = await storage.createPayment({
         contractId: milestone.contractId,
         milestoneId: milestoneId,
+        businessId: user.id,
+        contractorId: contractor.id,
         amount: amount.toString(),
         status: 'processing',
         scheduledDate: new Date(),

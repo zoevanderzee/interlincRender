@@ -217,14 +217,32 @@ export default function Settings() {
                   <Button
                     type="button"
                     onClick={() => {
-                      const formData = {
-                        firstName: (document.getElementById("firstName") as HTMLInputElement).value,
-                        lastName: (document.getElementById("lastName") as HTMLInputElement).value,
-                        title: (document.getElementById("title") as HTMLInputElement).value,
-                        ...(user.role === "business" && {
-                          companyName: (document.getElementById("companyName") as HTMLInputElement)?.value,
-                        }),
-                      };
+                      const firstName = (document.getElementById("firstName") as HTMLInputElement).value?.trim() || "";
+                      const lastName = (document.getElementById("lastName") as HTMLInputElement).value?.trim() || "";
+                      const title = (document.getElementById("title") as HTMLInputElement).value?.trim() || "";
+                      
+                      const formData: any = {};
+                      
+                      // Only include fields that have values
+                      if (firstName) formData.firstName = firstName;
+                      if (lastName) formData.lastName = lastName;
+                      if (title) formData.title = title;
+                      
+                      if (user.role === "business") {
+                        const companyName = (document.getElementById("companyName") as HTMLInputElement)?.value?.trim();
+                        if (companyName) formData.companyName = companyName;
+                      }
+                      
+                      // Don't send empty update
+                      if (Object.keys(formData).length === 0) {
+                        toast({
+                          title: "No changes",
+                          description: "Please enter at least one field to update.",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      
                       updateProfileMutation.mutate(formData);
                     }}
                     disabled={updateProfileMutation.isPending}
