@@ -1,0 +1,67 @@
+Permanent Company Onboarding Link (Simple, Scalable, Multi-Company)
+Goal:
+Make a solid, permanent onboarding link that businesses can share with contractors. When a contractor opens the link, they register/login and are automatically connected to that business. Contractors must still be able to join multiple companies. Do not break any existing flows.
+Key Constraints:
+Do not change database schemas. Reuse the existing Company “Profile Code” as the company’s join token.
+Do not modify or remove existing “business adds contractor by contractor code” flows; keep them working.
+All requests must go through the centralized network client so the X-User-ID header is present.
+The company onboarding link must be permanent and stable for each company.
+What to Build (no code in this ticket):
+New public page: /join
+Reads ?code=<COMPANY_PROFILE_CODE>.
+If user is not authenticated: redirect to the normal auth page with redirect back to /join?code=....
+If user is authenticated: proceed to join (see endpoint below).
+Optional (preferred): show a lightweight preview (company name/logo) before the final join action if available via an existing read API; if not available, skip preview.
+Single server action: “Join Company by Code”
+Name it clearly in the codebase (e.g., “join/accept” action), but do not alter any existing endpoints that other features rely on.
+Behavior:
+Validate there is an authenticated user (requires X-User-ID).
+Look up the company by existing Profile Code passed in the request.
+If no company is found, return a clean error that the UI can show as “Invalid or expired link.”
+If a contractor↔company relationship already exists and is active, treat as success (idempotent) and return the company identifier for routing.
+Otherwise, create/activate the relationship and return success with the company identifier.
+Mark the relationship’s source as “join_link” (or equivalent field already available) to support analytics.
+This action must be idempotent and safe to call multiple times.
+Contractor UX updates:
+On success (new or already member), route to the company workspace/home.
+Add a visible “Join another company” button in the contractor dashboard that opens a simple input for a company code and calls the same join action.
+Show a list of connected companies; allow switching context without removing existing links.
+Business UX updates:
+In the business “Invite Workers” or “Contractors” panel, display a “Company Join Link” that is simply:
+yourapp.com/join?code=<COMPANY_PROFILE_CODE>
+Also display the Profile Code itself for manual entry.
+Optional (nice to have): provide a downloadable QR code that encodes the same URL.
+Non-Functional Requirements:
+Must not break existing authentication or the “add contractor by code” path.
+Must be idempotent; repeat clicks or refreshes cannot create duplicates or errors.
+Add light rate limiting to the join action (sane default) and return a friendly error if exceeded.
+Add minimal analytics events:
+join_link_opened (code present),
+join_attempt (success/failure status, non-PII),
+join_success (company identifier),
+join_already_member.
+Accessibility: buttons and messages must have clear labels and states.
+Error messaging must be human-readable:
+Missing code → “Join code is required.”
+Invalid code → “Invalid or expired link.”
+Rate limited → “Too many attempts. Please try again shortly.”
+Copy (use exactly):
+Join page (logged out): “Create your account to join this company.”
+Join page (logged in): “Join this company” with a single primary button: “Join”.
+Success: no toast needed; navigate to the company’s workspace.
+Already a member: navigate to the company’s workspace.
+Contractor dashboard action: “Join another company”.
+Scalability & Multi-Company:
+The onboarding link must only create or confirm the contractor↔company relationship; it must not remove or override any existing company relationships for the same user.
+Ensure the system supports multiple active company links per contractor without conflicts.
+Acceptance Criteria (must all pass):
+Visiting /join?code=VALID while logged out sends the user to login/registration and, after auth, completes the join and lands them in that company’s workspace.
+Visiting /join?code=VALID while already logged in immediately completes the join and routes to the workspace.
+Visiting the same link again routes to the same workspace without errors (idempotent).
+Visiting /join?code=INVALID shows the “Invalid or expired link” error without side effects.
+From the contractor dashboard, “Join another company” accepts a code and connects the user using the same join logic.
+Existing “business adds contractor by contractor code” flow still works exactly as before.
+Analytics events fire for link opened, attempt, success, and already member.
+Basic rate limiting is active on the join action with a friendly error on limit exceed.
+The business panel shows a stable “Company Join Link” that uses the existing Profile Code.
+No database schema changes were required and no existing logic was broken.
