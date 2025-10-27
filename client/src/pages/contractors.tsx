@@ -695,7 +695,7 @@ const Contractors = () => {
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-[hsl(215,40%,22%)]">
-                      <thead className="bg-[hsl(215,50%,12%)] dark:bg-[hsl(215,50%,12%)]"></div>
+                      <thead className="bg-[hsl(215,50%,12%)] dark:bg-[hsl(215,50%,12%)]">
                         <tr>
                           <th
                             scope="col"
@@ -735,7 +735,7 @@ const Contractors = () => {
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="bg-[hsl(215,50%,12%)] dark:bg-[hsl(215,50%,12%)] divide-y divide-[hsl(215,40%,22%)]"></div>
+                      <tbody className="bg-[hsl(215,50%,12%)] dark:bg-[hsl(215,50%,12%)] divide-y divide-[hsl(215,40%,22%)]">
                         {allInvites.length === 0 ? (
                           <tr>
                             <td colSpan={6} className="px-6 py-8 text-center text-sm text-muted-foreground">
