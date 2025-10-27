@@ -3555,6 +3555,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const adminRoutes = await import("./admin-routes.js");
   adminRoutes.default(app, apiRouter, requireAuth);
 
+  // Register company join routes (permanent onboarding link)
+  const companyJoinRoutes = await import("./routes/company-join");
+  app.use(apiRouter, companyJoinRoutes.default);
+
   // Register V2 test routes (V1 completely removed)
   const testV2Routes = await import("./test-v2-integration.js");
   testV2Routes.default(app, apiRouter, requireAuth);

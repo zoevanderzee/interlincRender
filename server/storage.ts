@@ -38,6 +38,7 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserByFirebaseUID(firebaseUID: string): Promise<User | undefined>;
+  getUserByProfileCode(profileCode: string): Promise<User | undefined>;
   getUsersByRole(role: string): Promise<User[]>;
   getUsersByConnectAccountId(connectAccountId: string): Promise<User[]>;
   getContractorsByBusinessId(businessId: number): Promise<User[]>; // Get contractors with contracts with this business
@@ -80,7 +81,6 @@ export interface IStorage {
   // Profile Code
   generateProfileCode(userId: number): Promise<string>;
   regenerateProfileCode(userId: number): Promise<string>;
-  getUserByProfileCode(profileCode: string): Promise<User | undefined>;
 
   // Connection Requests
   createConnectionRequest(request: InsertConnectionRequest): Promise<ConnectionRequest>;
@@ -1179,368 +1179,130 @@ export class MemStorage implements IStorage {
     return updatedPayment;
   }
 
-  // Seed data method for development
-  private seedData() {
-    // REMOVED: All test data creation disabled for live production system
-    console.log('⚠️ seedData() called but DISABLED - Live production system only');
-    return;
-    // Create sample users
-    const business = this.createUser({
-      username: "sarah_thompson",
-      password: "password123",
-      firstName: "Sarah",
-      lastName: "Thompson",
-      email: "sarah@creativelinc.com",
-      role: "business",
-      profileImageUrl: "",
-      companyName: "CreativLinc Inc.",
-      title: "Project Manager"
-    });
-
-    const contractor1 = this.createUser({
-      username: "alex_johnson",
-      password: "password123",
-      firstName: "Alex",
-      lastName: "Johnson",
-      email: "alex@webdev.com",
-      role: "contractor",
-      profileImageUrl: "",
-      companyName: "",
-      title: "Web Developer"
-    });
-
-    const contractor2 = this.createUser({
-      username: "sarah_miller",
-      password: "password123",
-      firstName: "Sarah",
-      lastName: "Miller",
-      email: "sarah.m@marketing.com",
-      role: "contractor",
-      profileImageUrl: "",
-      companyName: "",
-      title: "Marketing Specialist"
-    });
-
-    const contractor3 = this.createUser({
-      username: "techsolutions",
-      password: "password123",
-      firstName: "Tech",
-      lastName: "Solutions",
-      email: "info@techsolutions.com",
-      role: "contractor",
-      profileImageUrl: "",
-      companyName: "TechSolutions Inc.",
-      title: "Development Agency"
-    });
-
-    // Create sample contracts
-    const contract1 = this.createContract({
-      contractName: "Website Redesign",
-      contractCode: "SC-2023-08-001",
-      businessId: 1,
-      contractorId: 2,
-      description: "Complete redesign of company website",
-      status: "active",
-      value: "4200",
-      startDate: new Date("2023-07-15"),
-      endDate: new Date("2023-09-30")
-    });
-
-    const contract2 = this.createContract({
-      contractName: "Product Marketing Campaign",
-      contractCode: "SC-2023-07-045",
-      businessId: 1,
-      contractorId: 3,
-      description: "Marketing campaign for new product launch",
-      status: "pending_approval",
-      value: "6800",
-      startDate: new Date("2023-08-01"),
-      endDate: new Date("2023-10-31")
-    });
-
-    const contract3 = this.createContract({
-      contractName: "Mobile App Development",
-      contractCode: "SC-2023-06-032",
-      businessId: 1,
-      contractorId: 4,
-      description: "Development of mobile application",
-      status: "active",
-      value: "12500",
-      startDate: new Date("2023-06-15"),
-      endDate: new Date("2023-12-15")
-    });
-
-    // Create sample milestones
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    const twoDaysAgo = new Date();
-    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-
-    const inFiveDays = new Date();
-    inFiveDays.setDate(inFiveDays.getDate() + 5);
-
-    this.createMilestone({
-      contractId: 1,
-      name: "Final Design Approval",
-      description: "Approval of the final design before implementation",
-      dueDate: tomorrow,
-      status: "pending",
-      paymentAmount: "1200",
-      progress: 85
-    });
-
-    this.createMilestone({
-      contractId: 2,
-      name: "Campaign Strategy Document",
-      description: "Creation of marketing strategy document",
-      dueDate: twoDaysAgo,
-      status: "overdue",
-      paymentAmount: "2500",
-      progress: 60
-    });
-
-    this.createMilestone({
-      contractId: 3,
-      name: "App Architecture Planning",
-      description: "Planning and documentation of app architecture",
-      dueDate: inFiveDays,
-      status: "pending",
-      paymentAmount: "4000",
-      progress: 40
-    });
-
-    // Create sample payments
-    const aug15 = new Date("2023-08-15");
-    const aug18 = new Date("2023-08-18");
-    const aug25 = new Date("2023-08-25");
-    const sep01 = new Date("2023-09-01");
-
-    this.createPayment({
-      contractId: 1,
-      milestoneId: 1,
-      amount: "1200",
-      status: "scheduled",
-      scheduledDate: aug15,
-      notes: "Final payment upon design completion"
-    });
-
-    this.createPayment({
-      contractId: 2,
-      milestoneId: 2,
-      amount: "2500",
-      status: "scheduled",
-      scheduledDate: aug18,
-      notes: "Initial payment at contract start"
-    });
-
-    this.createPayment({
-      contractId: 3,
-      milestoneId: 3,
-      amount: "4000",
-      status: "scheduled",
-      scheduledDate: aug25,
-      notes: "Payment upon architecture approval"
-    });
-
-    this.createPayment({
-      contractId: 3,
-      milestoneId: 0,
-      amount: "850",
-      status: "scheduled",
-      scheduledDate: sep01,
-      notes: "Monthly retainer for SEO Optimization"
-    });
-
-    // Create sample invites
-    const nextWeek = new Date();
-    nextWeek.setDate(nextWeek.getDate() + 7);
-
-    this.createInvite({
-      email: "designer@example.com",
-      projectName: "UI/UX Design Project",
-      businessId: 1,
-      status: "pending",
-      workerType: "freelancer",
-      message: "We'd like to invite you to work on our new UI/UX design project. Please join our platform to discuss details.",
-      expiresAt: nextWeek,
-      contractDetails: JSON.stringify({
-        value: "3500",
-        description: "UI/UX design for mobile application",
-        duration: "4 weeks"
-      })
-    });
-
-    this.createInvite({
-      email: "developer@example.com",
-      projectName: "Backend API Development",
-      businessId: 1,
-      status: "pending",
-      workerType: "contractor",
-      message: "We need a skilled developer to help us with our backend API project.",
-      expiresAt: nextWeek,
-      contractDetails: JSON.stringify({
-        value: "5000",
-        description: "Development of RESTful APIs for our platform",
-        duration: "6 weeks"
-      })
-    });
+  // WorkRequest methods
+  async getWorkRequest(id: number): Promise<WorkRequest | undefined> {
+    return this.workRequests.get(id);
   }
 
-  // Add missing methods to implement IStorage interface completely
-  async getConnectForUser(userId: number): Promise<{ accountId: string, accountType: string } | null> {
-    const user = this.users.get(userId);
-    if (!user || !user.stripeConnectAccountId) return null;
-    return {
-      accountId: user.stripeConnectAccountId,
-      accountType: user.stripeConnectAccountType || 'express'
+  async getWorkRequestByToken(tokenHash: string): Promise<WorkRequest | undefined> {
+    return Array.from(this.workRequests.values()).find(
+      (wr) => wr.tokenHash === tokenHash
+    );
+  }
+
+  async getWorkRequestsByBusinessId(businessId: number): Promise<WorkRequest[]> {
+    // This requires joining with projects to get businessId
+    return []; // Placeholder for now
+  }
+
+  async getWorkRequestsByContractorId(contractorUserId: number): Promise<WorkRequest[]> {
+    return Array.from(this.workRequests.values()).filter(
+      (wr) => wr.contractorUserId === contractorUserId
+    );
+  }
+
+  async getWorkRequestsWithBusinessInfo(contractorUserId: number): Promise<any[]> {
+    return []; // Placeholder
+  }
+
+  async getPendingWorkRequests(): Promise<WorkRequest[]> {
+    return Array.from(this.workRequests.values()).filter(
+      (wr) => wr.status === 'pending'
+    );
+  }
+
+  async createWorkRequest(insertWorkRequest: InsertWorkRequest, tokenHash: string): Promise<WorkRequest> {
+    const id = this.workRequestId++;
+    const createdAt = new Date();
+    const expiresAt = insertWorkRequest.expiresAt || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000); // 14 days default
+
+    const workRequest: WorkRequest = {
+      id,
+      projectId: insertWorkRequest.projectId,
+      contractId: null, // Initially null, will be linked later
+      contractorUserId: insertWorkRequest.contractorUserId || null,
+      title: insertWorkRequest.title,
+      description: insertWorkRequest.description,
+      deliverableDescription: insertWorkRequest.deliverableDescription,
+      dueDate: insertWorkRequest.dueDate,
+      amount: insertWorkRequest.amount,
+      currency: insertWorkRequest.currency,
+      status: insertWorkRequest.status || 'pending',
+      tokenHash: tokenHash,
+      expiresAt: expiresAt,
+      recipientEmail: insertWorkRequest.recipientEmail ? insertWorkRequest.recipientEmail.toLowerCase() : null,
+      createdAt,
+      updatedAt: createdAt
     };
+    this.workRequests.set(id, workRequest);
+    return workRequest;
   }
 
-  async setConnectForUser(userId: number, data: { accountId: string, accountType: string }): Promise<User | undefined> {
-    const user = this.users.get(userId);
-    if (!user) return undefined;
-    const updatedUser = {
-      ...user,
-      stripeConnectAccountId: data.accountId,
-      stripeConnectAccountType: data.accountType
+  async updateWorkRequest(id: number, workRequestData: Partial<InsertWorkRequest>): Promise<WorkRequest | undefined> {
+    const existingWorkRequest = this.workRequests.get(id);
+    if (!existingWorkRequest) return undefined;
+
+    // Ensure recipient email is lowercase if updated
+    if (workRequestData.recipientEmail) {
+      workRequestData.recipientEmail = workRequestData.recipientEmail.toLowerCase();
+    }
+
+    const updatedWorkRequest = { ...existingWorkRequest, ...workRequestData, updatedAt: new Date() };
+    this.workRequests.set(id, updatedWorkRequest);
+    return updatedWorkRequest;
+  }
+
+  async linkWorkRequestToContract(id: number, contractId: number): Promise<WorkRequest | undefined> {
+    const existingWorkRequest = this.workRequests.get(id);
+    if (!existingWorkRequest) return undefined;
+
+    const updatedWorkRequest = {
+      ...existingWorkRequest,
+      contractId,
+      status: 'accepted', // Link implies acceptance
+      updatedAt: new Date()
     };
-    this.users.set(userId, updatedUser);
-    return updatedUser;
+    this.workRequests.set(id, updatedWorkRequest);
+    return updatedWorkRequest;
   }
 
-  async savePasswordResetToken(userId: number, token: string, expires: Date): Promise<User | undefined> {
-    const user = this.users.get(userId);
-    if (!user) return undefined;
-    const updatedUser = {
-      ...user,
-      resetPasswordToken: token,
-      resetPasswordExpires: expires
-    };
-    this.users.set(userId, updatedUser);
-    return updatedUser;
-  }
-
-  async clearPasswordResetToken(userId: number): Promise<User | undefined> {
-    const user = this.users.get(userId);
-    if (!user) return undefined;
-    const updatedUser = {
-      ...user,
-      resetPasswordToken: null,
-      resetPasswordExpires: null
-    };
-    this.users.set(userId, updatedUser);
-    return updatedUser;
-  }
-
-  async updatePassword(userId: number, newPassword: string): Promise<User | undefined> {
-    const user = this.users.get(userId);
-    if (!user) return undefined;
-    const updatedUser = {
-      ...user,
-      password: newPassword
-    };
-    this.users.set(userId, updatedUser);
-    return updatedUser;
-  }
-
-  async verifyUserEmail(email: string): Promise<User | undefined> {
-    const user = Array.from(this.users.values()).find(u => u.email === email);
-    if (!user) return undefined;
-    const updatedUser = {
-      ...user,
-      emailVerified: true
-    };
-    this.users.set(user.id, updatedUser);
-    return updatedUser;
-  }
-
-  async getBudget(userId: number): Promise<{ budgetCap: string | null, budgetUsed: string | null } | null> {
-    const user = this.users.get(userId);
-    if (!user) return null;
-    return {
-      budgetCap: user.budgetCap || null,
-      budgetUsed: user.budgetUsed || null
-    };
-  }
-
-  async setBudgetCap(userId: number, budgetCap: number, period?: string, startDate?: Date, endDate?: Date): Promise<User | undefined> {
-    const user = this.users.get(userId);
-    if (!user) return undefined;
-    const updatedUser = {
-      ...user,
-      budgetCap: budgetCap.toString(),
-      budgetPeriod: period || 'yearly',
-      budgetStartDate: startDate || null,
-      budgetEndDate: endDate || null
-    };
-    this.users.set(userId, updatedUser);
-    return updatedUser;
-  }
-
-  async increaseBudgetUsed(userId: number, amount: number): Promise<User | undefined> {
-    const user = this.users.get(userId);
-    if (!user) return undefined;
-    const currentUsed = parseFloat(user.budgetUsed || "0");
-    const updatedUser = {
-      ...user,
-      budgetUsed: (currentUsed + amount).toString()
-    };
-    this.users.set(userId, updatedUser);
-    return updatedUser;
-  }
-
-  async decreaseBudgetUsed(userId: number, amount: number): Promise<User | undefined> {
-    const user = this.users.get(userId);
-    if (!user) return undefined;
-    const currentUsed = parseFloat(user.budgetUsed || "0");
-    const updatedUser = {
-      ...user,
-      budgetUsed: Math.max(0, currentUsed - amount).toString()
-    };
-    this.users.set(userId, updatedUser);
-    return updatedUser;
-  }
-
-  async resetBudgetUsed(userId: number): Promise<User | undefined> {
-    const user = this.users.get(userId);
-    if (!user) return undefined;
-    const updatedUser = {
-      ...user,
-      budgetUsed: "0"
-    };
-    this.users.set(userId, updatedUser);
-    return updatedUser;
-  }
-
-  async checkBudgetAvailable(userId: number, amount: number): Promise<boolean> {
-    const user = this.users.get(userId);
-    if (!user || !user.budgetCap) return true;
-    const cap = parseFloat(user.budgetCap);
-    const used = parseFloat(user.budgetUsed || "0");
-    return (used + amount) <= cap;
-  }
-
-  // Add stub implementations for other missing methods
-  async updateTrolleySubmerchantInfo(userId: number, submerchantId: string, status: string): Promise<User | undefined> {
-    return this.updateUser(userId, { trolleySubmerchantId: submerchantId, trolleySubmerchantStatus: status });
-  }
-
-  async setPaymentMethod(userId: number, method: 'pre_funded' | 'pay_as_you_go'): Promise<User | undefined> {
-    return this.updateUser(userId, { paymentMethod: method });
-  }
-
-  async updateTrolleyAccountBalance(userId: number, balance: number): Promise<User | undefined> {
-    return this.updateUser(userId, { trolleyAccountBalance: balance.toString() });
-  }
-
-  async updateUserTrolleyRecipientId(userId: number, recipientId: string): Promise<User | undefined> {
-    return this.updateUser(userId, { trolleyRecipientId: recipientId });
-  }
-
+  // Profile code methods
   async generateProfileCode(userId: number): Promise<string> {
-    const code = `USER-${userId}-${Date.now()}`;
-    await this.updateUser(userId, { profileCode: code });
+    const user = this.users.get(userId);
+    if (!user) throw new Error("User not found");
+
+    if (user.profileCode) return user.profileCode;
+
+    let code = '';
+    let attempts = 0;
+    const maxAttempts = 50;
+    const generate = () => {
+      let cleanUsername = user.username.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+      if (cleanUsername.length > 8) cleanUsername = cleanUsername.substring(0, 8);
+      const randomNum = Math.floor(1000 + Math.random() * 9000);
+      return `${cleanUsername}-${randomNum}`;
+    };
+
+    while (attempts < maxAttempts) {
+      code = generate();
+      let isUnique = true;
+      for (const u of this.users.values()) {
+        if (u.profileCode === code) {
+          isUnique = false;
+          break;
+        }
+      }
+      if (isUnique) break;
+      attempts++;
+    }
+
+    if (attempts === maxAttempts) {
+      const timestamp = Date.now().toString().slice(-6);
+      code = `${user.username.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().substring(0, 6)}-${timestamp}`;
+    }
+
+    const updatedUser = { ...user, profileCode: code };
+    this.users.set(userId, updatedUser);
     return code;
   }
 
@@ -1556,7 +1318,7 @@ export class MemStorage implements IStorage {
   async createConnectionRequest(request: InsertConnectionRequest): Promise<ConnectionRequest> {
     const id = this.connectionRequestId++;
     const createdAt = new Date();
-    const contractor = await this.getUserByProfileCode(request.profileCode);
+    const contractor = request.profileCode ? await this.getUserByProfileCode(request.profileCode) : null;
     const connectionRequest: ConnectionRequest = {
       id,
       businessId: request.businessId,
@@ -1826,6 +1588,11 @@ export class DatabaseStorage implements IStorage {
 
   async getUserByFirebaseUID(firebaseUID: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.firebaseUid, firebaseUID));
+    return user;
+  }
+
+  async getUserByProfileCode(profileCode: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.profileCode, profileCode));
     return user;
   }
 
@@ -2551,7 +2318,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getCompletedPayments(userId: number): Promise<Payment[]> {
-    // Get completed payments for contracts belonging to this business user
+    // Get completed payments for contracts belonging to this business
     return await db
       .select()
       .from(payments)

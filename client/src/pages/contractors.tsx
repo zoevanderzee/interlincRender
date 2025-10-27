@@ -204,50 +204,32 @@ const Contractors = () => {
     });
   };
 
-  // Function to get or create the permanent business onboarding link
+  // Function to generate the permanent company onboarding link using profile code
   const generateOnboardingLink = async () => {
     try {
-      // Directly call the API with proper authentication headers
-      const response = await apiRequest("POST", "/api/business/invite-link", {
-        workerType: "contractor" // Default to contractor
-      });
-      const linkData = await response.json();
-
-      if (!linkData.url) {
-        throw new Error("Failed to get a valid onboarding link");
-      }
-
-      // Set the permanent link in the state
-      setDirectLink(linkData.url);
-
-      // Show the link dialog
-      setIsLinkDialogOpen(true);
-
-      console.log("Retrieved permanent business onboarding link:", linkData);
-    } catch (error: any) {
-      console.error("Error generating permanent onboarding link:", error);
-
-      // Generate a fallback link using a fixed token format
-      const currentUser = await queryClient.getQueryData<{id: number, role: string}>(["/api/user"]);
-
-      if (currentUser && currentUser.id) {
-        const appUrl = window.location.origin;
-        const fallbackLink = `${appUrl}/auth?invite=contractor&email=direct&token=fallback-token-${currentUser.id}&businessId=${currentUser.id}&workerType=contractor`;
-
-        setDirectLink(fallbackLink);
-        setIsLinkDialogOpen(true);
-
+      if (!user?.profileCode) {
         toast({
-          title: "Using fallback link",
-          description: "The server encountered an issue, but we generated a fallback link for you."
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: error.message || "Could not retrieve permanent onboarding link. Please try again.",
+          title: "Profile Code Required",
+          description: "You need a profile code to generate an onboarding link. Please set one in your settings.",
           variant: "destructive",
         });
+        return;
       }
+
+      const appUrl = window.location.origin;
+      const onboardingUrl = `${appUrl}/join?code=${user.profileCode}`;
+
+      setDirectLink(onboardingUrl);
+      setIsLinkDialogOpen(true);
+
+      console.log("Generated permanent company onboarding link:", onboardingUrl);
+    } catch (error: any) {
+      console.error("Error generating permanent onboarding link:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Could not generate onboarding link. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 

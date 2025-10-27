@@ -49,7 +49,7 @@ import { ConnectionRequestsNotification } from "@/components/notifications/Conne
 // Use correct import path to match the file location
 import WorkRequestRespond from "./pages/work-request-respond";
 import ContractorOnboarding from "@/pages/contractor-onboarding";
-
+import JoinPage from "@/pages/join";
 
 
 import AssignContractor from "@/pages/assign-contractor";
@@ -77,6 +77,10 @@ function Router() {
 
       <Route path="/verify-email-callback">
         <VerifyEmailCallback />
+      </Route>
+
+      <Route path="/join">
+        <JoinPage />
       </Route>
 
       {/* Firebase verification URL handler - check root path for verification parameters */}
