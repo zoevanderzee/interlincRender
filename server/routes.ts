@@ -3010,6 +3010,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get pending invites for this business
       const pendingInvites = await storage.getInvitesByBusinessId(userId);
 
+      // Get contractors linked to this business
+      const allContractors = await storage.getContractorsByBusinessId(userId);
+
       const dashboardData = {
         stats: {
           activeContractsCount: activeWorkRequests.length, // Count accepted work requests as active contracts
