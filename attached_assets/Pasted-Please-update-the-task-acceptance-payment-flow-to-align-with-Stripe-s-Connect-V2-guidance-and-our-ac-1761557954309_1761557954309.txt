@@ -1,0 +1,30 @@
+Please update the task acceptance payment flow to align with Stripe’s Connect V2 guidance and our account exec’s confirmation. The direct payment flow is working perfectly — do not change or modify anything related to it.
+Scope: Only the task “Accept” payment flow (in the task approval endpoint and related Stripe service functions).
+Objectives
+Only contractors have Stripe Connect accounts.
+Businesses must not create Connect accounts.
+Contractors continue to use Express or Custom accounts (as they do now).
+Use the Destination + On Behalf Of (OBO) model for task payments.
+When the business presses “Accept,” the system should automatically create a PaymentIntent on our platform with:
+on_behalf_of set to the contractor’s connected account ID.
+transfer_data[destination] set to the same contractor account ID.
+This ensures:
+Funds go directly to the contractor.
+Stripe fees, refunds, and disputes are deducted from the contractor’s account.
+The platform never touches or holds any funds.
+Payment trigger logic (“Accept” button).
+When the business clicks “Accept” on a submitted task:
+If they have a saved payment method, trigger the payment automatically (off-session).
+If not, prompt them once to save a card using Stripe’s SetupIntent flow.
+After successful payment:
+Mark the submission as “approved.”
+Mark the task as “completed.”
+Create a payment record in the database (type = “task”, with task ID, submission ID, project ID, contractor ID, amount, status, and Stripe PaymentIntent ID).
+Do not alter the direct payment flow.
+The existing “Pay Contractor” page and flow are functioning correctly and should remain unchanged.
+Only the “Accept” flow (task-based payments) needs to be updated.
+Validation requirements.
+Confirm that when “Accept” is pressed, funds route directly to the contractor’s connected account.
+Ensure Stripe fees, refunds, and disputes are charged to the contractor (not the platform).
+Verify that businesses are never required to create Connect accounts.
+Platform should not handle or move funds.
