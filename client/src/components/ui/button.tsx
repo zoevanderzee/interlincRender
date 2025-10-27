@@ -9,15 +9,15 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-gradient-to-r from-[#6b9aff] to-[#7ca5ff] text-[#0a1628] shadow-lg hover:shadow-xl hover:from-[#7ca5ff] hover:to-[#8db0ff] border border-[#6b9aff]/20 font-semibold",
+        default: "bg-gradient-to-r from-[#4a7bff] to-[#5b8cff] text-white dark:text-[#0a1628] shadow-lg hover:shadow-xl hover:from-[#5b8cff] hover:to-[#6c9dff] border border-[#4a7bff]/20 font-semibold",
         destructive:
           "bg-gradient-to-r from-red-600 to-red-500 text-white shadow-lg hover:shadow-xl hover:from-red-500 hover:to-red-400 border border-red-400/20",
         outline:
-          "border border-[#6b9aff]/30 bg-gradient-to-r from-[#6b9aff]/10 to-[#6b9aff]/5 backdrop-blur-sm hover:from-[#6b9aff]/20 hover:to-[#6b9aff]/10 hover:border-[#6b9aff]/50 text-white shadow-md hover:shadow-lg",
+          "border border-[#4a7bff] bg-white dark:bg-gradient-to-r dark:from-[#6b9aff]/10 dark:to-[#6b9aff]/5 text-[#4a7bff] dark:text-white backdrop-blur-sm hover:bg-[#4a7bff]/10 dark:hover:from-[#6b9aff]/20 dark:hover:to-[#6b9aff]/10 hover:border-[#4a7bff] dark:hover:border-[#6b9aff]/50 shadow-md hover:shadow-lg",
         secondary:
-          "bg-gradient-to-r from-[#0f1f3a] to-[#1a2b4a] text-white shadow-lg hover:shadow-xl hover:from-[#1a2b4a] hover:to-[#253655] border border-[#6b9aff]/10",
-        ghost: "hover:bg-gradient-to-r hover:from-[#6b9aff]/15 hover:to-[#6b9aff]/5 text-white hover:shadow-md",
-        link: "text-[#6b9aff] underline-offset-4 hover:underline hover:text-[#7ca5ff]",
+          "bg-gradient-to-r from-[#e8eef9] to-[#f0f4fb] dark:from-[#0f1f3a] dark:to-[#1a2b4a] text-[#2c5aa0] dark:text-white shadow-lg hover:shadow-xl hover:from-[#d9e3f5] hover:to-[#e8eef9] dark:hover:from-[#1a2b4a] dark:hover:to-[#253655] border border-[#4a7bff]/20 dark:border-[#6b9aff]/10",
+        ghost: "hover:bg-[#4a7bff]/10 dark:hover:bg-gradient-to-r dark:hover:from-[#6b9aff]/15 dark:hover:to-[#6b9aff]/5 text-[#2c5aa0] dark:text-white hover:shadow-md",
+        link: "text-[#4a7bff] dark:text-[#6b9aff] underline-offset-4 hover:underline hover:text-[#5b8cff] dark:hover:text-[#7ca5ff]",
       },
       size: {
         default: "h-11 px-6 py-2.5",
