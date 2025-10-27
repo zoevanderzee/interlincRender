@@ -764,12 +764,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
 
           console.log(`Created Stripe customer ${customer.id} for new business user ${newUser.id}`);
-          
+
           // Auto-generate profile code for permanent onboarding link
           try {
             const profileCode = await storage.generateProfileCode(newUser.id);
             console.log(`Auto-generated profile code ${profileCode} for new business user ${newUser.id}`);
-            
+
             // Fetch updated user with profile code
             const userWithCode = await storage.getUser(newUser.id);
             res.status(201).json(userWithCode || updatedUser || newUser);
@@ -3021,7 +3021,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const realActiveContractorsCount = uniqueContractorIds.length;
 
       // Get pending invites
-      const pendingInvites = await storage.getInvitesByBusinessId(userId || 0).then(invites => 
+      const pendingInvites = await storage.getInvitesByBusinessId(userId || 0).then(invites =>
         invites.filter(invite => invite.status === 'pending')
       ).catch(() => []);
 
@@ -4529,7 +4529,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`Found work request:`, workRequest);
 
-      // For logged-in contractors, allow decline without token verification
+      // If logged-in contractors, allow decline without token verification
       if (req.headers['x-user-id']) {
         const userId = parseInt(req.headers['x-user-id'] as string);
         console.log(`Checking user ${userId}...`);
@@ -4713,7 +4713,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let userId = req.user?.id;
       let userRole = req.user?.role;
 
-      // Handle      // fallback authentication via X-User-ID header
+      // Handle fallback authentication via X-User-ID header
       if (!userId && req.headers['x-user-id']) {
         const fallbackUserId = parseInt(req.headers['x-user-id'] as string);
         const fallbackUser = await storage.getUser(fallbackUserId);
@@ -5043,7 +5043,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get the business onboarding link
-      const link = await storage.getBusinessOnboardingLink(businessId);
+      let link = await storage.getBusinessOnboardingLink(businessId);
+
+      // ONE-TIME FIX: If this is user 117 and no link exists, create one automatically
+      if (!link && businessId === 117) {
+        console.log(`Creating one-time onboarding link for existing business user ${businessId}`);
+        link = await storage.createBusinessOnboardingLink(businessId, 'contractor');
+      }
 
       if (!link) {
         return res.status(404).json({message: "No active onboarding link found"});
@@ -5470,7 +5476,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               paymentResult = await automatedPaymentService.processApprovedWorkPayment(autoPayMilestone.id, req.user!.id);
 
               if (paymentResult.success) {
-                console.log(`[APPROVAL_PAYMENT] ✅ Payment successful: $${paymentResult.payment?.amount} topaymentResult.payment?.contractorId}`);
+                console.log(`[APPROVAL_PAYMENT] ✅ Payment successful: $${paymentResult.payment?.amount} to paymentResult.payment?.contractorId}`);
                 await storage.updateMilestone(autoPayMilestone.id, {status: 'completed'});
               } else {
                 console.log(`[APPROVAL_PAYMENT] ⚠️ Payment failed but work remains approved:`, paymentResult.error);
