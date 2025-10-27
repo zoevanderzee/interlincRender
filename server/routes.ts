@@ -356,13 +356,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({message: "Authentication required"});
       }
 
-      const currentUser = await storage.getUser(userId);
-      if (!currentUser) {
+      const user = await storage.getUser(userId);
+      if (!user) {
         return res.status(404).json({message: "User not found"});
       }
 
       // Business-specific stats
-      if (currentUser.role === 'business') {
+      if (user.role === 'business') {
         const workRequests = await storage.getWorkRequestsByBusinessId(userId);
         const acceptedWorkRequests = workRequests.filter(wr => wr.status === 'accepted');
 
@@ -412,13 +412,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           paymentsProcessed: paymentStats.totalPaymentValue,
           totalPendingValue: totalPendingValue,
           activeContractors: contractors.length,
-          remainingBudget: currentUser.budgetCap ?
-            (parseFloat(currentUser.budgetCap) - parseFloat(currentUser.budgetUsed || "0")).toString() : null
+          remainingBudget: user.budgetCap ?
+            (parseFloat(user.budgetCap) - parseFloat(user.budgetUsed || "0")).toString() : null
         });
       }
 
       // Contractor-specific stats
-      if (currentUser.role === 'contractor') {
+      if (user.role === 'contractor') {
         const earnings = await storage.getContractorEarningsStats(userId);
         const workRequests = await storage.getWorkRequestsByContractorId(userId);
         // Active assignments are work requests that have been ACCEPTED by the contractor
@@ -2127,7 +2127,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Create Stripe PaymentIntent with destination + on_behalf_of
         const { createPaymentIntent } = await import('./services/stripe.js');
-
+        
         const paymentIntent = await createPaymentIntent({
           amount: parseFloat(updatedDeliverable.paymentAmount),
           currency: 'gbp',
@@ -2150,8 +2150,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Update payment record with Stripe details
         await storage.updatePaymentStripeDetails(
-          payment.id,
-          paymentIntent.id,
+          payment.id, 
+          paymentIntent.id, 
           paymentIntent.status || 'requires_payment_method'
         );
 
@@ -2171,7 +2171,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       } catch (paymentError: any) {
         console.error(`[DELIVERABLE_APPROVAL] Payment failed:`, paymentError);
-
+        
         res.json({
           message: "Deliverable approved but payment failed",
           deliverable: updatedDeliverable,
@@ -2982,6 +2982,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return sum + parseFloat(contract.value.toString() || '0');
         }, 0);
 
+      // Get contractor/businesses data based on user role
+      let allContractors = [];
+      let activeContractorsCount = 0;
+
+      if (userRole === 'business') {
+        // For business users, get their contractors
+        allContractors = await storage.getContractorsByBusinessId(userId || 0);
+        activeContractorsCount = allContractors.length;
+      } else if (userRole === 'contractor') {
+        // For contractors, get businesses they work with
+        allContractors = await storage.getBusinessesByContractorId(userId || 0);
+        activeContractorsCount = 0; // Contractors don't have a contractor count
+      }
+
+      // Skip invites in dashboard for now - they're causing the error
+      let pendingInvites = [];
+      try {
+        // Only try to get invites if we have a business user
+        if (userRole === 'business' && userId) {
+          // Use the business onboarding link count instead of invites
+          const businessLink = await storage.getBusinessOnboardingLink(userId);
+          // We will just display this as a count for now
+          pendingInvites = businessLink ? [businessLink] : [];
+        }
+      } catch (inviteError) {
+        console.log("Non-critical error fetching invites for dashboard:", inviteError);
+        // Continue with empty invites array
+      }
+
+      // Calculate total work requests value
+      const totalWorkRequestsValue = activeWorkRequests.reduce((sum, wr) => {
+        return sum + parseFloat(wr.amount || '0');
+      }, 0);
+
+      const totalPendingWorkRequestsValue = pendingWorkRequests.reduce((sum, wr) => {
+        return sum + parseFloat(wr.amount || '0');
+      }, 0);
+
       // Find the Quick Tasks project (special project for one-off tasks)
       const quickTasksProject = userProjects.find(p => p.name === 'Quick Tasks');
       const quickTasksProjectId = quickTasksProject?.id;
@@ -3007,12 +3045,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const uniqueContractorIds = [...new Set(userWorkRequests.map(wr => wr.contractorUserId))];
       const realActiveContractorsCount = uniqueContractorIds.length;
 
-      // Get pending invites for this business
-      const pendingInvites = await storage.getInvitesByBusinessId(userId);
-
-      // Get contractors linked to this business
-      const allContractors = await storage.getContractorsByBusinessId(userId);
-
       const dashboardData = {
         stats: {
           activeContractsCount: activeWorkRequests.length, // Count accepted work requests as active contracts
@@ -3027,8 +3059,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           currentYearPayments: currentYearPayments, // Current year actual payments
           totalSuccessfulPaymentsCount: businessPaymentStats.totalSuccessfulPayments, // Total count of successful payments
           // BULLETPROOF: Use same calculation as budget page
-          remainingBudget: user.budgetCap
-            ? (parseFloat(user.budgetCap) - totalPaymentsValue).toFixed(2)
+          remainingBudget: req.user?.budgetCap
+            ? (parseFloat(req.user.budgetCap.toString()) - totalPaymentsValue).toFixed(2)
             : null
         },
         contracts: userContracts.filter(contract => contract.status !== 'deleted'),
@@ -3714,7 +3746,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         budgetResetEnabled: user.budgetResetEnabled || false,
         totalProjectAllocations: totalProjectAllocations.toFixed(2),
         remainingBudget: user.budgetCap
-          ? (parseFloat(user.budgetCap) - totalPaymentsValue).toFixed(2)
+          ? (parseFloat(user.budgetCap.toString()) - totalPaymentsValue).toFixed(2)
           : null
       });
     } catch (error) {
@@ -3804,7 +3836,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         budgetEndDate: user.budgetEndDate || null,
         budgetResetEnabled: user.budgetResetEnabled || false,
         remainingBudget: user.budgetCap
-          ? (parseFloat(user.budgetCap) - totalPaymentsValue).toFixed(2)
+          ? (parseFloat(user.budgetCap.toString()) - totalPaymentsValue).toFixed(2)
           : null
       });
     } catch (error) {
@@ -6020,8 +6052,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const paymentRecord = await storage.createPayment({
         contractId: milestone.contractId,
         milestoneId: milestoneId,
-        businessId: user.id,
-        contractorId: contractor.id,
         amount: amount.toString(),
         status: 'processing',
         scheduledDate: new Date(),

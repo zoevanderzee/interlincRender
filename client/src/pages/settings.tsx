@@ -31,15 +31,7 @@ export default function Settings() {
       return res.json();
     },
     onSuccess: () => {
-      // Invalidate all queries that display user profile data (SSOT pattern)
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/work-requests"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/contracts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-      queryClient.invalidateQueries({ queryKey: ["/integrated"] });
-      
       toast({
         title: "Profile updated",
         description: "Your profile has been updated successfully.",
@@ -225,29 +217,14 @@ export default function Settings() {
                   <Button
                     type="button"
                     onClick={() => {
-                      const firstName = (document.getElementById("firstName") as HTMLInputElement).value?.trim();
-                      const lastName = (document.getElementById("lastName") as HTMLInputElement).value?.trim();
-                      const title = (document.getElementById("title") as HTMLInputElement).value?.trim();
-                      
-                      const formData: any = {};
-                      
-                      // Always include firstName and lastName (can be empty strings)
-                      formData.firstName = firstName || "";
-                      formData.lastName = lastName || "";
-                      
-                      // Only include title if it has a value
-                      if (title) {
-                        formData.title = title;
-                      }
-                      
-                      if (user.role === "business") {
-                        const companyName = (document.getElementById("companyName") as HTMLInputElement)?.value?.trim();
-                        // Only include companyName if it has a value
-                        if (companyName) {
-                          formData.companyName = companyName;
-                        }
-                      }
-                      
+                      const formData = {
+                        firstName: (document.getElementById("firstName") as HTMLInputElement).value,
+                        lastName: (document.getElementById("lastName") as HTMLInputElement).value,
+                        title: (document.getElementById("title") as HTMLInputElement).value,
+                        ...(user.role === "business" && {
+                          companyName: (document.getElementById("companyName") as HTMLInputElement)?.value,
+                        }),
+                      };
                       updateProfileMutation.mutate(formData);
                     }}
                     disabled={updateProfileMutation.isPending}
