@@ -954,39 +954,25 @@ export default function AuthPage() {
             <img src={Logo} alt="Interlinc" className="h-16" />
           </div>
 
-          {/* Tab Navigation */}
-          <div className="flex gap-4 mb-8">
-            <button
-              onClick={() => setActiveTab('login')}
-              className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
-                activeTab === 'login'
-                  ? 'bg-gradient-to-r from-[#6b9aff] to-[#7ca5ff] text-[#0a1628]'
-                  : 'bg-gradient-to-r from-[#0f1f3a] to-[#1a2b4a] text-white border border-[#6b9aff]/10 hover:border-[#6b9aff]/30'
-              }`}
-            >
-              Login
-            </button>
-            <button
-              onClick={() => setActiveTab('register')}
-              className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
-                activeTab === 'register'
-                  ? 'bg-gradient-to-r from-[#6b9aff] to-[#7ca5ff] text-[#0a1628]'
-                  : 'bg-gradient-to-r from-[#0f1f3a] to-[#1a2b4a] text-white border border-[#6b9aff]/10 hover:border-[#6b9aff]/30'
-              }`}
-            >
-              Register
-            </button>
-          </div>
-
           <Tabs defaultValue="login" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-2 bg-zinc-900">
-              <TabsTrigger value="login" className="text-white">Login</TabsTrigger>
-              <TabsTrigger value="register" className="text-white">Register</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 mb-8" style={{ background: 'transparent', gap: '1rem', padding: 0 }}>
+              <TabsTrigger 
+                value="login" 
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#6b9aff] data-[state=active]:to-[#7ca5ff] data-[state=active]:text-[#0a1628] data-[state=inactive]:bg-gradient-to-r data-[state=inactive]:from-[#0f1f3a] data-[state=inactive]:to-[#1a2b4a] data-[state=inactive]:text-white data-[state=inactive]:border data-[state=inactive]:border-[#6b9aff]/10 py-3 px-4 rounded-lg font-medium transition-all"
+              >
+                Login
+              </TabsTrigger>
+              <TabsTrigger 
+                value="register"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#6b9aff] data-[state=active]:to-[#7ca5ff] data-[state=active]:text-[#0a1628] data-[state=inactive]:bg-gradient-to-r data-[state=inactive]:from-[#0f1f3a] data-[state=inactive]:to-[#1a2b4a] data-[state=inactive]:text-white data-[state=inactive]:border data-[state=inactive]:border-[#6b9aff]/10 py-3 px-4 rounded-lg font-medium transition-all"
+              >
+                Register
+              </TabsTrigger>
             </TabsList>
 
             {/* Login Form */}
             <TabsContent value="login">
-              <Card className="border-zinc-700 bg-zinc-900 text-white">
+              <Card className="border-[#6b9aff]/20 text-white" style={{ background: 'linear-gradient(135deg, rgba(15, 31, 58, 0.6) 0%, rgba(26, 43, 74, 0.6) 100%)', backdropFilter: 'blur(20px)' }}>
                 <CardHeader>
                   <CardTitle>Login to Interlinc</CardTitle>
                   <CardDescription className="text-zinc-400">
@@ -1038,7 +1024,7 @@ export default function AuthPage() {
                   <CardFooter>
                     <Button 
                       type="submit" 
-                      className="w-full bg-white text-black hover:bg-zinc-200"
+                      className="w-full bg-gradient-to-r from-[#6b9aff] to-[#7ca5ff] text-[#0a1628] hover:from-[#5a89ee] hover:to-[#6b94ee] font-medium"
                       disabled={loginMutation.isPending}
                     >
                       {loginMutation.isPending ? (
@@ -1057,7 +1043,7 @@ export default function AuthPage() {
 
             {/* Register Form */}
             <TabsContent value="register">
-              <Card className="border-zinc-700 bg-zinc-900 text-white">
+              <Card className="border-[#6b9aff]/20 text-white" style={{ background: 'linear-gradient(135deg, rgba(15, 31, 58, 0.6) 0%, rgba(26, 43, 74, 0.6) 100%)', backdropFilter: 'blur(20px)' }}>
                 <CardHeader>
                   <CardTitle>Create an Account</CardTitle>
                   <CardDescription className="text-zinc-400">
@@ -1207,7 +1193,7 @@ export default function AuthPage() {
                   <CardFooter>
                     <Button 
                       type="submit" 
-                      className="w-full bg-white text-black hover:bg-zinc-200"
+                      className="w-full bg-gradient-to-r from-[#6b9aff] to-[#7ca5ff] text-[#0a1628] hover:from-[#5a89ee] hover:to-[#6b94ee] font-medium"
                       disabled={registerMutation.isPending}
                     >
                       {registerMutation.isPending ? (
@@ -1226,7 +1212,7 @@ export default function AuthPage() {
 
             {/* Forgot Password Form */}
             <TabsContent value="forgot-password">
-              <Card className="border-zinc-700 bg-zinc-900 text-white">
+              <Card className="border-[#6b9aff]/20 text-white" style={{ background: 'linear-gradient(135deg, rgba(15, 31, 58, 0.6) 0%, rgba(26, 43, 74, 0.6) 100%)', backdropFilter: 'blur(20px)' }}>
                 <CardHeader>
                   <div className="flex items-center mb-2">
                     <button 
@@ -1253,7 +1239,7 @@ export default function AuthPage() {
                       <Button 
                         type="button" 
                         onClick={() => setActiveTab("login")}
-                        className="mt-4 bg-white text-black hover:bg-zinc-200"
+                        className="mt-4 bg-gradient-to-r from-[#6b9aff] to-[#7ca5ff] text-[#0a1628] hover:from-[#5a89ee] hover:to-[#6b94ee] font-medium"
                       >
                         Back to Login
                       </Button>
@@ -1284,7 +1270,7 @@ export default function AuthPage() {
                     <CardFooter>
                       <Button 
                         type="submit" 
-                        className="w-full bg-white text-black hover:bg-zinc-200"
+                        className="w-full bg-gradient-to-r from-[#6b9aff] to-[#7ca5ff] text-[#0a1628] hover:from-[#5a89ee] hover:to-[#6b94ee] font-medium"
                         disabled={forgotPasswordMutation.isPending}
                       >
                         {forgotPasswordMutation.isPending ? (
