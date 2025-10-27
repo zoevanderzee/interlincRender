@@ -3007,6 +3007,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const uniqueContractorIds = [...new Set(userWorkRequests.map(wr => wr.contractorUserId))];
       const realActiveContractorsCount = uniqueContractorIds.length;
 
+      // Get pending invites
+      const pendingInvites = await storage.getInvitesByBusinessId(userId || 0).then(invites => 
+        invites.filter(invite => invite.status === 'pending')
+      ).catch(() => []);
+
+      // Get all contractors for this business
+      const allContractors = await Promise.all(
+        uniqueContractorIds.map(contractorId => storage.getUser(contractorId))
+      ).then(contractors => contractors.filter(Boolean)).catch(() => []);
+
       const dashboardData = {
         stats: {
           activeContractsCount: activeWorkRequests.length, // Count accepted work requests as active contracts
@@ -5454,7 +5464,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } catch (paymentError: any) {
             console.log('[APPROVAL_PAYMENT] ⚠️ Payment processing error - work remains approved:', paymentError.message);
             paymentResult = {success: false, error: paymentError.message};
-          }}
+          }
         }
       }
 
