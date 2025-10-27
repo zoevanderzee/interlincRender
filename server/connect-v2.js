@@ -67,10 +67,22 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
   /**
    * GET /api/connect/v2/status
    * Enhanced status with real-time capability checking
+   * CONTRACTORS ONLY - Business users don't need Connect accounts
    */
   app.get(`${connectBasePath}/status`, authMiddleware, async (req, res) => {
     try {
       const userId = getUserId(req);
+      
+      // Block business users - they don't need Connect accounts
+      const user = await db.getUser(userId);
+      if (user?.role === 'business') {
+        return res.status(403).json({
+          error: 'Business users do not need Stripe Connect accounts',
+          message: 'Only contractors need Connect accounts to receive payments. Business users use regular Stripe Customer accounts to make payments.',
+          accountType: 'customer'
+        });
+      }
+      
       const existing = await db.getConnect(userId);
 
       // Comprehensive country to currency mapping
@@ -319,10 +331,22 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
   /**
    * POST /api/connect/v2/create-account
    * Direct account creation via API - no embedded components
+   * CONTRACTORS ONLY - Business users don't need Connect accounts
    */
   app.post(`${connectBasePath}/create-account`, authMiddleware, async (req, res) => {
     try {
       const userId = getUserId(req);
+      
+      // Block business users - they don't need Connect accounts
+      const user = await db.getUser(userId);
+      if (user?.role === 'business') {
+        return res.status(403).json({
+          error: 'Business users do not need Stripe Connect accounts',
+          message: 'Only contractors need Connect accounts to receive payments. Business users use regular Stripe Customer accounts to make payments.',
+          accountType: 'customer'
+        });
+      }
+      
       const { country = "GB", business_type = "individual" } = req.body || {};
 
       // Validate country and determine currency
