@@ -673,7 +673,7 @@ const Contractors = () => {
           <TabsContent value="invites">
             <div className="space-y-6">
               <div className="bg-[hsl(215,50%,12%)] dark:bg-[hsl(215,50%,12%)] rounded-lg border border-[hsl(215,40%,22%)] dark:border-[hsl(215,40%,22%)] overflow-hidden">
-                <div className="px-4 py-5 sm:px-6 flex justify-between items-center bg-[hsl(215,50%,12%)] dark:bg-[hsl(215,50%,12%)]"></div>
+                <div className="px-4 py-5 sm:px-6 flex justify-between items-center bg-[hsl(215,50%,12%)] dark:bg-[hsl(215,50%,12%)]">
                   <div>
                     <h3 className="text-lg font-medium text-white">Pending Invitations</h3>
                     <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
