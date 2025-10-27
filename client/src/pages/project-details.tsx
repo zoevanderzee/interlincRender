@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { SubmitWorkModal } from "@/components/SubmitWorkModal";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatDistanceToNow } from "date-fns";
-import StripeElements from "@/components/StripeElements"; // Assuming StripeElements component exists
+import { StripeElements } from "@/components/payments/StripeElements";
 
 interface Project {
   id: number;
