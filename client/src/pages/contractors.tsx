@@ -204,28 +204,27 @@ const Contractors = () => {
     });
   };
 
-  // Function to generate the permanent company onboarding link using profile code
+  // Function to generate the permanent company onboarding link
   const generateOnboardingLink = async () => {
     try {
-      // Business users should already have a profile code from account creation
-      const profileCode = user?.profileCode;
-
-      if (!profileCode) {
-        toast({
-          title: "Profile Code Missing",
-          description: "Your account doesn't have a profile code yet. Please contact support.",
-          variant: "destructive",
-        });
-        return;
+      const response = await apiRequest("GET", "/api/business-onboarding-link", {});
+      
+      if (!response.ok) {
+        throw new Error("Failed to get onboarding link");
       }
 
-      const appUrl = window.location.origin;
-      const onboardingUrl = `${appUrl}/join?code=${profileCode}`;
+      const data = await response.json();
+      const onboardingUrl = data.inviteUrl;
 
       setDirectLink(onboardingUrl);
       setIsLinkDialogOpen(true);
 
       console.log("Generated permanent company onboarding link:", onboardingUrl);
+
+      toast({
+        title: "Onboarding Link Ready",
+        description: `Share this link with contractors to join ${user?.companyName || 'your company'}.`,
+      });
     } catch (error: any) {
       console.error("Error generating permanent onboarding link:", error);
       toast({
