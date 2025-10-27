@@ -2911,7 +2911,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Active work requests (accepted contracts) are those with status 'accepted'
       const activeWorkRequests = userWorkRequests.filter(wr => wr.status === 'accepted');
 
-      // Pending approvals are work requests with status 'pending'
+      // Pending work requests are those with status 'pending'
       const pendingWorkRequests = userWorkRequests.filter(wr => wr.status === 'pending');
 
       // Get the upcoming payments (5 most recent)
@@ -2981,44 +2981,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .reduce((sum, contract) => {
           return sum + parseFloat(contract.value.toString() || '0');
         }, 0);
-
-      // Get contractor/businesses data based on user role
-      let allContractors = [];
-      let activeContractorsCount = 0;
-
-      if (userRole === 'business') {
-        // For business users, get their contractors
-        allContractors = await storage.getContractorsByBusinessId(userId || 0);
-        activeContractorsCount = allContractors.length;
-      } else if (userRole === 'contractor') {
-        // For contractors, get businesses they work with
-        allContractors = await storage.getBusinessesByContractorId(userId || 0);
-        activeContractorsCount = 0; // Contractors don't have a contractor count
-      }
-
-      // Skip invites in dashboard for now - they're causing the error
-      let pendingInvites = [];
-      try {
-        // Only try to get invites if we have a business user
-        if (userRole === 'business' && userId) {
-          // Use the business onboarding link count instead of invites
-          const businessLink = await storage.getBusinessOnboardingLink(userId);
-          // We will just display this as a count for now
-          pendingInvites = businessLink ? [businessLink] : [];
-        }
-      } catch (inviteError) {
-        console.log("Non-critical error fetching invites for dashboard:", inviteError);
-        // Continue with empty invites array
-      }
-
-      // Calculate total work requests value
-      const totalWorkRequestsValue = activeWorkRequests.reduce((sum, wr) => {
-        return sum + parseFloat(wr.amount || '0');
-      }, 0);
-
-      const totalPendingWorkRequestsValue = pendingWorkRequests.reduce((sum, wr) => {
-        return sum + parseFloat(wr.amount || '0');
-      }, 0);
 
       // Find the Quick Tasks project (special project for one-off tasks)
       const quickTasksProject = userProjects.find(p => p.name === 'Quick Tasks');
@@ -5281,7 +5243,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/work-request-submissions/:id/review', requireStrictAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const submissionId = parseInt(req.params.id);
-      const {status, feedback} = req.body;
+            const {status, feedback} = req.body;
 
       // Only businesses can review submissions
       if (req.user!.role !== 'business') {
@@ -5788,7 +5750,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Call live Trolley API to get real balance
       try {
-        // CRITICAL FIX: Use verified recipient ID instead of fake user ID
+        // CRITICAL FIX: Use recipient ID instead of fake user ID
         // Your verified Trolley account: R-AeVtg3cVK1ExCDPQosEHve
         const verifiedRecipientId = user.trolleyRecipientId;
 
