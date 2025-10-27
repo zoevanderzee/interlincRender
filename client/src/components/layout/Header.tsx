@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Bell, Settings, LogOut, User, Shield } from "lucide-react";
+import { Bell, Settings, LogOut, User, Shield, Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -16,10 +16,29 @@ import { useIntegratedData } from "@/hooks/use-integrated-data";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import Logo from "@assets/CD_icon_light@2x.png";
+import { useState, useEffect } from "react";
 
 export default function Header() {
   const { user, logoutMutation } = useAuth();
   const { data: integratedData } = useIntegratedData();
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
+    if (savedTheme) {
+      setTheme(savedTheme);
+      document.documentElement.classList.toggle('dark', savedTheme === 'dark');
+    } else {
+      document.documentElement.classList.add('dark');
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+    document.documentElement.classList.toggle('dark', newTheme === 'dark');
+  };
 
   const handleLogout = async () => {
     try {
@@ -53,20 +72,30 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-[#0f1a2e] border-b border-zinc-800 h-16 flex items-center justify-between px-6 sticky top-0 z-50">
+    <header className="bg-background border-b border-border h-16 flex items-center justify-between px-6 sticky top-0 z-50">
       <div className="flex items-center space-x-4">
         <Link href="/">
           <div className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
             <img src={Logo} alt="Interlinc" className="h-8 w-auto object-contain" />
-            <span className="font-semibold text-xl text-white">Interlinc</span>
+            <span className="font-semibold text-xl text-foreground">Interlinc</span>
           </div>
         </Link>
       </div>
 
       <div className="flex items-center space-x-4">
+        {/* Theme Toggle */}
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={toggleTheme}
+          className="text-zinc-400 hover:text-primary transition-colors"
+        >
+          {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+        </Button>
+
         {/* Notifications */}
         <div className="relative">
-          <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white">
+          <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-primary transition-colors">
             <Bell size={20} />
             {integratedData?.notificationCount > 0 && (
               <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-red-600 text-white">
