@@ -208,23 +208,26 @@
 
   /* Premium Input Styling */
   input, textarea, select {
-    background: linear-gradient(135deg, 
-      rgba(107, 154, 255, 0.08) 0%, 
-      rgba(107, 154, 255, 0.04) 100%);
+    background: hsl(var(--input));
     backdrop-filter: blur(10px);
-    border: 1px solid hsl(215, 40%, 22%);
+    border: 1px solid hsl(var(--border));
     transition: var(--transition-smooth);
+    color: hsl(var(--foreground));
   }
 
   input:focus, textarea:focus, select:focus {
-    background: linear-gradient(135deg, 
-      rgba(107, 154, 255, 0.12) 0%, 
-      rgba(107, 154, 255, 0.06) 100%);
-    border-color: hsl(217, 91%, 70%);
+    background: hsl(var(--background));
+    border-color: hsl(var(--primary));
     box-shadow: 
-      0 0 0 3px rgba(107, 154, 255, 0.15),
-      0 4px 12px rgba(107, 154, 255, 0.2);
+      0 0 0 3px hsl(var(--primary) / 0.15),
+      0 4px 12px hsl(var(--primary) / 0.2);
     transform: translateY(-1px);
+  }
+  
+  /* Ensure placeholder text is visible */
+  input::placeholder, textarea::placeholder {
+    color: hsl(var(--muted-foreground));
+    opacity: 0.6;
   }
 
   /* Skeleton Loader Styling */
