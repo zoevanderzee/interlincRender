@@ -76,31 +76,26 @@ export function SubmittedWorkReview({ businessId }: SubmittedWorkReviewProps) {
     },
     onSuccess: (data: any, variables: any) => {
       if (variables.status === 'approved') {
-        // Check if payment requires additional action (SCA/3DS)
-        if (data.paymentIntent?.requiresAction) {
-          // Show Elements modal for authentication
-          setPaymentSubmission(selectedSubmission);
-          setShowPaymentModal(true);
-          toast({
-            title: 'Payment authentication required',
-            description: 'Please complete payment verification',
-          });
-        } else if (data.paymentIntent?.status === 'succeeded') {
-          // Payment succeeded automatically
-          toast({
-            title: 'Work approved and paid',
-            description: 'Payment completed successfully',
-          });
-          queryClient.invalidateQueries({ queryKey: ['/api/work-request-submissions/business'] });
-          queryClient.invalidateQueries({ queryKey: ['/api/work-requests'] });
-          queryClient.invalidateQueries({ queryKey: ['/api/budget'] });
-        } else {
-          // Payment requires card details - show modal
+        // Backend creates payment intent automatically on approval
+        if (data.paymentIntent) {
+          // Show payment modal with payment intent
           setPaymentSubmission(selectedSubmission);
           setShowPaymentModal(true);
           toast({
             title: 'Work approved',
-            description: 'Please complete payment',
+            description: 'Please complete payment to finalize',
+          });
+        } else if (data.needsSetup) {
+          // Payment setup required
+          toast({
+            title: 'Payment setup required',
+            description: data.message || 'Complete payment setup to proceed',
+            variant: 'destructive',
+          });
+        } else {
+          toast({
+            title: 'Work approved',
+            description: 'Waiting for payment processing',
           });
         }
         setSelectedSubmission(null);
@@ -440,7 +435,7 @@ export function SubmittedWorkReview({ businessId }: SubmittedWorkReviewProps) {
       )}
 
       {/* Payment Modal */}
-      {showPaymentModal && paymentSubmission && (
+      {showPaymentModal && paymentSubmission && workRequest && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <Card className="bg-zinc-900 border-zinc-800 max-w-md w-full">
             <CardHeader>
@@ -453,25 +448,26 @@ export function SubmittedWorkReview({ businessId }: SubmittedWorkReviewProps) {
               <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
                 <p className="text-gray-400 text-sm mb-2">Paying for:</p>
                 <p className="text-white font-medium">{paymentSubmission.title}</p>
+                <div className="mt-2 pt-2 border-t border-zinc-700">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400 text-sm">Amount:</span>
+                    <span className="text-white font-semibold">
+                      {workRequest.currency?.toUpperCase() || 'GBP'} {parseFloat(workRequest.amount).toFixed(2)}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Amount from work request (read-only)</p>
+                </div>
               </div>
 
-              {workRequest && (
-                <StripeElements
-                  amount={parseFloat(workRequest.amount) * 100}
-                  currency="gbp"
-                  description={`Payment for: ${paymentSubmission.title}`}
-                  contractorUserId={paymentSubmission.contractorId}
-                  onPaymentComplete={handlePaymentComplete}
-                  isProcessing={isProcessingPayment}
-                  showSaveCard={true}
-                />
-              )}
-              
-              {!workRequest && (
-                <div className="text-center text-gray-400 py-4">
-                  Loading payment details...
-                </div>
-              )}
+              <StripeElements
+                amount={parseFloat(workRequest.amount) * 100}
+                currency={workRequest.currency?.toLowerCase() || 'gbp'}
+                description={`Payment for: ${paymentSubmission.title}`}
+                contractorUserId={paymentSubmission.contractorId}
+                onPaymentComplete={handlePaymentComplete}
+                isProcessing={isProcessingPayment}
+                showSaveCard={false}
+              />
 
               <Button
                 variant="outline"

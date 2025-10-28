@@ -3006,7 +3006,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return sum + parseFloat(project.budget?.toString() || '0');
         }, 0);
 
-      // Calculate Total Task Value (sum of work requests in Quick Tasks project only)
+      // Calculate Total Task Value (sum of work requests in Quick Tasks project)
       const totalTaskValue = userWorkRequests
         .filter(wr => wr.projectId === quickTasksProjectId)
         .reduce((sum, wr) => {
@@ -5266,21 +5266,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     app.patch('/api/work-request-submissions/:id/review', requireStrictAuth, async (req: AuthenticatedRequest, res) => {
       try {
         const submissionId = parseInt(req.params.id);
-        const {status, feedback} = req.body;
         const userId = req.user?.id;
 
         if (!userId) {
           return res.status(401).json({message: 'Authentication required'});
         }
 
+        const {status, feedback} = req.body;
+
+        // Validate status
+        const validStatuses = ['approved', 'rejected', 'needs_revision'];
+        if (!validStatuses.includes(status)) {
+          return res.status(400).json({message: 'Invalid status'});
+        }
+
+        // Get submission
         const submission = await storage.getWorkRequestSubmission(submissionId);
         if (!submission) {
           return res.status(404).json({message: 'Submission not found'});
         }
 
-        // Security check - only business owner can review
+        // Verify user is the business owner
         if (submission.businessId !== userId) {
-          return res.status(403).json({message: 'Access denied'});
+          return res.status(403).json({message: 'Not authorized to review this submission'});
         }
 
         // Update submission status
@@ -5291,1169 +5299,1201 @@ export async function registerRoutes(app: Express): Promise<Server> {
           approverId: userId
         });
 
-        // If approved, initiate payment immediately (destination charge)
-        if (status === 'approved') {
-          const workRequest = await storage.getWorkRequest(submission.workRequestId);
-          if (!workRequest) {
-            return res.status(404).json({message: 'Work request not found'});
-          }
-
-          // Get contractor Connect account
-          const { createSecurePaymentV2 } = await import('./services/stripe.js');
-          const businessUser = await storage.getUser(userId);
-          const businessConnect = await storage.getConnectForUser(userId);
-
-          if (!businessConnect?.accountId) {
-            return res.status(400).json({
-              message: 'Payment setup required',
-              requiresSetup: true,
-              setupType: 'business_connect'
-            });
-          }
-
-          try {
-            // Create destination charge payment (funds go directly to contractor)
-            const paymentResult = await createSecurePaymentV2({
-              contractorUserId: submission.contractorId,
-              amount: parseFloat(workRequest.amount),
-              currency: 'gbp',
-              description: `Payment for: ${workRequest.title}`,
-              metadata: {
-                submission_id: submissionId.toString(),
-                work_request_id: workRequest.id.toString()
-              },
-              businessAccountId: businessConnect.accountId
-            });
-
-            // Update work request status
-            await storage.updateWorkRequestStatus(workRequest.id, 'approved');
-
-            console.log(`[WORK_APPROVAL] Payment initiated: ${paymentResult.payment_intent_id}`);
-
-            res.json({
-              ...updatedSubmission,
-              paymentIntent: {
-                id: paymentResult.payment_intent_id,
-                clientSecret: paymentResult.client_secret,
-                status: paymentResult.status,
-                requiresAction: paymentResult.status === 'requires_action'
-              }
-            });
-          } catch (paymentError: any) {
-            console.error('[WORK_APPROVAL] Payment failed:', paymentError);
-            res.status(500).json({
-              message: 'Approval succeeded but payment failed',
-              error: paymentError.message,
-              submission: updatedSubmission
-            });
-          }
-        } else {
-          res.json(updatedSubmission);
-        }
-      } catch (error) {
-        console.error('Error reviewing work submission:', error);
-        res.status(500).json({message: 'Error reviewing work submission'});
-      }
-    });
-
-    // Work Submissions Routes
-    app.post('/api/work-submissions', requireAuth, async (req: AuthenticatedRequest, res) => {
-      try {
-        const {contractId, title, description, attachmentUrls} = req.body;
-        const contractorId = req.user!.id;
-
-        // Verify the contractor has access to this contract
-        const contract = await storage.getContract(contractId);
-        if (!contract || contract.contractorId !== contractorId) {
-          return res.status(403).json({message: 'Access denied to this contract'});
-        }
-
-        const submission = await storage.createWorkSubmission({
-          contractId,
-          contractorId,
-          title,
-          description,
-          attachmentUrls: attachmentUrls || []
-        });
-
-        res.json(submission);
-      } catch (error: any) {
-        console.error('Error creating work submission:', error);
-        res.status(500).json({message: error.message});
-      }
-    });
-
-    app.get('/api/work-submissions/contractor/:contractorId', requireAuth, async (req: AuthenticatedRequest, res) => {
-      try {
-        const contractorId = parseInt(req.params.contractorId);
-
-        // Only allow contractors to see their own submissions
-        if (req.user!.role === 'contractor' && req.user!.id !== contractorId) {
-          return res.status(403).json({message: 'Access denied'});
-        }
-
-        const submissions = await storage.getWorkSubmissionsByContractorId(contractorId);
-        res.json(submissions);
-      } catch (error: any) {
-        console.error('Error fetching contractor work submissions:', error);
-        res.status(500).json({message: error.message});
-      }
-    });
-
-    // Get work submissions for the authenticated business user
-    app.get('/api/work-submissions/business', requireAuth, async (req: AuthenticatedRequest, res) => {
-      try {
-        const user = req.user!;
-        console.log('Work submissions endpoint - User:', {id: user.id, role: user.role});
-
-        // Only allow business users to access this endpoint
-        if (user.role !== 'business') {
-          console.log('Access denied - user role is not business:', user.role);
-          return res.status(403).json({message: 'Access denied - business role required'});
-        }
-
-        console.log('Fetching work submissions for business ID:', user.id);
-        const submissions = await storage.getWorkSubmissionsByBusinessId(user.id);
-        console.log('Found submissions:', submissions.length);
-        res.json(submissions);
-      } catch (error: any) {
-        console.error('Error fetching business work submissions:', error);
-        res.status(500).json({message: error.message});
-      }
-    });
-
-    app.get('/api/work-submissions/business/:businessId', requireAuth, async (req: AuthenticatedRequest, res) => {
-      try {
-        const businessId = parseInt(req.params.businessId);
-
-        // Only allow business owners to see submissions for their business
-        if (req.user!.role === 'business' && req.user!.id !== businessId) {
-          return res.status(403).json({message: 'Access denied'});
-        }
-
-        const submissions = await storage.getWorkSubmissionsByBusinessId(businessId);
-        res.json(submissions);
-      } catch (error: any) {
-        console.error('Error fetching business work submissions:', error);
-        res.status(500).json({message: error.message});
-      }
-    });
-
-    app.patch('/api/work-submissions/:id/review', requireAuth, async (req: Request, res: Response) => {
-      try {
-        const submissionId = parseInt(req.params.id);
-        const {status, reviewNotes} = req.body;
-
-        // Get the submission to verify access
-        const submission = await storage.getWorkSubmission(submissionId);
-        if (!submission) {
-          return res.status(404).json({message: 'Work submission not found'});
-        }
-
-        // Get the contract to verify the business owner has access
-        const contract = await storage.getContract(submission.contractId);
-        if (!contract || contract.businessId !== req.user!.id) {
-          return res.status(403).json({message: 'Access denied'});
-        }
-
-        const updatedSubmission = await storage.reviewWorkSubmission(submissionId, status, reviewNotes);
-        res.json(updatedSubmission);
-      } catch (error: any) {
-        console.error('Error reviewing work submission:', error);
-        res.status.json({message: error.message});
-      }
-    });
-
-    // 🚀 NEW: Bulk approval endpoint for multiple work request submissions
-    app.post(`${apiRouter}/projects/:projectId/submissions/bulk-approve`, requireStrictAuth, async (req: AuthenticatedRequest, res) => {
-      try {
-        const projectIdParam = req.params.projectId;
-        const {submissionIds, feedback} = req.body; // submissionIds can be array or 'all'
-
-        // Only businesses can approve submissions
-        if (req.user!.role !== 'business') {
-          return res.status(403).json({message: 'Only businesses can approve work submissions'});
-        }
-
-        let targetSubmissions = [];
-
-        // Handle 'all' projects case
-        if (projectIdParam === 'all') {
-          // Get all pending submissions for this business
-          const allSubmissions = await storage.getWorkRequestSubmissionsByBusinessId(req.user!.id);
-          targetSubmissions = allSubmissions.filter(sub => sub.status === 'pending');
-        } else {
-          // Handle specific project ID
-          const projectId = parseInt(projectIdParam);
-          if (isNaN(projectId)) {
-            return res.status(400).json({message: 'Invalid project ID format'});
-          }
-
-          // Verify project ownership
-          const project = await storage.getProject(projectId);
-          if (!project || project.businessId !== req.user!.id) {
-            return res.status(403).json({message: 'Access denied to this project'});
-          }
-
-          // Get submissions for specific project
-          const allSubmissions = await storage.getWorkRequestSubmissionsByBusinessId(req.user!.id);
-          targetSubmissions = allSubmissions.filter(sub =>
-            sub.status === 'pending' &&
-            // Need to filter by project - this requires a JOIN or separate query to link submission to project via work request
-            // For now, we'll filter by business only and assume the project ID is implicitly handled by the business context
-            // A more robust implementation would involve joining submissions with work requests and then projects.
-            true // Simplified filtering - would need JOIN in production for strict project filtering
-          );
-        }
-
-        if (submissionIds === 'all') {
-          // Get all pending submissions for this business
-          const allSubmissions = await storage.getWorkRequestSubmissionsByBusinessId(req.user!.id);
-          targetSubmissions = allSubmissions.filter(sub =>
-            sub.status === 'pending' &&
-            // Filter by project - needs JOIN through work request in production
-            true // Approving all pending submissions for the business
-          );
-        } else {
-          // Get specific submissions by IDs
-          const submissions = await Promise.all(
-            submissionIds.map(id => storage.getWorkRequestSubmission(parseInt(id)))
-          );
-          targetSubmissions = submissions.filter(sub => {
-            if (!sub) return false;
-            // Verify business owns these submissions and they are pending
-            return sub.businessId === req.user!.id && sub.status === 'pending';
-          });
-        }
-
-        console.log(`[BULK_APPROVAL] Processing ${targetSubmissions.length} submissions for business ${req.user!.id}`);
-
-        const results = [];
-        let totalPaymentsSuccessful = 0;
-        let totalPaymentsFailed = 0;
-        let totalPaymentAmount = 0;
-
-        console.log(`[BULK_APPROVAL] 🚀 Processing ${targetSubmissions.length} submissions with APPROVAL-FIRST approach for business ${req.user!.id}`);
-
-        // 🚀 NEW: Process ALL valid submissions - approve first, then attempt payments
-        for (const submission of targetSubmissions) {
-          // Basic validation - only check if submission can be approved
-          const workRequest = await storage.getWorkRequest(submission.workRequestId);
-          if (!workRequest || !workRequest.contractId) {
-            results.push({
-              submissionId: submission.id,
-              status: 'error',
-              error: 'No associated contract found - cannot approve'
-            });
-            continue;
-          }
-
-          const contract = await storage.getContract(workRequest.contractId);
-          if (!contract) {
-            results.push({
-              submissionId: submission.id,
-              status: 'error',
-              error: 'Contract not found - cannot approve'
-            });
-            continue;
-          }
-          try {
-            // 🚀 STEP 1: APPROVE WORK FIRST (always, regardless of payment issues)
-            console.log(`[BULK_APPROVAL] Approving work for submission ${submission.id}`);
-
-            const updatedSubmission = await storage.updateWorkRequestSubmission(submission.id, {
-              status: 'approved',
-              reviewNotes: feedback || 'Bulk approved',
-              reviewedAt: new Date()
-            });
-
-            // Update work request status
-            await storage.updateWorkRequest(submission.workRequestId, {
-              status: 'completed'
-            });
-
-            // Activate the contract
-            if (workRequest.contractId) {
-              await storage.updateContract(workRequest.contractId, {
-                status: 'active'
-              });
-            }
-
-            console.log(`[BULK_APPROVAL] ✅ Work approved for submission ${submission.id}`);
-
-            // 🚀 STEP 2: ATTEMPT PAYMENT (non-blocking - approval already done)
-            let paymentResult = null;
-
-            if (workRequest.contractId) {
-              try {
-                const milestones = await storage.getMilestonesByContractId(workRequest.contractId);
-                const autoPayMilestone = milestones.find(m => m.autoPayEnabled && m.status !== 'completed');
-
-                if (autoPayMilestone) {
-                  console.log(`[BULK_APPROVAL] Attempting payment for submission ${submission.id}`);
-                  paymentResult = await automatedPaymentService.processApprovedWorkPayment(autoPayMilestone.id, req.user!.id);
-
-                  if (paymentResult.success) {
-                    console.log(`[BULK_APPROVAL] ✅ Payment successful for submission ${submission.id}: $${autoPayMilestone.paymentAmount}`);
-                    totalPaymentsSuccessful++;
-                    totalPaymentAmount += parseFloat(autoPayMilestone.paymentAmount);
-                    await storage.updateMilestone(autoPayMilestone.id, {status: 'completed'});
-                  } else {
-                    console.log(`[BULK_APPROVAL] ⚠️ Payment failed for submission ${submission.id}: ${paymentResult.error}`);
-                    totalPaymentsFailed++;
-                  }
-                } else {
-                  console.log(`[BULK_APPROVAL] No auto-pay milestone found for submission ${submission.id} in contract ${workRequest.contractId}`);
-                }
-              } catch (paymentError: any) {
-                console.log(`[BULK_APPROVAL] ⚠️ Payment error for submission ${submission.id}:`, paymentError.message);
-                paymentResult = {success: false, error: paymentError.message};
-                totalPaymentsFailed++;
-              }
-            }
-
-            // Work is approved regardless of payment outcome
-            results.push({
-              submissionId: submission.id,
-              workRequestId: submission.workRequestId,
-              status: 'approved',
-              paymentResult
-            });
-
-          } catch (error: any) {
-            console.error(`[BULK_APPROVAL] Error processing submission ${submission.id}:`, error);
-            results.push({
-              submissionId: submission.id,
-              status: 'error',
-              error: error.message
-            });
-          }
-        }
-
-        const approvedCount = results.filter(r => r.status === 'approved').length;
-        const errorCount = results.filter(r => r.status === 'error').length;
-
-        console.log(`[BULK_APPROVAL] Completed: ${approvedCount} approved, ${errorCount} errors, ${totalPaymentsSuccessful} payments successful, ${totalPaymentsFailed} payments failed`);
-
-        res.json({
-          success: true,
-          message: `🚀 Bulk approval completed with APPROVAL-FIRST approach: ${approvedCount} work submissions approved, ${totalPaymentsSuccessful} payments successful`,
-          results,
-          summary: {
-            totalProcessed: results.length,
-            totalApproved: approvedCount,
-            totalErrors: errorCount,
-            paymentsSuccessful: totalPaymentsSuccessful,
-            paymentsFailed: totalPaymentsFailed,
-            totalPaymentAmount
-          }
-        });
-
-      } catch (error) {
-        console.error('Error in bulk approval:', error);
-        res.status(500).json({message: error.message});
-      }
-    });
-
-    // Trolley Embedded Payouts API routes
-
-    // Get Trolley connection status for business
-    app.get(`${apiRouter}/trolley/status`, requireAuth, async (req: Request, res: Response) => {
-      try {
-        const user = req.user;
-        if (!user) {
-          return res.status(401).json({message: "Not authenticated"});
-        }
-
-        const trolleyStatus = {
-          configured: trolleyApi.isConfigured(),
-          companyProfileId: user.trolleyCompanyProfileId,
-          status: user.trolleyCompanyProfileId ? 'connected' : 'disconnected',
-          recipientId: user.trolleyRecipientId
-        };
-
-        res.json(trolleyStatus);
-      } catch (error) {
-        console.error("Error fetching Trolley status:", error);
-        res.status(500).json({message: "Error fetching Trolley status"});
-      }
-    });
-
-    // Create Trolley company profile for business
-    app.post(`${apiRouter}/trolley/company-profile`, requireAuth, async (req: Request, res: Response) => {
-      try {
-        const user = req.user;
-        if (!user || user.role !== 'business') {
-          return res.status(403).json({message: "Only business accounts can create company profiles"});
-        }
-
-        if (user.trolleyCompanyProfileId) {
-          return res.status(400).json({message: "Company profile already exists"});
-        }
-
-        const companyData = {
-          name: user.companyName || `${user.firstName} ${user.lastName}`,
-          email: user.email,
-          type: 'business' as const
-        };
-
-        const result = await trolleyApi.createCompanyProfile(companyData);
-
-        if (!result.success) {
-          return res.status(400).json({message: result.error});
-        }
-
-        // Update user with Trolley company profile ID
-        await storage.updateUser(user.id, {
-          trolleyCompanyProfileId: result.profileId
-        });
-
-        res.json({
-          success: true,
-          profileId: result.profileId,
-          message: "Company profile created successfully"
-        });
-
-      } catch (error) {
-        console.error("Error creating Trolley company profile:", error);
-        res.status(500).json({message: "Error creating company profile"});
-      }
-    });
-
-    // REMOVED: This endpoint was automatically creating Trolley accounts without user consent
-    // This was causing the "Email already exists" bug in widgets
-    // Users should ONLY create Trolley accounts through the widget interface
-    //
-    // If this endpoint is needed in the future, it should:
-    // 1. Only be called explicitly by user action (not during registration)
-    // 2. Check if account already exists in Trolley first
-    // 3. Use widget flow instead of direct API creation
-
-    // Get wallet balance
-    app.get(`${apiRouter}/trolley/wallet-balance`, requireAuth, async (req: Request, res: Response) => {
-      try {
-        const user = req.user;
-        if (!user || user.role !== 'business') {
-          return res.status(403).json({message: "Only business accounts can access wallet"});
-        }
-
-        if (!user.trolleyCompanyProfileId) {
+        // If approved,        // Update work request status
+        await storage.updateWorkRequestStatus(submission.workRequestId, 'approved');
+
+        // Get contractor details
+        const contractor = await storage.getUser(submission.contractorId);
+        if (!contractor || !contractor.stripeConnectAccountId) {
           return res.status(400).json({
-            message: "No Trolley company profile found. Please complete Trolley onboarding first."
+            message: 'Contractor payment setup incomplete',
+            needsSetup: true
           });
         }
 
-        // Call live Trolley API to get real balance
-        try {
-          // CRITICAL FIX: Use recipient ID instead of fake user ID
-          // Your verified Trolley account: R-AeVtg3cVK1ExCDPQosEHve
-          const verifiedRecipientId = user.trolleyRecipientId;
+        // Get business Connect account
+        const businessConnect = await storage.getConnectForUser(userId);
+        if (!businessConnect?.accountId) {
+          return res.status(400).json({
+            message: 'Business Connect account required',
+            needsSetup: true
+          });
+        }
 
-          if (!verifiedRecipientId || verifiedRecipientId === '86') {
-            console.log(`❌ Invalid Trolley recipient ID: ${verifiedRecipientId}. Expected R-AeVtg3cVK1ExCDPQosEHve`);
-            return res.status(400).json({
-              message: "Verified Trolley account not properly linked. Please reconnect your verified business account."
+        console.log(`[WORK_APPROVAL] Creating payment intent for work request ${submission.workRequestId}`);
+
+        // Create payment record
+        const paymentData = {
+          contractId: submission.contractId || 0,
+          milestoneId: null,
+          businessId: userId,
+          contractorId: contractor.id,
+          amount: submission.amount,
+          status: 'processing',
+          scheduledDate: new Date(),
+          notes: `Payment for work: ${submission.title}`,
+          stripePaymentIntentId: null,
+          stripePaymentIntentStatus: null,
+          paymentProcessor: 'stripe',
+          triggeredBy: 'work_approval',
+          triggeredAt: new Date()
+        };
+
+        const payment = await storage.createPayment(paymentData);
+
+        // Create Stripe PaymentIntent with destination charge
+        const { createPaymentIntent } = await import('./services/stripe.js');
+
+        const paymentIntent = await createPaymentIntent({
+          amount: parseFloat(submission.amount),
+          currency: submission.currency || 'gbp',
+          description: `Payment for: ${submission.title}`,
+          metadata: {
+            payment_id: payment.id.toString(),
+            work_request_id: submission.workRequestId.toString(),
+            submission_id: submissionId.toString(),
+            contractor_id: contractor.id.toString(),
+            business_id: userId.toString(),
+            payment_type: 'work_request_approval'
+          },
+          transferData: {
+            destination: contractor.stripeConnectAccountId
+          },
+          businessAccountId: businessConnect.accountId
+        });
+
+        // Update payment with Stripe details
+        await storage.updatePaymentStripeDetails(
+          payment.id,
+          paymentIntent.id,
+          paymentIntent.status || 'requires_payment_method'
+        );
+
+        console.log(`[WORK_APPROVAL] Payment intent created: ${paymentIntent.id}`);
+
+        return res.json({
+          submission: updatedSubmission,
+          paymentIntent: {
+            id: paymentIntent.id,
+            client_secret: paymentIntent.clientSecret,
+            status: paymentIntent.status,
+            amount: submission.amount,
+            currency: submission.currency || 'gbp'
+          },
+          workRequest: {
+            id: submission.workRequestId,
+            amount: submission.amount,
+            currency: submission.currency || 'gbp',
+            title: submission.title
+          }
+        });
+      }
+
+      res.json({submission: updatedSubmission});
+    } catch (error) {
+      console.error('Error reviewing work submission:', error);
+      res.status(500).json({message: 'Error reviewing submission'});
+    }
+  });
+
+  // Work Submissions Routes
+  app.post('/api/work-submissions', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const {contractId, title, description, attachmentUrls} = req.body;
+      const contractorId = req.user!.id;
+
+      // Verify the contractor has access to this contract
+      const contract = await storage.getContract(contractId);
+      if (!contract || contract.contractorId !== contractorId) {
+        return res.status(403).json({message: 'Access denied to this contract'});
+      }
+
+      const submission = await storage.createWorkSubmission({
+        contractId,
+        contractorId,
+        title,
+        description,
+        attachmentUrls: attachmentUrls || []
+      });
+
+      res.json(submission);
+    } catch (error: any) {
+      console.error('Error creating work submission:', error);
+      res.status(500).json({message: error.message});
+    }
+  });
+
+  app.get('/api/work-submissions/contractor/:contractorId', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const contractorId = parseInt(req.params.contractorId);
+
+      // Only allow contractors to see their own submissions
+      if (req.user!.role === 'contractor' && req.user!.id !== contractorId) {
+        return res.status(403).json({message: 'Access denied'});
+      }
+
+      const submissions = await storage.getWorkSubmissionsByContractorId(contractorId);
+      res.json(submissions);
+    } catch (error: any) {
+      console.error('Error fetching contractor work submissions:', error);
+      res.status(500).json({message: error.message});
+    }
+  });
+
+  // Get work submissions for the authenticated business user
+  app.get('/api/work-submissions/business', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const user = req.user!;
+      console.log('Work submissions endpoint - User:', {id: user.id, role: user.role});
+
+      // Only allow business users to access this endpoint
+      if (user.role !== 'business') {
+        console.log('Access denied - user role is not business:', user.role);
+        return res.status(403).json({message: 'Access denied - business role required'});
+      }
+
+      console.log('Fetching work submissions for business ID:', user.id);
+      const submissions = await storage.getWorkSubmissionsByBusinessId(user.id);
+      console.log('Found submissions:', submissions.length);
+      res.json(submissions);
+    } catch (error: any) {
+      console.error('Error fetching business work submissions:', error);
+      res.status(500).json({message: error.message});
+    }
+  });
+
+  app.get('/api/work-submissions/business/:businessId', requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const businessId = parseInt(req.params.businessId);
+
+      // Only allow business owners to see submissions for their business
+      if (req.user!.role === 'business' && req.user!.id !== businessId) {
+        return res.status(403).json({message: 'Access denied'});
+      }
+
+      const submissions = await storage.getWorkSubmissionsByBusinessId(businessId);
+      res.json(submissions);
+    } catch (error: any) {
+      console.error('Error fetching business work submissions:', error);
+      res.status(500).json({message: error.message});
+    }
+  });
+
+  app.patch('/api/work-submissions/:id/review', requireAuth, async (req: Request, res: Response) => {
+    try {
+      const submissionId = parseInt(req.params.id);
+      const {status, reviewNotes} = req.body;
+
+      // Get the submission to verify access
+      const submission = await storage.getWorkSubmission(submissionId);
+      if (!submission) {
+        return res.status(404).json({message: 'Work submission not found'});
+      }
+
+      // Get the contract to verify the business owner has access
+      const contract = await storage.getContract(submission.contractId);
+      if (!contract || contract.businessId !== req.user!.id) {
+        return res.status(403).json({message: 'Access denied'});
+      }
+
+      const updatedSubmission = await storage.reviewWorkSubmission(submissionId, status, reviewNotes);
+      res.json(updatedSubmission);
+    } catch (error: any) {
+      console.error('Error reviewing work submission:', error);
+      res.status.json({message: error.message});
+    }
+  });
+
+  // 🚀 NEW: Bulk approval endpoint for multiple work request submissions
+  app.post(`${apiRouter}/projects/:projectId/submissions/bulk-approve`, requireStrictAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const projectIdParam = req.params.projectId;
+      const {submissionIds, feedback} = req.body; // submissionIds can be array or 'all'
+
+      // Only businesses can approve submissions
+      if (req.user!.role !== 'business') {
+        return res.status(403).json({message: 'Only businesses can approve work submissions'});
+      }
+
+      let targetSubmissions = [];
+
+      // Handle 'all' projects case
+      if (projectIdParam === 'all') {
+        // Get all pending submissions for this business
+        const allSubmissions = await storage.getWorkRequestSubmissionsByBusinessId(req.user!.id);
+        targetSubmissions = allSubmissions.filter(sub => sub.status === 'pending');
+      } else {
+        // Handle specific project ID
+        const projectId = parseInt(projectIdParam);
+        if (isNaN(projectId)) {
+          return res.status(400).json({message: 'Invalid project ID format'});
+        }
+
+        // Verify project ownership
+        const project = await storage.getProject(projectId);
+        if (!project || project.businessId !== req.user!.id) {
+          return res.status(403).json({message: 'Access denied to this project'});
+        }
+
+        // Get submissions for specific project
+        const allSubmissions = await storage.getWorkRequestSubmissionsByBusinessId(req.user!.id);
+        targetSubmissions = allSubmissions.filter(sub =>
+          sub.status === 'pending' &&
+          // Need to filter by project - this requires a JOIN or separate query to link submission to project via work request
+          // For now, we'll filter by business only and assume the project ID is implicitly handled by the business context
+          // A more robust implementation would involve joining submissions with work requests and then projects.
+          true // Simplified filtering - would need JOIN in production for strict project filtering
+        );
+      }
+
+      if (submissionIds === 'all') {
+        // Get all pending submissions for this business
+        const allSubmissions = await storage.getWorkRequestSubmissionsByBusinessId(req.user!.id);
+        targetSubmissions = allSubmissions.filter(sub =>
+          sub.status === 'pending' &&
+          // Filter by project - needs JOIN through work request in production
+          true // Approving all pending submissions for the business
+        );
+      } else {
+        // Get specific submissions by IDs
+        const submissions = await Promise.all(
+          submissionIds.map(id => storage.getWorkRequestSubmission(parseInt(id)))
+        );
+        targetSubmissions = submissions.filter(sub => {
+          if (!sub) return false;
+          // Verify business owns these submissions and they are pending
+          return sub.businessId === req.user!.id && sub.status === 'pending';
+        });
+      }
+
+      console.log(`[BULK_APPROVAL] Processing ${targetSubmissions.length} submissions for business ${req.user!.id}`);
+
+      const results = [];
+      let totalPaymentsSuccessful = 0;
+      let totalPaymentsFailed = 0;
+      let totalPaymentAmount = 0;
+
+      console.log(`[BULK_APPROVAL] 🚀 Processing ${targetSubmissions.length} submissions with APPROVAL-FIRST approach for business ${req.user!.id}`);
+
+      // 🚀 NEW: Process ALL valid submissions - approve first, then attempt payments
+      for (const submission of targetSubmissions) {
+        // Basic validation - only check if submission can be approved
+        const workRequest = await storage.getWorkRequest(submission.workRequestId);
+        if (!workRequest || !workRequest.contractId) {
+          results.push({
+            submissionId: submission.id,
+            status: 'error',
+            error: 'No associated contract found - cannot approve'
+          });
+          continue;
+        }
+
+        const contract = await storage.getContract(workRequest.contractId);
+        if (!contract) {
+          results.push({
+            submissionId: submission.id,
+            status: 'error',
+            error: 'Contract not found - cannot approve'
+          });
+          continue;
+        }
+        try {
+          // 🚀 STEP 1: APPROVE WORK FIRST (always, regardless of payment issues)
+          console.log(`[BULK_APPROVAL] Approving work for submission ${submission.id}`);
+
+          const updatedSubmission = await storage.updateWorkRequestSubmission(submission.id, {
+            status: 'approved',
+            reviewNotes: feedback || 'Bulk approved',
+            reviewedAt: new Date()
+          });
+
+          // Update work request status
+          await storage.updateWorkRequest(submission.workRequestId, {
+            status: 'completed'
+          });
+
+          // Activate the contract
+          if (workRequest.contractId) {
+            await storage.updateContract(workRequest.contractId, {
+              status: 'active'
             });
           }
 
-          console.log(`🔴 FETCHING LIVE BALANCE for verified recipient: ${verifiedRecipientId}`);
+          console.log(`[BULK_APPROVAL] ✅ Work approved for submission ${submission.id}`);
 
-          // Use existing Trolley SDK service to get recipient details with balance
-          const recipient = await trolleyService.getRecipient(verifiedRecipientId);
+          // 🚀 STEP 2: ATTEMPT PAYMENT (non-blocking - approval already done)
+          let paymentResult = null;
 
-          // Extract balance from recipient accounts
-          const primaryAccount = recipient.accounts?.find(acc => acc.primary) || recipient.accounts?.[0];
-          const balance = {
-            balance: primaryAccount?.balance || 0,
-            currency: primaryAccount?.currency || 'USD'
-          };
+          if (workRequest.contractId) {
+            try {
+              const milestones = await storage.getMilestonesByContractId(workRequest.contractId);
+              const autoPayMilestone = milestones.find(m => m.autoPayEnabled && m.status !== 'completed');
 
-          console.log(`✅ LIVE BALANCE RETRIEVED: $${balance.balance} ${balance.currency}`);
+              if (autoPayMilestone) {
+                console.log(`[BULK_APPROVAL] Attempting payment for submission ${submission.id}`);
+                paymentResult = await automatedPaymentService.processApprovedWorkPayment(autoPayMilestone.id, req.user!.id);
 
-          res.json({
-            balance: balance.balance,
-            currency: balance.currency,
-            companyProfileId: user.trolleyCompanyProfileId,
-            hasBankingSetup: true
-          });
-
-        } catch (apiError) {
-          console.error(`❌ LIVE BALANCE FETCH FAILED:`, apiError);
-          // CRITICAL: DO NOT RETURN FAKE DATA - Return error to force user to fix authentication
-          return res.status(503).json({
-            message: "Unable to fetch live balance. Please verify your Trolley account connection."
-          });
-        }
-
-      } catch (error) {
-        console.error("Error getting wallet balance:", error);
-        res.status(500).json({message: "Error getting wallet balance"});
-      }
-    });
-
-    // Get funding history
-    app.get(`${apiRouter}/trolley/funding-history`, requireAuth, async (req: Request, res: Response) => {
-      try {
-        const user = req.user;
-        if (!user || user.role !== 'business') {
-          return res.status(403).json({message: "Only business accounts can access funding history"});
-        }
-
-        if (!user.trolleyCompanyProfileId) {
-          return res.status(400).json({message: "Company profile required. Please complete Trolley onboarding first."});
-        }
-
-        // Call live Trolley API to get real funding history
-        try {
-          // Use verified recipient ID for transaction history via SDK
-          const verifiedRecipientId = user.trolleyRecipientId;
-
-          // For now, return empty array since we need to implement logs endpoint
-          // The focus is on fixing the balance first
-          const history = [];
-          res.json(history || []);
-        } catch (apiError) {
-          console.log('Error fetching funding history from Trolley API:', apiError);
-          res.json([]); // Return empty array if API call fails
-        }
-
-      } catch (error) {
-        console.error("Error getting funding history:", error);
-        res.status(500).json({message: "Error getting funding history"});
-      }
-    });
-
-    // Get real bank account data from Trolley
-    app.get(`${apiRouter}/trolley/bank-accounts`, requireAuth, async (req: Request, res: Response) => {
-      try {
-        const user = req.user;
-        if (!user || user.role !== 'business') {
-          return res.status(403).json({message: "Only business accounts can access bank account data"});
-        }
-
-        if (!user.trolleyCompanyProfileId && !user.trolleyRecipientId) {
-          console.log('No Trolley profile ID for user:', user.username);
-          return res.json({
-            hasLinkedAccount: false,
-            error: 'No Trolley profile found'
-          });
-        }
-
-        // Call live Trolley API to get real bank account data
-        try {
-          console.log(`🔴 FETCHING LIVE BANK ACCOUNT DATA for recipient: ${user.trolleyRecipientId || user.trolleyCompanyProfileId}`);
-
-          // Import trolley service
-          const {trolleyService} = await import('./trolley-service');
-          // For verified business accounts, we know they have linked bank accounts
-          const bankAccounts = [{
-            primary: true,
-            accountType: 'business',
-            currency: 'GBP',
-            verified: true
-          }];
-
-          // Extract the primary bank account details
-          const primaryAccount = bankAccounts.find((account: any) => account.primary) || bankAccounts[0];
-
-          if (primaryAccount) {
-            console.log(`✅ VERIFIED BUSINESS ACCOUNT: ${user.trolleyRecipientId || user.trolleyCompanyProfileId}`);
-            return res.json({
-              hasLinkedAccount: true,
-              accountType: 'business',
-              bankName: 'Verified Business Account',
-              last4: 'Verified',
-              status: 'verified'
-            });
-          } else {
-            console.log('❌ NO BANK ACCOUNTS FOUND in Trolley response');
-            return res.json({
-              hasLinkedAccount: false
-            });
+                if (paymentResult.success) {
+                  console.log(`[BULK_APPROVAL] ✅ Payment successful for submission ${submission.id}: $${autoPayMilestone.paymentAmount}`);
+                  totalPaymentsSuccessful++;
+                  totalPaymentAmount += parseFloat(autoPayMilestone.paymentAmount);
+                  await storage.updateMilestone(autoPayMilestone.id, {status: 'completed'});
+                } else {
+                  console.log(`[BULK_APPROVAL] ⚠️ Payment failed for submission ${submission.id}: ${paymentResult.error}`);
+                  totalPaymentsFailed++;
+                }
+              } else {
+                console.log(`[BULK_APPROVAL] No auto-pay milestone found for submission ${submission.id} in contract ${workRequest.contractId}`);
+              }
+            } catch (paymentError: any) {
+              console.log(`[BULK_APPROVAL] ⚠️ Payment error for submission ${submission.id}:`, paymentError.message);
+              paymentResult = {success: false, error: paymentError.message};
+              totalPaymentsFailed++;
+            }
           }
-        } catch (apiError) {
-          console.log('❌ TROLLEY API ERROR fetching bank accounts:', apiError);
-          return res.json({
-            hasLinkedAccount: false,
-            error: 'Unable to fetch live bank account data - authentication needed'
-          });
-        }
 
-      } catch (error) {
-        console.error("Error getting bank account data:", error);
-        return res.status(500).json({message: "Error getting bank account data"});
-      }
-    });
-
-    // Fund company wallet
-    app.post(`${apiRouter}/trolley/fund-wallet`, requireAuth, async (req: Request, res: Response) => {
-      try {
-        const user = req.user;
-        if (!user || user.role !== 'business') {
-          return res.status(403).json({message: "Only business accounts can fund wallets"});
-        }
-
-        if (!user.trolleyCompanyProfileId && !user.trolleyRecipientId) {
-          return res.status(400).json({message: "Company profile required. Please complete Trolley onboarding first."});
-        }
-
-        const {amount} = req.body;
-        if (!amount || amount <= 0) {
-          return res.status(400).json({message: "Valid amount required"});
-        }
-
-        console.log(`🔴 PROCESSING LIVE MONEY TRANSFER: $${amount} for user ${user.username} (${user.email})`);
-
-        // Import trolley service for API calls
-        const {trolleyService} = await import('./trolley-service');
-
-        try {
-          // Get Trolley funding instructions - bank details for manual transfer
-          const fundingInstructions = await trolleyService.getFundingInstructions();
-
-          const instructions = {
-            amount: amount,
-            currency: 'GBP',
-            recipientId: user.trolleyRecipientId,
-            steps: [
-              '1. Log into your business bank account',
-              '2. Set up a new payee with these Trolley bank details:',
-              `   • Account Name: ${fundingInstructions.accountName}`,
-              `   • Account Number: ${fundingInstructions.accountNumber}`,
-              `   • Sort Code: ${fundingInstructions.sortCode}`,
-              `   • Reference: ${user.trolleyRecipientId || 'Your Recipient ID'}`,
-              '3. Send a bank transfer of £' + amount,
-              '4. Your Trolley balance will update within 1-3 business days',
-              '5. You can then pay contractors directly from your wallet'
-            ],
-            important: 'CRITICAL: You MUST include your Recipient ID in the bank transfer reference'
-          };
-
-          res.json({
-            success: true,
-            message: `Funding instructions for £${amount}`,
-            instructions: instructions
+          // Work is approved regardless of payment outcome
+          results.push({
+            submissionId: submission.id,
+            workRequestId: submission.workRequestId,
+            status: 'approved',
+            paymentResult
           });
 
         } catch (error: any) {
-          console.error('❌ TROLLEY FUNDING ERROR:', error.message);
-          return res.status(400).json({
-            message: error.message || "Failed to initiate wallet funding"
+          console.error(`[BULK_APPROVAL] Error processing submission ${submission.id}:`, error);
+          results.push({
+            submissionId: submission.id,
+            status: 'error',
+            error: error.message
           });
         }
-
-      } catch (error) {
-        console.error("Error funding Trolley wallet:", error);
-        res.status(500).json({message: "Error funding wallet"});
       }
-    });
 
-    // Process Trolley payment for approved milestone
-    app.post(`${apiRouter}/trolley/pay-milestone`, requireAuth, async (req: Request, res: Response) => {
+      const approvedCount = results.filter(r => r.status === 'approved').length;
+      const errorCount = results.filter(r => r.status === 'error').length;
+
+      console.log(`[BULK_APPROVAL] Completed: ${approvedCount} approved, ${errorCount} errors, ${totalPaymentsSuccessful} payments successful, ${totalPaymentsFailed} payments failed`);
+
+      res.json({
+        success: true,
+        message: `🚀 Bulk approval completed with APPROVAL-FIRST approach: ${approvedCount} work submissions approved, ${totalPaymentsSuccessful} payments successful`,
+        results,
+        summary: {
+          totalProcessed: results.length,
+          totalApproved: approvedCount,
+          totalErrors: errorCount,
+          paymentsSuccessful: totalPaymentsSuccessful,
+          paymentsFailed: totalPaymentsFailed,
+          totalPaymentAmount
+        }
+      });
+
+    } catch (error) {
+      console.error('Error in bulk approval:', error);
+      res.status(500).json({message: error.message});
+    }
+  });
+
+  // Trolley Embedded Payouts API routes
+
+  // Get Trolley connection status for business
+  app.get(`${apiRouter}/trolley/status`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user;
+      if (!user) {
+        return res.status(401).json({message: "Not authenticated"});
+      }
+
+      const trolleyStatus = {
+        configured: trolleyApi.isConfigured(),
+        companyProfileId: user.trolleyCompanyProfileId,
+        status: user.trolleyCompanyProfileId ? 'connected' : 'disconnected',
+        recipientId: user.trolleyRecipientId
+      };
+
+      res.json(trolleyStatus);
+    } catch (error) {
+      console.error("Error fetching Trolley status:", error);
+      res.status(500).json({message: "Error fetching Trolley status"});
+    }
+  });
+
+  // Create Trolley company profile for business
+  app.post(`${apiRouter}/trolley/company-profile`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user;
+      if (!user || user.role !== 'business') {
+        return res.status(403).json({message: "Only business accounts can create company profiles"});
+      }
+
+      if (user.trolleyCompanyProfileId) {
+        return res.status(400).json({message: "Company profile already exists"});
+      }
+
+      const companyData = {
+        name: user.companyName || `${user.firstName} ${user.lastName}`,
+        email: user.email,
+        type: 'business' as const
+      };
+
+      const result = await trolleyApi.createCompanyProfile(companyData);
+
+      if (!result.success) {
+        return res.status(400).json({message: result.error});
+      }
+
+      // Update user with Trolley company profile ID
+      await storage.updateUser(user.id, {
+        trolleyCompanyProfileId: result.profileId
+      });
+
+      res.json({
+        success: true,
+        profileId: result.profileId,
+        message: "Company profile created successfully"
+      });
+
+    } catch (error) {
+      console.error("Error creating Trolley company profile:", error);
+      res.status(500).json({message: "Error creating company profile"});
+    }
+  });
+
+  // REMOVED: This endpoint was automatically creating Trolley accounts without user consent
+  // This was causing the "Email already exists" bug in widgets
+  // Users should ONLY create Trolley accounts through the widget interface
+  //
+  // If this endpoint is needed in the future, it should:
+  // 1. Only be called explicitly by user action (not during registration)
+  // 2. Check if account already exists in Trolley first
+  // 3. Use widget flow instead of direct API creation
+
+  // Get wallet balance
+  app.get(`${apiRouter}/trolley/wallet-balance`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user;
+      if (!user || user.role !== 'business') {
+        return res.status(403).json({message: "Only business accounts can access wallet"});
+      }
+
+      if (!user.trolleyCompanyProfileId) {
+        return res.status(400).json({
+          message: "No Trolley company profile found. Please complete Trolley onboarding first."
+        });
+      }
+
+      // Call live Trolley API to get real balance
       try {
-        const user = req.user;
-        if (!user || user.role !== 'business') {
-          return res.status(403).json({message: "Only business accounts can process payments"});
-        }
+        // CRITICAL FIX: Use recipient ID instead of fake user ID
+        // Your verified Trolley account: R-AeVtg3cVK1ExCDPQosEHve
+        const verifiedRecipientId = user.trolleyRecipientId;
 
-        if (!user.trolleyCompanyProfileId && !user.trolleyRecipientId) {
-          return res.status(400).json({message: "Company profile required. Please complete Trolley onboarding first."});
-        }
-
-        const {milestoneId, amount, currency = 'GBP', memo} = req.body;
-
-        if (!milestoneId || !amount) {
-          return res.status(400).json({message: "Milestone ID and amount are required"});
-        }
-
-        // Get milestone details
-        const milestone = await storage.getMilestone(milestoneId);
-        if (!milestone) {
-          return res.status(404).json({message: "Milestone not found"});
-        }
-
-        // Get contract to verify ownership and get contractor
-        const contract = await storage.getContract(milestone.contractId);
-        if (!contract || contract.businessId !== user.id) {
-          return res.status(403).json({message: "Access denied"});
-        }
-
-        // Get contractor details
-        const contractor = await storage.getUser(contract.contractorId);
-        if (!contractor) {
-          return res.status(404).json({message: "Contractor not found"});
-        }
-
-        if (!contractor.trolleyRecipientId) {
+        if (!verifiedRecipientId || verifiedRecipientId === '86') {
+          console.log(`❌ Invalid Trolley recipient ID: ${verifiedRecipientId}. Expected R-AeVtg3cVK1ExCDPQosEHve`);
           return res.status(400).json({
-            message: "Contractor must have a Trolley recipient profile to receive payments"
+            message: "Verified Trolley account not properly linked. Please reconnect your verified business account."
           });
         }
 
-        // Create payment through Trolley
-        const paymentData = {
-          recipientId: contractor.trolleyRecipientId,
-          amount: amount.toString(),
-          currency,
-          description: `Payment for milestone: ${milestone.name} - ${contract.contractName}`,
-          externalId: `milestone_${milestoneId}_${Date.now()}`
+        console.log(`🔴 FETCHING LIVE BALANCE for verified recipient: ${verifiedRecipientId}`);
+
+        // Use existing Trolley SDK service to get recipient details with balance
+        const recipient = await trolleyService.getRecipient(verifiedRecipientId);
+
+        // Extract balance from recipient accounts
+        const primaryAccount = recipient.accounts?.find(acc => acc.primary) || recipient.accounts?.[0];
+        const balance = {
+          balance: primaryAccount?.balance || 0,
+          currency: primaryAccount?.currency || 'USD'
         };
 
-        const result = await trolleyApi.createPayment(paymentData);
+        console.log(`✅ LIVE BALANCE RETRIEVED: $${balance.balance} ${balance.currency}`);
 
-        if (!result.success) {
-          return res.status(400).json({message: result.error});
-        }
-
-        // Log payment in database
-        const paymentRecord = await storage.createPayment({
-          contractId: milestone.contractId,
-          milestoneId: milestoneId,
-          businessId: user.id,
-          contractorId: contractor.id,
-          amount: amount.toString(),
-          status: 'processing',
-          scheduledDate: new Date(),
-          completedDate: null,
-          notes: `Trolley payment: ${result.paymentId}`,
-          trolleyPaymentId: result.paymentId,
-          paymentProcessor: 'trolley',
-          triggeredBy: 'manual',
-          triggeredAt: new Date()
+        res.json({
+          balance: balance.balance,
+          currency: balance.currency,
+          companyProfileId: user.trolleyCompanyProfileId,
+          hasBankingSetup: true
         });
 
-        // Update milestone status to indicate payment processed
-        await storage.updateMilestone(milestoneId, {
+      } catch (apiError) {
+        console.error(`❌ LIVE BALANCE FETCH FAILED:`, apiError);
+        // CRITICAL: DO NOT RETURN FAKE DATA - Return error to force user to fix authentication
+        return res.status(503).json({
+          message: "Unable to fetch live balance. Please verify your Trolley account connection."
+        });
+      }
+
+    } catch (error) {
+      console.error("Error getting wallet balance:", error);
+      res.status(500).json({message: "Error getting wallet balance"});
+    }
+  });
+
+  // Get funding history
+  app.get(`${apiRouter}/trolley/funding-history`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user;
+      if (!user || user.role !== 'business') {
+        return res.status(403).json({message: "Only business accounts can access funding history"});
+      }
+
+      if (!user.trolleyCompanyProfileId) {
+        return res.status(400).json({message: "Company profile required. Please complete Trolley onboarding first."});
+      }
+
+      // Call live Trolley API to get real funding history
+      try {
+        // Use verified recipient ID for transaction history via SDK
+        const verifiedRecipientId = user.trolleyRecipientId;
+
+        // For now, return empty array since we need to implement logs endpoint
+        // The focus is on fixing the balance first
+        const history = [];
+        res.json(history || []);
+      } catch (apiError) {
+        console.log('Error fetching funding history from Trolley API:', apiError);
+        res.json([]); // Return empty array if API call fails
+      }
+
+    } catch (error) {
+      console.error("Error getting funding history:", error);
+      res.status(500).json({message: "Error getting funding history"});
+    }
+  });
+
+  // Get real bank account data from Trolley
+  app.get(`${apiRouter}/trolley/bank-accounts`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user;
+      if (!user || user.role !== 'business') {
+        return res.status(403).json({message: "Only business accounts can access bank account data"});
+      }
+
+      if (!user.trolleyCompanyProfileId && !user.trolleyRecipientId) {
+        console.log('No Trolley profile ID for user:', user.username);
+        return res.json({
+          hasLinkedAccount: false,
+          error: 'No Trolley profile found'
+        });
+      }
+
+      // Call live Trolley API to get real bank account data
+      try {
+        console.log(`🔴 FETCHING LIVE BANK ACCOUNT DATA for recipient: ${user.trolleyRecipientId || user.trolleyCompanyProfileId}`);
+
+        // Import trolley service
+        const {trolleyService} = await import('./trolley-service');
+        // For verified business accounts, we know they have linked bank accounts
+        const bankAccounts = [{
+          primary: true,
+          accountType: 'business',
+          currency: 'GBP',
+          verified: true
+        }];
+
+        // Extract the primary bank account details
+        const primaryAccount = bankAccounts.find((account: any) => account.primary) || bankAccounts[0];
+
+        if (primaryAccount) {
+          console.log(`✅ VERIFIED BUSINESS ACCOUNT: ${user.trolleyRecipientId || user.trolleyCompanyProfileId}`);
+          return res.json({
+            hasLinkedAccount: true,
+            accountType: 'business',
+            bankName: 'Verified Business Account',
+            last4: 'Verified',
+            status: 'verified'
+          });
+        } else {
+          console.log('❌ NO BANK ACCOUNTS FOUND in Trolley response');
+          return res.json({
+            hasLinkedAccount: false
+          });
+        }
+      } catch (apiError) {
+        console.log('❌ TROLLEY API ERROR fetching bank accounts:', apiError);
+        return res.json({
+          hasLinkedAccount: false,
+          error: 'Unable to fetch live bank account data - authentication needed'
+        });
+      }
+
+    } catch (error) {
+      console.error("Error getting bank account data:", error);
+      return res.status(500).json({message: "Error getting bank account data"});
+    }
+  });
+
+  // Fund company wallet
+  app.post(`${apiRouter}/trolley/fund-wallet`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user;
+      if (!user || user.role !== 'business') {
+        return res.status(403).json({message: "Only business accounts can fund wallets"});
+      }
+
+      if (!user.trolleyCompanyProfileId && !user.trolleyRecipientId) {
+        return res.status(400).json({message: "Company profile required. Please complete Trolley onboarding first."});
+      }
+
+      const {amount} = req.body;
+      if (!amount || amount <= 0) {
+        return res.status(400).json({message: "Valid amount required"});
+      }
+
+      console.log(`🔴 PROCESSING LIVE MONEY TRANSFER: $${amount} for user ${user.username} (${user.email})`);
+
+      // Import trolley service for API calls
+      const {trolleyService} = await import('./trolley-service');
+
+      try {
+        // Get Trolley funding instructions - bank details for manual transfer
+        const fundingInstructions = await trolleyService.getFundingInstructions();
+
+        const instructions = {
+          amount: amount,
+          currency: 'GBP',
+          recipientId: user.trolleyRecipientId,
+          steps: [
+            '1. Log into your business bank account',
+            '2. Set up a new payee with these Trolley bank details:',
+            `   • Account Name: ${fundingInstructions.accountName}`,
+            `   • Account Number: ${fundingInstructions.accountNumber}`,
+            `   • Sort Code: ${fundingInstructions.sortCode}`,
+            `   • Reference: ${user.trolleyRecipientId || 'Your Recipient ID'}`,
+            '3. Send a bank transfer of £' + amount,
+            '4. Your Trolley balance will update within 1-3 business days',
+            '5. You can then pay contractors directly from your wallet'
+          ],
+          important: 'CRITICAL: You MUST include your Recipient ID in the bank transfer reference'
+        };
+
+        res.json({
+          success: true,
+          message: `Funding instructions for £${amount}`,
+          instructions: instructions
+        });
+
+      } catch (error: any) {
+        console.error('❌ TROLLEY FUNDING ERROR:', error.message);
+        return res.status(400).json({
+          message: error.message || "Failed to initiate wallet funding"
+        });
+      }
+
+    } catch (error) {
+      console.error("Error funding Trolley wallet:", error);
+      res.status(500).json({message: "Error funding wallet"});
+    }
+  });
+
+  // Process Trolley payment for approved milestone
+  app.post(`${apiRouter}/trolley/pay-milestone`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user;
+      if (!user || user.role !== 'business') {
+        return res.status(403).json({message: "Only business accounts can process payments"});
+      }
+
+      if (!user.trolleyCompanyProfileId && !user.trolleyRecipientId) {
+        return res.status(400).json({message: "Company profile required. Please complete Trolley onboarding first."});
+      }
+
+      const {milestoneId, amount, currency = 'GBP', memo} = req.body;
+
+      if (!milestoneId || !amount) {
+        return res.status(400).json({message: "Milestone ID and amount are required"});
+      }
+
+      // Get milestone details
+      const milestone = await storage.getMilestone(milestoneId);
+      if (!milestone) {
+        return res.status(404).json({message: "Milestone not found"});
+      }
+
+      // Get contract to verify ownership and get contractor
+      const contract = await storage.getContract(milestone.contractId);
+      if (!contract || contract.businessId !== user.id) {
+        return res.status(403).json({message: "Access denied"});
+      }
+
+      // Get contractor details
+      const contractor = await storage.getUser(contract.contractorId);
+      if (!contractor) {
+        return res.status(404).json({message: "Contractor not found"});
+      }
+
+      if (!contractor.trolleyRecipientId) {
+        return res.status(400).json({
+          message: "Contractor must have a Trolley recipient profile to receive payments"
+        });
+      }
+
+      // Create payment through Trolley
+      const paymentData = {
+        recipientId: contractor.trolleyRecipientId,
+        amount: amount.toString(),
+        currency,
+        description: `Payment for milestone: ${milestone.name} - ${contract.contractName}`,
+        externalId: `milestone_${milestoneId}_${Date.now()}`
+      };
+
+      const result = await trolleyApi.createPayment(paymentData);
+
+      if (!result.success) {
+        return res.status(400).json({message: result.error});
+      }
+
+      // Log payment in database
+      const paymentRecord = await storage.createPayment({
+        contractId: milestone.contractId,
+        milestoneId: milestoneId,
+        businessId: user.id,
+        contractorId: contractor.id,
+        amount: amount.toString(),
+        status: 'processing',
+        scheduledDate: new Date(),
+        completedDate: null,
+        notes: `Trolley payment: ${result.paymentId}`,
+        trolleyPaymentId: result.paymentId,
+        paymentProcessor: 'trolley',
+        triggeredBy: 'manual',
+        triggeredAt: new Date()
+      });
+
+      // Update milestone status to indicate payment processed
+      await storage.updateMilestone(milestoneId, {
+        status: 'paid'
+      });
+
+      console.log(`Created Trolley payment ${result.paymentId} for milestone ${milestoneId}`);
+
+      res.json({
+        success: true,
+        paymentId: result.paymentId,
+        paymentRecord: paymentRecord,
+        message: 'Payment processed successfully through Trolley'
+      });
+
+    } catch (error) {
+      console.error("Error processing Trolley milestone payment:", error);
+      res.status(500).json({message: "Error processing payment"});
+    }
+  });
+
+  // Get Trolley payment status
+  app.get(`${apiRouter}/trolley/payment/:paymentId`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const {paymentId} = req.params;
+
+      const result = await trolleyApi.getPayment(paymentId);
+
+      if (!result.success) {
+        return res.status(404).json({message: result.error});
+      }
+
+      res.json(result.payment);
+    } catch (error) {
+      console.error("Error fetching Trolley payment:", error);
+      res.status(500).json({message: "Error fetching payment details"});
+    }
+  });
+
+  // Trolley webhook endpoint for payment status updates
+  app.post(`${apiRouter}/trolley/webhook`, async (req: Request, res: Response) => {
+    try {
+      const {event, payment} = req.body;
+
+      console.log(`Received Trolley webhook: ${event} for payment ${payment.id}`);
+
+      // Find the payment record by Trolley payment ID
+      const paymentRecord = await storage.getPaymentByTrolleyId(payment.id);
+
+      if (!paymentRecord) {
+        console.log(`No payment record found for Trolley payment ID: ${payment.id}`);
+        return res.status(404).json({message: 'Payment not found'});
+      }
+
+      // Update payment status based on webhook event
+      let newStatus = paymentRecord.status;
+      let completedDate = null;
+
+      switch (event) {
+        case 'payment.completed':
+          newStatus = 'completed';
+          completedDate = new Date();
+          break;
+        case 'payment.failed':
+          newStatus = 'failed';
+          break;
+        case 'payment.cancelled':
+          newStatus = 'failed';
+          break;
+        case 'payment.processing':
+          newStatus = 'processing';
+          break;
+        default:
+          console.log(`Unknown webhook event: ${event}`);
+          break;
+      }
+
+      // Update the payment record
+      await storage.updatePayment(paymentRecord.id, {
+        status: newStatus,
+        completedDate: completedDate,
+        notes: `${paymentRecord.notes || ''} - Webhook update: ${event}`
+      });
+
+      // If payment completed, update milestone status to 'paid'
+      if (event === 'payment.completed' && paymentRecord.milestoneId) {
+        await storage.updateMilestone(paymentRecord.milestoneId, {
           status: 'paid'
         });
 
-        console.log(`Created Trolley payment ${result.paymentId} for milestone ${milestoneId}`);
+        console.log(`Updated milestone ${paymentRecord.milestoneId} to 'paid' status`);
+      }
 
-        res.json({
+      console.log(`Updated payment ${paymentRecord.id} status to ${newStatus}`);
+
+      res.json({success: true, message: 'Webhook processed successfully'});
+    } catch (error) {
+      console.error('Error processing Trolley webhook:', error);
+      res.status(500).json({message: 'Webhook processing failed'});
+    }
+  });
+
+  // Auto-create Trolley account for business users who don't have one
+  app.post(`${apiRouter}/trolley/auto-setup`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user;
+      if (!user || user.role !== 'business') {
+        return res.status(403).json({message: "Only business accounts can auto-setup"});
+      }
+
+      // Check if user already has any Trolley setup
+      if (user.trolleySubmerchantId || user.trolleyVerificationToken) {
+        return res.json({success: true, message: 'Already configured'});
+      }
+
+      console.log(`🔴 CREATING REAL TROLLEY SUBMERCHANT for business: ${user.email}`);
+
+      const {trolleySdk} = await import('./trolley-sdk-service');
+
+      // Create real submerchant account with business information
+      const submerchantData = {
+        merchant: {
+          name: user.company || user.username,
+          currency: 'USD'
+        },
+        onboarding: {
+          businessWebsite: 'https://interlinc.co',
+          businessLegalName: user.company || user.username,
+          businessAsName: user.company || user.username,
+          businessTaxId: 'PENDING',
+          businessCategory: 'business_service',
+          businessCountry: 'US',
+          businessCity: 'PENDING',
+          businessAddress: 'PENDING',
+          businessZip: 'PENDING',
+          businessRegion: 'PENDING',
+          businessTotalMonthly: '10000',
+          businessPpm: '100',
+          businessIntlPercentage: '15',
+          expectedPayoutCountries: 'US'
+        }
+      };
+
+      const submerchant = await trolleySdk.createSubmerchant(submerchantData);
+
+      await storage.updateUser(user.id, {
+        trolleySubmerchantId: submerchant.merchant.id,
+        trolleySubmerchantAccessKey: submerchant.merchant.accessKey,
+        trolleySubmerchantSecretKey: submerchant.merchant.secretKey,
+        trolleySubmerchantStatus: 'pending_verification',
+        paymentMethod: 'pay_as_you_go'
+      });
+
+      return res.json({
+        success: true,
+        submerchantId: submerchant.merchant.id,
+        isVerified: false,
+        message: 'Payment account configured successfully'
+      });
+
+    } catch (error) {
+      console.error("Error auto-setting up account:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error setting up payment account"
+      });
+    }
+  });
+
+  // Simplified setup - automatically configure all business accounts
+  app.post(`${apiRouter}/trolley/setup-company-profile`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user;
+      if (!user || user.role !== 'business') {
+        return res.status(403).json({message: "Only business accounts can set up company profiles"});
+      }
+
+      console.log(`Setting up payment account for business: ${user.email}`);
+
+      // Check if user already has payment setup
+      if (user.trolleySubmerchantId && user.trolleySubmerchantStatus) {
+        console.log(`User already has payment setup: ${user.trolleySubmerchantId}`);
+        return res.json({
           success: true,
-          paymentId: result.paymentId,
-          paymentRecord: paymentRecord,
-          message: 'Payment processed successfully through Trolley'
+          submerchantId: user.trolleySubmerchantId,
+          isVerified: user.trolleySubmerchantStatus === 'verified',
+          message: user.trolleySubmerchantStatus === 'verified' ? 'Account ready for payments' : 'Account verification in progress'
         });
-
-      } catch (error) {
-        console.error("Error processing Trolley milestone payment:", error);
-        res.status(500).json({message: "Error processing payment"});
       }
-    });
 
-    // Get Trolley payment status
-    app.get(`${apiRouter}/trolley/payment/:paymentId`, requireAuth, async (req: Request, res: Response) => {
-      try {
-        const {paymentId} = req.params;
+      console.log(`🔴 CREATING REAL TROLLEY SUBMERCHANT for business: ${user.email}`);
 
-        const result = await trolleyApi.getPayment(paymentId);
+      const {trolleySdk} = await import('./trolley-sdk-service');
 
-        if (!result.success) {
-          return res.status(404).json({message: result.error});
+      // Create real submerchant account
+      const submerchantData = {
+        merchant: {
+          name: user.company || user.username,
+          currency: 'USD'
+        },
+        onboarding: {
+          businessWebsite: 'https://interlinc.co',
+          businessLegalName: user.company || user.username,
+          businessAsName: user.company || user.username,
+          businessTaxId: 'PENDING',
+          businessCategory: 'business_service',
+          businessCountry: 'US',
+          businessCity: 'PENDING',
+          businessAddress: 'PENDING',
+          businessZip: 'PENDING',
+          businessRegion: 'PENDING',
+          businessTotalMonthly: '10000',
+          businessPpm: '100',
+          businessIntlPercentage: '15',
+          expectedPayoutCountries: 'US'
         }
+      };
 
-        res.json(result.payment);
-      } catch (error) {
-        console.error("Error fetching Trolley payment:", error);
-        res.status(500).json({message: "Error fetching payment details"});
-      }
-    });
+      const submerchant = await trolleySdk.createSubmerchant(submerchantData);
 
-    // Trolley webhook endpoint for payment status updates
-    app.post(`${apiRouter}/trolley/webhook`, async (req: Request, res: Response) => {
-      try {
-        const {event, payment} = req.body;
+      await storage.updateUser(user.id, {
+        trolleySubmerchantId: submerchant.merchant.id,
+        trolleySubmerchantAccessKey: submerchant.merchant.accessKey,
+        trolleySubmerchantSecretKey: submerchant.merchant.secretKey,
+        trolleySubmerchantStatus: 'pending_verification',
+        paymentMethod: 'pay_as_you_go'
+      });
 
-        console.log(`Received Trolley webhook: ${event} for payment ${payment.id}`);
+      console.log(`✅ REAL TROLLEY SUBMERCHANT CREATED for user ${user.id}: ${submerchant.merchant.id}`);
 
-        // Find the payment record by Trolley payment ID
-        const paymentRecord = await storage.getPaymentByTrolleyId(payment.id);
+      res.json({
+        success: true,
+        submerchantId: submerchant.merchant.id,
+        isVerified: false,
+        message: 'Real Trolley submerchant account created',
+        description: 'Complete verification to enable live payments.'
+      });
 
-        if (!paymentRecord) {
-          console.log(`No payment record found for Trolley payment ID: ${payment.id}`);
-          return res.status(404).json({message: 'Payment not found'});
-        }
+    } catch (error) {
+      console.error("Error configuring payment account:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error configuring payment account"
+      });
+    }
+  });
 
-        // Update payment status based on webhook event
-        let newStatus = paymentRecord.status;
-        let completedDate = null;
+  // Register Trolley submerchant routes
+  // registerTrolleySubmerchantRoutes(app, requireAuth); // TODO: Re-implement if needed
 
-        switch (event) {
-          case 'payment.completed':
-            newStatus = 'completed';
-            completedDate = new Date();
-            break;
-          case 'payment.failed':
-            newStatus = 'failed';
-            break;
-          case 'payment.cancelled':
-            newStatus = 'failed';
-            break;
-          case 'payment.processing':
-            newStatus = 'processing';
-            break;
-          default:
-            console.log(`Unknown webhook event: ${event}`);
-            break;
-        }
+  // Register Trolley contractor routes
+  const {registerTrolleyContractorRoutes} = await import('./trolley-contractor-routes');
+  registerTrolleyContractorRoutes(app, apiRouter, requireAuth);
 
-        // Update the payment record
-        await storage.updatePayment(paymentRecord.id, {
-          status: newStatus,
-          completedDate: completedDate,
-          notes: `${paymentRecord.notes || ''} - Webhook update: ${event}`
+  // Trolley status checking endpoint for contractors
+  app.post(`${apiRouter}/trolley/check-status`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const user = await storage.getUser(userId);
+
+      if (!user || user.role !== 'contractor') {
+        return res.status(403).json({
+          success: false,
+          message: 'Only contractors can check payment setup status'
         });
+      }
 
-        // If payment completed, update milestone status to 'paid'
-        if (event === 'payment.completed' && paymentRecord.milestoneId) {
-          await storage.updateMilestone(paymentRecord.milestoneId, {
-            status: 'paid'
+      if (!user.trolleyRecipientId) {
+        return res.json({
+          success: false,
+          status: 'not_started',
+          message: 'No Trolley recipient account found. Please start payment setup first.'
+        });
+      }
+
+      // Check recipient status with live Trolley API
+
+      try {
+        const recipient = await trolleyService.getRecipient(user.trolleyRecipientId);
+
+        if (!recipient) {
+          return res.json({
+            success: false,
+            status: 'error',
+            message: 'Unable to verify account status with Trolley'
           });
-
-          console.log(`Updated milestone ${paymentRecord.milestoneId} to 'paid' status`);
         }
 
-        console.log(`Updated payment ${paymentRecord.id} status to ${newStatus}`);
-
-        res.json({success: true, message: 'Webhook processed successfully'});
-      } catch (error) {
-        console.error('Error processing Trolley webhook:', error);
-        res.status(500).json({message: 'Webhook processing failed'});
-      }
-    });
-
-    // Auto-create Trolley account for business users who don't have one
-    app.post(`${apiRouter}/trolley/auto-setup`, requireAuth, async (req: Request, res: Response) => {
-      try {
-        const user = req.user;
-        if (!user || user.role !== 'business') {
-          return res.status(403).json({message: "Only business accounts can auto-setup"});
-        }
-
-        // Check if user already has any Trolley setup
-        if (user.trolleySubmerchantId || user.trolleyVerificationToken) {
-          return res.json({success: true, message: 'Already configured'});
-        }
-
-        console.log(`🔴 CREATING REAL TROLLEY SUBMERCHANT for business: ${user.email}`);
-
-        const {trolleySdk} = await import('./trolley-sdk-service');
-
-        // Create real submerchant account with business information
-        const submerchantData = {
-          merchant: {
-            name: user.company || user.username,
-            currency: 'USD'
-          },
-          onboarding: {
-            businessWebsite: 'https://interlinc.co',
-            businessLegalName: user.company || user.username,
-            businessAsName: user.company || user.username,
-            businessTaxId: 'PENDING',
-            businessCategory: 'business_service',
-            businessCountry: 'US',
-            businessCity: 'PENDING',
-            businessAddress: 'PENDING',
-            businessZip: 'PENDING',
-            businessRegion: 'PENDING',
-            businessTotalMonthly: '10000',
-            businessPpm: '100',
-            businessIntlPercentage: '15',
-            expectedPayoutCountries: 'US'
-          }
-        };
-
-        const submerchant = await trolleySdk.createSubmerchant(submerchantData);
-
-        await storage.updateUser(user.id, {
-          trolleySubmerchantId: submerchant.merchant.id,
-          trolleySubmerchantAccessKey: submerchant.merchant.accessKey,
-          trolleySubmerchantSecretKey: submerchant.merchant.secretKey,
-          trolleySubmerchantStatus: 'pending_verification',
-          paymentMethod: 'pay_as_you_go'
+        console.log('Checking Trolley recipient status for user:', {
+          recipientId: user.trolleyRecipientId,
+          status: recipient.status,
+          accounts: recipient.accounts?.length || 0
         });
+
+        // Check if recipient is active and has payment methods
+        const isActive = recipient.status === 'active' || recipient.status === 'verified';
+        const hasPaymentMethod = recipient.accounts && recipient.accounts.length > 0;
+
+        if (isActive && hasPaymentMethod && !user.payoutEnabled) {
+          // Update user to enable payouts
+          await storage.updateUser(userId, {payoutEnabled: true});
+
+          // Create success notification
+          await storage.createNotification(
+            userId,
+            'payment_setup_completed',
+            'Payment Setup Complete',
+            'Your Trolley account has been verified and you can now receive payments!',
+            {recipientId: user.trolleyRecipientId, status: recipient.status}
+          );
+
+          console.log(`✅ Activated payouts for user ${userId} - Trolley recipient is now verified`);
+
+          return res.json({
+            success: true,
+            status: 'completed',
+            message: 'Account verified! You can now receive payments.',
+            recipientStatus: recipient.status,
+            payoutEnabled: true
+          });
+        }
 
         return res.json({
           success: true,
-          submerchantId: submerchant.merchant.id,
-          isVerified: false,
-          message: 'Payment account configured successfully'
+          status: isActive ? 'pending_payment_method' : 'pending_verification',
+          message: isActive
+            ? 'Account verified but payment method setup needed'
+            : 'Account still pending verification by Trolley',
+          recipientStatus: recipient.status,
+          payoutEnabled: user.payoutEnabled,
+          hasPaymentMethod
         });
 
-      } catch (error) {
-        console.error("Error auto-setting up account:", error);
-        res.status(500).json({
+      } catch (trolleyError) {
+        console.error('Trolley API error:', trolleyError);
+        return res.json({
           success: false,
-          message: "Error setting up payment account"
+          status: 'api_error',
+          message: 'Unable to check status with Trolley. Please try again later.'
         });
       }
-    });
 
-    // Simplified setup - automatically configure all business accounts
-    app.post(`${apiRouter}/trolley/setup-company-profile`, requireAuth, async (req: Request, res: Response) => {
-      try {
-        const user = req.user;
-        if (!user || user.role !== 'business') {
-          return res.status(403).json({message: "Only business accounts can set up company profiles"});
-        }
+    } catch (error) {
+      console.error('Error checking Trolley status:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to check account status'
+      });
+    }
+  });
 
-        console.log(`Setting up payment account for business: ${user.email}`);
+  // Data Room Export Routes for Compliance
+  app.get(`${apiRouter}/data-room/export/all`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      const userRole = req.user?.role || 'business';
 
-        // Check if user already has payment setup
-        if (user.trolleySubmerchantId && user.trolleySubmerchantStatus) {
-          console.log(`User already has payment setup: ${user.trolleySubmerchantId}`);
-          return res.json({
-            success: true,
-            submerchantId: user.trolleySubmerchantId,
-            isVerified: user.trolleySubmerchantStatus === 'verified',
-            message: user.trolleySubmerchantStatus === 'verified' ? 'Account ready for payments' : 'Account verification in progress'
-          });
-        }
-
-        console.log(`🔴 CREATING REAL TROLLEY SUBMERCHANT for business: ${user.email}`);
-
-        const {trolleySdk} = await import('./trolley-sdk-service');
-
-        // Create real submerchant account
-        const submerchantData = {
-          merchant: {
-            name: user.company || user.username,
-            currency: 'USD'
-          },
-          onboarding: {
-            businessWebsite: 'https://interlinc.co',
-            businessLegalName: user.company || user.username,
-            businessAsName: user.company || user.username,
-            businessTaxId: 'PENDING',
-            businessCategory: 'business_service',
-            businessCountry: 'US',
-            businessCity: 'PENDING',
-            businessAddress: 'PENDING',
-            businessZip: 'PENDING',
-            businessRegion: 'PENDING',
-            businessTotalMonthly: '10000',
-            businessPpm: '100',
-            businessIntlPercentage: '15',
-            expectedPayoutCountries: 'US'
-          }
-        };
-
-        const submerchant = await trolleySdk.createSubmerchant(submerchantData);
-
-        await storage.updateUser(user.id, {
-          trolleySubmerchantId: submerchant.merchant.id,
-          trolleySubmerchantAccessKey: submerchant.merchant.accessKey,
-          trolleySubmerchantSecretKey: submerchant.merchant.secretKey,
-          trolleySubmerchantStatus: 'pending_verification',
-          paymentMethod: 'pay_as_you_go'
-        });
-
-        console.log(`✅ REAL TROLLEY SUBMERCHANT CREATED for user ${user.id}: ${submerchant.merchant.id}`);
-
-        res.json({
-          success: true,
-          submerchantId: submerchant.merchant.id,
-          isVerified: false,
-          message: 'Real Trolley submerchant account created',
-          description: 'Complete verification to enable live payments.'
-        });
-
-      } catch (error) {
-        console.error("Error configuring payment account:", error);
-        res.status(500).json({
-          success: false,
-          message: "Error configuring payment account"
-        });
+      if (!userId) {
+        return res.status(401).json({message: "Authentication required"});
       }
-    });
 
-    // Register Trolley submerchant routes
-    // registerTrolleySubmerchantRoutes(app, requireAuth); // TODO: Re-implement if needed
+      const exportData = await generateComplianceExport(userId, userRole);
 
-    // Register Trolley contractor routes
-    const {registerTrolleyContractorRoutes} = await import('./trolley-contractor-routes');
-    registerTrolleyContractorRoutes(app, apiRouter, requireAuth);
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="compliance-data-${userId}-${new Date().toISOString().split('T')[0]}.json"`);
+      res.json(exportData);
+    } catch (error) {
+      console.error("Error generating compliance export:", error);
+      res.status(500).json({message: "Error generating export"});
+    }
+  });
 
-    // Trolley status checking endpoint for contractors
-    app.post(`${apiRouter}/trolley/check-status`, requireAuth, async (req: Request, res: Response) => {
-      try {
-        const userId = req.user!.id;
-        const user = await storage.getUser(userId);
+  app.get(`${apiRouter}/data-room/export/invoices`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      const userRole = req.user?.role || 'business';
 
-        if (!user || user.role !== 'contractor') {
-          return res.status(403).json({
-            success: false,
-            message: 'Only contractors can check payment setup status'
-          });
-        }
-
-        if (!user.trolleyRecipientId) {
-          return res.json({
-            success: false,
-            status: 'not_started',
-            message: 'No Trolley recipient account found. Please start payment setup first.'
-          });
-        }
-
-        // Check recipient status with live Trolley API
-
-        try {
-          const recipient = await trolleyService.getRecipient(user.trolleyRecipientId);
-
-          if (!recipient) {
-            return res.json({
-              success: false,
-              status: 'error',
-              message: 'Unable to verify account status with Trolley'
-            });
-          }
-
-          console.log('Checking Trolley recipient status for user:', {
-            recipientId: user.trolleyRecipientId,
-            status: recipient.status,
-            accounts: recipient.accounts?.length || 0
-          });
-
-          // Check if recipient is active and has payment methods
-          const isActive = recipient.status === 'active' || recipient.status === 'verified';
-          const hasPaymentMethod = recipient.accounts && recipient.accounts.length > 0;
-
-          if (isActive && hasPaymentMethod && !user.payoutEnabled) {
-            // Update user to enable payouts
-            await storage.updateUser(userId, {payoutEnabled: true});
-
-            // Create success notification
-            await storage.createNotification(
-              userId,
-              'payment_setup_completed',
-              'Payment Setup Complete',
-              'Your Trolley account has been verified and you can now receive payments!',
-              {recipientId: user.trolleyRecipientId, status: recipient.status}
-            );
-
-            console.log(`✅ Activated payouts for user ${userId} - Trolley recipient is now verified`);
-
-            return res.json({
-              success: true,
-              status: 'completed',
-              message: 'Account verified! You can now receive payments.',
-              recipientStatus: recipient.status,
-              payoutEnabled: true
-            });
-          }
-
-          return res.json({
-            success: true,
-            status: isActive ? 'pending_payment_method' : 'pending_verification',
-            message: isActive
-              ? 'Account verified but payment method setup needed'
-              : 'Account still pending verification by Trolley',
-            recipientStatus: recipient.status,
-            payoutEnabled: user.payoutEnabled,
-            hasPaymentMethod
-          });
-
-        } catch (trolleyError) {
-          console.error('Trolley API error:', trolleyError);
-          return res.json({
-            success: false,
-            status: 'api_error',
-            message: 'Unable to check status with Trolley. Please try again later.'
-          });
-        }
-
-      } catch (error) {
-        console.error('Error checking Trolley status:', error);
-        res.status(500).json({
-          success: false,
-          message: 'Failed to check account status'
-        });
+      if (!userId) {
+        return res.status(401).json({message: "Authentication required"});
       }
-    });
 
-    // Data Room Export Routes for Compliance
-    app.get(`${apiRouter}/data-room/export/all`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
-      try {
-        const userId = req.user?.id;
-        const userRole = req.user?.role || 'business';
+      const invoices = await generateInvoiceExport(userId, userRole);
 
-        if (!userId) {
-          return res.status(401).json({message: "Authentication required"});
-        }
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="invoices-${userId}-${new Date().toISOString().split('T')[0]}.json"`);
+      res.json(invoices);
+    } catch (error) {
+      console.error("Error generating invoice export:", error);
+      res.status(500).json({message: "Error generating invoice export"});
+    }
+  });
 
-        const exportData = await generateComplianceExport(userId, userRole);
+  app.get(`${apiRouter}/data-room/export/payments`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      const userRole = req.user?.role || 'business';
 
-        res.setHeader('Content-Type', 'application/json');
-        res.setHeader('Content-Disposition', `attachment; filename="compliance-data-${userId}-${new Date().toISOString().split('T')[0]}.json"`);
-        res.json(exportData);
-      } catch (error) {
-        console.error("Error generating compliance export:", error);
-        res.status(500).json({message: "Error generating export"});
+      if (!userId) {
+        return res.status(401).json({message: "Authentication required"});
       }
-    });
 
-    app.get(`${apiRouter}/data-room/export/invoices`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
-      try {
-        const userId = req.user?.id;
-        const userRole = req.user?.role || 'business';
+      const payments = await generatePaymentExport(userId, userRole);
 
-        if (!userId) {
-          return res.status(401).json({message: "Authentication required"});
-        }
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="payments-${userId}-${new Date().toISOString().split('T')[0]}.json"`);
+      res.json(payments);
+    } catch (error) {
+      console.error("Error generating payment export:", error);
+      res.status(500).json({message: "Error generating payment export"});
+    }
+  });
 
-        const invoices = await generateInvoiceExport(userId, userRole);
+  app.get(`${apiRouter}/data-room/export/csv`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      const userRole = req.user?.role || 'business';
+      const {type} = req.query;
 
-        res.setHeader('Content-Type', 'application/json');
-        res.setHeader('Content-Disposition', `attachment; filename="invoices-${userId}-${new Date().toISOString().split('T')[0]}.json"`);
-        res.json(invoices);
-      } catch (error) {
-        console.error("Error generating invoice export:", error);
-        res.status(500).json({message: "Error generating invoice export"});
+      if (!userId) {
+        return res.status(401).json({message: "Authentication required"});
       }
-    });
 
-    app.get(`${apiRouter}/data-room/export/payments`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
-      try {
-        const userId = req.user?.id;
-        const userRole = req.user?.role || 'business';
+      const csvData = await generateCSVExport(userId, userRole, type as string);
 
-        if (!userId) {
-          return res.status(401).json({message: "Authentication required"});
-        }
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="${type || 'compliance'}-${userId}-${new Date().toISOString().split('T')[0]}.csv"`);
+      res.send(csvData);
+    } catch (error) {
+      console.error("Error generating CSV export:", error);
+      res.status(500).json({message: "Error generating CSV export"});
+    }
+  });
 
-        const payments = await generatePaymentExport(userId, userRole);
-
-        res.setHeader('Content-Type', 'application/json');
-        res.setHeader('Content-Disposition', `attachment; filename="payments-${userId}-${new Date().toISOString().split('T')[0]}.json"`);
-        res.json(payments);
-      } catch (error) {
-        console.error("Error generating payment export:", error);
-        res.status(500).json({message: "Error generating payment export"});
-      }
-    });
-
-    app.get(`${apiRouter}/data-room/export/csv`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
-      try {
-        const userId = req.user?.id;
-        const userRole = req.user?.role || 'business';
-        const {type} = req.query;
-
-        if (!userId) {
-          return res.status(401).json({message: "Authentication required"});
-        }
-
-        const csvData = await generateCSVExport(userId, userRole, type as string);
-
-        res.setHeader('Content-Type', 'text/csv');
-        res.setHeader('Content-Disposition', `attachment; filename="${type || 'compliance'}-${userId}-${new Date().toISOString().split('T')[0]}.csv"`);
-        res.send(csvData);
-      } catch (error) {
-        console.error("Error generating CSV export:", error);
-        res.status(500).json({message: "Error generating CSV export"});
-      }
-    });
-
-    const httpServer = createServer(app);
-    return httpServer;
-  }
+  const httpServer = createServer(app);
+  return httpServer;
+}
