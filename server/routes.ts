@@ -3702,7 +3702,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get the user with budget information
       const user = await storage.getUser(userId);
       if (!user) {
-        return res.status(404).json({message: "User not found"});
+        return res.status(4004).json({message: "User not found"});
       }
 
       // Calculate project allocations from milestone payment amounts (excluding deleted contracts)
@@ -5313,7 +5313,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
               // Create payment record first
               const payment = await storage.createPayment({
-                contractId: workRequest.contractId,
+                contractId: workRequest.contractId || null,
+                milestoneId: null,
                 businessId: submission.businessId,
                 contractorId: submission.contractorId,
                 amount: workRequest.amount,
@@ -5384,7 +5385,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       } catch (error) {
         console.error('Error reviewing work submission:', error);
-        res.status(500).json({message: 'Error reviewing submission'});
+        res.status(500).json({message: 'Error reviewing work submission'});
       }
     });
 
