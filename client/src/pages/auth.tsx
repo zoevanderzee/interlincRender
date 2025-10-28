@@ -982,7 +982,7 @@ export default function AuthPage() {
                 <form onSubmit={handleLogin}>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="username" className="bg-gradient-to-r from-[#6b9aff] to-[#4a7bff] bg-clip-text text-transparent font-semibold">Email</Label>
+                      <Label htmlFor="username" className="text-[#6b9aff] font-semibold">Email</Label>
                       <Input
                         id="username"
                         name="username"
@@ -990,14 +990,14 @@ export default function AuthPage() {
                         placeholder="Enter your email"
                         value={loginForm.username}
                         onChange={handleLoginChange}
-                        className="bg-gradient-to-br from-[#0f1f3a] to-[#1a2b4a] border-[#6b9aff]/40 text-white placeholder:text-[#6b9aff]/40 focus:border-[#6b9aff] focus:from-[#1a2b4a] focus:to-[#0f1f3a]"
+                        className="bg-gradient-to-br from-[#0f1f3a]/80 to-[#1a2b4a]/80 border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:from-[#1a2b4a]/80 focus:to-[#0f1f3a]/80"
                       />
                       {loginErrors.username && (
                         <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{loginErrors.username}</p>
                       )}
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="password" className="bg-gradient-to-r from-[#6b9aff] to-[#4a7bff] bg-clip-text text-transparent font-semibold">Password</Label>
+                      <Label htmlFor="password" className="text-[#6b9aff] font-semibold">Password</Label>
                       <Input
                         id="password"
                         name="password"
@@ -1005,7 +1005,7 @@ export default function AuthPage() {
                         placeholder="Enter your password"
                         value={loginForm.password}
                         onChange={handleLoginChange}
-                        className="bg-gradient-to-br from-[#0f1f3a] to-[#1a2b4a] border-[#6b9aff]/40 text-white placeholder:text-[#6b9aff]/40 focus:border-[#6b9aff] focus:from-[#1a2b4a] focus:to-[#0f1f3a]"
+                        className="bg-gradient-to-br from-[#0f1f3a]/80 to-[#1a2b4a]/80 border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:from-[#1a2b4a]/80 focus:to-[#0f1f3a]/80"
                       />
                       {loginErrors.password && (
                         <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{loginErrors.password}</p>
@@ -1054,28 +1054,28 @@ export default function AuthPage() {
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="firstName" className="bg-gradient-to-r from-[#6b9aff] to-[#4a7bff] bg-clip-text text-transparent font-semibold">First Name</Label>
+                        <Label htmlFor="firstName" className="text-[#6b9aff] font-semibold">First Name</Label>
                         <Input
                           id="firstName"
                           name="firstName"
                           placeholder="John"
                           value={registerForm.firstName}
                           onChange={handleRegisterChange}
-                          className="bg-gradient-to-br from-[#0f1f3a] to-[#1a2b4a] border-[#6b9aff]/40 text-white placeholder:text-[#6b9aff]/40 focus:border-[#6b9aff] focus:from-[#1a2b4a] focus:to-[#0f1f3a]"
+                          className="bg-gradient-to-br from-[#0f1f3a]/80 to-[#1a2b4a]/80 border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:from-[#1a2b4a]/80 focus:to-[#0f1f3a]/80"
                         />
                         {registerErrors.firstName && (
                           <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.firstName}</p>
                         )}
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="lastName" className="bg-gradient-to-r from-[#6b9aff] to-[#4a7bff] bg-clip-text text-transparent font-semibold">Last Name</Label>
+                        <Label htmlFor="lastName" className="text-[#6b9aff] font-semibold">Last Name</Label>
                         <Input
                           id="lastName"
                           name="lastName"
                           placeholder="Doe"
                           value={registerForm.lastName}
                           onChange={handleRegisterChange}
-                          className="bg-gradient-to-br from-[#0f1f3a] to-[#1a2b4a] border-[#6b9aff]/40 text-white placeholder:text-[#6b9aff]/40 focus:border-[#6b9aff] focus:from-[#1a2b4a] focus:to-[#0f1f3a]"
+                          className="bg-gradient-to-br from-[#0f1f3a]/80 to-[#1a2b4a]/80 border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:from-[#1a2b4a]/80 focus:to-[#0f1f3a]/80"
                         />
                         {registerErrors.lastName && (
                           <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.lastName}</p>
@@ -1084,7 +1084,7 @@ export default function AuthPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="email" className="bg-gradient-to-r from-[#6b9aff] to-[#4a7bff] bg-clip-text text-transparent font-semibold">Email</Label>
+                      <Label htmlFor="email" className="text-[#6b9aff] font-semibold">Email</Label>
                       <Input
                         id="email"
                         name="email"
@@ -1092,7 +1092,7 @@ export default function AuthPage() {
                         placeholder="john.doe@example.com"
                         value={registerForm.email}
                         onChange={handleRegisterChange}
-                        className="bg-gradient-to-br from-[#0f1f3a] to-[#1a2b4a] border-[#6b9aff]/40 text-white placeholder:text-[#6b9aff]/40 focus:border-[#6b9aff] focus:from-[#1a2b4a] focus:to-[#0f1f3a]"
+                        className="bg-gradient-to-br from-[#0f1f3a]/80 to-[#1a2b4a]/80 border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:from-[#1a2b4a]/80 focus:to-[#0f1f3a]/80"
                       />
                       {registerErrors.email && (
                         <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.email}</p>
@@ -1100,14 +1100,14 @@ export default function AuthPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="username" className="bg-gradient-to-r from-[#6b9aff] to-[#4a7bff] bg-clip-text text-transparent font-semibold">Username</Label>
+                      <Label htmlFor="username" className="text-[#6b9aff] font-semibold">Username</Label>
                       <Input
                         id="username"
                         name="username"
                         placeholder="johndoe"
                         value={registerForm.username}
                         onChange={handleRegisterChange}
-                        className="bg-gradient-to-br from-[#0f1f3a] to-[#1a2b4a] border-[#6b9aff]/40 text-white placeholder:text-[#6b9aff]/40 focus:border-[#6b9aff] focus:from-[#1a2b4a] focus:to-[#0f1f3a]"
+                        className="bg-gradient-to-br from-[#0f1f3a]/80 to-[#1a2b4a]/80 border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:from-[#1a2b4a]/80 focus:to-[#0f1f3a]/80"
                       />
                       {registerErrors.username && (
                         <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.username}</p>
@@ -1116,7 +1116,7 @@ export default function AuthPage() {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="password" className="bg-gradient-to-r from-[#6b9aff] to-[#4a7bff] bg-clip-text text-transparent font-semibold">Password</Label>
+                        <Label htmlFor="password" className="text-[#6b9aff] font-semibold">Password</Label>
                         <Input
                           id="password"
                           name="password"
@@ -1124,14 +1124,14 @@ export default function AuthPage() {
                           placeholder="••••••••"
                           value={registerForm.password}
                           onChange={handleRegisterChange}
-                          className="bg-gradient-to-br from-[#0f1f3a] to-[#1a2b4a] border-[#6b9aff]/40 text-white placeholder:text-[#6b9aff]/40 focus:border-[#6b9aff] focus:from-[#1a2b4a] focus:to-[#0f1f3a]"
+                          className="bg-gradient-to-br from-[#0f1f3a]/80 to-[#1a2b4a]/80 border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:from-[#1a2b4a]/80 focus:to-[#0f1f3a]/80"
                         />
                         {registerErrors.password && (
                           <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.password}</p>
                         )}
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="confirmPassword" className="bg-gradient-to-r from-[#6b9aff] to-[#4a7bff] bg-clip-text text-transparent font-semibold">Confirm Password</Label>
+                        <Label htmlFor="confirmPassword" className="text-[#6b9aff] font-semibold">Confirm Password</Label>
                         <Input
                           id="confirmPassword"
                           name="confirmPassword"
@@ -1139,7 +1139,7 @@ export default function AuthPage() {
                           placeholder="••••••••"
                           value={registerForm.confirmPassword}
                           onChange={handleRegisterChange}
-                          className="bg-gradient-to-br from-[#0f1f3a] to-[#1a2b4a] border-[#6b9aff]/40 text-white placeholder:text-[#6b9aff]/40 focus:border-[#6b9aff] focus:from-[#1a2b4a] focus:to-[#0f1f3a]"
+                          className="bg-gradient-to-br from-[#0f1f3a]/80 to-[#1a2b4a]/80 border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:from-[#1a2b4a]/80 focus:to-[#0f1f3a]/80"
                         />
                         {registerErrors.confirmPassword && (
                           <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.confirmPassword}</p>
@@ -1148,13 +1148,13 @@ export default function AuthPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="role" className="bg-gradient-to-r from-[#6b9aff] to-[#4a7bff] bg-clip-text text-transparent font-semibold">Account Type</Label>
+                      <Label htmlFor="role" className="text-[#6b9aff] font-semibold">Account Type</Label>
                       <select
                         id="role"
                         name="role"
                         value={registerForm.role}
                         onChange={(e) => handleRoleChange(e.target.value)}
-                        className="flex h-10 w-full rounded-md border border-[#6b9aff]/40 bg-gradient-to-br from-[#0f1f3a] to-[#1a2b4a] px-3 py-2 text-sm text-white ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-[#6b9aff]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6b9aff] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="flex h-10 w-full rounded-md border border-[#6b9aff]/50 bg-gradient-to-br from-[#0f1f3a]/80 to-[#1a2b4a]/80 px-3 py-2 text-sm text-white ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-[#a0c4ff]/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6b9aff] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <option value="business">Business</option>
                         <option value="contractor">Contractor</option>
@@ -1163,14 +1163,14 @@ export default function AuthPage() {
 
                     {registerForm.role === "business" && (
                       <div className="space-y-2">
-                        <Label htmlFor="company" className="bg-gradient-to-r from-[#6b9aff] to-[#4a7bff] bg-clip-text text-transparent font-semibold">Company Name</Label>
+                        <Label htmlFor="company" className="text-[#6b9aff] font-semibold">Company Name</Label>
                         <Input
                           id="company"
                           name="company"
                           placeholder="Acme Inc."
                           value={registerForm.company}
                           onChange={handleRegisterChange}
-                          className="bg-gradient-to-br from-[#0f1f3a] to-[#1a2b4a] border-[#6b9aff]/40 text-white placeholder:text-[#6b9aff]/40 focus:border-[#6b9aff] focus:from-[#1a2b4a] focus:to-[#0f1f3a]"
+                          className="bg-gradient-to-br from-[#0f1f3a]/80 to-[#1a2b4a]/80 border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:from-[#1a2b4a]/80 focus:to-[#0f1f3a]/80"
                         />
                         {registerErrors.company && (
                           <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.company}</p>
@@ -1179,14 +1179,14 @@ export default function AuthPage() {
                     )}
 
                     <div className="space-y-2">
-                      <Label htmlFor="position" className="bg-gradient-to-r from-[#6b9aff] to-[#4a7bff] bg-clip-text text-transparent font-semibold">Position Title</Label>
+                      <Label htmlFor="position" className="text-[#6b9aff] font-semibold">Position Title</Label>
                       <Input
                         id="position"
                         name="position"
                         placeholder="CEO, Project Manager, etc."
                         value={registerForm.position}
                         onChange={handleRegisterChange}
-                        className="bg-gradient-to-br from-[#0f1f3a] to-[#1a2b4a] border-[#6b9aff]/40 text-white placeholder:text-[#6b9aff]/40 focus:border-[#6b9aff] focus:from-[#1a2b4a] focus:to-[#0f1f3a]"
+                        className="bg-gradient-to-br from-[#0f1f3a]/80 to-[#1a2b4a]/80 border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:from-[#1a2b4a]/80 focus:to-[#0f1f3a]/80"
                       />
                     </div>
                   </CardContent>
