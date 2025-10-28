@@ -138,7 +138,8 @@ function StripeCheckoutForm({ clientSecret, onPaymentComplete, isProcessing, sho
 }
 
 interface StripeElementsProps {
-  amount: number; // in cents
+  clientSecret?: string; // Optional: if provided, skip payment intent creation
+  amount?: number; // in cents (only needed if clientSecret not provided)
   contractorUserId?: number;
   currency?: string;
   onPaymentComplete: (paymentIntentId: string) => void;
@@ -148,6 +149,7 @@ interface StripeElementsProps {
 }
 
 export function StripeElements({ 
+  clientSecret: providedClientSecret,
   amount, 
   onPaymentComplete, 
   isProcessing = false, 
@@ -156,7 +158,7 @@ export function StripeElements({
   description,
   showSaveCard = false
 }: StripeElementsProps) {
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [clientSecret, setClientSecret] = useState<string | null>(providedClientSecret || null);
   const { toast } = useToast();
 
   // If we don't have a valid public key, show error message
@@ -227,12 +229,12 @@ export function StripeElements({
     }
   });
 
-  // Initialize payment intent when component mounts
+  // Initialize payment intent when component mounts (only if clientSecret not provided)
   useEffect(() => {
-    if (isValidPublicKey) {
+    if (isValidPublicKey && !providedClientSecret && amount) {
       createPaymentIntentMutation.mutate();
     }
-  }, []);
+  }, [providedClientSecret, amount]);
 
   if (!clientSecret || createPaymentIntentMutation.isPending) {
     return (

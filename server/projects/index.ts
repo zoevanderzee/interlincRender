@@ -671,6 +671,106 @@ export function registerProjectRoutes(app: Express) {
     }
   });
 
+  // Create PaymentIntent for work request (called before opening payment modal)
+  app.post("/api/work-requests/:id/create-payment-intent", async (req, res) => {
+    try {
+      const workRequestId = parseInt(req.params.id);
+
+      // Use the same authentication pattern as other endpoints
+      let currentUserId = req.user?.id;
+      
+      // Fallback to X-User-ID header like other endpoints in this system
+      if (!currentUserId && req.headers['x-user-id']) {
+        currentUserId = parseInt(req.headers['x-user-id'] as string);
+      }
+
+      if (!currentUserId) {
+        return res.status(401).json({
+          ok: false,
+          message: "Authentication required"
+        });
+      }
+
+      // Get work request
+      const workRequest = await storage.getWorkRequest(workRequestId);
+      if (!workRequest) {
+        return res.status(404).json({
+          ok: false,
+          message: "Work request not found"
+        });
+      }
+
+      // Get project and verify business ownership
+      const project = await storage.getProject(workRequest.projectId);
+      if (!project || project.businessId !== currentUserId) {
+        return res.status(403).json({
+          ok: false,
+          message: "You can only create payment intents for your own work requests"
+        });
+      }
+
+      // Check if already paid
+      if (workRequest.status === "paid") {
+        return res.status(400).json({
+          ok: false,
+          message: "Work request already paid"
+        });
+      }
+
+      // Get contractor details
+      const contractor = await storage.getUser(workRequest.contractorUserId);
+      if (!contractor || !contractor.stripeConnectAccountId) {
+        return res.status(400).json({
+          ok: false,
+          message: 'Contractor payment setup incomplete',
+          needsSetup: true
+        });
+      }
+
+      // Get business Connect account (for metadata tracking)
+      const businessUser = await storage.getUser(currentUserId);
+      const businessAccountId = businessUser?.stripeConnectAccountId || 'platform';
+
+      console.log(`[CREATE_PAYMENT_INTENT] Creating PaymentIntent for work request ${workRequestId}, amount: ${workRequest.amount}`);
+
+      // Create Stripe PaymentIntent with destination charge
+      const { createPaymentIntent } = await import('../services/stripe.js');
+
+      const paymentIntent = await createPaymentIntent({
+        amount: parseFloat(workRequest.amount),
+        currency: workRequest.currency || 'gbp',
+        description: `Payment for: ${workRequest.title}`,
+        metadata: {
+          work_request_id: workRequestId.toString(),
+          contractor_id: contractor.id.toString(),
+          business_id: currentUserId.toString(),
+          payment_type: 'work_request_payment'
+        },
+        transferData: {
+          destination: contractor.stripeConnectAccountId
+        },
+        businessAccountId: businessAccountId
+      });
+
+      console.log(`[CREATE_PAYMENT_INTENT] PaymentIntent created: ${paymentIntent.id}`);
+
+      res.json({
+        ok: true,
+        clientSecret: paymentIntent.clientSecret,
+        paymentIntentId: paymentIntent.id,
+        amount: workRequest.amount,
+        currency: workRequest.currency || 'gbp'
+      });
+
+    } catch (error) {
+      console.error("Error creating payment intent for work request:", error);
+      res.status(500).json({
+        ok: false,
+        message: error instanceof Error ? error.message : "Internal server error"
+      });
+    }
+  });
+
   // Process payment after Stripe payment succeeds for work request
   app.post("/api/work-requests/:id/process-payment", async (req, res) => {
     try {

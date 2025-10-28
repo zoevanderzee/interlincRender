@@ -93,8 +93,28 @@ export default function ProjectDetails() {
     const hasSavedPaymentMethod = false; // Replace with actual check
 
     if (!hasSavedPaymentMethod && user?.role === 'business') {
-      setSelectedWorkRequest(workRequest);
-      setShowPaymentModal(true);
+      // Create PaymentIntent and get clientSecret before opening modal
+      try {
+        const response = await apiRequest("POST", `/api/work-requests/${workRequest.id}/create-payment-intent`, {});
+        
+        if (response.ok) {
+          const data = await response.json();
+          setPaymentClientSecret(data.clientSecret);
+          setSelectedWorkRequest(workRequest);
+          setShowPaymentModal(true);
+        } else {
+          const error = await response.json();
+          throw new Error(error.message || "Failed to create payment intent");
+        }
+      } catch (error) {
+        console.error("Error creating payment intent:", error);
+        toast({
+          title: "Error",
+          description: error instanceof Error ? error.message : "Failed to initialize payment. Please try again.",
+          variant: "destructive",
+        });
+        setProcessingWorkRequestId(null);
+      }
     } else {
       try {
         const response = await apiRequest("POST", `/api/work-requests/${workRequest.id}/business-accept`, {
@@ -773,21 +793,25 @@ export default function ProjectDetails() {
                 </div>
               </div>
 
-              <StripeElements
-                amount={parseFloat(selectedWorkRequest.amount) * 100}
-                currency="gbp"
-                description={`Payment for: ${selectedWorkRequest.title}`}
-                contractorUserId={selectedWorkRequest.contractorUserId}
-                onPaymentComplete={handlePaymentComplete}
-                isProcessing={isProcessingPayment}
-                showSaveCard={true}
-              />
+              {paymentClientSecret ? (
+                <StripeElements
+                  clientSecret={paymentClientSecret}
+                  onPaymentComplete={handlePaymentComplete}
+                  isProcessing={isProcessingPayment}
+                  showSaveCard={true}
+                />
+              ) : (
+                <div className="text-center text-gray-400 py-4">
+                  Loading payment form...
+                </div>
+              )}
 
               <Button
                 variant="outline"
                 onClick={() => {
                   setShowPaymentModal(false);
                   setSelectedWorkRequest(null);
+                  setPaymentClientSecret(null); // Clear client secret
                   setProcessingWorkRequestId(null); // Clear processing state
                 }}
                 disabled={isProcessingPayment}
