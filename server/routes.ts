@@ -3702,7 +3702,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get the user with budget information
       const user = await storage.getUser(userId);
       if (!user) {
-        return res.status(4004).json({message: "User not found"});
+        return res.status(404).json({message: "User not found"});
       }
 
       // Calculate project allocations from milestone payment amounts (excluding deleted contracts)
@@ -5291,16 +5291,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
           approverId: userId
         });
 
-        // If approved, update work request status (payment will be processed separately via UI)
+        // If approved, initiate payment immediately (destination charge)
         if (status === 'approved') {
           const workRequest = await storage.getWorkRequest(submission.workRequestId);
-          if (workRequest) {
-            await storage.updateWorkRequestStatus(workRequest.id, 'approved');
-            console.log(`[WORK_APPROVAL] Work approved - payment will be processed via UI`);
+          if (!workRequest) {
+            return res.status(404).json({message: 'Work request not found'});
           }
-        }
 
-        res.json(updatedSubmission);
+          // Get contractor Connect account
+          const { createSecurePaymentV2 } = await import('./services/stripe.js');
+          const businessUser = await storage.getUser(userId);
+          const businessConnect = await storage.getConnectForUser(userId);
+
+          if (!businessConnect?.accountId) {
+            return res.status(400).json({
+              message: 'Payment setup required',
+              requiresSetup: true,
+              setupType: 'business_connect'
+            });
+          }
+
+          try {
+            // Create destination charge payment (funds go directly to contractor)
+            const paymentResult = await createSecurePaymentV2({
+              contractorUserId: submission.contractorId,
+              amount: parseFloat(workRequest.amount),
+              currency: 'gbp',
+              description: `Payment for: ${workRequest.title}`,
+              metadata: {
+                submission_id: submissionId.toString(),
+                work_request_id: workRequest.id.toString()
+              },
+              businessAccountId: businessConnect.accountId
+            });
+
+            // Update work request status
+            await storage.updateWorkRequestStatus(workRequest.id, 'approved');
+
+            console.log(`[WORK_APPROVAL] Payment initiated: ${paymentResult.payment_intent_id}`);
+
+            res.json({
+              ...updatedSubmission,
+              paymentIntent: {
+                id: paymentResult.payment_intent_id,
+                clientSecret: paymentResult.client_secret,
+                status: paymentResult.status,
+                requiresAction: paymentResult.status === 'requires_action'
+              }
+            });
+          } catch (paymentError: any) {
+            console.error('[WORK_APPROVAL] Payment failed:', paymentError);
+            res.status(500).json({
+              message: 'Approval succeeded but payment failed',
+              error: paymentError.message,
+              submission: updatedSubmission
+            });
+          }
+        } else {
+          res.json(updatedSubmission);
+        }
       } catch (error) {
         console.error('Error reviewing work submission:', error);
         res.status(500).json({message: 'Error reviewing work submission'});
@@ -5411,7 +5460,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json(updatedSubmission);
       } catch (error: any) {
         console.error('Error reviewing work submission:', error);
-        res.status(500).json({message: error.message});
+        res.status.json({message: error.message});
       }
     });
 

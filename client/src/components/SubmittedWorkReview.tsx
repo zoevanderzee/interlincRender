@@ -75,25 +75,42 @@ export function SubmittedWorkReview({ businessId }: SubmittedWorkReviewProps) {
       return await response.json();
     },
     onSuccess: (data: any, variables: any) => {
-      // For approved submissions, show payment modal instead of processing immediately
-      if (variables.status === 'approved' && selectedSubmission) {
-        setPaymentSubmission(selectedSubmission);
-        setShowPaymentModal(true);
+      if (variables.status === 'approved') {
+        // Check if payment requires additional action (SCA/3DS)
+        if (data.paymentIntent?.requiresAction) {
+          // Show Elements modal for authentication
+          setPaymentSubmission(selectedSubmission);
+          setShowPaymentModal(true);
+          toast({
+            title: 'Payment authentication required',
+            description: 'Please complete payment verification',
+          });
+        } else if (data.paymentIntent?.status === 'succeeded') {
+          // Payment succeeded automatically
+          toast({
+            title: 'Work approved and paid',
+            description: 'Payment completed successfully',
+          });
+          queryClient.invalidateQueries({ queryKey: ['/api/work-request-submissions/business'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/work-requests'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/budget'] });
+        } else {
+          // Payment requires card details - show modal
+          setPaymentSubmission(selectedSubmission);
+          setShowPaymentModal(true);
+          toast({
+            title: 'Work approved',
+            description: 'Please complete payment',
+          });
+        }
         setSelectedSubmission(null);
         setReviewFeedback('');
-        
-        toast({
-          title: 'Work approved',
-          description: 'Please complete payment to finalize the approval',
-        });
       } else {
-        // For other statuses (rejected, needs_revision), just show success
         toast({
           title: 'Review submitted',
           description: 'Work submission has been reviewed successfully',
         });
         queryClient.invalidateQueries({ queryKey: ['/api/work-request-submissions/business'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/work-requests'] });
         setSelectedSubmission(null);
         setReviewFeedback('');
       }
