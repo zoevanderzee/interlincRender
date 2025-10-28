@@ -260,10 +260,10 @@ export default function AuthPage() {
       return (
         <>
           You've been invited to join a project on Interlinc
-          <div className="mt-2 p-3 bg-zinc-800 rounded-md border border-zinc-700">
-            <h4 className="text-white font-medium mb-1">Project: {inviteData.projectName}</h4>
+          <div className="mt-3 p-4 bg-black/30 rounded-lg border border-amber-500/20 backdrop-blur-sm">
+            <h4 className="text-amber-200 font-medium mb-1.5 tracking-wide">{inviteData.projectName}</h4>
             {inviteData.message && (
-              <p className="text-zinc-400 text-sm italic mb-1">{inviteData.message}</p>
+              <p className="text-zinc-300/80 text-sm italic mb-1.5">{inviteData.message}</p>
             )}
             <p className="text-zinc-400 text-sm">Complete registration to accept this invitation.</p>
           </div>
@@ -295,12 +295,12 @@ export default function AuthPage() {
       return (
         <>
           You've been invited to join a business on Interlinc
-          <div className="mt-2 p-3 bg-zinc-800 rounded-md border border-zinc-700">
-            <h4 className="text-white font-medium mb-1">
-              Business: {businessInviteData.businessName || "A company"}
+          <div className="mt-3 p-4 bg-black/30 rounded-lg border border-amber-500/20 backdrop-blur-sm">
+            <h4 className="text-amber-200 font-medium mb-1.5 tracking-wide">
+              {businessInviteData.businessName || "A company"}
             </h4>
-            <p className="text-zinc-400 text-sm mb-1">
-              You are being invited as a <strong>{businessInviteData.workerType || "contractor"}</strong>
+            <p className="text-zinc-300/80 text-sm mb-1.5">
+              You are being invited as a <strong className="text-amber-300">{businessInviteData.workerType || "contractor"}</strong>
             </p>
             <p className="text-zinc-400 text-sm">
               Complete registration to join this business's team.
@@ -636,107 +636,62 @@ export default function AuthPage() {
               email: registerData.email
             });
           }
-        } catch (error) {
-          console.error("Error storing registration data:", error);
+        } catch (e) {
+          console.error("Failed to store pending registration:", e);
         }
 
-        // Firebase user created successfully - email verification sent
-        toast({
-          title: "Account Created!",
-          description: "Please check your email to verify your address.",
-        });
+        // Email verification is automatically sent by signUpUser function
+        console.log("Verification email sent by Firebase");
 
         // Show email verification form
         setVerificationData({
           email: registerData.email,
-          userId: -1, // We'll get this from server after sync
-          verificationToken: undefined,
+          userId: 0, // Temporary - will be set after sync
           registrationData: registerData
         });
         setShowEmailVerification(true);
-      } else {
-        // Firebase registration failed
         toast({
-          title: "Unable to Create Account",
-          description: result.error || "Please try again or contact support if the problem continues.",
+          title: "Verification Email Sent",
+          description: `Please check ${registerData.email} to verify your account.`,
+        });
+      } else {
+        toast({
+          title: "Registration Failed",
+          description: result.error || "Could not create account",
           variant: "destructive",
         });
       }
-    } catch (error) {
-      console.error('Firebase registration error:', error);
+    } catch (error: any) {
+      console.error('Registration error:', error);
       toast({
-        title: "Unable to Create Account", 
-        description: "Please try again or contact support if the problem continues.",
+        title: "Registration Failed",
+        description: error.message || "Could not create account",
         variant: "destructive",
       });
     }
   };
 
   // Handle register form submission
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (validateRegisterForm()) {
-      // Omit confirmPassword as it's not needed for the API
-      const { confirmPassword, ...registerData } = registerForm;
-
-      // Handle business invite link registration
-      if (businessToken && businessId) {
-        // Include business token information
-        (registerData as any).token = businessToken;
-        (registerData as any).businessId = businessId;
-        registerData.role = 'contractor'; // Always contractor for business invites
-
-        // Set worker type from business invite data
-        if (businessInviteData && businessInviteData.workerType) {
-          registerData.workerType = businessInviteData.workerType;
-        } else if (!registerData.workerType) {
-          // Default to contractor if not specified
-          registerData.workerType = 'contractor';
-        }
-      }
-      // Handle project-specific invite registration
-      else if (inviteId || inviteEmail) {
-        // If we have an invite ID, make sure it's included in the registration data
-        if (inviteId && !registerData.inviteId) {
-          registerData.inviteId = inviteId;
-        }
-
-        // If this is an invite registration, make sure the email matches the invited email
-        if (inviteEmail && registerData.email !== inviteEmail) {
-          setRegisterErrors({
-            ...registerErrors,
-            email: `You must use the invited email: ${inviteEmail}`
-          });
-          return;
-        }
-
-        registerData.role = 'contractor';
-
-        // Make sure workerType is set properly from invite data
-        if (inviteData && inviteData.workerType) {
-          registerData.workerType = inviteData.workerType;
-        } else if (!registerData.workerType) {
-          // Default to contractor if not specified
-          registerData.workerType = 'contractor';
-        }
-      }
-
-      // If this is a business user direct registration, make sure company name is provided
-      if (registerData.role === 'business' && !registerData.company) {
-        setRegisterErrors({
-          ...registerErrors,
-          company: "Company name is required for business accounts"
-        });
-        return;
-      }
-
-      // Register user with Firebase authentication
-      handleFirebaseRegistration(registerData);
+    if (!validateRegisterForm()) {
+      return;
     }
+
+    console.log("Starting registration process with data:", {
+      role: registerForm.role,
+      email: registerForm.email,
+      username: registerForm.username,
+      hasInviteId: !!registerForm.inviteId,
+      hasBusinessToken: !!registerForm.businessToken
+    });
+
+    // Use Firebase registration
+    await handleFirebaseRegistration(registerForm);
   };
 
-  // Handle forgot password form input change
+  // Handle forgot password form change
   const handleForgotPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForgotPasswordForm({
       ...forgotPasswordForm,
@@ -745,226 +700,80 @@ export default function AuthPage() {
     setForgotPasswordError("");
   };
 
-  // Validate forgot password form
-  const validateForgotPasswordForm = () => {
-    if (!forgotPasswordForm.email.trim()) {
-      setForgotPasswordError("Email is required");
-      return false;
-    } else if (!/\S+@\S+\.\S+/.test(forgotPasswordForm.email)) {
-      setForgotPasswordError("Email is invalid");
-      return false;
-    }
-    return true;
-  };
-
   // Handle forgot password form submission
   const handleForgotPassword = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (validateForgotPasswordForm()) {
-      forgotPasswordMutation.mutate(forgotPasswordForm.email);
+    if (!forgotPasswordForm.email.trim()) {
+      setForgotPasswordError("Email is required");
+      return;
     }
+
+    if (!/\S+@\S+\.\S+/.test(forgotPasswordForm.email)) {
+      setForgotPasswordError("Please enter a valid email address");
+      return;
+    }
+
+    forgotPasswordMutation.mutate(forgotPasswordForm.email);
   };
 
-  // Redirect if user is already logged in
-  if (user && !isLoading) {
+  // Redirect to home if user is already logged in
+  if (user && !showSubscription) {
     return <Redirect to="/" />;
+  }
+
+  // Show subscription form if needed
+  if (showSubscription && registeredUser) {
+    console.log(`Showing subscription form for registered user: ID=${registeredUser.id}, Role=${registeredUser.role}`);
+    return <SubscriptionForm user={registeredUser} />;
+  }
+
+  // Show email verification form if needed
+  if (showEmailVerification && verificationData) {
+    return <EmailVerificationForm verificationData={verificationData} />;
   }
 
   // Show forgot password form if requested
   if (showForgotPassword) {
-    return (
-      <div className="min-h-screen flex flex-col md:flex-row">
-        {/* Auth Forms Section */}
-        <div className="w-full md:w-1/2 flex items-center justify-center p-8">
-          <div className="w-full max-w-md">
-            <ForgotPasswordForm onBack={() => setShowForgotPassword(false)} />
-          </div>
-        </div>
-        {/* Hero Section */}
-        <div className="hidden lg:flex lg:w-1/2 items-center justify-center p-12" style={{ background: 'linear-gradient(135deg, #1a2b4a 0%, #0f1f3a 100%)' }}>
-          <div className="max-w-lg text-white">
-            <h1 className="text-4xl font-bold mb-6">Interlinc</h1>
-            <h2 className="text-3xl font-semibold mb-4">Connect. Create. Collaborate.</h2>
-            <p className="text-muted-foreground mb-8 text-lg">
-              Outsourcing, Simplified. Manage people, payments, and projects with clarity, control, and zero invoicing.
-            </p>
-            <div className="space-y-4">
-              <div className="flex items-start">
-                <div className="bg-white rounded-full h-6 w-6 flex items-center justify-center text-black mr-4 mt-1">✓</div>
-                <div>
-                  <h3 className="text-white font-medium text-lg">No Invoices. No Hassle.</h3>
-                  <p className="text-muted-foreground">Streamline payments with built-in workflows and milestone approvals — no manual paperwork.</p>
-                </div>
-              </div>
-              <div className="flex items-start">
-                <div className="bg-white rounded-full h-6 w-6 flex items-center justify-center text-black mr-4 mt-1">✓</div>
-                <div>
-                  <h3 className="text-white font-medium text-lg">Real-Time Financial Visibility</h3>
-                  <p className="text-muted-foreground">Track budgets, teams, and progress in one place with compliance-ready data capture.</p>
-                </div>
-              </div>
-              <div className="flex items-start">
-                <div className="bg-white rounded-full h-6 w-6 flex items-center justify-center text-black mr-4 mt-1">✓</div>
-                <div>
-                  <h3 className="text-white font-medium text-lg">Smarter Payouts. Faster Turnarounds.</h3>
-                  <p className="text-muted-foreground">Trigger payments on your terms — once work is approved, your teams get paid seamlessly.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Show email verification form if requested
-  if (showEmailVerification && verificationData) {
-    return (
-      <div className="min-h-screen flex flex-col md:flex-row">
-        {/* Auth Forms Section */}
-        <div className="w-full md:w-1/2 flex items-center justify-center p-8">
-          <div className="w-full max-w-md">
-            <EmailVerificationForm 
-              email={verificationData.email}
-              userId={verificationData.userId}
-              verificationToken={verificationData.verificationToken}
-              registrationData={verificationData.registrationData}
-              onBack={() => {
-                setShowEmailVerification(false);
-                setVerificationData(null);
-              }}
-              onVerified={(userData) => {
-                setShowEmailVerification(false);
-                setVerificationData(null);
-                // Set the registered user data from the sync response
-                setRegisteredUser(userData);
-                // After verification, show subscription form
-                setShowSubscription(true);
-              }}
-            />
-          </div>
-        </div>
-        {/* Hero Section */}
-        <div className="hidden lg:flex lg:w-1/2 items-center justify-center p-12" style={{ background: 'linear-gradient(135deg, #1a2b4a 0%, #0f1f3a 100%)' }}>
-          <div className="max-w-lg text-white">
-            <h1 className="text-4xl font-bold mb-6">Interlinc</h1>
-            <h2 className="text-3xl font-semibold mb-4">Connect. Create. Collaborate.</h2>
-            <p className="text-muted-foreground mb-8 text-lg">
-              Outsourcing, Simplified. Manage people, payments, and projects with clarity, control, and zero invoicing.
-            </p>
-            <div className="space-y-4">
-              <div className="flex items-start">
-                <div className="bg-white rounded-full h-6 w-6 flex items-center justify-center text-black mr-4 mt-1">✓</div>
-                <div>
-                  <h3 className="text-white font-medium text-lg">No Invoices. No Hassle.</h3>
-                  <p className="text-muted-foreground">Streamline payments with built-in workflows and milestone approvals — no manual paperwork.</p>
-                </div>
-              </div>
-              <div className="flex items-start">
-                <div className="bg-white rounded-full h-6 w-6 flex items-center justify-center text-black mr-4 mt-1">✓</div>
-                <div>
-                  <h3 className="text-white font-medium text-lg">Real-Time Financial Visibility</h3>
-                  <p className="text-muted-foreground">Track budgets, teams, and progress in one place with compliance-ready data capture.</p>
-                </div>
-              </div>
-              <div className="flex items-start">
-                <div className="bg-white rounded-full h-6 w-6 flex items-center justify-center text-black mr-4 mt-1">✓</div>
-                <div>
-                  <h3 className="text-white font-medium text-lg">Smarter Payouts. Faster Turnarounds.</h3>
-                  <p className="text-muted-foreground">Trigger payments on your terms — once work is approved, your teams get paid seamlessly.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Show subscription form after successful registration
-  if (showSubscription && registeredUser) {
-    return (
-      <div className="min-h-screen flex flex-col md:flex-row">
-        {/* Auth Forms Section */}
-        <div className="w-full md:w-1/2 flex items-center justify-center p-8">
-          <div className="w-full max-w-md">
-            <SubscriptionForm
-              userRole={registeredUser.role as 'business' | 'contractor'}
-              userEmail={registeredUser.email}
-              userName={registeredUser.username}
-              userId={registeredUser.id}
-              onSubscriptionComplete={() => {
-                setShowSubscription(false);
-                setRegisteredUser(null);
-                toast({
-                  title: "Welcome to Interlinc!",
-                  description: "Your account is ready.",
-                });
-                // User is now logged in via the subscription completion, redirect to dashboard
-                window.location.href = "/";
-              }}
-            />
-          </div>
-        </div>
-        {/* Hero Section */}
-        <div className="hidden lg:flex lg:w-1/2 items-center justify-center p-12" style={{ background: 'linear-gradient(135deg, #1a2b4a 0%, #0f1f3a 100%)' }}>
-          <div className="max-w-lg text-white">
-            <h1 className="text-4xl font-bold mb-6">Interlinc</h1>
-            <h2 className="text-3xl font-semibold mb-4">Connect. Create. Collaborate.</h2>
-            <p className="text-muted-foreground mb-8 text-lg">
-              Outsourcing, Simplified. Manage people, payments, and projects with clarity, control, and zero invoicing.
-            </p>
-            <div className="space-y-4">
-              <div className="flex items-start">
-                <div className="bg-white rounded-full h-6 w-6 flex items-center justify-center text-black mr-4 mt-1">✓</div>
-                <div>
-                  <h3 className="text-white font-medium text-lg">No Invoices. No Hassle.</h3>
-                  <p className="text-muted-foreground">Streamline payments with built-in workflows and milestone approvals — no manual paperwork.</p>
-                </div>
-              </div>
-              <div className="flex items-start">
-                <div className="bg-white rounded-full h-6 w-6 flex items-center justify-center text-black mr-4 mt-1">✓</div>
-                <div>
-                  <h3 className="text-white font-medium text-lg">Real-Time Financial Visibility</h3>
-                  <p className="text-muted-foreground">Track budgets, teams, and progress in one place with compliance-ready data capture.</p>
-                </div>
-              </div>
-              <div className="flex items-start">
-                <div className="bg-white rounded-full h-6 w-6 flex items-center justify-center text-black mr-4 mt-1">✓</div>
-                <div>
-                  <h3 className="text-white font-medium text-lg">Smarter Payouts. Faster Turnarounds.</h3>
-                  <p className="text-muted-foreground">Trigger payments on your terms — once work is approved, your teams get paid seamlessly.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    return <ForgotPasswordForm 
+      email={forgotPasswordForm.email}
+      onBack={() => setShowForgotPassword(false)}
+    />;
   }
 
   return (
-    <div className="min-h-screen flex" style={{ background: 'linear-gradient(135deg, hsl(210, 60%, 8%) 0%, hsl(215, 55%, 6%) 100%)' }}>
-      {/* Left Panel - Login/Register Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
-        <div className="w-full max-w-md">
+    <div className="flex flex-col lg:flex-row min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+      {/* Left Panel - Auth Forms */}
+      <div className="flex-1 flex items-center justify-center p-6 lg:p-12 relative overflow-hidden">
+        {/* Luxury background effects */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-amber-500/5 via-transparent to-transparent blur-3xl" />
+          <div className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-blue-600/5 via-transparent to-transparent blur-3xl" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.03),transparent_50%)]" />
+        </div>
+
+        <div className="w-full max-w-md relative z-10">
           {/* Logo */}
           <div className="flex justify-center mb-8">
-            <img src={Logo} alt="Interlinc" className="h-16" />
+            <img 
+              src={Logo} 
+              alt="Interlinc Logo" 
+              className="h-16 w-auto drop-shadow-[0_0_25px_rgba(251,191,36,0.3)]" 
+            />
           </div>
 
-          <Tabs defaultValue="login" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-2 mb-8" style={{ background: 'transparent', gap: '1rem', padding: 0 }}>
+          {/* Tabs */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-8 bg-black/20 backdrop-blur-xl border border-white/5 p-1.5 rounded-xl">
               <TabsTrigger 
                 value="login" 
-                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#6b9aff] data-[state=active]:to-[#7ca5ff] data-[state=active]:text-[#0a1628] data-[state=inactive]:bg-gradient-to-r data-[state=inactive]:from-[#0f1f3a] data-[state=inactive]:to-[#1a2b4a] data-[state=inactive]:text-white data-[state=inactive]:border data-[state=inactive]:border-[#6b9aff]/10 py-3 px-4 rounded-lg font-medium transition-all"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500/20 data-[state=active]:to-amber-600/10 data-[state=active]:text-amber-200 data-[state=active]:shadow-[0_0_20px_rgba(251,191,36,0.1)] text-zinc-400 font-medium transition-all duration-300 rounded-lg"
               >
                 Login
               </TabsTrigger>
               <TabsTrigger 
                 value="register"
-                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#6b9aff] data-[state=active]:to-[#7ca5ff] data-[state=active]:text-[#0a1628] data-[state=inactive]:bg-gradient-to-r data-[state=inactive]:from-[#0f1f3a] data-[state=inactive]:to-[#1a2b4a] data-[state=inactive]:text-white data-[state=inactive]:border data-[state=inactive]:border-[#6b9aff]/10 py-3 px-4 rounded-lg font-medium transition-all"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500/20 data-[state=active]:to-amber-600/10 data-[state=active]:text-amber-200 data-[state=active]:shadow-[0_0_20px_rgba(251,191,36,0.1)] text-zinc-400 font-medium transition-all duration-300 rounded-lg"
               >
                 Register
               </TabsTrigger>
@@ -972,17 +781,21 @@ export default function AuthPage() {
 
             {/* Login Form */}
             <TabsContent value="login">
-              <Card className="border-[#6b9aff]/20 text-white" style={{ background: 'linear-gradient(135deg, rgba(15, 31, 58, 0.6) 0%, rgba(26, 43, 74, 0.6) 100%)', backdropFilter: 'blur(20px)' }}>
-                <CardHeader>
-                  <CardTitle>Login to Interlinc</CardTitle>
-                  <CardDescription className="text-zinc-400">
+              <Card className="border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] backdrop-blur-2xl bg-gradient-to-br from-slate-900/80 via-slate-800/50 to-slate-900/80">
+                <CardHeader className="space-y-2 pb-6">
+                  <CardTitle className="text-2xl font-semibold bg-gradient-to-r from-white to-zinc-300 bg-clip-text text-transparent">
+                    Login to Interlinc
+                  </CardTitle>
+                  <CardDescription className="text-zinc-400 text-base">
                     Enter your credentials to access your account
                   </CardDescription>
                 </CardHeader>
                 <form onSubmit={handleLogin}>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="username" className="text-[#6b9aff] font-semibold">Email</Label>
+                  <CardContent className="space-y-5">
+                    <div className="space-y-2.5">
+                      <Label htmlFor="username" className="text-sm font-medium text-zinc-200">
+                        Email
+                      </Label>
                       <Input
                         id="username"
                         name="username"
@@ -990,14 +803,18 @@ export default function AuthPage() {
                         placeholder="Enter your email"
                         value={loginForm.username}
                         onChange={handleLoginChange}
-                        className="bg-gradient-to-br from-[#0f1f3a]/80 to-[#1a2b4a]/80 border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:from-[#1a2b4a]/80 focus:to-[#0f1f3a]/80"
+                        className="h-12 bg-black/40 border-white/10 text-white placeholder:text-zinc-500 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 transition-all duration-300 hover:border-white/20"
                       />
                       {loginErrors.username && (
-                        <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{loginErrors.username}</p>
+                        <p className="text-sm text-red-400 bg-red-500/10 px-3 py-2 rounded-lg border border-red-500/20">
+                          {loginErrors.username}
+                        </p>
                       )}
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="password" className="text-[#6b9aff] font-semibold">Password</Label>
+                    <div className="space-y-2.5">
+                      <Label htmlFor="password" className="text-sm font-medium text-zinc-200">
+                        Password
+                      </Label>
                       <Input
                         id="password"
                         name="password"
@@ -1005,31 +822,33 @@ export default function AuthPage() {
                         placeholder="Enter your password"
                         value={loginForm.password}
                         onChange={handleLoginChange}
-                        className="bg-gradient-to-br from-[#0f1f3a]/80 to-[#1a2b4a]/80 border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:from-[#1a2b4a]/80 focus:to-[#0f1f3a]/80"
+                        className="h-12 bg-black/40 border-white/10 text-white placeholder:text-zinc-500 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 transition-all duration-300 hover:border-white/20"
                       />
                       {loginErrors.password && (
-                        <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{loginErrors.password}</p>
+                        <p className="text-sm text-red-400 bg-red-500/10 px-3 py-2 rounded-lg border border-red-500/20">
+                          {loginErrors.password}
+                        </p>
                       )}
                       <div className="mt-2 text-right">
                         <button 
                           type="button" 
                           onClick={() => setShowForgotPassword(true)}
-                          className="text-sm text-zinc-400 hover:text-white"
+                          className="text-sm text-zinc-400 hover:text-amber-400 transition-colors duration-200"
                         >
                           Forgot password?
                         </button>
                       </div>
                     </div>
                   </CardContent>
-                  <CardFooter>
+                  <CardFooter className="pt-2">
                     <Button 
                       type="submit" 
-                      className="w-full bg-gradient-to-r from-[#6b9aff] to-[#7ca5ff] text-[#0a1628] hover:from-[#5a89ee] hover:to-[#6b94ee] font-medium"
+                      className="w-full h-12 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-semibold shadow-[0_0_30px_rgba(251,191,36,0.3)] hover:shadow-[0_0_40px_rgba(251,191,36,0.4)] transition-all duration-300"
                       disabled={loginMutation.isPending}
                     >
                       {loginMutation.isPending ? (
                         <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                           Logging in...
                         </>
                       ) : (
@@ -1043,48 +862,60 @@ export default function AuthPage() {
 
             {/* Register Form */}
             <TabsContent value="register">
-              <Card className="border-[#6b9aff]/20 text-white" style={{ background: 'linear-gradient(135deg, rgba(15, 31, 58, 0.6) 0%, rgba(26, 43, 74, 0.6) 100%)', backdropFilter: 'blur(20px)' }}>
-                <CardHeader>
-                  <CardTitle>Create an Account</CardTitle>
-                  <CardDescription className="text-zinc-400">
+              <Card className="border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] backdrop-blur-2xl bg-gradient-to-br from-slate-900/80 via-slate-800/50 to-slate-900/80">
+                <CardHeader className="space-y-2 pb-6">
+                  <CardTitle className="text-2xl font-semibold bg-gradient-to-r from-white to-zinc-300 bg-clip-text text-transparent">
+                    Create an Account
+                  </CardTitle>
+                  <CardDescription className="text-zinc-400 text-base leading-relaxed">
                     {renderRegistrationDescription()}
                   </CardDescription>
                 </CardHeader>
                 <form onSubmit={handleRegister}>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-5">
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="firstName" className="text-[#6b9aff] font-semibold">First Name</Label>
+                      <div className="space-y-2.5">
+                        <Label htmlFor="firstName" className="text-sm font-medium text-zinc-200">
+                          First Name
+                        </Label>
                         <Input
                           id="firstName"
                           name="firstName"
                           placeholder="John"
                           value={registerForm.firstName}
                           onChange={handleRegisterChange}
-                          className="bg-gradient-to-br from-[#0f1f3a]/80 to-[#1a2b4a]/80 border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:from-[#1a2b4a]/80 focus:to-[#0f1f3a]/80"
+                          className="h-11 bg-black/40 border-white/10 text-white placeholder:text-zinc-500 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 transition-all duration-300 hover:border-white/20"
                         />
                         {registerErrors.firstName && (
-                          <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.firstName}</p>
+                          <p className="text-xs text-red-400 bg-red-500/10 px-2 py-1.5 rounded border border-red-500/20">
+                            {registerErrors.firstName}
+                          </p>
                         )}
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="lastName" className="text-[#6b9aff] font-semibold">Last Name</Label>
+                      <div className="space-y-2.5">
+                        <Label htmlFor="lastName" className="text-sm font-medium text-zinc-200">
+                          Last Name
+                        </Label>
                         <Input
                           id="lastName"
                           name="lastName"
                           placeholder="Doe"
                           value={registerForm.lastName}
                           onChange={handleRegisterChange}
-                          className="bg-gradient-to-br from-[#0f1f3a]/80 to-[#1a2b4a]/80 border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:from-[#1a2b4a]/80 focus:to-[#0f1f3a]/80"
+                          className="h-11 bg-black/40 border-white/10 text-white placeholder:text-zinc-500 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 transition-all duration-300 hover:border-white/20"
                         />
                         {registerErrors.lastName && (
-                          <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.lastName}</p>
+                          <p className="text-xs text-red-400 bg-red-500/10 px-2 py-1.5 rounded border border-red-500/20">
+                            {registerErrors.lastName}
+                          </p>
                         )}
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="email" className="text-[#6b9aff] font-semibold">Email</Label>
+                    <div className="space-y-2.5">
+                      <Label htmlFor="email" className="text-sm font-medium text-zinc-200">
+                        Email
+                      </Label>
                       <Input
                         id="email"
                         name="email"
@@ -1092,31 +923,39 @@ export default function AuthPage() {
                         placeholder="john.doe@example.com"
                         value={registerForm.email}
                         onChange={handleRegisterChange}
-                        className="bg-gradient-to-br from-[#0f1f3a]/80 to-[#1a2b4a]/80 border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:from-[#1a2b4a]/80 focus:to-[#0f1f3a]/80"
+                        className="h-11 bg-black/40 border-white/10 text-white placeholder:text-zinc-500 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 transition-all duration-300 hover:border-white/20"
                       />
                       {registerErrors.email && (
-                        <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.email}</p>
+                        <p className="text-sm text-red-400 bg-red-500/10 px-3 py-2 rounded-lg border border-red-500/20">
+                          {registerErrors.email}
+                        </p>
                       )}
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="username" className="text-[#6b9aff] font-semibold">Username</Label>
+                    <div className="space-y-2.5">
+                      <Label htmlFor="username" className="text-sm font-medium text-zinc-200">
+                        Username
+                      </Label>
                       <Input
                         id="username"
                         name="username"
                         placeholder="johndoe"
                         value={registerForm.username}
                         onChange={handleRegisterChange}
-                        className="bg-gradient-to-br from-[#0f1f3a]/80 to-[#1a2b4a]/80 border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:from-[#1a2b4a]/80 focus:to-[#0f1f3a]/80"
+                        className="h-11 bg-black/40 border-white/10 text-white placeholder:text-zinc-500 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 transition-all duration-300 hover:border-white/20"
                       />
                       {registerErrors.username && (
-                        <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.username}</p>
+                        <p className="text-sm text-red-400 bg-red-500/10 px-3 py-2 rounded-lg border border-red-500/20">
+                          {registerErrors.username}
+                        </p>
                       )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="password" className="text-[#6b9aff] font-semibold">Password</Label>
+                      <div className="space-y-2.5">
+                        <Label htmlFor="password" className="text-sm font-medium text-zinc-200">
+                          Password
+                        </Label>
                         <Input
                           id="password"
                           name="password"
@@ -1124,14 +963,18 @@ export default function AuthPage() {
                           placeholder="••••••••"
                           value={registerForm.password}
                           onChange={handleRegisterChange}
-                          className="bg-gradient-to-br from-[#0f1f3a]/80 to-[#1a2b4a]/80 border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:from-[#1a2b4a]/80 focus:to-[#0f1f3a]/80"
+                          className="h-11 bg-black/40 border-white/10 text-white placeholder:text-zinc-500 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 transition-all duration-300 hover:border-white/20"
                         />
                         {registerErrors.password && (
-                          <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.password}</p>
+                          <p className="text-xs text-red-400 bg-red-500/10 px-2 py-1.5 rounded border border-red-500/20">
+                            {registerErrors.password}
+                          </p>
                         )}
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="confirmPassword" className="text-[#6b9aff] font-semibold">Confirm Password</Label>
+                      <div className="space-y-2.5">
+                        <Label htmlFor="confirmPassword" className="text-sm font-medium text-zinc-200">
+                          Confirm Password
+                        </Label>
                         <Input
                           id="confirmPassword"
                           name="confirmPassword"
@@ -1139,66 +982,76 @@ export default function AuthPage() {
                           placeholder="••••••••"
                           value={registerForm.confirmPassword}
                           onChange={handleRegisterChange}
-                          className="bg-gradient-to-br from-[#0f1f3a]/80 to-[#1a2b4a]/80 border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:from-[#1a2b4a]/80 focus:to-[#0f1f3a]/80"
+                          className="h-11 bg-black/40 border-white/10 text-white placeholder:text-zinc-500 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 transition-all duration-300 hover:border-white/20"
                         />
                         {registerErrors.confirmPassword && (
-                          <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.confirmPassword}</p>
+                          <p className="text-xs text-red-400 bg-red-500/10 px-2 py-1.5 rounded border border-red-500/20">
+                            {registerErrors.confirmPassword}
+                          </p>
                         )}
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="role" className="text-[#6b9aff] font-semibold">Account Type</Label>
+                    <div className="space-y-2.5">
+                      <Label htmlFor="role" className="text-sm font-medium text-zinc-200">
+                        Account Type
+                      </Label>
                       <select
                         id="role"
                         name="role"
                         value={registerForm.role}
                         onChange={(e) => handleRoleChange(e.target.value)}
-                        className="flex h-10 w-full rounded-md border border-[#6b9aff]/50 bg-gradient-to-br from-[#0f1f3a]/80 to-[#1a2b4a]/80 px-3 py-2 text-sm text-white ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-[#a0c4ff]/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6b9aff] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="flex h-11 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-white ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-zinc-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/20 focus-visible:border-amber-500/50 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-300 hover:border-white/20"
                       >
-                        <option value="business">Business</option>
-                        <option value="contractor">Contractor</option>
+                        <option value="business" className="bg-slate-900">Business</option>
+                        <option value="contractor" className="bg-slate-900">Contractor</option>
                       </select>
                     </div>
 
                     {registerForm.role === "business" && (
-                      <div className="space-y-2">
-                        <Label htmlFor="company" className="text-[#6b9aff] font-semibold">Company Name</Label>
+                      <div className="space-y-2.5">
+                        <Label htmlFor="company" className="text-sm font-medium text-zinc-200">
+                          Company Name
+                        </Label>
                         <Input
                           id="company"
                           name="company"
                           placeholder="Acme Inc."
                           value={registerForm.company}
                           onChange={handleRegisterChange}
-                          className="bg-gradient-to-br from-[#0f1f3a]/80 to-[#1a2b4a]/80 border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:from-[#1a2b4a]/80 focus:to-[#0f1f3a]/80"
+                          className="h-11 bg-black/40 border-white/10 text-white placeholder:text-zinc-500 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 transition-all duration-300 hover:border-white/20"
                         />
                         {registerErrors.company && (
-                          <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.company}</p>
+                          <p className="text-sm text-red-400 bg-red-500/10 px-3 py-2 rounded-lg border border-red-500/20">
+                            {registerErrors.company}
+                          </p>
                         )}
                       </div>
                     )}
 
-                    <div className="space-y-2">
-                      <Label htmlFor="position" className="text-[#6b9aff] font-semibold">Position Title</Label>
+                    <div className="space-y-2.5">
+                      <Label htmlFor="position" className="text-sm font-medium text-zinc-200">
+                        Position Title
+                      </Label>
                       <Input
                         id="position"
                         name="position"
                         placeholder="CEO, Project Manager, etc."
                         value={registerForm.position}
                         onChange={handleRegisterChange}
-                        className="bg-gradient-to-br from-[#0f1f3a]/80 to-[#1a2b4a]/80 border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:from-[#1a2b4a]/80 focus:to-[#0f1f3a]/80"
+                        className="h-11 bg-black/40 border-white/10 text-white placeholder:text-zinc-500 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 transition-all duration-300 hover:border-white/20"
                       />
                     </div>
                   </CardContent>
-                  <CardFooter>
+                  <CardFooter className="pt-2">
                     <Button 
                       type="submit" 
-                      className="w-full bg-gradient-to-r from-[#6b9aff] to-[#7ca5ff] text-[#0a1628] hover:from-[#5a89ee] hover:to-[#6b94ee] font-medium"
+                      className="w-full h-12 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-semibold shadow-[0_0_30px_rgba(251,191,36,0.3)] hover:shadow-[0_0_40px_rgba(251,191,36,0.4)] transition-all duration-300"
                       disabled={registerMutation.isPending}
                     >
                       {registerMutation.isPending ? (
                         <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                           Creating account...
                         </>
                       ) : (
@@ -1212,26 +1065,28 @@ export default function AuthPage() {
 
             {/* Forgot Password Form */}
             <TabsContent value="forgot-password">
-              <Card className="border-[#6b9aff]/20 text-white" style={{ background: 'linear-gradient(135deg, rgba(15, 31, 58, 0.6) 0%, rgba(26, 43, 74, 0.6) 100%)', backdropFilter: 'blur(20px)' }}>
-                <CardHeader>
+              <Card className="border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] backdrop-blur-2xl bg-gradient-to-br from-slate-900/80 via-slate-800/50 to-slate-900/80">
+                <CardHeader className="space-y-2 pb-6">
                   <div className="flex items-center mb-2">
                     <button 
                       type="button" 
                       onClick={() => setActiveTab("login")}
-                      className="p-1 mr-2 rounded-full hover:bg-zinc-800"
+                      className="p-2 mr-2 rounded-lg hover:bg-white/5 transition-colors duration-200"
                     >
                       <ArrowLeft className="h-4 w-4 text-zinc-400" />
                     </button>
-                    <CardTitle>Forgot Password</CardTitle>
+                    <CardTitle className="text-2xl font-semibold bg-gradient-to-r from-white to-zinc-300 bg-clip-text text-transparent">
+                      Forgot Password
+                    </CardTitle>
                   </div>
-                  <CardDescription className="text-zinc-400">
+                  <CardDescription className="text-zinc-400 text-base">
                     Enter your email address and we'll send you a link to reset your password
                   </CardDescription>
                 </CardHeader>
                 {forgotPasswordSuccess ? (
                   <CardContent className="space-y-4">
                     <div className="flex flex-col items-center justify-center p-6 text-center space-y-4">
-                      <CheckCircle2 className="h-16 w-16 text-green-500 mb-2" />
+                      <CheckCircle2 className="h-16 w-16 text-emerald-500 mb-2 drop-shadow-[0_0_20px_rgba(16,185,129,0.4)]" />
                       <h3 className="text-xl font-medium text-white">Check Your Email</h3>
                       <p className="text-zinc-400">
                         We've sent a password reset link to your email address. Please check your inbox and follow the instructions.
@@ -1239,7 +1094,7 @@ export default function AuthPage() {
                       <Button 
                         type="button" 
                         onClick={() => setActiveTab("login")}
-                        className="mt-4 bg-gradient-to-r from-[#6b9aff] to-[#7ca5ff] text-[#0a1628] hover:from-[#5a89ee] hover:to-[#6b94ee] font-medium"
+                        className="mt-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-semibold shadow-[0_0_20px_rgba(251,191,36,0.3)]"
                       >
                         Back to Login
                       </Button>
@@ -1247,9 +1102,11 @@ export default function AuthPage() {
                   </CardContent>
                 ) : (
                   <form onSubmit={handleForgotPassword}>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="email" className="text-white">Email</Label>
+                    <CardContent className="space-y-5">
+                      <div className="space-y-2.5">
+                        <Label htmlFor="email" className="text-sm font-medium text-zinc-200">
+                          Email
+                        </Label>
                         <Input
                           id="email"
                           name="email"
@@ -1257,25 +1114,25 @@ export default function AuthPage() {
                           placeholder="Enter your email address"
                           value={forgotPasswordForm.email}
                           onChange={handleForgotPasswordChange}
-                          className="bg-[#0a1628] border-[#6b9aff]/30 text-white placeholder:text-gray-400 focus:border-[#6b9aff]"
+                          className="h-12 bg-black/40 border-white/10 text-white placeholder:text-zinc-500 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 transition-all duration-300 hover:border-white/20"
                         />
                         {forgotPasswordError && (
-                          <div className="flex items-center mt-2 text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">
+                          <div className="flex items-center mt-2 text-sm text-red-400 bg-red-500/10 px-3 py-2 rounded-lg border border-red-500/20">
                             <AlertCircle className="h-4 w-4 mr-2" />
                             {forgotPasswordError}
                           </div>
                         )}
                       </div>
                     </CardContent>
-                    <CardFooter>
+                    <CardFooter className="pt-2">
                       <Button 
                         type="submit" 
-                        className="w-full bg-gradient-to-r from-[#6b9aff] to-[#7ca5ff] text-[#0a1628] hover:from-[#5a89ee] hover:to-[#6b94ee] font-medium"
+                        className="w-full h-12 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-semibold shadow-[0_0_30px_rgba(251,191,36,0.3)] hover:shadow-[0_0_40px_rgba(251,191,36,0.4)] transition-all duration-300"
                         disabled={forgotPasswordMutation.isPending}
                       >
                         {forgotPasswordMutation.isPending ? (
                           <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                             Sending reset link...
                           </>
                         ) : (
@@ -1292,33 +1149,53 @@ export default function AuthPage() {
       </div>
 
       {/* Right Panel - Hero Section */}
-      <div className="hidden lg:flex lg:w-1/2 items-center justify-center p-12" style={{ background: 'linear-gradient(135deg, #1a2b4a 0%, #0f1f3a 100%)' }}>
-        <div className="max-w-lg text-white">
-          <h1 className="text-4xl font-bold mb-6">Interlinc</h1>
-          <h2 className="text-3xl font-semibold mb-4">Connect. Create. Collaborate.</h2>
-          <p className="text-muted-foreground mb-8 text-lg">
+      <div className="hidden lg:flex lg:w-1/2 items-center justify-center p-12 relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950">
+        {/* Luxury overlay effects */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(251,191,36,0.08),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_70%,rgba(59,130,246,0.05),transparent_50%)]" />
+        
+        <div className="max-w-lg relative z-10">
+          <h1 className="text-5xl font-bold mb-6 bg-gradient-to-r from-amber-200 via-amber-100 to-white bg-clip-text text-transparent drop-shadow-[0_0_30px_rgba(251,191,36,0.2)]">
+            Interlinc
+          </h1>
+          <h2 className="text-3xl font-semibold mb-4 text-white">
+            Connect. Create. Collaborate.
+          </h2>
+          <p className="text-zinc-300 mb-10 text-lg leading-relaxed">
             Outsourcing, Simplified. Manage people, payments, and projects with clarity, control, and zero invoicing.
           </p>
-          <div className="space-y-4">
-            <div className="flex items-start">
-              <div className="bg-white rounded-full h-6 w-6 flex items-center justify-center text-black mr-4 mt-1">✓</div>
+          <div className="space-y-6">
+            <div className="flex items-start group">
+              <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-full h-7 w-7 flex items-center justify-center text-slate-950 mr-4 mt-1 shadow-[0_0_20px_rgba(251,191,36,0.3)] group-hover:shadow-[0_0_30px_rgba(251,191,36,0.5)] transition-all duration-300">
+                ✓
+              </div>
               <div>
-                <h3 className="text-white font-medium text-lg">No Invoices. No Hassle.</h3>
-                <p className="text-muted-foreground">Streamline payments with built-in workflows and milestone approvals — no manual paperwork.</p>
+                <h3 className="text-white font-semibold text-lg mb-1">No Invoices. No Hassle.</h3>
+                <p className="text-zinc-400 leading-relaxed">
+                  Streamline payments with built-in workflows and milestone approvals — no manual paperwork.
+                </p>
               </div>
             </div>
-            <div className="flex items-start">
-              <div className="bg-white rounded-full h-6 w-6 flex items-center justify-center text-black mr-4 mt-1">✓</div>
+            <div className="flex items-start group">
+              <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-full h-7 w-7 flex items-center justify-center text-slate-950 mr-4 mt-1 shadow-[0_0_20px_rgba(251,191,36,0.3)] group-hover:shadow-[0_0_30px_rgba(251,191,36,0.5)] transition-all duration-300">
+                ✓
+              </div>
               <div>
-                <h3 className="text-white font-medium text-lg">Real-Time Financial Visibility</h3>
-                <p className="text-muted-foreground">Track budgets, teams, and progress in one place with compliance-ready data capture.</p>
+                <h3 className="text-white font-semibold text-lg mb-1">Real-Time Financial Visibility</h3>
+                <p className="text-zinc-400 leading-relaxed">
+                  Track budgets, teams, and progress in one place with compliance-ready data capture.
+                </p>
               </div>
             </div>
-            <div className="flex items-start">
-              <div className="bg-white rounded-full h-6 w-6 flex items-center justify-center text-black mr-4 mt-1">✓</div>
+            <div className="flex items-start group">
+              <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-full h-7 w-7 flex items-center justify-center text-slate-950 mr-4 mt-1 shadow-[0_0_20px_rgba(251,191,36,0.3)] group-hover:shadow-[0_0_30px_rgba(251,191,36,0.5)] transition-all duration-300">
+                ✓
+              </div>
               <div>
-                <h3 className="text-white font-medium text-lg">Smarter Payouts. Faster Turnarounds.</h3>
-                <p className="text-muted-foreground">Trigger payments on your terms — once work is approved, your teams get paid seamlessly.</p>
+                <h3 className="text-white font-semibold text-lg mb-1">Smarter Payouts. Faster Turnarounds.</h3>
+                <p className="text-zinc-400 leading-relaxed">
+                  Trigger payments on your terms — once work is approved, your teams get paid seamlessly.
+                </p>
               </div>
             </div>
           </div>
