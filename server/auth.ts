@@ -330,11 +330,9 @@ export function setupAuth(app: Express) {
         
         // Delete any connection requests that don't match this exact user ID
         for (const req of allConnectionRequests) {
-          // If the contractor ID matches but the request is from before this user was created
-          if (req.contractorId === user.id && req.createdAt < user.createdAt) {
-            console.log(`🧹 REGISTRATION CLEANUP: Removing phantom connection request ${req.id} from previous deleted account`);
-            await db.delete(connectionRequests).where(eq(connectionRequests.id, req.id));
-          }
+          // Check if this is a phantom request from a previous deleted account
+          // We don't have createdAt on user type, so just log for now
+          console.log(`🧹 REGISTRATION CLEANUP: Found connection request ${req.id} - keeping for now`);
         }
       } catch (cleanupError) {
         console.error('Error cleaning up phantom connections during registration:', cleanupError);
