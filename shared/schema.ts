@@ -125,6 +125,7 @@ export const payments = pgTable("payments", {
   id: serial("id").primaryKey(),
   contractId: integer("contract_id").references(() => contracts.id), // Made optional for direct payments
   milestoneId: integer("milestone_id").references(() => milestones.id), // Made optional for direct payments
+  workRequestId: integer("work_request_id").references(() => workRequests.id), // Work request this payment is for (for idempotency)
   businessId: integer("business_id").references(() => users.id).notNull(), // Business that made the payment - REQUIRED for all payments
   contractorId: integer("contractor_id").references(() => users.id), // Contractor receiving payment - optional for direct payments
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
@@ -478,6 +479,7 @@ export const insertDeliverableSchema = insertMilestoneSchema;
 export const insertPaymentSchema = z.object({
   contractId: z.number().optional(), // Made optional for direct payments
   milestoneId: z.number().optional(), // Made optional for direct payments
+  workRequestId: z.number().optional(), // Work request this payment is for (for idempotency)
   contractorId: z.number(), // Direct link to contractor for Send Payment feature
   businessId: z.number(), // Link to the business making the payment
   amount: z.string(),

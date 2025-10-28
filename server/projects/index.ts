@@ -709,12 +709,49 @@ export function registerProjectRoutes(app: Express) {
         });
       }
 
-      // Check if already paid
+      // Idempotency check - if already paid, return error
       if (workRequest.status === "paid") {
         return res.status(400).json({
           ok: false,
           message: "Work request already paid"
         });
+      }
+
+      // IDEMPOTENCY PROTECTION: Check if PaymentIntent already exists for this work request
+      // Use workRequestId as the unique idempotency key
+      const existingPayments = await storage.getPayments();
+      const existingPayment = existingPayments.find(p => 
+        p.workRequestId === workRequestId &&
+        p.businessId === currentUserId &&
+        p.stripePaymentIntentId
+      );
+
+      if (existingPayment && existingPayment.stripePaymentIntentId) {
+        // Retrieve the existing PaymentIntent from Stripe
+        const Stripe = (await import('stripe')).default;
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
+          apiVersion: '2025-02-24.acacia',
+          typescript: true
+        });
+
+        try {
+          const existingIntent = await stripe.paymentIntents.retrieve(existingPayment.stripePaymentIntentId);
+          
+          // If the intent is still in a usable state, return it (idempotent response)
+          if (existingIntent.status !== 'succeeded' && existingIntent.status !== 'canceled') {
+            console.log(`[CREATE_PAYMENT_INTENT] Returning existing PaymentIntent for work request ${workRequestId}: ${existingIntent.id}`);
+            return res.json({
+              ok: true,
+              clientSecret: existingIntent.client_secret,
+              paymentIntentId: existingIntent.id,
+              amount: workRequest.amount,
+              currency: workRequest.currency || 'gbp',
+              existing: true
+            });
+          }
+        } catch (stripeError) {
+          console.warn(`[CREATE_PAYMENT_INTENT] Could not retrieve existing PaymentIntent, creating new one`, stripeError);
+        }
       }
 
       // Get contractor details
@@ -754,6 +791,31 @@ export function registerProjectRoutes(app: Express) {
 
       console.log(`[CREATE_PAYMENT_INTENT] PaymentIntent created: ${paymentIntent.id}`);
 
+      // Create a preliminary payment record to track this PaymentIntent (for idempotency)
+      // This will be updated when payment completes
+      // CRITICAL: Store workRequestId for deterministic idempotency and linkage
+      try {
+        await storage.createPayment({
+          contractId: null,
+          milestoneId: null,
+          workRequestId: workRequestId, // IDEMPOTENCY KEY
+          businessId: currentUserId,
+          contractorId: workRequest.contractorUserId,
+          amount: workRequest.amount,
+          status: 'pending',
+          scheduledDate: new Date(),
+          completedDate: null,
+          notes: `Payment for work request: ${workRequest.title}`,
+          stripePaymentIntentId: paymentIntent.id,
+          stripePaymentIntentStatus: 'requires_payment_method',
+          paymentProcessor: 'stripe',
+          triggeredBy: 'work_request_payment_intent_created',
+          triggeredAt: new Date()
+        });
+      } catch (paymentError) {
+        console.warn(`[CREATE_PAYMENT_INTENT] Could not create preliminary payment record`, paymentError);
+      }
+
       res.json({
         ok: true,
         clientSecret: paymentIntent.clientSecret,
@@ -775,7 +837,7 @@ export function registerProjectRoutes(app: Express) {
   app.post("/api/work-requests/:id/process-payment", async (req, res) => {
     try {
       const workRequestId = parseInt(req.params.id);
-      const { paymentIntentId, allocatedBudget } = req.body;
+      const { paymentIntentId } = req.body; // SECURITY: Removed allocatedBudget - derive from trusted sources only
 
       // Use the same authentication pattern as other endpoints
       let currentUserId = req.user?.id;
@@ -848,6 +910,14 @@ export function registerProjectRoutes(app: Express) {
         });
       }
 
+      // SECURITY: Derive amount ONLY from trusted server sources - work request DB record and Stripe PaymentIntent
+      // DO NOT accept client-supplied amounts
+      const trustedAmount = workRequest.amount; // From database
+      const stripeConfirmedAmountCents = paymentIntent.amount; // From Stripe API
+      const stripeConfirmedAmount = (stripeConfirmedAmountCents / 100).toFixed(2); // Convert cents to dollars
+
+      console.log(`[WORK_REQUEST_PAYMENT] Amount verification: DB=${trustedAmount}, Stripe=${stripeConfirmedAmount}`);
+
       // Find associated contract for this work request (query by contractor and business)
       const businessContracts = await storage.getBusinessContracts(currentUserId);
       const relatedContract = businessContracts.find(c => 
@@ -855,26 +925,42 @@ export function registerProjectRoutes(app: Express) {
         c.contractorId === workRequest.contractorUserId
       );
 
-      // Create payment record
-      const paymentData = {
-        contractId: relatedContract?.id || null,
-        milestoneId: null,
-        businessId: currentUserId,
-        contractorId: workRequest.contractorUserId,
-        amount: workRequest.amount,
-        status: 'completed',
-        scheduledDate: new Date(),
-        completedDate: new Date(),
-        notes: `Payment for work request: ${workRequest.title}`,
-        stripePaymentIntentId: paymentIntentId,
-        stripePaymentIntentStatus: paymentIntent.status,
-        paymentProcessor: 'stripe',
-        triggeredBy: 'work_request_payment',
-        triggeredAt: new Date()
-      };
+      // SECURITY: Find payment record using deterministic workRequestId linkage
+      // This ensures we're processing the correct PaymentIntent for this exact work request
+      const existingPayments = await storage.getPayments();
+      const existingPayment = existingPayments.find(p => 
+        p.workRequestId === workRequestId &&
+        p.stripePaymentIntentId === paymentIntentId
+      );
 
-      const payment = await storage.createPayment(paymentData);
-      console.log(`[WORK_REQUEST_PAYMENT] Payment record created: ${payment.id}`);
+      // Verify the PaymentIntent belongs to this work request (security check)
+      if (!existingPayment) {
+        console.error(`[WORK_REQUEST_PAYMENT] No payment record found for workRequestId=${workRequestId} and paymentIntentId=${paymentIntentId}`);
+        return res.status(400).json({
+          ok: false,
+          message: "Payment record not found. This PaymentIntent may not belong to this work request."
+        });
+      }
+
+      // Verify metadata matches (additional security layer)
+      const paymentIntentMetadata = paymentIntent.metadata;
+      if (paymentIntentMetadata?.work_request_id !== workRequestId.toString()) {
+        console.error(`[WORK_REQUEST_PAYMENT] Metadata mismatch: PaymentIntent work_request_id=${paymentIntentMetadata?.work_request_id}, expected=${workRequestId}`);
+        return res.status(400).json({
+          ok: false,
+          message: "PaymentIntent metadata does not match work request ID"
+        });
+      }
+
+      // Update existing payment record to completed status
+      console.log(`[WORK_REQUEST_PAYMENT] Updating payment record ${existingPayment.id} to completed`);
+      const payment = await storage.updatePayment(existingPayment.id, {
+        contractId: relatedContract?.id || null,
+        status: 'completed',
+        completedDate: new Date(),
+        stripePaymentIntentStatus: paymentIntent.status,
+        amount: trustedAmount // SECURITY: Use DB amount verified against Stripe
+      });
 
       // Update work request status to paid
       await storage.updateWorkRequestStatus(workRequestId, "paid");

@@ -159,9 +159,9 @@ export default function ProjectDetails() {
   const handlePaymentComplete = async (paymentIntentId: string) => {
     setIsProcessingPayment(true);
     try {
+      // SECURITY: Only send paymentIntentId - server derives amount from trusted sources
       const response = await apiRequest("POST", `/api/work-requests/${selectedWorkRequest!.id}/process-payment`, {
-        paymentIntentId: paymentIntentId,
-        allocatedBudget: parseFloat(selectedWorkRequest!.amount),
+        paymentIntentId: paymentIntentId
       });
 
       if (response.ok) {
