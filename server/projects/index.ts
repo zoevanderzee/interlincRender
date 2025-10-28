@@ -317,11 +317,10 @@ export function registerProjectRoutes(app: Express) {
         });
       }
 
-      // DETECT IF THIS IS A TASK OR PROJECT ASSIGNMENT
-      const isTask = !!workRequest.taskId;
-      const isProject = !!workRequest.projectId && !workRequest.taskId;
+      // Work requests are always project-based
+      const isProject = !!workRequest.projectId;
       
-      console.log(`[WR_ACCEPT] workRequestId=${workRequestId} isTask=${isTask} isProject=${isProject} taskId=${workRequest.taskId || 'none'} projectId=${workRequest.projectId || 'none'}`);
+      console.log(`[WR_ACCEPT] workRequestId=${workRequestId} isProject=${isProject} projectId=${workRequest.projectId || 'none'}`);
 
       // Verify this contractor is assigned to this work request
       if (workRequest.contractorUserId !== currentUserId) {
@@ -337,7 +336,7 @@ export function registerProjectRoutes(app: Express) {
           ok: true,
           status: "accepted",
           message: "Already accepted",
-          type: isTask ? "task" : "project"
+          type: "project"
         });
       }
 
@@ -364,7 +363,7 @@ export function registerProjectRoutes(app: Express) {
       }
 
       // Create contract when work request is accepted
-      const contractType = isTask ? "TASK" : "PROJECT";
+      const contractType = "PROJECT";
       const contractCode = `${contractType}-${workRequestId}-${Date.now().toString(36).toUpperCase()}`;
       const contractName = `${workRequest.title} - ${business.companyName || business.firstName + ' ' + business.lastName}`;
       
@@ -374,16 +373,13 @@ export function registerProjectRoutes(app: Express) {
         businessId: project.businessId,
         projectId: workRequest.projectId,
         contractorId: currentUserId,
-        description: workRequest.description || `Contract for ${contractType.toLowerCase()} work request: ${workRequest.title}`,
+        description: workRequest.description || `Contract for work request: ${workRequest.title}`,
         status: "active",
         value: workRequest.amount,
         contractorBudget: workRequest.amount,
-        startDate: new Date().toISOString(),
-        endDate: workRequest.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days if no due date
+        startDate: new Date(),
+        endDate: workRequest.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days if no due date
       });
-
-      // Link work request to contract
-      await storage.updateWorkRequestContract(workRequestId, contract.id);
 
       // Create a deliverable/milestone automatically when work request is accepted
       const milestone = await storage.createMilestone({
@@ -398,13 +394,13 @@ export function registerProjectRoutes(app: Express) {
         submissionType: 'digital'
       });
 
-      console.log(`[WORK_REQUEST_ACCEPTED] type=${contractType} workRequestId=${workRequestId} contractorId=${currentUserId} contractId=${contract.id} milestoneId=${milestone.id} amount=${workRequest.amount} taskId=${workRequest.taskId || 'none'}`);
+      console.log(`[WORK_REQUEST_ACCEPTED] type=${contractType} workRequestId=${workRequestId} contractorId=${currentUserId} contractId=${contract.id} milestoneId=${milestone.id} amount=${workRequest.amount}`);
 
       res.json({
         ok: true,
         status: "accepted",
         message: `${contractType} work request accepted successfully`,
-        type: isTask ? "task" : "project",
+        type: "project",
         contractId: contract.id,
         milestoneId: milestone.id
       });
@@ -571,12 +567,9 @@ export function registerProjectRoutes(app: Express) {
           status: "active",
           value: workRequest.amount,
           contractorBudget: workRequest.amount,
-          startDate: new Date().toISOString(),
-          endDate: workRequest.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+          startDate: new Date(),
+          endDate: workRequest.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
         });
-
-        // Link work request to contract
-        await storage.updateWorkRequestContract(workRequestId, contract.id);
 
         // Create milestone
         const milestone = await storage.createMilestone({
@@ -671,6 +664,161 @@ export function registerProjectRoutes(app: Express) {
 
     } catch (error) {
       console.error("Error rejecting work request (business):", error);
+      res.status(500).json({
+        ok: false,
+        message: "Internal server error"
+      });
+    }
+  });
+
+  // Process payment after Stripe payment succeeds for work request
+  app.post("/api/work-requests/:id/process-payment", async (req, res) => {
+    try {
+      const workRequestId = parseInt(req.params.id);
+      const { paymentIntentId, allocatedBudget } = req.body;
+
+      // Use the same authentication pattern as other endpoints
+      let currentUserId = req.user?.id;
+      
+      // Fallback to X-User-ID header like other endpoints in this system
+      if (!currentUserId && req.headers['x-user-id']) {
+        currentUserId = parseInt(req.headers['x-user-id'] as string);
+      }
+
+      if (!currentUserId) {
+        return res.status(401).json({
+          ok: false,
+          message: "Authentication required"
+        });
+      }
+
+      // Get work request
+      const workRequest = await storage.getWorkRequest(workRequestId);
+      if (!workRequest) {
+        return res.status(404).json({
+          ok: false,
+          message: "Work request not found"
+        });
+      }
+
+      // Get project and verify business ownership
+      const project = await storage.getProject(workRequest.projectId);
+      if (!project || project.businessId !== currentUserId) {
+        return res.status(403).json({
+          ok: false,
+          message: "You can only process payments for your own work requests"
+        });
+      }
+
+      // Idempotency check - if already paid, return success
+      if (workRequest.status === "paid") {
+        return res.json({
+          ok: true,
+          status: "paid",
+          message: "Work request already paid"
+        });
+      }
+
+      console.log(`[WORK_REQUEST_PAYMENT] workRequestId=${workRequestId} paymentIntentId=${paymentIntentId} businessId=${currentUserId}`);
+
+      // Verify payment intent with Stripe
+      const Stripe = (await import('stripe')).default;
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
+        apiVersion: '2025-02-24.acacia',
+        typescript: true
+      });
+
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      
+      // Verify payment is completed
+      if (paymentIntent.status !== 'succeeded' && paymentIntent.status !== 'requires_capture') {
+        return res.status(400).json({
+          ok: false,
+          message: `Payment not completed. Status: ${paymentIntent.status}`
+        });
+      }
+
+      // Verify payment amount matches work request amount (convert to cents for comparison)
+      const workRequestAmountInCents = Math.round(parseFloat(workRequest.amount) * 100);
+      if (paymentIntent.amount !== workRequestAmountInCents) {
+        console.error(`[WORK_REQUEST_PAYMENT] Amount mismatch: PaymentIntent=${paymentIntent.amount} WorkRequest=${workRequestAmountInCents}`);
+        return res.status(400).json({
+          ok: false,
+          message: `Payment amount mismatch. Expected ${workRequestAmountInCents} cents, got ${paymentIntent.amount} cents`
+        });
+      }
+
+      // Find associated contract for this work request (query by contractor and business)
+      const businessContracts = await storage.getBusinessContracts(currentUserId);
+      const relatedContract = businessContracts.find(c => 
+        c.projectId === workRequest.projectId && 
+        c.contractorId === workRequest.contractorUserId
+      );
+
+      // Create payment record
+      const paymentData = {
+        contractId: relatedContract?.id || null,
+        milestoneId: null,
+        businessId: currentUserId,
+        contractorId: workRequest.contractorUserId,
+        amount: workRequest.amount,
+        status: 'completed',
+        scheduledDate: new Date(),
+        completedDate: new Date(),
+        notes: `Payment for work request: ${workRequest.title}`,
+        stripePaymentIntentId: paymentIntentId,
+        stripePaymentIntentStatus: paymentIntent.status,
+        paymentProcessor: 'stripe',
+        triggeredBy: 'work_request_payment',
+        triggeredAt: new Date()
+      };
+
+      const payment = await storage.createPayment(paymentData);
+      console.log(`[WORK_REQUEST_PAYMENT] Payment record created: ${payment.id}`);
+
+      // Update work request status to paid
+      await storage.updateWorkRequestStatus(workRequestId, "paid");
+
+      // Generate invoices for both business and contractor
+      const { invoiceGenerator } = await import('../services/invoice-generator.js');
+      try {
+        await invoiceGenerator.generateInvoiceForPayment({
+          paymentId: payment.id,
+          stripePaymentIntentId: paymentIntentId,
+          stripeTransactionId: paymentIntent.latest_charge as string || undefined
+        });
+        console.log(`[WORK_REQUEST_PAYMENT] Invoices generated for payment ${payment.id}`);
+      } catch (invoiceError) {
+        console.error(`[WORK_REQUEST_PAYMENT] Failed to generate invoices:`, invoiceError);
+        // Don't fail the entire request if invoice generation fails
+      }
+
+      // Update contract and milestone status if they exist
+      if (relatedContract) {
+        if (relatedContract.status === 'active') {
+          await storage.updateContract(relatedContract.id, { status: 'completed' });
+          console.log(`[WORK_REQUEST_PAYMENT] Contract ${relatedContract.id} marked as completed`);
+        }
+
+        // Find and update associated milestones
+        const milestones = await storage.getMilestonesByContractId(relatedContract.id);
+        for (const milestone of milestones) {
+          if (milestone.status !== 'approved') {
+            await storage.updateMilestone(milestone.id, { status: 'approved' });
+            console.log(`[WORK_REQUEST_PAYMENT] Milestone ${milestone.id} marked as approved`);
+          }
+        }
+      }
+
+      res.json({
+        ok: true,
+        status: "paid",
+        paymentId: payment.id,
+        message: "Payment processed successfully and invoices generated"
+      });
+
+    } catch (error) {
+      console.error("Error processing work request payment:", error);
       res.status(500).json({
         ok: false,
         message: "Internal server error"

@@ -4873,28 +4873,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const alreadyRequested = existingRequests.some(req => {
         // Stronger validation to prevent duplicate requests:
         // 1. Check by profile code (case insensitive)
-        const profileCodeMatch = req.profileCode match and status === 'pending' || req.status === 'accepted');
+        const profileCodeMatch = req.profileCode?.toLowerCase() === profileCode.toLowerCase();
+        const isPendingOrAccepted = req.status === 'pending' || req.status === 'accepted';
+        return profileCodeMatch && isPendingOrAccepted;
+      });
 
-        if (alreadyRequested) {
-          return res.status(400).json({
-            message: "You've already sent a connection request to this contractor."
-          });
-        }
-
-        // Create the connection request
-        const createdRequest = await storage.createConnectionRequest({
-          businessId: businessId,
-          profileCode: profileCode,
-          message: message || null,
-          status: 'pending'
+      if (alreadyRequested) {
+        return res.status(400).json({
+          message: "You've already sent a connection request to this contractor."
         });
-
-        res.status(201).json(createdRequest);
-      } catch (error: any) {
-        console.error('Error creating connection request:', error);
-        res.status(500).json({message: error.message});
       }
-    });
+
+      // Create the connection request
+      const createdRequest = await storage.createConnectionRequest({
+        businessId: businessId,
+        profileCode: profileCode,
+        message: message || null,
+        status: 'pending'
+      });
+
+      res.status(201).json(createdRequest);
+    } catch (error: any) {
+      console.error('Error creating connection request:', error);
+      res.status(500).json({message: error.message});
+    }
+  });
 
     app.get(`${apiRouter}/connection-requests`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
       try {
@@ -5299,8 +5302,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           approverId: userId
         });
 
-        // If approved,        // Update work request status
-        await storage.updateWorkRequestStatus(submission.workRequestId, 'approved');
+        // If approved, create payment intent
+        if (status === 'approved') {
+          // Update work request status
+          await storage.updateWorkRequestStatus(submission.workRequestId, 'approved');
 
         // Get contractor details
         const contractor = await storage.getUser(submission.contractorId);
@@ -5387,9 +5392,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             title: submission.title
           }
         });
-      }
-
-      res.json({submission: updatedSubmission});
+        } else {
+          // For non-approved statuses, just return the updated submission
+          res.json({submission: updatedSubmission});
+        }
     } catch (error) {
       console.error('Error reviewing work submission:', error);
       res.status(500).json({message: 'Error reviewing submission'});

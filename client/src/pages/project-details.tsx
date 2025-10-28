@@ -63,7 +63,9 @@ export default function ProjectDetails() {
   // State for Payment Modal
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedWorkRequest, setSelectedWorkRequest] = useState<WorkRequest | null>(null);
+  const [paymentClientSecret, setPaymentClientSecret] = useState<string | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [processingWorkRequestId, setProcessingWorkRequestId] = useState<number | null>(null);
 
   // Handle opening submit work modal
   const handleSubmitWork = (deliverableId: number, deliverableName: string) => {
@@ -79,6 +81,14 @@ export default function ProjectDetails() {
 
   // Handle accepting work request (business action)
   const handleAcceptWorkRequest = async (workRequest: WorkRequest) => {
+    // Idempotency check - prevent double-submit
+    if (processingWorkRequestId === workRequest.id || isProcessingPayment) {
+      return;
+    }
+
+    // Mark this work request as being processed
+    setProcessingWorkRequestId(workRequest.id);
+
     // Check for saved payment methods (this is a placeholder, actual check would involve an API call)
     const hasSavedPaymentMethod = false; // Replace with actual check
 
@@ -106,6 +116,9 @@ export default function ProjectDetails() {
             queryClient.invalidateQueries({ queryKey: ['/api/milestones?contractId=31'] }),
             queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] })
           ]);
+          
+          // Clear processing state on success
+          setProcessingWorkRequestId(null);
         } else {
           throw new Error("Failed to accept work request");
         }
@@ -116,6 +129,8 @@ export default function ProjectDetails() {
           description: "Failed to accept work request. Please try again.",
           variant: "destructive",
         });
+        // Clear processing state on error
+        setProcessingWorkRequestId(null);
       }
     }
   };
@@ -136,6 +151,7 @@ export default function ProjectDetails() {
         });
         setShowPaymentModal(false);
         setSelectedWorkRequest(null);
+        setProcessingWorkRequestId(null); // Clear processing state
 
         // Refresh data
         await Promise.all([
@@ -154,6 +170,7 @@ export default function ProjectDetails() {
         description: "There was an error processing your payment. Please try again.",
         variant: "destructive",
       });
+      setProcessingWorkRequestId(null); // Clear processing state on error
     } finally {
       setIsProcessingPayment(false);
     }
@@ -494,8 +511,14 @@ export default function ProjectDetails() {
                       <Button 
                         className="bg-green-600 hover:bg-green-700 text-white text-sm"
                         onClick={() => handleAcceptWorkRequest(workRequest)}
+                        disabled={processingWorkRequestId === workRequest.id || isProcessingPayment}
+                        data-testid="button-accept-work-request"
                       >
-                        ✓ Accept & Allocate Budget (${parseFloat(workRequest.amount).toLocaleString()})
+                        {processingWorkRequestId === workRequest.id ? (
+                          "Processing..."
+                        ) : (
+                          `✓ Accept & Allocate Budget ($${parseFloat(workRequest.amount).toLocaleString()})`
+                        )}
                       </Button>
                       <Button 
                         variant="outline"
@@ -765,9 +788,11 @@ export default function ProjectDetails() {
                 onClick={() => {
                   setShowPaymentModal(false);
                   setSelectedWorkRequest(null);
+                  setProcessingWorkRequestId(null); // Clear processing state
                 }}
                 disabled={isProcessingPayment}
                 className="w-full border-gray-700 text-white hover:bg-gray-800"
+                data-testid="button-cancel-payment"
               >
                 Cancel
               </Button>
