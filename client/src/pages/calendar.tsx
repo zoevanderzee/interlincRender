@@ -357,9 +357,9 @@ export default function Calendar() {
                   key={index}
                   className={`
                     min-h-[120px] p-3 border-r border-b relative
-                    ${!isCurrentMonthDay ? 'bg-zinc-50 dark:bg-[hsl(210,60%,8%)] opacity-50' : 'bg-white dark:bg-[hsl(215,50%,12%)]'}
+                    ${!isCurrentMonthDay ? 'bg-blue-50/30 dark:bg-[hsl(210,60%,8%)] opacity-50' : 'bg-blue-50 dark:bg-[hsl(215,50%,12%)]'}
                     ${isTodayDate ? 'ring-2 ring-inset ring-blue-500' : ''}
-                    hover:bg-zinc-100 dark:hover:bg-[hsl(215,40%,18%)] transition-colors cursor-pointer
+                    hover:bg-blue-100 dark:hover:bg-[hsl(215,40%,18%)] transition-colors cursor-pointer
                     border-zinc-200 dark:border-zinc-800
                   `}
                 >
