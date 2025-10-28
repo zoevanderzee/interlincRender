@@ -982,7 +982,7 @@ export default function AuthPage() {
                 <form onSubmit={handleLogin}>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="username" className="text-[#6b9aff] font-semibold">Email</Label>
+                      <Label htmlFor="username" className="text-white font-semibold">Email</Label>
                       <Input
                         id="username"
                         name="username"
@@ -990,15 +990,14 @@ export default function AuthPage() {
                         placeholder="Enter your email"
                         value={loginForm.username}
                         onChange={handleLoginChange}
-                        className="border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:shadow-[0_0_20px_rgba(107,154,255,0.3)]"
-                        style={{ background: 'linear-gradient(135deg, rgba(15, 31, 58, 0.9), rgba(26, 43, 74, 0.9))' }}
+                        className="!bg-[#0f1f3a] border-[#6b9aff]/30 text-white placeholder:text-zinc-500 focus:border-[#6b9aff] focus:!bg-[#1a2b4a]"
                       />
                       {loginErrors.username && (
-                        <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{loginErrors.username}</p>
+                        <p className="text-sm text-red-400 mt-1">{loginErrors.username}</p>
                       )}
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="password" className="text-[#6b9aff] font-semibold">Password</Label>
+                      <Label htmlFor="password" className="text-white font-semibold">Password</Label>
                       <Input
                         id="password"
                         name="password"
@@ -1006,8 +1005,7 @@ export default function AuthPage() {
                         placeholder="Enter your password"
                         value={loginForm.password}
                         onChange={handleLoginChange}
-                        className="border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:shadow-[0_0_20px_rgba(107,154,255,0.3)]"
-                        style={{ background: 'linear-gradient(135deg, rgba(15, 31, 58, 0.9), rgba(26, 43, 74, 0.9))' }}
+                        className="!bg-[#0f1f3a] border-[#6b9aff]/30 text-white placeholder:text-zinc-500 focus:border-[#6b9aff] focus:!bg-[#1a2b4a]"
                       />
                       {loginErrors.password && (
                         <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{loginErrors.password}</p>
@@ -1056,39 +1054,37 @@ export default function AuthPage() {
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="firstName" className="text-[#6b9aff] font-semibold">First Name</Label>
+                        <Label htmlFor="firstName" className="text-white font-semibold">First Name</Label>
                         <Input
                           id="firstName"
                           name="firstName"
                           placeholder="John"
                           value={registerForm.firstName}
                           onChange={handleRegisterChange}
-                          className="border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:shadow-[0_0_20px_rgba(107,154,255,0.3)]"
-                          style={{ background: 'linear-gradient(135deg, rgba(15, 31, 58, 0.9), rgba(26, 43, 74, 0.9))' }}
+                          className="!bg-[#0f1f3a] border-[#6b9aff]/30 text-white placeholder:text-zinc-500 focus:border-[#6b9aff] focus:!bg-[#1a2b4a]"
                         />
                         {registerErrors.firstName && (
-                          <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.firstName}</p>
+                          <p className="text-sm text-red-400 mt-1">{registerErrors.firstName}</p>
                         )}
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="lastName" className="text-[#6b9aff] font-semibold">Last Name</Label>
+                        <Label htmlFor="lastName" className="text-white font-semibold">Last Name</Label>
                         <Input
                           id="lastName"
                           name="lastName"
                           placeholder="Doe"
                           value={registerForm.lastName}
                           onChange={handleRegisterChange}
-                          className="border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:shadow-[0_0_20px_rgba(107,154,255,0.3)]"
-                          style={{ background: 'linear-gradient(135deg, rgba(15, 31, 58, 0.9), rgba(26, 43, 74, 0.9))' }}
+                          className="!bg-[#0f1f3a] border-[#6b9aff]/30 text-white placeholder:text-zinc-500 focus:border-[#6b9aff] focus:!bg-[#1a2b4a]"
                         />
                         {registerErrors.lastName && (
-                          <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.lastName}</p>
+                          <p className="text-sm text-red-400 mt-1">{registerErrors.lastName}</p>
                         )}
                       </div>
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="email" className="text-[#6b9aff] font-semibold">Email</Label>
+                      <Label htmlFor="email" className="text-white font-semibold">Email</Label>
                       <Input
                         id="email"
                         name="email"
@@ -1096,33 +1092,31 @@ export default function AuthPage() {
                         placeholder="john.doe@example.com"
                         value={registerForm.email}
                         onChange={handleRegisterChange}
-                        className="border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:shadow-[0_0_20px_rgba(107,154,255,0.3)]"
-                        style={{ background: 'linear-gradient(135deg, rgba(15, 31, 58, 0.9), rgba(26, 43, 74, 0.9))' }}
+                        className="!bg-[#0f1f3a] border-[#6b9aff]/30 text-white placeholder:text-zinc-500 focus:border-[#6b9aff] focus:!bg-[#1a2b4a]"
                       />
                       {registerErrors.email && (
-                        <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.email}</p>
+                        <p className="text-sm text-red-400 mt-1">{registerErrors.email}</p>
                       )}
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="username" className="text-[#6b9aff] font-semibold">Username</Label>
+                      <Label htmlFor="username" className="text-white font-semibold">Username</Label>
                       <Input
                         id="username"
                         name="username"
                         placeholder="johndoe"
                         value={registerForm.username}
                         onChange={handleRegisterChange}
-                        className="border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:shadow-[0_0_20px_rgba(107,154,255,0.3)]"
-                        style={{ background: 'linear-gradient(135deg, rgba(15, 31, 58, 0.9), rgba(26, 43, 74, 0.9))' }}
+                        className="!bg-[#0f1f3a] border-[#6b9aff]/30 text-white placeholder:text-zinc-500 focus:border-[#6b9aff] focus:!bg-[#1a2b4a]"
                       />
                       {registerErrors.username && (
-                        <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.username}</p>
+                        <p className="text-sm text-red-400 mt-1">{registerErrors.username}</p>
                       )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="password" className="text-[#6b9aff] font-semibold">Password</Label>
+                        <Label htmlFor="password" className="text-white font-semibold">Password</Label>
                         <Input
                           id="password"
                           name="password"
@@ -1130,15 +1124,14 @@ export default function AuthPage() {
                           placeholder="••••••••"
                           value={registerForm.password}
                           onChange={handleRegisterChange}
-                          className="border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:shadow-[0_0_20px_rgba(107,154,255,0.3)]"
-                          style={{ background: 'linear-gradient(135deg, rgba(15, 31, 58, 0.9), rgba(26, 43, 74, 0.9))' }}
+                          className="!bg-[#0f1f3a] border-[#6b9aff]/30 text-white placeholder:text-zinc-500 focus:border-[#6b9aff] focus:!bg-[#1a2b4a]"
                         />
                         {registerErrors.password && (
-                          <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.password}</p>
+                          <p className="text-sm text-red-400 mt-1">{registerErrors.password}</p>
                         )}
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="confirmPassword" className="text-[#6b9aff] font-semibold">Confirm Password</Label>
+                        <Label htmlFor="confirmPassword" className="text-white font-semibold">Confirm Password</Label>
                         <Input
                           id="confirmPassword"
                           name="confirmPassword"
@@ -1146,17 +1139,16 @@ export default function AuthPage() {
                           placeholder="••••••••"
                           value={registerForm.confirmPassword}
                           onChange={handleRegisterChange}
-                          className="border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:shadow-[0_0_20px_rgba(107,154,255,0.3)]"
-                          style={{ background: 'linear-gradient(135deg, rgba(15, 31, 58, 0.9), rgba(26, 43, 74, 0.9))' }}
+                          className="!bg-[#0f1f3a] border-[#6b9aff]/30 text-white placeholder:text-zinc-500 focus:border-[#6b9aff] focus:!bg-[#1a2b4a]"
                         />
                         {registerErrors.confirmPassword && (
-                          <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.confirmPassword}</p>
+                          <p className="text-sm text-red-400 mt-1">{registerErrors.confirmPassword}</p>
                         )}
                       </div>
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="role" className="text-[#6b9aff] font-semibold">Account Type</Label>
+                      <Label htmlFor="role" className="text-white font-semibold">Account Type</Label>
                       <select
                         id="role"
                         name="role"
@@ -1171,32 +1163,30 @@ export default function AuthPage() {
 
                     {registerForm.role === "business" && (
                       <div className="space-y-2">
-                        <Label htmlFor="company" className="text-[#6b9aff] font-semibold">Company Name</Label>
+                        <Label htmlFor="company" className="text-white font-semibold">Company Name</Label>
                         <Input
                           id="company"
                           name="company"
                           placeholder="Acme Inc."
                           value={registerForm.company}
                           onChange={handleRegisterChange}
-                          className="border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:shadow-[0_0_20px_rgba(107,154,255,0.3)]"
-                          style={{ background: 'linear-gradient(135deg, rgba(15, 31, 58, 0.9), rgba(26, 43, 74, 0.9))' }}
+                          className="!bg-[#0f1f3a] border-[#6b9aff]/30 text-white placeholder:text-zinc-500 focus:border-[#6b9aff] focus:!bg-[#1a2b4a]"
                         />
                         {registerErrors.company && (
-                          <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.company}</p>
+                          <p className="text-sm text-red-400 mt-1">{registerErrors.company}</p>
                         )}
                       </div>
                     )}
 
                     <div className="space-y-2">
-                      <Label htmlFor="position" className="text-[#6b9aff] font-semibold">Position Title</Label>
+                      <Label htmlFor="position" className="text-white font-semibold">Position Title</Label>
                       <Input
                         id="position"
                         name="position"
                         placeholder="CEO, Project Manager, etc."
                         value={registerForm.position}
                         onChange={handleRegisterChange}
-                        className="border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:shadow-[0_0_20px_rgba(107,154,255,0.3)]"
-                        style={{ background: 'linear-gradient(135deg, rgba(15, 31, 58, 0.9), rgba(26, 43, 74, 0.9))' }}
+                        className="!bg-[#0f1f3a] border-[#6b9aff]/30 text-white placeholder:text-zinc-500 focus:border-[#6b9aff] focus:!bg-[#1a2b4a]"
                       />
                     </div>
                   </CardContent>
