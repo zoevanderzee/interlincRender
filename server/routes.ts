@@ -5291,98 +5291,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           approverId: userId
         });
 
-        // If approved, trigger automated payment via work request
-        let paymentResult = null;
+        // If approved, update work request status (payment will be processed separately via UI)
         if (status === 'approved') {
           const workRequest = await storage.getWorkRequest(submission.workRequestId);
           if (workRequest) {
             await storage.updateWorkRequestStatus(workRequest.id, 'approved');
-
-            // 🚀 TRIGGER AUTOMATED PAYMENT - Work Request Based
-            console.log(`[WORK_APPROVAL] Triggering payment for work request ${workRequest.id}, amount: ${workRequest.amount}`);
-
-            try {
-              // Get contractor Connect account
-              const contractor = await storage.getUser(submission.contractorId);
-              if (!contractor?.stripeConnectAccountId) {
-                throw new Error('Contractor not set up for payments');
-              }
-
-              // Create Payment Intent with destination charge
-              const { createPaymentIntent } = await import('./services/stripe.js');
-
-              // Create payment record first
-              const payment = await storage.createPayment({
-                contractId: workRequest.contractId || null,
-                milestoneId: null,
-                businessId: submission.businessId,
-                contractorId: submission.contractorId,
-                amount: workRequest.amount,
-                status: 'processing',
-                scheduledDate: new Date(),
-                notes: `Payment for approved work: ${workRequest.title}`,
-                triggeredBy: 'work_approval'
-              });
-
-              const paymentIntent = await createPaymentIntent({
-                amount: parseFloat(workRequest.amount),
-                currency: 'gbp',
-                description: `Payment for work: ${workRequest.title}`,
-                metadata: {
-                  payment_id: payment.id.toString(),
-                  work_request_id: workRequest.id.toString(),
-                  submission_id: submissionId.toString(),
-                  business_id: submission.businessId.toString(),
-                  contractor_id: submission.contractorId.toString(),
-                  payment_type: 'work_submission_approval'
-                },
-                transferData: {
-                  destination: contractor.stripeConnectAccountId
-                },
-                businessAccountId: submission.businessId.toString()
-              });
-
-              // Update payment with Stripe details
-              await storage.updatePaymentStripeDetails(
-                payment.id,
-                paymentIntent.id,
-                paymentIntent.status || 'requires_payment_method'
-              );
-
-              // Link payment to submission
-              await storage.updateWorkRequestSubmission(submissionId, {
-                paymentId: payment.id,
-                approvedAt: new Date()
-              });
-
-              // Update budget
-              await storage.increaseBudgetUsed(submission.businessId, parseFloat(workRequest.amount));
-
-              paymentResult = {
-                success: true,
-                paymentId: payment.id,
-                payment: {
-                  amount: workRequest.amount,
-                  contractorId: submission.contractorId
-                }
-              };
-
-              console.log(`✅ Payment processed for work submission ${submissionId}: Payment Intent ${paymentIntent.id}`);
-
-            } catch (paymentError: any) {
-              console.error('Payment processing failed:', paymentError);
-              paymentResult = {
-                success: false,
-                error: paymentError.message || 'Payment processing failed'
-              };
-            }
+            console.log(`[WORK_APPROVAL] Work approved - payment will be processed via UI`);
           }
         }
 
-        res.json({
-          ...updatedSubmission,
-          paymentResult
-        });
+        res.json(updatedSubmission);
       } catch (error) {
         console.error('Error reviewing work submission:', error);
         res.status(500).json({message: 'Error reviewing work submission'});

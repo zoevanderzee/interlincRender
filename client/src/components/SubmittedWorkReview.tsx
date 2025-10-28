@@ -7,8 +7,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
-import { CheckCircle, XCircle, AlertCircle, FileText, Calendar, User, Download, CheckCheck } from 'lucide-react';
+import { CheckCircle, XCircle, AlertCircle, FileText, Calendar, User, Download, CheckCheck, CreditCard } from 'lucide-react';
 import { format } from 'date-fns';
+import { StripeElements } from '@/components/payments/StripeElements';
 
 interface WorkSubmission {
   id: number;
@@ -26,6 +27,12 @@ interface WorkSubmission {
   reviewNotes: string | null;
 }
 
+interface WorkRequest {
+  id: number;
+  amount: string;
+  title: string;
+}
+
 interface SubmittedWorkReviewProps {
   businessId: number;
 }
@@ -35,11 +42,19 @@ export function SubmittedWorkReview({ businessId }: SubmittedWorkReviewProps) {
   const queryClient = useQueryClient();
   const [selectedSubmission, setSelectedSubmission] = useState<WorkSubmission | null>(null);
   const [reviewFeedback, setReviewFeedback] = useState('');
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentSubmission, setPaymentSubmission] = useState<WorkSubmission | null>(null);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const { data: submissions = [], isLoading, error } = useQuery<WorkSubmission[]>({
     queryKey: ['/api/work-request-submissions/business'],
     retry: 1,
     enabled: !!businessId, // Only fetch when businessId is available
+  });
+
+  const { data: workRequest } = useQuery<WorkRequest>({
+    queryKey: [`/api/work-requests/${paymentSubmission?.workRequestId}`],
+    enabled: !!paymentSubmission?.workRequestId,
   });
 
   console.log('SubmittedWorkReview - Component rendered:', { 
@@ -59,30 +74,29 @@ export function SubmittedWorkReview({ businessId }: SubmittedWorkReviewProps) {
       });
       return await response.json();
     },
-    onSuccess: (data: any) => {
-      // Show payment result if available
-      let description = 'Work submission has been reviewed successfully';
-      
-      if (data.paymentResult) {
-        if (data.paymentResult.success) {
-          const amount = data.paymentResult.payment?.amount || 'Unknown';
-          const contractorId = data.paymentResult.payment?.contractorId || 'contractor';
-          description = `🚀 Work approved and payment released: $${amount} to contractor ${contractorId}`;
-        } else {
-          description = `⚠️ Work approved but payment failed: ${data.paymentResult.error}`;
-        }
+    onSuccess: (data: any, variables: any) => {
+      // For approved submissions, show payment modal instead of processing immediately
+      if (variables.status === 'approved' && selectedSubmission) {
+        setPaymentSubmission(selectedSubmission);
+        setShowPaymentModal(true);
+        setSelectedSubmission(null);
+        setReviewFeedback('');
+        
+        toast({
+          title: 'Work approved',
+          description: 'Please complete payment to finalize the approval',
+        });
+      } else {
+        // For other statuses (rejected, needs_revision), just show success
+        toast({
+          title: 'Review submitted',
+          description: 'Work submission has been reviewed successfully',
+        });
+        queryClient.invalidateQueries({ queryKey: ['/api/work-request-submissions/business'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/work-requests'] });
+        setSelectedSubmission(null);
+        setReviewFeedback('');
       }
-      
-      toast({
-        title: 'Review submitted',
-        description,
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/work-request-submissions/business'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/work-requests'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/contracts'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/budget'] }); // Refresh budget after payment
-      setSelectedSubmission(null);
-      setReviewFeedback('');
     },
     onError: (error: any) => {
       toast({
@@ -101,6 +115,24 @@ export function SubmittedWorkReview({ businessId }: SubmittedWorkReviewProps) {
       status,
       feedback: reviewFeedback,
     });
+  };
+
+  const handlePaymentComplete = async (paymentIntentId: string) => {
+    setIsProcessingPayment(false);
+    setShowPaymentModal(false);
+    
+    toast({
+      title: 'Payment successful',
+      description: 'Work has been approved and payment processed',
+    });
+    
+    // Refresh all relevant queries
+    queryClient.invalidateQueries({ queryKey: ['/api/work-request-submissions/business'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/work-requests'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/contracts'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/budget'] });
+    
+    setPaymentSubmission(null);
   };
 
   // 🚀 NEW: Bulk approval functionality
@@ -388,6 +420,56 @@ export function SubmittedWorkReview({ businessId }: SubmittedWorkReviewProps) {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Payment Modal */}
+      {showPaymentModal && paymentSubmission && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <Card className="bg-zinc-900 border-zinc-800 max-w-md w-full">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                Complete Payment
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
+                <p className="text-gray-400 text-sm mb-2">Paying for:</p>
+                <p className="text-white font-medium">{paymentSubmission.title}</p>
+              </div>
+
+              {workRequest && (
+                <StripeElements
+                  amount={parseFloat(workRequest.amount) * 100}
+                  currency="gbp"
+                  description={`Payment for: ${paymentSubmission.title}`}
+                  contractorUserId={paymentSubmission.contractorId}
+                  onPaymentComplete={handlePaymentComplete}
+                  isProcessing={isProcessingPayment}
+                  showSaveCard={true}
+                />
+              )}
+              
+              {!workRequest && (
+                <div className="text-center text-gray-400 py-4">
+                  Loading payment details...
+                </div>
+              )}
+
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowPaymentModal(false);
+                  setPaymentSubmission(null);
+                }}
+                disabled={isProcessingPayment}
+                className="w-full border-gray-700 text-white hover:bg-gray-800"
+              >
+                Cancel
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );
