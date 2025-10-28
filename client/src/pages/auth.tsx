@@ -1304,9 +1304,9 @@ export default function AuthPage() {
       {/* Right Panel - Hero Section */}
       <div className="hidden lg:flex lg:w-1/2 items-center justify-center p-12" style={{ background: 'linear-gradient(135deg, #1a2b4a 0%, #0f1f3a 100%)' }}>
         <div className="max-w-lg text-white">
-          <h1 className="text-4xl font-bold mb-6">Interlinc</h1>
-          <h2 className="text-3xl font-semibold mb-4">Connect. Create. Collaborate.</h2>
-          <p className="text-muted-foreground mb-8 text-lg">
+          <h1 className="text-4xl font-bold mb-6 text-white">Interlinc</h1>
+          <h2 className="text-3xl font-semibold mb-4 text-white">Connect. Create. Collaborate.</h2>
+          <p className="text-white mb-8 text-lg">
             Outsourcing, Simplified. Manage people, payments, and projects with clarity, control, and zero invoicing.
           </p>
           <div className="space-y-4">
@@ -1314,21 +1314,21 @@ export default function AuthPage() {
               <div className="bg-white rounded-full h-6 w-6 flex items-center justify-center text-black mr-4 mt-1">✓</div>
               <div>
                 <h3 className="text-white font-medium text-lg">No Invoices. No Hassle.</h3>
-                <p className="text-muted-foreground">Streamline payments with built-in workflows and milestone approvals — no manual paperwork.</p>
+                <p className="text-white/90">Streamline payments with built-in workflows and milestone approvals — no manual paperwork.</p>
               </div>
             </div>
             <div className="flex items-start">
               <div className="bg-white rounded-full h-6 w-6 flex items-center justify-center text-black mr-4 mt-1">✓</div>
               <div>
                 <h3 className="text-white font-medium text-lg">Real-Time Financial Visibility</h3>
-                <p className="text-muted-foreground">Track budgets, teams, and progress in one place with compliance-ready data capture.</p>
+                <p className="text-white/90">Track budgets, teams, and progress in one place with compliance-ready data capture.</p>
               </div>
             </div>
             <div className="flex items-start">
               <div className="bg-white rounded-full h-6 w-6 flex items-center justify-center text-black mr-4 mt-1">✓</div>
               <div>
                 <h3 className="text-white font-medium text-lg">Smarter Payouts. Faster Turnarounds.</h3>
-                <p className="text-muted-foreground">Trigger payments on your terms — once work is approved, your teams get paid seamlessly.</p>
+                <p className="text-white/90">Trigger payments on your terms — once work is approved, your teams get paid seamlessly.</p>
               </div>
             </div>
           </div>
