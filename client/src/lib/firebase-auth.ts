@@ -21,10 +21,7 @@ export const signUpUser = async (email: string, password: string): Promise<Fireb
     const user: User = userCredential.user;
 
     // Send email verification
-    await sendEmailVerification(user, {
-      url: 'https://www.interlinc.app/auth',
-      handleCodeInApp: false
-    });
+    await sendEmailVerification(user);
     console.log("Verification email sent to:", email);
 
     return {
@@ -114,10 +111,7 @@ export const resendEmailVerification = async (): Promise<boolean> => {
   }
 
   try {
-    await sendEmailVerification(user, {
-      url: 'https://www.interlinc.app/auth',
-      handleCodeInApp: false
-    });
+    await sendEmailVerification(user);
     console.log("Verification email resent to:", user.email);
     return true;
   } catch (error: any) {
