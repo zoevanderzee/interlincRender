@@ -3045,7 +3045,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalSuccessfulPaymentsCount: businessPaymentStats.totalSuccessfulPayments, // Total count of successful payments
           // BULLETPROOF: Use same calculation as budget page
           remainingBudget: user.budgetCap
-            ? (parseFloat(user.budgetCap) - totalPaymentsValue).toFixed(2)
+            ? (parseFloat(user.budgetCap.toString()) - totalPaymentsValue).toFixed(2)
             : null
         },
         contracts: userContracts.filter(contract => contract.status !== 'deleted'),
