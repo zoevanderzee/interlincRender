@@ -958,13 +958,13 @@ export default function AuthPage() {
             <TabsList className="grid w-full grid-cols-2 mb-8" style={{ background: 'transparent', gap: '1rem', padding: 0 }}>
               <TabsTrigger 
                 value="login" 
-                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#6b9aff] data-[state=active]:to-[#7ca5ff] data-[state=active]:text-[#0a1628] data-[state=inactive]:bg-gradient-to-r data-[state=inactive]:from-[#0f1f3a] data-[state=inactive]:to-[#1a2b4a] data-[state=inactive]:text-white data-[state=inactive]:border data-[state=inactive]:border-[#6b9aff]/10 py-3 px-4 rounded-lg font-medium transition-all"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#6b9aff] data-[state=active]:to-[#7ca5ff] data-[state=active]:text-[#0a1628] data-[state=inactive]:bg-gradient-to-r data-[state=inactive]:from-[#1a2b4a]/60 data-[state=inactive]:to-[#0f1f3a]/60 data-[state=inactive]:text-white/90 data-[state=inactive]:border data-[state=inactive]:border-[#6b9aff]/30 py-3 px-4 rounded-lg font-medium transition-all"
               >
                 Login
               </TabsTrigger>
               <TabsTrigger 
                 value="register"
-                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#6b9aff] data-[state=active]:to-[#7ca5ff] data-[state=active]:text-[#0a1628] data-[state=inactive]:bg-gradient-to-r data-[state=inactive]:from-[#0f1f3a] data-[state=inactive]:to-[#1a2b4a] data-[state=inactive]:text-white data-[state=inactive]:border data-[state=inactive]:border-[#6b9aff]/10 py-3 px-4 rounded-lg font-medium transition-all"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#6b9aff] data-[state=active]:to-[#7ca5ff] data-[state=active]:text-[#0a1628] data-[state=inactive]:bg-gradient-to-r data-[state=inactive]:from-[#1a2b4a]/60 data-[state=inactive]:to-[#0f1f3a]/60 data-[state=inactive]:text-white/90 data-[state=inactive]:border data-[state=inactive]:border-[#6b9aff]/30 py-3 px-4 rounded-lg font-medium transition-all"
               >
                 Register
               </TabsTrigger>
@@ -974,7 +974,7 @@ export default function AuthPage() {
             <TabsContent value="login">
               <Card className="border-[#6b9aff]/20 text-white" style={{ background: 'linear-gradient(135deg, rgba(15, 31, 58, 0.6) 0%, rgba(26, 43, 74, 0.6) 100%)', backdropFilter: 'blur(20px)' }}>
                 <CardHeader>
-                  <CardTitle>Login to Interlinc</CardTitle>
+                  <CardTitle className="text-white">Login to Interlinc</CardTitle>
                   <CardDescription className="text-zinc-400">
                     Enter your credentials to access your account
                   </CardDescription>
@@ -990,8 +990,8 @@ export default function AuthPage() {
                         placeholder="Enter your email"
                         value={loginForm.username}
                         onChange={handleLoginChange}
-                        className="!bg-none border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff]"
-                        style={{ background: 'linear-gradient(to bottom right, rgba(15, 31, 58, 0.8), rgba(26, 43, 74, 0.8)) !important' }}
+                        className="border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:shadow-[0_0_20px_rgba(107,154,255,0.3)]"
+                        style={{ background: 'linear-gradient(135deg, rgba(15, 31, 58, 0.9), rgba(26, 43, 74, 0.9))' }}
                       />
                       {loginErrors.username && (
                         <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{loginErrors.username}</p>
@@ -1006,8 +1006,8 @@ export default function AuthPage() {
                         placeholder="Enter your password"
                         value={loginForm.password}
                         onChange={handleLoginChange}
-                        className="!bg-none border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff]"
-                        style={{ background: 'linear-gradient(to bottom right, rgba(15, 31, 58, 0.8), rgba(26, 43, 74, 0.8)) !important' }}
+                        className="border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:shadow-[0_0_20px_rgba(107,154,255,0.3)]"
+                        style={{ background: 'linear-gradient(135deg, rgba(15, 31, 58, 0.9), rgba(26, 43, 74, 0.9))' }}
                       />
                       {loginErrors.password && (
                         <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{loginErrors.password}</p>
@@ -1063,8 +1063,8 @@ export default function AuthPage() {
                           placeholder="John"
                           value={registerForm.firstName}
                           onChange={handleRegisterChange}
-                          className="!bg-none border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff]"
-                          style={{ background: 'linear-gradient(to bottom right, rgba(15, 31, 58, 0.8), rgba(26, 43, 74, 0.8)) !important' }}
+                          className="border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:shadow-[0_0_20px_rgba(107,154,255,0.3)]"
+                          style={{ background: 'linear-gradient(135deg, rgba(15, 31, 58, 0.9), rgba(26, 43, 74, 0.9))' }}
                         />
                         {registerErrors.firstName && (
                           <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.firstName}</p>
@@ -1078,8 +1078,8 @@ export default function AuthPage() {
                           placeholder="Doe"
                           value={registerForm.lastName}
                           onChange={handleRegisterChange}
-                          className="!bg-none border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff]"
-                          style={{ background: 'linear-gradient(to bottom right, rgba(15, 31, 58, 0.8), rgba(26, 43, 74, 0.8)) !important' }}
+                          className="border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:shadow-[0_0_20px_rgba(107,154,255,0.3)]"
+                          style={{ background: 'linear-gradient(135deg, rgba(15, 31, 58, 0.9), rgba(26, 43, 74, 0.9))' }}
                         />
                         {registerErrors.lastName && (
                           <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.lastName}</p>
@@ -1096,8 +1096,8 @@ export default function AuthPage() {
                         placeholder="john.doe@example.com"
                         value={registerForm.email}
                         onChange={handleRegisterChange}
-                        className="!bg-none border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff]"
-                        style={{ background: 'linear-gradient(to bottom right, rgba(15, 31, 58, 0.8), rgba(26, 43, 74, 0.8)) !important' }}
+                        className="border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:shadow-[0_0_20px_rgba(107,154,255,0.3)]"
+                        style={{ background: 'linear-gradient(135deg, rgba(15, 31, 58, 0.9), rgba(26, 43, 74, 0.9))' }}
                       />
                       {registerErrors.email && (
                         <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.email}</p>
@@ -1112,8 +1112,8 @@ export default function AuthPage() {
                         placeholder="johndoe"
                         value={registerForm.username}
                         onChange={handleRegisterChange}
-                        className="!bg-none border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff]"
-                        style={{ background: 'linear-gradient(to bottom right, rgba(15, 31, 58, 0.8), rgba(26, 43, 74, 0.8)) !important' }}
+                        className="border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:shadow-[0_0_20px_rgba(107,154,255,0.3)]"
+                        style={{ background: 'linear-gradient(135deg, rgba(15, 31, 58, 0.9), rgba(26, 43, 74, 0.9))' }}
                       />
                       {registerErrors.username && (
                         <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.username}</p>
@@ -1130,8 +1130,8 @@ export default function AuthPage() {
                           placeholder="••••••••"
                           value={registerForm.password}
                           onChange={handleRegisterChange}
-                          className="!bg-none border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff]"
-                          style={{ background: 'linear-gradient(to bottom right, rgba(15, 31, 58, 0.8), rgba(26, 43, 74, 0.8)) !important' }}
+                          className="border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:shadow-[0_0_20px_rgba(107,154,255,0.3)]"
+                          style={{ background: 'linear-gradient(135deg, rgba(15, 31, 58, 0.9), rgba(26, 43, 74, 0.9))' }}
                         />
                         {registerErrors.password && (
                           <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.password}</p>
@@ -1146,8 +1146,8 @@ export default function AuthPage() {
                           placeholder="••••••••"
                           value={registerForm.confirmPassword}
                           onChange={handleRegisterChange}
-                          className="!bg-none border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff]"
-                          style={{ background: 'linear-gradient(to bottom right, rgba(15, 31, 58, 0.8), rgba(26, 43, 74, 0.8)) !important' }}
+                          className="border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:shadow-[0_0_20px_rgba(107,154,255,0.3)]"
+                          style={{ background: 'linear-gradient(135deg, rgba(15, 31, 58, 0.9), rgba(26, 43, 74, 0.9))' }}
                         />
                         {registerErrors.confirmPassword && (
                           <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.confirmPassword}</p>
@@ -1178,8 +1178,8 @@ export default function AuthPage() {
                           placeholder="Acme Inc."
                           value={registerForm.company}
                           onChange={handleRegisterChange}
-                          className="!bg-none border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff]"
-                          style={{ background: 'linear-gradient(to bottom right, rgba(15, 31, 58, 0.8), rgba(26, 43, 74, 0.8)) !important' }}
+                          className="border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:shadow-[0_0_20px_rgba(107,154,255,0.3)]"
+                          style={{ background: 'linear-gradient(135deg, rgba(15, 31, 58, 0.9), rgba(26, 43, 74, 0.9))' }}
                         />
                         {registerErrors.company && (
                           <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{registerErrors.company}</p>
@@ -1195,8 +1195,8 @@ export default function AuthPage() {
                         placeholder="CEO, Project Manager, etc."
                         value={registerForm.position}
                         onChange={handleRegisterChange}
-                        className="!bg-none border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff]"
-                        style={{ background: 'linear-gradient(to bottom right, rgba(15, 31, 58, 0.8), rgba(26, 43, 74, 0.8)) !important' }}
+                        className="border-[#6b9aff]/50 text-white placeholder:text-[#a0c4ff]/60 focus:border-[#6b9aff] focus:shadow-[0_0_20px_rgba(107,154,255,0.3)]"
+                        style={{ background: 'linear-gradient(135deg, rgba(15, 31, 58, 0.9), rgba(26, 43, 74, 0.9))' }}
                       />
                     </div>
                   </CardContent>
