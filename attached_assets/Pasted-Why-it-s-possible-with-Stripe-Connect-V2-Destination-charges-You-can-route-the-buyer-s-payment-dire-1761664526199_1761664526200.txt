@@ -1,0 +1,28 @@
+Why it’s possible with Stripe Connect V2
+Destination charges: You can route the buyer’s payment directly to the contractor’s Connect account. No hosted checkout is required.
+PaymentIntents model: This is Stripe’s engine for creating a payment, handling 3-D Secure (SCA), and tracking status from “created” to “succeeded.” It fits approval→pay flows.
+Saved payment methods + off-session: If the business has a card on file with the right mandate, you can confirm the payment without showing a form.
+Elements as a fallback: If no card is saved—or SCA is required—show your own card form (Elements) to complete the payment inside your app.
+Full-API: You control the whole UX. No hosted pages are necessary.
+How it works (conceptual steps)
+Work request created: You already store business, contractor, amount, currency, and the contractor’s Connect account ID.
+Business clicks “Accept”:
+If a saved card exists and is eligible for off-session: confirm the payment immediately; no modal.
+If no saved card (or bank requires SCA): create a payment session and surface your card form (Elements) to collect or authenticate, then finish the payment.
+Funds routing: The payment is configured as a destination charge so funds land in the contractor’s Connect account automatically (minus any platform fee if you take one).
+Success state: Only when the payment succeeds, you mark the work request Paid/Completed and create two invoices (business copy + contractor copy) placed in the correct views.
+Edge conditions:
+No contractor payout setup: block payment; keep status “Approved but Unpaid”; no invoice.
+Budget block: do the same—no invoice until a successful payment exists.
+Double-clicks: use a unique key per submission so you can’t accidentally charge twice (idempotency).
+What you need to have in place (non-technical checklist)
+Business identity in Stripe: Each business has a Stripe Customer and, ideally, a saved default card for future one-click “Accept → pay now.”
+Contractor Connect account ID: Stored on each contractor to receive destination charges.
+Payment state tracking: A simple record tied to each accepted submission that tracks payment status (e.g., pending → succeeded/failed).
+Invoice generation trigger: Runs only after the payment is marked successful, creating both copies and placing them in the Data Room/Contractor views.
+SCA handling: Your UI can display a quick authentication step if the bank asks for it—even with a saved card.
+The user experience you’ll get
+Best case (saved card): Click Accept → payment completes silently → status flips to Paid → invoices appear for both parties.
+First-time or SCA case: Click Accept → brief card/auth modal appears → payment completes → status flips to Paid → invoices appear.
+Blocked cases: Clear message; stays Approved but Unpaid; no invoice created.
+If you want, I can turn this into a one-paragraph prompt for your agent that references these exact outcomes (no code, no internals), or keep it at this high-level blueprint.
