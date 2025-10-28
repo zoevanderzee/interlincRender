@@ -2796,6 +2796,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get the current user
       const userId = req.user?.id;
       const userRole = req.user?.role || 'business'; // Default to business if not specified
+      
+      // Fetch current user for budget information
+      const currentUser = userId ? await storage.getUser(userId) : null;
 
       let userContracts = [];
 
@@ -3044,8 +3047,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           currentYearPayments: currentYearPayments, // Current year actual payments
           totalSuccessfulPaymentsCount: businessPaymentStats.totalSuccessfulPayments, // Total count of successful payments
           // BULLETPROOF: Use same calculation as budget page
-          remainingBudget: user.budgetCap
-            ? (parseFloat(user.budgetCap.toString()) - totalPaymentsValue).toFixed(2)
+          remainingBudget: currentUser?.budgetCap
+            ? (parseFloat(currentUser.budgetCap.toString()) - totalPaymentsValue).toFixed(2)
             : null
         },
         contracts: userContracts.filter(contract => contract.status !== 'deleted'),
