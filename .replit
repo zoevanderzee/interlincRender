@@ -44,6 +44,10 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
+args = "pkill -f \"tsx server/index.ts\" || pkill -f \"node.*5000\" || true"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
 args = "npm run dev"
 
 [[ports]]
