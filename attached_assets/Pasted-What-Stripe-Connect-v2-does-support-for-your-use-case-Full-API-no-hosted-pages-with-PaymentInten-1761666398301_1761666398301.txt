@@ -1,0 +1,34 @@
+What “Stripe Connect v2” does support for your use-case
+Full-API (no hosted pages) with PaymentIntents.
+Destination charges (charge is created under your platform; funds are routed in the same transaction to the contractor’s Connect account).
+Saved-card, off-session confirms (so “Accept” can auto-charge with no modal).
+Elements fallback only when a card is missing or SCA/3DS is required.
+Invoices after success (you trigger them post-payment or via webhook).
+Where you’re misaligned today
+Your flow relies on a separate “create-transfer” step after showing a payment modal. That’s the charges + later transfer model, not destination charges.
+Your Approve path doesn’t create a PaymentIntent; it only opens a modal. That forces a two-step UX (approve → then pay), which is not the “auto-charge on Accept” behavior you want.
+Two Connect patterns (pick one and stick to it)
+Destination charges (recommended)
+On Accept: use the WR amount/currency, attempt auto-charge with saved card; show Elements only if no card/SCA.
+Funds land in the contractor’s account immediately.
+Generate invoices only after success.
+This matches your desired “Accept → pay now” behavior.
+Charges + later transfer (what your /create-transfer implies)
+You first take a platform charge, then later call a transfer to the contractor.
+“Accept” won’t auto-charge unless you already charged earlier; it would just move platform funds.
+This inherently leads to the two-step feel you’re seeing.
+What to change (no code, just decisions)
+Choose destination charges for Work Requests.
+Stop using the “create-transfer” path in this flow.
+Make Approve the moment you initiate payment (using the WR’s stored amount/currency):
+Saved card present → auto-charge (no modal unless SCA).
+No saved card / SCA → show Elements to collect/authorize.
+Keep amount read-only (from the Work Request), and generate invoices only after success.
+Add idempotency/double-click protection so Accept can’t create duplicate payments.
+Quick sanity checklist to confirm alignment
+Payment is initiated at Accept, not only inside the modal.
+No endpoint named “create-transfer” is part of the Work Request payment path.
+Funds reach the contractor in the same payment (destination charge), not via a later transfer.
+Modal appears only when needed (no card/SCA).
+Invoices appear only after payment succeeds for both Business and Contractor.
+If your internal “v2” label means “separate charge + transfer,” then you’ll feel this mismatch until you switch the Work Request path to destination charges.
