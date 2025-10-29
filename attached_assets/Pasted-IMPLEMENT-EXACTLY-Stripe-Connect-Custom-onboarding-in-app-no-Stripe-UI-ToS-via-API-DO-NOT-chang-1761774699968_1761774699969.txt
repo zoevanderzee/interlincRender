@@ -1,0 +1,150 @@
+IMPLEMENT EXACTLY: Stripe Connect Custom onboarding (in-app, no Stripe UI), ToS via API
+DO NOT change anything outside the files and steps listed below.
+Objective
+Replace the current Express onboarding step with Custom + application-collected requirements so contractors complete onboarding fully in-app and ToS is accepted via API.
+No redirects. No embedded Stripe UI. Keep all charging logic as-is.
+Non-Goals (do NOT do these)
+Do not refactor unrelated code, rename files, change lint/format configs, or bump dependencies other than the Stripe SDK if needed.
+Do not modify pricing, fee logic, or charge creation (Direct vs Destination+OBO).
+Do not alter database schemas other than adding stripe_account_id (if missing) and status fields strictly required below.
+Do not introduce new feature flags beyond the one specified.
+Do not change authentication, session, or routing outside the endpoints listed.
+Do not store SSN/National ID/PII in our DB or logs.
+Feature flag
+Introduce a single boolean flag: payments.custom_onboarding_v2 = true.
+When true: use the new Custom onboarding flow.
+When false: existing behavior remains unchanged.
+Default to false. We will enable per environment.
+Files you may touch (and only these)
+Backend:
+/server/lib/stripe.ts (or equivalent Stripe client init)
+/server/routes/payments.ts (or equivalent API routes)
+/server/webhooks/stripe.ts (add a narrow handler branch)
+/server/models/Contractor.ts (or equivalent ORM model): only to store stripe_account_id, stripe_status, and a minimal capabilities snapshot if not present.
+Frontend:
+/<frontend>/payments/SetupStep.tsx
+/<frontend>/payments/VerifyStep.tsx
+Config:
+/config/featureFlags.ts (add payments.custom_onboarding_v2)
+If paths differ, create new files under the same directories with the same names; do not move/rename existing files.
+Stripe prerequisites
+Use Custom accounts with controller.requirement_collection = 'application'.
+Request capabilities: card_payments and transfers.
+Accept ToS via API using user IP + User-Agent.
+Keep current charge model (Direct or Destination+OBO) unchanged.
+Backend changes
+Create or fetch account
+Endpoint: POST /api/payments/setup/init
+Input: { contractorId, profile: { legalName, dob, address, email, phone, ... }, payout: { accountNumber, sortCode/iban/routing, ... } }
+Logic (behind feature flag):
+// Pseudocode
+if (!featureFlags.payments.custom_onboarding_v2) return legacyFlow();
+
+const contractor = ensureAuthAndLoad(contractorId);
+
+// 1. Create account if missing
+let acctId = contractor.stripe_account_id;
+if (!acctId) {
+  const acct = await stripe.accounts.create({
+    type: 'custom',
+    controller: { requirement_collection: 'application' },
+    business_type: 'individual', // contractors are individuals
+    capabilities: {
+      card_payments: { requested: true },
+      transfers: { requested: true },
+    },
+    // Populate minimal profile fields we already have
+    individual: {
+      first_name: profile.firstName,
+      last_name: profile.lastName,
+      dob: { day: dob.day, month: dob.month, year: dob.year },
+      address: {
+        line1: address.line1, line2: address.line2 || undefined,
+        city: address.city, postal_code: address.postcode, country: address.country,
+      },
+      email: profile.email,
+      phone: profile.phone,
+    },
+    tos_acceptance: undefined // set in the dedicated endpoint below
+  });
+  acctId = acct.id;
+  contractor.stripe_account_id = acctId;
+  await contractor.save();
+}
+
+// 2. Attach/exchange payout details
+await stripe.accounts.update(acctId, {
+  external_account: {
+    // send the bank details; DO NOT store them in our DB
+    // use appropriate tokenization if your region requires it
+  }
+});
+
+// 3. Return `accountId` for follow-up calls
+return { accountId: acctId };
+Constraints:
+Do not store bank numbers/SSN/National ID in DB or logs. Pass through to Stripe and discard.
+Do not modify existing charge creation logic anywhere.
+Accept ToS (API)
+Endpoint: POST /api/payments/setup/accept-tos
+Input: { accountId }
+Logic:
+const ip = request.ip; // use your trusted proxy settings if applicable
+const ua = request.headers['user-agent'] || 'unknown';
+
+await stripe.accounts.update(accountId, {
+  tos_acceptance: { date: Math.floor(Date.now()/1000), ip, user_agent: ua }
+});
+
+return { ok: true };
+Account status
+Endpoint: GET /api/payments/account-status?accountId=...
+Return:
+{
+  charges_enabled: boolean,
+  payouts_enabled: boolean,
+  details_submitted: boolean,
+  capabilities: { card_payments: 'active'|'inactive'|'pending', transfers: 'active'|'inactive'|'pending' },
+  requirements: {
+    currently_due: string[], eventually_due: string[], past_due: string[], pending_verification: string[]
+  }
+}
+Logic: const acct = await stripe.accounts.retrieve(accountId); then map fields.
+Do not change other endpoints.
+Webhook (narrow addition only)
+In /server/webhooks/stripe.ts, in account.updated, if feature flag is on and the account belongs to one of our contractors:
+Update contractor.stripe_status snapshot with the same fields returned by account-status.
+Do not mutate other webhook paths.
+Frontend changes
+SetupStep.tsx
+If flag is off → render existing UI unchanged.
+If on:
+Submit contractor profile + payout to POST /api/payments/setup/init.
+Immediately call POST /api/payments/setup/accept-tos with the returned accountId.
+Route to “Verify” (same page flow).
+No Stripe components or redirects.
+VerifyStep.tsx
+Poll GET /api/payments/account-status?accountId=... (or subscribe to your store updated by webhook).
+Show green state when:
+charges_enabled === true
+capabilities.card_payments === 'active'
+capabilities.transfers === 'active'
+If requirements.currently_due.length > 0, show our existing inline uploader/inputs and resubmit to setup/init as needed (do not embed Stripe UI).
+Data handling & security
+Never persist SSN/National ID/bank numbers. Use memory-only variables and send directly to Stripe.
+Scrub logs for external_account, ssn_last_4, id_number, etc.
+Ensure IP and User-Agent are captured correctly for ToS (behind a trusted proxy if applicable).
+Backward compatibility & rollout
+Ship with payments.custom_onboarding_v2 = false (no behavior change).
+Enable in staging only; create a new contractor → complete onboarding → verify charges/payouts enabled.
+Enable for 1% of new contractors in production.
+If metrics are good, ramp to 100% for new contractors.
+Existing Express accounts: do not migrate in place. Show a one-time banner offering to “upgrade payout setup” which creates a new Custom account and switches the contractor to it after verification. (No automatic conversion.)
+Acceptance criteria (must pass)
+ With flag off, legacy flow is untouched.
+ With flag on, a brand-new contractor completes onboarding without any redirect or Stripe UI.
+ tos_acceptance is recorded on the Stripe account with correct timestamp, IP, and User-Agent.
+ charges_enabled and both capabilities become active after verification.
+ No sensitive PII is stored in our DB or logs.
+ Charge creation (Direct or Destination+OBO) still functions unchanged.
+ No files outside the allowed list are modified.
