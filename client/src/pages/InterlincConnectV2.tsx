@@ -90,18 +90,6 @@ export default function InterlincConnectV2() {
   const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
-  
-  // Business users don't need Connect accounts - redirect them
-  useEffect(() => {
-    if (user?.role === 'business') {
-      toast({
-        title: "Not Required",
-        description: "Business users don't need Connect accounts. Only contractors need this setup.",
-        variant: "default"
-      });
-      window.location.href = '/dashboard';
-    }
-  }, [user]);
 
   // Form states
   const [onboardingForm, setOnboardingForm] = useState<OnboardingForm>({
