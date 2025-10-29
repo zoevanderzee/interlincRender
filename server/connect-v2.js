@@ -347,6 +347,10 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
         });
       }
       
+      // Check if custom onboarding v2 is enabled
+      const { isFeatureEnabled } = await import('./feature-flags.js');
+      const useCustomOnboarding = isFeatureEnabled('CUSTOM_ONBOARDING_V2', userId);
+      
       const { country = "GB", business_type = "individual" } = req.body || {};
 
       // Validate country and determine currency
@@ -380,7 +384,7 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
 
       // Create account with enhanced V2 capabilities
       const accountConfig = {
-        type: 'express',
+        type: useCustomOnboarding ? 'custom' : 'express',
         country,
         email: user.email,
         business_type,
@@ -394,6 +398,7 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
           version: 'v2',
           country: country,
           default_currency: defaultCurrency,
+          onboarding_type: useCustomOnboarding ? 'custom_api' : 'express',
           created_at: new Date().toISOString()
         },
         settings: {
@@ -404,6 +409,22 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
           }
         }
       };
+
+      // For Custom accounts, set controller to application
+      if (useCustomOnboarding) {
+        accountConfig.controller = {
+          requirement_collection: 'application',
+          stripe_dashboard: {
+            type: 'none'
+          },
+          fees: {
+            payer: 'application'
+          },
+          losses: {
+            payments: 'application'
+          }
+        };
+      }
 
       if (business_type === 'individual') {
         accountConfig.individual = {
@@ -426,6 +447,212 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
         country: country,
         defaultCurrency: defaultCurrency,
         detailsSubmitted: false,
+
+
+  /**
+   * POST /api/payments/setup/init
+   * Initialize Custom account with profile and bank details
+   * Custom onboarding v2 only
+   */
+  app.post(`${apiPath}/payments/setup/init`, authMiddleware, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { isFeatureEnabled } = await import('./feature-flags.js');
+      
+      if (!isFeatureEnabled('CUSTOM_ONBOARDING_V2', userId)) {
+        return res.status(403).json({ error: 'Custom onboarding not enabled' });
+      }
+
+      const existing = await db.getConnect(userId);
+      if (!existing?.accountId) {
+        return res.status(404).json({ error: 'No Connect account found. Create account first.' });
+      }
+
+      const {
+        business_type,
+        first_name,
+        last_name,
+        email,
+        phone,
+        company_name,
+        address_line1,
+        address_city,
+        address_postal_code,
+        address_country,
+        dob,
+        routing_number,
+        account_number
+      } = req.body;
+
+      // Build update data (NEVER store SSN/PII in our DB)
+      const updateData = { business_type };
+
+      if (business_type === 'individual') {
+        updateData.individual = {
+          first_name,
+          last_name,
+          email,
+          phone,
+          address: {
+            line1: address_line1,
+            city: address_city,
+            postal_code: address_postal_code,
+            country: address_country || existing.country || 'GB'
+          }
+        };
+        if (dob) {
+          updateData.individual.dob = {
+            day: dob.day,
+            month: dob.month,
+            year: dob.year
+          };
+        }
+      } else {
+        updateData.company = {
+          name: company_name,
+          phone,
+          address: {
+            line1: address_line1,
+            city: address_city,
+            postal_code: address_postal_code,
+            country: address_country || existing.country || 'GB'
+          }
+        };
+      }
+
+      // Add bank account if provided (sent directly to Stripe, never stored)
+      if (routing_number && account_number) {
+        updateData.external_account = {
+          object: 'bank_account',
+          country: address_country || existing.country || 'GB',
+          currency: existing.defaultCurrency || 'gbp',
+          routing_number,
+          account_number,
+          account_holder_type: business_type === 'individual' ? 'individual' : 'company'
+        };
+      }
+
+      const account = await stripe.accounts.update(existing.accountId, updateData);
+
+      // Update our DB with status only (no PII)
+      await db.setConnect(userId, {
+        ...existing,
+        detailsSubmitted: account.details_submitted,
+        lastUpdated: new Date().toISOString()
+      });
+
+      res.json({
+        success: true,
+        accountId: account.id,
+        details_submitted: account.details_submitted,
+        next_step: 'accept_tos'
+      });
+
+    } catch (e) {
+      console.error('[payments/setup/init]', e);
+      res.status(e.status || 500).json({ error: e.message || 'Setup initialization failed' });
+    }
+  });
+
+  /**
+   * POST /api/payments/setup/accept-tos
+   * Accept Terms of Service via API (Custom accounts only)
+   */
+  app.post(`${apiPath}/payments/setup/accept-tos`, authMiddleware, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { isFeatureEnabled } = await import('./feature-flags.js');
+      
+      if (!isFeatureEnabled('CUSTOM_ONBOARDING_V2', userId)) {
+        return res.status(403).json({ error: 'Custom onboarding not enabled' });
+      }
+
+      const existing = await db.getConnect(userId);
+      if (!existing?.accountId) {
+        return res.status(404).json({ error: 'No Connect account found' });
+      }
+
+      // Capture real IP (handle proxies)
+      let clientIp = req.ip || req.connection.remoteAddress;
+      if (req.headers['x-forwarded-for']) {
+        clientIp = req.headers['x-forwarded-for'].split(',')[0].trim();
+      }
+
+      // Accept ToS with real IP and User-Agent
+      const account = await stripe.accounts.update(existing.accountId, {
+        tos_acceptance: {
+          date: Math.floor(Date.now() / 1000),
+          ip: clientIp,
+          user_agent: req.headers['user-agent'] || 'Unknown'
+        }
+      });
+
+      // Update our DB
+      await db.setConnect(userId, {
+        ...existing,
+        tosAccepted: true,
+        detailsSubmitted: account.details_submitted,
+        chargesEnabled: account.charges_enabled,
+        payoutsEnabled: account.payouts_enabled,
+        lastUpdated: new Date().toISOString()
+      });
+
+      res.json({
+        success: true,
+        accountId: account.id,
+        tos_accepted: true,
+        charges_enabled: account.charges_enabled,
+        payouts_enabled: account.payouts_enabled,
+        next_step: 'verify'
+      });
+
+    } catch (e) {
+      console.error('[payments/setup/accept-tos]', e);
+      res.status(e.status || 500).json({ error: e.message || 'ToS acceptance failed' });
+    }
+  });
+
+  /**
+   * GET /api/payments/account-status
+   * Poll verification status for Custom accounts
+   */
+  app.get(`${apiPath}/payments/account-status`, authMiddleware, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const existing = await db.getConnect(userId);
+      
+      if (!existing?.accountId) {
+        return res.status(404).json({ error: 'No Connect account found' });
+      }
+
+      const account = await stripe.accounts.retrieve(existing.accountId);
+      const requirements = account.requirements || {};
+
+      const status = {
+        accountId: account.id,
+        charges_enabled: account.charges_enabled,
+        details_submitted: account.details_submitted,
+        payouts_enabled: account.payouts_enabled,
+        requirements: {
+          currently_due: requirements.currently_due || [],
+          past_due: requirements.past_due || [],
+          eventually_due: requirements.eventually_due || [],
+          pending_verification: requirements.pending_verification || [],
+          disabled_reason: requirements.disabled_reason || null
+        },
+        verification_complete: account.charges_enabled && 
+                              account.payouts_enabled && 
+                              (requirements.currently_due || []).length === 0
+      };
+
+      res.json(status);
+
+    } catch (e) {
+      console.error('[payments/account-status]', e);
+      res.status(e.status || 500).json({ error: e.message || 'Status check failed' });
+    }
+  });
+
         chargesEnabled: false,
         payoutsEnabled: false,
         version: 'v2',
@@ -1021,6 +1248,30 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
     }
 
     console.log(`[connect-v2-webhook] Received event: ${event.type}`);
+
+    // Handle Custom account updates
+    if (event.type === 'account.updated') {
+      try {
+        const account = event.data.object;
+        const userId = account.metadata?.userId;
+
+        if (userId) {
+          const existing = await db.getConnect(parseInt(userId));
+          if (existing) {
+            await db.setConnect(parseInt(userId), {
+              ...existing,
+              detailsSubmitted: account.details_submitted,
+              chargesEnabled: account.charges_enabled,
+              payoutsEnabled: account.payouts_enabled,
+              lastStatusCheck: new Date().toISOString()
+            });
+            console.log(`[connect-v2-webhook] Updated status for user ${userId}`);
+          }
+        }
+      } catch (err) {
+        console.error('[connect-v2-webhook] Error updating account status:', err);
+      }
+    }
 
     // Handle contractor-specific events
     try {

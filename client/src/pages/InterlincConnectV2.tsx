@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CheckCircle, Clock, XCircle, AlertCircle, Shield, CreditCard, Zap, Users, ArrowRight, Loader2, Upload, FileText } from 'lucide-react';
+import { CheckCircle, Clock, XCircle, AlertCircle, Shield, CreditCard, Zap, Users, ArrowRight, Loader2, Upload, FileText, RefreshCw } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -188,26 +188,41 @@ export default function InterlincConnectV2() {
       setSubmitting(true);
       setError(null);
 
-      const response = await apiRequest('POST', '/api/connect/v2/submit-onboarding', {
+      // Step 1: Submit profile and bank details
+      const initResponse = await apiRequest('POST', '/api/payments/setup/init', {
         body: JSON.stringify(onboardingForm),
         headers: { 'Content-Type': 'application/json' }
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Onboarding submission failed');
+      if (!initResponse.ok) {
+        const errorData = await initResponse.json();
+        throw new Error(errorData.error || 'Setup initialization failed');
       }
 
-      const result = await response.json();
-      console.log('Onboarding submitted:', result);
+      const initResult = await initResponse.json();
+      console.log('Setup initialized:', initResult);
 
-      toast({
-        title: "Information Submitted",
-        description: "Your account information has been submitted for review.",
+      // Step 2: Accept ToS via API
+      const tosResponse = await apiRequest('POST', '/api/payments/setup/accept-tos', {
+        headers: { 'Content-Type': 'application/json' }
       });
 
-      // Refresh status
+      if (!tosResponse.ok) {
+        const errorData = await tosResponse.json();
+        throw new Error(errorData.error || 'ToS acceptance failed');
+      }
+
+      const tosResult = await tosResponse.json();
+      console.log('ToS accepted:', tosResult);
+
+      toast({
+        title: "Setup Complete",
+        description: "Your account has been configured. Moving to verification...",
+      });
+
+      // Refresh status and move to verify
       await checkStatus();
+      setActiveTab('verify');
 
     } catch (err) {
       console.error('Onboarding submission failed:', err);
@@ -640,48 +655,47 @@ export default function InterlincConnectV2() {
               <TabsContent value="verify" className="p-6">
                 <div className="max-w-md mx-auto space-y-6">
                   <div className="text-center mb-6">
-                    <h3 className="text-xl font-semibold mb-2">Identity Verification</h3>
-                    <p className="text-muted-foreground">Upload verification documents</p>
+                    <h3 className="text-xl font-semibold mb-2">Account Verification</h3>
+                    <p className="text-muted-foreground">Stripe is reviewing your account</p>
                   </div>
 
-                  <div>
-                    <Label>Document Type</Label>
-                    <Select
-                      value={verificationForm.document_type}
-                      onValueChange={(value) => setVerificationForm(prev => ({...prev, document_type: value}))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="passport">Passport</SelectItem>
-                        <SelectItem value="driving_license">Driving License</SelectItem>
-                        <SelectItem value="id_card">National ID</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {status?.requirements && status.requirements.currently_due.length > 0 ? (
+                    <Card className="border-amber-500/20">
+                      <CardContent className="pt-6">
+                        <h4 className="font-medium mb-3 flex items-center gap-2">
+                          <AlertCircle className="w-5 h-5 text-amber-400" />
+                          Additional Information Required
+                        </h4>
+                        <div className="space-y-2">
+                          {status.requirements.currently_due.map((req, index) => (
+                            <div key={index} className="flex items-center gap-2 text-sm">
+                              <Clock className="w-4 h-4 text-amber-400" />
+                              <span>{req.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-4">
+                          Stripe may contact you directly for verification. This process typically completes within 1-2 business days.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <Card>
+                      <CardContent className="pt-6 text-center">
+                        <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
+                        </div>
+                        <h4 className="font-medium mb-2">Verification In Progress</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Your account is being verified by Stripe. This usually completes within minutes.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )}
 
-                  <div>
-                    <Label>Document Front</Label>
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => setVerificationForm(prev => ({...prev, document_front: e.target.files?.[0]}))}
-                    />
-                  </div>
-
-                  <div>
-                    <Label>Document Back (if applicable)</Label>
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => setVerificationForm(prev => ({...prev, document_back: e.target.files?.[0]}))}
-                    />
-                  </div>
-
-                  <Button onClick={submitVerification} disabled={submitting} className="w-full">
-                    {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                    Upload Documents
+                  <Button onClick={checkStatus} disabled={submitting} variant="outline" className="w-full">
+                    {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                    Refresh Status
                   </Button>
                 </div>
               </TabsContent>
