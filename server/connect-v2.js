@@ -447,7 +447,27 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
         country: country,
         defaultCurrency: defaultCurrency,
         detailsSubmitted: false,
+        chargesEnabled: false,
+        payoutsEnabled: false,
+        version: 'v2',
+        createdAt: new Date().toISOString()
+      });
 
+      res.json({
+        success: true,
+        accountId: account.id,
+        country: country,
+        defaultCurrency: defaultCurrency,
+        version: 'v2',
+        needsOnboarding: true,
+        capabilities: account.capabilities
+      });
+
+    } catch (e) {
+      console.error("[connect-v2-create-account]", e);
+      res.status(e.status || 500).json({ error: e.message || "Account creation failed" });
+    }
+  });
 
   /**
    * POST /api/payments/setup/init
@@ -650,28 +670,6 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
     } catch (e) {
       console.error('[payments/account-status]', e);
       res.status(e.status || 500).json({ error: e.message || 'Status check failed' });
-    }
-  });
-
-        chargesEnabled: false,
-        payoutsEnabled: false,
-        version: 'v2',
-        createdAt: new Date().toISOString()
-      });
-
-      res.json({
-        success: true,
-        accountId: account.id,
-        country: country,
-        defaultCurrency: defaultCurrency,
-        version: 'v2',
-        needsOnboarding: true,
-        capabilities: account.capabilities
-      });
-
-    } catch (e) {
-      console.error("[connect-v2-create-account]", e);
-      res.status(e.status || 500).json({ error: e.message || "Account creation failed" });
     }
   });
 
