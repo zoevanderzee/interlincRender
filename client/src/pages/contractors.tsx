@@ -69,7 +69,7 @@ const Contractors = () => {
 
   // For contractors, the connected companies are in the businesses array from dashboard
   const connectedCompanies = isContractor ? businessAccounts : [];
-  
+
   console.log('Debug contractor businesses:', {
     isContractor,
     businessAccountsLength: businessAccounts?.length,
@@ -233,7 +233,7 @@ const Contractors = () => {
   const generateOnboardingLink = async () => {
     try {
       const response = await apiRequest("GET", "/api/business-onboarding-link", {});
-      
+
       if (!response.ok) {
         throw new Error("Failed to get onboarding link");
       }
@@ -343,86 +343,86 @@ const Contractors = () => {
               : "Manage your contractors, freelancers, and project collaborators"}
           </p>
         </div>
-        {!isContractor && (
-          <div className="mt-4 md:mt-0 flex flex-col md:flex-row md:items-center gap-4">
-            {/* Business Profile Code Display/Generate */}
-            {user?.profileCode ? (
-              <div className="flex items-center gap-2 bg-gradient-to-r from-indigo-500/10 to-purple-600/10 border border-indigo-500/20 rounded-lg px-4 py-2">
-                <Fingerprint size={16} className="text-indigo-400" />
-                <span className="text-sm text-zinc-400">Your Code:</span>
-                <code className="font-mono text-white font-semibold">{user.profileCode}</code>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 w-8 p-0"
-                        onClick={() => {
-                          navigator.clipboard.writeText(user.profileCode || '');
-                          toast({
-                            title: "Code copied",
-                            description: "Share this code with contractors to connect."
-                          });
-                        }}
-                        data-testid="button-copy-code"
-                      >
-                        <Copy size={14} />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Copy your profile code</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-            ) : (
-              <Button
-                variant="outline"
-                onClick={async () => {
-                  try {
-                    const response = await apiRequest("POST", "/api/profile-code/generate", {});
-                    const data = await response.json();
-                    if (data.code) {
-                      queryClient.invalidateQueries({ queryKey: ['/api/user'] });
-                      queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
-                      toast({
-                        title: "Profile code generated",
-                        description: `Your code is ${data.code}. Share it with contractors to connect.`
-                      });
-                    }
-                  } catch (error: any) {
+
+        {/* Profile Code and Connect Button - Show for both contractors and businesses */}
+        <div className="mt-4 md:mt-0 flex flex-col md:flex-row md:items-center gap-4">
+          {/* Profile Code Display/Generate */}
+          {user?.profileCode ? (
+            <div className="flex items-center gap-2 bg-gradient-to-r from-indigo-500/10 to-purple-600/10 border border-indigo-500/20 rounded-lg px-4 py-2">
+              <Fingerprint size={16} className="text-indigo-400" />
+              <span className="text-sm text-zinc-400">Your Code:</span>
+              <code className="font-mono text-white font-semibold">{user.profileCode}</code>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0"
+                      onClick={() => {
+                        navigator.clipboard.writeText(user.profileCode || '');
+                        toast({
+                          title: "Code copied",
+                          description: `Share this code with ${isContractor ? 'companies' : 'contractors'} to connect.`
+                        });
+                      }}
+                      data-testid="button-copy-code"
+                    >
+                      <Copy size={14} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Copy your profile code</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              onClick={async () => {
+                try {
+                  const response = await apiRequest("POST", "/api/profile-code/generate", {});
+                  const data = await response.json();
+                  if (data.code) {
+                    queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+                    queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
                     toast({
-                      title: "Error",
-                      description: error.message || "Failed to generate profile code",
-                      variant: "destructive"
+                      title: "Profile code generated",
+                      description: `Your code is ${data.code}. Share it with ${isContractor ? 'companies' : 'contractors'} to connect.`
                     });
                   }
-                }}
-                data-testid="button-generate-code"
-              >
-                <Fingerprint size={16} className="mr-2" />
-                Generate Profile Code
-              </Button>
-            )}
-            
-            <FindByProfileCodeDialog 
-              trigger={
-                <Button data-testid="button-connect-by-code">
-                  <Fingerprint size={16} className="mr-2" />
-                  Connect by Code
-                </Button>
-              }
-              onSuccess={() => {
-                queryClient.invalidateQueries({ queryKey: ['/api/connection-requests'] });
-                toast({
-                  title: "Connection request sent",
-                  description: "We'll notify you when the contractor responds."
-                });
+                } catch (error: any) {
+                  toast({
+                    title: "Error",
+                    description: error.message || "Failed to generate profile code",
+                    variant: "destructive"
+                  });
+                }
               }}
-            />
-          </div>
-        )}
+              data-testid="button-generate-code"
+            >
+              <Fingerprint size={16} className="mr-2" />
+              Generate Profile Code
+            </Button>
+          )}
+
+          <FindByProfileCodeDialog 
+            trigger={
+              <Button data-testid="button-connect-by-code">
+                <Fingerprint size={16} className="mr-2" />
+                Connect by Code
+              </Button>
+            }
+            onSuccess={() => {
+              queryClient.invalidateQueries({ queryKey: ['/api/connection-requests'] });
+              toast({
+                title: "Connection request sent",
+                description: `We'll notify you when the ${isContractor ? 'company' : 'contractor'} responds.`
+              });
+            }}
+          />
+        </div>
       </div>
 
       {/* Tabs for Workers/Companies */}
@@ -575,7 +575,7 @@ const Contractors = () => {
                       </div>
                     )}
 
-                    <div className="border-t border-border pt-3 mt-3 flex justify-end">
+                    <div className="border-t border-border pt-3 mt-3">
                       <Button
                         variant="ghost"
                         size="sm"
