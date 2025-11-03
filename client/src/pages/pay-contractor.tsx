@@ -31,7 +31,7 @@ export default function PayContractor() {
   const [selectedContractorId, setSelectedContractorId] = useState<string>('');
   const [contractor, setContractor] = useState<ContractorInfo | null>(null);
   const [amount, setAmount] = useState('1.00');
-  const [description, setDescription] = useState('Payment test');
+  const [description, setDescription] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [showStripeForm, setShowStripeForm] = useState(false);
@@ -215,7 +215,7 @@ export default function PayContractor() {
 
   const handlePaymentComplete = async (paymentIntentId: string) => {
     console.log('Payment completed with intent ID:', paymentIntentId);
-    
+
     // With V2 destination charges, the payment goes directly to the contractor
     // No additional transfer is needed - just mark as successful
     setPaymentSuccess(true);
@@ -247,15 +247,15 @@ export default function PayContractor() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button 
-                onClick={() => window.location.reload()} 
-                variant="outline" 
+              <Button
+                onClick={() => window.location.reload()}
+                variant="outline"
                 className="flex-1"
               >
                 Make Another Payment
               </Button>
-              <Button 
-                onClick={() => navigate('/contractors')} 
+              <Button
+                onClick={() => navigate('/contractors')}
                 className="flex-1"
               >
                 Back to Contractors
@@ -270,9 +270,9 @@ export default function PayContractor() {
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="max-w-md mx-auto">
-        <Button 
-          onClick={() => navigate('/contractors')} 
-          variant="ghost" 
+        <Button
+          onClick={() => navigate('/contractors')}
+          variant="ghost"
           className="mb-6"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
@@ -297,8 +297,8 @@ export default function PayContractor() {
                 <User className="h-4 w-4" />
                 Select Contractor *
               </Label>
-              <Select 
-                value={selectedContractorId} 
+              <Select
+                value={selectedContractorId}
                 onValueChange={(value) => {
                   setSelectedContractorId(value);
                   setError(null);
@@ -311,9 +311,9 @@ export default function PayContractor() {
                   {contractors.length === 0 ? (
                     <div className="p-4 text-center text-gray-500">
                       <p>No contractors available</p>
-                      <Button 
-                        size="sm" 
-                        className="mt-2" 
+                      <Button
+                        size="sm"
+                        className="mt-2"
                         onClick={() => navigate('/contractors')}
                       >
                         Add Contractors
@@ -401,7 +401,7 @@ export default function PayContractor() {
             )}
 
             {!showStripeForm ? (
-              <Button 
+              <Button
                 onClick={handleProceedToPayment}
                 disabled={isProcessing || !contractor}
                 className="w-full"
@@ -416,7 +416,7 @@ export default function PayContractor() {
                     <CreditCard className="h-4 w-4" />
                     Enter Payment Details
                   </h3>
-                  <StripeElements 
+                  <StripeElements
                     amount={parseFloat(amount) * 100} // Convert to cents
                     onPaymentComplete={handlePaymentComplete}
                     isProcessing={isProcessing}
@@ -425,8 +425,8 @@ export default function PayContractor() {
                     description={description}
                   />
                 </div>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => setShowStripeForm(false)}
                   className="w-full"
                   disabled={isProcessing}
