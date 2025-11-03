@@ -171,12 +171,12 @@ export function FindByProfileCodeDialog({
     }
   };
   
-  // Get display name for contractor
+  // Get display name for found user (contractor or business)
   const getDisplayName = () => {
     if (foundContractor?.companyName) return foundContractor.companyName;
     if (foundContractor?.firstName && foundContractor?.lastName) 
       return `${foundContractor.firstName} ${foundContractor.lastName}`;
-    return foundContractor?.username || "Contractor";
+    return foundContractor?.username || (foundContractor?.role === "business" ? "Business" : "Contractor");
   };
   
   // Allow both businesses and contractors to use this dialog
@@ -244,7 +244,9 @@ export function FindByProfileCodeDialog({
               <div className="p-3 rounded-md bg-muted">
                 <div className="flex items-center gap-2 mb-2">
                   <CheckCircle2 className="h-4 w-4 text-green-500" />
-                  <p className="font-medium">{foundContractor.role === "business" ? "Company" : "Contractor"} Found</p>
+                  <p className="font-medium">
+                    {user?.role === "business" ? "Contractor" : "Company"} Found
+                  </p>
                 </div>
                 <div className="text-sm">
                   <p className="font-medium">{getDisplayName()}</p>
@@ -295,7 +297,7 @@ export function FindByProfileCodeDialog({
                 ) : foundContractor ? (
                   "Send Connection Request"
                 ) : (
-                  "Find Contractor"
+                  user?.role === "business" ? "Find Contractor" : "Find Company"
                 )}
               </Button>
             </DialogFooter>

@@ -42,20 +42,18 @@ export default function ConnectionsPage() {
           <h1 className="text-2xl font-bold">Connection Requests</h1>
         </div>
 
-        {!isContractor && (
-          <FindByProfileCodeDialog
-            trigger={
-              <Button>
-                <UserPlus size={16} className="mr-2" />
-                Connect with Contractor
-              </Button>
-            }
-            onSuccess={() => {
-              // Refresh the page after success
-              window.location.reload();
-            }}
-          />
-        )}
+        <FindByProfileCodeDialog
+          trigger={
+            <Button>
+              <UserPlus size={16} className="mr-2" />
+              {isContractor ? "Connect with Company" : "Connect with Contractor"}
+            </Button>
+          }
+          onSuccess={() => {
+            // Refresh the page after success
+            window.location.reload();
+          }}
+        />
       </div>
 
       <div className="grid gap-6">
