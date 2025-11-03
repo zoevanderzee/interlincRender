@@ -3451,6 +3451,141 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
 
+  // Get subscription status endpoint
+  app.get(`${apiRouter}/subscription-status`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // If user has no Stripe subscription ID, return null
+      if (!user.stripeSubscriptionId) {
+        return res.json({
+          subscription: null,
+          customer: user.stripeCustomerId ? { id: user.stripeCustomerId } : null
+        });
+      }
+
+      // Fetch subscription from Stripe
+      const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+      
+      // Get the price details
+      const priceId = subscription.items.data[0]?.price.id;
+      const price = subscription.items.data[0]?.price;
+
+      // Determine plan name from price ID
+      const priceIdToPlanMap: Record<string, string> = {
+        'price_1SFIvtF4bfRUGDn9MWvE1imT': 'business-enterprise-annual',
+        'price_1Ricn6F4bfRUGDn91XzkPq5F': 'business',
+        'price_1RgRilF4bfRUGDn9jMnjAo96': 'business-enterprise',
+        'price_1RgRilF4bfRUGDn9LWUhoJ6F': 'business-enterprise-new',
+        'price_1SFIv5F4bfRUGDn9qeJh0VYX': 'business-annual',
+        'price_1RgRm6F4bfRUGDn9TmmWXkkh': 'contractor-pro'
+      };
+
+      const planName = priceIdToPlanMap[priceId] || 'unknown';
+
+      res.json({
+        subscription: {
+          id: subscription.id,
+          status: subscription.status,
+          plan_name: planName,
+          amount: price.unit_amount || 0,
+          currency: price.currency || 'gbp',
+          interval: price.recurring?.interval || 'month',
+          current_period_start: subscription.current_period_start,
+          current_period_end: subscription.current_period_end,
+          cancel_at_period_end: subscription.cancel_at_period_end
+        },
+        customer: {
+          id: subscription.customer as string
+        }
+      });
+    } catch (error: any) {
+      console.error('Error fetching subscription status:', error);
+      res.status(500).json({
+        message: "Error fetching subscription status",
+        error: error.message
+      });
+    }
+  });
+
+  // Cancel subscription endpoint
+  app.post(`${apiRouter}/cancel-subscription`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user || !user.stripeSubscriptionId) {
+        return res.status(404).json({ message: "No active subscription found" });
+      }
+
+      // Cancel at period end (don't cancel immediately)
+      const subscription = await stripe.subscriptions.update(user.stripeSubscriptionId, {
+        cancel_at_period_end: true
+      });
+
+      res.json({
+        message: "Subscription will be cancelled at the end of the billing period",
+        subscription: {
+          id: subscription.id,
+          cancel_at_period_end: subscription.cancel_at_period_end,
+          current_period_end: subscription.current_period_end
+        }
+      });
+    } catch (error: any) {
+      console.error('Error cancelling subscription:', error);
+      res.status(500).json({
+        message: "Error cancelling subscription",
+        error: error.message
+      });
+    }
+  });
+
+  // Reactivate subscription endpoint
+  app.post(`${apiRouter}/reactivate-subscription`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user || !user.stripeSubscriptionId) {
+        return res.status(404).json({ message: "No subscription found" });
+      }
+
+      // Remove cancellation
+      const subscription = await stripe.subscriptions.update(user.stripeSubscriptionId, {
+        cancel_at_period_end: false
+      });
+
+      res.json({
+        message: "Subscription reactivated",
+        subscription: {
+          id: subscription.id,
+          cancel_at_period_end: subscription.cancel_at_period_end,
+          status: subscription.status
+        }
+      });
+    } catch (error: any) {
+      console.error('Error reactivating subscription:', error);
+      res.status(500).json({
+        message: "Error reactivating subscription",
+        error: error.message
+      });
+    }
+  });
+
   // Subscription prices endpoint - fetches real-time prices from Stripe
   app.get(`${apiRouter}/subscription-prices`, async (req: Request, res: Response) => {
     try {
