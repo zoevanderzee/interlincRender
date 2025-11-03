@@ -4879,7 +4879,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Connection Request Routes
+  // Connection Request Routes - Bidirectional (Business ↔ Contractor)
   app.post(`${apiRouter}/connection-requests`, requireAuth, async (req: Request, res: Response) => {
     try {
       // Create a new connection request
@@ -4895,54 +4895,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({message: "Authentication required"});
       }
 
-      // Get user from storage to check role
-      const user = await storage.getUser(parseInt(userId.toString()));
-      if (!user) {
+      // Get current user from storage to check role
+      const currentUser = await storage.getUser(parseInt(userId.toString()));
+      if (!currentUser) {
         return res.status(401).json({message: "User not found"});
       }
 
-      // Only businesses can create connection requests
-      if (user.role !== 'business') {
-        return res.status(403).json({message: "Only businesses can create connection requests"});
-      }
+      // Find the target user by profile code
+      const targetUser = await storage.getUserByProfileCode(profileCode);
 
-      // First check if the profile code is valid
-      const contractor = await storage.getUserByProfileCode(profileCode);
-
-      if (!contractor) {
+      if (!targetUser) {
         return res.status(404).json({message: "Invalid profile code. Please check and try again."});
       }
 
-      // Check if this contractor is already connected to this business
-      const businessId = parseInt(userId.toString());
+      // Validate the connection is between business and contractor
+      const isBusinessToContractor = currentUser.role === 'business' && targetUser.role === 'contractor';
+      const isContractorToBusiness = currentUser.role === 'contractor' && targetUser.role === 'business';
+
+      if (!isBusinessToContractor && !isContractorToBusiness) {
+        return res.status(400).json({
+          message: "Connection requests can only be made between businesses and contractors."
+        });
+      }
+
+      // Determine businessId and contractorId based on roles
+      const businessId = currentUser.role === 'business' ? currentUser.id : targetUser.id;
+      const contractorId = currentUser.role === 'contractor' ? currentUser.id : targetUser.id;
 
       // Check existing contracts
       const existingContracts = await storage.getContractsByBusinessId(businessId);
-      const alreadyContracted = existingContracts.some(contract => contract.contractorId === contractor.id);
+      const alreadyContracted = existingContracts.some(contract => contract.contractorId === contractorId);
 
       if (alreadyContracted) {
-        return res.status(400).json({message: "You already have contracts with this contractor."});
+        return res.status(400).json({message: "You already have contracts with this user."});
       }
 
-      // Check for existing connection requests with this contractor
-      const existingRequests = await storage.getConnectionRequestsByBusinessId(businessId);
-      const alreadyRequested = existingRequests.some(req => {
-        // Stronger validation to prevent duplicate requests:
-        // 1. Check by profile code (case insensitive)
-        const profileCodeMatch = req.profileCode?.toLowerCase() === profileCode.toLowerCase();
+      // Check for existing connection requests (check both directions)
+      const businessRequests = await storage.getConnectionRequestsByBusinessId(businessId);
+      const alreadyRequested = businessRequests.some(req => {
+        const sameContractor = req.contractorId === contractorId;
         const isPendingOrAccepted = req.status === 'pending' || req.status === 'accepted';
-        return profileCodeMatch && isPendingOrAccepted;
+        return sameContractor && isPendingOrAccepted;
       });
 
       if (alreadyRequested) {
         return res.status(400).json({
-          message: "You've already sent a connection request to this contractor."
+          message: "A connection request already exists between you and this user."
         });
       }
 
       // Create the connection request
       const createdRequest = await storage.createConnectionRequest({
         businessId: businessId,
+        contractorId: contractorId,
         profileCode: profileCode,
         message: message || null,
         status: 'pending'
@@ -4979,25 +4984,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let connectionRequests = [];
 
         if (userRole === 'business') {
-          // If business, get requests sent by this business
+          // Get all requests involving this business (sent or received)
           connectionRequests = await storage.getConnectionRequestsByBusinessId(userId);
         } else if (userRole === 'contractor' || userRole === 'freelancer') {
-          // If contractor, get requests where this contractor is the recipient
+          // Get all requests involving this contractor (sent or received)
           connectionRequests = await storage.getConnectionRequestsByContractorId(userId);
         }
 
-        // Enrich requests with business and contractor names
+        // Enrich requests with business and contractor names, and direction metadata
         const enrichedRequests = await Promise.all(
           connectionRequests.map(async (request) => {
             const business = await storage.getUser(request.businessId);
             const contractor = request.contractorId ? await storage.getUser(request.contractorId) : null;
+
+            // Determine if this request was sent or received by current user
+            // If current user is business: they sent it if they initiated, received it if contractor initiated
+            // If current user is contractor: they sent it if they initiated, received it if business initiated
+            // We need to determine who initiated - for now, assume business initiated (can enhance later)
+            const isSentByCurrentUser = (userRole === 'business' && request.businessId === userId) ||
+                                       (userRole === 'contractor' && request.contractorId === userId);
 
             return {
               ...request,
               businessName: business?.companyName || business?.username || `Business ${request.businessId}`,
               contractorName: contractor?.username || contractor?.firstName && contractor?.lastName
                 ? `${contractor.firstName} ${contractor.lastName}`
-                : `Contractor ${request.contractorId}`
+                : `Contractor ${request.contractorId}`,
+              direction: isSentByCurrentUser ? 'sent' : 'received',
+              otherPartyName: userRole === 'business' 
+                ? (contractor?.username || `${contractor?.firstName || ''} ${contractor?.lastName || ''}`.trim() || 'Contractor')
+                : (business?.companyName || business?.username || 'Business')
             };
           })
         );
@@ -5027,12 +5043,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Check if the user is authorized to update this request
-        const userId = req.user?.id;
-        const userRole = req.user?.role;
+        const userId = req.user?.id || (req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
+        const currentUser = userId ? await storage.getUser(userId) : null;
+        
+        if (!currentUser) {
+          return res.status(401).json({message: "Authentication required"});
+        }
 
-        // Only the contractor can accept/decline requests
-        if ((userRole !== 'contractor' && userRole !== 'freelancer') ||
-          connectionRequest.contractorId !== userId) {
+        // User must be either the business or contractor in this request (the recipient)
+        const isBusinessInRequest = connectionRequest.businessId === userId;
+        const isContractorInRequest = connectionRequest.contractorId === userId;
+
+        if (!isBusinessInRequest && !isContractorInRequest) {
           return res.status(403).json({message: "You are not authorized to update this connection request"});
         }
 
