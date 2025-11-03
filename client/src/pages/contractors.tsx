@@ -319,10 +319,42 @@ const Contractors = () => {
           </p>
         </div>
         {!isContractor && (
-          <div className="mt-4 md:mt-0 flex space-x-2">
+          <div className="mt-4 md:mt-0 flex flex-col md:flex-row md:items-center gap-4">
+            {/* Business Profile Code Display */}
+            {user?.profileCode && (
+              <div className="flex items-center gap-2 bg-gradient-to-r from-indigo-500/10 to-purple-600/10 border border-indigo-500/20 rounded-lg px-4 py-2">
+                <Fingerprint size={16} className="text-indigo-400" />
+                <span className="text-sm text-zinc-400">Your Code:</span>
+                <code className="font-mono text-white font-semibold">{user.profileCode}</code>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 w-8 p-0"
+                        onClick={() => {
+                          navigator.clipboard.writeText(user.profileCode || '');
+                          toast({
+                            title: "Code copied",
+                            description: "Share this code with contractors to connect."
+                          });
+                        }}
+                      >
+                        <Copy size={14} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Copy your profile code</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+            )}
+            
             <FindByProfileCodeDialog 
               trigger={
-                <Button variant="outline">
+                <Button>
                   <Fingerprint size={16} className="mr-2" />
                   Connect by Code
                 </Button>
@@ -335,10 +367,6 @@ const Contractors = () => {
                 });
               }}
             />
-            <Button onClick={() => generateOnboardingLink()}>
-              <Plus size={16} className="mr-2" />
-              Invite
-            </Button>
           </div>
         )}
       </div>
