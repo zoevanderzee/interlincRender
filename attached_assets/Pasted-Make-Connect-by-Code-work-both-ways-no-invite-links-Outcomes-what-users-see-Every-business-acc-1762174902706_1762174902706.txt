@@ -1,0 +1,40 @@
+Make “Connect by Code” work both ways (no invite links)
+Outcomes (what users see)
+Every business account has a permanent connection code.
+Every contractor account has a permanent connection code.
+Both roles can connect to the other by entering the other party’s code.
+The old business→contractor “connect by code” continues to work exactly as it does today.
+The business “Invite” link/button is removed and replaced with code-based UI.
+UI changes (only what to show)
+Business → Contractors page
+Replace the current “Invite” button with:
+“Your company code” (copyable).
+“Connect by code” input (for pasting a contractor’s code) with a simple “Connect” button.
+If the business has no code yet (legacy account), show it as soon as they click “Your company code” (generated once, then permanent).
+Contractor dashboard
+Show “Your contractor code” (copyable).
+Add “Connect by code” input (for pasting a business’s code) with a “Connect” button.
+Copy to use
+Headings: “Your code”, “Connect by code”
+Success: “Connected.”
+Already connected: “You’re already connected.”
+Invalid code: “That code wasn’t found.”
+Behavior (what must happen; don’t change how it’s done)
+Codes are unique, permanent, and created once per account (business or contractor).
+If an account doesn’t have a code yet (older accounts), create it once on first need and then display it.
+Entering the other party’s code creates the same connection record/statuses you already use today.
+(Do not change connection logic, statuses, or downstream features.)
+Repeating the same connection request is idempotent (no duplicates; returns “You’re already connected.”).
+No invite links in the business UI anymore—everything is code-based.
+Guardrails (must hold true)
+Do not alter existing connection data, statuses, or how work requests/assignments function.
+Do not change how the underlying system performs the connection—only trigger it with the entered code.
+Codes must not expose personal information; display business/contractor names as they are already shown elsewhere in the app.
+Codes never rotate via this feature.
+Acceptance checks (what to test)
+Business sees their code and can connect by a contractor’s code (works exactly as before).
+Contractor sees their code and can connect by a business’s code (new, symmetric).
+Legacy business/contractor with no code gets one automatically on first display, then it stays the same thereafter.
+Entering a valid opposite-role code results in Connected.
+Entering the same code again shows You’re already connected and doesn’t duplicate anything.
+Existing workflows (work requests, assignments, payments, dashboards) behave exactly as before.

@@ -1,0 +1,54 @@
+The system already supports everything we need — it just needs UI symmetry.
+Right now:
+Businesses can enter a contractor’s code → sends connection request → contractor accepts.
+Contractors cannot enter a business’s code → because the UI only exposes “Connect by Code” on the business side.
+So the fix is UI only, not backend.
+No new tables.
+No new endpoints.
+No new join logic.
+No onboarding link system.
+Just expose the same connection request flow to contractors.
+What needs to change (minimal, correct, safe)
+1. Contractors must see:
+Their own code (already exists in Profile page)
+A “Connect by Code” input (same dialog businesses use: FindByProfileCodeDialog)
+Clicking it creates the same connection request, but reversed:
+Contractor enters business’s code
+System resolves the business user
+Sends connection request to the business
+Business approves (exact same accept UI as currently exists)
+Nothing else changes.
+2. Businesses must see:
+Their own profile code, right where the “Invite” button used to be
+Clicking "Copy Code" just copies their code
+Remove the “Invite link” UI entirely
+Businesses can still enter contractor codes the same way as before.
+Final Flow (both directions)
+Who initiates	They enter	Result
+Business → Contractor	Contractor’s profile code	Contractor receives request → accepts
+Contractor → Business	Business’s profile code	Business receives request → accepts
+That's it.
+Same logic.
+Same database.
+Same connection approval.
+No changes to work requests, assignments, chats, billing, anything.
+UI Changes Only (summary for the agent)
+Tell the agent this exactly:
+Remove the “Invite” link for businesses.
+Both Business and Contractor users must be able to:
+View their own profile code (already implemented in ProfileCodeSection)
+Open the existing FindByProfileCodeDialog (currently used only by businesses)
+Enter the other user’s profile code and send a connection request.
+If the code belongs to a business, create a contractor→business connection request.
+If the code belongs to a contractor, create a business→contractor connection request.
+Do not change how connection requests are stored, accepted, or linked — reuse the existing connection_requests table and accept/decline flow exactly as is.
+Acceptance Criteria
+Business Profile page shows their code (copyable)
+Contractor Profile page shows their code (already done)
+Both see a “Connect by Code” button
+Entering a valid code:
+Shows correct user preview
+Sends a connection request
+Request shows in /connections
+Accept works the same as now (no new logic added)
+No onboarding links anywhere in the UI anymore
