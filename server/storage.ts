@@ -1276,11 +1276,34 @@ export class MemStorage implements IStorage {
     let code = '';
     let attempts = 0;
     const maxAttempts = 50;
+    
+    // Businesses: COMPANYNAME-XXXX (4 digits)
+    // Contractors: USERNAME-XXXX (4 digits)
     const generate = () => {
-      let cleanUsername = user.username.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-      if (cleanUsername.length > 8) cleanUsername = cleanUsername.substring(0, 8);
       const randomNum = Math.floor(1000 + Math.random() * 9000);
-      return `${cleanUsername}-${randomNum}`;
+      
+      if (user.role === 'business') {
+        // For businesses: use companyName-XXXX format
+        let baseName = user.companyName || user.username;
+        let cleanName = baseName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+        
+        // Limit to 12 characters for readability
+        if (cleanName.length > 12) {
+          cleanName = cleanName.substring(0, 12);
+        }
+        
+        return `${cleanName}-${randomNum}`;
+      } else {
+        // For contractors: use username-XXXX format
+        let cleanUsername = user.username.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+        
+        // Limit to 8 characters for readability
+        if (cleanUsername.length > 8) {
+          cleanUsername = cleanUsername.substring(0, 8);
+        }
+        
+        return `${cleanUsername}-${randomNum}`;
+      }
     };
 
     while (attempts < maxAttempts) {
@@ -1298,7 +1321,10 @@ export class MemStorage implements IStorage {
 
     if (attempts === maxAttempts) {
       const timestamp = Date.now().toString().slice(-6);
-      code = `${user.username.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().substring(0, 6)}-${timestamp}`;
+      const baseName = user.role === 'business' 
+        ? (user.companyName || user.username) 
+        : (user.lastName || user.username);
+      code = `${baseName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().substring(0, 6)}-${timestamp}`;
     }
 
     const updatedUser = { ...user, profileCode: code };
@@ -2978,20 +3004,33 @@ export class DatabaseStorage implements IStorage {
     const maxAttempts = 50;
 
     // Function to create a professional and unique code
-    // Format: USERNAME-XXXX (where XXXX is a unique 4-digit number)
+    // Businesses: COMPANYNAME-XXXX (4 digits)
+    // Contractors: USERNAME-XXXX (4 digits)
     const generateCode = () => {
-      // Clean up username: remove special chars, keep alphanumeric
-      let cleanUsername = user.username.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-
-      // Limit username to 8 characters for readability
-      if (cleanUsername.length > 8) {
-        cleanUsername = cleanUsername.substring(0, 8);
-      }
-
-      // Generate a random 4-digit number
       const randomNum = Math.floor(1000 + Math.random() * 9000);
-
-      return `${cleanUsername}-${randomNum}`;
+      
+      if (user.role === 'business') {
+        // For businesses: use companyName-XXXX format
+        let baseName = user.companyName || user.username;
+        let cleanName = baseName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+        
+        // Limit to 12 characters for readability
+        if (cleanName.length > 12) {
+          cleanName = cleanName.substring(0, 12);
+        }
+        
+        return `${cleanName}-${randomNum}`;
+      } else {
+        // For contractors: use username-XXXX format
+        let cleanUsername = user.username.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+        
+        // Limit to 8 characters for readability
+        if (cleanUsername.length > 8) {
+          cleanUsername = cleanUsername.substring(0, 8);
+        }
+        
+        return `${cleanUsername}-${randomNum}`;
+      }
     };
 
     // Keep generating until we find a unique code
@@ -3015,7 +3054,10 @@ export class DatabaseStorage implements IStorage {
     if (!isUnique) {
       // Fallback to timestamp-based code if we can't find unique random
       const timestamp = Date.now().toString().slice(-6);
-      code = `${user.username.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().substring(0, 6)}-${timestamp}`;
+      const baseName = user.role === 'business' 
+        ? (user.companyName || user.username) 
+        : (user.lastName || user.username);
+      code = `${baseName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().substring(0, 6)}-${timestamp}`;
     }
 
     // Update the user with the new profile code
