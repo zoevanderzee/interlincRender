@@ -55,9 +55,11 @@ const Contractors = () => {
     enabled: !!user
   });
 
-  // SECURITY: All contractor data comes from verified connections only
-  const connectionRequests = [];
-  const isLoadingConnections = false;
+  // Fetch connection requests (both sent and received)
+  const { data: connectionRequests = [], isLoading: isLoadingConnections } = useQuery({
+    queryKey: ['/api/connection-requests'],
+    enabled: !!user
+  });
 
   // Get data from dashboard - use empty arrays as fallbacks since these properties may not exist
   const externalWorkers = (dashboardData as any)?.contractors || [];
@@ -165,6 +167,29 @@ const Contractors = () => {
       toast({
         title: "Error",
         description: error.message || "Could not generate direct link. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update connection request status (accept/decline)
+  const updateConnectionRequestMutation = useMutation({
+    mutationFn: async ({ requestId, status }: { requestId: number, status: 'accepted' | 'declined' }) => {
+      const response = await apiRequest("PATCH", `/api/connection-requests/${requestId}`, { status });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/connection-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
+      toast({
+        title: "Connection request updated",
+        description: "The connection request has been updated successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update connection request. Please try again.",
         variant: "destructive",
       });
     },
