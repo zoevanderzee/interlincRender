@@ -81,7 +81,7 @@ export function FindByProfileCodeDialog({
     
     try {
       // Use fetch directly to avoid case sensitivity issues
-      const response = await fetch(`/api/contractors/find-by-profile-code/${profileCode}`, {
+      const response = await fetch(`/api/users/find-by-profile-code/${profileCode}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -91,7 +91,7 @@ export function FindByProfileCodeDialog({
       
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || "Failed to find contractor with this profile code");
+        throw new Error(error.message || "That code wasn't found");
       }
       
       const data = await response.json();
@@ -179,7 +179,8 @@ export function FindByProfileCodeDialog({
     return foundContractor?.username || "Contractor";
   };
   
-  if (!user || user.role !== "business") {
+  // Allow both businesses and contractors to use this dialog
+  if (!user || (user.role !== "business" && user.role !== "contractor")) {
     return null;
   }
   
@@ -188,9 +189,9 @@ export function FindByProfileCodeDialog({
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Connect by Profile Code</DialogTitle>
+          <DialogTitle>Connect by Code</DialogTitle>
           <DialogDescription>
-            Enter a contractor's profile code to send them a connection request.
+            Enter {user.role === "business" ? "a contractor's" : "a company's"} profile code to connect.
           </DialogDescription>
         </DialogHeader>
         
@@ -243,7 +244,7 @@ export function FindByProfileCodeDialog({
               <div className="p-3 rounded-md bg-muted">
                 <div className="flex items-center gap-2 mb-2">
                   <CheckCircle2 className="h-4 w-4 text-green-500" />
-                  <p className="font-medium">Contractor Found</p>
+                  <p className="font-medium">{foundContractor.role === "business" ? "Company" : "Contractor"} Found</p>
                 </div>
                 <div className="text-sm">
                   <p className="font-medium">{getDisplayName()}</p>

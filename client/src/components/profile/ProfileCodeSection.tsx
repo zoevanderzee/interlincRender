@@ -72,7 +72,8 @@ export function ProfileCodeSection() {
     },
   });
 
-  if (!user || user.role !== "contractor") {
+  // Show profile code for both businesses and contractors
+  if (!user || (user.role !== "contractor" && user.role !== "business")) {
     return null;
   }
 
@@ -84,7 +85,7 @@ export function ProfileCodeSection() {
           Your Profile Code
         </CardTitle>
         <CardDescription>
-          Share your unique profile code with businesses to connect without exposing your email address. This code is permanent and cannot be changed.
+          Share your unique profile code to connect with {user.role === "business" ? "contractors" : "businesses"} without exposing your email address. This code is permanent and cannot be changed.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -93,7 +94,7 @@ export function ProfileCodeSection() {
             <div className="flex items-center justify-center mb-4 text-muted-foreground">
               <Fingerprint className="h-12 w-12 opacity-50 mb-2" />
             </div>
-            <p className="mb-6">You don't have a profile code yet. Generate one to let businesses find and connect with you.</p>
+            <p className="mb-6">You don't have a profile code yet. Generate one to let {user.role === "business" ? "contractors" : "businesses"} find and connect with you.</p>
             <Button
               onClick={() => generateInitialCodeMutation.mutate()}
               disabled={generateInitialCodeMutation.isPending}
@@ -142,7 +143,7 @@ export function ProfileCodeSection() {
                 </TooltipProvider>
               </div>
               <p className="text-sm mt-2 text-muted-foreground text-center">
-                Share this code with businesses who want to connect with you.
+                Share this code with {user.role === "business" ? "contractors" : "businesses"} who want to connect with you.
               </p>
             </div>
           </div>
