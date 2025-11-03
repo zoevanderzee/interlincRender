@@ -409,7 +409,7 @@ const Contractors = () => {
             <>
               <TabsTrigger value="contractors">Sub Contractors</TabsTrigger>
               <TabsTrigger value="freelancers">Contractors</TabsTrigger>
-              <TabsTrigger value="invites">Pending Invites</TabsTrigger>
+              <TabsTrigger value="invites">Connection Requests</TabsTrigger>
             </>
           )}
         </TabsList>
@@ -728,22 +728,18 @@ const Contractors = () => {
               <div className="bg-[hsl(215,50%,12%)] dark:bg-[hsl(215,50%,12%)] rounded-lg border border-[hsl(215,40%,22%)] dark:border-[hsl(215,40%,22%)] overflow-hidden">
                 <div className="px-4 py-5 sm:px-6 flex justify-between items-center bg-[hsl(215,50%,12%)] dark:bg-[hsl(215,50%,12%)]">
                   <div>
-                    <h3 className="text-lg font-medium text-white">Pending Invitations</h3>
+                    <h3 className="text-lg font-medium text-white">Connection Requests</h3>
                     <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-                      These are invitations that have been sent but not yet accepted.
+                      Manage connection requests sent to and received from contractors.
                     </p>
                   </div>
                 </div>
 
-                {isLoadingInvites ? (
+                {isLoadingConnections ? (
                   <div className="animate-pulse p-6">
                     <div className="h-7 bg-zinc-800 rounded w-1/4 mb-3"></div>
                     <div className="h-4 bg-zinc-800 rounded w-3/4 mb-2"></div>
                     <div className="h-4 bg-zinc-800 rounded w-2/4 mb-6"></div>
-
-                    <div className="h-7 bg-zinc-800 rounded w-1/3 mb-3"></div>
-                    <div className="h-4 bg-zinc-800 rounded w-3/5 mb-2"></div>
-                    <div className="h-4 bg-zinc-800 rounded w-2/5"></div>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
@@ -754,19 +750,19 @@ const Contractors = () => {
                             scope="col"
                             className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider"
                           >
-                            Invitation
+                            Direction
                           </th>
                           <th
                             scope="col"
                             className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
                           >
-                            Recipient
+                            Contractor
                           </th>
                           <th
                             scope="col"
                             className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
                           >
-                            Type
+                            Message
                           </th>
                           <th
                             scope="col"
@@ -778,7 +774,7 @@ const Contractors = () => {
                             scope="col"
                             className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
                           >
-                            Sent
+                            Date
                           </th>
                           <th
                             scope="col"
@@ -789,42 +785,79 @@ const Contractors = () => {
                         </tr>
                       </thead>
                       <tbody className="bg-[hsl(215,50%,12%)] dark:bg-[hsl(215,50%,12%)] divide-y divide-[hsl(215,40%,22%)]">
-                        {allInvites.length === 0 ? (
+                        {connectionRequests.length === 0 ? (
                           <tr>
                             <td colSpan={6} className="px-6 py-8 text-center text-sm text-muted-foreground">
-                              No pending invitations
+                              No connection requests yet
                             </td>
                           </tr>
                         ) : (
-                          allInvites.map((invite) => (
-                            <tr key={invite.id}>
+                          connectionRequests.map((request: any) => (
+                            <tr key={request.id}>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
-                                {(invite as any).contractId ? 'Project Invitation' : 'General Invitation'}
+                                <span className={`px-2 py-1 rounded-md text-xs font-medium ${
+                                  request.direction === 'sent' 
+                                    ? 'bg-blue-900/30 text-blue-400' 
+                                    : 'bg-green-900/30 text-green-400'
+                                }`}>
+                                  {request.direction === 'sent' ? 'Sent' : 'Received'}
+                                </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
-                                {invite.email}
+                                {request.contractorName}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
-                                {invite.workerType === 'freelancer' ? 'Freelancer' : 'Contractor'}
+                              <td className="px-6 py-4 text-sm text-muted-foreground max-w-xs truncate">
+                                {request.message || '—'}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
-                                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                                  Pending
+                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                  request.status === 'pending' 
+                                    ? 'bg-yellow-100 text-yellow-800'
+                                    : request.status === 'accepted'
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-red-100 text-red-800'
+                                }`}>
+                                  {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
                                 </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                                {formatDate(invite.createdAt)}
+                                {formatDate(request.createdAt)}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => generateDirectLinkMutation.mutate({ inviteId: invite.id })}
-                                  className="text-muted-foreground hover:text-white mr-2"
-                                >
-                                  <LinkIcon size={14} className="mr-1" />
-                                  Get Link
-                                </Button>
+                                {request.direction === 'received' && request.status === 'pending' && (
+                                  <div className="flex justify-end gap-2">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => updateConnectionRequestMutation.mutate({ 
+                                        requestId: request.id, 
+                                        status: 'accepted' 
+                                      })}
+                                      className="text-green-400 hover:text-green-300"
+                                      data-testid={`button-accept-${request.id}`}
+                                    >
+                                      Accept
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => updateConnectionRequestMutation.mutate({ 
+                                        requestId: request.id, 
+                                        status: 'declined' 
+                                      })}
+                                      className="text-red-400 hover:text-red-300"
+                                      data-testid={`button-decline-${request.id}`}
+                                    >
+                                      Decline
+                                    </Button>
+                                  </div>
+                                )}
+                                {request.direction === 'sent' && request.status === 'pending' && (
+                                  <span className="text-muted-foreground text-xs">Awaiting response</span>
+                                )}
+                                {request.status !== 'pending' && (
+                                  <span className="text-muted-foreground text-xs">—</span>
+                                )}
                               </td>
                             </tr>
                           ))
@@ -834,8 +867,6 @@ const Contractors = () => {
                   </div>
                 )}
               </div>
-
-              {/* Connection Requests functionality moved to V2 system */}
             </div>
           </TabsContent>
         )}
