@@ -345,8 +345,8 @@ const Contractors = () => {
         </div>
         {!isContractor && (
           <div className="mt-4 md:mt-0 flex flex-col md:flex-row md:items-center gap-4">
-            {/* Business Profile Code Display */}
-            {user?.profileCode && (
+            {/* Business Profile Code Display/Generate */}
+            {user?.profileCode ? (
               <div className="flex items-center gap-2 bg-gradient-to-r from-indigo-500/10 to-purple-600/10 border border-indigo-500/20 rounded-lg px-4 py-2">
                 <Fingerprint size={16} className="text-indigo-400" />
                 <span className="text-sm text-zinc-400">Your Code:</span>
@@ -365,6 +365,7 @@ const Contractors = () => {
                             description: "Share this code with contractors to connect."
                           });
                         }}
+                        data-testid="button-copy-code"
                       >
                         <Copy size={14} />
                       </Button>
@@ -375,11 +376,39 @@ const Contractors = () => {
                   </Tooltip>
                 </TooltipProvider>
               </div>
+            ) : (
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    const response = await apiRequest("POST", "/api/profile-code/generate", {});
+                    const data = await response.json();
+                    if (data.code) {
+                      queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+                      queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
+                      toast({
+                        title: "Profile code generated",
+                        description: `Your code is ${data.code}. Share it with contractors to connect.`
+                      });
+                    }
+                  } catch (error: any) {
+                    toast({
+                      title: "Error",
+                      description: error.message || "Failed to generate profile code",
+                      variant: "destructive"
+                    });
+                  }
+                }}
+                data-testid="button-generate-code"
+              >
+                <Fingerprint size={16} className="mr-2" />
+                Generate Profile Code
+              </Button>
             )}
             
             <FindByProfileCodeDialog 
               trigger={
-                <Button>
+                <Button data-testid="button-connect-by-code">
                   <Fingerprint size={16} className="mr-2" />
                   Connect by Code
                 </Button>
