@@ -440,6 +440,17 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
 
       const account = await stripe.accounts.create(accountConfig);
 
+      // Set payout statement descriptor for contractor Custom accounts
+      if (useCustomOnboarding && user.role === 'contractor') {
+        await stripe.accounts.update(account.id, {
+          settings: {
+            payouts: {
+              statement_descriptor: 'INTERLINC'
+            }
+          }
+        });
+      }
+
       // Store account info
       await db.setConnect(userId, {
         accountId: account.id,
