@@ -238,36 +238,58 @@ export default function InterlincConnectV2() {
         throw new Error('Bank account details are required');
       }
 
-      // Step 1: Submit profile and bank details
-      const initResponse = await apiRequest('POST', '/api/payments/setup/init', {
-        body: JSON.stringify(onboardingForm),
+      if (!status?.accountId) {
+        throw new Error('No account ID found');
+      }
+
+      // Build properly structured payload for Stripe Custom onboarding
+      const payload = {
+        accountId: status.accountId,
+        firstName: onboardingForm.first_name,
+        lastName: onboardingForm.last_name,
+        dob: {
+          day: parseInt(onboardingForm.dob.day),
+          month: parseInt(onboardingForm.dob.month),
+          year: parseInt(onboardingForm.dob.year)
+        },
+        email: onboardingForm.email,
+        phone: onboardingForm.phone,
+        address: {
+          line1: onboardingForm.address_line1,
+          city: onboardingForm.address_city,
+          postcode: onboardingForm.address_postal_code,
+          country: onboardingForm.address_country
+        },
+        websiteUrl: onboardingForm.business_profile_url || '',
+        productDescription: onboardingForm.business_profile_product_description || '',
+        mcc: onboardingForm.business_profile_mcc,
+        bank: {
+          accountNumber: onboardingForm.account_number,
+          routingNumber: onboardingForm.routing_number,
+          country: onboardingForm.bank_country,
+          currency: onboardingForm.bank_currency
+        }
+      };
+
+      console.log('Submitting onboarding payload:', { ...payload, bank: { ...payload.bank, accountNumber: '[REDACTED]' } });
+
+      // Submit all data in one call
+      const response = await apiRequest('POST', '/api/payments/setup/init', {
+        body: JSON.stringify(payload),
         headers: { 'Content-Type': 'application/json' }
       });
 
-      if (!initResponse.ok) {
-        const errorData = await initResponse.json();
-        throw new Error(errorData.error || 'Setup initialization failed');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Setup failed');
       }
 
-      const initResult = await initResponse.json();
-      console.log('Setup initialized:', initResult);
-
-      // Step 2: Accept ToS via API
-      const tosResponse = await apiRequest('POST', '/api/payments/setup/accept-tos', {
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      if (!tosResponse.ok) {
-        const errorData = await tosResponse.json();
-        throw new Error(errorData.error || 'ToS acceptance failed');
-      }
-
-      const tosResult = await tosResponse.json();
-      console.log('ToS accepted:', tosResult);
+      const result = await response.json();
+      console.log('Setup complete:', result);
 
       toast({
         title: "Setup Complete",
-        description: "Your account has been configured. Moving to verification...",
+        description: "Your account has been configured successfully.",
       });
 
       // Refresh status and move to verify

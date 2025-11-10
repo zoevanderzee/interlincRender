@@ -1,0 +1,89 @@
+Frontend (call with JSON)
+// Somewhere in your click handler (NOT FormData, no <form> post)
+async function submitOnboarding() {
+  const payload = {
+    accountId,                          // "acct_…"
+    firstName, lastName,
+    dob: { day, month, year },
+    email, phone,
+    address: { line1, city, postcode, country },   // include country
+    websiteUrl,                          // or leave empty and use productDescription
+    productDescription,                  // fallback if no website
+    mcc,                                 // real 4-digit MCC string
+    bank: {
+      accountNumber,
+      routingNumber,                     // GB sort code / US routing / or omit if IBAN
+      country,                           // e.g. "GB"
+      currency                           // e.g. "GBP"
+    }
+  };
+
+  await fetch('/api/payments/setup/submit', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  });
+}
+Backend (Express) — parse JSON and update Stripe
+Put the JSON parser before routes, and keep express.raw only on webhooks.
+app.use(express.json({ limit: '1mb' }));
+app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), webhookHandler);
+// all other routes below — do NOT use express.raw() here
+Now the submit route (no logging, just do it):
+app.post('/api/payments/setup/submit', async (req, res) => {
+  try {
+    const b = req.body;
+    if (!b?.accountId?.startsWith('acct_')) return res.status(400).json({error:'Invalid accountId'});
+
+    // Ensure this is a Custom + application-collected account
+    const acct = await stripe.accounts.retrieve(b.accountId);
+    if (acct.type !== 'custom' || acct.controller?.requirement_collection !== 'application') {
+      return res.status(400).json({ error: 'Expected Custom/application account' });
+    }
+
+    // Send the form to Stripe
+    await stripe.accounts.update(b.accountId, {
+      business_profile: {
+        url: b.websiteUrl || undefined,
+        product_description: b.productDescription || undefined,
+        mcc: b.mcc || undefined,
+      },
+      individual: {
+        first_name: b.firstName,
+        last_name:  b.lastName,
+        dob: { day: b.dob?.day, month: b.dob?.month, year: b.dob?.year },
+        email: b.email,
+        phone: b.phone,
+        address: {
+          line1: b.address?.line1,
+          city: b.address?.city,
+          postal_code: b.address?.postcode,
+          country: b.address?.country,   // REQUIRED
+        },
+      },
+      external_account: b.bank?.token ? b.bank.token : {
+        object: 'bank_account',
+        country:  b.bank?.country,      // REQUIRED
+        currency: b.bank?.currency,     // REQUIRED
+        account_number: b.bank?.accountNumber,
+        routing_number: b.bank?.routingNumber, // use IBAN instead where applicable
+        account_holder_name: `${b.firstName} ${b.lastName}`,
+        account_holder_type: 'individual',
+      }
+    });
+
+    // Accept ToS immediately (use real client IP if behind proxy)
+    const ip = (req.headers['x-forwarded-for']?.toString().split(',')[0].trim()) || req.ip || '0.0.0.0';
+    await stripe.accounts.update(b.accountId, {
+      tos_acceptance: { date: Math.floor(Date.now()/1000), ip, user_agent: req.headers['user-agent'] || 'Unknown' }
+    });
+
+    return res.json({ ok: true });
+  } catch (e:any) {
+    return res.status(500).json({ error: e?.message || 'Submit failed' });
+  }
+});
+Two tiny gotchas that cause empty bodies
+The click handler must not be a native <form> submit. If it is, add e.preventDefault() and use fetch as above.
+Don’t use express.raw() anywhere except the webhook route; it disables JSON parsing.
+That’s it. With this in place, your form data will sync to Stripe and those “Provide DOB/Address/Phone/Website/MCC/External account” items will clear on the next submit.

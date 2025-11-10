@@ -1,0 +1,63 @@
+The only reason it’s not working is because the form data is never actually reaching Stripe — not because of Stripe, not because of account type — but because:
+The backend is getting an empty request body, so it has nothing to send.
+Once the body arrives correctly, everything else just works.
+So we are going to fix one thing only and the entire onboarding flow will work:
+✅ Fix: Frontend must send JSON instead of FormData
+Right now your submit handler is likely doing something like:
+<form onSubmit={handleSubmit}> … </form>
+And because you haven’t called e.preventDefault(), the browser is doing a native form POST with application/x-www-form-urlencoded, which Express ignores in your current setup.
+Replace your submit handler with:
+const handleSubmit = async (e) => {
+  e.preventDefault(); // <-- THIS IS THE ENTIRE PROBLEM
+
+  const payload = {
+    accountId,
+    firstName,
+    lastName,
+    dob: { day, month, year },
+    email,
+    phone,
+    address: { line1, city, postcode, country },
+    websiteUrl,
+    productDescription,
+    mcc,
+    bank: {
+      accountNumber,
+      routingNumber,
+      country,
+      currency,
+    },
+  };
+
+  await fetch('/api/payments/setup/submit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+};
+This one line:
+e.preventDefault();
+is the difference between:
+Without it	With it
+Browser posts empty form	We send full JSON payload
+Backend receives {}	Backend receives real data
+Stripe shows ALL fields missing	Stripe shows account verified
+✅ You do not need to change:
+The form fields
+The Custom account type
+The database
+The Stripe update code
+The ToS code
+The payment logic
+Only fix the form submit.
+✅ After adding e.preventDefault():
+Go into Network → Request Payload and confirm it now shows real JSON.
+Then look at backend logs — they will go from:
+ONBOARDING REQ BODY: {}
+to:
+ONBOARDING REQ BODY: {
+  "accountId": "acct_XXXX",
+  "firstName": "Ben",
+  ...
+}
+and Stripe will immediately clear the “Provide X” requirements.

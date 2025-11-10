@@ -1,0 +1,83 @@
+Task: Wire form → backend → Stripe (Custom, application-collected)
+1) Frontend — submit JSON payload (no FormData)
+Send exactly this structure:
+{
+  "accountId": "acct_...",
+  "firstName": "Ben",
+  "lastName": "Zee",
+  "dob": { "day": 12, "month": 3, "year": 1997 },
+  "email": "ben@example.com",
+  "phone": "+447700900000",
+  "address": { "line1": "21 Example St", "city": "London", "postcode": "SW1A 1AA", "country": "GB" },
+  "websiteUrl": "https://example.com",
+  "productDescription": "Freelance design services",
+  "mcc": "7399",
+  "bank": {
+    "accountNumber": "12345678",
+    "routingNumber": "12-34-56",
+    "country": "GB",
+    "currency": "GBP"
+  }
+}
+Call:
+await fetch('/api/payments/setup/submit', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(payload)
+});
+2) Backend — single accounts.update call with exact mapping
+Ensure this route parses JSON (middleware order matters).
+Map 1:1 and send in one update:
+await stripe.accounts.update(accountId, {
+  business_profile: {
+    url: websiteUrl || undefined,
+    product_description: productDescription || undefined,
+    mcc
+  },
+  individual: {
+    first_name: firstName,
+    last_name:  lastName,
+    dob: { day: dob.day, month: dob.month, year: dob.year },
+    email,
+    phone,
+    address: {
+      line1: address.line1,
+      city: address.city,
+      postal_code: address.postcode,
+      country: address.country
+    }
+  },
+  external_account: bank.token ? bank.token : {
+    object: 'bank_account',
+    country:  bank.country,
+    currency: bank.currency,
+    account_number: bank.accountNumber,
+    routing_number: bank.routingNumber,
+    account_holder_name: `${firstName} ${lastName}`,
+    account_holder_type: 'individual'
+  }
+});
+3) ToS (immediately after)
+await stripe.accounts.update(accountId, {
+  tos_acceptance: {
+    date: Math.floor(Date.now()/1000),
+    ip: clientIp,           // respect x-forwarded-for
+    user_agent: userAgent
+  }
+});
+4) Guardrails (do these, change nothing else)
+Account must be type: 'custom' with controller.requirement_collection: 'application'.
+Do not use accountLinks.create or accountSessions.create.
+Do not change payments: keep destination charges only (no on_behalf_of, no app fee).
+Do not store raw bank numbers in DB/logs.
+5) Acceptance criteria (pass/fail)
+After submit, in Stripe Ben’s connected account no longer shows:
+“Provide date of birth”
+“Provide address”
+“Provide phone number”
+“Provide business website” (or description)
+“Provide industry (MCC)”
+“Provide an external account”
+details_submitted is true; requirements.currently_due no longer lists those items.
+No redirects; all done in-app.
+That’s the whole fix.

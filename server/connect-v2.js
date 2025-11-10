@@ -501,126 +501,131 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
         return res.status(404).json({ error: 'No Connect account found. Create account first.' });
       }
 
-      // DEBUG: Log the entire request body
-      console.log('[payments/setup/init] RAW REQ.BODY:', JSON.stringify(req.body, null, 2));
-      console.log('[payments/setup/init] Content-Type:', req.headers['content-type']);
-      console.log('[payments/setup/init] Body keys:', Object.keys(req.body || {}));
-
+      // Extract camelCase payload from frontend
       const {
-        business_type,
-        first_name,
-        last_name,
+        accountId,
+        firstName,
+        lastName,
+        dob,
         email,
         phone,
-        company_name,
-        address_line1,
-        address_city,
-        address_postal_code,
-        address_country,
-        dob,
-        routing_number,
-        account_number,
-        business_profile_url,
-        business_profile_mcc,
-        business_profile_product_description,
-        bank_country,
-        bank_currency
+        address,
+        websiteUrl,
+        productDescription,
+        mcc,
+        bank
       } = req.body;
 
-      // Build update data (NEVER store SSN/PII in our DB)
-      const updateData = { business_type };
+      console.log('[payments/setup/init] Received payload:', {
+        accountId,
+        hasFirstName: !!firstName,
+        hasLastName: !!lastName,
+        hasDob: !!dob,
+        hasEmail: !!email,
+        hasPhone: !!phone,
+        hasAddress: !!address,
+        hasWebsiteUrl: !!websiteUrl,
+        hasProductDescription: !!productDescription,
+        hasMcc: !!mcc,
+        hasBank: !!bank
+      });
 
-      // Add business profile (required for Custom accounts)
-      if (business_profile_url || business_profile_mcc || business_profile_product_description) {
-        updateData.business_profile = {};
-        if (business_profile_url) {
-          updateData.business_profile.url = business_profile_url;
-        }
-        if (business_profile_product_description) {
-          updateData.business_profile.product_description = business_profile_product_description;
-        }
-        if (business_profile_mcc) {
-          updateData.business_profile.mcc = business_profile_mcc;
-        }
+      // Verify accountId matches
+      if (accountId !== existing.accountId) {
+        return res.status(400).json({ error: 'Account ID mismatch' });
       }
 
-      if (business_type === 'individual') {
-        updateData.individual = {
-          first_name,
-          last_name,
+      // Ensure this is a Custom account with application-collected requirements
+      const account = await stripe.accounts.retrieve(accountId);
+      if (account.type !== 'custom' || account.controller?.requirement_collection !== 'application') {
+        return res.status(400).json({ error: 'Expected Custom/application account' });
+      }
+
+      // Build Stripe update payload - map camelCase to Stripe's format
+      const updateData = {
+        business_profile: {
+          url: websiteUrl || undefined,
+          product_description: productDescription || undefined,
+          mcc: mcc || undefined
+        },
+        individual: {
+          first_name: firstName,
+          last_name: lastName,
+          dob: {
+            day: dob?.day,
+            month: dob?.month,
+            year: dob?.year
+          },
           email,
           phone,
           address: {
-            line1: address_line1,
-            city: address_city,
-            postal_code: address_postal_code,
-            country: address_country || existing.country || 'GB'
+            line1: address?.line1,
+            city: address?.city,
+            postal_code: address?.postcode,
+            country: address?.country
           }
-        };
-        if (dob) {
-          updateData.individual.dob = {
-            day: dob.day,
-            month: dob.month,
-            year: dob.year
-          };
-        }
-      } else {
-        updateData.company = {
-          name: company_name,
-          phone,
-          address: {
-            line1: address_line1,
-            city: address_city,
-            postal_code: address_postal_code,
-            country: address_country || existing.country || 'GB'
-          }
-        };
-      }
-
-      // Add bank account if provided (sent directly to Stripe, never stored)
-      if (routing_number && account_number) {
-        const accountHolderName = business_type === 'individual' 
-          ? `${first_name} ${last_name}` 
-          : company_name;
-        
-        updateData.external_account = {
+        },
+        external_account: bank?.accountNumber ? {
           object: 'bank_account',
-          country: bank_country || address_country || existing.country || 'GB',
-          currency: (bank_currency || existing.defaultCurrency || 'gbp').toLowerCase(),
-          routing_number,
-          account_number,
-          account_holder_name: accountHolderName,
-          account_holder_type: business_type === 'individual' ? 'individual' : 'company'
-        };
-      }
+          country: bank.country,
+          currency: bank.currency,
+          account_number: bank.accountNumber,
+          routing_number: bank.routingNumber,
+          account_holder_name: `${firstName} ${lastName}`,
+          account_holder_type: 'individual'
+        } : undefined
+      };
 
-      // Log the payload being sent to Stripe (without sensitive bank details)
       console.log('[payments/setup/init] Sending to Stripe accounts.update:', {
-        accountId: existing.accountId,
-        business_type: updateData.business_type,
-        hasIndividual: !!updateData.individual,
-        hasCompany: !!updateData.company,
+        accountId,
         hasBusinessProfile: !!updateData.business_profile,
+        hasIndividual: !!updateData.individual,
         hasExternalAccount: !!updateData.external_account,
-        individualFields: updateData.individual ? Object.keys(updateData.individual) : [],
-        businessProfileFields: updateData.business_profile ? Object.keys(updateData.business_profile) : [],
-        externalAccountFields: updateData.external_account ? Object.keys(updateData.external_account) : []
+        businessProfileFields: Object.keys(updateData.business_profile || {}),
+        individualFields: Object.keys(updateData.individual || {})
       });
 
-      const account = await stripe.accounts.update(existing.accountId, updateData);
+      // Send everything to Stripe in one call
+      const updatedAccount = await stripe.accounts.update(accountId, updateData);
+
+      // Accept ToS immediately after (use real IP)
+      const clientIp = (req.headers['x-forwarded-for']?.toString().split(',')[0].trim()) || 
+                       req.ip || 
+                       req.connection?.remoteAddress || 
+                       '0.0.0.0';
+
+      const finalAccount = await stripe.accounts.update(accountId, {
+        tos_acceptance: {
+          date: Math.floor(Date.now() / 1000),
+          ip: clientIp,
+          user_agent: req.headers['user-agent'] || 'Unknown'
+        }
+      });
+
+      console.log('[payments/setup/init] Complete! Final account status:', {
+        details_submitted: finalAccount.details_submitted,
+        charges_enabled: finalAccount.charges_enabled,
+        payouts_enabled: finalAccount.payouts_enabled,
+        requirements_currently_due: finalAccount.requirements?.currently_due || []
+      });
 
       // Update our DB with status only (no PII)
       await db.setConnect(userId, {
         ...existing,
-        detailsSubmitted: account.details_submitted,
+        detailsSubmitted: finalAccount.details_submitted,
+        chargesEnabled: finalAccount.charges_enabled,
+        payoutsEnabled: finalAccount.payouts_enabled,
+        tosAccepted: true,
         lastUpdated: new Date().toISOString()
       });
 
       res.json({
         success: true,
-        accountId: account.id,
-        details_submitted: account.details_submitted,
-        next_step: 'accept_tos'
+        accountId: finalAccount.id,
+        details_submitted: finalAccount.details_submitted,
+        charges_enabled: finalAccount.charges_enabled,
+        payouts_enabled: finalAccount.payouts_enabled,
+        requirements: finalAccount.requirements
       });
 
     } catch (e) {
