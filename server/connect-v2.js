@@ -501,6 +501,11 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
         return res.status(404).json({ error: 'No Connect account found. Create account first.' });
       }
 
+      // DEBUG: Log the entire request body
+      console.log('[payments/setup/init] RAW REQ.BODY:', JSON.stringify(req.body, null, 2));
+      console.log('[payments/setup/init] Content-Type:', req.headers['content-type']);
+      console.log('[payments/setup/init] Body keys:', Object.keys(req.body || {}));
+
       const {
         business_type,
         first_name,
