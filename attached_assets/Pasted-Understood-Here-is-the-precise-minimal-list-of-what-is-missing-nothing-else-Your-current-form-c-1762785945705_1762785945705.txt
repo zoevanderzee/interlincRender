@@ -1,0 +1,86 @@
+Understood. Here is the precise, minimal list of what is missing — nothing else.
+Your current form collects:
+First Name
+Last Name
+DOB
+Email
+Phone
+Address Line 1
+City
+Postal Code
+Website URL
+MCC
+Bank Account Number
+Sort Code
+What is missing (required for Custom accounts):
+Missing Field	Why It’s Required	Where It Maps in Stripe	What to Add in UI
+Country (for the individual’s address)	Stripe cannot validate address without country → currently blocking verification	individual.address.country	Add a simple Country dropdown (GB default is fine)
+Country + Currency for bank account	External account is incomplete → currently blocking payouts	external_account.country, external_account.currency	Add Bank Country (default GB) & Currency (default GBP) or infer from user location
+Account Holder Name	Stripe requires this for bank verification	external_account.account_holder_name	Add a field pre-filled with FirstName LastName (or auto-set it silently)
+Account Holder Type	Required by Stripe for bank accounts	external_account.account_holder_type: 'individual'	Do not show in UI — just set it in code
+Product Description (fallback)	Stripe requires either Website or Product Description — if website isn't valid, this becomes required	business_profile.product_description	Add a 1-line field: “What service do you provide?”
+**THAT'S IT.
+No ID upload is missing.**
+ID upload only appears later if Stripe flags the account → and at that moment requirements.currently_due will include individual.verification.document.front.
+Right now, it does not, so no ID upload field is supposed to appear yet.
+Your form should become this (added items marked with ⭐):
+First Name
+Last Name
+Date of Birth
+
+Email
+Phone
+
+Address Line 1
+City
+Postal Code
+⭐ Country (dropdown, prefill "GB")
+
+Website URL
+⭐ Business Product Description (only show if Website is empty)
+Business Category (MCC dropdown)
+
+Bank Account Number
+Sort Code / Routing Number
+⭐ Bank Country (prefill GB)
+⭐ Bank Currency (prefill GBP)
+⭐ (Hidden in backend) account_holder_name = `${firstName} ${lastName}`
+⭐ (Hidden in backend) account_holder_type = 'individual'
+Backend Submission Should Look Like:
+await stripe.accounts.update(acctId, {
+  business_profile: {
+    url: websiteUrl,
+    mcc: mcc,
+    product_description: productDescription || undefined,
+  },
+  individual: {
+    first_name,
+    last_name,
+    dob: { day, month, year },
+    email,
+    phone,
+    address: {
+      line1,
+      city,
+      postal_code,
+      country, // ⭐ NEW
+    },
+  },
+  external_account: {
+    object: 'bank_account',
+    country, // ⭐ NEW
+    currency, // ⭐ NEW
+    account_number,
+    routing_number,
+    account_holder_name: `${firstName} ${lastName}`, // ⭐ NEW
+    account_holder_type: 'individual', // ⭐ NEW
+  },
+});
+Then call tos_acceptance.
+If you add ONLY these 4 things, the verification list will clear.
+So your answer is:
+✅ Add Country
+✅ Add Product Description fallback
+✅ Add Bank Country & Currency
+✅ Set Account Holder Name + Account Holder Type in backend
+Nothing else.

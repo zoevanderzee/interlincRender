@@ -1,0 +1,50 @@
+You’re close. What’s missing (or mismapped) for Custom (application-collected) to clear requirements:
+Add these fields
+Country
+Individual address country → individual.address.country (dropdown).
+Some countries also need state/province → individual.address.state (US/CA/AU/BR/IN).
+Phone format
+Collect with country code (E.164), e.g. +44… → individual.phone.
+Business description fallback
+If the user has no website, collect “What do you sell?” → business_profile.product_description.
+Keep MCC (business_profile.mcc) and Website URL (business_profile.url). One of URL or product_description must be present.
+Bank (external_account) details completeness
+Include country and currency for the bank account object.
+Include account_holder_name and account_holder_type: 'individual'` (many regions require these).
+Prefer a tokenized bank input; if not, send raw fields directly to Stripe and do not store them.
+Example payload the backend should build:
+external_account: {
+  object: 'bank_account',
+  country,            // e.g., 'GB'
+  currency,           // e.g., 'GBP'
+  account_number,
+  routing_number,     // GB: sort code; US: routing; EU: use IBAN instead of both
+  account_holder_name,
+  account_holder_type: 'individual'
+}
+Dynamic ID upload (only when asked)
+Add a hidden “Upload ID” section that appears only if requirements.currently_due includes:
+individual.verification.document.front (and possibly .back)
+Upload via stripe.files.create({ purpose: 'identity_document', file }), then submit:
+individual: { verification: { document: { front: fileIdFront, back: fileIdBack } } }
+Keep doing (but ensure it’s wired)
+ToS acceptance after submit (no extra form fields)
+Backend must set:
+tos_acceptance: {
+  date: Math.floor(Date.now()/1000),
+  ip: <real client IP>,            // respect x-forwarded-for
+  user_agent: <request UA>
+}
+This clears Tos Acceptance.Date and Tos Acceptance.Ip.
+Exact submit mapping (recap)
+individual.first_name, individual.last_name
+individual.dob.{day,month,year}
+individual.email
+individual.phone (E.164)
+individual.address.{line1,city,postal_code,country[,state]}
+business_profile.url
+business_profile.mcc
+(fallback) business_profile.product_description
+external_account (complete as above)
+Then call ToS update.
+If you add Country (+ state where needed), complete the external_account, phone in E.164, and a product description fallback, your Verify screen should stop listing those overdue items. The ID upload appears only when Stripe requests it, which is why you didn’t see it yet.
