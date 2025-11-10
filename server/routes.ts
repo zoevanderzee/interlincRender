@@ -5177,6 +5177,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     app.get(`${apiRouter}/connection-requests`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
       try {
+        console.log('=== GET /api/connection-requests called ===');
         // Get user ID and role, handling fallback authentication
         let userId = req.user?.id;
         let userRole = req.user?.role;
@@ -5196,14 +5197,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(401).json({message: "Authentication required"});
         }
 
+        console.log(`Fetching connection requests for user ${userId} with role ${userRole}`);
         let connectionRequests = [];
 
         if (userRole === 'business') {
           // Get all requests involving this business (sent or received)
           connectionRequests = await storage.getConnectionRequestsByBusinessId(userId);
+          console.log(`Found ${connectionRequests.length} connection requests for business ${userId}:`, connectionRequests);
         } else if (userRole === 'contractor' || userRole === 'freelancer') {
           // Get all requests involving this contractor (sent or received)
           connectionRequests = await storage.getConnectionRequestsByContractorId(userId);
+          console.log(`Found ${connectionRequests.length} connection requests for contractor ${userId}:`, connectionRequests);
         }
 
         // Enrich requests with business and contractor names, and direction metadata
