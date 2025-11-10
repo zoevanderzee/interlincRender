@@ -5176,7 +5176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     app.get(`${apiRouter}/connection-requests`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
       try {
-        // Get user ID and role
+        // Get user ID and role, handling fallback authentication
         let userId = req.user?.id;
         let userRole = req.user?.role;
 
@@ -5187,6 +5187,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (fallbackUser) {
             userId = fallbackUser.id;
             userRole = fallbackUser.role;
+            console.log(`Using X-User-ID header fallback for connection requests: user ${userId} with role ${userRole}`);
           }
         }
 
@@ -5194,24 +5195,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(401).json({message: "Authentication required"});
         }
 
-        // Get connection requests where user is involved
         let connectionRequests = [];
+
         if (userRole === 'business') {
+          // Get all requests involving this business (sent or received)
           connectionRequests = await storage.getConnectionRequestsByBusinessId(userId);
         } else if (userRole === 'contractor' || userRole === 'freelancer') {
+          // Get all requests involving this contractor (sent or received)
           connectionRequests = await storage.getConnectionRequestsByContractorId(userId);
         }
 
-        // Add names for display
+        // Enrich requests with business and contractor names, and direction metadata
         const enrichedRequests = await Promise.all(
           connectionRequests.map(async (request) => {
             const business = await storage.getUser(request.businessId);
             const contractor = request.contractorId ? await storage.getUser(request.contractorId) : null;
 
+            // Determine if this request was sent or received by current user
+            // If current user is business: they sent it if they initiated, received it if contractor initiated
+            // If current user is contractor: they sent it if they initiated, received it if business initiated
+            // We need to determine who initiated - for now, assume business initiated (can enhance later)
+            const isSentByCurrentUser = (userRole === 'business' && request.businessId === userId) ||
+                                       (userRole === 'contractor' && request.contractorId === userId);
+
             return {
               ...request,
-              businessName: business?.companyName || business?.username || 'Business',
-              contractorName: contractor ? (contractor.username || `${contractor.firstName || ''} ${contractor.lastName || ''}`.trim() || 'Contractor') : 'Contractor',
+              businessName: business?.companyName || business?.username || `Business ${request.businessId}`,
+              contractorName: contractor?.username || contractor?.firstName && contractor?.lastName
+                ? `${contractor.firstName} ${contractor.lastName}`
+                : `Contractor ${request.contractorId}`,
+              direction: isSentByCurrentUser ? 'sent' : 'received',
               otherPartyName: userRole === 'business' 
                 ? (contractor?.username || `${contractor?.firstName || ''} ${contractor?.lastName || ''}`.trim() || 'Contractor')
                 : (business?.companyName || business?.username || 'Business')
@@ -5219,6 +5232,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           })
         );
 
+        console.log(`Returning ${enrichedRequests.length} connection requests for user ${userId} (${userRole})`);
         res.json(enrichedRequests);
       } catch (error: any) {
         console.error('Error fetching connection requests:', error);

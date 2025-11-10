@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -20,10 +21,16 @@ interface ConnectionRequest {
   status: string;
   message: string | null;
   createdAt: string;
-  direction: 'sent' | 'received';
-  businessName?: string;
-  contractorName?: string;
-  otherPartyName?: string;
+  contractor?: {
+    id: number;
+    username: string;
+    email: string;
+  };
+  business?: {
+    id: number;
+    username: string;
+    email: string;
+  };
 }
 
 export function ConnectionRequestsList() {
@@ -78,136 +85,91 @@ export function ConnectionRequestsList() {
     return <div className="text-center py-8">Loading connection requests...</div>;
   }
 
-  const receivedRequests = requests.filter(request => request.direction === 'received');
-  const sentRequests = requests.filter(request => request.direction === 'sent');
-
-
   return (
-    <div className="space-y-6">
-      {receivedRequests.length > 0 && (
-        <div>
-          <h3 className="text-lg font-semibold mb-3">Received Requests</h3>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>CONTRACTOR</TableHead>
-                <TableHead>MESSAGE</TableHead>
-                <TableHead>STATUS</TableHead>
-                <TableHead>DATE</TableHead>
-                <TableHead className="text-right">ACTIONS</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {receivedRequests.map((request) => (
-                <TableRow key={request.id}>
-                  <TableCell>
-                    {request.otherPartyName || "Unknown"}
-                  </TableCell>
-                  <TableCell className="max-w-md truncate">
-                    {request.message || "—"}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        request.status === "approved"
-                          ? "default"
-                          : request.status === "rejected"
-                          ? "destructive"
-                          : "secondary"
-                      }
-                    >
-                      {request.status}
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>DIRECTION</TableHead>
+            <TableHead>CONTRACTOR</TableHead>
+            <TableHead>MESSAGE</TableHead>
+            <TableHead>STATUS</TableHead>
+            <TableHead>DATE</TableHead>
+            <TableHead className="text-right">ACTIONS</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {requests.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                No connection requests yet
+              </TableCell>
+            </TableRow>
+          ) : (
+            requests.map((request) => (
+              <TableRow key={request.id}>
+                <TableCell>
+                  <Badge variant="outline">
+                    {request.contractor ? "Incoming" : "Outgoing"}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  {request.contractor?.username || request.business?.username || "Unknown"}
+                </TableCell>
+                <TableCell className="max-w-md truncate">
+                  {request.message || "—"}
+                </TableCell>
+                <TableCell>
+                  <Badge
+                    variant={
+                      request.status === "approved"
+                        ? "default"
+                        : request.status === "rejected"
+                        ? "destructive"
+                        : "secondary"
+                    }
+                  >
+                    {request.status}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  {new Date(request.createdAt).toLocaleDateString()}
+                </TableCell>
+                <TableCell className="text-right">
+                  {request.status === "pending" && request.contractor && (
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        size="sm"
+                        variant="default"
+                        onClick={() => handleApprove(request.id)}
+                        disabled={updateRequestMutation.isPending}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleReject(request.id)}
+                        disabled={updateRequestMutation.isPending}
+                      >
+                        <XCircle className="h-4 w-4 mr-1" />
+                        Reject
+                      </Button>
+                    </div>
+                  )}
+                  {request.status === "pending" && !request.contractor && (
+                    <Badge variant="secondary">
+                      <Clock className="h-3 w-3 mr-1" />
+                      Awaiting Response
                     </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {new Date(request.createdAt).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {request.status === "pending" && (
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          size="sm"
-                          variant="default"
-                          onClick={() => handleApprove(request.id)}
-                          disabled={updateRequestMutation.isPending}
-                        >
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          Approve
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleReject(request.id)}
-                          disabled={updateRequestMutation.isPending}
-                        >
-                          <XCircle className="h-4 w-4 mr-1" />
-                          Reject
-                        </Button>
-                      </div>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
-
-      {sentRequests.length > 0 && (
-        <div>
-          <h3 className="text-lg font-semibold mb-3">Sent Requests</h3>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>BUSINESS</TableHead>
-                <TableHead>MESSAGE</TableHead>
-                <TableHead>STATUS</TableHead>
-                <TableHead>DATE</TableHead>
-                <TableHead className="text-right">ACTIONS</TableHead>
+                  )}
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sentRequests.map((request) => (
-                <TableRow key={request.id}>
-                  <TableCell>
-                    {request.otherPartyName || "Unknown"}
-                  </TableCell>
-                  <TableCell className="max-w-md truncate">
-                    {request.message || "—"}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        request.status === "approved"
-                          ? "default"
-                          : request.status === "rejected"
-                          ? "destructive"
-                          : "secondary"
-                      }
-                    >
-                      {request.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {new Date(request.createdAt).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {request.status === "pending" && (
-                      <Badge variant="secondary">
-                        <Clock className="h-3 w-3 mr-1" />
-                        Awaiting Response
-                      </Badge>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
-      {receivedRequests.length === 0 && sentRequests.length === 0 && (
-        <div className="text-center py-8 text-muted-foreground">No connection requests yet</div>
-      )}
+            ))
+          )}
+        </TableBody>
+      </Table>
     </div>
   );
 }
