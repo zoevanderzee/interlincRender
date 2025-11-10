@@ -46,7 +46,7 @@ export default function ConnectionsPage() {
           trigger={
             <Button>
               <UserPlus size={16} className="mr-2" />
-              {isContractor ? "Connect with Company" : "Connect with Contractor"}
+              Connect by Code
             </Button>
           }
           onSuccess={() => {
@@ -59,12 +59,12 @@ export default function ConnectionsPage() {
       <div className="grid gap-6">
         <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-6">
           <h2 className="text-xl font-semibold mb-4">
-            {isContractor ? 'Connection Requests from Companies' : 'Manage Contractor Connections'}
+            {isContractor ? 'Company Connections' : 'Contractor Connections'}
           </h2>
           <p className="text-zinc-400 mb-6">
             {isContractor
-              ? 'Companies that would like to work with you will send connection requests. You can accept or decline them here.'
-              : 'Connect with contractors using their profile code. Once connected, you can assign them to your projects.'}
+              ? 'Share your profile code with companies or enter a company\'s code to connect. Once connected, they can assign you to projects.'
+              : 'Share your profile code with contractors or enter their code to connect. Once connected, you can assign them to your projects.'}
           </p>
 
           <ConnectionRequestsList />
