@@ -21,6 +21,10 @@ interface ConnectionRequest {
   status: string;
   message: string | null;
   createdAt: string;
+  direction?: 'sent' | 'received';
+  businessName?: string;
+  contractorName?: string;
+  otherPartyName?: string;
   contractor?: {
     id: number;
     username: string;
