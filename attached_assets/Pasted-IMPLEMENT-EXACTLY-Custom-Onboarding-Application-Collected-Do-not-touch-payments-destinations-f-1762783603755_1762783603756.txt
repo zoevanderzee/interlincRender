@@ -1,0 +1,132 @@
+IMPLEMENT EXACTLY — Custom Onboarding (Application-Collected)
+Do not touch payments, destinations, fees, webhooks (except where listed), or any unrelated files.
+Do not use accountLinks.create or accountSessions.create.
+Do not create Express/Standard accounts.
+Goal
+Create Custom connected accounts for contractors.
+Collect and submit required fields in our forms.
+Accept ToS via API.
+Ensure the account becomes eligible for payments/payouts (no overdue requirements like the Ben Zee example).
+Files you may edit (and only these)
+server/services/stripe.ts (or equivalent service)
+server/routes/payments.ts (or equivalent API routes for onboarding)
+client/.../SetupStep.tsx and client/.../VerifyStep.tsx (form submit + status UI)
+1) Create the account (Custom, application-collected)
+Immediately after contractor starts setup (or on submit if we need ids), create Custom:
+// server/services/stripe.ts
+export async function createCustomAccount({ userId, country = 'GB' }) {
+  const acct = await stripe.accounts.create({
+    type: 'custom',
+    country,
+    business_type: 'individual',
+    controller: { requirement_collection: 'application' },
+    capabilities: {
+      card_payments: { requested: true },
+      transfers: { requested: true },
+    },
+    metadata: { userId: String(userId) },
+  });
+  return acct.id;
+}
+Guards:
+If an existing connect account for this user exists and its type !== 'custom', do not reuse it. Create a new Custom account id and store it for the user. (Stripe does not convert Express→Custom.)
+2) Submit required fields from our form (application-collected)
+From the setup form, map fields like this (all sent via accounts.update):
+export async function updateCustomAccount({
+  accountId, // acct_...
+  profile,   // { firstName, lastName, dob:{d,m,y}, address:{...}, phone, email }
+  business,  // { website?, industry?, productDescription? }
+  payout,    // { bankToken OR {account_number, routing_number/iban, country, currency} }
+}) {
+
+  const update: any = {
+    individual: {
+      first_name: profile.firstName,
+      last_name:  profile.lastName,
+      dob: { day: profile.dob.day, month: profile.dob.month, year: profile.dob.year },
+      address: {
+        line1: profile.address.line1,
+        line2: profile.address.line2 || undefined,
+        city: profile.address.city,
+        postal_code: profile.address.postcode,
+        country: profile.address.country,
+      },
+      email: profile.email,
+      phone: profile.phone,
+    },
+    business_profile: {
+      url: business.website || undefined,
+      product_description: business.productDescription || undefined,
+      mcc: business.industry || undefined, // if you already collect an MCC / industry code
+    },
+  };
+
+  if (payout?.bankToken) {
+    update.external_account = payout.bankToken; // tokenized bank details
+  } else if (payout?.account_number) {
+    update.external_account = {
+      object: 'bank_account',
+      country: payout.country,
+      currency: payout.currency,
+      account_number: payout.account_number,
+      routing_number: payout.routing_number, // or IBAN if applicable
+    };
+  }
+
+  await stripe.accounts.update(accountId, update);
+}
+Important:
+Do not store SSN/ID/bank numbers in our DB or logs.
+If no website is available, provide a clear product_description (what the contractor sells).
+3) Accept Stripe ToS via API (in our flow)
+export async function acceptTos({ accountId, ip, userAgent }) {
+  await stripe.accounts.update(accountId, {
+    tos_acceptance: {
+      date: Math.floor(Date.now() / 1000),
+      ip,
+      user_agent: userAgent || 'Unknown',
+    },
+  });
+}
+Call this right after a successful form submit. Use the real client IP (respect x-forwarded-for).
+4) Optional: set contractor payout statement descriptor
+await stripe.accounts.update(accountId, {
+  settings: { payouts: { statement_descriptor: 'INTERLINC' } }
+});
+5) Verify step: fetch account status (no UI changes beyond existing)
+Expose a read endpoint that returns:
+export async function getAccountStatus(accountId: string) {
+  const acct = await stripe.accounts.retrieve(accountId);
+  return {
+    type: acct.type, // must be 'custom'
+    details_submitted: acct.details_submitted,
+    charges_enabled:   acct.charges_enabled,
+    payouts_enabled:   acct.payouts_enabled,
+    capabilities: {
+      card_payments: acct.capabilities?.card_payments,
+      transfers:     acct.capabilities?.transfers,
+    },
+    requirements: acct.requirements, // currently_due, past_due, etc.
+  };
+}
+Front-end shows any currently_due items (e.g., DOB, address, phone, website, external account, ToS) and re-posts missing fields via updateCustomAccount.
+6) Hard blocks to prevent Express/Standard
+Before creating any connect account:
+If existingAccountId exists, fetch it:
+If type !== 'custom', do not reuse. Create a new Custom account and store it instead.
+Never call accountLinks.create or accountSessions.create in this flow.
+7) Payments remain destination charges only (unchanged)
+Do not modify PaymentIntent logic. Keep:
+await stripe.paymentIntents.create({
+  amount,
+  currency,
+  customer: businessCustomerId,           // cus_...
+  payment_method_types: ['card'],
+  transfer_data: { destination: contractorAccountId }, // acct_...
+  // no on_behalf_of
+  // no application_fee_amount
+});
+8) Fix for the “Ben Zee” case you observed
+That account was created incorrectly (likely Express), so it shows lots of “Overdue” items and ToS not accepted by Stripe UI.
+For that user, create a new Custom account with the flow above, store the new acct_…, and continue onboarding in-app.
+Do not try to convert the existing Express account.
