@@ -734,14 +734,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
-      // Filter to only include contractors with Stripe Connect accounts
-      const contractorsWithStripeConnect = linkedContractors.filter(contractor =>
-        contractor.stripeConnectAccountId
-      );
-
-      // Enhance contractor data with Connect V2 information
+      // Enhance contractor data with Connect V2 information (include all contractors, even without payment setup)
       const enhancedContractors = await Promise.all(
-        contractorsWithStripeConnect.map(async (contractor) => {
+        linkedContractors.map(async (contractor) => {
           try {
             // Get Connect V2 data for this contractor
             const connectData = await storage.getConnectForUser(contractor.id);
