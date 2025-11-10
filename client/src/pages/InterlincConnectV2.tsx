@@ -53,8 +53,11 @@ interface OnboardingForm {
   };
   business_profile_url?: string;
   business_profile_mcc?: string;
+  business_profile_product_description?: string;
   routing_number?: string;
   account_number?: string;
+  bank_country?: string;
+  bank_currency?: string;
 }
 
 
@@ -93,7 +96,9 @@ export default function InterlincConnectV2() {
   // Form states
   const [onboardingForm, setOnboardingForm] = useState<OnboardingForm>({
     business_type: 'individual',
-    address_country: 'GB' // Default country
+    address_country: 'GB',
+    bank_country: 'GB',
+    bank_currency: 'GBP'
   });
 
   const [selectedCountry, setSelectedCountry] = useState<string>(onboardingForm.address_country || 'GB');
@@ -217,11 +222,17 @@ export default function InterlincConnectV2() {
       if (!onboardingForm.address_line1 || !onboardingForm.address_city || !onboardingForm.address_postal_code) {
         throw new Error('Complete address is required');
       }
-      if (!onboardingForm.business_profile_url) {
-        throw new Error('Website URL is required');
+      if (!onboardingForm.business_profile_url && !onboardingForm.business_profile_product_description) {
+        throw new Error('Either Website URL or Product Description is required');
       }
       if (!onboardingForm.business_profile_mcc) {
         throw new Error('Business category is required');
+      }
+      if (!onboardingForm.address_country) {
+        throw new Error('Country is required');
+      }
+      if (!onboardingForm.bank_country || !onboardingForm.bank_currency) {
+        throw new Error('Bank country and currency are required');
       }
       if (!onboardingForm.routing_number || !onboardingForm.account_number) {
         throw new Error('Bank account details are required');
@@ -712,7 +723,7 @@ export default function InterlincConnectV2() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-3 gap-4">
                     <div>
                       <Label>City *</Label>
                       <Input
@@ -729,17 +740,55 @@ export default function InterlincConnectV2() {
                         required
                       />
                     </div>
+                    <div>
+                      <Label>Country *</Label>
+                      <Select
+                        value={onboardingForm.address_country || 'GB'}
+                        onValueChange={(value) => setOnboardingForm(prev => ({...prev, address_country: value}))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="GB">United Kingdom</SelectItem>
+                          <SelectItem value="US">United States</SelectItem>
+                          <SelectItem value="CA">Canada</SelectItem>
+                          <SelectItem value="AU">Australia</SelectItem>
+                          <SelectItem value="DE">Germany</SelectItem>
+                          <SelectItem value="FR">France</SelectItem>
+                          <SelectItem value="IT">Italy</SelectItem>
+                          <SelectItem value="ES">Spain</SelectItem>
+                          <SelectItem value="NL">Netherlands</SelectItem>
+                          <SelectItem value="BE">Belgium</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
                   <div>
-                    <Label>Website URL *</Label>
+                    <Label>Website URL</Label>
                     <Input
                       value={onboardingForm.business_profile_url || ''}
                       onChange={(e) => setOnboardingForm(prev => ({...prev, business_profile_url: e.target.value}))}
                       placeholder="https://yourwebsite.com"
-                      required
                     />
                   </div>
+
+                  {!onboardingForm.business_profile_url && (
+                    <div>
+                      <Label>What service do you provide? *</Label>
+                      <Textarea
+                        value={onboardingForm.business_profile_product_description || ''}
+                        onChange={(e) => setOnboardingForm(prev => ({...prev, business_profile_product_description: e.target.value}))}
+                        placeholder="Describe what service or product you offer..."
+                        rows={3}
+                        required
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Required if you don't have a website
+                      </p>
+                    </div>
+                  )}
 
                   <div>
                     <Label>Business Category (MCC) *</Label>
@@ -765,9 +814,48 @@ export default function InterlincConnectV2() {
 
                   <div className="border-t pt-6">
                     <h4 className="font-semibold mb-4">Bank Account Details *</h4>
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <Label>Bank Country *</Label>
+                        <Select
+                          value={onboardingForm.bank_country || 'GB'}
+                          onValueChange={(value) => setOnboardingForm(prev => ({...prev, bank_country: value}))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="GB">United Kingdom</SelectItem>
+                            <SelectItem value="US">United States</SelectItem>
+                            <SelectItem value="CA">Canada</SelectItem>
+                            <SelectItem value="AU">Australia</SelectItem>
+                            <SelectItem value="DE">Germany</SelectItem>
+                            <SelectItem value="FR">France</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>Currency *</Label>
+                        <Select
+                          value={onboardingForm.bank_currency || 'GBP'}
+                          onValueChange={(value) => setOnboardingForm(prev => ({...prev, bank_currency: value}))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="GBP">GBP (British Pound)</SelectItem>
+                            <SelectItem value="USD">USD (US Dollar)</SelectItem>
+                            <SelectItem value="EUR">EUR (Euro)</SelectItem>
+                            <SelectItem value="CAD">CAD (Canadian Dollar)</SelectItem>
+                            <SelectItem value="AUD">AUD (Australian Dollar)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label>Account Number</Label>
+                        <Label>Account Number *</Label>
                         <Input
                           value={onboardingForm.account_number || ''}
                           onChange={(e) => setOnboardingForm(prev => ({...prev, account_number: e.target.value}))}
@@ -776,7 +864,7 @@ export default function InterlincConnectV2() {
                         />
                       </div>
                       <div>
-                        <Label>Sort Code / Routing Number</Label>
+                        <Label>Sort Code / Routing Number *</Label>
                         <Input
                           value={onboardingForm.routing_number || ''}
                           onChange={(e) => setOnboardingForm(prev => ({...prev, routing_number: e.target.value}))}
