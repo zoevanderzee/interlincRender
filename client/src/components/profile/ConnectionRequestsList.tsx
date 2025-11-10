@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { CheckCircle, XCircle, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 
 interface ConnectionRequest {
   id: number;
@@ -40,6 +41,7 @@ interface ConnectionRequest {
 export function ConnectionRequestsList() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const { data: requests = [], isLoading } = useQuery<ConnectionRequest[]>({
     queryKey: ["/api/connection-requests"],
@@ -77,12 +79,38 @@ export function ConnectionRequestsList() {
     },
   });
 
-  const handleApprove = (id: number) => {
-    updateRequestMutation.mutate({ id, status: "approved" });
+  const handleAccept = (id: number) => {
+    updateRequestMutation.mutate({ id, status: "accepted" });
   };
 
-  const handleReject = (id: number) => {
-    updateRequestMutation.mutate({ id, status: "rejected" });
+  const handleDecline = (id: number) => {
+    updateRequestMutation.mutate({ id, status: "declined" });
+  };
+
+  // Helper function to compute direction safely with fallback
+  const getDirection = (request: ConnectionRequest): 'sent' | 'received' => {
+    // Use backend-provided direction if available
+    if (request.direction) {
+      return request.direction;
+    }
+    
+    // Fallback: compute based on user role and request IDs
+    // This handles cases where backend doesn't provide direction (cached data, etc.)
+    if (!user) return 'sent'; // Default to sent if no user context
+    
+    // For business users: received if contractor initiated
+    if (user.role === 'business' && user.id === request.businessId) {
+      // If we see contractor data populated, it's likely incoming
+      return request.contractor ? 'received' : 'sent';
+    }
+    
+    // For contractor users: received if business initiated  
+    if ((user.role === 'contractor' || user.role === 'freelancer') && user.id === request.contractorId) {
+      // If we see business data populated, it's likely incoming
+      return request.business ? 'received' : 'sent';
+    }
+    
+    return 'sent'; // Safe default
   };
 
   if (isLoading) {
@@ -110,67 +138,72 @@ export function ConnectionRequestsList() {
               </TableCell>
             </TableRow>
           ) : (
-            requests.map((request) => (
-              <TableRow key={request.id}>
-                <TableCell>
-                  <Badge variant="outline">
-                    {request.contractor ? "Incoming" : "Outgoing"}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  {request.contractor?.username || request.business?.username || "Unknown"}
-                </TableCell>
-                <TableCell className="max-w-md truncate">
-                  {request.message || "—"}
-                </TableCell>
-                <TableCell>
-                  <Badge
-                    variant={
-                      request.status === "approved"
-                        ? "default"
-                        : request.status === "rejected"
-                        ? "destructive"
-                        : "secondary"
-                    }
-                  >
-                    {request.status}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  {new Date(request.createdAt).toLocaleDateString()}
-                </TableCell>
-                <TableCell className="text-right">
-                  {request.status === "pending" && request.contractor && (
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        size="sm"
-                        variant="default"
-                        onClick={() => handleApprove(request.id)}
-                        disabled={updateRequestMutation.isPending}
-                      >
-                        <CheckCircle className="h-4 w-4 mr-1" />
-                        Approve
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleReject(request.id)}
-                        disabled={updateRequestMutation.isPending}
-                      >
-                        <XCircle className="h-4 w-4 mr-1" />
-                        Reject
-                      </Button>
-                    </div>
-                  )}
-                  {request.status === "pending" && !request.contractor && (
-                    <Badge variant="secondary">
-                      <Clock className="h-3 w-3 mr-1" />
-                      Awaiting Response
+            requests.map((request) => {
+              const direction = getDirection(request);
+              return (
+                <TableRow key={request.id}>
+                  <TableCell>
+                    <Badge variant="outline">
+                      {direction === 'received' ? "Received" : "Sent"}
                     </Badge>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))
+                  </TableCell>
+                  <TableCell>
+                    {request.otherPartyName || request.contractor?.username || request.business?.username || "Unknown"}
+                  </TableCell>
+                  <TableCell className="max-w-md truncate">
+                    {request.message || "—"}
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        request.status === "accepted"
+                          ? "default"
+                          : request.status === "declined"
+                          ? "destructive"
+                          : "secondary"
+                      }
+                    >
+                      {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {new Date(request.createdAt).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {request.status === "pending" && direction === "received" && (
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          size="sm"
+                          variant="default"
+                          onClick={() => handleAccept(request.id)}
+                          disabled={updateRequestMutation.isPending}
+                          data-testid={`button-accept-${request.id}`}
+                        >
+                          <CheckCircle className="h-4 w-4 mr-1" />
+                          Accept
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDecline(request.id)}
+                          disabled={updateRequestMutation.isPending}
+                          data-testid={`button-decline-${request.id}`}
+                        >
+                          <XCircle className="h-4 w-4 mr-1" />
+                          Decline
+                        </Button>
+                      </div>
+                    )}
+                    {request.status === "pending" && direction === "sent" && (
+                      <Badge variant="secondary">
+                        <Clock className="h-3 w-3 mr-1" />
+                        Awaiting Response
+                      </Badge>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })
           )}
         </TableBody>
       </Table>
