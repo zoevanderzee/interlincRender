@@ -20,16 +20,10 @@ interface ConnectionRequest {
   status: string;
   message: string | null;
   createdAt: string;
-  contractor?: {
-    id: number;
-    username: string;
-    email: string;
-  };
-  business?: {
-    id: number;
-    username: string;
-    email: string;
-  };
+  direction: 'sent' | 'received';
+  businessName?: string;
+  contractorName?: string;
+  otherPartyName?: string;
 }
 
 export function ConnectionRequestsList() {
