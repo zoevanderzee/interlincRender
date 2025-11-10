@@ -41,6 +41,7 @@ const Contractors = () => {
   const isContractor = user?.role === "contractor";
   const [searchTerm, setSearchTerm] = useState("");
   const [viewingCompany, setViewingCompany] = useState<any>(null);
+  const [viewingContractor, setViewingContractor] = useState<any>(null);
 
 
 
@@ -62,10 +63,17 @@ const Contractors = () => {
     enabled: !!user
   });
 
+  // Fetch all users to get contractor details from connection requests
+  const { data: allUsers = [], isLoading: isLoadingUsers } = useQuery({
+    queryKey: ['/api/users'],
+    enabled: !!user && !isContractor
+  });
+
   // Get data from dashboard - use empty arrays as fallbacks since these properties may not exist
   const externalWorkers = (dashboardData as any)?.contractors || [];
   const businessAccounts = (dashboardData as any)?.businesses || [];
   const contracts = (dashboardData as any)?.contracts || [];
+  const workRequests = (dashboardData as any)?.workRequests || [];
   const isLoadingBusinesses = isLoadingWorkers;
 
   // For contractors, the connected companies are in the businesses array from dashboard
@@ -81,6 +89,35 @@ const Contractors = () => {
     dashboardData: dashboardData
   });
 
+  // For business users, build contractors list from accepted connection requests AND merge with existing contractors
+  let allBusinessContractors: User[] = [];
+  if (!isContractor && user) {
+    const acceptedRequests = connectionRequests.filter((req: any) => 
+      req.status === 'accepted' && req.businessId === user.id
+    );
+    
+    // Get contractors from connection requests
+    const contractorIds = new Set(acceptedRequests.map((req: any) => req.contractorId));
+    const contractorsFromRequests = Array.from(contractorIds)
+      .map(contractorId => allUsers.find((u: User) => u.id === contractorId))
+      .filter((contractor): contractor is User => contractor !== undefined);
+    
+    // Merge with existing contractors from dashboard (deduplicate by ID)
+    const contractorMap = new Map<number, User>();
+    
+    // Add contractors from dashboard first
+    externalWorkers.forEach((worker: User) => {
+      contractorMap.set(worker.id, worker);
+    });
+    
+    // Add contractors from connection requests (will overwrite if duplicate)
+    contractorsFromRequests.forEach((contractor: User) => {
+      contractorMap.set(contractor.id, contractor);
+    });
+    
+    allBusinessContractors = Array.from(contractorMap.values());
+  }
+
   // All contractors from dashboard are already connected
   const connectedContractorIds = new Set(
     externalWorkers.map((worker: User) => worker.id)
@@ -88,14 +125,22 @@ const Contractors = () => {
 
   // Filter contractors and freelancers - based on the tabs we've defined
   // "Sub Contractors" tab shows workers with role=contractor AND workerType=contractor
-  const subContractors = externalWorkers.filter((worker: User) => 
-    worker.role === 'contractor' && worker.workerType === 'contractor'
-  );
+  const subContractors = !isContractor 
+    ? allBusinessContractors.filter((worker: User) => 
+        worker.role === 'contractor' && worker.workerType === 'contractor'
+      )
+    : externalWorkers.filter((worker: User) => 
+        worker.role === 'contractor' && worker.workerType === 'contractor'
+      );
 
   // "Contractors" tab shows workers with role=contractor who are either freelancers or don't have a workerType
-  const contractors = externalWorkers.filter((worker: User) => 
-    worker.role === 'contractor' && (worker.workerType === 'freelancer' || !worker.workerType || worker.workerType === '')
-  );
+  const contractors = !isContractor
+    ? allBusinessContractors.filter((worker: User) => 
+        worker.role === 'contractor' && (worker.workerType === 'freelancer' || !worker.workerType || worker.workerType === '')
+      )
+    : externalWorkers.filter((worker: User) => 
+        worker.role === 'contractor' && (worker.workerType === 'freelancer' || !worker.workerType || worker.workerType === '')
+      );
 
   // Keep this for code compatibility - we'll update references from freelancers to contractors
   const freelancers = contractors;
@@ -218,10 +263,19 @@ const Contractors = () => {
 
   // Get work request count for a contractor (updated for new work_requests system)
   const getContractCount = (userId: number) => {
-    // Note: The new system uses work_requests with contractorUserId instead of contracts with contractorId
-    // Since work requests are not included in dashboard data yet, return 0
-    // TODO: Add work_requests to dashboard data and update this function
-    return 0;
+    if (!user) return 0;
+    
+    if (isContractor) {
+      // For contractors, count contracts where the business is the given userId AND the contractor is the logged-in user
+      return contracts.filter((contract: any) => 
+        contract.businessUserId === userId && contract.contractorUserId === user.id
+      ).length;
+    } else {
+      // For businesses, count work requests sent to the given contractor from the logged-in business
+      return workRequests.filter((wr: any) => 
+        wr.contractorUserId === userId && wr.businessUserId === user.id
+      ).length;
+    }
   };
 
   // Format date for display
@@ -580,11 +634,20 @@ const Contractors = () => {
                       </div>
                     )}
 
-                    <div className="border-t border-border pt-3 mt-3">
+                    <div className="border-t border-border pt-3 mt-3 flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => setViewingContractor(contractor)}
+                        data-testid={`button-view-work-requests-${contractor.id}`}
+                      >
+                        View Work Requests
+                      </Button>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-foreground hover:text-zinc-100"
+                        className="flex-1"
                         onClick={() => navigate(`/assign-contractor/${contractor.id}`)}
                       >
                         Assign to Project
@@ -906,7 +969,7 @@ const Contractors = () => {
         )}
       </Tabs>
 
-      {/* Company Projects Modal */}
+      {/* Company Projects Modal (for contractor viewing companies) */}
       {viewingCompany && (
         <Dialog open={!!viewingCompany} onOpenChange={() => setViewingCompany(null)}>
           <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
@@ -920,10 +983,10 @@ const Contractors = () => {
             </DialogHeader>
             <div className="space-y-4 mt-4">
               {contracts.filter((contract: any) => 
-                contract.businessUserId === viewingCompany.id
+                contract.businessUserId === viewingCompany.id && contract.contractorUserId === user?.id
               ).length > 0 ? (
                 contracts
-                  .filter((contract: any) => contract.businessUserId === viewingCompany.id)
+                  .filter((contract: any) => contract.businessUserId === viewingCompany.id && contract.contractorUserId === user?.id)
                   .map((contract: any) => (
                     <Card key={contract.id} className="p-4" data-testid={`card-project-${contract.id}`}>
                       <div className="flex justify-between items-start mb-2">
@@ -955,6 +1018,73 @@ const Contractors = () => {
                   <h3 className="font-medium mb-1">No projects or tasks yet</h3>
                   <p className="text-muted-foreground text-sm">
                     You haven't accepted any work from {viewingCompany.businessName || viewingCompany.companyName || 'this company'} yet.
+                  </p>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Contractor Work Requests Modal (for business viewing contractors) */}
+      {viewingContractor && (
+        <Dialog open={!!viewingContractor} onOpenChange={() => setViewingContractor(null)}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {viewingContractor.firstName} {viewingContractor.lastName}
+              </DialogTitle>
+              <DialogDescription>
+                Work requests sent to this contractor
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 mt-4">
+              {workRequests.filter((wr: any) => 
+                wr.contractorUserId === viewingContractor.id && wr.businessUserId === user?.id
+              ).length > 0 ? (
+                workRequests
+                  .filter((wr: any) => wr.contractorUserId === viewingContractor.id && wr.businessUserId === user?.id)
+                  .map((workRequest: any) => (
+                    <Card key={workRequest.id} className="p-4" data-testid={`card-work-request-${workRequest.id}`}>
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-semibold" data-testid={`text-work-request-title-${workRequest.id}`}>
+                          {workRequest.title || 'Untitled Task'}
+                        </h4>
+                        <span className={`text-xs px-2 py-1 rounded ${
+                          workRequest.status === 'accepted' ? 'bg-green-900/30 text-green-400' :
+                          workRequest.status === 'pending' ? 'bg-yellow-900/30 text-yellow-400' :
+                          workRequest.status === 'completed' ? 'bg-blue-900/30 text-blue-400' :
+                          'bg-muted text-muted-foreground'
+                        }`} data-testid={`badge-work-request-status-${workRequest.id}`}>
+                          {workRequest.status}
+                        </span>
+                      </div>
+                      {workRequest.description && (
+                        <p className="text-sm text-muted-foreground mb-3">{workRequest.description}</p>
+                      )}
+                      <div className="flex items-center justify-between text-sm">
+                        {workRequest.amount && (
+                          <div className="flex items-center text-muted-foreground">
+                            <CreditCard className="w-4 h-4 mr-1" />
+                            <span>${workRequest.amount}</span>
+                          </div>
+                        )}
+                        {workRequest.dueDate && (
+                          <div className="text-xs text-muted-foreground">
+                            Due: {new Date(workRequest.dueDate).toLocaleDateString()}
+                          </div>
+                        )}
+                      </div>
+                    </Card>
+                  ))
+              ) : (
+                <div className="text-center py-8">
+                  <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-3">
+                    <Briefcase className="w-6 h-6 text-muted-foreground" />
+                  </div>
+                  <h3 className="font-medium mb-1">No work requests yet</h3>
+                  <p className="text-muted-foreground text-sm">
+                    You haven't sent any work requests to {viewingContractor.firstName} {viewingContractor.lastName} yet.
                   </p>
                 </div>
               )}
