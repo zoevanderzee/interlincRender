@@ -3145,20 +3145,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createConnectionRequest(request: InsertConnectionRequest): Promise<ConnectionRequest> {
-    // Find contractor by profile code if provided
-    let contractorId = null;
-    if (request.profileCode) {
-      const contractor = await this.getUserByProfileCode(request.profileCode);
-      if (contractor) {
-        contractorId = contractor.id;
-      }
-    }
-
     const [newRequest] = await db
       .insert(connectionRequests)
       .values({
         ...request,
-        contractorId,
         createdAt: new Date(),
         updatedAt: new Date()
       })
