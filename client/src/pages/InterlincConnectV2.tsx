@@ -1058,13 +1058,13 @@ export default function InterlincConnectV2() {
                               <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <CheckCircle className="w-8 h-8 text-green-400" />
                               </div>
-                              <h3 className="text-xl font-semibold mb-2 text-green-400">Payment Processing Active</h3>
+                              <h3 className="text-xl font-semibold mb-2 text-green-400">Setup Complete!</h3>
                               <p className="text-muted-foreground mb-4">
-                                Your account is fully verified and ready to process contractor payments automatically when milestones are approved.
+                                Your payment account is fully verified and ready to receive contractor payments.
                               </p>
-                              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mt-4">
-                                <h4 className="font-medium text-blue-400 mb-2">How Payments Work</h4>
-                                <ul className="text-sm text-blue-300 space-y-1 text-left">
+                              <div className="bg-muted/30 rounded-lg p-4 mb-4">
+                                <h4 className="font-medium mb-2">How It Works:</h4>
+                                <ul className="text-sm text-muted-foreground space-y-1">
                                   <li>• Business assigns contractor to project/task</li>
                                   <li>• Contractor submits work deliverables</li>
                                   <li>• Business approves milestone → Payment automatically sent</li>
@@ -1072,7 +1072,7 @@ export default function InterlincConnectV2() {
                                 </ul>
                               </div>
                             </>
-                          ) : (
+                          ) : status?.needsOnboarding ? (
                             <>
                               <div className="w-16 h-16 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <Clock className="w-8 h-8 text-amber-400" />
@@ -1083,12 +1083,12 @@ export default function InterlincConnectV2() {
                               </p>
                               <Button
                                 onClick={() => setActiveTab('onboard')}
-                                disabled={!status?.hasAccount || !status?.needsOnboarding}
+                                disabled={!status?.hasAccount}
                               >
                                 Continue Setup
                               </Button>
                             </>
-                          )}
+                          ) : null}
                         </div>
                       </CardContent>
                     </Card>
