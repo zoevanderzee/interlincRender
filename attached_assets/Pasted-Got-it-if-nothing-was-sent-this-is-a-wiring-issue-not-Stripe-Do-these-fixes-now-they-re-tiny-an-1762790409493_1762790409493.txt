@@ -1,0 +1,116 @@
+Got it—if nothing was sent, this is a wiring issue, not Stripe. Do these fixes now (they’re tiny) and it’ll work on the next submit.
+Do-this-now checklist (10 minutes)
+Ensure the route actually parses JSON
+// server bootstrap
+app.use(express.json({ limit: '1mb' }));   // <-- REQUIRED
+Verify the frontend is sending JSON
+// client submit
+await fetch('/api/payments/setup/submit', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(onboardingForm)      // NOT FormData, not URL-encoded
+});
+Log what you receive (before mapping)
+// at top of submit handler
+console.log('ONBOARDING REQ BODY:', JSON.stringify(req.body, null, 2));
+Fail fast if body is empty / accountId missing
+if (!req.body || Object.keys(req.body).length === 0) {
+  return res.status(400).json({ error: 'Empty body' });
+}
+if (!req.body.accountId?.startsWith('acct_')) {
+  return res.status(400).json({ error: 'Missing/invalid accountId' });
+}
+Send to Stripe with the exact keys (drop-in patch)
+// POST /api/payments/setup/submit
+export async function submitOnboarding(req, res) {
+  try {
+    const b = req.body; // after express.json()
+    console.log('ONBOARDING REQ BODY:', JSON.stringify(b, null, 2));
+
+    const acctId = b.accountId;
+
+    // Sanity: ensure Custom/application
+    const acct = await stripe.accounts.retrieve(acctId);
+    if (acct.type !== 'custom' || acct.controller?.requirement_collection !== 'application') {
+      return res.status(400).json({ error: 'Expected Custom/application account' });
+    }
+
+    const update = {
+      business_profile: {
+        url: b.websiteUrl || undefined,
+        product_description: b.productDescription || undefined,
+        mcc: b.mcc || undefined,
+      },
+      individual: {
+        first_name: b.firstName,
+        last_name:  b.lastName,
+        dob: { day: b.dob?.day, month: b.dob?.month, year: b.dob?.year },
+        email: b.email,
+        phone: b.phone,
+        address: {
+          line1: b.address?.line1,
+          city: b.address?.city,
+          postal_code: b.address?.postcode,
+          country: b.address?.country, // REQUIRED
+        },
+      },
+      external_account: b.bank?.token
+        ? b.bank.token
+        : b.bank?.accountNumber
+          ? {
+              object: 'bank_account',
+              country:  b.bank.country,   // REQUIRED
+              currency: b.bank.currency,  // REQUIRED
+              account_number: b.bank.accountNumber,
+              routing_number: b.bank.routingNumber, // GB sort code / US routing / IBAN instead
+              account_holder_name: `${b.firstName} ${b.lastName}`,
+              account_holder_type: 'individual',
+            }
+          : undefined,
+    };
+
+    console.log('ACCOUNT UPDATE PAYLOAD →', JSON.stringify({
+      business_profile: update.business_profile,
+      individual: update.individual,
+      external_account: update.external_account ? '[present]' : undefined
+    }, null, 2));
+
+    await stripe.accounts.update(acctId, update);
+
+    // ToS immediately after submit
+    const clientIp =
+      (req.headers['x-forwarded-for']?.toString().split(',')[0].trim()) ||
+      req.ip || req.connection?.remoteAddress || '0.0.0.0';
+
+    await stripe.accounts.update(acctId, {
+      tos_acceptance: {
+        date: Math.floor(Date.now()/1000),
+        ip: clientIp,
+        user_agent: req.headers['user-agent'] || 'Unknown',
+      },
+    });
+
+    const refreshed = await stripe.accounts.retrieve(acctId);
+    return res.json({
+      ok: true,
+      requirements: refreshed.requirements,
+      details_submitted: refreshed.details_submitted,
+      charges_enabled: refreshed.charges_enabled,
+      payouts_enabled: refreshed.payouts_enabled,
+      capabilities: refreshed.capabilities,
+    });
+
+  } catch (err) {
+    console.error('SETUP SUBMIT ERROR:', err);
+    return res.status(500).json({ error: err?.message || 'Submit failed' });
+  }
+}
+If you use Next.js API routes / bodyParser is off, enable it or use await req.json() depending on your framework.
+Confirm in the browser Network tab that the request body has your fields (not empty), and the response contains Stripe’s updated requirements (fewer items).
+Typical culprits that cause “sent nothing”
+Missing app.use(express.json()) or equivalent.
+Frontend sending FormData without server-side multipart parsing.
+Wrong endpoint called (old Express path).
+Early return before accounts.update.
+accountId refers to the old Express acct (guard above catches it).
+Apply the checklist + patch, try once more. If Stripe still lists everything as overdue, the console logs will show us exactly what was (or wasn’t) sent, and you’ll know in one glance where it broke.
