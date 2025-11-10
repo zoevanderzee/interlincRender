@@ -589,6 +589,19 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
         };
       }
 
+      // Log the payload being sent to Stripe (without sensitive bank details)
+      console.log('[payments/setup/init] Sending to Stripe accounts.update:', {
+        accountId: existing.accountId,
+        business_type: updateData.business_type,
+        hasIndividual: !!updateData.individual,
+        hasCompany: !!updateData.company,
+        hasBusinessProfile: !!updateData.business_profile,
+        hasExternalAccount: !!updateData.external_account,
+        individualFields: updateData.individual ? Object.keys(updateData.individual) : [],
+        businessProfileFields: updateData.business_profile ? Object.keys(updateData.business_profile) : [],
+        externalAccountFields: updateData.external_account ? Object.keys(updateData.external_account) : []
+      });
+
       const account = await stripe.accounts.update(existing.accountId, updateData);
 
       // Update our DB with status only (no PII)
