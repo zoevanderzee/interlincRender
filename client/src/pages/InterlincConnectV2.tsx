@@ -535,10 +535,9 @@ export default function InterlincConnectV2() {
           <CardContent className="p-0">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <div className="border-b border-border/50 px-6">
-                <TabsList className="grid w-full max-w-2xl grid-cols-5">
+                <TabsList className="grid w-full max-w-2xl grid-cols-4">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
-                  <TabsTrigger value="create" disabled={status?.hasAccount}>Create</TabsTrigger>
-                  <TabsTrigger value="onboard" disabled={!status?.hasAccount || !status?.needsOnboarding}>Setup</TabsTrigger>
+                  <TabsTrigger value="onboard">Setup</TabsTrigger>
                   <TabsTrigger value="verify" disabled={!status?.hasAccount}>Verify</TabsTrigger>
                   <TabsTrigger value="manage" disabled={!status?.hasAccount}>Manage</TabsTrigger>
                 </TabsList>
@@ -555,8 +554,8 @@ export default function InterlincConnectV2() {
                   </p>
                   <div className="flex justify-center gap-4">
                     {!status?.hasAccount && (
-                      <Button onClick={() => setActiveTab('create')}>
-                        Create Account
+                      <Button onClick={() => setActiveTab('onboard')}>
+                        Setup Account
                       </Button>
                     )}
                     {status?.hasAccount && status?.needsOnboarding && (
@@ -569,69 +568,6 @@ export default function InterlincConnectV2() {
                         Manage Account
                       </Button>
                     )}
-                  </div>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="create" className="p-6">
-                <div className="max-w-md mx-auto">
-                  <div className="text-center mb-6">
-                    <h3 className="text-xl font-semibold mb-2">Create Payment Account</h3>
-                    <p className="text-muted-foreground">Set up your payment processing account</p>
-                  </div>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="business_type">Account Type</Label>
-                      <Select
-                        value={onboardingForm.business_type}
-                        onValueChange={(value) => setOnboardingForm(prev => ({...prev, business_type: value as 'individual' | 'company'}))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="individual">Individual</SelectItem>
-                          <SelectItem value="company">Company</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="country">Country</Label>
-                      <Select
-                        value={selectedCountry}
-                        onValueChange={(value) => {
-                          setSelectedCountry(value);
-                          setOnboardingForm(prev => ({...prev, address_country: value}));
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="US">United States (USD)</SelectItem>
-                          <SelectItem value="GB">United Kingdom (GBP)</SelectItem>
-                          <SelectItem value="CA">Canada (CAD)</SelectItem>
-                          <SelectItem value="AU">Australia (AUD)</SelectItem>
-                          <SelectItem value="DE">Germany (EUR)</SelectItem>
-                          <SelectItem value="FR">France (EUR)</SelectItem>
-                          <SelectItem value="IT">Italy (EUR)</SelectItem>
-                          <SelectItem value="ES">Spain (EUR)</SelectItem>
-                          <SelectItem value="NL">Netherlands (EUR)</SelectItem>
-                          <SelectItem value="BE">Belgium (EUR)</SelectItem>
-                          <SelectItem value="JP">Japan (JPY)</SelectItem>
-                          <SelectItem value="SG">Singapore (SGD)</SelectItem>
-                          <SelectItem value="HK">Hong Kong (HKD)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Currency: {getCurrentCurrency().name} ({getCurrentCurrency().symbol})
-                      </p>
-                    </div>
-                    <Button onClick={createAccount} disabled={submitting} className="w-full">
-                      {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                      Create Account
-                    </Button>
                   </div>
                 </div>
               </TabsContent>

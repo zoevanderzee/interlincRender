@@ -1,0 +1,54 @@
+1) Create Custom accounts (not Express)
+Replace your connect account creation with this (Node/Express):
+// server/services/stripe.ts (or wherever you create accounts)
+export async function createCustomConnectAccount({ userId, country = 'GB', businessType = 'individual' }) {
+  const acct = await stripe.accounts.create({
+    type: 'custom',                    // <-- REQUIRED (do not omit)
+    country,
+    business_type: businessType,       // 'individual' for contractors
+    controller: {                      // application-collected requirements
+      requirement_collection: 'application',
+    },
+    capabilities: {
+      card_payments: { requested: true },
+      transfers:     { requested: true },
+    },
+    metadata: { userId: String(userId) },
+  });
+  return acct.id;
+}
+Notes:
+Do not use accountLinks.create or accountSessions.create anywhere in this flow.
+Do not set the v2/preview Stripe-Version for this (stick to v1 Accounts fields you’re using).
+2) Auto-migrate if an old Express account is present
+In your init route, swap non-Custom accounts automatically:
+// POST /api/payments/setup/init
+let acctId = await db.getConnectAccountId(userId);
+let acct = acctId ? await stripe.accounts.retrieve(acctId) : null;
+
+const needsCustom =
+  !acct ||
+  acct.type !== 'custom' ||
+  acct.controller?.requirement_collection !== 'application';
+
+if (needsCustom) {
+  acctId = await createCustomConnectAccount({ userId, country: 'GB', businessType: 'individual' });
+  await db.setConnectAccountId(userId, acctId);
+}
+
+res.json({ accountId: acctId });
+3) Submit uses the Custom account or hard-fails early
+// POST /api/payments/setup/submit
+const acct = await stripe.accounts.retrieve(accountId);
+if (acct.type !== 'custom' || acct.controller?.requirement_collection !== 'application') {
+  return res.status(409).json({ error: 'Wrong account id; re-init required' });
+}
+
+// then stripe.accounts.update(accountId, { individual, business_profile, external_account })
+// then tos_acceptance
+4) Frontend rule
+Before submitting the form, always call /api/payments/setup/init and use the returned accountId. Do not reuse any cached/old acct_… from a previous Express attempt.
+With those three changes:
+New accounts are Custom/application.
+Old Express accounts are ignored and replaced automatically.
+Your submit route stops 400ing, and Stripe will accept the onboarding data you’re already sending.
