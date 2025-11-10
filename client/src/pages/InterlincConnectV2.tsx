@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -90,6 +90,8 @@ export default function InterlincConnectV2() {
   const [status, setStatus] = useState<ConnectStatusV2 | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [submitting, setSubmitting] = useState(false);
+  const [isAutoCreating, setIsAutoCreating] = useState(false);
+  const autoCreateAttempted = useRef(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -131,7 +133,7 @@ export default function InterlincConnectV2() {
 
       // Auto-navigate based on status
       if (!data.hasAccount) {
-        setActiveTab('create');
+        setActiveTab('onboard');
       } else if (data.needsOnboarding) {
         setActiveTab('onboard');
       } else if (data.verification_status?.verification_complete) {
@@ -182,6 +184,50 @@ export default function InterlincConnectV2() {
       setError(err instanceof Error ? err.message : 'Account creation failed');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // Auto-create account when Setup tab is accessed with valid country/business_type
+  const handleAutoCreate = async () => {
+    if (isAutoCreating || autoCreateAttempted.current || status?.hasAccount) {
+      return;
+    }
+
+    try {
+      setIsAutoCreating(true);
+      setError(null);
+      autoCreateAttempted.current = true;
+
+      console.log('Auto-creating Custom account with:', {
+        country: selectedCountry,
+        business_type: onboardingForm.business_type
+      });
+
+      const response = await apiRequest('POST', '/api/connect/v2/create-account', {
+        body: JSON.stringify({
+          country: selectedCountry,
+          business_type: onboardingForm.business_type
+        }),
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Account creation failed');
+      }
+
+      const result = await response.json();
+      console.log('Custom account auto-created:', result);
+
+      // Refresh status to get the new account data
+      await checkStatus();
+
+    } catch (err) {
+      console.error('Auto account creation failed:', err);
+      setError(err instanceof Error ? err.message : 'Account creation failed');
+      autoCreateAttempted.current = false; // Allow retry on error
+    } finally {
+      setIsAutoCreating(false);
     }
   };
 
@@ -377,6 +423,21 @@ export default function InterlincConnectV2() {
 
     initialize();
   }, []);
+
+  // Auto-create account when Setup tab is accessed with valid selections
+  useEffect(() => {
+    if (
+      activeTab === 'onboard' &&
+      !status?.hasAccount &&
+      selectedCountry &&
+      onboardingForm.business_type &&
+      !isAutoCreating &&
+      !autoCreateAttempted.current
+    ) {
+      console.log('Auto-creating account with country:', selectedCountry, 'type:', onboardingForm.business_type);
+      handleAutoCreate();
+    }
+  }, [activeTab, status?.hasAccount, selectedCountry, onboardingForm.business_type, isAutoCreating]);
 
   const getStatusInfo = () => {
     if (!status) return { variant: 'outline', text: 'Loading...', color: 'text-muted-foreground' };
@@ -575,8 +636,80 @@ export default function InterlincConnectV2() {
               <TabsContent value="onboard" className="p-6">
                 <div className="max-w-2xl mx-auto space-y-6">
                   <div className="text-center mb-6">
-                    <h3 className="text-xl font-semibold mb-2">Account Information</h3>
-                    <p className="text-muted-foreground">Provide your business details for verification</p>
+                    <h3 className="text-xl font-semibold mb-2">Account Setup</h3>
+                    <p className="text-muted-foreground">Complete your payment account setup with Stripe</p>
+                  </div>
+
+                  {/* Auto-creation status */}
+                  {isAutoCreating && (
+                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 flex items-center gap-3">
+                      <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+                      <div>
+                        <p className="font-medium text-blue-600">Creating your Stripe account...</p>
+                        <p className="text-sm text-muted-foreground">This will only take a moment</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Country and Business Type Selection */}
+                  <div className="bg-muted/30 p-4 rounded-lg space-y-4 border border-border/50">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="country">Country *</Label>
+                        <Select
+                          value={selectedCountry}
+                          onValueChange={(value) => {
+                            setSelectedCountry(value);
+                            setOnboardingForm(prev => ({...prev, address_country: value}));
+                          }}
+                          disabled={status?.hasAccount}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select country" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="US">United States (USD)</SelectItem>
+                            <SelectItem value="GB">United Kingdom (GBP)</SelectItem>
+                            <SelectItem value="CA">Canada (CAD)</SelectItem>
+                            <SelectItem value="AU">Australia (AUD)</SelectItem>
+                            <SelectItem value="DE">Germany (EUR)</SelectItem>
+                            <SelectItem value="FR">France (EUR)</SelectItem>
+                            <SelectItem value="IT">Italy (EUR)</SelectItem>
+                            <SelectItem value="ES">Spain (EUR)</SelectItem>
+                            <SelectItem value="NL">Netherlands (EUR)</SelectItem>
+                            <SelectItem value="BE">Belgium (EUR)</SelectItem>
+                            <SelectItem value="JP">Japan (JPY)</SelectItem>
+                            <SelectItem value="SG">Singapore (SGD)</SelectItem>
+                            <SelectItem value="HK">Hong Kong (HKD)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Currency: {getCurrentCurrency().name} ({getCurrentCurrency().symbol})
+                        </p>
+                        {status?.hasAccount && (
+                          <p className="text-xs text-amber-600 mt-1">Cannot be changed after account creation</p>
+                        )}
+                      </div>
+                      <div>
+                        <Label htmlFor="business_type">Account Type *</Label>
+                        <Select
+                          value={onboardingForm.business_type}
+                          onValueChange={(value) => setOnboardingForm(prev => ({...prev, business_type: value as 'individual' | 'company'}))}
+                          disabled={status?.hasAccount}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="individual">Individual</SelectItem>
+                            <SelectItem value="company">Company</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {status?.hasAccount && (
+                          <p className="text-xs text-amber-600 mt-1">Cannot be changed after account creation</p>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                   {onboardingForm.business_type === 'individual' ? (
