@@ -149,11 +149,11 @@ export const getQueryFn: <T>(options: {
     try {
       const endpoint = (queryKey[0] as string).toLowerCase();
 
-      // PERMANENTLY BLOCK ALL V1 CONNECT ENDPOINTS
+      // PERMANENTLY BLOCK ALL V1 CONNECT ENDPOINTS (but allow connection-requests)
       if (endpoint === '/api/connect/status' || 
           endpoint.includes('/api/connect/status') ||
           endpoint.includes('connect-status') ||
-          (endpoint.includes('connect') && !endpoint.includes('/v2/') && !endpoint.includes('contractor'))) {
+          (endpoint.includes('connect') && !endpoint.includes('/v2/') && !endpoint.includes('contractor') && !endpoint.includes('connection-requests'))) {
         console.log(`❌ BLOCKED V1 Connect endpoint: ${endpoint}`);
         throw createApiError(410, 'Gone', 'V1 Connect endpoints permanently removed - use /api/connect/v2/status');
       }

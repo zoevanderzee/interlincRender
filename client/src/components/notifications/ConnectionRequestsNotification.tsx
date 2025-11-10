@@ -41,62 +41,9 @@ function ContractorNotification() {
   const [_, navigate] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
 
-  // Fetch connection requests
-  const { data: connectionRequests = [], isLoading, refetch } = useQuery({
+  // Fetch connection requests - using default query function from queryClient
+  const { data: connectionRequests = [], isLoading, refetch } = useQuery<ConnectionRequest[]>({
     queryKey: ["/api/connection-requests"],
-    queryFn: async () => {
-      if (!user) return [];
-      
-      try {
-        const response = await fetch("/api/connection-requests", {
-          headers: {
-            "X-User-ID": user.id.toString()
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error("Failed to fetch connection requests");
-        }
-        
-        const data = await response.json();
-        
-        // Fetch business names for each request
-        const requests = await Promise.all(data.map(async (request: ConnectionRequest) => {
-          if (request.businessId) {
-            try {
-              const businessRes = await fetch(`/api/users/${request.businessId}`, {
-                headers: {
-                  "X-User-ID": user.id.toString()
-                }
-              });
-              
-              if (businessRes.ok) {
-                const business = await businessRes.json();
-                // Prioritize company name over username or personal name
-                const displayName = business.companyName ? business.companyName : 
-                  (business.username === "Creativlinc" ? "Creativ Linc" : 
-                    (business.username || 
-                    (business.firstName && business.lastName ? 
-                      `${business.firstName} ${business.lastName}` : 
-                      "Unknown Business")));
-                
-                return {
-                  ...request,
-                  businessName: displayName
-                };
-              }
-            } catch (error) {
-              console.error("Error fetching business details:", error);
-            }
-          }
-          return request;
-        }));
-        return requests;
-      } catch (error) {
-        console.error("Error fetching connection requests:", error);
-        return [];
-      }
-    },
     enabled: !!user
   });
 
