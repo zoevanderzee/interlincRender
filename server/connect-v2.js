@@ -537,7 +537,13 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
 
       // Ensure this is a Custom account with application-collected requirements
       const account = await stripe.accounts.retrieve(accountId);
-      if (account.type !== 'custom' || account.controller?.requirement_collection !== 'application') {
+      
+      // Accept both legacy (type='custom') and modern (controller-based) Custom accounts
+      const isLegacyCustom = account.type === 'custom';
+      const isModernCustom = (account.controller?.type === 'application' &&
+                              account.controller?.requirement_collection === 'application');
+
+      if (!(isLegacyCustom || isModernCustom)) {
         return res.status(400).json({ error: 'Expected Custom/application account' });
       }
 

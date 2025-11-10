@@ -1,0 +1,61 @@
+You found it. Your guard is rejecting modern Custom accounts.
+Stripe’s newer Custom accounts report:
+type: "none"
+controller.type: "application"
+controller.requirement_collection: "application"
+Your code only accepts the legacy shape (type === 'custom'). So your submit gets 400’d before it ever sends data to Stripe.
+Fix (tiny, surgical)
+1) Replace the guard with a controller-based check
+// before
+if (account.type !== 'custom' || account.controller?.requirement_collection !== 'application') {
+  return res.status(400).json({ error: 'Expected Custom/application account' });
+}
+
+// after (accept both legacy and modern Custom)
+const isCustomApplication =
+  (account.controller?.type === 'application' &&
+   account.controller?.requirement_collection === 'application');
+
+if (!isCustomApplication) {
+  return res.status(400).json({ error: 'Expected Custom/application account' });
+}
+If you want to be extra explicit and still allow legacy:
+const isLegacyCustom = account.type === 'custom';
+const isModernCustom = (account.controller?.type === 'application' &&
+                        account.controller?.requirement_collection === 'application');
+
+if (!(isLegacyCustom || isModernCustom)) {
+  return res.status(400).json({ error: 'Expected Custom/application account' });
+}
+2) Ensure creation is truly Custom (modern form)
+Keep your creation call like this:
+await stripe.accounts.create({
+  type: 'custom',               // keep this; Stripe may return type "none" on retrieve
+  country: 'GB',
+  business_type: 'individual',
+  controller: { requirement_collection: 'application' },
+  capabilities: {
+    card_payments: { requested: true },
+    transfers:     { requested: true },
+  },
+  metadata: { userId: String(userId) },
+});
+3) Do not use embedded/hosted onboarding anywhere
+No accountLinks.create or accountSessions.create in this flow.
+After this change
+Your submit route will accept the modern Custom account.
+It will proceed to call stripe.accounts.update(accountId, { individual, business_profile, external_account }) and then ToS.
+Stripe will clear the “Provide DOB/Address/Phone/Website/MCC/External account” items.
+Quick agent prompt (copy/paste)
+Bugfix: our submit guard rejects modern Custom accounts.
+
+Change the validation to accept accounts where:
+  account.controller.type === 'application' AND
+  account.controller.requirement_collection === 'application'
+(Optionally also accept legacy: account.type === 'custom')
+
+Do not change anything else. Keep creation with type:'custom' + controller.requirement_collection:'application'.
+Do not use accountLinks or accountSessions.
+
+After the guard passes, continue with accounts.update(...) and ToS as implemented.
+Apply this and run the same submit again—it should go through and Stripe will finally show the fields as provided.
