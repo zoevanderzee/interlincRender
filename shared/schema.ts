@@ -759,6 +759,7 @@ export const connectionRequests = pgTable("connection_requests", {
   businessId: integer("business_id").notNull().references(() => users.id),
   contractorId: integer("contractor_id").references(() => users.id), // Optional during creation if using profile code
   profileCode: text("profile_code"), // Worker's profile code if direct ID not available
+  requestedBy: integer("requested_by").notNull().references(() => users.id), // Who initiated the request
   status: text("status").notNull().default("pending"), // pending, accepted, declined, expired
   message: text("message"), // Custom message to the contractor
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -770,6 +771,7 @@ export const insertConnectionRequestSchema = z.object({
   businessId: z.number(),
   contractorId: z.number().optional(),
   profileCode: z.string().optional(),
+  requestedBy: z.number(), // Required - who is sending this request
   status: z.string().default("pending"),
   message: z.string().optional(),
 });

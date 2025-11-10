@@ -5163,6 +5163,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         businessId: businessId,
         contractorId: contractorId,
         profileCode: profileCode,
+        requestedBy: userId, // Track who initiated this request
         message: message || null,
         status: 'pending'
       });
@@ -5211,12 +5212,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const business = await storage.getUser(request.businessId);
             const contractor = request.contractorId ? await storage.getUser(request.contractorId) : null;
 
-            // Determine if this request was sent or received by current user
-            // If current user is business: they sent it if they initiated, received it if contractor initiated
-            // If current user is contractor: they sent it if they initiated, received it if business initiated
-            // We need to determine who initiated - for now, assume business initiated (can enhance later)
-            const isSentByCurrentUser = (userRole === 'business' && request.businessId === userId) ||
-                                       (userRole === 'contractor' && request.contractorId === userId);
+            // Use requestedBy to determine direction
+            const isSentByCurrentUser = request.requestedBy === userId;
 
             return {
               ...request,
