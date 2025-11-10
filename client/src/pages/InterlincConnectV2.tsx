@@ -990,9 +990,13 @@ export default function InterlincConnectV2() {
                     </p>
                   </div>
 
-                  <Button onClick={submitOnboarding} disabled={submitting} className="w-full">
+                  <Button 
+                    onClick={submitOnboarding} 
+                    disabled={submitting || status?.verification_status?.verification_complete} 
+                    className="w-full"
+                  >
                     {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                    Submit Information & Accept Terms
+                    {status?.verification_status?.verification_complete ? 'Account Already Verified' : 'Submit Information & Accept Terms'}
                   </Button>
                 </div>
               </TabsContent>
@@ -1001,10 +1005,26 @@ export default function InterlincConnectV2() {
                 <div className="max-w-md mx-auto space-y-6">
                   <div className="text-center mb-6">
                     <h3 className="text-xl font-semibold mb-2">Account Verification</h3>
-                    <p className="text-muted-foreground">Stripe is reviewing your account</p>
+                    <p className="text-muted-foreground">
+                      {status?.verification_status?.verification_complete 
+                        ? 'Your account is verified and active' 
+                        : 'Stripe is reviewing your account'}
+                    </p>
                   </div>
 
-                  {status?.requirements && status.requirements.currently_due.length > 0 ? (
+                  {status?.verification_status?.verification_complete ? (
+                    <Card>
+                      <CardContent className="pt-6 text-center">
+                        <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <CheckCircle className="w-8 h-8 text-green-400" />
+                        </div>
+                        <h4 className="font-medium mb-2 text-green-400">Verification Complete</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Your account is fully verified and ready to receive payments.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ) : status?.requirements && status.requirements.currently_due.length > 0 ? (
                     <Card className="border-amber-500/20">
                       <CardContent className="pt-6">
                         <h4 className="font-medium mb-3 flex items-center gap-2">
