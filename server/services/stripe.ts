@@ -157,7 +157,204 @@ export async function createPaymentIntent(params: CreatePaymentIntentParams): Pr
 }
 
 /**
- * V2 Enhanced Connect Account Creation with full capability management
+ * Create Custom Connect Account with Application-Collected Requirements
+ * This replaces Express accounts - we collect all data in our own forms
+ */
+export async function createCustomAccount(params: {
+  userId: number;
+  country?: string;
+}): Promise<{ accountId: string }> {
+  try {
+    const { userId, country = 'GB' } = params;
+
+    console.log(`[Custom Account] Creating Custom account for user ${userId}`);
+
+    const account = await stripe.accounts.create({
+      type: 'custom',
+      country,
+      business_type: 'individual',
+      controller: {
+        requirement_collection: 'application',
+      },
+      capabilities: {
+        card_payments: { requested: true },
+        transfers: { requested: true },
+      },
+      metadata: {
+        userId: String(userId),
+        created_at: new Date().toISOString(),
+        account_type: 'custom',
+      },
+    });
+
+    console.log(`[Custom Account] Created account ${account.id} for user ${userId}`);
+
+    return { accountId: account.id };
+  } catch (error: any) {
+    console.error('[Custom Account] Error creating account:', error);
+    throw new Error(`Failed to create payment account: ${error.message}`);
+  }
+}
+
+/**
+ * Update Custom Account with Application-Collected Data
+ */
+export async function updateCustomAccount(params: {
+  accountId: string;
+  profile: {
+    firstName: string;
+    lastName: string;
+    dob: { day: number; month: number; year: number };
+    address: {
+      line1: string;
+      line2?: string;
+      city: string;
+      postcode: string;
+      country: string;
+    };
+    email: string;
+    phone: string;
+  };
+  business?: {
+    website?: string;
+    productDescription?: string;
+    industry?: string;
+  };
+  payout?: {
+    bankToken?: string;
+    account_number?: string;
+    routing_number?: string;
+    country?: string;
+    currency?: string;
+  };
+}): Promise<void> {
+  try {
+    const { accountId, profile, business, payout } = params;
+
+    console.log(`[Custom Account] Updating account ${accountId} with profile data`);
+
+    const update: Stripe.AccountUpdateParams = {
+      individual: {
+        first_name: profile.firstName,
+        last_name: profile.lastName,
+        dob: {
+          day: profile.dob.day,
+          month: profile.dob.month,
+          year: profile.dob.year,
+        },
+        address: {
+          line1: profile.address.line1,
+          line2: profile.address.line2 || undefined,
+          city: profile.address.city,
+          postal_code: profile.address.postcode,
+          country: profile.address.country,
+        },
+        email: profile.email,
+        phone: profile.phone,
+      },
+      business_profile: {
+        url: business?.website || undefined,
+        product_description: business?.productDescription || undefined,
+        mcc: business?.industry || undefined,
+      },
+    };
+
+    if (payout?.bankToken) {
+      update.external_account = payout.bankToken;
+    } else if (payout?.account_number) {
+      update.external_account = {
+        object: 'bank_account',
+        country: payout.country || 'GB',
+        currency: payout.currency || 'gbp',
+        account_number: payout.account_number,
+        routing_number: payout.routing_number,
+      } as any;
+    }
+
+    await stripe.accounts.update(accountId, update);
+
+    console.log(`[Custom Account] Successfully updated account ${accountId}`);
+  } catch (error: any) {
+    console.error('[Custom Account] Error updating account:', error);
+    throw new Error(`Failed to update account: ${error.message}`);
+  }
+}
+
+/**
+ * Accept Stripe ToS via API for Custom Account
+ */
+export async function acceptTos(params: {
+  accountId: string;
+  ip: string;
+  userAgent?: string;
+}): Promise<void> {
+  try {
+    const { accountId, ip, userAgent } = params;
+
+    console.log(`[Custom Account] Accepting ToS for account ${accountId}`);
+
+    await stripe.accounts.update(accountId, {
+      tos_acceptance: {
+        date: Math.floor(Date.now() / 1000),
+        ip,
+        user_agent: userAgent || 'Unknown',
+      },
+    });
+
+    console.log(`[Custom Account] ToS accepted for account ${accountId}`);
+  } catch (error: any) {
+    console.error('[Custom Account] Error accepting ToS:', error);
+    throw new Error(`Failed to accept terms: ${error.message}`);
+  }
+}
+
+/**
+ * Get Custom Account Status and Requirements
+ */
+export async function getAccountStatus(accountId: string): Promise<{
+  type: string;
+  details_submitted: boolean;
+  charges_enabled: boolean;
+  payouts_enabled: boolean;
+  capabilities: {
+    card_payments?: string;
+    transfers?: string;
+  };
+  requirements: {
+    currently_due: string[];
+    past_due: string[];
+    eventually_due: string[];
+    disabled_reason: string | null;
+  };
+}> {
+  try {
+    const account = await stripe.accounts.retrieve(accountId);
+
+    return {
+      type: account.type || 'unknown',
+      details_submitted: account.details_submitted || false,
+      charges_enabled: account.charges_enabled || false,
+      payouts_enabled: account.payouts_enabled || false,
+      capabilities: {
+        card_payments: account.capabilities?.card_payments,
+        transfers: account.capabilities?.transfers,
+      },
+      requirements: {
+        currently_due: account.requirements?.currently_due || [],
+        past_due: account.requirements?.past_due || [],
+        eventually_due: account.requirements?.eventually_due || [],
+        disabled_reason: account.requirements?.disabled_reason || null,
+      },
+    };
+  } catch (error: any) {
+    console.error('[Custom Account] Error getting status:', error);
+    throw new Error(`Failed to get account status: ${error.message}`);
+  }
+}
+
+/**
+ * DEPRECATED: V2 Enhanced Connect Account Creation
+ * USE createCustomAccount instead for new implementations
  */
 export async function createConnectAccountV2(contractor: User, options: {
   country?: string;
@@ -165,6 +362,8 @@ export async function createConnectAccountV2(contractor: User, options: {
   capabilities?: string[];
   settings?: Stripe.AccountCreateParams.Settings;
 } = {}): Promise<ConnectAccountResponse> {
+  console.warn('[DEPRECATED] createConnectAccountV2 creates Express accounts. Use createCustomAccount instead.');
+  
   try {
     const {
       country = 'GB',
@@ -173,7 +372,6 @@ export async function createConnectAccountV2(contractor: User, options: {
       settings
     } = options;
 
-    // Enhanced account configuration for V2
     const accountConfig: Stripe.AccountCreateParams = {
       type: 'express',
       country,
@@ -196,12 +394,10 @@ export async function createConnectAccountV2(contractor: User, options: {
       }
     };
 
-    // Request all specified capabilities
     capabilities.forEach(capability => {
       accountConfig.capabilities![capability] = { requested: true };
     });
 
-    // Set up business/individual information
     if (business_type === 'individual') {
       accountConfig.individual = {
         first_name: contractor.firstName,
@@ -702,6 +898,12 @@ export async function getConnectAccount(accountId: string): Promise<Stripe.Accou
 }
 
 export default {
+  // Custom Account Methods (Application-Collected Data)
+  createCustomAccount,
+  updateCustomAccount,
+  acceptTos,
+  getAccountStatus,
+
   // V2 Enhanced Methods - DESTINATION CHARGES ONLY
   createPaymentIntent,
   createConnectAccountV2,

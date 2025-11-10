@@ -7,8 +7,8 @@ const FEATURE_FLAGS = {
   },
   // Custom onboarding v2 - in-app onboarding with ToS via API
   CUSTOM_ONBOARDING_V2: {
-    enabled: false, // Default to false, enable per environment
-    enabledUsers: []
+    enabled: true, // Enabled for all users
+    enabledUsers: 'all'
   }
 };
 
