@@ -78,8 +78,8 @@ export function ConnectionRequestsList() {
     return <div className="text-center py-8">Loading connection requests...</div>;
   }
 
-  const receivedRequests = requests.filter(request => request.contractor);
-  const sentRequests = requests.filter(request => !request.contractor);
+  const receivedRequests = requests.filter(request => request.direction === 'received');
+  const sentRequests = requests.filter(request => request.direction === 'sent');
 
 
   return (
@@ -101,7 +101,7 @@ export function ConnectionRequestsList() {
               {receivedRequests.map((request) => (
                 <TableRow key={request.id}>
                   <TableCell>
-                    {request.contractor?.username || "Unknown"}
+                    {request.otherPartyName || "Unknown"}
                   </TableCell>
                   <TableCell className="max-w-md truncate">
                     {request.message || "—"}
@@ -170,7 +170,7 @@ export function ConnectionRequestsList() {
               {sentRequests.map((request) => (
                 <TableRow key={request.id}>
                   <TableCell>
-                    {request.business?.username || "Unknown"}
+                    {request.otherPartyName || "Unknown"}
                   </TableCell>
                   <TableCell className="max-w-md truncate">
                     {request.message || "—"}

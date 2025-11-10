@@ -5196,32 +5196,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(401).json({message: "Authentication required"});
         }
 
+        // Simple: Get all connection requests where user is involved (business OR contractor)
         let connectionRequests = [];
-
         if (userRole === 'business') {
-          // Get all requests involving this business (sent or received)
           connectionRequests = await storage.getConnectionRequestsByBusinessId(userId);
         } else if (userRole === 'contractor' || userRole === 'freelancer') {
-          // Get all requests involving this contractor (sent or received)
           connectionRequests = await storage.getConnectionRequestsByContractorId(userId);
         }
 
-        // Enrich requests with business and contractor names, and direction metadata
+        // Add names and simple direction flag
         const enrichedRequests = await Promise.all(
           connectionRequests.map(async (request) => {
             const business = await storage.getUser(request.businessId);
             const contractor = request.contractorId ? await storage.getUser(request.contractorId) : null;
 
-            // Use requestedBy to determine direction
-            const isSentByCurrentUser = request.requestedBy === userId;
-
             return {
               ...request,
-              businessName: business?.companyName || business?.username || `Business ${request.businessId}`,
-              contractorName: contractor?.username || contractor?.firstName && contractor?.lastName
-                ? `${contractor.firstName} ${contractor.lastName}`
-                : `Contractor ${request.contractorId}`,
-              direction: isSentByCurrentUser ? 'sent' : 'received',
+              businessName: business?.companyName || business?.username || 'Business',
+              contractorName: contractor ? (contractor.username || `${contractor.firstName || ''} ${contractor.lastName || ''}`.trim() || 'Contractor') : 'Contractor',
+              direction: request.requestedBy === userId ? 'sent' : 'received',
               otherPartyName: userRole === 'business' 
                 ? (contractor?.username || `${contractor?.firstName || ''} ${contractor?.lastName || ''}`.trim() || 'Contractor')
                 : (business?.companyName || business?.username || 'Business')
