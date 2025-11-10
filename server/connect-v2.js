@@ -384,7 +384,6 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
 
       // Create account with enhanced V2 capabilities
       const accountConfig = {
-        type: useCustomOnboarding ? 'custom' : 'express',
         country,
         email: user.email,
         business_type,
@@ -410,7 +409,7 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
         }
       };
 
-      // For Custom accounts, set controller to application
+      // For Custom accounts, set controller (don't use 'type' - it's mutually exclusive with controller)
       if (useCustomOnboarding) {
         accountConfig.controller = {
           requirement_collection: 'application',
@@ -424,6 +423,9 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
             payments: 'application'
           }
         };
+      } else {
+        // For Express accounts, use type parameter
+        accountConfig.type = 'express';
       }
 
       if (business_type === 'individual') {
