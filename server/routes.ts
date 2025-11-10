@@ -5321,6 +5321,137 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     });
 
+  // Get connected contractors for business users (secure endpoint - no data leaks)
+  app.get(`${apiRouter}/connected-contractors`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
+    try {
+      // Get user ID and role, handling fallback authentication
+      let userId = req.user?.id;
+      let userRole = req.user?.role;
+
+      // Handle fallback authentication via X-User-ID header
+      if (!userId && req.headers['x-user-id']) {
+        const fallbackUserId = parseInt(req.headers['x-user-id'] as string);
+        const fallbackUser = await storage.getUser(fallbackUserId);
+        if (fallbackUser) {
+          userId = fallbackUser.id;
+          userRole = fallbackUser.role;
+        }
+      }
+
+      if (!userId) {
+        return res.status(401).json({message: "Authentication required"});
+      }
+
+      // Only business users can access this endpoint
+      if (userRole !== 'business') {
+        return res.status(403).json({message: "Only business accounts can access connected contractors"});
+      }
+
+      // Get all accepted connection requests where this business is involved
+      const connectionRequests = await storage.getConnectionRequestsByBusinessId(userId);
+      const acceptedRequests = connectionRequests.filter(req => req.status === 'accepted');
+
+      // Get contractor details for each accepted connection
+      const connectedContractors = await Promise.all(
+        acceptedRequests
+          .filter(req => req.contractorId) // Only include requests with contractor IDs
+          .map(async (request) => {
+            const contractor = await storage.getUser(request.contractorId!);
+            if (!contractor) return null;
+            
+            // Return minimal data - only what's needed
+            return {
+              id: contractor.id,
+              username: contractor.username,
+              firstName: contractor.firstName,
+              lastName: contractor.lastName,
+              email: contractor.email,
+              role: contractor.role,
+              workerType: contractor.workerType,
+              title: contractor.title,
+              industry: contractor.industry,
+              profilePicture: contractor.profilePicture
+            };
+          })
+      );
+
+      // Filter out nulls and remove duplicates by ID
+      const uniqueContractors = connectedContractors
+        .filter((c): c is NonNullable<typeof c> => c !== null)
+        .filter((contractor, index, self) => 
+          index === self.findIndex(c => c.id === contractor.id)
+        );
+
+      res.json(uniqueContractors);
+    } catch (error: any) {
+      console.error('Error fetching connected contractors:', error);
+      res.status(500).json({message: error.message});
+    }
+  });
+
+  // Get connected businesses for contractor users (secure endpoint - no data leaks)
+  app.get(`${apiRouter}/connected-businesses`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
+    try {
+      // Get user ID and role, handling fallback authentication
+      let userId = req.user?.id;
+      let userRole = req.user?.role;
+
+      // Handle fallback authentication via X-User-ID header
+      if (!userId && req.headers['x-user-id']) {
+        const fallbackUserId = parseInt(req.headers['x-user-id'] as string);
+        const fallbackUser = await storage.getUser(fallbackUserId);
+        if (fallbackUser) {
+          userId = fallbackUser.id;
+          userRole = fallbackUser.role;
+        }
+      }
+
+      if (!userId) {
+        return res.status(401).json({message: "Authentication required"});
+      }
+
+      // Only contractor users can access this endpoint
+      if (userRole !== 'contractor' && userRole !== 'freelancer') {
+        return res.status(403).json({message: "Only contractor accounts can access connected businesses"});
+      }
+
+      // Get all accepted connection requests where this contractor is involved
+      const connectionRequests = await storage.getConnectionRequestsByContractorId(userId);
+      const acceptedRequests = connectionRequests.filter(req => req.status === 'accepted');
+
+      // Get business details for each accepted connection
+      const connectedBusinesses = await Promise.all(
+        acceptedRequests.map(async (request) => {
+          const business = await storage.getUser(request.businessId);
+          if (!business) return null;
+          
+          // Return minimal data - only what's needed
+          return {
+            id: business.id,
+            username: business.username,
+            companyName: business.companyName,
+            email: business.email,
+            role: business.role,
+            industry: business.industry,
+            profilePicture: business.profilePicture
+          };
+        })
+      );
+
+      // Filter out nulls and remove duplicates by ID
+      const uniqueBusinesses = connectedBusinesses
+        .filter((b): b is NonNullable<typeof b> => b !== null)
+        .filter((business, index, self) => 
+          index === self.findIndex(b => b.id === business.id)
+        );
+
+      res.json(uniqueBusinesses);
+    } catch (error: any) {
+      console.error('Error fetching connected businesses:', error);
+      res.status(500).json({message: error.message});
+    }
+  });
+
     // Get company onboarding links
     app.get(`${apiRouter}/business-onboarding-link`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
       try {

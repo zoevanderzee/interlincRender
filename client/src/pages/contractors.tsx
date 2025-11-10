@@ -63,10 +63,16 @@ const Contractors = () => {
     enabled: !!user
   });
 
-  // Fetch all users to get contractor details from connection requests
-  const { data: allUsers = [], isLoading: isLoadingUsers } = useQuery({
-    queryKey: ['/api/users'],
+  // Fetch connected contractors from secure endpoint (business users only)
+  const { data: connectedContractorsFromAPI = [], isLoading: isLoadingConnectedContractors } = useQuery({
+    queryKey: ['/api/connected-contractors'],
     enabled: !!user && !isContractor
+  });
+
+  // Fetch connected businesses from secure endpoint (contractor users only)
+  const { data: connectedBusinessesFromAPI = [], isLoading: isLoadingConnectedBusinesses } = useQuery({
+    queryKey: ['/api/connected-businesses'],
+    enabled: !!user && isContractor
   });
 
   // Get data from dashboard - use empty arrays as fallbacks since these properties may not exist
@@ -76,11 +82,22 @@ const Contractors = () => {
   const workRequests = (dashboardData as any)?.workRequests || [];
   const isLoadingBusinesses = isLoadingWorkers;
 
-  // For contractors, the connected companies are in the businesses array from dashboard
-  // Deduplicate companies by ID to prevent showing the same company multiple times
-  const connectedCompanies = isContractor ? Array.from(
-    new Map(businessAccounts.map((business: any) => [business.id, business])).values()
-  ) : [];
+  // For contractors, merge connected businesses from API with dashboard businesses
+  const connectedCompanies = isContractor ? (() => {
+    const businessMap = new Map();
+    
+    // Add businesses from dashboard first
+    businessAccounts.forEach((business: any) => {
+      businessMap.set(business.id, business);
+    });
+    
+    // Add businesses from connection requests API (will overwrite if duplicate)
+    connectedBusinessesFromAPI.forEach((business: any) => {
+      businessMap.set(business.id, business);
+    });
+    
+    return Array.from(businessMap.values());
+  })() : [];
 
   console.log('Debug contractor businesses:', {
     isContractor,
@@ -89,19 +106,9 @@ const Contractors = () => {
     dashboardData: dashboardData
   });
 
-  // For business users, build contractors list from accepted connection requests AND merge with existing contractors
+  // For business users, merge contractors from API with existing dashboard contractors
   let allBusinessContractors: User[] = [];
   if (!isContractor && user) {
-    const acceptedRequests = connectionRequests.filter((req: any) => 
-      req.status === 'accepted' && req.businessId === user.id
-    );
-    
-    // Get contractors from connection requests
-    const contractorIds = new Set(acceptedRequests.map((req: any) => req.contractorId));
-    const contractorsFromRequests = Array.from(contractorIds)
-      .map(contractorId => allUsers.find((u: User) => u.id === contractorId))
-      .filter((contractor): contractor is User => contractor !== undefined);
-    
     // Merge with existing contractors from dashboard (deduplicate by ID)
     const contractorMap = new Map<number, User>();
     
@@ -110,8 +117,8 @@ const Contractors = () => {
       contractorMap.set(worker.id, worker);
     });
     
-    // Add contractors from connection requests (will overwrite if duplicate)
-    contractorsFromRequests.forEach((contractor: User) => {
+    // Add contractors from connection requests API (will overwrite if duplicate)
+    connectedContractorsFromAPI.forEach((contractor: any) => {
       contractorMap.set(contractor.id, contractor);
     });
     
