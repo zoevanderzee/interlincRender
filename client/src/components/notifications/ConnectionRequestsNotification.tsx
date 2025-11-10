@@ -121,12 +121,9 @@ function ContractorNotification() {
     navigate("/connections");
   };
 
-  if (pendingRequests.length === 0) {
-    return null;
-  }
-
+  // Always render the Dialog (even when no pending requests) so useEffect can control visibility
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen && pendingRequests.length > 0} onOpenChange={setIsOpen}>
       <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
