@@ -273,11 +273,8 @@ export default function InterlincConnectV2() {
 
       console.log('Submitting onboarding payload:', { ...payload, bank: { ...payload.bank, accountNumber: '[REDACTED]' } });
 
-      // Submit all data in one call
-      const response = await apiRequest('POST', '/api/payments/setup/init', {
-        body: JSON.stringify(payload),
-        headers: { 'Content-Type': 'application/json' }
-      });
+      // Submit all data in one call - apiRequest takes data as 3rd param, headers as 4th
+      const response = await apiRequest('POST', '/api/payments/setup/init', payload);
 
       if (!response.ok) {
         const errorData = await response.json();
