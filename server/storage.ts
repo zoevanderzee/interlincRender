@@ -1344,12 +1344,11 @@ export class MemStorage implements IStorage {
   async createConnectionRequest(request: InsertConnectionRequest): Promise<ConnectionRequest> {
     const id = this.connectionRequestId++;
     const createdAt = new Date();
-    const contractor = request.profileCode ? await this.getUserByProfileCode(request.profileCode) : null;
     const connectionRequest: ConnectionRequest = {
       id,
       businessId: request.businessId,
       profileCode: request.profileCode,
-      contractorId: contractor ? contractor.id : null,
+      contractorId: request.contractorId || null,
       initiatedBy: request.initiatedBy || 'business',
       message: request.message || null,
       status: request.status || 'pending',
