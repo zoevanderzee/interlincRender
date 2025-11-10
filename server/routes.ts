@@ -2941,10 +2941,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           console.log(`Found ${connections.length} accepted connection requests for contractor ID: ${userId}`);
 
+          // Use a Set to track business IDs and prevent duplicates
+          const businessIdsSeen = new Set<number>();
+
           for (const connection of connections) {
-            if (connection.businessId) {
+            if (connection.businessId && !businessIdsSeen.has(connection.businessId)) {
               const business = await storage.getUser(connection.businessId);
               if (business && business.role === 'business') {
+                businessIdsSeen.add(business.id);
                 uniqueBusinesses.push({
                   id: business.id,
                   businessName: business.companyName || `${business.firstName} ${business.lastName}`,
