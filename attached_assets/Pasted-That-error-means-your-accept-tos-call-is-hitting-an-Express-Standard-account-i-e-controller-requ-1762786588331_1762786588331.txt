@@ -1,0 +1,54 @@
+That error means your /accept-tos call is hitting an Express/Standard account (i.e., controller.requirement_collection = 'stripe'), not a Custom (application) account. So either:
+you’re still re-using an old Express acct for that user, or
+the code created a new Express acct (or omitted the Custom controller), or
+you’re passing the wrong accountId into /accept-tos.
+Here’s how to fix it fast and make this impossible to regress.
+What to do right now (3 steps)
+Confirm the account you’re updating
+Add this one line before calling tos_acceptance:
+const acct = await stripe.accounts.retrieve(accountId);
+console.log('ACCT CHECK', { id: acct.id, type: acct.type, controller: acct.controller });
+If you see type: 'express' or controller.requirement_collection: 'stripe', that’s the culprit.
+Guardrail in /accept-tos (hard stop if wrong type)
+const acct = await stripe.accounts.retrieve(accountId);
+if (acct.type !== 'custom' || acct.controller?.requirement_collection !== 'application') {
+  // Do not attempt ToS on this account
+  throw new Error('Wrong account type for ToS via API: expected Custom/application');
+}
+// Safe to accept ToS
+await stripe.accounts.update(accountId, {
+  tos_acceptance: {
+    date: Math.floor(Date.now()/1000),
+    ip: clientIp,
+    user_agent: req.headers['user-agent'] || 'Unknown',
+  },
+});
+Auto-migrate if the user has an Express acct
+In your setup/init:
+const existing = await findUsersConnectAccount(userId);
+if (existing && existing.type !== 'custom') {
+  // DO NOT reuse; create a replacement Custom account and persist that id
+  const newAcct = await stripe.accounts.create({
+    type: 'custom',
+    country: 'GB',
+    business_type: 'individual',
+    controller: { requirement_collection: 'application' },
+    capabilities: { card_payments: { requested: true }, transfers: { requested: true } },
+    metadata: { userId: String(userId) }
+  });
+  await saveUsersConnectAccount(userId, newAcct.id); // update DB reference
+  accountId = newAcct.id;
+}
+Then continue with your accounts.update (profile, address, phone, website/MCC, external_account) and finally /accept-tos using the new Custom acct_….
+Common gotchas causing this exact 500
+Using accountSessions.create / accountLinks.create anywhere → that flow creates/assumes Express; remove them entirely.
+Feature flag off for Custom and a legacy path still creating type: 'express'.
+DB still points to the old Express acct_… (Ben Zee case). You must write the new Custom acct_… back to the user record and use that everywhere.
+Mixing environments/keys (creating in test with one key, accepting ToS in live or vice versa) → fetch shows the truth.
+Quick verification checklist (must log these values)
+Right before /accept-tos, log and verify:
+acct.id starts with 'acct_'
+acct.type === 'custom'
+acct.controller.requirement_collection === 'application'
+If any of those aren’t true, don’t call ToS—create a new Custom account and swap the reference, then proceed.
+Once you point /accept-tos at a Custom/application account, that 500 disappears immediately.
