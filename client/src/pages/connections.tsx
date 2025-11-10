@@ -20,6 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function ConnectionsPage() {
   const { user } = useAuth();
@@ -39,7 +40,7 @@ export default function ConnectionsPage() {
             <ArrowLeft size={16} className="mr-1" />
             Back
           </Button>
-          <h1 className="text-2xl font-bold">Connection Requests</h1>
+          <h1 className="text-2xl font-bold">Connections</h1>
         </div>
 
         <FindByProfileCodeDialog
@@ -56,20 +57,46 @@ export default function ConnectionsPage() {
         />
       </div>
 
-      <div className="grid gap-6">
-        <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-6">
-          <h2 className="text-xl font-semibold mb-4">
-            {isContractor ? 'Company Connections' : 'Contractor Connections'}
-          </h2>
-          <p className="text-zinc-400 mb-6">
-            {isContractor
-              ? 'Share your profile code with companies or enter a company\'s code to connect. Once connected, they can assign you to projects.'
-              : 'Share your profile code with contractors or enter their code to connect. Once connected, you can assign them to your projects.'}
-          </p>
+      <Tabs defaultValue="connections" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="connections">
+            {isContractor ? "Company Connections" : "Contractor Connections"}
+          </TabsTrigger>
+          <TabsTrigger value="requests">Connection Requests</TabsTrigger>
+        </TabsList>
 
-          <ConnectionRequestsList />
-        </div>
-      </div>
+        <TabsContent value="connections" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                {isContractor ? "Company Connections" : "Contractor Connections"}
+              </CardTitle>
+              <CardDescription>
+                {isContractor
+                  ? "Share your profile code with companies or enter a company's code to connect. Once connected, they can assign you to projects."
+                  : "Share your profile code with contractors or enter their code to connect. Once connected, you can assign them to your projects."}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ConnectionRequestsList />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="requests" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Connection Requests</CardTitle>
+              <CardDescription>
+                Manage connection requests sent to and received from contractors
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ConnectionRequestsList />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
