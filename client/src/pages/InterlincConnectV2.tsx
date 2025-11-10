@@ -225,10 +225,17 @@ export default function InterlincConnectV2() {
     } catch (err) {
       console.error('Auto account creation failed:', err);
       setError(err instanceof Error ? err.message : 'Account creation failed');
-      autoCreateAttempted.current = false; // Allow retry on error
+      // Keep autoCreateAttempted.current = true to prevent infinite retry loop
     } finally {
       setIsAutoCreating(false);
     }
+  };
+
+  // Manual retry for account creation
+  const retryAccountCreation = () => {
+    autoCreateAttempted.current = false;
+    setError(null);
+    handleAutoCreate();
   };
 
   // Submit onboarding information
@@ -474,7 +481,9 @@ export default function InterlincConnectV2() {
     );
   }
 
-  if (error) {
+  // Only show full-page error for fatal initialization failures (when status is null)
+  // Account-creation errors will be shown inline in the Setup tab
+  if (error && !status) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6">
         <Card className="max-w-md w-full">
@@ -647,6 +656,21 @@ export default function InterlincConnectV2() {
                       <div>
                         <p className="font-medium text-blue-600">Creating your Stripe account...</p>
                         <p className="text-sm text-muted-foreground">This will only take a moment</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Account creation error with retry button */}
+                  {error && !status?.hasAccount && autoCreateAttempted.current && (
+                    <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="flex-1">
+                          <p className="font-medium text-red-600">Account creation failed</p>
+                          <p className="text-sm text-muted-foreground mt-1">{error}</p>
+                        </div>
+                        <Button onClick={retryAccountCreation} variant="outline" size="sm">
+                          Retry
+                        </Button>
                       </div>
                     </div>
                   )}
