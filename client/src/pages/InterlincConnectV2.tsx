@@ -1072,7 +1072,7 @@ export default function InterlincConnectV2() {
                                 </ul>
                               </div>
                             </>
-                          ) : status?.needsOnboarding ? (
+                          ) : status?.hasAccount && status?.needsOnboarding ? (
                             <>
                               <div className="w-16 h-16 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <Clock className="w-8 h-8 text-amber-400" />
@@ -1083,7 +1083,6 @@ export default function InterlincConnectV2() {
                               </p>
                               <Button
                                 onClick={() => setActiveTab('onboard')}
-                                disabled={!status?.hasAccount}
                               >
                                 Continue Setup
                               </Button>
