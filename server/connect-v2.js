@@ -514,17 +514,23 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
         routing_number,
         account_number,
         business_profile_url,
-        business_profile_mcc
+        business_profile_mcc,
+        business_profile_product_description,
+        bank_country,
+        bank_currency
       } = req.body;
 
       // Build update data (NEVER store SSN/PII in our DB)
       const updateData = { business_type };
 
       // Add business profile (required for Custom accounts)
-      if (business_profile_url || business_profile_mcc) {
+      if (business_profile_url || business_profile_mcc || business_profile_product_description) {
         updateData.business_profile = {};
         if (business_profile_url) {
           updateData.business_profile.url = business_profile_url;
+        }
+        if (business_profile_product_description) {
+          updateData.business_profile.product_description = business_profile_product_description;
         }
         if (business_profile_mcc) {
           updateData.business_profile.mcc = business_profile_mcc;
@@ -566,12 +572,17 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
 
       // Add bank account if provided (sent directly to Stripe, never stored)
       if (routing_number && account_number) {
+        const accountHolderName = business_type === 'individual' 
+          ? `${first_name} ${last_name}` 
+          : company_name;
+        
         updateData.external_account = {
           object: 'bank_account',
-          country: address_country || existing.country || 'GB',
-          currency: existing.defaultCurrency || 'gbp',
+          country: bank_country || address_country || existing.country || 'GB',
+          currency: (bank_currency || existing.defaultCurrency || 'gbp').toLowerCase(),
           routing_number,
           account_number,
+          account_holder_name: accountHolderName,
           account_holder_type: business_type === 'individual' ? 'individual' : 'company'
         };
       }
