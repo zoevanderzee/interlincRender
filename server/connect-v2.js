@@ -512,11 +512,24 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
         address_country,
         dob,
         routing_number,
-        account_number
+        account_number,
+        business_profile_url,
+        business_profile_mcc
       } = req.body;
 
       // Build update data (NEVER store SSN/PII in our DB)
       const updateData = { business_type };
+
+      // Add business profile (required for Custom accounts)
+      if (business_profile_url || business_profile_mcc) {
+        updateData.business_profile = {};
+        if (business_profile_url) {
+          updateData.business_profile.url = business_profile_url;
+        }
+        if (business_profile_mcc) {
+          updateData.business_profile.mcc = business_profile_mcc;
+        }
+      }
 
       if (business_type === 'individual') {
         updateData.individual = {

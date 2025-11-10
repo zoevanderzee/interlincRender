@@ -47,16 +47,14 @@ interface OnboardingForm {
   address_postal_code?: string;
   address_country?: string;
   dob?: {
-    day: number;
-    month: number;
-    year: number;
+    day: string;
+    month: string;
+    year: string;
   };
-  business_profile?: {
-    name?: string;
-    support_email?: string;
-    support_phone?: string;
-    url?: string;
-  };
+  business_profile_url?: string;
+  business_profile_mcc?: string;
+  routing_number?: string;
+  account_number?: string;
 }
 
 
@@ -187,6 +185,47 @@ export default function InterlincConnectV2() {
     try {
       setSubmitting(true);
       setError(null);
+
+      // Client-side validation
+      if (onboardingForm.business_type === 'individual') {
+        if (!onboardingForm.first_name || !onboardingForm.last_name) {
+          throw new Error('First name and last name are required');
+        }
+        if (!onboardingForm.dob?.day || !onboardingForm.dob?.month || !onboardingForm.dob?.year) {
+          throw new Error('Date of birth is required');
+        }
+        const day = parseInt(onboardingForm.dob.day);
+        const month = parseInt(onboardingForm.dob.month);
+        const year = parseInt(onboardingForm.dob.year);
+        if (isNaN(day) || day < 1 || day > 31) {
+          throw new Error('Invalid day of birth');
+        }
+        if (isNaN(month) || month < 1 || month > 12) {
+          throw new Error('Invalid month of birth');
+        }
+        if (isNaN(year) || year < 1900 || year > new Date().getFullYear() - 18) {
+          throw new Error('You must be at least 18 years old');
+        }
+      } else {
+        if (!onboardingForm.company_name) {
+          throw new Error('Company name is required');
+        }
+      }
+      if (!onboardingForm.email || !onboardingForm.phone) {
+        throw new Error('Email and phone are required');
+      }
+      if (!onboardingForm.address_line1 || !onboardingForm.address_city || !onboardingForm.address_postal_code) {
+        throw new Error('Complete address is required');
+      }
+      if (!onboardingForm.business_profile_url) {
+        throw new Error('Website URL is required');
+      }
+      if (!onboardingForm.business_profile_mcc) {
+        throw new Error('Business category is required');
+      }
+      if (!onboardingForm.routing_number || !onboardingForm.account_number) {
+        throw new Error('Bank account details are required');
+      }
 
       // Step 1: Submit profile and bank details
       const initResponse = await apiRequest('POST', '/api/payments/setup/init', {
@@ -381,7 +420,7 @@ export default function InterlincConnectV2() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <Badge variant={statusInfo.variant} className="px-4 py-2">
+              <Badge variant={statusInfo.variant as any} className="px-4 py-2">
                 {statusInfo.text}
               </Badge>
             </div>
@@ -575,79 +614,185 @@ export default function InterlincConnectV2() {
                   </div>
 
                   {onboardingForm.business_type === 'individual' ? (
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label>First Name</Label>
-                        <Input
-                          value={onboardingForm.first_name || ''}
-                          onChange={(e) => setOnboardingForm(prev => ({...prev, first_name: e.target.value}))}
-                        />
+                    <>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>First Name *</Label>
+                          <Input
+                            value={onboardingForm.first_name || ''}
+                            onChange={(e) => setOnboardingForm(prev => ({...prev, first_name: e.target.value}))}
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label>Last Name *</Label>
+                          <Input
+                            value={onboardingForm.last_name || ''}
+                            onChange={(e) => setOnboardingForm(prev => ({...prev, last_name: e.target.value}))}
+                            required
+                          />
+                        </div>
                       </div>
+
                       <div>
-                        <Label>Last Name</Label>
-                        <Input
-                          value={onboardingForm.last_name || ''}
-                          onChange={(e) => setOnboardingForm(prev => ({...prev, last_name: e.target.value}))}
-                        />
+                        <Label>Date of Birth *</Label>
+                        <div className="grid grid-cols-3 gap-4">
+                          <Input
+                            placeholder="Day (DD)"
+                            value={onboardingForm.dob?.day || ''}
+                            onChange={(e) => setOnboardingForm(prev => ({
+                              ...prev,
+                              dob: { ...prev.dob, day: e.target.value, month: prev.dob?.month || '', year: prev.dob?.year || '' }
+                            }))}
+                            maxLength={2}
+                            required
+                          />
+                          <Input
+                            placeholder="Month (MM)"
+                            value={onboardingForm.dob?.month || ''}
+                            onChange={(e) => setOnboardingForm(prev => ({
+                              ...prev,
+                              dob: { ...prev.dob, month: e.target.value, day: prev.dob?.day || '', year: prev.dob?.year || '' }
+                            }))}
+                            maxLength={2}
+                            required
+                          />
+                          <Input
+                            placeholder="Year (YYYY)"
+                            value={onboardingForm.dob?.year || ''}
+                            onChange={(e) => setOnboardingForm(prev => ({
+                              ...prev,
+                              dob: { ...prev.dob, year: e.target.value, day: prev.dob?.day || '', month: prev.dob?.month || '' }
+                            }))}
+                            maxLength={4}
+                            required
+                          />
+                        </div>
                       </div>
-                    </div>
+                    </>
                   ) : (
                     <div>
-                      <Label>Company Name</Label>
+                      <Label>Company Name *</Label>
                       <Input
                         value={onboardingForm.company_name || ''}
                         onChange={(e) => setOnboardingForm(prev => ({...prev, company_name: e.target.value}))}
+                        required
                       />
                     </div>
                   )}
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label>Email</Label>
+                      <Label>Email *</Label>
                       <Input
                         type="email"
                         value={onboardingForm.email || ''}
                         onChange={(e) => setOnboardingForm(prev => ({...prev, email: e.target.value}))}
+                        required
                       />
                     </div>
                     <div>
-                      <Label>Phone</Label>
+                      <Label>Phone *</Label>
                       <Input
                         value={onboardingForm.phone || ''}
                         onChange={(e) => setOnboardingForm(prev => ({...prev, phone: e.target.value}))}
+                        placeholder="+44 1234 567890"
+                        required
                       />
                     </div>
                   </div>
 
                   <div>
-                    <Label>Address</Label>
+                    <Label>Address *</Label>
                     <Input
                       value={onboardingForm.address_line1 || ''}
                       onChange={(e) => setOnboardingForm(prev => ({...prev, address_line1: e.target.value}))}
                       placeholder="Street address"
+                      required
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label>City</Label>
+                      <Label>City *</Label>
                       <Input
                         value={onboardingForm.address_city || ''}
                         onChange={(e) => setOnboardingForm(prev => ({...prev, address_city: e.target.value}))}
+                        required
                       />
                     </div>
                     <div>
-                      <Label>Postal Code</Label>
+                      <Label>Postal Code *</Label>
                       <Input
                         value={onboardingForm.address_postal_code || ''}
                         onChange={(e) => setOnboardingForm(prev => ({...prev, address_postal_code: e.target.value}))}
+                        required
                       />
                     </div>
                   </div>
 
+                  <div>
+                    <Label>Website URL *</Label>
+                    <Input
+                      value={onboardingForm.business_profile_url || ''}
+                      onChange={(e) => setOnboardingForm(prev => ({...prev, business_profile_url: e.target.value}))}
+                      placeholder="https://yourwebsite.com"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Business Category (MCC) *</Label>
+                    <Select
+                      value={onboardingForm.business_profile_mcc || ''}
+                      onValueChange={(value) => setOnboardingForm(prev => ({...prev, business_profile_mcc: value}))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select your business category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="7311">Advertising Services</SelectItem>
+                        <SelectItem value="7333">Photography Studios</SelectItem>
+                        <SelectItem value="7399">Business Services</SelectItem>
+                        <SelectItem value="7299">Personal Services</SelectItem>
+                        <SelectItem value="8742">Management Consulting</SelectItem>
+                        <SelectItem value="8999">Professional Services</SelectItem>
+                        <SelectItem value="5734">Computer Software Stores</SelectItem>
+                        <SelectItem value="7372">Computer Programming</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="border-t pt-6">
+                    <h4 className="font-semibold mb-4">Bank Account Details *</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Account Number</Label>
+                        <Input
+                          value={onboardingForm.account_number || ''}
+                          onChange={(e) => setOnboardingForm(prev => ({...prev, account_number: e.target.value}))}
+                          placeholder="12345678"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label>Sort Code / Routing Number</Label>
+                        <Input
+                          value={onboardingForm.routing_number || ''}
+                          onChange={(e) => setOnboardingForm(prev => ({...prev, routing_number: e.target.value}))}
+                          placeholder="108800"
+                          required
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Your bank details are sent directly to Stripe and never stored in our database.
+                    </p>
+                  </div>
+
                   <Button onClick={submitOnboarding} disabled={submitting} className="w-full">
                     {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                    Submit Information
+                    Submit Information & Accept Terms
                   </Button>
                 </div>
               </TabsContent>

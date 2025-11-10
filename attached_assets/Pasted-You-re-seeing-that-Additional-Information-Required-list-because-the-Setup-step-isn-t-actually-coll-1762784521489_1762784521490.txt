@@ -1,0 +1,104 @@
+You’re seeing that “Additional Information Required” list because the Setup step isn’t actually collecting/submitting those fields yet (or ToS wasn’t recorded). Fix it by wiring your form to Stripe Custom (application-collected) fields and posting them via accounts.update, then calling your accept-tos endpoint.
+Send this to the agent verbatim.
+AGENT ACTIONS — FIX SETUP FOR CUSTOM ACCOUNTS (NO OTHER CHANGES)
+Do not add hosted/embedded onboarding. Do not touch payments. Only fix the Setup form + submit.
+1) Ensure we create Custom (already done, just confirm)
+type: 'custom'
+controller.requirement_collection: 'application'
+capabilities: card_payments + transfers
+2) Update SetupStep form to collect these exact fields
+Business profile
+businessProfile.url → business_profile.url
+businessProfile.mcc (dropdown) → business_profile.mcc
+(use a small list: 7399, 7311, 7333, 7299, 8742, etc.)
+Individual (contractor)
+firstName → individual.first_name
+lastName → individual.last_name
+dob.day/dob.month/dob.year → individual.dob.{day,month,year}
+address.line1 → individual.address.line1
+address.city → individual.address.city
+address.postcode → individual.address.postal_code
+address.country → individual.address.country
+email → individual.email
+phone → individual.phone
+Payouts
+Bank details (token or raw fields) → external_account
+(do not store numbers; pass through only)
+3) Submit to backend using accounts.update (no sessions/links)
+Call your /api/payments/setup/init (or update route) with a body that maps 1:1:
+await stripe.accounts.update(accountId, {
+  business_profile: {
+    url: businessProfile.url,
+    mcc: businessProfile.mcc,
+  },
+  individual: {
+    first_name: firstName,
+    last_name: lastName,
+    dob: { day: dob.day, month: dob.month, year: dob.year },
+    address: {
+      line1: address.line1,
+      city: address.city,
+      postal_code: address.postcode,
+      country: address.country,
+    },
+    email,
+    phone,
+  },
+  external_account: bankTokenOrFields, // token preferred
+});
+4) Immediately accept ToS via API
+After a successful update, call /api/payments/setup/accept-tos:
+await stripe.accounts.update(accountId, {
+  tos_acceptance: {
+    date: Math.floor(Date.now()/1000),
+    ip: clientIpResolved,          // use x-forwarded-for if present
+    user_agent: req.headers['user-agent'] || 'Unknown',
+  }
+});
+If Express/Node, ensure app.set('trust proxy', 1) so req.ip honors x-forwarded-for.
+This clears Tos Acceptance.Date and Tos Acceptance.Ip.
+5) Verify step — drive from requirements.currently_due
+In VerifyStep, call /api/payments/account-status. If requirements.currently_due contains any of:
+business_profile.mcc
+business_profile.url
+individual.address.city
+individual.address.line1
+individual.address.postal_code
+individual.dob.day|month|year
+individual.phone
+external_account
+tos_acceptance.date|ip
+…then show those inputs again (same Setup form) and resubmit to the same update route. Do not redirect users to Stripe.
+Simple mapper (front-end)
+Create a map from requirement keys → your form fields. Example:
+const requiredToForm = {
+  'business_profile.mcc':        'businessProfile.mcc',
+  'business_profile.url':        'businessProfile.url',
+  'individual.address.city':     'address.city',
+  'individual.address.line1':    'address.line1',
+  'individual.address.postal_code':'address.postcode',
+  'individual.dob.day':          'dob.day',
+  'individual.dob.month':        'dob.month',
+  'individual.dob.year':         'dob.year',
+  'individual.phone':            'phone',
+  'external_account':            'bank',      // show bank widget
+  'tos_acceptance.date':         'tos',       // handled automatically after submit
+  'tos_acceptance.ip':           'tos',       // handled automatically after submit
+};
+Use this to highlight/show only what’s missing.
+6) (Optional) set payout descriptor once
+await stripe.accounts.update(accountId, {
+  settings: { payouts: { statement_descriptor: 'INTERLINC' } }
+});
+What this will fix from your screenshot
+Business Profile.Mcc → add MCC dropdown to Setup, submit to business_profile.mcc.
+Business Profile.Url → add Website field, submit to business_profile.url.
+External Account → ensure bank entry/token goes to external_account.
+Individual.Address.City/Line1/Postal Code → submit to individual.address.*.
+Individual.Dob.Day/Month/Year → submit to individual.dob.*.
+Individual.Phone → submit to individual.phone.
+Tos Acceptance.Date/Ip → ensure /accept-tos is called after submit with real IP/UA.
+When these are wired, the Verify card will clear and charges_enabled / payouts_enabled will flip as Stripe completes checks.
+Do not add Account Links or Embedded components.
+Do not change payments (keep destination-only).
+Only implement the fields + submit path above.
