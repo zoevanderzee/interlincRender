@@ -40,6 +40,7 @@ const Contractors = () => {
   const { user } = useAuth();
   const isContractor = user?.role === "contractor";
   const [searchTerm, setSearchTerm] = useState("");
+  const [viewingCompany, setViewingCompany] = useState<any>(null);
 
 
 
@@ -68,7 +69,10 @@ const Contractors = () => {
   const isLoadingBusinesses = isLoadingWorkers;
 
   // For contractors, the connected companies are in the businesses array from dashboard
-  const connectedCompanies = isContractor ? businessAccounts : [];
+  // Deduplicate companies by ID to prevent showing the same company multiple times
+  const connectedCompanies = isContractor ? Array.from(
+    new Map(businessAccounts.map((business: any) => [business.id, business])).values()
+  ) : [];
 
   console.log('Debug contractor businesses:', {
     isContractor,
@@ -516,8 +520,9 @@ const Contractors = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="text-foreground hover:text-white w-full"
-                        onClick={() => navigate(`/contracts`)}
+                        className="w-full"
+                        onClick={() => setViewingCompany(company)}
+                        data-testid={`button-view-projects-${company.id}`}
                       >
                         View Projects
                       </Button>
@@ -900,6 +905,63 @@ const Contractors = () => {
           </TabsContent>
         )}
       </Tabs>
+
+      {/* Company Projects Modal */}
+      {viewingCompany && (
+        <Dialog open={!!viewingCompany} onOpenChange={() => setViewingCompany(null)}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {viewingCompany.businessName || viewingCompany.companyName || `${viewingCompany.firstName} ${viewingCompany.lastName}`}
+              </DialogTitle>
+              <DialogDescription>
+                Active projects and tasks
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 mt-4">
+              {contracts.filter((contract: any) => 
+                contract.businessUserId === viewingCompany.id
+              ).length > 0 ? (
+                contracts
+                  .filter((contract: any) => contract.businessUserId === viewingCompany.id)
+                  .map((contract: any) => (
+                    <Card key={contract.id} className="p-4" data-testid={`card-project-${contract.id}`}>
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-semibold" data-testid={`text-project-title-${contract.id}`}>
+                          {contract.title || contract.projectName || 'Untitled Project'}
+                        </h4>
+                        <span className="text-xs px-2 py-1 bg-muted rounded" data-testid={`badge-project-status-${contract.id}`}>
+                          {contract.status || 'active'}
+                        </span>
+                      </div>
+                      {contract.description && (
+                        <p className="text-sm text-muted-foreground mb-3">{contract.description}</p>
+                      )}
+                      <div className="flex items-center justify-between text-sm">
+                        {contract.rate && (
+                          <div className="flex items-center text-muted-foreground">
+                            <CreditCard className="w-4 h-4 mr-1" />
+                            <span>${contract.rate}</span>
+                          </div>
+                        )}
+                      </div>
+                    </Card>
+                  ))
+              ) : (
+                <div className="text-center py-8">
+                  <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-3">
+                    <Briefcase className="w-6 h-6 text-muted-foreground" />
+                  </div>
+                  <h3 className="font-medium mb-1">No projects or tasks yet</h3>
+                  <p className="text-muted-foreground text-sm">
+                    You haven't accepted any work from {viewingCompany.businessName || viewingCompany.companyName || 'this company'} yet.
+                  </p>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   );
 };
