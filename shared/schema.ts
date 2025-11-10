@@ -771,7 +771,6 @@ export const insertConnectionRequestSchema = z.object({
   businessId: z.number(),
   contractorId: z.number().optional(),
   profileCode: z.string().optional(),
-  requestedBy: z.number(), // Required - who is sending this request
   status: z.string().default("pending"),
   message: z.string().optional(),
 });

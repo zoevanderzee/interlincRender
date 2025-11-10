@@ -5158,12 +5158,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Create the connection request with requestedBy field
+      // Create the connection request
       const createdRequest = await storage.createConnectionRequest({
         businessId: businessId,
         contractorId: contractorId,
         profileCode: profileCode,
-        requestedBy: userId, // REQUIRED: Track who initiated this request
         message: message || null,
         status: 'pending'
       });
@@ -5177,7 +5176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     app.get(`${apiRouter}/connection-requests`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
       try {
-        // Get user ID and role, handling fallback authentication
+        // Get user ID and role
         let userId = req.user?.id;
         let userRole = req.user?.role;
 
@@ -5188,7 +5187,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (fallbackUser) {
             userId = fallbackUser.id;
             userRole = fallbackUser.role;
-            console.log(`Using X-User-ID header fallback for connection requests: user ${userId} with role ${userRole}`);
           }
         }
 
@@ -5196,7 +5194,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(401).json({message: "Authentication required"});
         }
 
-        // Simple: Get all connection requests where user is involved (business OR contractor)
+        // Get connection requests where user is involved
         let connectionRequests = [];
         if (userRole === 'business') {
           connectionRequests = await storage.getConnectionRequestsByBusinessId(userId);
@@ -5204,7 +5202,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           connectionRequests = await storage.getConnectionRequestsByContractorId(userId);
         }
 
-        // Add names and simple direction flag
+        // Add names for display
         const enrichedRequests = await Promise.all(
           connectionRequests.map(async (request) => {
             const business = await storage.getUser(request.businessId);
@@ -5214,7 +5212,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ...request,
               businessName: business?.companyName || business?.username || 'Business',
               contractorName: contractor ? (contractor.username || `${contractor.firstName || ''} ${contractor.lastName || ''}`.trim() || 'Contractor') : 'Contractor',
-              direction: request.requestedBy === userId ? 'sent' : 'received',
               otherPartyName: userRole === 'business' 
                 ? (contractor?.username || `${contractor?.firstName || ''} ${contractor?.lastName || ''}`.trim() || 'Contractor')
                 : (business?.companyName || business?.username || 'Business')
@@ -5222,7 +5219,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           })
         );
 
-        console.log(`Returning ${enrichedRequests.length} connection requests for user ${userId} (${userRole})`);
         res.json(enrichedRequests);
       } catch (error: any) {
         console.error('Error fetching connection requests:', error);
