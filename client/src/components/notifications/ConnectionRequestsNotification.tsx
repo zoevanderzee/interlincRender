@@ -28,6 +28,7 @@ interface ConnectionRequest {
   contractorName?: string;
   message: string | null;
   status: string;
+  direction?: string; // 'sent' or 'received'
   createdAt: string;
   updatedAt: string;
 }
@@ -155,8 +156,10 @@ function ContractorNotification() {
     }
   };
 
-  // Filter pending requests
-  const pendingRequests = connectionRequests.filter((req: ConnectionRequest) => req.status === "pending");
+  // Filter pending RECEIVED requests only (not sent by current user)
+  const pendingRequests = connectionRequests.filter((req: ConnectionRequest) => 
+    req.status === "pending" && req.direction === "received"
+  );
 
   // Show dialog if there are pending requests
   useEffect(() => {
