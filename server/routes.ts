@@ -5158,12 +5158,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Create the connection request
+      // Create the connection request with requestedBy field
       const createdRequest = await storage.createConnectionRequest({
         businessId: businessId,
         contractorId: contractorId,
         profileCode: profileCode,
-        requestedBy: userId, // Track who initiated this request
+        requestedBy: userId, // REQUIRED: Track who initiated this request
         message: message || null,
         status: 'pending'
       });
