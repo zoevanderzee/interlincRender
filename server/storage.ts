@@ -1350,6 +1350,7 @@ export class MemStorage implements IStorage {
       businessId: request.businessId,
       profileCode: request.profileCode,
       contractorId: contractor ? contractor.id : null,
+      initiatedBy: request.initiatedBy || 'business',
       message: request.message || null,
       status: request.status || 'pending',
       createdAt,
