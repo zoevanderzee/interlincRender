@@ -245,8 +245,7 @@ function NewTaskContent() {
       </div>
 
       {/* Content */}
-      <div className="bg-zinc-900/50 backdrop-blur-xl p-6 rounded-lg shadow-sm border-0">
-        <Card className="bg-transparent border-0">
+      <Card className="bg-zinc-900/50 backdrop-blur-xl border-0">
           <CardHeader>
             <CardTitle className="text-white">Task Details</CardTitle>
           </CardHeader>
