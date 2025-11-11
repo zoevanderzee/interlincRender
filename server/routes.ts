@@ -53,8 +53,8 @@ import {sql, eq, and, or, desc, inArray} from "drizzle-orm";
 // Object storage with presigned URLs
   import {FileStorageService} from "./fileStorage";
   import * as objectStorage from "./services/object-storage";
-  import {db} from "./db";
-  import {sql} from "drizzle-orm";
+  import {ObjectStorageService} from "./objectStorage";
+  import { randomUUID } from "crypto";
 import trolleyRoutes from "./trolley-routes";
 import trolleyTestRoutes from "./trolley-test-routes";
 import {registerFirebaseRoutes} from "./firebase-routes";

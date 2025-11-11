@@ -9,8 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 
 interface MoodBoardUploaderProps {
   value?: {
-    files: string[];
-    links: string[];
+    files?: string[];
+    links?: string[];
   };
   onChange?: (value: { files: string[]; links: string[] }) => void;
   disabled?: boolean;
@@ -28,12 +28,15 @@ interface MoodBoardUploaderProps {
 export function MoodBoardUploader({ value = { files: [], links: [] }, onChange, disabled }: MoodBoardUploaderProps) {
   const [newLink, setNewLink] = useState("");
   const { toast } = useToast();
+  
+  const files = value?.files || [];
+  const links = value?.links || [];
 
   const handleFileUploaded = (uploadedFiles: { url: string; name: string; size: number; type: string; filename: string }[]) => {
     const newFileUrls = uploadedFiles.map(file => file.url);
     onChange?.({
-      ...value,
-      files: [...value.files, ...newFileUrls]
+      files: [...files, ...newFileUrls],
+      links
     });
     toast({
       title: "Upload Complete",
@@ -42,19 +45,19 @@ export function MoodBoardUploader({ value = { files: [], links: [] }, onChange, 
   };
 
   const removeFile = (index: number) => {
-    const newFiles = [...value.files];
+    const newFiles = [...files];
     newFiles.splice(index, 1);
     onChange?.({
-      ...value,
-      files: newFiles
+      files: newFiles,
+      links
     });
   };
 
   const addLink = () => {
     if (newLink.trim() && isValidUrl(newLink.trim())) {
       onChange?.({
-        ...value,
-        links: [...value.links, newLink.trim()]
+        files,
+        links: [...links, newLink.trim()]
       });
       setNewLink("");
       toast({
@@ -71,10 +74,10 @@ export function MoodBoardUploader({ value = { files: [], links: [] }, onChange, 
   };
 
   const removeLink = (index: number) => {
-    const newLinks = [...value.links];
+    const newLinks = [...links];
     newLinks.splice(index, 1);
     onChange?.({
-      ...value,
+      files,
       links: newLinks
     });
   };
@@ -115,9 +118,9 @@ export function MoodBoardUploader({ value = { files: [], links: [] }, onChange, 
           />
 
           {/* Uploaded Images Preview */}
-          {value.files.length > 0 && (
+          {files.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3" data-testid="uploaded-files">
-              {value.files.map((file, index) => (
+              {files.map((file, index) => (
                 <Card key={index} className="relative group overflow-hidden aspect-square">
                   <img
                     src={file}
@@ -167,9 +170,9 @@ export function MoodBoardUploader({ value = { files: [], links: [] }, onChange, 
           </div>
 
           {/* Added Links */}
-          {value.links.length > 0 && (
+          {links.length > 0 && (
             <div className="space-y-2" data-testid="inspiration-links">
-              {value.links.map((link, index) => (
+              {links.map((link, index) => (
                 <Card key={index} className="p-3 flex items-center justify-between group hover:bg-accent/50 transition-colors">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <Link className="h-4 w-4 text-muted-foreground flex-shrink-0" />
@@ -197,7 +200,7 @@ export function MoodBoardUploader({ value = { files: [], links: [] }, onChange, 
         </div>
 
         {/* Empty State */}
-        {value.files.length === 0 && value.links.length === 0 && (
+        {files.length === 0 && links.length === 0 && (
           <Card className="p-8 text-center border-dashed" data-testid="empty-moodboard">
             <Image className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <p className="text-muted-foreground">

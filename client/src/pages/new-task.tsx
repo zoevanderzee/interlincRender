@@ -23,9 +23,9 @@ const taskFormSchema = z.object({
   }),
   contractorUserId: z.number().min(1, "Please select a contractor"),
   moodboard: z.object({
-    files: z.array(z.string()),
-    links: z.array(z.string())
-  }).optional()
+    files: z.array(z.string()).default([]),
+    links: z.array(z.string()).default([])
+  }).default({ files: [], links: [] })
 });
 
 type TaskFormData = z.infer<typeof taskFormSchema>;
@@ -296,7 +296,7 @@ function NewTaskContent() {
                   render={({ field }) => (
                     <FormItem>
                       <MoodBoardUploader
-                        value={field.value || { files: [], links: [] }}
+                        value={field.value}
                         onChange={field.onChange}
                         disabled={createTaskMutation.isPending}
                       />
