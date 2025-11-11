@@ -1,3 +1,9 @@
+/**
+ * @deprecated This file contains the old multer-based local file storage system.
+ * The application now uses presigned URL uploads to object storage (see server/routes.ts /api/files/* routes).
+ * This code is kept for backwards compatibility but should not be used for new uploads.
+ */
+
 import fs from 'fs';
 import path from 'path';
 import { Request, Response } from 'express';

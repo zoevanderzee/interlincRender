@@ -51,8 +51,6 @@ import {setupAuth} from "./auth";
 import {db} from "./db";
 import {sql, eq, and, or, desc, inArray} from "drizzle-orm";
 // Object storage with presigned URLs
-  import {FileStorageService} from "./fileStorage";
-  import * as objectStorage from "./services/object-storage";
   import {ObjectStorageService} from "./objectStorage";
   import { randomUUID } from "crypto";
 import trolleyRoutes from "./trolley-routes";
@@ -2864,6 +2862,316 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.error("Error creating document:", error);
       res.status(500).json({message: "Error creating document"});
+    }
+  });
+
+  // FILE STORAGE ROUTES - Presigned URL Upload System
+  const objectStorageService = new ObjectStorageService();
+
+  // Helper to generate storage key
+  function generateStorageKey(fileId: string, filename: string): string {
+    const sanitized = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const privateDir = process.env.PRIVATE_OBJECT_DIR || '';
+    return `${privateDir}/files/${fileId}/${sanitized}`;
+  }
+
+  // Helper to parse object path for signing
+  function parseObjectPath(path: string): { bucketName: string; objectName: string } {
+    if (!path.startsWith("/")) {
+      path = `/${path}`;
+    }
+    const pathParts = path.split("/");
+    if (pathParts.length < 3) {
+      throw new Error("Invalid path: must contain at least a bucket name");
+    }
+    const bucketName = pathParts[1];
+    const objectName = pathParts.slice(2).join("/");
+    return { bucketName, objectName };
+  }
+
+  // Helper to sign object URL
+  async function signObjectURL({ bucketName, objectName, method, ttlSec }: {
+    bucketName: string;
+    objectName: string;
+    method: "GET" | "PUT" | "DELETE" | "HEAD";
+    ttlSec: number;
+  }): Promise<string> {
+    const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
+    const request = {
+      bucket_name: bucketName,
+      object_name: objectName,
+      method,
+      expires_at: new Date(Date.now() + ttlSec * 1000).toISOString(),
+    };
+    const response = await fetch(
+      `${REPLIT_SIDECAR_ENDPOINT}/object-storage/signed-object-url`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(request),
+      }
+    );
+    if (!response.ok) {
+      throw new Error(`Failed to sign object URL: ${response.status}`);
+    }
+    const { signed_url: signedURL } = await response.json();
+    return signedURL;
+  }
+
+  // POST /api/files/upload - Get presigned upload URL
+  app.post(`${apiRouter}/files/upload`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'Authentication required' });
+      }
+
+      const { projectId, filename, mimeType, sizeBytes } = req.body;
+
+      // Validate inputs
+      if (!filename || !mimeType || !sizeBytes) {
+        return res.status(400).json({ error: 'Missing required fields: filename, mimeType, sizeBytes' });
+      }
+
+      // Validate file size (200MB max)
+      const MAX_FILE_SIZE = 200 * 1024 * 1024;
+      if (sizeBytes > MAX_FILE_SIZE) {
+        return res.status(400).json({ error: `File size exceeds maximum ${MAX_FILE_SIZE} bytes (200MB)` });
+      }
+
+      // Validate MIME type
+      const ALLOWED_MIME_TYPES = [
+        'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+        'application/pdf', 'text/plain',
+        'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/zip', 'application/x-zip-compressed'
+      ];
+      if (!ALLOWED_MIME_TYPES.includes(mimeType)) {
+        return res.status(400).json({ error: `File type ${mimeType} not allowed` });
+      }
+
+      // Get user's organization ID (business users own org, contractors belong to business)
+      const currentUser = await storage.getUser(userId);
+      if (!currentUser) {
+        return res.status(401).json({ error: 'User not found' });
+      }
+
+      // Determine org_id based on user role
+      let orgId = userId;
+      if (currentUser.role === 'contractor') {
+        // For contractors, find their business org via projects or work requests
+        if (projectId) {
+          const project = await storage.getProject(projectId);
+          if (project) {
+            orgId = project.businessId;
+          }
+        }
+      }
+
+      // Generate file ID
+      const fileId = randomUUID();
+
+      // Generate storage key
+      const storageKey = generateStorageKey(fileId, filename);
+
+      // Create file metadata record with proper org/project linkage
+      const result = await db.execute(sql`
+        INSERT INTO files (id, org_id, project_id, uploader_id, storage_provider, storage_key, filename, mime_type, size_bytes, status)
+        VALUES (${fileId}, ${orgId}, ${projectId || null}, ${userId}, 'gcs', ${storageKey}, ${filename}, ${mimeType}, ${sizeBytes}, 'pending')
+        RETURNING id, filename, mime_type as "mimeType", size_bytes as "sizeBytes"
+      `);
+
+      const fileMetadata = result.rows[0] as any;
+
+      // Generate presigned PUT URL (15 min expiry)
+      const { bucketName, objectName } = parseObjectPath(storageKey);
+      const presignedUrl = await signObjectURL({
+        bucketName,
+        objectName,
+        method: "PUT",
+        ttlSec: 900 // 15 minutes
+      });
+
+      // Return response
+      res.json({
+        presigned: { url: presignedUrl },
+        file: fileMetadata,
+        viewUrl: `/api/files/view/${fileId}`,
+        downloadUrl: `/api/files/download/${fileId}`
+      });
+    } catch (error) {
+      console.error('File upload error:', error);
+      res.status(500).json({ error: 'Failed to generate upload URL' });
+    }
+  });
+
+  // POST /api/files/complete - Mark file upload as complete
+  app.post(`${apiRouter}/files/complete`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'Authentication required' });
+      }
+
+      const { id } = req.body;
+      if (!id) {
+        return res.status(400).json({ error: 'Missing file ID' });
+      }
+
+      // Update file status to 'ready'
+      const result = await db.execute(sql`
+        UPDATE files
+        SET status = 'ready', updated_at = NOW()
+        WHERE id = ${id} AND uploader_id = ${userId} AND status = 'pending'
+        RETURNING id
+      `);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'File not found or already processed' });
+      }
+
+      res.json({ success: true, id });
+    } catch (error) {
+      console.error('File complete error:', error);
+      res.status(500).json({ error: 'Failed to mark file as complete' });
+    }
+  });
+
+  // GET /api/files/view/:id - View file (redirect to signed URL)
+  app.get(`${apiRouter}/files/view/:id`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      const { id } = req.params;
+
+      // Get file metadata with org/project info
+      const result = await db.execute(sql`
+        SELECT id, org_id, project_id, uploader_id, storage_key, filename, mime_type, status
+        FROM files
+        WHERE id = ${id} AND status = 'ready'
+      `);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'File not found' });
+      }
+
+      const file = result.rows[0] as any;
+
+      // ACCESS CONTROL: Verify user has access to this file
+      if (userId) {
+        const currentUser = await storage.getUser(userId);
+        if (currentUser) {
+          let hasAccess = false;
+
+          // Check if user is the uploader
+          if (file.uploader_id === userId) {
+            hasAccess = true;
+          }
+          // Check if user is business owner of the org
+          else if (currentUser.role === 'business' && file.org_id === userId) {
+            hasAccess = true;
+          }
+          // Check if contractor has access via project
+          else if (currentUser.role === 'contractor' && file.project_id) {
+            const project = await storage.getProject(file.project_id);
+            if (project && project.businessId === file.org_id) {
+              // Verify contractor is assigned to this project via work requests or tasks
+              const workRequests = await storage.getWorkRequestsByContractorId(userId);
+              const hasProjectAccess = workRequests.some(wr => wr.projectId === file.project_id);
+              if (hasProjectAccess) {
+                hasAccess = true;
+              }
+            }
+          }
+
+          if (!hasAccess) {
+            return res.status(403).json({ error: 'Access denied' });
+          }
+        }
+      }
+
+      // Generate signed GET URL (1 hour expiry)
+      const { bucketName, objectName } = parseObjectPath(file.storage_key);
+      const signedUrl = await signObjectURL({
+        bucketName,
+        objectName,
+        method: "GET",
+        ttlSec: 3600 // 1 hour
+      });
+
+      // Redirect to signed URL
+      res.redirect(302, signedUrl);
+    } catch (error) {
+      console.error('File view error:', error);
+      res.status(500).json({ error: 'Failed to view file' });
+    }
+  });
+
+  // GET /api/files/download/:id - Download file (redirect to signed URL)
+  app.get(`${apiRouter}/files/download/:id`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      const { id } = req.params;
+
+      // Get file metadata with org/project info
+      const result = await db.execute(sql`
+        SELECT id, org_id, project_id, uploader_id, storage_key, filename, mime_type, status
+        FROM files
+        WHERE id = ${id} AND status = 'ready'
+      `);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'File not found' });
+      }
+
+      const file = result.rows[0] as any;
+
+      // ACCESS CONTROL: Verify user has access to this file
+      if (userId) {
+        const currentUser = await storage.getUser(userId);
+        if (currentUser) {
+          let hasAccess = false;
+
+          // Check if user is the uploader
+          if (file.uploader_id === userId) {
+            hasAccess = true;
+          }
+          // Check if user is business owner of the org
+          else if (currentUser.role === 'business' && file.org_id === userId) {
+            hasAccess = true;
+          }
+          // Check if contractor has access via project
+          else if (currentUser.role === 'contractor' && file.project_id) {
+            const project = await storage.getProject(file.project_id);
+            if (project && project.businessId === file.org_id) {
+              // Verify contractor is assigned to this project via work requests or tasks
+              const workRequests = await storage.getWorkRequestsByContractorId(userId);
+              const hasProjectAccess = workRequests.some(wr => wr.projectId === file.project_id);
+              if (hasProjectAccess) {
+                hasAccess = true;
+              }
+            }
+          }
+
+          if (!hasAccess) {
+            return res.status(403).json({ error: 'Access denied' });
+          }
+        }
+      }
+
+      // Generate signed GET URL (1 hour expiry)
+      const { bucketName, objectName } = parseObjectPath(file.storage_key);
+      const signedUrl = await signObjectURL({
+        bucketName,
+        objectName,
+        method: "GET",
+        ttlSec: 3600 // 1 hour
+      });
+
+      // Redirect to signed URL
+      res.redirect(302, signedUrl);
+    } catch (error) {
+      console.error('File download error:', error);
+      res.status(500).json({ error: 'Failed to download file' });
     }
   });
 
