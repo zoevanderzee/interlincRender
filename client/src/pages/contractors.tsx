@@ -491,7 +491,7 @@ const Contractors = () => {
       </div>
 
       {/* Tabs for Workers/Companies */}
-      <Tabs defaultValue="contractors" className="mb-6">
+      <Tabs defaultValue="freelancers" className="mb-6">
         <TabsList className="mb-4">
           {isContractor ? (
             <>
@@ -501,7 +501,6 @@ const Contractors = () => {
             </>
           ) : (
             <>
-              <TabsTrigger value="contractors">Sub Contractors</TabsTrigger>
               <TabsTrigger value="freelancers">Contractors</TabsTrigger>
               <TabsTrigger value="invites">Connection Requests</TabsTrigger>
             </>
