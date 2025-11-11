@@ -177,10 +177,10 @@ function NewTaskContent() {
   // Show loading state
   if (isLoadingConnections) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900 p-6">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
         <div className="animate-pulse space-y-6">
-          <div className="h-12 bg-gray-800 rounded w-1/3"></div>
-          <div className="h-64 bg-gray-800 rounded"></div>
+          <div className="h-12 bg-slate-700 rounded w-1/3"></div>
+          <div className="h-64 bg-slate-700 rounded"></div>
         </div>
       </div>
     );
@@ -189,12 +189,12 @@ function NewTaskContent() {
   // Show error state
   if (connectionError) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900 p-6">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
         <div className="flex items-center mb-6">
           <Button 
             variant="ghost" 
             size="sm" 
-            className="mr-4 text-white hover:bg-zinc-800"
+            className="mr-4 text-white hover:bg-slate-700"
             onClick={() => navigate('/projects')}
           >
             <ArrowLeft size={16} />
@@ -208,7 +208,7 @@ function NewTaskContent() {
             </p>
           </div>
         </div>
-        <Card className="bg-zinc-900/50 backdrop-blur-xl p-6 rounded-lg shadow-sm border border-zinc-800">
+        <Card className="bg-slate-800/30 backdrop-blur-xl p-6 rounded-lg shadow-sm border border-slate-700">
           <CardContent className="text-center">
             <Button onClick={() => window.location.reload()} className="bg-blue-600 hover:bg-blue-700">
               Refresh Page
@@ -223,13 +223,13 @@ function NewTaskContent() {
   const availableContractors = Array.isArray(businessWorkers) ? businessWorkers : [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
       {/* Page Header */}
       <div className="flex items-center mb-6">
         <Button 
           variant="ghost" 
           size="sm" 
-          className="mr-4 text-white hover:bg-zinc-800"
+          className="mr-4 text-white hover:bg-slate-700"
           onClick={() => navigate('/projects')}
         >
           <ArrowLeft size={16} />
@@ -238,14 +238,14 @@ function NewTaskContent() {
           <h1 className="text-2xl md:text-3xl font-semibold text-white">
             Create New Task
           </h1>
-          <p className="text-zinc-400 mt-1">
+          <p className="text-slate-300 mt-1">
             Create a quick task assignment for an individual contractor
           </p>
         </div>
       </div>
 
       {/* Content */}
-      <Card className="bg-zinc-900/50 backdrop-blur-xl border-0">
+      <Card className="bg-slate-800/30 backdrop-blur-xl border border-slate-700">
           <CardHeader>
             <CardTitle className="text-white">Task Details</CardTitle>
           </CardHeader>
@@ -261,7 +261,7 @@ function NewTaskContent() {
                       <FormControl>
                         <Input 
                           placeholder="Enter task name"
-                          className="bg-zinc-900 border-zinc-700 text-white"
+                          className="bg-slate-900 border-slate-600 text-white"
                           {...field} 
                         />
                       </FormControl>
@@ -279,7 +279,7 @@ function NewTaskContent() {
                       <FormControl>
                         <Textarea 
                           placeholder="Describe what this task involves"
-                          className="bg-zinc-900 border-zinc-700 text-white"
+                          className="bg-slate-900 border-slate-600 text-white"
                           rows={4}
                           {...field} 
                         />
@@ -315,7 +315,7 @@ function NewTaskContent() {
                         <Input 
                           type="number"
                           placeholder="0.00"
-                          className="bg-zinc-900 border-zinc-700 text-white"
+                          className="bg-slate-900 border-slate-600 text-white"
                           {...field} 
                         />
                       </FormControl>
@@ -336,12 +336,12 @@ function NewTaskContent() {
                         disabled={createTaskMutation.isPending}
                       >
                         <FormControl>
-                          <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white transition-colors duration-200 will-change-auto">
+                          <SelectTrigger className="bg-slate-900 border-slate-600 text-white transition-colors duration-200 will-change-auto">
                             <SelectValue placeholder="Choose a contractor..." />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent 
-                          className="bg-zinc-900 border-zinc-700 max-h-[300px] overflow-y-auto"
+                          className="bg-slate-900 border-slate-600 max-h-[300px] overflow-y-auto"
                           position="popper"
                           sideOffset={5}
                         >
@@ -361,7 +361,7 @@ function NewTaskContent() {
                               <SelectItem 
                                 key={`contractor-${contractor.id}`}
                                 value={contractor.id.toString()}
-                                className="text-white hover:bg-zinc-800 focus:bg-zinc-800 transition-colors duration-150 cursor-pointer"
+                                className="text-white hover:bg-slate-700 focus:bg-slate-700 transition-colors duration-150 cursor-pointer"
                               >
                                 <div className="flex flex-col py-1">
                                   <span className="font-medium text-sm">
@@ -387,7 +387,7 @@ function NewTaskContent() {
                     type="button"
                     variant="outline"
                     onClick={() => navigate('/projects')}
-                    className="border-zinc-700 text-white hover:bg-zinc-800"
+                    className="border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white"
                   >
                     Cancel
                   </Button>
@@ -417,7 +417,7 @@ function NewTaskContent() {
 export default function NewTask() {
   return (
     <React.Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900 p-6 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 flex items-center justify-center">
         <div className="text-white">Loading...</div>
       </div>
     }>
