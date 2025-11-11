@@ -296,7 +296,7 @@ function NewTaskContent() {
                   render={({ field }) => (
                     <FormItem>
                       <MoodBoardUploader
-                        value={field.value}
+                        value={field.value || { files: [], links: [] }}
                         onChange={field.onChange}
                         disabled={createTaskMutation.isPending}
                       />
