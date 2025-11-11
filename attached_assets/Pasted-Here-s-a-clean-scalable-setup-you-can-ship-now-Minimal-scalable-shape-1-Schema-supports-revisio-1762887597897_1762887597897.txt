@@ -1,0 +1,158 @@
+Here’s a clean, scalable setup you can ship now.
+Minimal, scalable shape
+1) Schema (supports revisions, but simple by default)
+-- work_request_submissions (one row per submission attempt)
+CREATE TABLE IF NOT EXISTS work_request_submissions (
+  id              SERIAL PRIMARY KEY,
+  work_request_id INTEGER NOT NULL REFERENCES work_requests(id) ON DELETE CASCADE,
+  version         INTEGER NOT NULL DEFAULT 1,           -- 1,2,3... for resubmits
+  submitted_by    INTEGER NOT NULL REFERENCES users(id),
+  notes           TEXT,
+  artifact_url    TEXT,
+  metadata        JSONB NOT NULL DEFAULT '{}'::jsonb,
+  status          TEXT NOT NULL DEFAULT 'submitted',    -- submitted|approved|rejected
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- quick lookup + enforce single “latest” if you like
+CREATE INDEX IF NOT EXISTS idx_wrs_wr ON work_request_submissions(work_request_id);
+If you want “super simple = single submission”, add:
+CREATE UNIQUE INDEX IF NOT EXISTS uq_wrs_single ON work_request_submissions(work_request_id);
+(You can drop this later to allow multiple versions.)
+2) API (milestone-free, WR ID everywhere)
+Create/submit
+POST /api/work-requests/:id/submissions
+Body: { notes?, artifactUrl?, metadata? }
+201 -> { submission, message: "Submission recorded" }
+Resubmit (creates a new version)
+POST /api/work-requests/:id/submissions/resubmit
+Body: { notes?, artifactUrl?, metadata? }
+201 -> { submission, message: "Resubmission recorded" }
+Decide (approve/reject)
+POST /api/work-requests/:id/submissions/:submissionId/decision
+Body: { decision: "approve" | "reject", reason? }
+200 -> { submission }
+Get latest / list
+GET /api/work-requests/:id/submissions/latest
+GET /api/work-requests/:id/submissions
+3) Express handlers (drop-in)
+// routes/workRequests.ts
+import { z } from "zod";
+
+const SubmitPayload = z.object({
+  notes: z.string().optional(),
+  artifactUrl: z.string().url().optional(),
+  metadata: z.record(z.any()).default({}),
+});
+
+app.post('/api/work-requests/:id/submissions', requireAuth, async (req, res) => {
+  const workRequestId = Number(req.params.id);
+  if (!Number.isInteger(workRequestId)) return res.status(400).json({ message: 'Invalid id' });
+
+  const wr = await db.work_requests.findFirst({ where: { id: workRequestId } });
+  if (!wr) return res.status(404).json({ message: 'Work request not found' });
+
+  // auth: requester or assigned contractor, or admin
+  const userId = req.user.id;
+  const isAllowed = [wr.requesterId, wr.assigneeId].includes(userId) || req.user.role === 'admin';
+  if (!isAllowed) return res.status(403).json({ message: 'Not allowed' });
+
+  const { notes, artifactUrl, metadata } = SubmitPayload.parse(req.body);
+
+  // next version number
+  const last = await db.work_request_submissions.findFirst({
+    where: { work_request_id: workRequestId },
+    orderBy: { version: 'desc' }
+  });
+  const nextVersion = (last?.version ?? 0) + 1;
+
+  const submission = await db.work_request_submissions.create({
+    data: {
+      work_request_id: workRequestId,
+      version: nextVersion,
+      submitted_by: userId,
+      notes,
+      artifact_url: artifactUrl,
+      metadata,
+      status: 'submitted'
+    }
+  });
+
+  await db.work_requests.update({
+    where: { id: workRequestId },
+    data: { status: 'submitted', updated_at: new Date() }
+  });
+
+  return res.status(201).json({ message: nextVersion === 1 ? 'Submission recorded' : 'Resubmission recorded', submission });
+});
+
+app.post('/api/work-requests/:id/submissions/:submissionId/decision', requireAuth, async (req, res) => {
+  const Params = z.object({ id: z.coerce.number().int(), submissionId: z.coerce.number().int() });
+  const Body = z.object({ decision: z.enum(['approve','reject']), reason: z.string().optional() });
+  const { id: workRequestId, submissionId } = Params.parse(req.params);
+  const { decision, reason } = Body.parse(req.body);
+
+  // auth: approvers/managers/admin
+  if (!['manager','admin','owner'].includes(req.user.role)) return res.status(403).json({ message: 'Not allowed' });
+
+  const wr = await db.work_requests.findFirst({ where: { id: workRequestId } });
+  if (!wr) return res.status(404).json({ message: 'Work request not found' });
+
+  const status = decision === 'approve' ? 'approved' : 'rejected';
+  const submission = await db.work_request_submissions.update({
+    where: { id: submissionId },
+    data: { status, notes: reason ?? undefined, updated_at: new Date() }
+  });
+
+  await db.work_requests.update({
+    where: { id: workRequestId },
+    data: { status: status === 'approved' ? 'approved' : 'needs_changes', updated_at: new Date() }
+  });
+
+  return res.status(200).json({ submission });
+});
+
+app.get('/api/work-requests/:id/submissions/latest', requireAuth, async (req, res) => {
+  const workRequestId = Number(req.params.id);
+  const latest = await db.work_request_submissions.findFirst({
+    where: { work_request_id: workRequestId },
+    orderBy: { version: 'desc' }
+  });
+  if (!latest) return res.status(404).json({ message: 'No submissions yet' });
+  return res.json({ submission: latest });
+});
+
+app.get('/api/work-requests/:id/submissions', requireAuth, async (req, res) => {
+  const workRequestId = Number(req.params.id);
+  const list = await db.work_request_submissions.findMany({
+    where: { work_request_id: workRequestId },
+    orderBy: [{ version: 'desc' }]
+  });
+  return res.json({ submissions: list });
+});
+4) Kill the milestone code and hard-redirect
+// Keep clients from accidentally calling the old route
+app.patch('/api/deliverables/:id', (_req, res) => {
+  return res.status(410).json({
+    code: 'MILESTONES_REMOVED',
+    message: 'Milestones are removed. Use /api/work-requests/:id/submissions'
+  });
+});
+5) Client usage (simple)
+// submit
+await api.post(`/api/work-requests/${workRequestId}/submissions`, {
+  notes,
+  artifactUrl,
+  metadata: { files: uploadedFileIds }
+});
+
+// resubmit (identical call; server bumps version)
+await api.post(`/api/work-requests/${workRequestId}/submissions`, {
+  notes: 'Addressed feedback...',
+  artifactUrl: newUrl,
+  metadata: { files: newFiles }
+});
+6) State machine (straightforward)
+pending → accepted → submitted → approved/rejected → (if rejected: submitted via new version)
+That’s it: WR ID everywhere, no milestone lookups, clean endpoints, and room to scale (versions) without extra complexity. If you want, I can add a tiny Jest/Supertest spec next to lock behavior.
