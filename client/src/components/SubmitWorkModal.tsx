@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Card } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -16,7 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, FileText } from "lucide-react";
+import { Upload, FileText, Plus, Link, X } from "lucide-react";
 
 interface SubmitWorkModalProps {
   isOpen: boolean;
@@ -35,7 +36,8 @@ export function SubmitWorkModal({
   const queryClient = useQueryClient();
   const [submissionType, setSubmissionType] = useState<"digital" | "physical">("digital");
   const [description, setDescription] = useState("");
-  const [deliverableLinks, setDeliverableLinks] = useState("");
+  const [newLink, setNewLink] = useState("");
+  const [deliverableLinks, setDeliverableLinks] = useState<string[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<Array<{
     url: string;
     name: string;
@@ -87,18 +89,53 @@ export function SubmitWorkModal({
     },
   });
 
-  // File upload handlers removed - now handled by SimpleFileUploader
+  // URL validation helper
+  const isValidUrl = (string: string) => {
+    try {
+      new URL(string);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  };
+
+  // Add link handler
+  const addLink = () => {
+    if (newLink.trim() && isValidUrl(newLink.trim())) {
+      setDeliverableLinks([...deliverableLinks, newLink.trim()]);
+      setNewLink("");
+      toast({
+        title: "Link Added",
+        description: "Deliverable link added successfully.",
+      });
+    } else {
+      toast({
+        title: "Invalid URL",
+        description: "Please enter a valid URL (e.g., https://example.com).",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Remove link handler
+  const removeLink = (index: number) => {
+    const newLinks = [...deliverableLinks];
+    newLinks.splice(index, 1);
+    setDeliverableLinks(newLinks);
+  };
+
+  // Handle Enter key press
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addLink();
+    }
+  };
 
   const handleSubmit = () => {
     if (submissionType === "digital") {
-      // Parse links from textarea (one per line or comma-separated)
-      const links = deliverableLinks
-        .split(/[\n,]+/)
-        .map(link => link.trim())
-        .filter(link => link.length > 0);
-      
       // Require at least one file OR one link
-      if (uploadedFiles.length === 0 && links.length === 0) {
+      if (uploadedFiles.length === 0 && deliverableLinks.length === 0) {
         toast({
           title: "Files or Links Required",
           description: "Please upload at least one file or provide at least one link for digital deliverables.",
@@ -110,7 +147,7 @@ export function SubmitWorkModal({
       // Combine uploaded files with link objects
       const allDeliverables = [
         ...uploadedFiles,
-        ...links.map(link => {
+        ...deliverableLinks.map(link => {
           const linkName = link.split('/').pop() || link;
           return {
             url: link,
@@ -178,7 +215,7 @@ export function SubmitWorkModal({
           </div>
 
           {submissionType === "digital" ? (
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div>
                 <Label className="text-base font-medium">Upload Deliverable Files</Label>
                 <SimpleFileUploader
@@ -189,22 +226,64 @@ export function SubmitWorkModal({
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="deliverableLinks" className="text-base font-medium">
-                  Or Provide Links
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  Add links to Google Drive, Figma, websites, etc. (one per line or comma-separated)
+              <div className="space-y-4">
+                <Label className="text-base font-medium">Deliverable Links</Label>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Add links to Google Drive, Figma, websites, etc.
                 </p>
-                <Textarea
-                  id="deliverableLinks"
-                  data-testid="input-deliverable-links"
-                  placeholder="https://drive.google.com/file/...&#10;https://figma.com/file/...&#10;https://example.com/deliverable"
-                  value={deliverableLinks}
-                  onChange={(e) => setDeliverableLinks(e.target.value)}
-                  rows={3}
-                  className="resize-none font-mono text-sm"
-                />
+                
+                <div className="flex gap-2">
+                  <Input
+                    type="url"
+                    placeholder="https://example.com/deliverable"
+                    value={newLink}
+                    onChange={(e) => setNewLink(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    className="flex-1"
+                    data-testid="input-deliverable-link"
+                  />
+                  <Button
+                    onClick={addLink}
+                    disabled={!newLink.trim()}
+                    variant="outline"
+                    type="button"
+                    className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white border-0"
+                    data-testid="button-add-link"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add
+                  </Button>
+                </div>
+
+                {/* Added Links */}
+                {deliverableLinks.length > 0 && (
+                  <div className="space-y-2" data-testid="deliverable-links">
+                    {deliverableLinks.map((link, index) => (
+                      <Card key={index} className="p-3 flex items-center justify-between group hover:bg-accent/50 transition-colors">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <Link className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <a
+                            href={link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-primary hover:underline truncate"
+                            data-testid={`link-${index}`}
+                          >
+                            {link}
+                          </a>
+                        </div>
+                        <button
+                          onClick={() => removeLink(index)}
+                          type="button"
+                          className="text-muted-foreground hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0 ml-2"
+                          data-testid={`remove-link-${index}`}
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           ) : (
