@@ -1,0 +1,100 @@
+Task: Migrate file uploads to presigned object storage (no bytes through our server)
+Goal
+Eliminate local disk uploads and Express streaming. Files must upload/download directly between the user’s browser and object storage (S3 or Cloudflare R2) using presigned URLs. Our server only handles small JSON and access control. This prevents exhausting Replit resources and makes storage durable and scalable.
+Scope
+Keep existing route names so the frontend doesn’t break.
+Replace multer/local file writes with presigned POST to S3/R2.
+Redirect view/download routes to short-lived signed GET URLs after auth.
+Add a tiny files metadata table (no blobs).
+Add bucket CORS and remove any multipart parsing on API routes.
+Deliverables
+Object storage config
+Bucket: interlinc-prod-files (private).
+CORS (allow our app origin):
+[
+  {
+    "AllowedHeaders": ["*"],
+    "AllowedMethods": ["POST","PUT","GET","HEAD"],
+    "AllowedOrigins": ["https://<our-app-domain>", "http://localhost:3000"],
+    "ExposeHeaders": ["ETag","Location"],
+    "MaxAgeSeconds": 3000
+  }
+]
+Replit Secrets:
+S3_REGION=...
+S3_BUCKET=interlinc-prod-files
+S3_ACCESS_KEY_ID=...
+S3_SECRET_ACCESS_KEY=...
+S3_ENDPOINT=...   # only for R2
+Database (metadata only, no file bytes)
+create table files (
+  id uuid primary key,
+  org_id uuid not null,
+  project_id uuid not null,
+  uploader_id uuid not null,
+  storage_provider text not null check (storage_provider in ('s3','r2','gcs','local')),
+  storage_key text,                     -- e.g. org/<org>/project/<proj>/<id>-<filename>
+  legacy_filename text,                 -- for existing local files (temporary)
+  filename text not null,
+  mime_type text not null,
+  size_bytes bigint not null,
+  status text not null default 'pending' check (status in ('pending','ready','failed','deleted')),
+  created_at timestamptz not null default now()
+);
+Backend changes (Node/Express)
+Remove multer on upload routes. Keep global body limits small:
+app.use(express.json({ limit: "200kb" }));
+app.use(express.urlencoded({ extended: false, limit: "200kb" }));
+New behavior for existing endpoints:
+A) POST /api/files/upload → return presigned POST (no file body to server)
+Request body: { projectId, filename, mimeType, sizeBytes }
+Validate auth via X-User-ID and project access.
+Validate type/size; choose MAX per plan (e.g., 200MB).
+Create files row with status='pending'.
+Respond:
+{
+  "presigned": { "url": "...", "fields": { ... } },
+  "file": { "id":"...", "filename":"...", "mimeType":"...", "sizeBytes":123 },
+  "viewUrl": "/api/files/view/<id>",
+  "downloadUrl": "/api/files/download/<id>"
+}
+B) POST /api/files/complete
+Body: { id }
+Verify the object exists via HeadObject, set status='ready'.
+C) GET /api/files/view/:idOrName and /api/files/download/:idOrName
+Auth check (and authorization to org/project).
+If record has storage_key, mint short-lived signed GET (5–15 min) and 302 redirect.
+If legacy file (pre-migration), serve from local disk temporarily.
+Add rate limiting to these endpoints.
+Frontend changes (keep current components)
+In SimpleFileUploader.tsx:
+Replace FormData → POST /api/files/upload (multipart) with:
+POST /api/files/upload (JSON) to get presigned.
+Build FormData using returned fields + file; fetch(presigned.url, { method:'POST', body: fd }).
+POST /api/files/complete with { id }.
+Use returned viewUrl exactly as today (no downstream changes).
+Show meaningful errors for unsupported type / too large.
+Security & limits
+Bucket private; access via signed URLs only.
+Per-file and per-org quotas enforced on /api/files/upload.
+Allowed MIME allowlist: images (jpeg/png/webp/gif), pdf, txt, docx, zip.
+Optional: add a queue to virus-scan on complete (deferred).
+Ops & cost controls
+Enable lifecycle rules: delete abandoned multipart uploads after 24–48h; transition files to infrequent access after 60–90 days; purge N days after project close (configurable).
+Add monitoring metrics: presign count, upload failures, signed-GET issuance, storage by org.
+Migration plan (zero downtime)
+Ship new flow for all new uploads.
+Keep legacy fallback in /view|download/:idOrName for old files.
+Background migration (optional): move uploads/ files to bucket, create files rows with legacy_filename→storage_key. Remove legacy once empty.
+Acceptance Criteria
+Uploading a 50–200MB file does not increase server CPU/RAM materially (server never sees bytes).
+New uploads never write to local uploads/ or stream through Express.
+/api/files/view/:id and /download/:id perform auth check and redirect to a signed URL; direct guessing of old filenames does not grant access.
+Frontend components continue to receive a viewUrl in the same shape as before.
+A files record exists for each new upload with status transitioning pending → ready.
+Removing multer from upload routes does not break other endpoints.
+CORS verified: direct browser POST to bucket succeeds from our app origin.
+Notes
+Prefer Cloudflare R2 + Cloudflare CDN for low egress; or AWS S3 + CloudFront if we already use AWS.
+Keep signed URL TTL short (5–15 min). Regenerate on demand.
+Rate-limit /api/files/upload and /api/files/view|download to avoid abuse.
