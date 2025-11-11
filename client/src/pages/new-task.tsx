@@ -87,10 +87,10 @@ function NewTaskContent() {
       // First, create a task in the tasks table
       const projectsResponse = await apiRequest("GET", "/api/projects");
       const projects = await projectsResponse.json();
-      
+
       let project;
       const quickTasksProject = projects.find((p: any) => p.name === "Quick Tasks");
-      
+
       if (!quickTasksProject) {
         // Create Quick Tasks project if it doesn't exist
         const projectResponse = await apiRequest("POST", "/api/projects", {
@@ -343,7 +343,7 @@ function NewTaskContent() {
                         </FormControl>
                         <SelectContent 
                           className="bg-zinc-900 border-zinc-700 max-h-[300px] overflow-y-auto"
-                          position="popper"
+                          position=" Popper"
                           sideOffset={5}
                         >
                           {availableContractors.length === 0 ? (
