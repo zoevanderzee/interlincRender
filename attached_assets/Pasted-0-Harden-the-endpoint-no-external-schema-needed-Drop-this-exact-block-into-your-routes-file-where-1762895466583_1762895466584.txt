@@ -1,0 +1,139 @@
+0) Harden the endpoint (no external schema needed)
+Drop this exact block into your routes file where you define submissions. It inlines Zod so a missing import can’t break you, and it logs precisely what’s going wrong.
+// routes/workRequests.ts (or server/routes.ts)
+import { z } from "zod";
+
+const SubmitPayload = z.object({
+  notes: z.string().optional(),
+  artifactUrl: z.string().url().optional(),
+  metadata: z.record(z.any()).optional(),
+});
+
+app.post('/api/work-requests/:id/submissions', requireAuth, async (req, res) => {
+  const wrId = Number(req.params.id);
+  if (!Number.isInteger(wrId)) return res.status(400).json({ message: 'Invalid work request id' });
+
+  // Ensure JSON body is parsed
+  if (!req.body || typeof req.body !== 'object') {
+    return res.status(400).json({ message: 'Missing JSON body' });
+  }
+
+  // Validate payload
+  let parsed: z.infer<typeof SubmitPayload>;
+  try {
+    parsed = SubmitPayload.parse(req.body);
+  } catch (e: any) {
+    console.error('Submit payload validation failed', e?.errors ?? e);
+    return res.status(422).json({ message: 'Invalid payload', errors: e?.errors ?? String(e) });
+  }
+
+  try {
+    const wr = await db.work_requests.findFirst({ where: { id: wrId } });
+    if (!wr) return res.status(404).json({ message: 'Work request not found', id: wrId });
+
+    const userId = req.user.id;
+    const allowed = [wr.requesterId, wr.assigneeId].includes(userId) || req.user.role === 'admin';
+    if (!allowed) return res.status(403).json({ message: 'Not allowed to submit for this work request' });
+
+    // get next version (or 1)
+    const last = await db.work_request_submissions.findFirst({
+      where: { work_request_id: wrId },
+      orderBy: { version: 'desc' }
+    });
+    const nextVersion = (last?.version ?? 0) + 1;
+
+    const submission = await db.work_request_submissions.create({
+      data: {
+        work_request_id: wrId,
+        version: nextVersion,
+        submitted_by: userId,
+        notes: parsed.notes,
+        artifact_url: parsed.artifactUrl,
+        metadata: parsed.metadata ?? {},
+        status: 'submitted'
+      }
+    });
+
+    await db.work_requests.update({
+      where: { id: wrId },
+      data: { status: 'submitted', updated_at: new Date() }
+    });
+
+    return res.status(201).json({ message: 'Submission recorded', submission });
+  } catch (err: any) {
+    console.error('POST /api/work-requests/:id/submissions error', {
+      wrId,
+      userId: req.user?.id,
+      body: req.body,
+      error: err?.message,
+      stack: err?.stack
+    });
+    // Normalize ORM/db errors to something helpful
+    if (/(relation|table) .*work_request_submissions.* does not exist/i.test(err?.message ?? '')) {
+      return res.status(500).json({ message: 'work_request_submissions table missing. Run migration.' });
+    }
+    if (/null value in column .* violates not-null constraint/i.test(err?.message ?? '')) {
+      return res.status(400).json({ message: 'Missing required DB field', detail: err?.message });
+    }
+    return res.status(500).json({ message: 'Unexpected error' });
+  }
+});
+Also make sure your old route cannot intercept:
+app.patch('/api/deliverables/:id', (_req, res) => {
+  return res.status(410).json({ code: 'MILESTONES_REMOVED', message: 'Use /api/work-requests/:id/submissions' });
+});
+1) One-shot migration guard (if table might be missing)
+If you’re unsure the migration ran, apply this (Postgres):
+CREATE TABLE IF NOT EXISTS work_request_submissions (
+  id SERIAL PRIMARY KEY,
+  work_request_id INTEGER NOT NULL REFERENCES work_requests(id) ON DELETE CASCADE,
+  version INTEGER NOT NULL DEFAULT 1,
+  submitted_by INTEGER NOT NULL REFERENCES users(id),
+  notes TEXT,
+  artifact_url TEXT,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  status TEXT NOT NULL DEFAULT 'submitted',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_wrs_wr ON work_request_submissions(work_request_id);
+2) Middleware ordering (silent killer)
+Ensure before routes:
+app.use(require('cors')());                 // if cross-origin
+app.use(require('helmet')());               // optional
+app.use(require('cookie-parser')());        // if you use cookies
+app.use(express.json({ limit: '10mb' }));   // MUST be before your routes
+If express.json() is after routes, req.body is empty → validation fails → confusing errors.
+3) Frontend call (force correct route/method/payload)
+Use POST to the new WR route with WR ID (33), not PATCH, not /api/deliverables:
+await api.post(`/api/work-requests/${workRequestId}/submissions`, {
+  notes,
+  artifactUrl,
+  metadata: { files: uploadedFileIds }
+});
+Double-check:
+Network tab shows POST /api/work-requests/33/submissions
+Status 201 on success
+Response contains { message: 'Submission recorded', submission: {...} }
+If you still see requests to /api/deliverables/33, you have a stale client path. Grep the repo and replace.
+4) 5-minute triage checklist (run in order)
+Server boot log: confirm route is registered (add a log after app.post(...) like console.log('WR submissions route ready')).
+Hit it directly (bypassing UI) to isolate FE issues:
+curl -i -X POST http://localhost:3000/api/work-requests/33/submissions \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer <your token>' \
+  -d '{"notes":"test","artifactUrl":"https://example.com/a.pdf","metadata":{"x":1}}'
+201 → backend OK; UI wiring issue.
+404 → wrong path or router mounting.
+403 → auth guard (user not requester/assignee/admin).
+500 + “table missing” → run migration.
+422 → payload invalid (likely bad URL in artifactUrl).
+Auth guard: if you’re testing with a user who isn’t requesterId or assigneeId, you’ll get 403. Temporarily log wr.requesterId, wr.assigneeId, req.user.id.
+Conflicting routes: ensure no earlier app.use('/api', someRouter) is swallowing /api/work-requests/... before it reaches this handler.
+Body parser: if req.body is {} on POST, your express.json() is misplaced.
+5) Common gotchas (quick fixes)
+CSRF (if you use it): for same-site cookie auth, your POST may be blocked. Either include the CSRF header/token or disable CSRF for this route to test.
+CORS: if FE domain differs, confirm OPTIONS preflight succeeds and POST is allowed.
+DB NOT NULL: if your ORM maps metadata to NOT NULL, but you pass undefined, set metadata: {} (the code above does that).
+Artifact URL: Zod url() will reject blob: or empty strings. If you accept uploads later, change to z.string().min(1).optional().
