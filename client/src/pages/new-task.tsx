@@ -342,7 +342,7 @@ function NewTaskContent() {
                         </FormControl>
                         <SelectContent 
                           className="bg-zinc-900 border-zinc-700 max-h-[300px] overflow-y-auto"
-                          position=" Popper"
+                          position="popper"
                           sideOffset={5}
                         >
                           {availableContractors.length === 0 ? (
@@ -410,7 +410,6 @@ function NewTaskContent() {
             </Form>
           </CardContent>
         </Card>
-      </div>
     </div>
   );
 }
