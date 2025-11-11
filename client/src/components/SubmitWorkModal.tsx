@@ -35,6 +35,7 @@ export function SubmitWorkModal({
   const queryClient = useQueryClient();
   const [submissionType, setSubmissionType] = useState<"digital" | "physical">("digital");
   const [description, setDescription] = useState("");
+  const [deliverableLinks, setDeliverableLinks] = useState("");
   const [uploadedFiles, setUploadedFiles] = useState<Array<{
     url: string;
     name: string;
@@ -88,11 +89,39 @@ export function SubmitWorkModal({
   // File upload handlers removed - now handled by SimpleFileUploader
 
   const handleSubmit = () => {
-    if (submissionType === "digital" && uploadedFiles.length === 0) {
-      toast({
-        title: "Files Required",
-        description: "Please upload at least one file for digital deliverables.",
-        variant: "destructive",
+    if (submissionType === "digital") {
+      // Parse links from textarea (one per line or comma-separated)
+      const links = deliverableLinks
+        .split(/[\n,]+/)
+        .map(link => link.trim())
+        .filter(link => link.length > 0);
+      
+      // Require at least one file OR one link
+      if (uploadedFiles.length === 0 && links.length === 0) {
+        toast({
+          title: "Files or Links Required",
+          description: "Please upload at least one file or provide at least one link for digital deliverables.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Combine uploaded files with link objects
+      const allDeliverables = [
+        ...uploadedFiles,
+        ...links.map(link => ({
+          url: link,
+          name: link.split('/').pop() || link,
+          type: "link",
+          size: 0
+        }))
+      ];
+
+      submitWorkMutation.mutate({
+        status: "completed",
+        submittedAt: new Date().toISOString(),
+        submissionType,
+        deliverableFiles: allDeliverables
       });
       return;
     }
@@ -106,17 +135,12 @@ export function SubmitWorkModal({
       return;
     }
 
-    const submissionData = {
+    submitWorkMutation.mutate({
       status: "completed",
       submittedAt: new Date().toISOString(),
       submissionType,
-      ...(submissionType === "digital" 
-        ? { deliverableFiles: uploadedFiles }
-        : { deliverableDescription: description }
-      ),
-    };
-
-    submitWorkMutation.mutate(submissionData);
+      deliverableDescription: description
+    });
   };
 
   return (
@@ -150,13 +174,33 @@ export function SubmitWorkModal({
 
           {submissionType === "digital" ? (
             <div className="space-y-4">
-              <Label className="text-base font-medium">Upload Deliverable Files</Label>
-              <SimpleFileUploader
-                maxFiles={5}
-                accept="*/*"
-                onFilesChanged={setUploadedFiles}
-                initialFiles={uploadedFiles}
-              />
+              <div>
+                <Label className="text-base font-medium">Upload Deliverable Files</Label>
+                <SimpleFileUploader
+                  maxFiles={5}
+                  accept="*/*"
+                  onFilesChanged={setUploadedFiles}
+                  initialFiles={uploadedFiles}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="deliverableLinks" className="text-base font-medium">
+                  Or Provide Links
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Add links to Google Drive, Figma, websites, etc. (one per line or comma-separated)
+                </p>
+                <Textarea
+                  id="deliverableLinks"
+                  data-testid="input-deliverable-links"
+                  placeholder="https://drive.google.com/file/...&#10;https://figma.com/file/...&#10;https://example.com/deliverable"
+                  value={deliverableLinks}
+                  onChange={(e) => setDeliverableLinks(e.target.value)}
+                  rows={3}
+                  className="resize-none font-mono text-sm"
+                />
+              </div>
             </div>
           ) : (
             <div className="space-y-2">
