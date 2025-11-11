@@ -28,6 +28,7 @@ import {
   insertDocumentSchema,
   insertWorkRequestSchema,
   updateWorkRequestSchema,
+  insertWorkRequestSubmissionSchema,
   users,
   contracts,
   milestones
