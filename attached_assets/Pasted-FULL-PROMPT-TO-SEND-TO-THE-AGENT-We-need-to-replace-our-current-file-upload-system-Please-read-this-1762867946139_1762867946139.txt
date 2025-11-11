@@ -1,0 +1,118 @@
+FULL PROMPT TO SEND TO THE AGENT
+We need to replace our current file upload system. Please read this carefully before making changes.
+
+### CURRENT STATE (to be replaced)
+- We are using multer to handle uploads.
+- Files are stored in a local `uploads/` folder on the Replit filesystem.
+- View/download routes stream files directly from Express.
+- File URLs are stored as `/api/files/view/<filename>` in the DB.
+- There is **no database metadata table** for files.
+- This is not scalable and risks Replit storage limits.
+
+### GOAL
+Migrate to **presigned object storage uploads** so files are:
+- Uploaded **directly from the browser to storage** (S3 or Cloudflare R2)
+- **Not stored on or streamed through our server**
+- Accessed through short-lived signed URLs after an auth check
+- Tracked using a simple file metadata table
+
+### REQUIRED BEHAVIOR (must stay the same for users)
+- The user flow does **not change** visually.
+- Users still click “Upload” or drag & drop files.
+- Users can still send files to each other inside projects/tasks.
+- The frontend should still receive a `viewUrl` just like today.
+- Viewing a file still uses `/api/files/view/:id`.
+
+No Google Drive / Dropbox integrations are needed. No feature changes.
+
+---
+
+### IMPLEMENTATION PLAN (do in this exact order)
+
+#### 1. Add `files` metadata table (no blobs stored in DB)
+Create and apply this migration:
+
+create table files (
+id uuid primary key,
+org_id uuid not null,
+project_id uuid not null,
+uploader_id uuid not null,
+storage_provider text not null check (storage_provider in ('s3','r2')),
+storage_key text not null,
+filename text not null,
+mime_type text not null,
+size_bytes bigint not null,
+status text not null default 'pending' check (status in ('pending','ready','failed','deleted')),
+created_at timestamptz not null default now()
+);
+
+#### 2. Create an object storage service module
+File: `server/services/object-storage.ts`
+- Initialize S3/R2 client using env variables:
+  - S3_REGION
+  - S3_BUCKET
+  - S3_ACCESS_KEY_ID
+  - S3_SECRET_ACCESS_KEY
+  - S3_ENDPOINT (only for Cloudflare R2)
+- Implement:
+  - `createPresignedPost(key, mimeType, sizeBytes)`
+  - `createSignedGetUrl(key)`
+
+#### 3. Replace `/api/files/upload` route (IMPORTANT)
+- Remove multer entirely.
+- This endpoint must **NOT** accept `multipart/form-data`.
+- It should accept JSON:
+  `{ projectId, filename, mimeType, sizeBytes }`
+- Validate:
+  - user is authenticated
+  - file type is allowed
+  - file size ≤ max
+- Create a files row with `status='pending'`
+- Generate a presigned POST
+- Respond:
+{
+presigned: { url, fields },
+file: { id, filename, mimeType, sizeBytes },
+viewUrl: /api/files/view/${id},
+downloadUrl: /api/files/download/${id}
+}
+
+#### 4. Add `/api/files/complete`
+- Body: `{ id }`
+- Use HeadObject to confirm the object exists
+- Update status → `ready`
+
+#### 5. Update `/api/files/view/:id` and `/api/files/download/:id`
+- Auth check: user must have access to the same project/org
+- **Do NOT stream files**
+- Generate signed GET URL
+- Respond with `302 redirect` to that URL
+
+#### 6. Update `SimpleFileUploader.tsx`
+Replace the existing FormData→POST to our server with:
+1) POST `/api/files/upload` (JSON) → get `presigned`
+2) Direct `fetch(presigned.url, FormData(fields + file))` to object storage
+3) POST `/api/files/complete` (JSON) with `{ id }`
+4) Use returned `viewUrl` the same way we currently store and display file URLs
+
+No UI layout changes. Only the upload logic changes.
+
+#### 7. Remove multer and delete any code writing to `/uploads/`.
+Ensure no file bytes touch our server anymore.
+
+---
+
+### ACCEPTANCE CHECK
+When complete:
+- Uploading a file does **not** create anything in `/uploads/`.
+- Server memory and storage usage do **not** increase with uploads.
+- `/api/files/view/:id` redirects to a short-lived signed URL.
+- Users can still attach files to tasks/projects and view each other's uploads exactly as before.
+
+---
+
+Please acknowledge once you understand the specification, then begin implementing each step in sequence, asking before making major architectural assumptions.
+If you want, I can also now generate:
+The exact object-storage.ts file (copy-paste ready)
+The new POST /api/files/upload route code
+The updated SimpleFileUploader.tsx snippet

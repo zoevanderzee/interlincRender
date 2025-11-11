@@ -1,0 +1,37 @@
+Must-fix consistency
+Pick ONE upload method and stick to it:
+Presigned POST (multipart) ➜ lets you enforce content-length-range in the policy and include form fields.
+Presigned PUT ➜ simpler request body, but you can’t enforce max size at the bucket; you’ll enforce size in your API before presigning.
+Your doc says “presigned POST” in backend, but the frontend step says “PUT to presigned URL.” Make them match.
+If you keep POST: frontend must send FormData with returned fields + file.
+If you switch to PUT: frontend sends raw file body and sets Content-Type.
+Bucket/CORS & headers
+If using PUT, make sure CORS allows PUT (you already listed it—good).
+If using POST, keep POST in CORS and ensure the ExposeHeaders includes at least ETag.
+Set bucket to private; no public ACLs. Access only via signed URLs.
+Routes & middleware
+Remove multer and any route/middleware that parses multipart/form-data. Keep:
+app.use(express.json({ limit: "200kb" }));
+app.use(express.urlencoded({ extended: false, limit: "200kb" }));
+Add rate limits to /api/files/upload (presign) and /api/files/view|download/:id.
+View / download redirects
+On GET /api/files/view/:id do authZ, then 302 to a signed GET.
+For downloads, set ResponseContentDisposition in the signed URL (e.g., attachment; filename="...") so the browser saves with the original name.
+Verify on complete
+In POST /api/files/complete, call HeadObject and check ContentLength + ContentType match what you expect before marking ready. (Optional: store an etag or checksum.)
+Limits & quotas
+Enforce MIME allowlist and size caps before presigning.
+Add per-org and per-project quotas in the presign endpoint to keep costs predictable.
+Lifecycle / ops
+Enable abort/cleanup of incomplete multipart uploads (S3 & R2 both support rules).
+Add lifecycle to transition cold files to infrequent access after 60–90 days (optional).
+Migration & DX notes
+Keep legacy fallback in view|download until you migrate old files.
+Your one-liner migration via tsx -e may vary by setup; a tiny scripts/run-migration.ts you can tsx scripts/run-migration.ts is usually more reliable.
+Green light summary
+Architecture: ✅
+Route naming/back-compat: ✅
+DB metadata (no blobs): ✅
+Frontend flow (after fixing POST vs PUT mismatch): ✅
+Security (authZ + short-lived signed URLs): ✅
+Scalability (no bytes on server): ✅
