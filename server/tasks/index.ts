@@ -105,7 +105,32 @@ export function registerTaskRoutes(app: Express) {
         return res.status(500).json({ error: "Failed to create task" });
       }
 
-      res.status(201).json(task);
+      // Create work request for contractor if assigned
+      let workRequestId = null;
+      if (task.contractorId) {
+        try {
+          const workRequest = await storage.createWorkRequest({
+            projectId: task.projectId,
+            contractorUserId: task.contractorId,
+            title: task.title,
+            description: task.description || '',
+            deliverableDescription: task.description || '',
+            dueDate: task.dueDate,
+            amount: task.amount,
+            currency: task.currency
+            // status defaults to 'pending' so contractor can accept/decline
+          });
+          workRequestId = workRequest.id;
+        } catch (wrError) {
+          console.error("Error creating work request:", wrError);
+          // Don't fail the whole task creation if work request fails
+        }
+      }
+
+      res.status(201).json({ 
+        ...task, 
+        workRequestId 
+      });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({
