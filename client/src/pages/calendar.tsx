@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
@@ -69,24 +68,24 @@ export default function Calendar() {
           'X-User-ID': user?.id?.toString() || ''
         }
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch work requests');
       }
-      
+
       const workRequests = await response.json();
-      
+
       // Transform work requests to calendar events format with proper status categorization
       const transformedEvents = workRequests.map((wr: any) => {
         const dueDate = wr.dueDate ? new Date(wr.dueDate) : new Date(wr.createdAt);
         const normalizedDueDate = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
         const today = new Date();
         const normalizedToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-        
+
         // Determine status: active, pending, completed, or overdue
         let status = 'pending';
         let color = '#F59E0B'; // pending color
-        
+
         if (wr.status === 'completed' || wr.status === 'approved' || wr.status === 'paid') {
           status = 'completed';
           color = '#3B82F6';
@@ -109,7 +108,7 @@ export default function Calendar() {
             color = '#F59E0B';
           }
         }
-        
+
         return {
           id: `work_request_${wr.id}`,
           title: wr.title || wr.description || 'Work Request',
@@ -153,7 +152,7 @@ export default function Calendar() {
     const month = currentDate.getMonth();
     const firstDay = new Date(year, month, 1);
     const startDate = new Date(firstDay);
-    
+
     const startDayOfWeek = (firstDay.getDay() + 6) % 7;
     startDate.setDate(1 - startDayOfWeek);
 
@@ -169,7 +168,7 @@ export default function Calendar() {
   // Get events for a specific day with filtering and sorting
   const getEventsForDay = (date: Date) => {
     let filteredEvents = events;
-    
+
     // Apply status filter
     if (filterBy === 'active') {
       filteredEvents = events.filter(event => event.status === 'active');
@@ -180,21 +179,21 @@ export default function Calendar() {
     } else if (filterBy === 'overdue') {
       filteredEvents = events.filter(event => event.status === 'overdue');
     }
-    
+
     // Filter by date
     const dayEvents = filteredEvents.filter(event => {
       // Normalize both dates to midnight for exact day comparison
       const eventEndDate = new Date(event.endDate);
       const normalizedEventDate = new Date(eventEndDate.getFullYear(), eventEndDate.getMonth(), eventEndDate.getDate());
       const normalizedTargetDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-      
+
       // Event should only appear on its exact due date (endDate)
       return normalizedEventDate.getTime() === normalizedTargetDate.getTime();
     });
 
     // Sort by status priority: overdue > active > pending > completed
     const statusPriority = { overdue: 1, active: 2, pending: 3, completed: 4 };
-    
+
     return dayEvents.sort((a, b) => {
       const priorityA = statusPriority[a.status as keyof typeof statusPriority] || 5;
       const priorityB = statusPriority[b.status as keyof typeof statusPriority] || 5;
@@ -244,7 +243,7 @@ export default function Calendar() {
             }
           </p>
         </div>
-        
+
         <div className="flex flex-wrap gap-3">
           <Select value={filterBy} onValueChange={setFilterBy}>
             <SelectTrigger className="w-48 bg-zinc-900 border-zinc-700 text-white">
@@ -259,9 +258,12 @@ export default function Calendar() {
               <SelectItem value="completed">Completed Only</SelectItem>
             </SelectContent>
           </Select>
-          
+
           {user?.role === 'business' && (
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+            <Button
+              onClick={() => setIsAddEventOpen(true)}
+              className="bg-gradient-to-r from-[#4a7bff] to-[#5b8cff] text-white dark:text-[#0a1628] hover:from-[#5b8cff] hover:to-[#6c9dff]"
+            >
               <Plus className="h-4 w-4 mr-2" />
               New Project
             </Button>
@@ -307,11 +309,11 @@ export default function Calendar() {
               >
                 <ChevronLeft className="h-5 w-5" />
               </Button>
-              
+
               <h2 className="text-2xl font-semibold text-white min-w-[200px] text-center">
                 {MONTH_NAMES[currentDate.getMonth()]} {currentDate.getFullYear()}
               </h2>
-              
+
               <Button
                 variant="ghost"
                 size="icon"
@@ -321,7 +323,7 @@ export default function Calendar() {
                 <ChevronRight className="h-5 w-5" />
               </Button>
             </div>
-            
+
             <Button
               variant="outline"
               onClick={goToToday}
@@ -332,7 +334,7 @@ export default function Calendar() {
             </Button>
           </div>
         </CardHeader>
-        
+
         <CardContent className="p-0">
           {/* Calendar Grid */}
           <div className="grid grid-cols-7">
@@ -345,13 +347,13 @@ export default function Calendar() {
                 {day}
               </div>
             ))}
-            
+
             {/* Calendar Days */}
             {calendarDays.map((date, index) => {
               const dayEvents = getEventsForDay(date);
               const isCurrentMonthDay = isCurrentMonth(date);
               const isTodayDate = isToday(date);
-              
+
               return (
                 <div
                   key={index}
@@ -369,7 +371,7 @@ export default function Calendar() {
                   `}>
                     {date.getDate()}
                   </div>
-                  
+
                   {/* Events */}
                   <div className="space-y-1">
                     {dayEvents.slice(0, 3).map(event => {
@@ -385,7 +387,7 @@ export default function Calendar() {
                         </div>
                       );
                     })}
-                    
+
                     {dayEvents.length > 3 && (
                       <div className="text-xs text-zinc-500 pl-2">
                         +{dayEvents.length - 3} more
