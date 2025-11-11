@@ -50,8 +50,11 @@ import {trolleyService} from "./trolley-service";
 import {setupAuth} from "./auth";
 import {db} from "./db";
 import {sql, eq, and, or, desc, inArray} from "drizzle-orm";
-// Legacy object storage import removed - now using custom file storage
-import {FileStorageService, uploadMiddleware} from "./fileStorage";
+// Object storage with presigned URLs
+  import {FileStorageService} from "./fileStorage";
+  import * as objectStorage from "./services/object-storage";
+  import {db} from "./db";
+  import {sql} from "drizzle-orm";
 import trolleyRoutes from "./trolley-routes";
 import trolleyTestRoutes from "./trolley-test-routes";
 import {registerFirebaseRoutes} from "./firebase-routes";
@@ -3552,7 +3555,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Fetch subscription from Stripe
       const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
-      
+
       // Get the price details
       const priceId = subscription.items.data[0]?.price.id;
       const price = subscription.items.data[0]?.price;
@@ -5152,9 +5155,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       if (alreadyRequested) {
-        return res.status(400).json({
-          message: "A connection request already exists between you and this user."
-        });
+        return res.status(400).json({message: "A connection request already exists between you and this user."});
       }
 
       // Create the connection request
@@ -5262,7 +5263,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Check if the user is authorized to update this request
         const userId = req.user?.id || (req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'] as string) : null);
         const currentUser = userId ? await storage.getUser(userId) : null;
-        
+
         if (!currentUser) {
           return res.status(401).json({message: "Authentication required"});
         }
@@ -5358,7 +5359,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .map(async (request) => {
             const contractor = await storage.getUser(request.contractorId!);
             if (!contractor) return null;
-            
+
             // Return minimal data - only what's needed
             return {
               id: contractor.id,
@@ -5424,7 +5425,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         acceptedRequests.map(async (request) => {
           const business = await storage.getUser(request.businessId);
           if (!business) return null;
-          
+
           // Return minimal data - only what's needed
           return {
             id: business.id,
@@ -5657,7 +5658,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     app.get('/api/work-request-submissions/business', requireAuth, async (req: AuthenticatedRequest, res) => {
       try {
         const user = req.user!;
-        console.log('Work request submissions endpoint - User:', {id: user.id, role: user.role});
+        console.log('Work request submissions endpoint - User:', {id: user.id, role: user.id, role: user.role});
 
         // Only allow business users to access this endpoint
         if (user.role !== 'business') {
@@ -6027,8 +6028,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get(`${apiRouter}/trolley/status`, requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user;
-      if (!user) {
-        return res.status(401).json({message: "Not authenticated"});
+      if (!user || user.role !== 'business') {
+        return res.status(403).json({message: "Only business accounts can access Trolley status"});
       }
 
       const trolleyStatus = {

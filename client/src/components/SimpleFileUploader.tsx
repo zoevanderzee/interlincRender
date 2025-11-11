@@ -1,3 +1,4 @@
+
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,7 @@ interface SimpleFileUploaderProps {
   accept?: string;
   disabled?: boolean;
   initialFiles?: UploadedFile[];
+  projectId?: number | null;
 }
 
 export function SimpleFileUploader({
@@ -28,7 +30,8 @@ export function SimpleFileUploader({
   maxFiles = 5,
   accept = "*/*",
   disabled = false,
-  initialFiles = []
+  initialFiles = [],
+  projectId = null
 }: SimpleFileUploaderProps) {
   const [files, setFiles] = useState<UploadedFile[]>(initialFiles);
   const [uploading, setUploading] = useState(false);
@@ -65,29 +68,70 @@ export function SimpleFileUploader({
         const file = filesToUpload[i];
         setUploadProgress(((i + 1) / filesToUpload.length) * 100);
 
-        const formData = new FormData();
-        formData.append('file', file);
-
-        // Get auth headers
-        const headers: Record<string, string> = {};
+        // Step 1: Get presigned upload URL
         const userId = localStorage.getItem('user_id');
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json'
+        };
         if (userId) {
           headers['X-User-ID'] = userId;
         }
 
-        const response = await fetch('/api/files/upload', {
+        const uploadRequestBody = {
+          projectId,
+          filename: file.name,
+          mimeType: file.type,
+          sizeBytes: file.size
+        };
+
+        const presignedResponse = await fetch('/api/files/upload', {
           method: 'POST',
           headers,
-          body: formData
+          body: JSON.stringify(uploadRequestBody)
         });
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ message: 'Upload failed' }));
-          throw new Error(errorData.message || `Upload failed with status ${response.status}`);
+        if (!presignedResponse.ok) {
+          const errorData = await presignedResponse.json().catch(() => ({ error: 'Upload failed' }));
+          throw new Error(errorData.error || `Failed to get upload URL: ${presignedResponse.status}`);
         }
 
-        const uploadedFile = await response.json();
-        uploadedFiles.push(uploadedFile);
+        const { presigned, file: fileMetadata, viewUrl, downloadUrl } = await presignedResponse.json();
+
+        // Step 2: Upload directly to object storage using presigned URL
+        // For S3/R2 PUT method
+        const uploadResponse = await fetch(presigned.url, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': file.type,
+            'Content-Length': file.size.toString()
+          },
+          body: file
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error(`Upload to storage failed: ${uploadResponse.status}`);
+        }
+
+        // Step 3: Mark upload as complete
+        const completeResponse = await fetch('/api/files/complete', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ id: fileMetadata.id })
+        });
+
+        if (!completeResponse.ok) {
+          const errorData = await completeResponse.json().catch(() => ({ error: 'Complete failed' }));
+          throw new Error(errorData.error || 'Failed to complete upload');
+        }
+
+        // Add to uploaded files list
+        uploadedFiles.push({
+          url: viewUrl,
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          filename: fileMetadata.id
+        });
       }
 
       // Update files list
@@ -128,18 +172,11 @@ export function SimpleFileUploader({
   };
 
   const viewFile = (file: UploadedFile) => {
-    // Add auth headers for viewing
-    const userId = localStorage.getItem('user_id');
-    const viewUrl = file.url + (userId ? `?user_id=${userId}` : '');
-    window.open(viewUrl, '_blank');
+    window.open(file.url, '_blank');
   };
 
   const downloadFile = (file: UploadedFile) => {
-    // Create download link with auth headers
-    const userId = localStorage.getItem('user_id');
-    const downloadUrl = file.url.replace('/view/', '/download/') + `?name=${encodeURIComponent(file.name)}` + (userId ? `&user_id=${userId}` : '');
-    
-    // Create temporary link and trigger download
+    const downloadUrl = file.url.replace('/view/', '/download/');
     const link = document.createElement('a');
     link.href = downloadUrl;
     link.download = file.name;
@@ -189,7 +226,7 @@ export function SimpleFileUploader({
                 Choose files to upload
               </Button>
               <p className="text-xs text-gray-500 mt-1">
-                {files.length}/{maxFiles} files • Max 10MB per file
+                {files.length}/{maxFiles} files • Max 200MB per file
               </p>
             </div>
           </div>
