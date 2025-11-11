@@ -41,6 +41,7 @@ export function SubmitWorkModal({
     name: string;
     type: string;
     size: number;
+    filename: string;
   }>>([]);
 
   const submitWorkMutation = useMutation({
@@ -109,12 +110,16 @@ export function SubmitWorkModal({
       // Combine uploaded files with link objects
       const allDeliverables = [
         ...uploadedFiles,
-        ...links.map(link => ({
-          url: link,
-          name: link.split('/').pop() || link,
-          type: "link",
-          size: 0
-        }))
+        ...links.map(link => {
+          const linkName = link.split('/').pop() || link;
+          return {
+            url: link,
+            name: linkName,
+            filename: linkName,
+            type: "link",
+            size: 0
+          };
+        })
       ];
 
       submitWorkMutation.mutate({
