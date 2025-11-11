@@ -327,7 +327,7 @@ export default function Calendar() {
             <Button
               variant="outline"
               onClick={goToToday}
-              className="border-zinc-700 text-white hover:bg-zinc-800"
+              className="border-zinc-700 bg-transparent dark:bg-[hsl(215,45%,20%)] text-white hover:bg-zinc-800 dark:hover:bg-[hsl(215,45%,25%)]"
             >
               <CalendarIcon className="h-4 w-4 mr-2" />
               Today
