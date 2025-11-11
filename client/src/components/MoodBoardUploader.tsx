@@ -121,7 +121,7 @@ export function MoodBoardUploader({ value = { files: [], links: [] }, onChange, 
           {files.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3" data-testid="uploaded-files">
               {files.map((file, index) => (
-                <Card key={index} className="relative group overflow-hidden aspect-square">
+                <Card key={index} className="relative group overflow-hidden aspect-square p-4">
                   <img
                     src={file}
                     alt={`Image ${index + 1}`}
