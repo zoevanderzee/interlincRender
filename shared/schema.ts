@@ -309,25 +309,23 @@ export const workRequests = pgTable("work_requests", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Work Request Submissions table
+// Work Request Submissions table - supports multiple submission versions/resubmissions
 export const workRequestSubmissions = pgTable("work_request_submissions", {
   id: serial("id").primaryKey(),
   workRequestId: integer("work_request_id").notNull().references(() => workRequests.id),
-  contractorId: integer("contractor_id").notNull().references(() => users.id),
-  businessId: integer("business_id").notNull().references(() => users.id),
-  title: text("title"),
-  description: text("description"),
-  notes: text("notes"), // Additional notes from contractor
-  attachmentUrls: jsonb("attachment_urls"), // Array of file URLs
+  version: integer("version").notNull().default(1), // Submission version (1, 2, 3... for resubmits)
+  submittedBy: integer("submitted_by").notNull().references(() => users.id),
+  notes: text("notes"), // Contractor's submission notes
+  artifactUrl: text("artifact_url"), // URL or external link to deliverable
+  deliverableFiles: jsonb("deliverable_files"), // Array of file objects {url, name, type, size}
+  deliverableDescription: text("deliverable_description"), // Description for physical work
   submissionType: text("submission_type").default("digital"), // "digital" or "physical"
-  status: text("status").default("pending"), // pending, approved, rejected, revision_requested
-  submittedAt: timestamp("submitted_at").notNull().defaultNow(),
+  status: text("status").notNull().default("submitted"), // submitted, approved, rejected
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
   reviewedAt: timestamp("reviewed_at"),
   reviewNotes: text("review_notes"), // Feedback from business owner
   approverId: integer("approver_id").references(() => users.id), // Business user who approved/rejected
-  approvedAt: timestamp("approved_at"), // When submission was approved
-  rejectionReason: text("rejection_reason"), // Detailed reason for rejection
-  paymentId: integer("payment_id"), // Link to payment record after approval
 });
 
 // Tasks table (separate from projects/milestones for focused work items)
@@ -591,17 +589,14 @@ export const updateWorkRequestSchema = z.object({
 // Work Request Submissions schema
 export const insertWorkRequestSubmissionSchema = z.object({
   workRequestId: z.number(),
-  contractorId: z.number(),
-  businessId: z.number(),
-  title: z.string().min(1),
-  description: z.string().min(1),
+  version: z.number().optional(), // Auto-calculated on server if not provided
+  submittedBy: z.number(),
   notes: z.string().optional(),
-  attachmentUrls: z.any().optional(), // Array of file URLs
+  artifactUrl: z.string().url().optional(),
+  deliverableFiles: z.any().optional(), // Array of file objects {url, name, type, size}
+  deliverableDescription: z.string().optional(),
   submissionType: z.enum(["digital", "physical"]).default("digital"),
-  status: z.enum(["pending", "approved", "rejected", "revision_requested"]).default("pending"),
-  approverId: z.number().optional(),
-  rejectionReason: z.string().optional(),
-  paymentId: z.number().optional(),
+  status: z.enum(["submitted", "approved", "rejected"]).default("submitted"),
 });
 
 // Tasks schema

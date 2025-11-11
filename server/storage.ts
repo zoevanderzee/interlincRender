@@ -207,6 +207,8 @@ export interface IStorage {
 
   // Work Request Submissions
   getWorkRequestSubmission(id: number): Promise<WorkRequestSubmission | undefined>;
+  getWorkRequestSubmissionsByWorkRequestId(workRequestId: number): Promise<WorkRequestSubmission[]>;
+  getLatestWorkRequestSubmission(workRequestId: number): Promise<WorkRequestSubmission | undefined>;
   getWorkRequestSubmissionsByBusinessId(businessId: number): Promise<WorkRequestSubmission[]>;
   getWorkRequestSubmissionsByContractorId(contractorId: number): Promise<WorkRequestSubmission[]>;
   createWorkRequestSubmission(submission: InsertWorkRequestSubmission): Promise<WorkRequestSubmission>;
@@ -1540,6 +1542,8 @@ export class MemStorage implements IStorage {
   async updateWorkRequest(id: number, workRequest: any): Promise<any> { return Promise.resolve(undefined); }
   async linkWorkRequestToContract(id: number, contractId: number): Promise<any> { return Promise.resolve(undefined); }
   async getWorkRequestSubmission(id: number): Promise<any> { return Promise.resolve(undefined); }
+  async getWorkRequestSubmissionsByWorkRequestId(workRequestId: number): Promise<any[]> { return Promise.resolve([]); }
+  async getLatestWorkRequestSubmission(workRequestId: number): Promise<any> { return Promise.resolve(undefined); }
   async getWorkRequestSubmissionsByBusinessId(businessId: number): Promise<any[]> { return Promise.resolve([]); }
   async getWorkRequestSubmissionsByContractorId(contractorId: number): Promise<any[]> { return Promise.resolve([]); }
   async createWorkRequestSubmission(submission: any): Promise<any> { return Promise.resolve({} as any); }
@@ -3821,14 +3825,36 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(workRequestSubmissions)
-      .where(eq(workRequestSubmissions.contractorId, contractorId))
-      .orderBy(desc(workRequestSubmissions.submittedAt));
+      .where(eq(workRequestSubmissions.submittedBy, contractorId))
+      .orderBy(desc(workRequestSubmissions.createdAt));
+  }
+
+  async getWorkRequestSubmissionsByWorkRequestId(workRequestId: number): Promise<WorkRequestSubmission[]> {
+    return await db
+      .select()
+      .from(workRequestSubmissions)
+      .where(eq(workRequestSubmissions.workRequestId, workRequestId))
+      .orderBy(desc(workRequestSubmissions.version));
+  }
+
+  async getLatestWorkRequestSubmission(workRequestId: number): Promise<WorkRequestSubmission | undefined> {
+    const [submission] = await db
+      .select()
+      .from(workRequestSubmissions)
+      .where(eq(workRequestSubmissions.workRequestId, workRequestId))
+      .orderBy(desc(workRequestSubmissions.version))
+      .limit(1);
+
+    return submission;
   }
 
   async updateWorkRequestSubmission(id: number, submission: Partial<InsertWorkRequestSubmission>): Promise<WorkRequestSubmission | undefined> {
     const [updated] = await db
       .update(workRequestSubmissions)
-      .set(submission)
+      .set({
+        ...submission,
+        updatedAt: new Date()
+      })
       .where(eq(workRequestSubmissions.id, id))
       .returning();
 

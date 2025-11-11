@@ -22,7 +22,7 @@ import { Upload, FileText, Plus, Link, X } from "lucide-react";
 interface SubmitWorkModalProps {
   isOpen: boolean;
   onClose: () => void;
-  deliverableId: number;
+  deliverableId: number; // This is actually the work request ID for standalone tasks
   deliverableName: string;
 }
 
@@ -36,6 +36,7 @@ export function SubmitWorkModal({
   const queryClient = useQueryClient();
   const [submissionType, setSubmissionType] = useState<"digital" | "physical">("digital");
   const [description, setDescription] = useState("");
+  const [notes, setNotes] = useState("");
   const [newLink, setNewLink] = useState("");
   const [deliverableLinks, setDeliverableLinks] = useState<string[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<Array<{
@@ -48,19 +49,14 @@ export function SubmitWorkModal({
 
   const submitWorkMutation = useMutation({
     mutationFn: async (data: {
-      status: string;
-      submittedAt: string;
-      submissionType: string;
+      notes?: string;
+      artifactUrl?: string;
       deliverableFiles?: any[];
       deliverableDescription?: string;
+      submissionType: string;
     }) => {
-      // Try both deliverables and milestones endpoints for compatibility
-      let response = await apiRequest("PATCH", `/api/deliverables/${deliverableId}`, data);
-      
-      if (!response.ok) {
-        // Fallback to milestones endpoint
-        response = await apiRequest("PATCH", `/api/milestones/${deliverableId}`, data);
-      }
+      // Use the new work request submissions endpoint
+      const response = await apiRequest("POST", `/api/work-requests/${deliverableId}/submissions`, data);
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'Submission failed' }));
@@ -74,9 +70,8 @@ export function SubmitWorkModal({
         title: "Work Submitted",
         description: "Your deliverable has been submitted for approval.",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/milestones"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/deliverables"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/contracts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/work-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       onClose();
     },
     onError: (error: any) => {
@@ -159,11 +154,14 @@ export function SubmitWorkModal({
         })
       ];
 
+      // Use the first link as artifactUrl if available, otherwise undefined
+      const artifactUrl = deliverableLinks.length > 0 ? deliverableLinks[0] : undefined;
+
       submitWorkMutation.mutate({
-        status: "completed",
-        submittedAt: new Date().toISOString(),
-        submissionType,
-        deliverableFiles: allDeliverables
+        notes: notes || undefined,
+        artifactUrl,
+        deliverableFiles: allDeliverables,
+        submissionType
       });
       return;
     }
@@ -178,10 +176,9 @@ export function SubmitWorkModal({
     }
 
     submitWorkMutation.mutate({
-      status: "completed",
-      submittedAt: new Date().toISOString(),
-      submissionType,
-      deliverableDescription: description
+      notes: notes || undefined,
+      deliverableDescription: description,
+      submissionType
     });
   };
 

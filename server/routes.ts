@@ -5205,6 +5205,131 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Work Request Submission endpoint - standalone submissions separate from milestones
+  app.post(`${apiRouter}/work-requests/:id/submissions`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const workRequestId = parseInt(req.params.id);
+      
+      let userId = req.user?.id;
+      if (!userId && req.headers['x-user-id']) {
+        userId = parseInt(req.headers['x-user-id'] as string);
+      }
+
+      if (!userId) {
+        return res.status(401).json({message: 'Authentication required'});
+      }
+
+      // Get the work request
+      const workRequest = await storage.getWorkRequest(workRequestId);
+      if (!workRequest) {
+        return res.status(404).json({message: 'Work request not found'});
+      }
+
+      // Verify the user is the assigned contractor
+      if (workRequest.contractorUserId !== userId) {
+        return res.status(403).json({message: 'Not authorized to submit for this work request'});
+      }
+
+      // Verify the work request is accepted
+      if (workRequest.status !== 'accepted') {
+        return res.status(400).json({message: 'Work request must be accepted before submitting'});
+      }
+
+      // Get the project to find the business ID
+      const project = await storage.getProject(workRequest.projectId!);
+      if (!project) {
+        return res.status(404).json({message: 'Associated project not found'});
+      }
+
+      // Calculate next version number
+      const existingSubmissions = await storage.getWorkRequestSubmissionsByWorkRequestId(workRequestId);
+      const nextVersion = (existingSubmissions.length > 0) 
+        ? Math.max(...existingSubmissions.map(s => s.version)) + 1 
+        : 1;
+
+      // Validate payload
+      const payload = insertWorkRequestSubmissionSchema.parse({
+        workRequestId,
+        version: nextVersion,
+        submittedBy: userId,
+        notes: req.body.notes,
+        artifactUrl: req.body.artifactUrl,
+        deliverableFiles: req.body.deliverableFiles,
+        deliverableDescription: req.body.deliverableDescription,
+        submissionType: req.body.submissionType || 'digital',
+        status: 'submitted'
+      });
+
+      // Create the submission
+      const submission = await storage.createWorkRequestSubmission(payload);
+
+      // Update work request status to 'submitted'
+      await storage.updateWorkRequest(workRequestId, {
+        status: 'submitted'
+      });
+
+      const message = nextVersion === 1 ? 'Submission recorded' : 'Resubmission recorded';
+      res.status(201).json({message, submission});
+
+    } catch (error) {
+      console.error('Error creating work request submission:', error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({message: 'Invalid submission data', errors: error.errors});
+      }
+      res.status(500).json({message: 'Internal server error'});
+    }
+  });
+
+  // Get latest submission for a work request
+  app.get(`${apiRouter}/work-requests/:id/submissions/latest`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const workRequestId = parseInt(req.params.id);
+      
+      let userId = req.user?.id;
+      if (!userId && req.headers['x-user-id']) {
+        userId = parseInt(req.headers['x-user-id'] as string);
+      }
+
+      if (!userId) {
+        return res.status(401).json({message: 'Authentication required'});
+      }
+
+      const latest = await storage.getLatestWorkRequestSubmission(workRequestId);
+      if (!latest) {
+        return res.status(404).json({message: 'No submissions yet'});
+      }
+
+      res.json({submission: latest});
+
+    } catch (error) {
+      console.error('Error fetching latest submission:', error);
+      res.status(500).json({message: 'Internal server error'});
+    }
+  });
+
+  // Get all submissions for a work request
+  app.get(`${apiRouter}/work-requests/:id/submissions`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const workRequestId = parseInt(req.params.id);
+      
+      let userId = req.user?.id;
+      if (!userId && req.headers['x-user-id']) {
+        userId = parseInt(req.headers['x-user-id'] as string);
+      }
+
+      if (!userId) {
+        return res.status(401).json({message: 'Authentication required'});
+      }
+
+      const submissions = await storage.getWorkRequestSubmissionsByWorkRequestId(workRequestId);
+      res.json({submissions});
+
+    } catch (error) {
+      console.error('Error fetching submissions:', error);
+      res.status(500).json({message: 'Internal server error'});
+    }
+  });
+
   // Profile Code Routes
   app.get(`${apiRouter}/profile-code`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
