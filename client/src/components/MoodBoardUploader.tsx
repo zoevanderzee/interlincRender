@@ -124,7 +124,7 @@ export function MoodBoardUploader({ value = { files: [], links: [] }, onChange, 
                 <Card key={index} className="relative group overflow-hidden aspect-square">
                   <img
                     src={file}
-                    alt={`Mood board image ${index + 1}`}
+                    alt={`Image ${index + 1}`}
                     className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
                   <button
