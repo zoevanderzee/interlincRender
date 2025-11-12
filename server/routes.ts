@@ -5528,6 +5528,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Approve work request submission after payment
+  app.post(`${apiRouter}/work-requests/:workRequestId/submissions/:submissionId/approve-after-payment`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const workRequestId = parseInt(req.params.workRequestId);
+      const submissionId = parseInt(req.params.submissionId);
+      const { paymentIntentId, reviewNotes } = req.body;
+
+      let userId = req.user?.id;
+      if (!userId && req.headers['x-user-id']) {
+        userId = parseInt(req.headers['x-user-id'] as string);
+      }
+
+      if (!userId) {
+        return res.status(401).json({message: 'Authentication required'});
+      }
+
+      // Get the submission
+      const submission = await storage.getWorkRequestSubmission(submissionId);
+      if (!submission) {
+        return res.status(404).json({message: 'Submission not found'});
+      }
+
+      // Get the work request
+      const workRequest = await storage.getWorkRequest(workRequestId);
+      if (!workRequest) {
+        return res.status(404).json({message: 'Work request not found'});
+      }
+
+      // Get the project to verify business ownership
+      const project = await storage.getProject(workRequest.projectId!);
+      if (!project) {
+        return res.status(404).json({message: 'Associated project not found'});
+      }
+
+      // Verify the user is the business owner
+      if (project.businessId !== userId) {
+        return res.status(403).json({message: 'Not authorized to approve this submission'});
+      }
+
+      // Update submission status to approved
+      await storage.updateWorkRequestSubmission(submissionId, {
+        status: 'approved',
+        reviewNotes,
+        reviewedAt: new Date()
+      });
+
+      // Update work request status to completed
+      await storage.updateWorkRequest(workRequestId, {
+        status: 'completed'
+      });
+
+      // Create notification for contractor
+      await storage.createNotification({
+        userId: workRequest.contractorUserId!,
+        type: 'work_approved',
+        message: `Your submission for "${workRequest.title}" has been approved and payment processed`,
+        relatedId: workRequestId,
+        relatedType: 'work_request'
+      });
+
+      // Create payment notification
+      await storage.createNotification({
+        userId: workRequest.contractorUserId!,
+        type: 'payment_received',
+        message: `Payment of £${workRequest.budget} received for "${workRequest.title}"`,
+        relatedId: workRequestId,
+        relatedType: 'work_request'
+      });
+
+      console.log(`[WORK_REQUEST_APPROVED] Submission ${submissionId} approved after payment ${paymentIntentId}`);
+
+      res.json({
+        message: "Work approved successfully",
+        submission: await storage.getWorkRequestSubmission(submissionId)
+      });
+
+    } catch (error) {
+      console.error('Error approving work request after payment:', error);
+      res.status(500).json({message: 'Internal server error'});
+    }
+  });
+
   // Profile Code Routes
   app.get(`${apiRouter}/profile-code`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
