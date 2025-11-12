@@ -5251,6 +5251,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate payload
       const payload = insertWorkRequestSubmissionSchema.parse({
         workRequestId,
+        contractorId: workRequest.contractorUserId,
+        businessId: project.businessId,
+        title: workRequest.title,
+        description: workRequest.description,
         version: nextVersion,
         submittedBy: userId,
         notes: req.body.notes,

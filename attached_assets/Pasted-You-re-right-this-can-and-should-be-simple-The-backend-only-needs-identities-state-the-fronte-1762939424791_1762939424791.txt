@@ -1,0 +1,66 @@
+You’re right: this can (and should) be simple. The backend only needs identities + state; the frontend carries the rich details (text, links, files) that the business user reads to decide.
+Here’s the minimal, scalable, bullet-proof model and exactly what happens on submit.
+What the backend must store (minimal)
+Single source of truth, append-only submissions:
+Tables
+work_requests(id, business_id, assignee_id, status) — tiny.
+work_request_submissions (append-only):
+id (pk)
+work_request_id (fk)
+submitted_by (user id)
+receiver_id (business owner/manager user id)
+version (1,2,3… auto)
+message (optional short notes)
+files (JSON array of storage keys/URLs) — pointers only; actual files live in object storage (e.g., S3/GCS)
+links (JSON array of URLs)
+status (submitted | approved | rejected)
+created_at
+idempotency_key (unique, optional but recommended)
+Indexes: (work_request_id, version desc), receiver_id, submitted_by, idempotency_key unique.
+That’s it. No milestones. No denormalized titles/descriptions are required if you don’t want them.
+Exact flow when the contractor submits
+Frontend gathers the user-facing details (rich description, file uploads, links). Files are uploaded directly to object storage (pre-signed URLs), returning keys.
+Frontend → Backend:
+POST /api/work-requests/:id/submissions
+{
+  "message": "Here’s the deliverable.",
+  "files": ["s3://bucket/a.pdf", "s3://bucket/demo.mp4"],
+  "links": ["https://figma.com/file/...", "https://loom.com/share/..."],
+  "idempotencyKey": "wr33-submit-v1-<uuid>"
+}
+Backend checks:
+WR exists, assignee_id = caller (or admin) ✔
+Create new submission row with next version (max+1) and status="submitted".
+Update work_requests.status = 'submitted'.
+Emit event work_request.submitted (queue/webhook) for notifications.
+Notifications: business user(s) (receiver) get an in-app + email push with links to the submission.
+Business review (no extra data needed):
+Approve: POST /api/work-requests/:wrId/submissions/:subId/decision {"decision":"approve"}
+Backend marks submission approved, sets WR approved/completed, emits work_request.approved, triggers payment (job/queue).
+Reject: same endpoint with "reject" + optional reason; WR goes back to needs_changes. Contractor can resubmit → version bumps to 2.
+Minimal API (copyable contracts)
+Create submission
+POST /api/work-requests/:id/submissions
+Body: { message?, files?: string[], links?: string[], idempotencyKey? }
+→ 201 { submission }
+List / latest
+GET /api/work-requests/:id/submissions
+GET /api/work-requests/:id/submissions/latest
+Decision
+POST /api/work-requests/:id/submissions/:submissionId/decision
+Body: { decision: "approve" | "reject", reason? }
+→ 200 { submission }
+Why this scales / won’t break
+Append-only + versioning: no overwrites; auditing is trivial.
+Idempotency keys: protects against double-clicks/retries.
+Object storage for files: DB only stores pointers; unlimited size.
+Event-driven side effects: payment/notifications run off a queue; if they fail, they retry independently of the HTTP request.
+Tight ACL: only assignee_id (contractor) can submit; only business roles can decide.
+Small surface: 3 endpoints, 2 tables, single state machine.
+Guardrails (one-liners you’ll want)
+Enforce max files/links per submission (e.g., 20) at API.
+Validate links as URLs; files as keys you issued (prefix check).
+Add rate limits per WR/user (e.g., 10 submissions/hour) to prevent abuse.
+Use transactions for “create submission + update WR status”.
+Add foreign keys + cascade on WR delete → submissions delete.
+Log an audit trail event for each decision with actor id.

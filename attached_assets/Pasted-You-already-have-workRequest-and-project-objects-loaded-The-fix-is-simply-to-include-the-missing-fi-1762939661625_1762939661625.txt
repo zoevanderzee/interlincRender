@@ -1,0 +1,73 @@
+You already have workRequest and project objects loaded. The fix is simply to include the missing fields when creating the submission record.
+Here’s the drop-in fix (replace your current create call at ~line 5252 in routes.ts):
+✅ Fixed submission creation snippet
+// Inside POST /api/work-requests/:id/submissions
+try {
+  // you already have:
+  // const workRequest = await db.work_requests.findFirst({ where: { id: wrId } });
+  // const project = await db.projects.findFirst({ where: { id: workRequest.projectId } });
+
+  // safety checks
+  if (!workRequest) return res.status(404).json({ message: 'Work request not found' });
+  if (!project) return res.status(400).json({ message: 'Project not found for this work request' });
+
+  // build submission payload
+  const submissionData = {
+    work_request_id: workRequest.id,
+    submitted_by: req.user.id,
+    contractor_id: workRequest.contractorUserId,  // add this
+    business_id: project.businessId,              // add this
+    title: workRequest.title,                     // add this
+    description: workRequest.description,         // add this
+    notes: req.body.notes ?? null,
+    artifact_url: req.body.artifactUrl ?? null,
+    metadata: req.body.metadata ?? {},
+    status: 'submitted'
+  };
+
+  // create the record
+  const submission = await db.work_request_submissions.create({ data: submissionData });
+
+  // update work request status
+  await db.work_requests.update({
+    where: { id: workRequest.id },
+    data: { status: 'submitted', updated_at: new Date() }
+  });
+
+  return res.status(201).json({
+    message: 'Submission recorded successfully',
+    submission
+  });
+
+} catch (err: any) {
+  console.error('Error creating work request submission:', err);
+  return res.status(500).json({ message: 'Failed to create submission', detail: err.message });
+}
+✅ Why this fixes it
+Your DB schema for work_request_submissions enforces NOT NULL on:
+contractor_id
+business_id
+title
+description
+…but your endpoint was only sending:
+{ work_request_id, submitted_by, notes, artifact_url, metadata, status }
+By explicitly pulling those four fields from workRequest and project, every insert now satisfies your schema constraints.
+✅ Quick sanity check
+Run this query after applying:
+curl -i -X POST http://localhost:3000/api/work-requests/33/submissions \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer <token>' \
+  -d '{"notes":"test submission","artifactUrl":"https://example.com/test.pdf"}'
+Expected response:
+{
+  "message": "Submission recorded successfully",
+  "submission": {
+    "work_request_id": 33,
+    "contractor_id": 118,
+    "business_id": 7,
+    "title": "Social Media Campaign Design",
+    "description": "Create a full campaign asset pack",
+    "status": "submitted"
+  }
+}
+That’s it — the submission will now insert cleanly, no more NOT NULL constraint errors, and your flow will work end-to-end.
