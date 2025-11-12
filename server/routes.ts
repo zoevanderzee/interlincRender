@@ -5327,6 +5327,207 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Review work request submission (approve/reject) with payment processing
+  app.post(`${apiRouter}/work-requests/:workRequestId/submissions/:submissionId/review`, requireAuth, async (req: Request, res: Response) => {
+    try {
+      const workRequestId = parseInt(req.params.workRequestId);
+      const submissionId = parseInt(req.params.submissionId);
+      const { action, reviewNotes } = req.body;
+
+      let userId = req.user?.id;
+      if (!userId && req.headers['x-user-id']) {
+        userId = parseInt(req.headers['x-user-id'] as string);
+      }
+
+      if (!userId) {
+        return res.status(401).json({message: 'Authentication required'});
+      }
+
+      // Get the submission
+      const submission = await storage.getWorkRequestSubmission(submissionId);
+      if (!submission) {
+        return res.status(404).json({message: 'Submission not found'});
+      }
+
+      // Get the work request
+      const workRequest = await storage.getWorkRequest(workRequestId);
+      if (!workRequest) {
+        return res.status(404).json({message: 'Work request not found'});
+      }
+
+      // Get the project to verify business ownership
+      const project = await storage.getProject(workRequest.projectId!);
+      if (!project) {
+        return res.status(404).json({message: 'Associated project not found'});
+      }
+
+      // Verify the user is the business owner
+      if (project.businessId !== userId) {
+        return res.status(403).json({message: 'Not authorized to review this submission'});
+      }
+
+      // Verify submission is in submitted status
+      if (submission.status !== 'submitted') {
+        return res.status(400).json({message: 'Submission has already been reviewed'});
+      }
+
+      if (action === 'approve') {
+        // Update submission status to approved
+        await storage.updateWorkRequestSubmission(submissionId, {
+          status: 'approved',
+          reviewNotes,
+          reviewedAt: new Date()
+        });
+
+        // Update work request status to completed
+        await storage.updateWorkRequest(workRequestId, {
+          status: 'completed'
+        });
+
+        // Create notification for contractor
+        await storage.createNotification({
+          userId: workRequest.contractorUserId!,
+          type: 'work_approved',
+          message: `Your submission for "${workRequest.title}" has been approved`,
+          relatedId: workRequestId,
+          relatedType: 'work_request'
+        });
+
+        // Process payment via Stripe
+        try {
+          const contractor = await storage.getUser(workRequest.contractorUserId!);
+          if (!contractor) {
+            throw new Error('Contractor not found');
+          }
+
+          console.log(`[WORK_REQUEST_PAYMENT] Processing payment for work request ${workRequestId}, contractor ${contractor.id}`);
+
+          // Create payment record in database
+          const paymentData = {
+            contractId: null,
+            milestoneId: workRequestId,
+            businessId: userId,
+            contractorId: contractor.id,
+            amount: workRequest.budget.toString(),
+            status: 'processing',
+            scheduledDate: new Date(),
+            notes: `Payment for work request: ${workRequest.title}`,
+            stripePaymentIntentId: null,
+            stripePaymentIntentStatus: null,
+            paymentProcessor: 'stripe',
+            triggeredBy: 'work_request_approval',
+            triggeredAt: new Date()
+          };
+
+          const payment = await storage.createPayment(paymentData);
+          console.log(`[WORK_REQUEST_PAYMENT] Payment record created: ${payment.id}`);
+
+          // Get business user and contractor Stripe account
+          const business = await storage.getUser(userId);
+          if (!business || !business.stripeConnectAccountId) {
+            throw new Error('Business Stripe account not configured');
+          }
+
+          if (!contractor.stripeConnectAccountId) {
+            throw new Error('Contractor Stripe account not configured');
+          }
+
+          // Create Stripe PaymentIntent
+          const { createPaymentIntent } = await import('./services/stripe.js');
+
+          const paymentIntent = await createPaymentIntent({
+            amount: parseFloat(workRequest.budget.toString()),
+            currency: 'gbp',
+            description: `Work request payment: ${workRequest.title}`,
+            metadata: {
+              payment_id: payment.id.toString(),
+              work_request_id: workRequestId.toString(),
+              contractor_id: contractor.id.toString(),
+              business_id: userId.toString()
+            },
+            destination: contractor.stripeConnectAccountId,
+            onBehalfOf: business.stripeConnectAccountId
+          });
+
+          // Update payment record with PaymentIntent details
+          await storage.updatePayment(payment.id, {
+            stripePaymentIntentId: paymentIntent.id,
+            stripePaymentIntentStatus: paymentIntent.status || 'requires_payment_method'
+          });
+
+          console.log(`[WORK_REQUEST_PAYMENT] Payment intent created: ${paymentIntent.id}`);
+
+          // Create payment notification
+          await storage.createNotification({
+            userId: contractor.id,
+            type: 'payment_received',
+            message: `Payment of £${workRequest.budget} received for "${workRequest.title}"`,
+            relatedId: payment.id,
+            relatedType: 'payment'
+          });
+
+          res.json({
+            message: "Work approved and payment processed successfully",
+            submission: await storage.getWorkRequestSubmission(submissionId),
+            payment: {
+              id: payment.id,
+              paymentIntentId: paymentIntent.id,
+              status: paymentIntent.status,
+              amount: workRequest.budget,
+              currency: 'gbp'
+            }
+          });
+
+        } catch (paymentError) {
+          console.error('[WORK_REQUEST_PAYMENT] Payment processing error:', paymentError);
+
+          return res.status(500).json({
+            message: "Work approved but payment processing failed - will be processed manually",
+            error: paymentError instanceof Error ? paymentError.message : 'Unknown payment error',
+            submission: await storage.getWorkRequestSubmission(submissionId)
+          });
+        }
+
+      } else if (action === 'reject') {
+        // Update submission status to rejected
+        await storage.updateWorkRequestSubmission(submissionId, {
+          status: 'rejected',
+          reviewNotes,
+          reviewedAt: new Date()
+        });
+
+        // Update work request status back to accepted for resubmission
+        await storage.updateWorkRequest(workRequestId, {
+          status: 'accepted'
+        });
+
+        // Create notification for contractor
+        await storage.createNotification({
+          userId: workRequest.contractorUserId!,
+          type: 'work_rejected',
+          message: `Changes requested for "${workRequest.title}"`,
+          relatedId: workRequestId,
+          relatedType: 'work_request'
+        });
+
+        res.json({
+          message: "Submission rejected - contractor has been notified",
+          submission: await storage.getWorkRequestSubmission(submissionId)
+        });
+
+      } else {
+        return res.status(400).json({message: 'Invalid action. Must be "approve" or "reject"'});
+      }
+
+    } catch (error) {
+      console.error('Error reviewing work request submission:', error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({message: 'Invalid review data', errors: error.errors});
+      }
+      res.status(500).json({message: 'Internal server error'});
+    }
+  });
+
   // Profile Code Routes
   app.get(`${apiRouter}/profile-code`, requireAuth, requireActiveSubscription, async (req: Request, res: Response) => {
     try {
