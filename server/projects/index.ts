@@ -340,8 +340,8 @@ export function registerProjectRoutes(app: Express) {
         });
       }
 
-      // Only allow accepting "assigned" work requests
-      if (workRequest.status !== "assigned") {
+      // Only allow accepting "pending" work requests
+      if (workRequest.status !== "pending") {
         return res.status(400).json({
           ok: false,
           message: `Cannot accept work request with status: ${workRequest.status}`
@@ -538,8 +538,8 @@ export function registerProjectRoutes(app: Express) {
         });
       }
 
-      // Only allow accepting "assigned" work requests
-      if (workRequest.status !== "assigned") {
+      // Only allow accepting "pending" work requests
+      if (workRequest.status !== "pending") {
         return res.status(400).json({
           ok: false,
           message: `Cannot accept work request with status: ${workRequest.status}`
