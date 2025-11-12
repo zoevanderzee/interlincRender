@@ -5258,6 +5258,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (project) {
         await storage.createNotification({
           userId: project.businessId,
+          title: 'Work Submitted',
           type: 'work_submitted',
           message: `${workRequest.title} has been submitted by contractor`,
           relatedId: workRequestId,
