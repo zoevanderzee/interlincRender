@@ -589,6 +589,10 @@ export const updateWorkRequestSchema = z.object({
 // Work Request Submissions schema
 export const insertWorkRequestSubmissionSchema = z.object({
   workRequestId: z.number(),
+  contractorId: z.number(),
+  businessId: z.number(),
+  title: z.string(),
+  description: z.string(),
   version: z.number().optional(), // Auto-calculated on server if not provided
   submittedBy: z.number(),
   notes: z.string().optional(),
