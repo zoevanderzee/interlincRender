@@ -7,6 +7,7 @@ import { Plus, Calendar, DollarSign, Users, FileText, TrendingUp, Eye, User, Ale
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { SubmitWorkModal } from "@/components/SubmitWorkModal";
+import { ReviewWorkRequestModal } from "@/components/ReviewWorkRequestModal";
 import { useIntegratedData } from "@/hooks/use-integrated-data";
 import { formatCurrency } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -17,6 +18,8 @@ export default function Projects() {
   const [, navigate] = useLocation();
   const [submitWorkModalOpen, setSubmitWorkModalOpen] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [selectedWorkRequest, setSelectedWorkRequest] = useState<any>(null);
   const { data: integratedData, isLoading } = useIntegratedData();
 
   const isContractor = user?.role === 'contractor';
@@ -637,14 +640,30 @@ export default function Projects() {
                                 </div>
                               )}
                             </div>
-                            <Button 
-                              variant="outline"
-                              size="sm"
-                              onClick={() => navigate(`/project/${task.projectId}`)}
-                              className="border-gray-700 text-white hover:bg-gray-800"
-                            >
-                              View Details
-                            </Button>
+                            {task.status === 'submitted' ? (
+                              <Button 
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedWorkRequest(task);
+                                  setReviewModalOpen(true);
+                                }}
+                                className="bg-green-600 hover:bg-green-700"
+                                data-testid={`button-review-${task.id}`}
+                              >
+                                <Eye className="mr-2 h-4 w-4" />
+                                Review
+                              </Button>
+                            ) : (
+                              <Button 
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigate(`/project/${task.projectId}`)}
+                                className="border-gray-700 text-white hover:bg-gray-800"
+                                data-testid={`button-view-details-${task.id}`}
+                              >
+                                View Details
+                              </Button>
+                            )}
                           </div>
                         </CardContent>
                       </Card>
@@ -677,6 +696,19 @@ export default function Projects() {
 
 
       </Tabs>
+
+      {/* Review Work Request Modal */}
+      {selectedWorkRequest && (
+        <ReviewWorkRequestModal
+          isOpen={reviewModalOpen}
+          onClose={() => {
+            setReviewModalOpen(false);
+            setSelectedWorkRequest(null);
+          }}
+          workRequestId={selectedWorkRequest.id}
+          workRequestTitle={selectedWorkRequest.title}
+        />
+      )}
     </div>
   );
 }

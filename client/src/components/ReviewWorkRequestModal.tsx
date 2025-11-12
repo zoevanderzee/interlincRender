@@ -66,6 +66,8 @@ export function ReviewWorkRequestModal({
       });
       queryClient.invalidateQueries({ queryKey: ["/api/work-requests"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
       queryClient.invalidateQueries({ queryKey: ["/api/notifications/count"] });
       onClose();
     },
