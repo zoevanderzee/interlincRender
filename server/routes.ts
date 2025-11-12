@@ -4969,6 +4969,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Automatically set businessId to the current user's ID (security measure)
       workRequestInput.businessId = currentUser.id;
 
+      // Override currency with business user's currency (source of truth)
+      if (!currentUser.currency) {
+        return res.status(422).json({
+          message: "Business account currency not set. Please update your profile with your country and currency.",
+          code: "MISSING_CURRENCY"
+        });
+      }
+      workRequestInput.currency = currentUser.currency;
+
       // Generate a secure token for this work request
       const {token, tokenHash} = generateWorkRequestToken();
 
