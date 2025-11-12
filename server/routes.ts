@@ -4911,28 +4911,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({message: "Work request not found"});
       }
 
-      // Get user ID from either session or header
-      let userId = req.user?.id;
-      if (!userId && req.headers['x-user-id']) {
-        userId = parseInt(req.headers['x-user-id'] as string);
-      }
-
-      if (!userId) {
-        return res.status(401).json({message: "Authentication required"});
-      }
-
-      // Get full user to check permissions
-      const currentUser = await storage.getUser(userId);
-      if (!currentUser) {
-        return res.status(401).json({message: "User not found"});
-      }
-
       // Check permissions - only the business that created it, the email recipient, or admin can view
-      if (
+      const currentUser = req.user;
+      if (currentUser && (
         currentUser.id === workRequest.businessId ||
         currentUser.email === workRequest.recipientEmail ||
         currentUser.role === 'admin'
-      ) {
+      )) {
         // Add overdue computation
         const today = new Date();
         today.setHours(0, 0, 0, 0);

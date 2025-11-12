@@ -37,28 +37,23 @@ export function ReviewWorkRequestModal({
   const [showStripeForm, setShowStripeForm] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
-  // Fetch work request details first to get status
-  const { data: workRequestData, isLoading: isLoadingWorkRequest } = useQuery({
+  // Fetch the latest submission
+  const { data: submissionData, isLoading } = useQuery({
+    queryKey: [`/api/work-requests/${workRequestId}/submissions/latest`],
+    enabled: isOpen && !!workRequestId,
+  });
+
+  // Fetch work request details to get amount and contractor info
+  const { data: workRequestData } = useQuery({
     queryKey: [`/api/work-requests/${workRequestId}`],
     enabled: isOpen && !!workRequestId,
   });
 
-  const workRequest = workRequestData?.workRequest;
-
-  // Only fetch submission if work request has been submitted
-  const { data: submissionData, isLoading: isLoadingSubmission } = useQuery({
-    queryKey: [`/api/work-requests/${workRequestId}/submissions/latest`],
-    enabled: isOpen && !!workRequestId && workRequest?.status === 'submitted',
-  });
-
   const submission = submissionData?.submission;
-  const isLoading = isLoadingWorkRequest || isLoadingSubmission;
+  const workRequest = workRequestData?.workRequest;
 
   const reviewMutation = useMutation({
     mutationFn: async (data: { action: 'reject'; reviewNotes?: string }) => {
-      if (!submission) {
-        throw new Error('No submission available for review');
-      }
       const response = await apiRequest(
         "POST",
         `/api/work-requests/${workRequestId}/submissions/${submission.id}/review`,
@@ -112,11 +107,6 @@ export function ReviewWorkRequestModal({
 
   const handlePaymentComplete = async (paymentIntentId: string) => {
     console.log('Payment completed with intent ID:', paymentIntentId);
-
-    if (!submission) {
-      console.error('No submission found for payment completion');
-      return;
-    }
 
     // Now mark the submission as approved
     try {
@@ -186,7 +176,7 @@ export function ReviewWorkRequestModal({
   }
 
   // Show Stripe payment form
-  if (showStripeForm && workRequest && submission) {
+  if (showStripeForm && workRequest) {
     return (
       <Dialog open={isOpen} onOpenChange={() => {
         setShowStripeForm(false);
@@ -236,9 +226,9 @@ export function ReviewWorkRequestModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{submission ? 'Review Submission' : 'Task Details'}: {workRequestTitle}</DialogTitle>
+          <DialogTitle>Review Submission: {workRequestTitle}</DialogTitle>
           <DialogDescription>
-            {submission ? 'Review the contractor\'s work and approve or request changes.' : 'View task details and requirements.'}
+            Review the contractor's work and approve or request changes.
           </DialogDescription>
         </DialogHeader>
 
@@ -367,66 +357,9 @@ export function ReviewWorkRequestModal({
               />
             </div>
           </div>
-        ) : workRequest ? (
-          <div className="space-y-6">
-            {/* Task Details */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Task Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label className="text-muted-foreground">Description</Label>
-                  <p className="mt-1 whitespace-pre-wrap" data-testid="text-task-description">
-                    {workRequest.description || 'No description provided'}
-                  </p>
-                </div>
-
-                <div>
-                  <Label className="text-muted-foreground">Deliverable Requirements</Label>
-                  <p className="mt-1 whitespace-pre-wrap" data-testid="text-deliverable-requirements">
-                    {workRequest.deliverableDescription || 'No specific requirements'}
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-muted-foreground">Amount</Label>
-                    <p className="mt-1 text-lg font-semibold" data-testid="text-task-amount">
-                      {workRequest.currency === 'GBP' ? '£' : '$'}{workRequest.amount} {workRequest.currency}
-                    </p>
-                  </div>
-
-                  <div>
-                    <Label className="text-muted-foreground">Status</Label>
-                    <div className="mt-1">
-                      <Badge variant="secondary" data-testid="badge-task-status">
-                        {workRequest.status.replace('_', ' ')}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-
-                {workRequest.dueDate && (
-                  <div>
-                    <Label className="text-muted-foreground">Due Date</Label>
-                    <p className="mt-1" data-testid="text-due-date">
-                      {new Date(workRequest.dueDate).toLocaleDateString()}
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <div className="text-center text-sm text-muted-foreground py-4">
-              {workRequest.status === 'pending' && 'Waiting for contractor to accept this task'}
-              {workRequest.status === 'assigned' && 'Task assigned - waiting for contractor to submit work'}
-              {workRequest.status === 'accepted' && 'Task accepted - work in progress'}
-            </div>
-          </div>
         ) : (
           <div className="text-center py-8 text-muted-foreground">
-            Loading task details...
+            No submission found
           </div>
         )}
 
