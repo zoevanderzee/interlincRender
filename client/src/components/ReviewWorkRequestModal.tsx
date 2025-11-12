@@ -163,7 +163,7 @@ export function ReviewWorkRequestModal({
             </p>
             {workRequest && (
               <div className="space-y-2">
-                <p className="text-2xl font-bold">£{workRequest.budget}</p>
+                <p className="text-2xl font-bold">£{workRequest.amount}</p>
                 <p className="text-sm text-muted-foreground">
                   {workRequestTitle}
                 </p>
@@ -197,7 +197,7 @@ export function ReviewWorkRequestModal({
             <div className="bg-muted p-4 rounded-lg">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-sm text-muted-foreground">Amount:</span>
-                <span className="text-2xl font-bold">£{workRequest.budget}</span>
+                <span className="text-2xl font-bold">£{workRequest.amount}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Task:</span>
@@ -206,8 +206,8 @@ export function ReviewWorkRequestModal({
             </div>
 
             <StripeElements
-              amount={parseFloat(workRequest.budget.toString())}
-              currency="gbp"
+              amount={Math.round(Number(workRequest.amount) * 100)}
+              currency={workRequest.currency?.toLowerCase() || 'gbp'}
               description={`Payment for: ${workRequestTitle}`}
               metadata={{
                 work_request_id: workRequestId.toString(),
