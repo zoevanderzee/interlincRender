@@ -5253,6 +5253,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: 'submitted'
       });
 
+      // Create notification for business owner
+      const project = await storage.getProject(workRequest.projectId!);
+      if (project) {
+        await storage.createNotification({
+          userId: project.businessId,
+          type: 'work_submitted',
+          message: `${workRequest.title} has been submitted by contractor`,
+          relatedId: workRequestId,
+          relatedType: 'work_request'
+        });
+      }
+
       const message = submission.version === 1 ? 'Submission recorded' : 'Resubmission recorded';
       res.status(201).json({message, submission});
 
