@@ -15,7 +15,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle2, XCircle, FileText, Link, Download, Loader2 } from "lucide-react";
+import { CheckCircle2, XCircle, FileText, Link, Download, Loader2, CreditCard } from "lucide-react";
+import { StripeElements } from "@/components/payments/StripeElements";
 
 interface ReviewWorkRequestModalProps {
   isOpen: boolean;
@@ -33,6 +34,8 @@ export function ReviewWorkRequestModal({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [reviewNotes, setReviewNotes] = useState("");
+  const [showStripeForm, setShowStripeForm] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   // Fetch the latest submission
   const { data: submissionData, isLoading } = useQuery({
@@ -40,10 +43,17 @@ export function ReviewWorkRequestModal({
     enabled: isOpen && !!workRequestId,
   });
 
+  // Fetch work request details to get amount and contractor info
+  const { data: workRequestData } = useQuery({
+    queryKey: [`/api/work-requests/${workRequestId}`],
+    enabled: isOpen && !!workRequestId,
+  });
+
   const submission = submissionData?.submission;
+  const workRequest = workRequestData?.workRequest;
 
   const reviewMutation = useMutation({
-    mutationFn: async (data: { action: 'approve' | 'reject'; reviewNotes?: string }) => {
+    mutationFn: async (data: { action: 'reject'; reviewNotes?: string }) => {
       const response = await apiRequest(
         "POST",
         `/api/work-requests/${workRequestId}/submissions/${submission.id}/review`,
@@ -57,12 +67,10 @@ export function ReviewWorkRequestModal({
 
       return response.json();
     },
-    onSuccess: (data, variables) => {
+    onSuccess: () => {
       toast({
-        title: variables.action === 'approve' ? "Work Approved" : "Work Rejected",
-        description: variables.action === 'approve' 
-          ? "Payment has been processed and contractor notified."
-          : "Contractor has been notified of the rejection.",
+        title: "Work Rejected",
+        description: "Contractor has been notified of the rejection.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/work-requests"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
@@ -81,7 +89,8 @@ export function ReviewWorkRequestModal({
   });
 
   const handleApprove = () => {
-    reviewMutation.mutate({ action: 'approve', reviewNotes });
+    // Show Stripe payment form instead of immediately processing
+    setShowStripeForm(true);
   };
 
   const handleReject = () => {
@@ -95,6 +104,123 @@ export function ReviewWorkRequestModal({
     }
     reviewMutation.mutate({ action: 'reject', reviewNotes });
   };
+
+  const handlePaymentComplete = async (paymentIntentId: string) => {
+    console.log('Payment completed with intent ID:', paymentIntentId);
+
+    // Now mark the submission as approved
+    try {
+      const response = await apiRequest(
+        "POST",
+        `/api/work-requests/${workRequestId}/submissions/${submission.id}/approve-after-payment`,
+        { paymentIntentId, reviewNotes }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to approve submission after payment');
+      }
+
+      setPaymentSuccess(true);
+      toast({
+        title: 'Payment Successful',
+        description: `Work approved and payment sent to contractor`,
+      });
+
+      // Invalidate queries
+      queryClient.invalidateQueries({ queryKey: ["/api/work-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications/count"] });
+
+      // Close modal after short delay
+      setTimeout(() => {
+        onClose();
+        setShowStripeForm(false);
+        setPaymentSuccess(false);
+      }, 2000);
+
+    } catch (error) {
+      console.error('Error approving after payment:', error);
+      toast({
+        title: 'Error',
+        description: 'Payment successful but failed to update submission status',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Show payment success screen
+  if (paymentSuccess) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-md">
+          <div className="text-center py-6">
+            <CheckCircle2 className="h-12 w-12 text-green-600 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold mb-2">Payment Successful</h2>
+            <p className="text-muted-foreground mb-4">
+              Work approved and payment sent to contractor
+            </p>
+            {workRequest && (
+              <div className="space-y-2">
+                <p className="text-2xl font-bold">£{workRequest.budget}</p>
+                <p className="text-sm text-muted-foreground">
+                  {workRequestTitle}
+                </p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Show Stripe payment form
+  if (showStripeForm && workRequest) {
+    return (
+      <Dialog open={isOpen} onOpenChange={() => {
+        setShowStripeForm(false);
+        onClose();
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              Complete Payment
+            </DialogTitle>
+            <DialogDescription>
+              Enter your payment details to approve and pay for this work
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="bg-muted p-4 rounded-lg">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm text-muted-foreground">Amount:</span>
+                <span className="text-2xl font-bold">£{workRequest.budget}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Task:</span>
+                <span className="text-sm font-medium">{workRequestTitle}</span>
+              </div>
+            </div>
+
+            <StripeElements
+              amount={parseFloat(workRequest.budget.toString())}
+              currency="gbp"
+              description={`Payment for: ${workRequestTitle}`}
+              metadata={{
+                work_request_id: workRequestId.toString(),
+                submission_id: submission.id.toString(),
+              }}
+              contractorId={workRequest.contractorUserId}
+              onPaymentComplete={handlePaymentComplete}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -250,20 +376,11 @@ export function ReviewWorkRequestModal({
             </Button>
             <Button
               onClick={handleApprove}
-              disabled={reviewMutation.isPending}
+              disabled={!workRequest}
               data-testid="button-approve"
             >
-              {reviewMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="mr-2 h-4 w-4" />
-                  Approve & Pay
-                </>
-              )}
+              <CreditCard className="mr-2 h-4 w-4" />
+              Approve & Pay
             </Button>
           </DialogFooter>
         )}
