@@ -5236,26 +5236,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({message: 'Work request must be accepted before submitting'});
       }
 
-      // Get the project to find the business ID
-      const project = await storage.getProject(workRequest.projectId!);
-      if (!project) {
-        return res.status(404).json({message: 'Associated project not found'});
-      }
-
-      // Calculate next version number
-      const existingSubmissions = await storage.getWorkRequestSubmissionsByWorkRequestId(workRequestId);
-      const nextVersion = (existingSubmissions.length > 0) 
-        ? Math.max(...existingSubmissions.map(s => s.version)) + 1 
-        : 1;
-
-      // Validate payload
-      const payload = insertWorkRequestSubmissionSchema.parse({
+      // Create the submission (storage will backfill required fields)
+      const submission = await storage.createWorkRequestSubmission({
         workRequestId,
-        contractorId: workRequest.contractorUserId,
-        businessId: project.businessId,
-        title: workRequest.title,
-        description: workRequest.description,
-        version: nextVersion,
         submittedBy: userId,
         notes: req.body.notes,
         artifactUrl: req.body.artifactUrl,
@@ -5265,15 +5248,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: 'submitted'
       });
 
-      // Create the submission
-      const submission = await storage.createWorkRequestSubmission(payload);
-
       // Update work request status to 'submitted'
       await storage.updateWorkRequest(workRequestId, {
         status: 'submitted'
       });
 
-      const message = nextVersion === 1 ? 'Submission recorded' : 'Resubmission recorded';
+      const message = submission.version === 1 ? 'Submission recorded' : 'Resubmission recorded';
       res.status(201).json({message, submission});
 
     } catch (error) {
