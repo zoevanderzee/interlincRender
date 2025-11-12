@@ -3792,16 +3792,62 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Work Request Submissions
-  async createWorkRequestSubmission(submission: InsertWorkRequestSubmission): Promise<WorkRequestSubmission> {
-    const [created] = await db
-      .insert(workRequestSubmissions)
-      .values({
-        ...submission,
-        submittedAt: new Date()
-      })
-      .returning();
+  async createWorkRequestSubmission(submission: any): Promise<WorkRequestSubmission> {
+    // Backfill required fields from work_requests and projects
+    const wrQuery = await db.execute(sql`
+      SELECT wr.*, pr.business_id AS project_business_id
+      FROM work_requests wr
+      LEFT JOIN projects pr ON pr.id = wr.project_id
+      WHERE wr.id = ${submission.workRequestId}
+    `);
+    
+    const wr = wrQuery.rows[0] as any;
+    if (!wr) throw new Error(`Work request ${submission.workRequestId} not found`);
 
-    return created;
+    const contractorId = wr.contractor_user_id;
+    const businessId = wr.business_id || wr.project_business_id;
+    const title = wr.title;
+    const description = wr.description || '';
+
+    if (!contractorId) throw new Error(`WR ${submission.workRequestId} missing contractor`);
+    if (!businessId) throw new Error(`WR ${submission.workRequestId} missing business`);
+    if (!title) throw new Error(`WR ${submission.workRequestId} missing title`);
+
+    // Calculate next version
+    const versionQuery = await db.execute(sql`
+      SELECT COALESCE(MAX(version), 0) + 1 AS next_version
+      FROM work_request_submissions
+      WHERE work_request_id = ${submission.workRequestId}
+    `);
+    const nextVersion = Number(versionQuery.rows[0]?.next_version) || 1;
+
+    // Log final payload for debugging
+    console.log('STORAGE INSERT PAYLOAD:', {
+      work_request_id: submission.workRequestId,
+      submitted_by: submission.submittedBy,
+      contractor_id: contractorId,
+      business_id: businessId,
+      title,
+      description,
+      version: nextVersion
+    });
+
+    // Insert with all required fields
+    const insertQuery = await db.execute(sql`
+      INSERT INTO work_request_submissions
+        (work_request_id, submitted_by, contractor_id, business_id, title, description,
+         notes, artifact_url, deliverable_files, deliverable_description,
+         submission_type, status, version, submitted_at, created_at, updated_at)
+      VALUES
+        (${submission.workRequestId}, ${submission.submittedBy}, ${contractorId}, ${businessId},
+         ${title}, ${description}, ${submission.notes || null}, ${submission.artifactUrl || null},
+         ${submission.deliverableFiles ? JSON.stringify(submission.deliverableFiles) : null},
+         ${submission.deliverableDescription || null}, ${submission.submissionType || 'digital'},
+         ${submission.status || 'submitted'}, ${nextVersion}, NOW(), NOW(), NOW())
+      RETURNING *
+    `);
+
+    return insertQuery.rows[0] as WorkRequestSubmission;
   }
 
   async getWorkRequestSubmission(id: number): Promise<WorkRequestSubmission | undefined> {
