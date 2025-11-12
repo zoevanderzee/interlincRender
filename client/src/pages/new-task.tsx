@@ -9,17 +9,24 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, CalendarIcon } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { MoodBoardUploader } from "@/components/MoodBoardUploader";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 const taskFormSchema = z.object({
   name: z.string().min(1, "Task name is required"),
   description: z.string().optional(),
   budget: z.string().min(1, "Budget is required").refine((val) => !isNaN(parseFloat(val)), {
     message: "Budget must be a valid number",
+  }),
+  dueDate: z.date({
+    required_error: "Please select a due date",
   }),
   contractorUserId: z.number().min(1, "Please select a contractor"),
   moodboard: z.object({
@@ -53,6 +60,7 @@ function NewTaskContent() {
       name: "",
       description: "",
       budget: "",
+      dueDate: undefined,
       contractorUserId: 0,
       moodboard: {
         files: [],
@@ -120,7 +128,7 @@ function NewTaskContent() {
         contractorId: data.contractorUserId,
         amount: data.budget,
         currency: "USD",
-        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        dueDate: data.dueDate.toISOString().split('T')[0],
         status: "open"
       });
 
@@ -138,7 +146,7 @@ function NewTaskContent() {
         title: data.name,
         description: data.description,
         deliverableDescription: data.description,
-        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        dueDate: data.dueDate.toISOString().split('T')[0],
         amount: parseFloat(data.budget),
         currency: "USD"
       });
@@ -319,6 +327,50 @@ function NewTaskContent() {
                           {...field} 
                         />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="dueDate"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel className="text-white">Due Date</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full pl-3 text-left font-normal bg-slate-900 border-slate-600 text-white hover:bg-slate-800 hover:text-white",
+                                !field.value && "text-muted-foreground"
+                              )}
+                              data-testid="input-due-date"
+                            >
+                              {field.value ? (
+                                format(field.value, "PPP")
+                              ) : (
+                                <span>Pick a due date</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0 bg-slate-900 border-slate-600" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            disabled={(date) =>
+                              date < new Date(new Date().setHours(0, 0, 0, 0))
+                            }
+                            initialFocus
+                            className="bg-slate-900 text-white"
+                          />
+                        </PopoverContent>
+                      </Popover>
                       <FormMessage />
                     </FormItem>
                   )}
