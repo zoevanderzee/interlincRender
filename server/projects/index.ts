@@ -173,13 +173,13 @@ export function registerProjectRoutes(app: Express) {
         dueDate,
         amount: amount.toString(),
         currency: currency || "USD",
-        status: "assigned"
+        status: "pending"
       });
 
       res.json({
         ok: true,
         workRequestId: workRequest.id,
-        status: "assigned"
+        status: "pending"
       });
 
     } catch (error) {
@@ -215,8 +215,8 @@ export function registerProjectRoutes(app: Express) {
         });
       }
 
-      // Transition status: assigned|in_review → approved
-      if (!["assigned", "in_review"].includes(workRequest.status)) {
+      // Transition status: submitted|in_review → approved
+      if (!["submitted", "in_review"].includes(workRequest.status)) {
         return res.status(400).json({
           ok: false,
           message: `Cannot approve work request with status: ${workRequest.status}`
@@ -461,8 +461,8 @@ export function registerProjectRoutes(app: Express) {
         });
       }
 
-      // Only allow declining "assigned" or "accepted" work requests
-      if (!["assigned", "accepted"].includes(workRequest.status)) {
+      // Only allow declining "pending" or "accepted" work requests
+      if (!["pending", "accepted"].includes(workRequest.status)) {
         return res.status(400).json({
           ok: false,
           message: `Cannot decline work request with status: ${workRequest.status}`

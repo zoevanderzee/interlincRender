@@ -303,7 +303,7 @@ export const workRequests = pgTable("work_requests", {
   dueDate: timestamp("due_date"),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   currency: text("currency").notNull().default("USD"),
-  status: text("status").notNull().default("pending"), // pending, assigned, in_review, approved, paid, canceled, declined
+  status: text("status").notNull().default("pending"), // pending, accepted, submitted, in_review, approved, paid, canceled, declined
   acceptedAt: timestamp("accepted_at"),
   declinedAt: timestamp("declined_at"),
   createdAt: timestamp("created_at").defaultNow(),

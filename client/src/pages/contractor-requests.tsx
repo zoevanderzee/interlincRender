@@ -49,7 +49,7 @@ const ContractorRequests = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const [, navigate] = useLocation();
-  const [filterStatus, setFilterStatus] = useState<string>("assigned");
+  const [filterStatus, setFilterStatus] = useState<string>("pending");
 
   // Only show requests that match the contractor's user ID
   const { data: workRequests = [], isLoading } = useQuery<WorkRequest[]>({
@@ -212,15 +212,6 @@ const ContractorRequests = () => {
         </div>
 
         <div className="mt-4 md:mt-0 flex space-x-2">
-          <Button 
-            variant={filterStatus === "assigned" ? "default" : "outline"} 
-            onClick={() => setFilterStatus("assigned")}
-            className="border-zinc-700"
-          >
-            <Clock size={16} className="mr-2" />
-            Assigned
-          </Button>
-
           <Button 
             variant={filterStatus === "pending" ? "default" : "outline"} 
             onClick={() => setFilterStatus("pending")}
