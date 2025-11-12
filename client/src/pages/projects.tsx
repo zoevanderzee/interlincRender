@@ -9,7 +9,7 @@ import { useLocation } from "wouter";
 import { SubmitWorkModal } from "@/components/SubmitWorkModal";
 import { ReviewWorkRequestModal } from "@/components/ReviewWorkRequestModal";
 import { useIntegratedData } from "@/hooks/use-integrated-data";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatMultiCurrencyTotal } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 
 
@@ -94,7 +94,10 @@ export default function Projects() {
                 <div>
                   <p className="text-sm text-gray-400">Total Value</p>
                   <p className="text-3xl font-bold text-white">
-                    {formatCurrency(activeAssignments.reduce((sum: number, req: any) => sum + parseFloat(req.amount || 0), 0))}
+                    {formatMultiCurrencyTotal(activeAssignments.map((req: any) => ({
+                      amount: req.amount || 0,
+                      currency: req.currency || 'USD'
+                    })))}
                   </p>
                 </div>
                 <DollarSign className="h-8 w-8 text-green-500" />
@@ -158,7 +161,7 @@ export default function Projects() {
                     <div className="flex items-center space-x-4">
                       <div className="flex items-center text-gray-400">
                         <DollarSign className="mr-1 h-4 w-4" />
-                        <span>{formatCurrency(assignment.amount || 0)}</span>
+                        <span>{formatCurrency(assignment.amount || 0, assignment.currency || 'USD')}</span>
                       </div>
                       {assignment.dueDate && (
                         <div className="flex items-center text-gray-400">
@@ -326,7 +329,7 @@ export default function Projects() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-400">Total Value</p>
-                <p className="text-3xl font-bold text-white">{formatCurrency(totalValue)}</p>
+                <p className="text-3xl font-bold text-white">{formatCurrency(totalValue, 'GBP')}</p>
               </div>
               <DollarSign className="h-8 w-8 text-yellow-500" />
             </div>
@@ -368,7 +371,7 @@ export default function Projects() {
                     <div className="space-y-2">
                       <div className="flex items-center text-gray-400">
                         <DollarSign className="mr-1 h-4 w-4" />
-                        <span>Budget: {formatCurrency(project.budget || 0)}</span>
+                        <span>Budget: {formatCurrency(project.budget || 0, 'GBP')}</span>
                       </div>
                       {project.createdAt && (
                         <div className="flex items-center text-gray-400">
@@ -390,7 +393,7 @@ export default function Projects() {
                           </div>
                           <div className="flex items-center text-gray-400">
                             <TrendingUp className="mr-1 h-4 w-4" />
-                            <span>Total allocated: {formatCurrency(projectContracts.reduce((sum: number, contract: any) => sum + parseFloat(contract.value || 0), 0))}</span>
+                            <span>Total allocated: {formatCurrency(projectContracts.reduce((sum: number, contract: any) => sum + parseFloat(contract.value || 0), 0), 'GBP')}</span>
                           </div>
                         </>
                       )}
@@ -554,7 +557,10 @@ export default function Projects() {
                           <div>
                             <p className="text-sm text-gray-400">Total Task Value</p>
                             <p className="text-3xl font-bold text-white">
-                              {formatCurrency(taskWorkRequests.reduce((sum: number, wr: any) => sum + parseFloat(wr.amount || 0), 0))}
+                              {formatMultiCurrencyTotal(taskWorkRequests.map((wr: any) => ({
+                                amount: wr.amount || 0,
+                                currency: wr.currency || 'USD'
+                              })))}
                             </p>
                           </div>
                           <DollarSign className="h-8 w-8 text-yellow-500" />
@@ -631,7 +637,7 @@ export default function Projects() {
                             <div className="flex items-center space-x-4">
                               <div className="flex items-center text-gray-400">
                                 <DollarSign className="mr-1 h-4 w-4" />
-                                <span>{formatCurrency(task.amount || 0)}</span>
+                                <span>{formatCurrency(task.amount || 0, task.currency || 'USD')}</span>
                               </div>
                               {task.dueDate && (
                                 <div className="flex items-center text-gray-400">

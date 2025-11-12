@@ -17,6 +17,7 @@ import { Clock, CheckCircle, XCircle, Calendar } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatDistanceToNow, format } from "date-fns";
 import { useLocation } from "wouter";
+import { formatCurrency } from "@/lib/utils";
 
 // Define the work request type - updated to match new schema
 interface WorkRequest {
@@ -291,13 +292,13 @@ const ContractorRequests = () => {
                     </TableCell>
                     <TableCell className="text-white">
                       {request.amount ? (
-                        <div>${parseFloat(request.amount).toLocaleString()} {request.currency || 'USD'}</div>
+                        <div>{formatCurrency(request.amount, request.currency || 'USD')}</div>
                       ) : request.budgetMin && request.budgetMax && request.budgetMin === request.budgetMax ? (
-                        <div>${request.budgetMin.toLocaleString()}</div>
+                        <div>{formatCurrency(request.budgetMin, request.currency || 'USD')}</div>
                       ) : (
                         <div>
                           {request.budgetMin && request.budgetMax ? (
-                            <div>${request.budgetMin.toLocaleString()} - ${request.budgetMax.toLocaleString()}</div>
+                            <div>{formatCurrency(request.budgetMin, request.currency || 'USD')} - {formatCurrency(request.budgetMax, request.currency || 'USD')}</div>
                           ) : (
                             <div>Not specified</div>
                           )}
