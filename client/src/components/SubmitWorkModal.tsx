@@ -70,8 +70,12 @@ export function SubmitWorkModal({
         title: "Work Submitted",
         description: "Your deliverable has been submitted for approval.",
       });
+      // Invalidate all relevant queries to ensure UI updates
       queryClient.invalidateQueries({ queryKey: ["/api/work-requests"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications/count"] });
       onClose();
     },
     onError: (error: any) => {

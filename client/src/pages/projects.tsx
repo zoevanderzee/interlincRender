@@ -646,29 +646,18 @@ export default function Projects() {
                                 </div>
                               )}
                             </div>
-                            {task.status === 'submitted' ? (
-                              <Button 
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedWorkRequest(task);
-                                  setReviewModalOpen(true);
-                                }}
-                                className="bg-green-600 hover:bg-green-700"
-                                data-testid={`button-review-${task.id}`}
-                              >
-                                <Eye className="mr-2 h-4 w-4" />
-                                Review
-                              </Button>
-                            ) : (
-                              <Button 
-                                size="sm"
-                                onClick={() => navigate(`/project/${task.projectId}`)}
-                                className="bg-blue-600 hover:bg-blue-700 text-white"
-                                data-testid={`button-view-details-${task.id}`}
-                              >
-                                View Details
-                              </Button>
-                            )}
+                            <Button 
+                              size="sm"
+                              onClick={() => {
+                                setSelectedWorkRequest(task);
+                                setReviewModalOpen(true);
+                              }}
+                              className={task.status === 'submitted' ? "bg-green-600 hover:bg-green-700" : "bg-blue-600 hover:bg-blue-700 text-white"}
+                              data-testid={task.status === 'submitted' ? `button-review-${task.id}` : `button-view-details-${task.id}`}
+                            >
+                              <Eye className="mr-2 h-4 w-4" />
+                              {task.status === 'submitted' ? 'Review' : 'View Details'}
+                            </Button>
                           </div>
                         </CardContent>
                       </Card>
