@@ -1,0 +1,105 @@
+Got it. The logs prove the route is still reaching DatabaseStorage.createWorkRequestSubmission (storage.ts:3796) and that function is inserting NULLs for the required columns. So even if the route builds the right payload, the storage layer is dropping/ignoring them.
+Here’s a surgical fix that makes submissions work even if the route forgets—by backfilling inside storage.ts right before the insert.
+One-file hotfix (storage.ts @ ~3796)
+Replace your createWorkRequestSubmission with this (snake_case insert + backfill guard + no stripping):
+// storage.ts
+
+type WRSubmissionInput = {
+  work_request_id: number;
+  submitted_by: number;
+  contractor_id?: number | null;
+  business_id?: number | null;
+  title?: string | null;
+  description?: string | null;
+  message?: string | null;
+  artifact_url?: string | null;
+  files?: any[];
+  links?: string[];
+  status?: 'submitted' | 'approved' | 'rejected';
+};
+
+export async function createWorkRequestSubmission(p: WRSubmissionInput) {
+  // 🔎 If any required fields are missing, backfill from the WR (and project)
+  const wr = await db.query(/*sql*/`
+    SELECT wr.*, pr.business_id AS project_business_id
+    FROM work_requests wr
+    LEFT JOIN projects pr ON pr.id = wr.project_id
+    WHERE wr.id = $1
+  `, [p.work_request_id]).then(r => r.rows[0]);
+
+  if (!wr) throw new Error(`Work request ${p.work_request_id} not found`);
+
+  const contractor_id =
+    p.contractor_id ?? wr.assignee_id ?? wr.contractor_user_id;
+  const business_id =
+    p.business_id ?? wr.business_id ?? wr.project_business_id;
+  const title =
+    p.title ?? wr.title;
+  const description =
+    p.description ?? wr.description ?? '';
+
+  // 🚫 Hard guard: fail early with a clear message if still missing
+  if (!contractor_id) throw new Error(`Invariant: contractor_id missing for WR ${p.work_request_id}`);
+  if (!business_id)  throw new Error(`Invariant: business_id missing for WR ${p.work_request_id}`);
+  if (!title)        throw new Error(`Invariant: title missing for WR ${p.work_request_id}`);
+
+  const message = p.message ?? null;
+  const artifact_url = p.artifact_url ?? null;
+  const files = JSON.stringify(p.files ?? []);
+  const links = JSON.stringify(p.links ?? []);
+  const status = p.status ?? 'submitted';
+
+  // 🧪 TEMP logging to verify what reaches the DB
+  console.log('STORAGE FINAL INSERT PAYLOAD', {
+    work_request_id: p.work_request_id,
+    submitted_by: p.submitted_by,
+    contractor_id,
+    business_id,
+    title,
+    description,
+    message,
+    artifact_url,
+    files_len: Array.isArray(p.files) ? p.files.length : 0,
+    links_len: Array.isArray(p.links) ? p.links.length : 0,
+    status
+  });
+
+  const sql = `
+    INSERT INTO work_request_submissions
+      (work_request_id, submitted_by, contractor_id, business_id, title, description,
+       message, artifact_url, files, links, status)
+    VALUES
+      ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10::jsonb,$11)
+    RETURNING *;
+  `;
+  const args = [
+    p.work_request_id,
+    p.submitted_by,
+    contractor_id,
+    business_id,
+    title,
+    description,
+    message,
+    artifact_url,
+    files,
+    links,
+    status
+  ];
+
+  const { rows } = await db.query(sql, args);
+  return rows[0];
+}
+Why this fixes it (even if the route is imperfect)
+It does not re-parse with a schema that might strip fields.
+It backfills contractor/business/title/description directly from the authoritative work_requests (and projects) rows.
+It logs the final values sent to the DB so you can verify contractor_id: 118 etc.
+It hard-fails with a clear error if something is truly missing on the WR.
+Minimal checks (do these once)
+Search for any lingering validation in this function:
+grep for .parse(, .safeParse(, or a schema import used here. Remove or align it.
+Restart the server (full restart, not hot reload).
+Submit again. In logs you should see STORAGE FINAL INSERT PAYLOAD with non-null values and the row should insert.
+Optional (clean-up later)
+Keep your Drizzle model + Zod in sync with the DB (camelCase columns are fine if you use Drizzle for inserts).
+Once you trust the route, you can drop the backfill logic—but keeping it makes the system bullet-proof against future regressions.
+This change localizes the fix at the exact failing point (storage.ts:3796). It will stop the NULLs regardless of route/schema case mismatches and get submissions working now.

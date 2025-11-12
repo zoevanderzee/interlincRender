@@ -1,0 +1,94 @@
+Replace the storage function (single source of truth)
+// server/storage.ts
+
+type WRSubmissionInput = {
+  work_request_id: number;
+  submitted_by: number;
+  message?: string | null;
+  artifact_url?: string | null;
+  files?: any[];
+  links?: string[];
+  status?: 'submitted' | 'approved' | 'rejected';
+};
+
+export async function createWorkRequestSubmission(p: WRSubmissionInput) {
+  // 1) Backfill from authoritative rows
+  const wr = await db.query(`
+    SELECT wr.*, pr.business_id AS project_business_id
+    FROM work_requests wr
+    LEFT JOIN projects pr ON pr.id = wr.project_id
+    WHERE wr.id = $1
+  `, [p.work_request_id]).then(r => r.rows[0]);
+  if (!wr) throw new Error(`WR ${p.work_request_id} not found`);
+
+  const contractor_id = wr.assignee_id ?? wr.contractor_user_id;
+  const business_id   = wr.business_id ?? wr.project_business_id;
+  const title         = wr.title;
+  const description   = wr.description ?? '';
+
+  if (!contractor_id) throw new Error(`WR ${p.work_request_id} missing contractor`);
+  if (!business_id)   throw new Error(`WR ${p.work_request_id} missing business`);
+  if (!title)         throw new Error(`WR ${p.work_request_id} missing title`);
+
+  // 2) Next version
+  const v = await db.query(
+    `SELECT COALESCE(MAX(version),0)+1 AS v FROM work_request_submissions WHERE work_request_id=$1`,
+    [p.work_request_id]
+  ).then(r => Number(r.rows[0].v) || 1);
+
+  // 3) Final insert (snake_case, no schema stripping)
+  const args = [
+    p.work_request_id,
+    p.submitted_by,
+    contractor_id,
+    business_id,
+    title,
+    description,
+    p.message ?? null,
+    p.artifact_url ?? null,
+    JSON.stringify(p.files ?? []),
+    JSON.stringify(p.links ?? []),
+    p.status ?? 'submitted',
+    v
+  ];
+
+  console.log('STORAGE INSERT (sanity):', {
+    work_request_id: args[0], submitted_by: args[1],
+    contractor_id: args[2], business_id: args[3],
+    title: args[4], description: args[5], version: args[11]
+  });
+
+  const { rows } = await db.query(`
+    INSERT INTO work_request_submissions
+      (work_request_id, submitted_by, contractor_id, business_id, title, description,
+       message, artifact_url, files, links, status, version, created_at, updated_at)
+    VALUES
+      ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10::jsonb,$11,$12, now(), now())
+    RETURNING *;
+  `, args);
+
+  // Update WR status
+  await db.query(`UPDATE work_requests SET status='submitted', updated_at=now() WHERE id=$1`, [p.work_request_id]);
+
+  return rows[0];
+}
+Important clean-ups (do these so it actually takes effect)
+Delete/disable any other createWorkRequestSubmission in the repo. There must be one.
+Remove Zod parses in storage (this function must not re-parse/strip).
+Ensure the route calls this function and passes only:
+await createWorkRequestSubmission({
+  work_request_id: wr.id,
+  submitted_by: req.user?.id ?? Number(req.headers['x-user-id']),
+  message: req.body?.notes ?? null,
+  artifact_url: req.body?.artifactUrl ?? null,
+  files: req.body?.files ?? req.body?.metadata?.files ?? [],
+  links: req.body?.links ?? req.body?.metadata?.links ?? [],
+});
+Hard restart the server/build (kill process, clear dist, rebuild, start).
+Smoke test (confirms fix end-to-end)
+curl -i -X POST http://localhost:3000/api/work-requests/33/submissions \
+  -H 'Content-Type: application/json' -H 'X-User-ID: 118' \
+  -d '{"notes":"v1","artifactUrl":"https://example.com/a.pdf"}'
+Expect 201. Your logs should show:
+STORAGE INSERT (sanity): { contractor_id: 118, business_id: ..., title: '...', version: ... }
+If after this you still see NULLs, it means your request is not hitting this function (wrong import / old build / different code path). In that case, grep for createWorkRequestSubmission( and remove the duplicates; then restart.
