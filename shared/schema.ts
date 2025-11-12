@@ -57,7 +57,9 @@ export const users = pgTable("users", {
   emailVerified: boolean("email_verified").default(false), // Whether user's email is verified
   emailVerificationToken: text("email_verification_token"), // Token for email verification
   emailVerificationExpires: timestamp("email_verification_expires"), // Expiration time for email verification token
-  firebaseUid: text("firebase_uid") // Firebase user ID for linking accounts
+  firebaseUid: text("firebase_uid"), // Firebase user ID for linking accounts
+  country: text("country"), // User's country (ISO 3166-1 alpha-2 code, e.g., 'GB', 'US', 'DE')
+  currency: text("currency") // User's currency (ISO 4217 code, e.g., 'GBP', 'USD', 'EUR')
 });
 
 // Project Invites table
@@ -420,6 +422,8 @@ export const insertUserSchema = z.object({
   emailVerificationToken: z.string().optional(),
   emailVerificationExpires: z.date().optional(),
   firebaseUid: z.string().optional(),
+  country: z.string().optional(),
+  currency: z.string().optional(),
 });
 export const insertInviteSchema = z.object({
   email: z.string().email(),

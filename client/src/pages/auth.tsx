@@ -31,6 +31,7 @@ import SubscriptionForm from "@/components/SubscriptionForm";
 import Logo from "@assets/CD_icon_light@2x.png";
 import { signUpUser, loginUser } from "@/lib/firebase-auth";
 import { requiresSubscription } from "@/lib/subscription-utils";
+import { SUPPORTED_COUNTRIES, getCurrencyForCountry } from "@shared/countries";
 
 export default function AuthPage() {
   console.log("AuthPage component rendering");
@@ -207,6 +208,8 @@ export default function AuthPage() {
     workerType: "", // Will be set from invite data
     company: "",
     position: "",
+    country: "", // Business country (ISO code)
+    currency: "", // Business currency (ISO code)
     inviteId: inviteId || undefined,
     // New fields for business invites
     businessToken: businessToken || null,
@@ -427,6 +430,14 @@ export default function AuthPage() {
 
     if (registerForm.role === "business" && !registerForm.company.trim()) {
       errors.company = "Company name is required for business accounts";
+    }
+
+    if (registerForm.role === "business" && !registerForm.country) {
+      errors.country = "Country is required for business accounts";
+    }
+
+    if (registerForm.role === "business" && !registerForm.currency) {
+      errors.currency = "Currency is required for business accounts";
     }
 
     setRegisterErrors(errors);
@@ -1162,20 +1173,68 @@ export default function AuthPage() {
                     </div>
 
                     {registerForm.role === "business" && (
-                      <div className="space-y-2">
-                        <Label htmlFor="company" className="text-white font-semibold">Company Name</Label>
-                        <Input
-                          id="company"
-                          name="company"
-                          placeholder="Acme Inc."
-                          value={registerForm.company}
-                          onChange={handleRegisterChange}
-                          className="!bg-[#0f1f3a] border-[#6b9aff]/30 text-white placeholder:text-zinc-500 focus:border-[#6b9aff] focus:!bg-[#1a2b4a]"
-                        />
-                        {registerErrors.company && (
-                          <p className="text-sm text-red-400 mt-1">{registerErrors.company}</p>
+                      <>
+                        <div className="space-y-2">
+                          <Label htmlFor="company" className="text-white font-semibold">Company Name</Label>
+                          <Input
+                            id="company"
+                            name="company"
+                            placeholder="Acme Inc."
+                            value={registerForm.company}
+                            onChange={handleRegisterChange}
+                            className="!bg-[#0f1f3a] border-[#6b9aff]/30 text-white placeholder:text-zinc-500 focus:border-[#6b9aff] focus:!bg-[#1a2b4a]"
+                          />
+                          {registerErrors.company && (
+                            <p className="text-sm text-red-400 mt-1">{registerErrors.company}</p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="country" className="text-white font-semibold">Country</Label>
+                          <Select
+                            value={registerForm.country}
+                            onValueChange={(value) => {
+                              setRegisterForm(prev => ({
+                                ...prev,
+                                country: value,
+                                currency: getCurrencyForCountry(value)
+                              }));
+                            }}
+                          >
+                            <SelectTrigger 
+                              id="country"
+                              className="!bg-[#0f1f3a] border-[#6b9aff]/30 text-white focus:border-[#6b9aff] focus:!bg-[#1a2b4a]"
+                            >
+                              <SelectValue placeholder="Select your country" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-[#0f1f3a] border-[#6b9aff]/30 text-white max-h-[300px]">
+                              {SUPPORTED_COUNTRIES.map((country) => (
+                                <SelectItem 
+                                  key={country.code} 
+                                  value={country.code}
+                                  className="focus:bg-[#1a2b4a] focus:text-white"
+                                >
+                                  {country.name} ({country.currency})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {registerErrors.country && (
+                            <p className="text-sm text-red-400 mt-1">{registerErrors.country}</p>
+                          )}
+                        </div>
+
+                        {registerForm.country && (
+                          <div className="bg-[#1a2b4a]/50 border border-[#6b9aff]/20 rounded-md p-3">
+                            <p className="text-sm text-zinc-300">
+                              Currency: <span className="font-semibold text-white">{registerForm.currency}</span>
+                            </p>
+                            <p className="text-xs text-zinc-400 mt-1">
+                              All payments will be processed in {registerForm.currency}
+                            </p>
+                          </div>
                         )}
-                      </div>
+                      </>
                     )}
 
                     <div className="space-y-2">
