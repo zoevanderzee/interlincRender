@@ -1,0 +1,95 @@
+You’re very close. The last blocker is almost certainly a case mismatch + double-validation issue:
+You added camelCase fields in insertWorkRequestSubmissionSchema (contractorId, businessId, title, description).
+Your DB insert (and likely the storage schema) expects snake_case (contractor_id, business_id, …).
+Zod .parse() in the storage layer is stripping the snake_case fields because they aren’t in its schema, so they hit the DB as NULL.
+Fix it decisively (two tiny changes)
+1) In the route, build a snake_case payload and validate that exact object.
+Do not validate req.body and then reshape; validate the final object you’ll insert.
+// routes.ts (POST /api/work-requests/:id/submissions)
+import { z } from "zod";
+
+const InsertWRSubmissionServer = z.object({
+  work_request_id: z.number().int(),
+  submitted_by: z.number().int(),
+  contractor_id: z.number().int(),
+  business_id: z.number().int(),
+  title: z.string().min(1),
+  description: z.string().default(''),
+  message: z.string().nullable().optional(),
+  artifact_url: z.string().url().nullable().optional(),
+  files: z.array(z.any()).default([]),
+  links: z.array(z.string().url()).default([]),
+  status: z.enum(['submitted','approved','rejected']).default('submitted'),
+}).strict();
+
+const payloadServer = {
+  work_request_id: workRequest.id,
+  submitted_by: req.user?.id ?? Number(req.headers['x-user-id']),
+  contractor_id: workRequest.assigneeId ?? workRequest.contractorUserId,
+  business_id: workRequest.businessId ?? project?.businessId,
+  title: workRequest.title,
+  description: workRequest.description ?? '',
+  message: req.body?.notes ?? null,
+  artifact_url: req.body?.artifactUrl ?? null,
+  files: req.body?.files ?? req.body?.metadata?.files ?? [],
+  links: req.body?.links ?? req.body?.metadata?.links ?? [],
+  status: 'submitted'
+};
+
+const validated = InsertWRSubmissionServer.parse(payloadServer);
+console.log('FINAL INSERT PAYLOAD', validated); // should show contractor_id=118, etc.
+
+const submission = await storage.createWorkRequestSubmission(validated);
+2) In storage.ts, stop stripping fields.
+Either remove its Zod parse entirely, or make its schema match the same snake_case keys (or at least .passthrough()).
+// storage.ts
+export async function createWorkRequestSubmission(p: {
+  work_request_id: number;
+  submitted_by: number;
+  contractor_id: number;
+  business_id: number;
+  title: string;
+  description: string;
+  message?: string | null;
+  artifact_url?: string | null;
+  files?: any[];
+  links?: string[];
+  status?: 'submitted' | 'approved' | 'rejected';
+}) {
+  // IMPORTANT: do NOT re-parse with a schema that drops fields.
+  // If you must validate here, ensure the schema includes these exact snake_case keys,
+  // or call .passthrough().
+
+  const sql = `
+    INSERT INTO work_request_submissions
+      (work_request_id, submitted_by, contractor_id, business_id, title, description,
+       message, artifact_url, files, links, status)
+    VALUES
+      ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10::jsonb,$11)
+    RETURNING *;
+  `;
+  const args = [
+    p.work_request_id,
+    p.submitted_by,
+    p.contractor_id,
+    p.business_id,
+    p.title,
+    p.description,
+    p.message ?? null,
+    p.artifact_url ?? null,
+    JSON.stringify(p.files ?? []),
+    JSON.stringify(p.links ?? []),
+    p.status ?? 'submitted'
+  ];
+  const { rows } = await db.query(sql, args);
+  return rows[0];
+}
+Quick sanity check (will catch this instantly)
+Submit once and confirm the server log prints:
+FINAL INSERT PAYLOAD { contractor_id: 118, business_id: …, title: '…', description: '…', … }
+If the DB still shows NULLs, it means storage.ts is re-parsing with the old schema. Search for .parse( or .safeParse( in createWorkRequestSubmission and remove/align it.
+Why this will work
+You validate the exact object you insert (snake_case), so nothing gets dropped.
+You prevent a second schema from undoing your fix.
+You can see the final payload in logs before the SQL runs.
+Do the two edits above, redeploy, and it will stop inserting NULLs.

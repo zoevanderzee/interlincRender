@@ -313,16 +313,21 @@ export const workRequests = pgTable("work_requests", {
 export const workRequestSubmissions = pgTable("work_request_submissions", {
   id: serial("id").primaryKey(),
   workRequestId: integer("work_request_id").notNull().references(() => workRequests.id),
+  contractorId: integer("contractor_id").notNull().references(() => users.id),
+  businessId: integer("business_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
   version: integer("version").notNull().default(1), // Submission version (1, 2, 3... for resubmits)
-  submittedBy: integer("submitted_by").notNull().references(() => users.id),
+  submittedBy: integer("submitted_by").references(() => users.id),
   notes: text("notes"), // Contractor's submission notes
   artifactUrl: text("artifact_url"), // URL or external link to deliverable
   deliverableFiles: jsonb("deliverable_files"), // Array of file objects {url, name, type, size}
   deliverableDescription: text("deliverable_description"), // Description for physical work
-  submissionType: text("submission_type").default("digital"), // "digital" or "physical"
+  submissionType: text("submission_type").notNull().default("digital"), // "digital" or "physical"
   status: text("status").notNull().default("submitted"), // submitted, approved, rejected
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  submittedAt: timestamp("submitted_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
   reviewedAt: timestamp("reviewed_at"),
   reviewNotes: text("review_notes"), // Feedback from business owner
   approverId: integer("approver_id").references(() => users.id), // Business user who approved/rejected
