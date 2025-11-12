@@ -655,10 +655,9 @@ export default function Projects() {
                               </Button>
                             ) : (
                               <Button 
-                                variant="outline"
                                 size="sm"
                                 onClick={() => navigate(`/project/${task.projectId}`)}
-                                className="border-gray-700 text-white hover:bg-gray-800"
+                                className="bg-blue-600 hover:bg-blue-700 text-white"
                                 data-testid={`button-view-details-${task.id}`}
                               >
                                 View Details
