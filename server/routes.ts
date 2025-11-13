@@ -4911,11 +4911,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({message: "Work request not found"});
       }
 
-      // Check permissions - only the business that created it, the email recipient, or admin can view
+      // Fetch project to get businessId for authorization
+      let businessId = null;
+      if (workRequest.projectId) {
+        const project = await storage.getProject(workRequest.projectId);
+        if (project) {
+          businessId = project.businessId;
+        }
+      }
+
+      // Check permissions - business owner (via project), assigned contractor, or admin
       const currentUser = req.user;
       if (currentUser && (
-        currentUser.id === workRequest.businessId ||
-        currentUser.email === workRequest.recipientEmail ||
+        businessId === currentUser.id ||
+        workRequest.contractorUserId === currentUser.id ||
         currentUser.role === 'admin'
       )) {
         // Add overdue computation
@@ -4948,9 +4957,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let contractorEmail = null;
         let projectName = null;
 
-        // Get business user info
-        if (workRequest.businessId) {
-          const businessUser = await storage.getUser(workRequest.businessId);
+        // Get business user info (using businessId from project)
+        if (businessId) {
+          const businessUser = await storage.getUser(businessId);
           if (businessUser) {
             businessName = businessUser.companyName || 
               (businessUser.firstName && businessUser.lastName 
@@ -4972,7 +4981,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
 
-        // Get project info if linked
+        // Get project info (already fetched above for authorization)
         if (workRequest.projectId) {
           const project = await storage.getProject(workRequest.projectId);
           if (project) {
