@@ -1,0 +1,65 @@
+You want zero new pages, keep the existing Review modal exactly as it is, and add a second modal for “View description / View details” that shows all the work request info.
+Here’s a verbal prompt you can give the agent that matches that exactly (you can copy-paste this):
+Prompt for the agent (modals only, no pages)
+Important:
+Do not navigate to any new pages for work requests.
+Everything should be handled with modals, like the existing Review Submission modal.
+1. Keep the existing Review modal exactly as it is
+The current “Review Submission: task” modal is perfect (the one with files, version, “Request Changes” and “Approve & Pay” buttons – see screenshot).
+Do not change its design, behavior, or route.
+When I click Review on a work request (in Tasks or in Projects), it should:
+Stay on the same page
+Open the existing Review modal
+NOT navigate to /core/... or show a “Work Request Not Found” page.
+2. Add a new “View Work Request Details” modal
+Create a second modal component for viewing the task details:
+Example name: WorkRequestDetailsModal.
+It must:
+Take a workRequestId as a prop.
+Fetch /api/work-requests/:id (and optionally submissions, but read-only).
+Display all the key info from the original work request form:
+Title / Task name
+Deliverable
+Description
+Budget & currency
+Due date & time
+Requester
+Contractor / Assignee
+Status
+(Optional) a simple list of submissions, if any, with timestamps
+It should look and behave like the Review modal:
+Dark overlay, centered card.
+Close button (X in top-right).
+No project overview, no “container project” header – only work request info.
+3. Wire the buttons to open modals, not pages
+For every work request row / card (in Tasks and under Projects):
+If the work request status is submitted:
+Button label: Review
+On click: open the existing Review modal for that workRequestId.
+Do not change the URL or navigate to a page.
+For all other statuses (pending, accepted/assigned, approved, completed, rejected):
+Button label: View details (or “View description” – whatever we already use).
+On click: open the new WorkRequestDetailsModal for that workRequestId.
+Again: no navigation, no /core/assignments/:id, no “Work Request Not Found” page.
+Implementation detail (for clarity):
+The buttons should just set some local state like:
+setDetailsModal({ open: true, workRequestId: wr.id })
+setReviewModal({ open: true, workRequestId: wr.id })
+The modals read workRequestId from this state, call the API, and render.
+Always use wr.id (the work request ID), not projectId, milestoneId, or submissionId.
+4. Behavior must be identical under Projects and Tasks
+From the Tasks / Assignments area:
+“View details” → opens WorkRequestDetailsModal for that work request.
+“Review” → opens the existing Review modal.
+From the Projects page, in the list of work requests under a project:
+“View details” and “Review” must behave exactly the same:
+open the same modals, using the same workRequestId.
+no project mashup pages.
+5. Acceptance criteria
+Before you say it’s done, check these:
+Clicking Review on any submitted work request opens the existing Review modal with files and approve/reject – no URL change, no 404 page.
+Clicking View details / View description on any work request (in Tasks or Projects):
+Opens a details modal with the full task info.
+Does not show any project overview content.
+Does not navigate to a new page.
+There are no more “Work Request Not Found” pages when using these buttons.

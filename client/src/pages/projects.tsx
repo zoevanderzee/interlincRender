@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { SubmitWorkModal } from "@/components/SubmitWorkModal";
 import { ReviewWorkRequestModal } from "@/components/ReviewWorkRequestModal";
+import { WorkRequestDetailsModal } from "@/components/WorkRequestDetailsModal";
 import { useIntegratedData } from "@/hooks/use-integrated-data";
 import { formatCurrency, formatMultiCurrencyTotal } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -20,6 +21,8 @@ export default function Projects() {
   const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [selectedWorkRequest, setSelectedWorkRequest] = useState<any>(null);
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [selectedDetailsWorkRequest, setSelectedDetailsWorkRequest] = useState<any>(null);
   const { data: integratedData, isLoading } = useIntegratedData();
 
   const isContractor = user?.role === 'contractor';
@@ -662,10 +665,14 @@ export default function Projects() {
                             ) : (
                               <Button 
                                 size="sm"
-                                onClick={() => navigate(`/project/${task.projectId}`)}
+                                onClick={() => {
+                                  setSelectedDetailsWorkRequest(task);
+                                  setDetailsModalOpen(true);
+                                }}
                                 className="bg-blue-600 hover:bg-blue-700 text-white"
                                 data-testid={`button-view-details-${task.id}`}
                               >
+                                <Eye className="mr-2 h-4 w-4" />
                                 View Details
                               </Button>
                             )}
@@ -712,6 +719,18 @@ export default function Projects() {
           }}
           workRequestId={selectedWorkRequest.id}
           workRequestTitle={selectedWorkRequest.title}
+        />
+      )}
+
+      {/* Work Request Details Modal */}
+      {selectedDetailsWorkRequest && (
+        <WorkRequestDetailsModal
+          isOpen={detailsModalOpen}
+          onClose={() => {
+            setDetailsModalOpen(false);
+            setSelectedDetailsWorkRequest(null);
+          }}
+          workRequestId={selectedDetailsWorkRequest.id}
         />
       )}
     </div>

@@ -4941,11 +4941,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
 
+        // Fetch business and contractor user information
+        let businessName = 'Unknown Business';
+        let contractorName = 'Unassigned';
+        let businessEmail = null;
+        let contractorEmail = null;
+        let projectName = null;
+
+        // Get business user info
+        if (workRequest.businessId) {
+          const businessUser = await storage.getUser(workRequest.businessId);
+          if (businessUser) {
+            businessName = businessUser.companyName || 
+              (businessUser.firstName && businessUser.lastName 
+                ? `${businessUser.firstName} ${businessUser.lastName}` 
+                : businessUser.username) || 
+              'Unknown Business';
+            businessEmail = businessUser.email;
+          }
+        }
+
+        // Get contractor user info
+        if (workRequest.contractorUserId) {
+          const contractorUser = await storage.getUser(workRequest.contractorUserId);
+          if (contractorUser) {
+            contractorName = contractorUser.firstName && contractorUser.lastName
+              ? `${contractorUser.firstName} ${contractorUser.lastName}`
+              : contractorUser.username || 'Unassigned';
+            contractorEmail = contractorUser.email;
+          }
+        }
+
+        // Get project info if linked
+        if (workRequest.projectId) {
+          const project = await storage.getProject(workRequest.projectId);
+          if (project) {
+            projectName = project.name;
+          }
+        }
+
         res.json({
           ...workRequest,
           isOverdue,
           daysOverdue: isOverdue ? daysOverdue : null,
-          daysRemaining: !isOverdue && !['completed', 'paid', 'canceled'].includes(workRequest.status) ? daysRemaining : null
+          daysRemaining: !isOverdue && !['completed', 'paid', 'canceled'].includes(workRequest.status) ? daysRemaining : null,
+          businessName,
+          businessEmail,
+          contractorName,
+          contractorEmail,
+          projectName,
         });
       } else {
         res.status(403).json({message: "Unauthorized to access this work request"});

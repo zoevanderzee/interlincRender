@@ -1,0 +1,61 @@
+Prompt for the agent (current state + desired behavior)
+Goal
+Keep all existing logic as it is, especially the “Review Submission” modal for submitted work.
+The only change: add a “View Details” modal for work requests that are not in the “submitted” state, and use it everywhere (inside Tasks and inside Projects).
+Requirements
+Do not change the existing Review modal or any review logic
+The current “Review Submission: task” modal is correct.
+When a work request has submitted work and shows a Review button, that button must continue to open this existing modal exactly as it does today.
+No UI, UX, or backend changes to the review flow.
+Add a new “View Details” modal for work requests
+Create a new modal component for viewing the details of a work request (task). For clarity you can call it something like WorkRequestDetailsModal.
+This modal should:
+Open on top of the current page (like the Review modal).
+Take a workRequestId as input.
+Use the workRequestId to load the work request from the backend (e.g. /api/work-requests/:id).
+Display all key information from the work request form, including at least:
+Task / work request title
+Deliverable name
+Full description
+Budget and currency
+Due date and time
+Status
+Requester (business user)
+Contractor (assigned user)
+Created date
+This modal is read-only: no actions except closing it (and any existing actions we already have that make sense).
+The visual style should match the Review modal (same type of overlay and card style) so it feels consistent.
+Button behavior for each work request
+For every work request (task), whether it appears in Tasks or inside a Project:
+If the work request is in a submitted state (i.e. there is work to review):
+Show a Review button.
+This button should open the existing Review Submission modal for that work request.
+No navigation away from the page.
+For all other states (e.g. pending, accepted/assigned, in progress, approved, completed, rejected):
+Show a View details (or “View description”) button.
+This button should open the new WorkRequestDetailsModal for that work request.
+No navigation away from the page.
+IDs and data sources
+The modals must use the work request ID (workRequest.id) as their identifier.
+Do not use project IDs, submission IDs, milestone IDs, or any other ID when opening these modals.
+When a work request appears under a project, you still use the same work request ID to open the modals.
+Projects vs tasks
+Projects and work requests are different things.
+A project can contain multiple work requests, but multiple work requests do not equal a project.
+The new “View details” modal must show the individual work request information, not a project overview.
+It’s fine to show a small reference like the project name in the modal if needed, but the main content must be the work request itself, not a project page or mashup.
+Behavior must be identical in Tasks and Projects
+In the Tasks / Assignments area:
+For each work request, the buttons behave as above (Review → Review modal, View details → Details modal).
+Inside a Project page, in the list of work requests for that project:
+The same buttons must behave in the exact same way:
+Review opens the existing Review modal.
+View details opens the new Details modal.
+In all cases, no full-page navigation is triggered by these buttons—only modals.
+Acceptance checklist
+Before considering this done, ensure that:
+For a work request with submitted work, clicking Review opens the existing Review Submission modal, with all current functionality intact.
+For any non-submitted work request (in Tasks or Projects), clicking View details / View description opens the new WorkRequestDetailsModal showing the full work request information.
+The same work request behaves identically whether viewed in Tasks or under a Project.
+No project overview or “mashup” page is shown from these buttons, and there is no navigation to other pages when clicking Review or View details.
+That’s the full spec of what it should be and what it needs to become, without touching anything else.

@@ -13,11 +13,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Clock, CheckCircle, XCircle, Calendar } from "lucide-react";
+import { Clock, CheckCircle, XCircle, Calendar, Eye } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatDistanceToNow, format } from "date-fns";
 import { useLocation } from "wouter";
 import { formatCurrency } from "@/lib/utils";
+import { WorkRequestDetailsModal } from "@/components/WorkRequestDetailsModal";
+import { ReviewWorkRequestModal } from "@/components/ReviewWorkRequestModal";
 
 // Define the work request type - updated to match new schema
 interface WorkRequest {
@@ -51,6 +53,17 @@ const ContractorRequests = () => {
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const [filterStatus, setFilterStatus] = useState<string>("pending");
+  
+  // Modal state
+  const [detailsModal, setDetailsModal] = useState<{ open: boolean; workRequestId: number | null }>({
+    open: false,
+    workRequestId: null,
+  });
+  const [reviewModal, setReviewModal] = useState<{ open: boolean; workRequestId: number | null; title: string }>({
+    open: false,
+    workRequestId: null,
+    title: '',
+  });
 
   // Only show requests that match the contractor's user ID
   const { data: workRequests = [], isLoading } = useQuery<WorkRequest[]>({
@@ -338,43 +351,60 @@ const ContractorRequests = () => {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {(request.status === 'pending' || request.status === 'assigned') && (
-                        <div className="flex space-x-2">
+                      <div className="flex space-x-2">
+                        {/* Show Review button for submitted status */}
+                        {request.status === 'submitted' && (
                           <Button
                             variant="outline"
                             size="sm"
-                            className="border-green-700 text-green-500 hover:bg-green-900 hover:text-green-300"
-                            onClick={() => handleAccept(request.id)}
-                            disabled={acceptMutation.isPending}
+                            className="border-zinc-700 text-zinc-400 hover:bg-zinc-800 hover:text-white"
+                            onClick={() => setReviewModal({ open: true, workRequestId: request.id, title: request.title })}
+                            data-testid={`button-review-${request.id}`}
                           >
-                            <CheckCircle size={16} className="mr-1" />
-                            Accept
+                            Review
                           </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="border-red-700 text-red-500 hover:bg-red-900 hover:text-red-300"
-                            onClick={() => handleDecline(request.id)}
-                            disabled={declineMutation.isPending}
-                          >
-                            <XCircle size={16} className="mr-1" />
-                            Decline
-                          </Button>
-                        </div>
-                      )}
-                      {request.status === 'accepted' && (
+                        )}
+
+                        {/* Show Accept/Decline for pending/assigned */}
+                        {(request.status === 'pending' || request.status === 'assigned') && (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="border-green-700 text-green-500 hover:bg-green-900 hover:text-green-300"
+                              onClick={() => handleAccept(request.id)}
+                              disabled={acceptMutation.isPending}
+                              data-testid={`button-accept-${request.id}`}
+                            >
+                              <CheckCircle size={16} className="mr-1" />
+                              Accept
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="border-red-700 text-red-500 hover:bg-red-900 hover:text-red-300"
+                              onClick={() => handleDecline(request.id)}
+                              disabled={declineMutation.isPending}
+                              data-testid={`button-decline-${request.id}`}
+                            >
+                              <XCircle size={16} className="mr-1" />
+                              Decline
+                            </Button>
+                          </>
+                        )}
+
+                        {/* Show View Details for all statuses */}
                         <Button
                           variant="outline"
                           size="sm"
                           className="border-zinc-700 text-zinc-400 hover:bg-zinc-800 hover:text-white"
-                          onClick={() => {
-                            // Navigate to projects page where contractors can see their assignments
-                            navigate('/projects');
-                          }}
+                          onClick={() => setDetailsModal({ open: true, workRequestId: request.id })}
+                          data-testid={`button-view-details-${request.id}`}
                         >
-                          View Project
+                          <Eye size={16} className="mr-1" />
+                          View Details
                         </Button>
-                      )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -399,6 +429,25 @@ const ContractorRequests = () => {
           </div>
         )}
       </Card>
+
+      {/* Work Request Details Modal */}
+      {detailsModal.workRequestId && (
+        <WorkRequestDetailsModal
+          isOpen={detailsModal.open}
+          onClose={() => setDetailsModal({ open: false, workRequestId: null })}
+          workRequestId={detailsModal.workRequestId}
+        />
+      )}
+
+      {/* Review Work Request Modal */}
+      {reviewModal.workRequestId && (
+        <ReviewWorkRequestModal
+          isOpen={reviewModal.open}
+          onClose={() => setReviewModal({ open: false, workRequestId: null, title: '' })}
+          workRequestId={reviewModal.workRequestId}
+          workRequestTitle={reviewModal.title}
+        />
+      )}
     </>
   );
 };
