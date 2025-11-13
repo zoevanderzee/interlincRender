@@ -1,0 +1,88 @@
+What the UX should do
+Accepted / In-progress / Completed (not submitted):
+“View details” → TaskDetailsPage (shows the original form data + meta).
+Submitted (awaiting review):
+Button label = Review → TaskReviewPage (your existing review UI).
+After approval/rejection:
+“View details” still opens TaskDetailsPage (read-only, with submission history link).
+Routes (one source of truth)
+// router.tsx
+<Route path="/core/assignments/:workRequestId" element={<TaskDetailsPage />} />
+<Route path="/core/review/:workRequestId" element={<TaskReviewPage />} />
+Buttons (no more mashups)
+Make the button decide only by status (and always use the workRequestId, not projectId or milestoneId):
+// WorkRequestCard.tsx
+const isSubmitted = wr.status === 'submitted';
+const wrId = wr.id; // ensure this is the WR id, not projectId/milestoneId
+
+<Button
+  asChild
+  variant={isSubmitted ? "primary" : "secondary"}
+  data-testid="view-details"
+>
+  <Link to={isSubmitted ? `/core/review/${wrId}` : `/core/assignments/${wrId}`}>
+    {isSubmitted ? 'Review' : 'View details'}
+  </Link>
+</Button>
+TaskDetailsPage (the “form info” page)
+Keep it lightweight, read-only, and don’t import the project overview.
+// pages/TaskDetailsPage.tsx
+export default function TaskDetailsPage() {
+  const { workRequestId } = useParams();
+  const { data: wr, isLoading, error } = useQuery(
+    ['workRequest', workRequestId],
+    () => api.get(`/api/work-requests/${workRequestId}`).then(r => r.data)
+  );
+
+  if (isLoading) return <Spinner />;
+  if (error) return <ErrorState message="Could not load task details." />;
+
+  return (
+    <div className="space-y-4">
+      <Header title={wr.title} subtitle={`ID #${wr.id}`} status={wr.status} />
+      <Card>
+        <CardContent className="grid gap-3">
+          <Field label="Deliverable">{wr.deliverable}</Field>
+          <Field label="Description">{wr.description}</Field>
+          <Field label="Budget">{formatMoney(wr.budget, wr.currency)}</Field>
+          <Field label="Due">{formatDateTime(wr.dueAt)}</Field>
+          <Field label="Requester">{wr.requester?.name}</Field>
+          <Field label="Assignee">{wr.assignee?.name}</Field>
+        </CardContent>
+      </Card>
+
+      {/* If there are submissions, show a small history */}
+      {wr.submissions?.length ? (
+        <Card>
+          <CardHeader>Submission history</CardHeader>
+          <CardContent>
+            {wr.submissions.map(s => (
+              <SubmissionRow key={s.id} submission={s} />
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
+    </div>
+  );
+}
+TaskReviewPage (keep your “lovely review thingy” intact)
+Do not change this page—just ensure the route above points here when status==='submitted'. If it was removed, re-export the existing review component at /core/review/:workRequestId.
+Prevent the breakages you saw
+Never navigate to a project route from “View details.” The mashup came from linking to /projects/:projectId (or a dashboard) instead of /core/assignments/:workRequestId.
+Stable query keys: use ['workRequest', workRequestId] so React Query doesn’t hang on a stale spinner.
+Guard against wrong IDs: add a tiny assertion where you build the link: if wr.id is missing, log and disable the button.
+Zero milestone refs: grep and remove any use of milestoneId in cards, links, loaders.
+Quick QA (5 minutes)
+In the list, click View details for a WR with status accepted → lands on /core/assignments/:id and shows the form fields.
+Submit work (status submitted) → list shows Review button → lands on /core/review/:id with the review UI.
+Approve → WR status becomes approved → list shows View details again → /core/assignments/:id works.
+Deep-link refresh both routes (no infinite loader).
+Confirm network calls:
+Details page hits /api/work-requests/:id
+Review page hits /api/work-requests/:id/submissions/latest (or list).
+One-line guardrail to avoid future regressions
+// central link builder
+export const wrLink = (wr: WR) =>
+  wr.status === 'submitted' ? `/core/review/${wr.id}` : `/core/assignments/${wr.id}`;
+Use wrLink(wr) everywhere; don’t hand-craft URLs per card again.
+If you wire these routes and links exactly like this, “View details” will always show the task form details, “Review” will only appear for submitted tasks, and the project overview page won’t ever be pulled in again.
