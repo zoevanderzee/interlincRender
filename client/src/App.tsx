@@ -55,8 +55,6 @@ import JoinPage from "@/pages/join";
 import AssignContractor from "@/pages/assign-contractor";
 import ProjectDetails from "@/pages/project-details";
 import TestInterlincV2 from "./pages/test-interlinc-v2";
-import WorkRequestDetails from "@/pages/work-request-details";
-import WorkRequestReview from "@/pages/work-request-review";
 
 
 function Router() {
@@ -185,17 +183,6 @@ function Router() {
         </Layout>
       </ProtectedRoute>
 
-      <ProtectedRoute path="/core/assignments/:workRequestId">
-        <Layout>
-          <WorkRequestDetails />
-        </Layout>
-      </ProtectedRoute>
-
-      <ProtectedRoute path="/core/review/:workRequestId">
-        <Layout>
-          <WorkRequestReview />
-        </Layout>
-      </ProtectedRoute>
 
       <ProtectedRoute path="/contractors">
         <Layout>
