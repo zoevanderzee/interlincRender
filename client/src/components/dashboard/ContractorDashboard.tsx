@@ -288,7 +288,7 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
                     <Button 
                       variant="ghost" 
                       className="w-full text-accent-500 hover:text-accent-400 hover:bg-accent-500/10"
-                      onClick={() => navigate('/projects')}
+                      onClick={() => navigate(`/core/assignments/${assignment.id}`)}
                       data-testid="button-view-assignment-details"
                     >
                       View Details
