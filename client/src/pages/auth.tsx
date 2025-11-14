@@ -1351,91 +1351,106 @@ export default function AuthPage() {
       </div>
 
       {/* Right Panel - Hero Section */}
-      <div className="hidden lg:flex lg:w-1/2 items-center justify-center p-12 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #6b9aff 0%, #7ca5ff 100%)' }}>
-        {/* Decorative circles */}
-        <div className="absolute top-0 left-0 w-96 h-96 bg-white/10 rounded-full -translate-x-1/2 -translate-y-1/2"></div>
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-white/10 rounded-full translate-x-1/2 translate-y-1/2"></div>
+      <div className="hidden lg:flex lg:w-1/2 items-center justify-center p-12 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, hsl(210, 60%, 8%) 0%, hsl(215, 55%, 6%) 100%)' }}>
+        {/* Subtle grid pattern */}
+        <div className="absolute inset-0 opacity-10" style={{
+          backgroundImage: `linear-gradient(rgba(107, 154, 255, 0.1) 1px, transparent 1px),
+                           linear-gradient(90deg, rgba(107, 154, 255, 0.1) 1px, transparent 1px)`,
+          backgroundSize: '32px 32px'
+        }}></div>
         
-        <div className="max-w-md text-white relative z-10">
-          <h1 className="text-5xl font-bold mb-12 text-white">Interlinc</h1>
-          
-          {/* Stats Card */}
-          <div className="bg-white/95 backdrop-blur-sm rounded-3xl p-8 shadow-2xl mb-8">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-gray-800 font-semibold text-lg">Overview</h3>
-              <span className="text-xs text-gray-500">Real-time</span>
+        <div className="max-w-lg text-white relative z-10">
+          <div className="mb-12">
+            <div className="inline-flex items-center px-3 py-1 bg-[#6b9aff]/10 border border-[#6b9aff]/30 rounded-full mb-6">
+              <div className="w-2 h-2 bg-[#6b9aff] rounded-full mr-2"></div>
+              <span className="text-xs text-[#6b9aff] font-medium">Verified Stripe Partner</span>
             </div>
             
-            {/* Circular Progress */}
-            <div className="flex items-center justify-center mb-6">
-              <div className="relative w-32 h-32">
-                <svg className="w-32 h-32 transform -rotate-90">
-                  <circle
-                    cx="64"
-                    cy="64"
-                    r="56"
-                    stroke="#e5e7eb"
-                    strokeWidth="12"
-                    fill="none"
-                  />
-                  <circle
-                    cx="64"
-                    cy="64"
-                    r="56"
-                    stroke="#6b9aff"
-                    strokeWidth="12"
-                    fill="none"
-                    strokeDasharray="352"
-                    strokeDashoffset="88"
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-3xl font-bold text-gray-800">75%</span>
-                </div>
+            <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+              Pay contractors.
+            </h1>
+            <h2 className="text-5xl font-bold mb-6 bg-gradient-to-r from-[#6b9aff] to-[#7ca5ff] bg-clip-text text-transparent">
+              Zero admin.
+            </h2>
+            
+            <p className="text-gray-400 text-lg mb-8">
+              Simplify external payments, automate milestone-based payouts, and manage contractors effortlessly — all in one place.
+            </p>
+          </div>
+
+          {/* Dashboard Preview */}
+          <div className="bg-gradient-to-br from-[#0f1f3a]/60 to-[#1a2b4a]/60 backdrop-blur-sm rounded-2xl p-6 border border-[#6b9aff]/20 shadow-2xl mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-sm font-semibold text-white">Dashboard</span>
+              <div className="flex gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-red-400"></div>
+                <div className="w-2.5 h-2.5 rounded-full bg-yellow-400"></div>
+                <div className="w-2.5 h-2.5 rounded-full bg-green-400"></div>
               </div>
             </div>
-            
-            {/* Metrics */}
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center">
-                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div>
-                  <div className="text-xs text-gray-500">Projects</div>
-                  <div className="text-lg font-bold text-gray-800">24</div>
-                </div>
+
+            {/* Mini cards */}
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              <div className="bg-[#0a1628]/50 rounded-lg p-3 border border-[#6b9aff]/10">
+                <div className="text-xs text-gray-500 mb-1">Live Spend</div>
+                <div className="text-lg font-bold text-white">$24.5k</div>
+                <span className="inline-block px-2 py-0.5 bg-[#6b9aff]/20 text-[#6b9aff] text-xs rounded-full mt-1">Active</span>
               </div>
-              
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center">
-                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                </div>
-                <div>
-                  <div className="text-xs text-gray-500">Team</div>
-                  <div className="text-lg font-bold text-gray-800">89</div>
-                </div>
+              <div className="bg-[#0a1628]/50 rounded-lg p-3 border border-[#6b9aff]/10">
+                <div className="text-xs text-gray-500 mb-1">Budgets</div>
+                <div className="text-lg font-bold text-white">12</div>
+                <span className="inline-block px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded-full mt-1">On Track</span>
+              </div>
+              <div className="bg-[#0a1628]/50 rounded-lg p-3 border border-[#6b9aff]/10">
+                <div className="text-xs text-gray-500 mb-1">Payouts</div>
+                <div className="text-lg font-bold text-white">8</div>
+                <span className="inline-block px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full mt-1">Pending</span>
               </div>
             </div>
-            
-            {/* Tags */}
-            <div className="flex gap-2 flex-wrap">
-              <span className="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-xs font-medium">Zero Invoicing</span>
-              <span className="px-3 py-1 bg-green-100 text-green-600 rounded-full text-xs font-medium">Real-Time</span>
-              <span className="px-3 py-1 bg-purple-100 text-purple-600 rounded-full text-xs font-medium">Automated</span>
+
+            {/* Chart placeholder */}
+            <div className="bg-[#0a1628]/50 rounded-lg p-4 border border-[#6b9aff]/10">
+              <div className="text-xs text-gray-500 mb-3">Revenue growth</div>
+              <svg className="w-full h-16" viewBox="0 0 300 60" fill="none">
+                <path 
+                  d="M0,50 Q30,40 60,35 T120,30 T180,25 T240,20 T300,15" 
+                  stroke="#6b9aff" 
+                  strokeWidth="2" 
+                  fill="none"
+                  strokeLinecap="round"
+                />
+                <path 
+                  d="M0,50 Q30,40 60,35 T120,30 T180,25 T240,20 T300,15 L300,60 L0,60 Z" 
+                  fill="url(#gradient)" 
+                  opacity="0.2"
+                />
+                <defs>
+                  <linearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#6b9aff" stopOpacity="0.3"/>
+                    <stop offset="100%" stopColor="#6b9aff" stopOpacity="0"/>
+                  </linearGradient>
+                </defs>
+              </svg>
             </div>
           </div>
-          
-          {/* Bottom text */}
-          <div className="text-center">
-            <p className="text-white/90 text-sm">
-              Manage payments, projects, and people<br />in one beautiful platform
-            </p>
+
+          {/* Trust indicators */}
+          <div className="text-center pt-4 border-t border-[#6b9aff]/10">
+            <p className="text-gray-500 text-xs mb-2">Trusted Globally by Companies</p>
+            <div className="flex justify-center gap-8 text-gray-600">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-white">180+</div>
+                <div className="text-xs">Countries</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-white">40+</div>
+                <div className="text-xs">Currencies</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-white">24/7</div>
+                <div className="text-xs">Processing</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
