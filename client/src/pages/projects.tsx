@@ -23,6 +23,7 @@ export default function Projects() {
   const [selectedWorkRequest, setSelectedWorkRequest] = useState<any>(null);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [selectedDetailsWorkRequest, setSelectedDetailsWorkRequest] = useState<any>(null);
+  const [assignmentsTab, setAssignmentsTab] = useState<string>("active");
   const { data: integratedData, isLoading } = useIntegratedData();
 
   const isContractor = user?.role === 'contractor';
@@ -64,9 +65,18 @@ export default function Projects() {
   // SECURITY: Contractors should see their accepted work assignments only
   if (isContractor) {
     // Filter out tasks - those appear in Tasks tab (tasks have taskId)
+    // Active: assigned, accepted, submitted (excluding pending which shows in Work Requests)
     const activeAssignments = workRequests.filter((req: any) => 
-      req.status === 'accepted' && !isTask(req)
+      (req.status === 'assigned' || req.status === 'accepted' || req.status === 'submitted') && !isTask(req)
     );
+
+    // Completed: completed, approved, paid
+    const completedAssignments = workRequests.filter((req: any) => 
+      (req.status === 'completed' || req.status === 'approved' || req.status === 'paid') && !isTask(req)
+    );
+
+    // Get assignments for current tab
+    const displayedAssignments = assignmentsTab === 'active' ? activeAssignments : completedAssignments;
 
     return (
       <div className="space-y-6">
@@ -97,7 +107,7 @@ export default function Projects() {
                 <div>
                   <p className="text-sm text-gray-400">Total Value</p>
                   <p className="text-3xl font-bold text-white">
-                    {formatMultiCurrencyTotal(activeAssignments.map((req: any) => ({
+                    {formatMultiCurrencyTotal(displayedAssignments.map((req: any) => ({
                       amount: req.amount || 0,
                       currency: req.currency || 'USD'
                     })))}
@@ -123,11 +133,20 @@ export default function Projects() {
           </Card>
         </div>
 
-        {/* Active Assignments */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-white">Active Assignments</h2>
-          {activeAssignments.length > 0 ? (
-            activeAssignments.map((assignment: any) => {
+        {/* Assignments Tabs */}
+        <Tabs value={assignmentsTab} onValueChange={setAssignmentsTab} className="w-full">
+          <TabsList className="mb-6">
+            <TabsTrigger value="active" data-testid="tab-active-assignments">
+              Active ({activeAssignments.length})
+            </TabsTrigger>
+            <TabsTrigger value="completed" data-testid="tab-completed-assignments">
+              Completed ({completedAssignments.length})
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="active" className="space-y-4">
+            {activeAssignments.length > 0 ? (
+              activeAssignments.map((assignment: any) => {
               // Check if assignment is overdue
               const isOverdue = assignment.isOverdue || false;
               const daysOverdue = assignment.daysOverdue || 0;
@@ -207,7 +226,73 @@ export default function Projects() {
               </CardContent>
             </Card>
           )}
-        </div>
+          </TabsContent>
+
+          <TabsContent value="completed" className="space-y-4">
+            {completedAssignments.length > 0 ? (
+              completedAssignments.map((assignment: any) => (
+                <Card key={assignment.id} className="bg-zinc-900 border-zinc-800">
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className="text-white">{assignment.title}</CardTitle>
+                        <p className="text-gray-400 text-sm mt-1">{assignment.description}</p>
+                        {(assignment.companyName || assignment.businessFirstName) && (
+                          <p className="text-blue-400 text-sm mt-1">
+                            From: {assignment.companyName || `${assignment.businessFirstName} ${assignment.businessLastName}`}
+                          </p>
+                        )}
+                      </div>
+                      <Badge className="bg-green-600 text-white">
+                        {assignment.status}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center space-x-4">
+                        <div className="flex items-center text-gray-400">
+                          <DollarSign className="mr-1 h-4 w-4" />
+                          <span>{formatCurrency(assignment.amount || 0, assignment.currency || 'USD')}</span>
+                        </div>
+                        {assignment.dueDate && (
+                          <div className="flex items-center text-gray-400">
+                            <Calendar className="mr-1 h-4 w-4" />
+                            <span>Completed: {new Date(assignment.dueDate).toLocaleDateString()}</span>
+                          </div>
+                        )}
+                      </div>
+                      <Button 
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedDetailsWorkRequest(assignment);
+                          setDetailsModalOpen(true);
+                        }}
+                        className="border-gray-700"
+                        data-testid={`view-details-${assignment.id}`}
+                      >
+                        <Eye className="mr-2 h-4 w-4" />
+                        View Details
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              <Card className="bg-zinc-900 border-zinc-800">
+                <CardContent className="pt-6 pb-6 text-center">
+                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-zinc-800">
+                    <CheckCircle className="h-6 w-6 text-green-500" />
+                  </div>
+                  <h3 className="mb-2 text-lg font-medium text-white">No Completed Assignments</h3>
+                  <p className="text-sm text-gray-400">
+                    Your completed work will appear here once you finish assignments.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        </Tabs>
 
         {/* Submit Work Modal */}
         {selectedAssignment && (
