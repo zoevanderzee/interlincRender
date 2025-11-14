@@ -1434,25 +1434,7 @@ export default function AuthPage() {
             </div>
           </div>
 
-          {/* Trust indicators */}
-          <div className="text-center pt-4 border-t border-[#6b9aff]/10">
-            <div className="text-xs text-[#8cb3ff] mb-2">Trusted Globally by Companies</div>
-              <div className="flex justify-center gap-8 text-[#8cb3ff]">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-[#a0c4ff]">180+</div>
-                <div className="text-xs">Countries</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-[#a0c4ff]">40+</div>
-                <div className="text-xs">Currencies</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-[#a0c4ff]">24/7</div>
-                <div className="text-xs">Processing</div>
-              </div>
-            </div>
           </div>
-        </div>
       </div>
     </div>
   );
