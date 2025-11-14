@@ -5652,6 +5652,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create notification for contractor
       await storage.createNotification({
         userId: workRequest.contractorUserId!,
+        title: 'Work Approved',
         type: 'work_approved',
         message: `Your submission for "${workRequest.title}" has been approved and payment processed`,
         relatedId: workRequestId,
@@ -5661,8 +5662,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create payment notification
       await storage.createNotification({
         userId: workRequest.contractorUserId!,
+        title: 'Payment Received',
         type: 'payment_received',
-        message: `Payment of £${workRequest.budget} received for "${workRequest.title}"`,
+        message: `Payment of £${workRequest.amount} received for "${workRequest.title}"`,
         relatedId: workRequestId,
         relatedType: 'work_request'
       });
