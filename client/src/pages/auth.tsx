@@ -1359,21 +1359,21 @@ export default function AuthPage() {
           backgroundSize: '32px 32px'
         }}></div>
 
-        <div className="max-w-lg text-white relative z-10">
+        <div className="max-w-lg relative z-10">
           <div className="mb-12">
             <div className="inline-flex items-center px-3 py-1 bg-[#6b9aff]/10 border border-[#6b9aff]/30 rounded-full mb-6">
               <div className="w-2 h-2 bg-[#6b9aff] rounded-full mr-2"></div>
               <span className="text-xs text-[#6b9aff] font-medium">Verified Stripe Partner</span>
             </div>
 
-            <h1 className="text-5xl font-bold mb-4 text-white">
+            <h1 className="text-5xl font-bold mb-4 text-[#a0c4ff]">
               Pay contractors.
             </h1>
-            <h2 className="text-5xl font-bold mb-6 text-white">
+            <h2 className="text-5xl font-bold mb-6 text-[#a0c4ff]">
               Zero admin.
             </h2>
 
-            <p className="text-gray-400 text-lg mb-8">
+            <p className="text-[#8cb3ff] text-lg mb-8">
               Simplify external payments, automate milestone-based payouts, and manage contractors effortlessly — all in one place.
             </p>
           </div>
@@ -1381,7 +1381,7 @@ export default function AuthPage() {
           {/* Dashboard Preview */}
           <div className="bg-gradient-to-br from-[#0f1f3a]/60 to-[#1a2b4a]/60 backdrop-blur-sm rounded-2xl p-6 border border-[#6b9aff]/20 shadow-2xl mb-8">
             <div className="flex items-center justify-between mb-4">
-              <span className="text-sm font-semibold text-white">Dashboard</span>
+              <span className="text-sm font-semibold text-[#a0c4ff]">Dashboard</span>
               <div className="flex gap-1.5">
                 <div className="w-2.5 h-2.5 rounded-full bg-red-400"></div>
                 <div className="w-2.5 h-2.5 rounded-full bg-yellow-400"></div>
@@ -1392,25 +1392,25 @@ export default function AuthPage() {
             {/* Mini cards */}
             <div className="grid grid-cols-3 gap-3 mb-4">
               <div className="bg-[#0a1628]/50 rounded-lg p-3 border border-[#6b9aff]/10">
-                <div className="text-xs text-gray-500 mb-1">Live Spend</div>
-                <div className="text-lg font-bold text-white">$24.5k</div>
+                <div className="text-xs text-[#8cb3ff] mb-1">Live Spend</div>
+                <div className="text-lg font-bold text-[#a0c4ff]">$24.5k</div>
                 <span className="inline-block px-2 py-0.5 bg-[#6b9aff]/20 text-[#6b9aff] text-xs rounded-full mt-1">Active</span>
               </div>
               <div className="bg-[#0a1628]/50 rounded-lg p-3 border border-[#6b9aff]/10">
-                <div className="text-xs text-gray-500 mb-1">Budgets</div>
-                <div className="text-lg font-bold text-white">12</div>
+                <div className="text-xs text-[#8cb3ff] mb-1">Budgets</div>
+                <div className="text-lg font-bold text-[#a0c4ff]">12</div>
                 <span className="inline-block px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded-full mt-1">On Track</span>
               </div>
               <div className="bg-[#0a1628]/50 rounded-lg p-3 border border-[#6b9aff]/10">
-                <div className="text-xs text-gray-500 mb-1">Payouts</div>
-                <div className="text-lg font-bold text-white">8</div>
+                <div className="text-xs text-[#8cb3ff] mb-1">Payouts</div>
+                <div className="text-lg font-bold text-[#a0c4ff]">8</div>
                 <span className="inline-block px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full mt-1">Pending</span>
               </div>
             </div>
 
             {/* Chart placeholder */}
             <div className="bg-[#0a1628]/50 rounded-lg p-4 border border-[#6b9aff]/10">
-              <div className="text-xs text-gray-500 mb-3">Revenue growth</div>
+              <div className="text-xs text-[#8cb3ff] mb-3">Revenue growth</div>
               <svg className="w-full h-16" viewBox="0 0 300 60" fill="none">
                 <path 
                   d="M0,50 Q30,40 60,35 T120,30 T180,25 T240,20 T300,15" 
@@ -1436,18 +1436,18 @@ export default function AuthPage() {
 
           {/* Trust indicators */}
           <div className="text-center pt-4 border-t border-[#6b9aff]/10">
-            <div className="text-xs text-gray-400 mb-2">Trusted Globally by Companies</div>
-              <div className="flex justify-center gap-8 text-gray-400">
+            <div className="text-xs text-[#8cb3ff] mb-2">Trusted Globally by Companies</div>
+              <div className="flex justify-center gap-8 text-[#8cb3ff]">
               <div className="text-center">
-                <div className="text-2xl font-bold text-white">180+</div>
+                <div className="text-2xl font-bold text-[#a0c4ff]">180+</div>
                 <div className="text-xs">Countries</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-white">40+</div>
+                <div className="text-2xl font-bold text-[#a0c4ff]">40+</div>
                 <div className="text-xs">Currencies</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-white">24/7</div>
+                <div className="text-2xl font-bold text-[#a0c4ff]">24/7</div>
                 <div className="text-xs">Processing</div>
               </div>
             </div>
