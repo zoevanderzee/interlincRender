@@ -50,7 +50,7 @@ export function ReviewWorkRequestModal({
   });
 
   const submission = submissionData?.submission;
-  const workRequest = workRequestData?.workRequest;
+  const workRequest = workRequestData;
 
   const reviewMutation = useMutation({
     mutationFn: async (data: { action: 'reject'; reviewNotes?: string }) => {
