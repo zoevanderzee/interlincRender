@@ -1358,21 +1358,21 @@ export default function AuthPage() {
                            linear-gradient(90deg, rgba(107, 154, 255, 0.1) 1px, transparent 1px)`,
           backgroundSize: '32px 32px'
         }}></div>
-        
+
         <div className="max-w-lg text-white relative z-10">
           <div className="mb-12">
             <div className="inline-flex items-center px-3 py-1 bg-[#6b9aff]/10 border border-[#6b9aff]/30 rounded-full mb-6">
               <div className="w-2 h-2 bg-[#6b9aff] rounded-full mr-2"></div>
               <span className="text-xs text-[#6b9aff] font-medium">Verified Stripe Partner</span>
             </div>
-            
+
             <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
               Pay contractors.
             </h1>
             <h2 className="text-5xl font-bold mb-6 bg-gradient-to-r from-[#6b9aff] to-[#7ca5ff] bg-clip-text text-transparent">
               Zero admin.
             </h2>
-            
+
             <p className="text-gray-400 text-lg mb-8">
               Simplify external payments, automate milestone-based payouts, and manage contractors effortlessly — all in one place.
             </p>
@@ -1436,8 +1436,8 @@ export default function AuthPage() {
 
           {/* Trust indicators */}
           <div className="text-center pt-4 border-t border-[#6b9aff]/10">
-            <p className="text-gray-500 text-xs mb-2">Trusted Globally by Companies</p>
-            <div className="flex justify-center gap-8 text-gray-600">
+            <div className="text-xs text-gray-400 mb-2">Trusted Globally by Companies</div>
+              <div className="flex justify-center gap-8 text-gray-400">
               <div className="text-center">
                 <div className="text-2xl font-bold text-white">180+</div>
                 <div className="text-xs">Countries</div>
