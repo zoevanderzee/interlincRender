@@ -1366,10 +1366,10 @@ export default function AuthPage() {
               <span className="text-xs text-[#6b9aff] font-medium">Verified Stripe Partner</span>
             </div>
 
-            <h1 className="text-5xl font-bold mb-4 text-[#e8f2ff]">
+            <h1 className="text-5xl font-bold mb-4" style={{ color: '#f0f4ff' }}>
               Pay contractors.
             </h1>
-            <h2 className="text-5xl font-bold mb-6 text-[#e8f2ff]">
+            <h2 className="text-5xl font-bold mb-6" style={{ color: '#f0f4ff' }}>
               Zero admin.
             </h2>
 
