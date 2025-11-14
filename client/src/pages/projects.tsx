@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Calendar, DollarSign, Users, FileText, TrendingUp, Eye, User, AlertTriangle } from "lucide-react";
+import { Plus, Calendar, DollarSign, Users, FileText, TrendingUp, Eye, User, AlertTriangle, CheckCircle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { SubmitWorkModal } from "@/components/SubmitWorkModal";
@@ -192,15 +192,31 @@ export default function Projects() {
                         </div>
                       )}
                     </div>
-                    <Button 
-                      onClick={() => {
-                        setSelectedAssignment(assignment);
-                        setSubmitWorkModalOpen(true);
-                      }}
-                      className="bg-blue-600 hover:bg-blue-700"
-                    >
-                      Submit Deliverable
-                    </Button>
+                    {assignment.status === 'submitted' ? (
+                      <Button 
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedDetailsWorkRequest(assignment);
+                          setDetailsModalOpen(true);
+                        }}
+                        className="border-gray-700"
+                        data-testid={`view-submission-${assignment.id}`}
+                      >
+                        <Eye className="mr-2 h-4 w-4" />
+                        View
+                      </Button>
+                    ) : (
+                      <Button 
+                        onClick={() => {
+                          setSelectedAssignment(assignment);
+                          setSubmitWorkModalOpen(true);
+                        }}
+                        className="bg-blue-600 hover:bg-blue-700"
+                        data-testid={`submit-deliverable-${assignment.id}`}
+                      >
+                        Submit Deliverable
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
