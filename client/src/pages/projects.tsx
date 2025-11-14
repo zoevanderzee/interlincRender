@@ -165,7 +165,7 @@ export default function Projects() {
                         )}
                       </div>
                       <div className="flex gap-2">
-                        {isOverdue && (
+                        {isOverdue && assignment.status !== 'submitted' && (
                           <Badge className="bg-red-600 text-white hover:bg-red-700">
                             <AlertTriangle className="mr-1 h-3 w-3" />
                             OVERDUE
@@ -320,6 +320,18 @@ export default function Projects() {
             }}
             deliverableId={selectedAssignment.id}
             deliverableName={selectedAssignment.title}
+          />
+        )}
+
+        {/* Work Request Details Modal */}
+        {selectedDetailsWorkRequest && (
+          <WorkRequestDetailsModal
+            isOpen={detailsModalOpen}
+            onClose={() => {
+              setDetailsModalOpen(false);
+              setSelectedDetailsWorkRequest(null);
+            }}
+            workRequestId={selectedDetailsWorkRequest.id}
           />
         )}
       </div>
