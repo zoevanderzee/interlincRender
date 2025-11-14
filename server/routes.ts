@@ -4935,7 +4935,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let daysOverdue = 0;
         let daysRemaining = 0;
 
-        if (!['completed', 'paid', 'canceled'].includes(workRequest.status) && workRequest.dueDate) {
+        if (!['completed', 'paid', 'canceled', 'submitted'].includes(workRequest.status) && workRequest.dueDate) {
           const dueDate = new Date(workRequest.dueDate);
           dueDate.setHours(0, 0, 0, 0);
 
@@ -4989,16 +4989,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
 
+        // Fetch latest submission if the work request has been submitted
+        let latestSubmission = null;
+        if (workRequest.status === 'submitted' || workRequest.status === 'approved' || workRequest.status === 'paid' || workRequest.status === 'completed') {
+          latestSubmission = await storage.getLatestWorkRequestSubmission(id);
+        }
+
         res.json({
           ...workRequest,
           isOverdue,
           daysOverdue: isOverdue ? daysOverdue : null,
-          daysRemaining: !isOverdue && !['completed', 'paid', 'canceled'].includes(workRequest.status) ? daysRemaining : null,
+          daysRemaining: !isOverdue && !['completed', 'paid', 'canceled', 'submitted'].includes(workRequest.status) ? daysRemaining : null,
           businessName,
           businessEmail,
           contractorName,
           contractorEmail,
           projectName,
+          latestSubmission,
         });
       } else {
         res.status(403).json({message: "Unauthorized to access this work request"});
