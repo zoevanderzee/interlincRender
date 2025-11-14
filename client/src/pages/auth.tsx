@@ -1366,10 +1366,10 @@ export default function AuthPage() {
               <span className="text-xs text-[#6b9aff] font-medium">Verified Stripe Partner</span>
             </div>
 
-            <h1 className="text-5xl font-bold mb-4 text-[#d4e7ff]">
+            <h1 className="text-5xl font-bold mb-4 text-[#e8f2ff]">
               Pay contractors.
             </h1>
-            <h2 className="text-5xl font-bold mb-6 text-[#d4e7ff]">
+            <h2 className="text-5xl font-bold mb-6 text-[#e8f2ff]">
               Zero admin.
             </h2>
 
