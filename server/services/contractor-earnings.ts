@@ -49,6 +49,23 @@ export async function getContractorEarnings(contractorConnectAccountId: string):
       return sum + bal.amount;
     }, 0);
 
+    // ALSO query PaymentIntents sent to this contractor to catch "processing" payments
+    // that haven't hit the balance yet
+    const paymentIntents = await stripe.paymentIntents.list({
+      limit: 100
+    });
+
+    // Filter for payments sent to this contractor that are still processing
+    const processingPayments = paymentIntents.data.filter(pi => {
+      const destination = pi.transfer_data?.destination;
+      const status = pi.status;
+      return destination === contractorConnectAccountId && 
+             (status === 'processing' || status === 'requires_capture');
+    });
+
+    const processingAmount = processingPayments.reduce((sum, pi) => sum + pi.amount, 0);
+    console.log(`[Contractor Earnings] Processing payments: ${processingPayments.length}, Amount: ${processingAmount / 100}`);
+
     // Get all payouts to calculate total lifetime earnings
     const payouts = await stripe.payouts.list({
       limit: 100,
@@ -63,8 +80,11 @@ export async function getContractorEarnings(contractorConnectAccountId: string):
     // Get the actual currency from the Connect account
     const currency = balance.available[0]?.currency?.toUpperCase() || 'GBP';
 
+    // Combine pending balance + processing PaymentIntents
+    const totalPending = pendingAmount + processingAmount;
+
     return {
-      pendingEarnings: pendingAmount / 100, // Only pending (still being processed by Stripe)
+      pendingEarnings: totalPending / 100, // Pending + processing payments
       totalEarnings: totalEarnings / 100, // NOT CHANGED - completed payouts already in bank
       availableBalance: availableAmount / 100,
       pendingBalance: pendingAmount / 100,

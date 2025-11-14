@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { DollarSign, FileText, Calendar, Clock, AlertTriangle, CheckCircle, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
 
 interface DashboardData {
@@ -51,9 +52,14 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
            paymentDate <= thirtyDaysFromNow;
   });
 
-  // Active assignments are work requests that have been ACCEPTED by the contractor
+  // Active assignments are work requests that are in progress (assigned, accepted, submitted)
   const activeAssignments = dashboardData.workRequests?.filter((wr: any) => 
-    wr.status === 'accepted'
+    wr.status === 'assigned' || wr.status === 'accepted' || wr.status === 'submitted'
+  ) || [];
+
+  // Completed assignments are work requests that have been finished (completed, paid)
+  const completedAssignments = dashboardData.workRequests?.filter((wr: any) => 
+    wr.status === 'completed' || wr.status === 'paid' || wr.status === 'approved'
   ) || [];
 
   // Fetch contractor earnings from Stripe Connect
@@ -224,12 +230,25 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
         </Button>
       </div>
 
-      {/* Active Assignments */}
+      {/* Assignments Tabs */}
       <div className="mb-8">
-        <h2 className="text-xl font-semibold text-white mb-4">Active Assignments</h2>
-        {activeAssignments.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {activeAssignments.slice(0, 4).map((assignment) => {
+        <Tabs defaultValue="active" className="w-full">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold text-white">My Assignments</h2>
+            <TabsList>
+              <TabsTrigger value="active" data-testid="tab-active-assignments">
+                Active ({activeAssignments.length})
+              </TabsTrigger>
+              <TabsTrigger value="completed" data-testid="tab-completed-assignments">
+                Completed ({completedAssignments.length})
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
+          <TabsContent value="active">
+            {activeAssignments.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {activeAssignments.slice(0, 4).map((assignment) => {
               // Get status badge color based on actual work request status
               const getStatusBadge = (status: string) => {
                 switch(status) {
@@ -306,11 +325,94 @@ export function ContractorDashboard({ dashboardData }: { dashboardData: Dashboar
               </div>
               <h3 className="mb-2 text-lg font-medium text-white">No Active Assignments</h3>
               <p className="text-sm text-gray-400">
-                You don't have any active assignments at the moment.
+                You don't have any accepted work assignments yet. Check your work requests to see available opportunities.
               </p>
             </CardContent>
           </Card>
         )}
+          </TabsContent>
+
+          <TabsContent value="completed">
+            {completedAssignments.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {completedAssignments.map((assignment) => {
+                  const getStatusBadge = (status: string) => {
+                    switch(status) {
+                      case 'completed':
+                      case 'paid':
+                      case 'approved':
+                        return 'bg-green-500/20 text-green-400';
+                      default:
+                        return 'bg-gray-500/20 text-gray-400';
+                    }
+                  };
+
+                  return (
+                    <Card key={assignment.id} className="bg-zinc-900 border-zinc-800">
+                      <CardHeader className="pb-2">
+                        <div className="flex justify-between items-start">
+                          <CardTitle className="text-white">
+                            {assignment.title || 'Assignment'}
+                          </CardTitle>
+                          <div className={`px-2 py-1 rounded text-xs ${getStatusBadge(assignment.status)}`}>
+                            {assignment.status?.replace('_', ' ').toUpperCase() || 'COMPLETED'}
+                          </div>
+                        </div>
+                        <CardDescription className="line-clamp-2">
+                          {assignment.description || 'No description provided'}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Completed</span>
+                            <span className="text-white">
+                              {assignment.updatedAt ? format(new Date(assignment.updatedAt), 'MMM d, yyyy') : 'Recently'}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Status</span>
+                            <span className="text-white capitalize">
+                              {assignment.status?.replace('_', ' ') || 'Completed'}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Value</span>
+                            <span className="text-white">
+                              {formatEarnings(parseFloat(assignment.amount || 0))}
+                            </span>
+                          </div>
+                        </div>
+                      </CardContent>
+                      <CardFooter>
+                        <Button 
+                          variant="ghost" 
+                          className="w-full text-accent-500 hover:text-accent-400 hover:bg-accent-500/10"
+                          onClick={() => navigate('/projects')}
+                          data-testid="button-view-completed-details"
+                        >
+                          View Details
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  );
+                })}
+              </div>
+            ) : (
+              <Card className="bg-zinc-900 border-zinc-800">
+                <CardContent className="pt-6 pb-6 text-center">
+                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-zinc-800">
+                    <CheckCircle className="h-6 w-6 text-green-500" />
+                  </div>
+                  <h3 className="mb-2 text-lg font-medium text-white">No Completed Assignments</h3>
+                  <p className="text-sm text-gray-400">
+                    Your completed work will appear here once you finish assignments.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Upcoming Payments */}
