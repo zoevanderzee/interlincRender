@@ -19,7 +19,6 @@ import { formatDistanceToNow, format } from "date-fns";
 import { useLocation } from "wouter";
 import { formatCurrency } from "@/lib/utils";
 import { WorkRequestDetailsModal } from "@/components/WorkRequestDetailsModal";
-import { ReviewWorkRequestModal } from "@/components/ReviewWorkRequestModal";
 
 // Define the work request type - updated to match new schema
 interface WorkRequest {
@@ -58,11 +57,6 @@ const ContractorRequests = () => {
   const [detailsModal, setDetailsModal] = useState<{ open: boolean; workRequestId: number | null }>({
     open: false,
     workRequestId: null,
-  });
-  const [reviewModal, setReviewModal] = useState<{ open: boolean; workRequestId: number | null; title: string }>({
-    open: false,
-    workRequestId: null,
-    title: '',
   });
 
   // Only show requests that match the contractor's user ID
@@ -356,19 +350,6 @@ const ContractorRequests = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
-                        {/* Show Review button for submitted status */}
-                        {request.status === 'submitted' && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="border-zinc-700 text-zinc-400 hover:bg-zinc-800 hover:text-white"
-                            onClick={() => setReviewModal({ open: true, workRequestId: request.id, title: request.title })}
-                            data-testid={`button-review-${request.id}`}
-                          >
-                            Review
-                          </Button>
-                        )}
-
                         {/* Show Accept/Decline for pending/assigned */}
                         {(request.status === 'pending' || request.status === 'assigned') && (
                           <>
@@ -440,16 +421,6 @@ const ContractorRequests = () => {
           isOpen={detailsModal.open}
           onClose={() => setDetailsModal({ open: false, workRequestId: null })}
           workRequestId={detailsModal.workRequestId}
-        />
-      )}
-
-      {/* Review Work Request Modal */}
-      {reviewModal.workRequestId && (
-        <ReviewWorkRequestModal
-          isOpen={reviewModal.open}
-          onClose={() => setReviewModal({ open: false, workRequestId: null, title: '' })}
-          workRequestId={reviewModal.workRequestId}
-          workRequestTitle={reviewModal.title}
         />
       )}
     </>
