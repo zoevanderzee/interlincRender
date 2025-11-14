@@ -5614,6 +5614,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({message: 'Authentication required'});
       }
 
+      if (!paymentIntentId) {
+        return res.status(400).json({message: 'Payment Intent ID is required'});
+      }
+
       // Get the submission
       const submission = await storage.getWorkRequestSubmission(submissionId);
       if (!submission) {
@@ -5635,6 +5639,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verify the user is the business owner
       if (project.businessId !== userId) {
         return res.status(403).json({message: 'Not authorized to approve this submission'});
+      }
+
+      // CRITICAL: Verify Stripe payment actually succeeded before proceeding
+      console.log(`[WORK_REQUEST_PAYMENT] Verifying Stripe payment ${paymentIntentId}...`);
+      const { default: Stripe } = await import('stripe');
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2024-06-20' });
+      
+      let paymentIntent;
+      try {
+        paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      } catch (stripeError: any) {
+        console.error('[WORK_REQUEST_PAYMENT] Failed to retrieve Stripe payment:', stripeError);
+        return res.status(400).json({message: 'Invalid payment intent ID'});
+      }
+
+      // Verify payment succeeded
+      if (paymentIntent.status !== 'succeeded') {
+        console.error(`[WORK_REQUEST_PAYMENT] Payment not succeeded. Status: ${paymentIntent.status}`);
+        return res.status(400).json({
+          message: 'Payment has not been completed successfully',
+          paymentStatus: paymentIntent.status
+        });
+      }
+
+      // Verify payment amount matches work request amount
+      const expectedAmount = Math.round(parseFloat(workRequest.amount) * 100); // Convert to cents
+      if (paymentIntent.amount !== expectedAmount) {
+        console.error(`[WORK_REQUEST_PAYMENT] Amount mismatch. Expected: ${expectedAmount}, Got: ${paymentIntent.amount}`);
+        return res.status(400).json({message: 'Payment amount does not match work request amount'});
+      }
+
+      console.log(`[WORK_REQUEST_PAYMENT] Stripe payment verified successfully. Amount: ${paymentIntent.amount/100} ${paymentIntent.currency.toUpperCase()}`);
+
+      // Create payment record in database
+      const paymentData = {
+        contractId: null,
+        milestoneId: null,
+        workRequestId: workRequestId,
+        businessId: userId,
+        contractorId: workRequest.contractorUserId!,
+        amount: workRequest.amount,
+        status: 'completed',
+        scheduledDate: new Date(),
+        completedDate: new Date(),
+        notes: `Payment for work request: ${workRequest.title}`,
+        stripePaymentIntentId: paymentIntentId,
+        stripePaymentIntentStatus: paymentIntent.status,
+        paymentProcessor: 'stripe',
+        triggeredBy: 'work_request_approval',
+        triggeredAt: new Date()
+      };
+
+      const payment = await storage.createPayment(paymentData);
+      console.log(`[WORK_REQUEST_PAYMENT] Payment record created: ${payment.id}`);
+
+      // Generate invoices for both business and contractor
+      try {
+        const invoiceId = await generateInvoiceFromPayment(payment.id);
+        console.log(`[WORK_REQUEST_PAYMENT] Invoice generated: ${invoiceId}`);
+      } catch (invoiceError) {
+        console.error('[WORK_REQUEST_PAYMENT] Failed to generate invoice:', invoiceError);
+        // Continue even if invoice generation fails - payment has been recorded
       }
 
       // Update submission status to approved
@@ -5664,16 +5730,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: workRequest.contractorUserId!,
         title: 'Payment Received',
         type: 'payment_received',
-        message: `Payment of £${workRequest.amount} received for "${workRequest.title}"`,
+        message: `Payment of ${workRequest.currency?.toUpperCase() || 'GBP'} ${workRequest.amount} received for "${workRequest.title}"`,
         relatedId: workRequestId,
         relatedType: 'work_request'
       });
 
-      console.log(`[WORK_REQUEST_APPROVED] Submission ${submissionId} approved after payment ${paymentIntentId}`);
+      console.log(`[WORK_REQUEST_APPROVED] Submission ${submissionId} approved, payment ${payment.id} recorded, invoice generated`);
 
       res.json({
         message: "Work approved successfully",
-        submission: await storage.getWorkRequestSubmission(submissionId)
+        submission: await storage.getWorkRequestSubmission(submissionId),
+        payment: {
+          id: payment.id,
+          amount: payment.amount,
+          status: payment.status
+        }
       });
 
     } catch (error) {
