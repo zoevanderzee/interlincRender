@@ -15,7 +15,7 @@ export interface CreatePaymentIntentParams {
   transferData: {
     destination: string; // REQUIRED: Contractor Connect account for destination charge
   };
-  businessAccountId: string; // REQUIRED: Business Connect account ID for "on behalf of" creation
+  businessAccountId?: string; // OPTIONAL: For metadata tracking only (businesses don't need Connect accounts)
 }
 
 export interface PaymentIntentResponse {
@@ -71,7 +71,7 @@ export async function createPaymentIntent(params: CreatePaymentIntentParams): Pr
 
     // SECURITY: Ensure no customer IDs are ever used
     if ('businessCustomerId' in params || 'paymentMethodId' in params || 'saveCard' in params) {
-      throw new Error('SECURITY VIOLATION: Customer IDs not allowed. Connect-only payment flow requires businessAccountId and transferData only.');
+      throw new Error('SECURITY VIOLATION: Customer IDs not allowed. Use transferData.destination for Connect payments.');
     }
 
     // REQUIRED: Validate destination account supports destination charges
@@ -93,15 +93,16 @@ export async function createPaymentIntent(params: CreatePaymentIntentParams): Pr
     }
 
     // Create Payment Intent using correct Connect destination charge pattern
-    // IMPORTANT: For card payments, on_behalf_of must be omitted when using transfer_data.destination
-    // due to Stripe's settlement country requirements
-    console.log(`[V2 Connect Payment] Creating destination charge: Platform → Contractor ${params.transferData.destination} (Business: ${params.businessAccountId})`);
+    // Business pays with card → Platform creates PaymentIntent → Funds go directly to contractor
+    // NO on_behalf_of needed (business doesn't need Connect account per Stripe guidance)
+    const businessIdLog = params.businessAccountId ? ` (Business ID in metadata: ${params.businessAccountId})` : '';
+    console.log(`[V2 Connect Payment] Creating destination charge: Platform → Contractor ${params.transferData.destination}${businessIdLog}`);
     
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountInCents,
       currency: currency,
       payment_method_types: ['card'],
-      // REMOVED: on_behalf_of (incompatible with card payments when different from destination)
+      // NO on_behalf_of - businesses are regular card customers, not Connect accounts
       transfer_data: {
         destination: params.transferData.destination, // Contractor Connect account receives funds
       },
@@ -109,11 +110,11 @@ export async function createPaymentIntent(params: CreatePaymentIntentParams): Pr
       metadata: {
         ...params.metadata,
         contractor_account_id: params.transferData.destination,
-        business_account_id: params.businessAccountId, // Business tracked in metadata
+        ...(params.businessAccountId && { business_id: params.businessAccountId }), // Optional: track business ID for reconciliation
         account_type: accountType,
         version: 'v2_destination_charge',
-        flow_type: 'platform_to_contractor',
-        payment_pattern: 'card_destination_charge'
+        flow_type: 'card_to_contractor',
+        payment_pattern: 'direct_destination_charge'
       },
       capture_method: 'automatic',
       confirmation_method: 'automatic'
@@ -515,10 +516,11 @@ export async function createSecurePaymentV2(params: {
   currency?: string;
   description?: string;
   metadata?: Record<string, string>;
-  businessAccountId: string; // REQUIRED: Business Connect account for "on behalf of" creation
+  businessUserId?: number; // REQUIRED for tracking which business made the payment
+  businessAccountId?: string; // OPTIONAL: Only if business has Connect account (rare case)
 }): Promise<{ payment_intent_id: string; status: string; client_secret: string; destination_account: string }> {
   try {
-    const { contractorUserId, amount, currency = 'gbp', description, metadata, businessAccountId } = params;
+    const { contractorUserId, amount, currency = 'gbp', description, metadata, businessUserId, businessAccountId } = params;
 
     console.log(`[SECURE PAYMENT V2] Creating payment for contractor ${contractorUserId}, amount: ${amount} ${currency}`);
 
@@ -533,7 +535,7 @@ export async function createSecurePaymentV2(params: {
     console.log(`[SECURE PAYMENT V2] ✅ Resolved contractor ${contractorUserId} → Stripe account ${destination}`);
 
     // STEP 2: CREATE PAYMENT INTENT WITH VERIFIED DESTINATION - NO CUSTOMER ACCOUNTS
-    const paymentIntentParams = {
+    const paymentIntentParams: CreatePaymentIntentParams = {
       amount: amount,
       currency: currency,
       description: description || 'Secure payment via V2 Connect',
@@ -541,6 +543,7 @@ export async function createSecurePaymentV2(params: {
         ...metadata,
         contractor_user_id: contractorUserId.toString(),
         destination_account: destination,
+        ...(businessUserId && { business_user_id: businessUserId.toString() }), // Track business user ID for reconciliation
         version: 'v2_secure',
         payment_type: 'verified_destination_charge',
         created_at: new Date().toISOString(),
@@ -549,7 +552,7 @@ export async function createSecurePaymentV2(params: {
       transferData: {
         destination: destination
       },
-      businessAccountId: businessAccountId // REQUIRED: Create on behalf of business Connect account
+      ...(businessAccountId && { businessAccountId }) // OPTIONAL: Only if business has Connect account
     };
 
     // Always use standard flow - NO saved card support in Connect-only mode
@@ -860,20 +863,12 @@ export async function retrievePaymentIntent(id: string): Promise<Stripe.PaymentI
   return await stripe.paymentIntents.retrieve(id);
 }
 
+/**
+ * @deprecated This function is deprecated and no longer works with destination charge model.
+ * Use createSecurePaymentV2 with contractor user ID instead.
+ */
 export async function processMilestonePayment(payment: Payment): Promise<PaymentIntentResponse> {
-  const amount = Math.round(parseFloat(payment.amount) * 100);
-
-  return createPaymentIntent({
-    amount,
-    currency: 'usd',
-    description: `Payment for milestone ID: ${payment.milestoneId}`,
-    metadata: {
-      paymentId: payment.id.toString(),
-      contractId: payment.contractId.toString(),
-      milestoneId: payment.milestoneId ? payment.milestoneId.toString() : '',
-      paymentType: 'milestone'
-    },
-  });
+  throw new Error('processMilestonePayment is deprecated. Use createSecurePaymentV2 with contractorUserId instead. Destination charges require a contractor Connect account ID.');
 }
 
 export async function updatePaymentStatus(paymentIntentId: string): Promise<string> {

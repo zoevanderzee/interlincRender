@@ -1074,32 +1074,26 @@ export default function connectV2Routes(app, apiPath, authMiddleware) {
       const amountInCents = Math.round(parsedAmount * 100);
       console.log(`[SECURE PAYMENT V2] Creating secure payment: ${parsedAmount} ${currency.toUpperCase()} for contractor ${contractorUserId}`);
 
-      // Get business Connect account for "on behalf of" payment creation
-      const businessConnectAccount = await db.getConnect(userId);
-      if (!businessConnectAccount || !businessConnectAccount.accountId) {
-        return res.status(400).json({ error: "Business Connect account not found. Please complete payment setup." });
-      }
-
-      console.log(`[SECURE PAYMENT] Creating payment on behalf of business Connect account: ${businessConnectAccount.accountId}`);
+      // STRIPE GUIDANCE: Businesses DON'T need Connect accounts for destination charges
+      // They pay with a regular card, funds go directly to contractor's Connect account
+      console.log(`[SECURE PAYMENT] Business ${userId} paying contractor ${contractorUserId} via direct destination charge (no business Connect account required)`);
 
       const paymentResult = await createSecurePaymentV2({
         contractorUserId: parseInt(contractorUserId), // Only accept contractor ID
+        businessUserId: userId, // Track which business user made the payment
         amount: parsedAmount, // Use original amount, not cents (service handles conversion)
         currency,
         description: description || 'Secure payment via Connect V2 - Verified Destination',
         metadata: {
           ...metadata,
-          businessId: userId.toString(),
-          businessAccountId: businessConnectAccount.accountId, // Track business Connect account
           version: 'v2_secure',
           payment_type: 'verified_destination_charge',
           api_version: 'v2_bulletproof',
-          flow_type: 'connect_to_connect',
+          flow_type: 'card_to_contractor',
           no_manual_transfers: 'true',
           security_level: 'bulletproof'
-        },
-        // CRITICAL: Pass business Connect account ID for "on behalf of" payment creation
-        businessAccountId: businessConnectAccount.accountId
+        }
+        // NO businessAccountId - businesses are regular card customers per Stripe guidance
       });
 
       console.log(`[SECURE PAYMENT] ✅ Payment Intent created securely: ${paymentResult.payment_intent_id} → verified account ${paymentResult.destination_account}`);
