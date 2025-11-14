@@ -18,6 +18,26 @@ import { useToast } from "@/hooks/use-toast";
 import { CheckCircle2, XCircle, FileText, Link, Download, Loader2, CreditCard } from "lucide-react";
 import { StripeElements } from "@/components/payments/StripeElements";
 
+interface WorkRequest {
+  id: number;
+  title: string;
+  amount: string;
+  currency: string;
+  contractorUserId: number;
+}
+
+interface Submission {
+  id: number;
+  submissionType: string;
+  deliverableDescription?: string;
+  notes?: string;
+  artifactUrl?: string;
+  deliverableFiles?: Array<{ name: string; size: number; url: string }>;
+  submittedAt: string;
+  status: string;
+  version: number;
+}
+
 interface ReviewWorkRequestModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -38,19 +58,18 @@ export function ReviewWorkRequestModal({
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   // Fetch the latest submission
-  const { data: submissionData, isLoading } = useQuery({
+  const { data: submissionData, isLoading } = useQuery<{ submission: Submission }>({
     queryKey: [`/api/work-requests/${workRequestId}/submissions/latest`],
     enabled: isOpen && !!workRequestId,
   });
 
   // Fetch work request details to get amount and contractor info
-  const { data: workRequestData } = useQuery({
+  const { data: workRequest } = useQuery<WorkRequest>({
     queryKey: [`/api/work-requests/${workRequestId}`],
     enabled: isOpen && !!workRequestId,
   });
 
   const submission = submissionData?.submission;
-  const workRequest = workRequestData;
 
   const reviewMutation = useMutation({
     mutationFn: async (data: { action: 'reject'; reviewNotes?: string }) => {
@@ -209,11 +228,7 @@ export function ReviewWorkRequestModal({
               amount={Math.round(Number(workRequest.amount) * 100)}
               currency={workRequest.currency?.toLowerCase() || 'gbp'}
               description={`Payment for: ${workRequestTitle}`}
-              metadata={{
-                work_request_id: workRequestId.toString(),
-                submission_id: submission.id.toString(),
-              }}
-              contractorId={workRequest.contractorUserId}
+              contractorUserId={workRequest.contractorUserId}
               onPaymentComplete={handlePaymentComplete}
             />
           </div>
