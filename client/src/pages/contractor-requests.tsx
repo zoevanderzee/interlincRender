@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Clock, CheckCircle, XCircle, Calendar, Eye } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatDistanceToNow, format } from "date-fns";
@@ -52,7 +53,7 @@ const ContractorRequests = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const [, navigate] = useLocation();
-  const [filterStatus, setFilterStatus] = useState<string>("pending");
+  const [activeTab, setActiveTab] = useState<string>("active");
   
   // Modal state
   const [detailsModal, setDetailsModal] = useState<{ open: boolean; workRequestId: number | null }>({
@@ -131,7 +132,18 @@ const ContractorRequests = () => {
       contractName: contract?.contractName || request.title || 'Project Request',
       contractId: contract?.id || request.contractId
     };
-  }).filter(request => filterStatus === 'all' || request.status === filterStatus);
+  });
+
+  // Filter by active or completed status based on tab
+  const activeRequests = enrichedRequests.filter(request => 
+    request.status === 'assigned' || request.status === 'accepted' || request.status === 'submitted' || request.status === 'pending'
+  );
+
+  const completedRequests = enrichedRequests.filter(request => 
+    request.status === 'completed' || request.status === 'paid' || request.status === 'approved'
+  );
+
+  const displayedRequests = activeTab === 'active' ? activeRequests : completedRequests;
 
   // Accept work request mutation
   const acceptMutation = useMutation({
@@ -219,57 +231,31 @@ const ContractorRequests = () => {
   return (
     <>
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-semibold text-white">Work Requests</h1>
-          <p className="text-zinc-400 mt-1">Review and respond to project work requests</p>
-        </div>
-
-        <div className="mt-4 md:mt-0 flex space-x-2">
-          <Button 
-            variant={filterStatus === "pending" ? "default" : "outline"} 
-            onClick={() => setFilterStatus("pending")}
-            className="border-zinc-700"
-          >
-            <Clock size={16} className="mr-2" />
-            Pending
-          </Button>
-
-          <Button 
-            variant={filterStatus === "accepted" ? "default" : "outline"} 
-            onClick={() => setFilterStatus("accepted")}
-            className="border-zinc-700"
-          >
-            <CheckCircle size={16} className="mr-2" />
-            Accepted
-          </Button>
-
-          <Button 
-            variant={filterStatus === "declined" ? "default" : "outline"} 
-            onClick={() => setFilterStatus("declined")}
-            className="border-zinc-700"
-          >
-            <XCircle size={16} className="mr-2" />
-            Declined
-          </Button>
-
-          <Button 
-            variant={filterStatus === "all" ? "default" : "outline"} 
-            onClick={() => setFilterStatus("all")}
-            className="border-zinc-700"
-          >
-            All
-          </Button>
-        </div>
+      <div className="mb-6">
+        <h1 className="text-2xl md:text-3xl font-semibold text-white mb-2">My Assignments</h1>
+        <p className="text-zinc-400">Review and manage your work assignments</p>
       </div>
 
-      {/* Work Requests */}
-      <Card className="border border-zinc-800 bg-black">
-        <div className="p-4 border-b border-zinc-800">
-          <h2 className="text-lg font-medium text-white">Work Requests</h2>
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <div className="flex justify-between items-center mb-6">
+          <TabsList>
+            <TabsTrigger value="active" data-testid="tab-active-assignments">
+              Active ({activeRequests.length})
+            </TabsTrigger>
+            <TabsTrigger value="completed" data-testid="tab-completed-assignments">
+              Completed ({completedRequests.length})
+            </TabsTrigger>
+          </TabsList>
         </div>
 
-        {enrichedRequests.length > 0 ? (
+        <TabsContent value="active">
+          <Card className="border border-zinc-800 bg-black">
+            <div className="p-4 border-b border-zinc-800">
+              <h2 className="text-lg font-medium text-white">Active Assignments</h2>
+            </div>
+
+            {activeRequests.length > 0 ? (
           <div className="overflow-x-auto">
             <Table>
               <TableHeader className="bg-zinc-800">
@@ -284,7 +270,7 @@ const ContractorRequests = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {enrichedRequests.map((request) => (
+                {activeRequests.map((request) => (
                   <TableRow key={request.id} className="hover:bg-zinc-800 border-b border-zinc-800">
                     <TableCell className="font-medium text-white">
                       <div>
@@ -416,19 +402,115 @@ const ContractorRequests = () => {
             <div className="mx-auto h-12 w-12 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 mb-4">
               <Clock size={24} />
             </div>
-            <h3 className="text-lg font-medium text-white mb-2">No work requests found</h3>
+            <h3 className="text-lg font-medium text-white mb-2">No Active Assignments</h3>
             <p className="text-zinc-400 max-w-md mx-auto">
-              {filterStatus === 'pending'
-                ? "You don't have any pending work requests right now."
-                : filterStatus === 'accepted'
-                ? "You haven't accepted any work requests yet."
-                : filterStatus === 'declined'
-                ? "You haven't declined any work requests."
-                : "You don't have any work requests at the moment."}
+              You don't have any active work assignments at the moment.
             </p>
           </div>
         )}
-      </Card>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="completed">
+          <Card className="border border-zinc-800 bg-black">
+            <div className="p-4 border-b border-zinc-800">
+              <h2 className="text-lg font-medium text-white">Completed Assignments</h2>
+            </div>
+
+            {completedRequests.length > 0 ? (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader className="bg-zinc-800">
+                <TableRow>
+                  <TableHead className="text-zinc-400">Task</TableHead>
+                  <TableHead className="text-zinc-400">Company</TableHead>
+                  <TableHead className="text-zinc-400">Project</TableHead>
+                  <TableHead className="text-zinc-400">Payment</TableHead>
+                  <TableHead className="text-zinc-400">Completed Date</TableHead>
+                  <TableHead className="text-zinc-400">Status</TableHead>
+                  <TableHead className="text-zinc-400">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {completedRequests.map((request) => (
+                  <TableRow key={request.id} className="hover:bg-zinc-800 border-b border-zinc-800">
+                    <TableCell className="font-medium text-white">
+                      <div>
+                        <div className="font-medium">{request.title}</div>
+                        <div className="text-xs text-zinc-400 mt-1">{request.description}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-white">{request.businessName}</TableCell>
+                    <TableCell className="text-white">
+                      {request.contractId ? (
+                        <div className="flex flex-col">
+                          <span>{request.contractName}</span>
+                          <span className="text-xs text-zinc-400">ID: {request.contractId}</span>
+                        </div>
+                      ) : (
+                        <span className="text-zinc-500">Not linked</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-white">
+                      {request.amount ? (
+                        <div>{formatCurrency(request.amount, request.currency || 'USD')}</div>
+                      ) : (
+                        <div>Not specified</div>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-white">
+                      {request.createdAt ? (
+                        <div className="flex items-center">
+                          <Calendar size={16} className="mr-2 text-zinc-400" />
+                          <div>
+                            <div>{format(new Date(request.createdAt), 'MMM d, yyyy')}</div>
+                            <div className="text-xs text-zinc-400">
+                              {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>Not specified</div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge className="bg-green-900 text-green-300">
+                        {request.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-zinc-700 text-zinc-400 hover:bg-zinc-800 hover:text-white"
+                          onClick={() => setDetailsModal({ open: true, workRequestId: request.id })}
+                          data-testid={`button-view-details-${request.id}`}
+                        >
+                          <Eye size={16} className="mr-1" />
+                          View Details
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        ) : (
+          <div className="p-8 text-center">
+            <div className="mx-auto h-12 w-12 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 mb-4">
+              <CheckCircle size={24} />
+            </div>
+            <h3 className="text-lg font-medium text-white mb-2">No Completed Assignments</h3>
+            <p className="text-zinc-400 max-w-md mx-auto">
+              Your completed work will appear here once you finish assignments.
+            </p>
+          </div>
+        )}
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Work Request Details Modal */}
       {detailsModal.workRequestId && (
