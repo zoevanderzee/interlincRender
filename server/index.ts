@@ -112,13 +112,13 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on port 5000
+  // Use Render's provided PORT or default to 5000 locally
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
-  const port = 5000;
+  const port = process.env.PORT ? Number(process.env.PORT) : 5000;
   server.listen(port, "0.0.0.0", () => {
     log(`🚀 Server running on http://0.0.0.0:${port}`);
-    log(`🌐 External access available via Replit URL`);
+    log(`🌐 External access available via Replit or Render URL`);
     console.log(`Server started successfully on port ${port}`);
   }).on('error', (err) => {
     console.error('Failed to start server:', err);
