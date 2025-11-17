@@ -148,7 +148,7 @@ const SelectItem = React.forwardRef<
     className={cn(
       "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none",
       "transition-colors duration-150 ease-in-out will-change-auto",
-      "focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground",
+      "text-foreground focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground",
       "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className
     )}
