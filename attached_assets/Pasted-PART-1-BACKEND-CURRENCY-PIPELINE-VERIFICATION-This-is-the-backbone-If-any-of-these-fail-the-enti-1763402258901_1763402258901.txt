@@ -1,0 +1,125 @@
+PART 1 — BACKEND CURRENCY PIPELINE VERIFICATION
+This is the backbone. If any of these fail, the entire app lies about currency.
+We verify the flow in this exact order:
+User registers → DB saves currency → Payment created → Invoice generator loads currency → Invoice stored → Invoice PDF → API returns invoices → Frontend displays them
+We check every link.
+1. Verify registration saves currency to DB
+You must confirm:
+Register a business → choose non-GBP country (e.g. US).
+After registration, open /api/user.
+You should see:
+country: "US"
+currency: "USD"
+If these are missing → invoices will NEVER use the correct currency.
+2. Verify payments carry currency forward
+Open the code that creates a payment record (probably in storage.createPayment or payment webhook handlers).
+Check for:
+Does payment store currency?
+Does payment inherit businessUser.currency?
+Or is currency expected to be looked up later?
+You must confirm:
+Invoice generator does NOT get currency from payment — it gets it from the business user.
+So as long as the business user has the right currency, this step is safe.
+3. Verify invoice-generator is now using correct currency
+You already patched it, but confirm you didn’t miss anything:
+Search for 'GBP' in:
+server/services/invoice-generator.ts
+There must be ZERO occurrences except in comments.
+Every currency: must now be:
+currency: businessCurrency
+If any missed → that part still forces GBP.
+4. Verify invoice rows in DB use the correct currency
+After a payment is completed:
+Use your invoices API (e.g. /api/invoices/:id or the invoice list endpoint).
+Look for:
+currency: "USD"
+This is the actual source of truth your UI uses.
+If DB = GBP but businessCurrency = USD → invoice-generator is still wrong.
+5. Verify PDF generation respects invoiceData.amounts.currency
+Your PDF generator uses:
+invoiceData.amounts.currency
+So ensure invoiceData contains:
+currency: "USD"
+Open a generated PDF and confirm.
+If the PDF is showing “£” or formatting is wrong → fix PDF templates next.
+PART 2 — FRONTEND CURRENCY DISPLAY PIPELINE
+Now we validate that your UI is not still hardcoding GBP or mis-formatting.
+Inspect these areas:
+1. Payment Amount Display
+Check all components that show amounts:
+client/src/components/modals/new-payment
+client/src/components/payments
+client/src/components/dashboard
+client/src/components/tables
+client/src/pages/contracts
+client/src/pages/milestones
+Search for:
+£
+GBP
+toLocaleString
+formatCurrency
+Anything like:
+£{amount}
+is wrong and must be replaced with:
+{currencySymbol(currency)}{amount}
+or
+formatCurrency(amount, currency)
+Use one centralized formatter.
+2. Contract / Milestone Budget Display
+Check if budgets assume GBP:
+Search for:
+'GBP'
+If budget pages show £ but user currency = USD → UI will be wrong.
+3. Invoice detail page
+When the user views an invoice:
+Does it show the DB invoice currency?
+Or does it assume GBP?
+Search components for:
+client/src/pages/invoice
+client/src/components/invoice
+client/src/components/PDFViewer
+Look for hardcoded:
+£
+GBP
+4. Currency Symbol Logic
+You need a single helper:
+function currencySymbol(code) {
+  return { GBP: '£', USD: '$', EUR: '€' }[code] ?? code;
+}
+Or better:
+new Intl.NumberFormat('en', { style: 'currency', currency })
+But check if any components override or bypass this.
+PART 3 — AUTOMATED MANUAL TESTING PATH
+To guarantee everything works, perform this flow:
+Step 1: Register 3 accounts with three different currencies
+US → USD
+UK → GBP
+Germany → EUR
+Step 2: Create 1 contract + milestone for each
+Step 3: Trigger marking milestone complete → payment flow
+Step 4: After payment, check:
+Render logs show [INVOICE DEBUG]... businessCurrency: 'XYZ'
+Invoice DB row currency = XYZ
+Invoice PDF shows XYZ
+UI invoice viewer shows XYZ
+Dashboard totals (e.g., "Budget", "Spend") show correct symbol for each user
+Contractor-side invoice shows same currency
+This tests the entire system.
+PART 4 — WHAT YOU NEED TO SEND ME
+Send me:
+Your currency formatting helper (if you have one)
+A list of all UI components that display amounts
+Screenshot of /api/user for a newly registered USD account
+Screenshot of an invoice JSON for a USD account
+Screenshot of invoice PDF for USD
+Then I’ll tell you exactly which UI components still need modification.
+Summary — What to do now
+You asked for the best option:
+Here it is:
+Do NOT deploy until you verify the full currency pipeline:
+Backend registration → fixed?
+Backend invoice generation → fixed?
+PDF → correct currency?
+DB rows → correct currency?
+Frontend → no hardcoded £ or GBP?
+Follow the checklist above.
