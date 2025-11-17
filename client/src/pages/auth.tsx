@@ -956,7 +956,7 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen flex" style={{ background: 'linear-gradient(135deg, hsl(210, 60%, 8%) 0%, hsl(215, 55%, 6%) 100%)' }}>
+    <div className="auth-page flex items-center justify-center p-4">
       {/* Left Panel - Login/Register Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
         <div className="w-full max-w-md">

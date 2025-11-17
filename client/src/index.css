@@ -244,6 +244,41 @@
     background: white !important;
   }
 
+  /* Hard-locked dark theme for auth shell */
+  .auth-page {
+    min-height: 100vh;
+    background-color: #020617;  /* navy / very dark blue */
+    color: #f9fafb;             /* near white */
+  }
+
+  /* Make all text inside default to white-ish */
+  .auth-page * {
+    color: inherit;
+  }
+
+  /* Consistent inputs for auth page */
+  .auth-page input,
+  .auth-page textarea,
+  .auth-page select {
+    background-color: #0b1220 !important;  /* slightly lighter navy */
+    color: #f9fafb !important;
+    border-color: #1e293b !important;
+  }
+
+  .auth-page input:focus,
+  .auth-page textarea:focus,
+  .auth-page select:focus {
+    background-color: #0b1220 !important;
+    color: #f9fafb !important;
+  }
+
+  /* Ensure placeholder text is visible on auth page */
+  .auth-page input::placeholder,
+  .auth-page textarea::placeholder {
+    color: #94a3b8;
+    opacity: 0.7;
+  }
+
   /* Skeleton Loader Styling */
   .skeleton {
     background: linear-gradient(
