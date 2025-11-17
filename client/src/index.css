@@ -231,16 +231,16 @@
   }
 
   /* Light mode specific overrides */
-  :root input,
-  :root textarea,
-  :root select {
+  :root:not(.dark) input,
+  :root:not(.dark) textarea,
+  :root:not(.dark) select {
     background: white !important;
     color: hsl(215, 60%, 20%) !important;
   }
 
-  :root input:focus,
-  :root textarea:focus,
-  :root select:focus {
+  :root:not(.dark) input:focus,
+  :root:not(.dark) textarea:focus,
+  :root:not(.dark) select:focus {
     background: white !important;
   }
 
