@@ -13,6 +13,7 @@ import ContractsTable from "@/components/dashboard/ContractsTable";
 import { Plus, Search, FilterX } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useIntegratedData } from "@/hooks/use-integrated-data";
+import { formatCurrency } from '@/lib/currency';
 
 const Contracts = () => {
   const [_, navigate] = useLocation();
@@ -33,7 +34,7 @@ const Contracts = () => {
 
   // Filter contracts by search term and status
   const filteredContracts = contracts.filter((contract) => {
-    const matchesSearch = searchTerm === "" || 
+    const matchesSearch = searchTerm === "" ||
       contract.contractName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       contract.contractCode.toLowerCase().includes(searchTerm.toLowerCase());
 
@@ -77,7 +78,7 @@ const Contracts = () => {
         </div>
         {!isContractor && (
           <div className="mt-4 md:mt-0">
-            <Button 
+            <Button
               onClick={() => navigate('/projects/new')}
               className="w-full md:w-auto bg-blue-600 hover:bg-blue-700"
             >
@@ -160,10 +161,10 @@ const Contracts = () => {
           </div>
           <h3 className="text-lg font-medium text-white mb-2">No projects found</h3>
           <p className="text-zinc-400 mb-6">
-            {searchTerm || statusFilter ? 
-              "No projects match your search criteria. Try changing your filters." : 
-              isContractor ? 
-                "You haven't been assigned to any projects yet." : 
+            {searchTerm || statusFilter ?
+              "No projects match your search criteria. Try changing your filters." :
+              isContractor ?
+                "You haven't been assigned to any projects yet." :
                 "Get started by creating your first project."
             }
           </p>
@@ -172,7 +173,7 @@ const Contracts = () => {
               Clear Filters
             </Button>
           ) : !isContractor ? (
-            <Button 
+            <Button
               onClick={() => navigate('/projects/new')}
               className="bg-blue-600 hover:bg-blue-700"
             >

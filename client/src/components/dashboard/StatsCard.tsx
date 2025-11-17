@@ -39,7 +39,7 @@ const StatsCard = ({
               </p>
             )}
           </div>
-          
+
           <div className={`${iconBgColor} h-12 w-12 rounded-xl flex items-center justify-center shadow-lg backdrop-blur-sm transition-all duration-300 hover:scale-110`}>
             <span className={iconColor}>
               {icon}

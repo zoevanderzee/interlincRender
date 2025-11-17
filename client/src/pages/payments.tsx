@@ -1,8 +1,7 @@
-
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency } from "@/lib/currency";
 import {
   Table,
   TableBody,
@@ -27,7 +26,7 @@ import {
 export default function Payments() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
-  
+
   // Fetch payments directly from the payments endpoint
   const { data: payments = [], isLoading: isLoadingPayments } = useQuery<Payment[]>({
     queryKey: ['/api/payments'],
@@ -69,13 +68,13 @@ export default function Payments() {
   const processingPayments = safePayments.filter((p: Payment) => p.status === 'processing');
 
   const totalEarned = completedPayments.reduce((sum: number, p: Payment) => sum + parseFloat(p.amount), 0);
-  
+
   // For business users, use dashboard calculation (Projects + Tasks)
   // For contractors, use payments table calculation
   const totalPending = user?.role === 'business' && dashboardStats?.totalPendingValue !== undefined
     ? dashboardStats.totalPendingValue
     : pendingPayments.reduce((sum: number, p: Payment) => sum + parseFloat(p.amount), 0);
-    
+
   const totalProcessing = processingPayments.reduce((sum: number, p: Payment) => sum + parseFloat(p.amount), 0);
 
   // Get contract details for payment context
@@ -112,7 +111,7 @@ export default function Payments() {
               <CheckCircle className="h-4 w-4 text-green-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">{formatCurrency(totalEarned)}</div>
+              <div className="text-2xl font-bold text-white">{formatCurrency(totalEarned, user?.currency || 'GBP')}</div>
               <p className="text-xs text-gray-400">{completedPayments.length} payments completed</p>
             </CardContent>
           </Card>
@@ -123,7 +122,7 @@ export default function Payments() {
               <Clock className="h-4 w-4 text-yellow-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">{formatCurrency(totalPending)}</div>
+              <div className="text-2xl font-bold text-white">{formatCurrency(totalPending, user?.currency || 'GBP')}</div>
               <p className="text-xs text-gray-400">{pendingPayments.length} payments scheduled</p>
             </CardContent>
           </Card>
@@ -134,7 +133,7 @@ export default function Payments() {
               <TrendingUp className="h-4 w-4 text-blue-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">{formatCurrency(totalProcessing)}</div>
+              <div className="text-2xl font-bold text-white">{formatCurrency(totalProcessing, user?.currency || 'GBP')}</div>
               <p className="text-xs text-gray-400">{processingPayments.length} payments processing</p>
             </CardContent>
           </Card>
@@ -172,7 +171,7 @@ export default function Payments() {
                         {getContractName(payment.contractId)}
                       </TableCell>
                       <TableCell className="text-white font-medium">
-                        {formatCurrency(parseFloat(payment.amount))}
+                        {formatCurrency(parseFloat(payment.amount), user?.currency || 'GBP')}
                       </TableCell>
                       <TableCell>
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -224,7 +223,7 @@ export default function Payments() {
             <CheckCircle className="h-4 w-4 text-green-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{formatCurrency(totalEarned)}</div>
+            <div className="text-2xl font-bold text-white">{formatCurrency(totalEarned, user?.currency || 'GBP')}</div>
             <p className="text-xs text-gray-400">{completedPayments.length} payments completed</p>
           </CardContent>
         </Card>
@@ -235,7 +234,7 @@ export default function Payments() {
             <Clock className="h-4 w-4 text-yellow-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{formatCurrency(totalPending)}</div>
+            <div className="text-2xl font-bold text-white">{formatCurrency(totalPending, user?.currency || 'GBP')}</div>
             <p className="text-xs text-gray-400">Projects & tasks value</p>
           </CardContent>
         </Card>
@@ -246,7 +245,7 @@ export default function Payments() {
             <TrendingUp className="h-4 w-4 text-blue-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{formatCurrency(totalProcessing)}</div>
+            <div className="text-2xl font-bold text-white">{formatCurrency(totalProcessing, user?.currency || 'GBP')}</div>
             <p className="text-xs text-gray-400">{processingPayments.length} payments processing</p>
           </CardContent>
         </Card>
@@ -257,7 +256,7 @@ export default function Payments() {
             <Calendar className="h-4 w-4 text-purple-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{formatCurrency(totalEarned + totalPending + totalProcessing)}</div>
+            <div className="text-2xl font-bold text-white">{formatCurrency(totalEarned + totalPending + totalProcessing, user?.currency || 'GBP')}</div>
             <p className="text-xs text-gray-400">This month's activity</p>
           </CardContent>
         </Card>
@@ -297,7 +296,7 @@ export default function Payments() {
                       {getContractName(payment.contractId)}
                     </TableCell>
                     <TableCell className="text-white font-medium">
-                      {formatCurrency(parseFloat(payment.amount))}
+                      {formatCurrency(parseFloat(payment.amount), user?.currency || 'GBP')}
                     </TableCell>
                     <TableCell className="text-gray-300">
                       {payment.scheduledDate ? new Date(payment.scheduledDate).toLocaleDateString() : 'Not set'}

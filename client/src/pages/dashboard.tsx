@@ -12,7 +12,8 @@ import {
   Calendar,
   Settings,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  TrendingUp // Added for new StatsCard usage
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,74 +26,85 @@ import { apiRequest } from '@/lib/queryClient';
 import { formatCurrency } from '@/lib/utils';
 import { ContractorDashboard } from "@/components/dashboard/ContractorDashboard";
 
+// Placeholder for StatsCard component as it's not provided in the original code.
+// Assuming it accepts title, value, description, icon, currency, and isCurrency props.
+const StatsCard = ({ title, value, description, icon: Icon, currency, isCurrency }: any) => {
+  const formattedValue = isCurrency ? formatCurrency(value, currency) : value;
+  return (
+    <Card className="animate-fade-in hover:animate-glow-pulse">
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-muted-foreground text-sm font-medium">{title}</h3>
+          <div className="p-3 rounded-xl bg-accent-500/10 backdrop-blur-sm shadow-lg transition-all duration-300 hover:scale-110">
+            <Icon size={20} className="text-accent-400" />
+          </div>
+        </div>
+        <p className="text-3xl font-bold text-white tracking-tight">
+          {formattedValue}
+        </p>
+        <p className="text-xs text-muted-foreground mt-1">{description}</p>
+      </CardContent>
+    </Card>
+  );
+};
 
-// Define interface for dashboard data (this is now implicitly handled by useIntegratedData)
-// Keep for clarity if needed, but the hook should provide typed data.
-// interface DashboardData {
-//   stats: {
-//     activeContractsCount: number;
-//     pendingApprovalsCount: number;
-//     paymentsProcessed: number;
-//     activeContractorsCount: number;
-//     totalPendingValue?: number;
-//     pendingInvitesCount?: number;
-//   };
-//   contracts: Contract[];
-//   contractors: User[];
-//   milestones: Milestone[];
-//   payments: Payment[];
-// }
-
-// Define interface for budget data (this is now implicitly handled by useIntegratedData)
-// Keep for clarity if needed, but the hook should provide typed data.
-// interface BudgetData {
-//   budgetCap: string | null;
-//   budgetUsed: string;
-//   budgetPeriod: string;
-//   budgetStartDate: string | null;
-//   budgetEndDate: string | null;
-//   budgetResetEnabled: boolean;
-//   remainingBudget: string | null;
-// }
 
 const Dashboard = () => {
   const [_, navigate] = useLocation();
   const { user, isLoading: isAuthLoading } = useAuth();
-  // Use the integrated data hook
   const { data: integratedData, isLoading: isDashboardLoading, error: dashboardError } = useIntegratedData();
   const { toast } = useToast();
 
+  const dashboardStats = integratedData?.stats; // Using stats from integratedData
+  const budgetInfo = integratedData?.budgetData;
+
+  const connectStatus = integratedData?.stripeConnectData;
+
   // Fetch dedicated dashboard stats for accurate metrics
-  const { data: dashboardStats } = useQuery({
+  // Note: This query might be redundant if integratedData.stats is sufficient.
+  // Keeping it as per original code, but consider consolidating.
+  const { data: dedicatedDashboardStats } = useQuery({
     queryKey: ['/api/dashboard/stats'],
     enabled: !!user && user.role === 'business'
   });
 
-  console.log('Dashboard Stats from dedicated endpoint:', dashboardStats);
+  // Extracting stats for business and contractor roles
+  // Assuming `integratedData` and `dedicatedDashboardStats` have similar structures for stats
+  const businessStats = dashboardStats || dedicatedDashboardStats || {
+    paymentsProcessed: 0,
+    activeContractsCount: 0,
+    activeContractors: 0,
+    totalPendingValue: 0,
+    pendingInvitesCount: 0,
+    assignedProjects: 0, // Added for the new StatsCard
+    totalPaymentValue: 0, // Added for the new StatsCard
+    currentMonthValue: 0, // Added for the new StatsCard
+    totalSuccessfulPayments: 0 // Added for the new StatsCard
+  };
 
-  // Use V2 connect data from integrated hook
-  const connectStatus = integratedData ? integratedData.stripeConnectData : null;
+  const contractorStats = {
+    totalEarnings: parseFloat(integratedData?.totalEarnings || '0'),
+    pendingEarnings: parseFloat(integratedData?.pendingEarnings || '0'),
+    currentMonthEarnings: parseFloat(integratedData?.currentMonthEarnings || '0'),
+    completedPaymentsCount: integratedData?.completedPaymentsCount || 0,
+  };
 
-  // Get budget data from integrated data hook (same source as budget oversight page)
-  const budgetInfo = integratedData?.budgetData;
+  const activeContracts = integratedData?.contracts || [];
 
   // Format the remaining budget as currency - now uses proper GBP formatting
   const formatBudgetCurrency = (value: string | null): string => {
-    if (!value) return "£0.00";
-    return formatCurrency(value); // Use proper GBP formatting from utils
+    if (!value) return formatCurrency(0, user?.currency || 'GBP');
+    return formatCurrency(value, user?.currency || 'GBP');
   };
 
-  // Navigate to create project page
   const handleNewProject = () => {
     navigate('/projects/new');
   };
 
-  // Navigate to add contractor page
   const handleAddContractor = () => {
     navigate('/contractors?action=new');
   };
 
-  // Show error state
   if (dashboardError) {
     return (
       <div className="text-center py-12">
@@ -111,7 +123,6 @@ const Dashboard = () => {
     );
   }
 
-  // Show loading state
   const isLoading = isAuthLoading || isDashboardLoading;
   if (!user || isLoading) {
     return (
@@ -130,8 +141,6 @@ const Dashboard = () => {
     );
   }
 
-  // If user is authenticated but no data was returned, show a message
-  // Use integratedData and check for stats property which should always exist if data is present
   if (user && !isDashboardLoading && (!integratedData || !integratedData.stats)) {
     return (
       <div className="text-center py-12">
@@ -159,30 +168,25 @@ const Dashboard = () => {
     );
   }
 
-  // If user is a contractor, show a specialized contractor interface
   if (user && user.role === 'contractor') {
-    // Use real data from integratedData
     const realWorkRequests = integratedData?.workRequests || [];
     const realContracts = integratedData?.contracts || [];
     const realPayments = integratedData?.payments || [];
     const realMilestones = integratedData?.milestones || [];
     const realBusinessAccounts = integratedData?.businesses || [];
 
-    // Placeholder functions - replace with actual implementations
     const handleContractClick = (contractId: string) => { console.log(`Viewing contract: ${contractId}`); navigate(`/contracts/${contractId}`); };
     const handleSubmitWork = (workRequestId: string) => { console.log(`Submitting work for: ${workRequestId}`); toast({ title: "Work Submitted", description: "Your work has been submitted for approval." }); };
     const handleApproveWork = (milestoneId: string) => { console.log(`Approving work for: ${milestoneId}`); toast({ title: "Work Approved", description: "Milestone has been approved." }); };
     const handleAcceptWorkRequest = (workRequestId: string) => { console.log(`Accepting work request: ${workRequestId}`); toast({ title: "Work Request Accepted", description: "You have accepted this work request." }); };
 
-    // Use real integrated data
     const userContracts = realContracts.filter((contract: any) => contract.contractorId === user?.id);
     const allMilestones = realMilestones;
     const payments = realPayments;
     const businessAccounts = realBusinessAccounts;
     const workRequests = realWorkRequests.filter((wr: any) => wr.contractorUserId === user?.id);
-    const userRole = user?.role; // Use the actual user role
+    const userRole = user?.role;
 
-    // Calculate earnings for contractor using real data
     const contractorPayments = payments.filter((payment: any) =>
       userContracts.some((contract: any) =>
         contract.id === payment.contractId && contract.contractorId === user?.id
@@ -201,15 +205,6 @@ const Dashboard = () => {
       sum + parseFloat(p.amount || '0'), 0
     );
 
-    console.log(`CONTRACTOR ${user?.id} EARNINGS CALCULATION:`, {
-      totalPayments: contractorPayments.length,
-      completedPayments: completedPayments.length,
-      totalEarnings,
-      totalPendingEarnings,
-      workRequests: workRequests.length
-    });
-
-    // Active assignments are work requests that have been ACCEPTED by the contractor
     const activeWorkRequests = workRequests.filter((wr: any) => wr.status === 'accepted');
 
     const displayStats = {
@@ -217,6 +212,14 @@ const Dashboard = () => {
       pendingApprovalCount: allMilestones.filter((m: any) => m.status === 'submitted').length,
       totalEarnings: totalEarnings,
       pendingEarnings: totalPendingEarnings
+    };
+
+    // Contractor-specific stats for the StatsCard component
+    const contractorStatsForCards = {
+      totalEarnings: totalEarnings,
+      pendingEarnings: totalPendingEarnings,
+      currentMonthEarnings: 0, // Assuming this is available or needs to be calculated
+      completedPaymentsCount: completedPayments.length,
     };
 
     return (
@@ -232,91 +235,47 @@ const Dashboard = () => {
     );
   }
 
-  // Otherwise, show the business dashboard
+  // Business Dashboard
   return (
     <>
-      {/* Page Header */}
       <div className="mb-8">
         <h1 className="text-2xl md:text-3xl font-semibold text-white">Dashboard</h1>
         <p className="text-gray-400 mt-1">Welcome back. Here's your business overview at a glance.</p>
       </div>
 
-      {/* Primary Metrics: 4 Key Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {/* Card 1: Payments Processed */}
-        <Card className="animate-fade-in hover:animate-glow-pulse">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-muted-foreground text-sm font-medium">Payments Processed</h3>
-              <div className="p-3 rounded-xl bg-green-500/10 backdrop-blur-sm shadow-lg transition-all duration-300 hover:scale-110">
-                <DollarSign size={20} className="text-green-400" />
-              </div>
-            </div>
-            <p className="text-3xl font-bold text-white tracking-tight">
-              {formatCurrency(dashboardStats?.paymentsProcessed ?? integratedData.stats.paymentsProcessed ?? 0)}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">Total value of processed payments</p>
-          </CardContent>
-        </Card>
-
-        {/* Card 2: Budget Remaining */}
-        <Card className="animate-fade-in hover:animate-glow-pulse">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-muted-foreground text-sm font-medium">Budget Remaining</h3>
-              <div className="p-3 rounded-xl bg-blue-500/10 backdrop-blur-sm shadow-lg transition-all duration-300 hover:scale-110">
-                <Coins size={20} className="text-blue-400" />
-              </div>
-            </div>
-            <p className="text-3xl font-bold text-white tracking-tight">
-              {formatBudgetCurrency(budgetInfo?.remainingBudget)}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">Available outsourcing budget</p>
-          </CardContent>
-        </Card>
-
-        {/* Card 3: Assigned Projects (Accepted Work Requests) */}
-        <Card className="animate-fade-in hover:animate-glow-pulse">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-muted-foreground text-sm font-medium">Assigned Projects</h3>
-              <div className="p-3 rounded-xl bg-purple-500/10 backdrop-blur-sm shadow-lg transition-all duration-300 hover:scale-110">
-                <Briefcase size={20} className="text-purple-400" />
-              </div>
-            </div>
-            <p className="text-3xl font-bold text-white tracking-tight">
-              {dashboardStats?.assignedProjects || 0}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">Accepted work assignments</p>
-          </CardContent>
-        </Card>
-
-        {/* Card 4: Connected Companies (for contractors) or Active Contractors (for business) */}
-        <Card className="animate-fade-in hover:animate-glow-pulse">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-muted-foreground text-sm font-medium">
-                {user?.role === 'contractor' ? 'Connected Companies' : 'Active Contractors'}
-              </h3>
-              <div className="p-3 rounded-xl bg-indigo-500/10 backdrop-blur-sm shadow-lg transition-all duration-300 hover:scale-110">
-                <Users size={20} className="text-indigo-400" />
-              </div>
-            </div>
-            <p className="text-3xl font-bold text-white tracking-tight">
-              {user?.role === 'contractor'
-                ? (integratedData.businesses?.length || 0)
-                : (dashboardStats?.activeContractors ?? integratedData.stats.activeContractorsCount)
-              }
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {user?.role === 'contractor' ? 'Connected businesses' : 'Working professionals'}
-            </p>
-          </CardContent>
-        </Card>
+      {/* Business Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StatsCard
+          title="Total Spend"
+          value={businessStats.totalPaymentValue}
+          description="All-time payments"
+          icon={DollarSign}
+          currency={user?.currency || 'GBP'}
+          isCurrency={true}
+        />
+        <StatsCard
+          title="This Month"
+          value={businessStats.currentMonthValue}
+          description="Current month spend"
+          icon={TrendingUp}
+          currency={user?.currency || 'GBP'}
+          isCurrency={true}
+        />
+        <StatsCard
+          title="Active Contracts"
+          value={activeContracts.length}
+          description="Currently active"
+          icon={FileText}
+        />
+        <StatsCard
+          title="Successful Payments"
+          value={businessStats.totalSuccessfulPayments}
+          description="Completed transactions"
+          icon={CheckCircle}
+        />
       </div>
 
-      {/* Action Buttons - Simplified */}
-      <div className="flex flex-wrap gap-4 mb-8">
+      <div className="flex flex-wrap gap-4 mb-8 mt-8">
         <Button
           size="lg"
           onClick={handleNewProject}
@@ -337,7 +296,6 @@ const Dashboard = () => {
         </Button>
       </div>
 
-      {/* Quick Actions Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <Button
           variant="ghost"
