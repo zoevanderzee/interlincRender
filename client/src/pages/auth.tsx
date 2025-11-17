@@ -1379,7 +1379,7 @@ export default function AuthPage() {
           </div>
 
           {/* Dashboard Preview */}
-          <div className="bg-gradient-to-br from-[#0f1f3a]/60 to-[#1a2b4a]/60 backdrop-blur-sm rounded-2xl p-6 border border-[#6b9aff]/20 shadow-2xl mb-8">
+          <div className="bg-gradient-to-br from-[#0a1628]/80 to-[#0f1f3a]/80 backdrop-blur-sm rounded-2xl p-6 border border-[#6b9aff]/20 shadow-2xl mb-8">
             <div className="flex items-center justify-between mb-4">
               <span className="text-sm font-semibold text-[#a0c4ff]">Dashboard</span>
               <div className="flex gap-1.5">
