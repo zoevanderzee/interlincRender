@@ -1,0 +1,120 @@
+1. Your backend currently ignores currency and country
+Not partially.
+Not “buggy.”
+Not “needs tweaks.”
+It completely ignores the currency that users choose during registration.
+Proof (from your own code):
+A. Registration handler does NOT accept currency at all
+In sync-firebase-user.ts:
+Registration schema:
+registrationData: z.object({
+  role: z.enum(['business', 'contractor']),
+  firstName: ...
+  lastName: ...
+  username: ...
+  company: ...
+  position: ...
+  workerType: ...
+})
+Missing fields:
+country
+currency
+They literally cannot enter the backend.
+When creating a new user:
+const userData = {
+   email,
+   username,
+   firstName,
+   lastName,
+   password,
+   role,
+   workerType,
+   companyName,
+   position,
+   firebaseUid,
+   emailVerified,
+   subscriptionStatus: 'inactive'
+}
+Again:
+country: MISSING
+currency: MISSING
+So the DB fields exist but are never populated.
+B. Updating an existing user also ignores currency
+No mention of:
+updateData.country = …
+updateData.currency = …
+The backend never reads or writes currency.
+2. Invoices are 100% hardcoded to GBP
+Multiple places:
+amounts: { ..., currency: 'GBP' }
+currency: 'GBP'
+Database insert includes:
+currency: 'GBP'
+The generated invoice PDF and stored invoice rows are locked to GBP.
+Currency logic = FAKE.
+3. Your schema is correct — but it’s not being used
+country: text("country")
+currency: text("currency")
+They're in the DB, but the backend refuses to populate them.
+This is why:
+registration seems to work
+“auto currency selection” seems to work
+but invoices always say GBP
+and everything behaves like you only support UK
+Because the backend never receives the values.
+4. What needs to be fixed (no fluff)
+Here is the exact list so you don’t waste another second:
+FIX #1 — Update the registration schema
+sync-firebase-user.ts → add:
+country: z.string().optional(),
+currency: z.string().optional(),
+FIX #2 — Pass country + currency into updateData
+Inside:
+if (registrationData) {
+Add:
+if (registrationData.country) updateData.country = registrationData.country;
+if (registrationData.currency) updateData.currency = registrationData.currency;
+FIX #3 — Include country + currency when creating new users
+Inside:
+const userData = {
+Add:
+country: registrationData.country || null,
+currency: registrationData.currency || null,
+FIX #4 — Replace ALL 5 hardcoded 'GBP' cases in invoice-generator.ts
+Instead of:
+currency: 'GBP'
+Use:
+const currency = businessUser.currency ?? 'GBP';
+And insert:
+currency
+Into:
+invoiceData.amounts.currency
+businessInvoiceData.amounts.currency
+contractorInvoiceData.amounts.currency
+DB invoice inserts
+5. After patching, verify with a REAL test
+Register a business with:
+country: US
+currency: USD
+Look up the DB row in users
+currency should be USD
+Create a payment → generate invoice
+Check the invoice row:
+currency should be USD
+Open generated PDF:
+It should show USD amounts
+If not → something is still wrong.
+6. If you want, I will generate the exact patches (line-by-line) ready to paste
+Just say:
+“Give me the exact patches for all files.”
+I’ll generate:
+The registration schema patch
+The updateData patch
+The userData patch
+The invoice-generator fixes
+Zero fluff, exact code, copy-paste safe.
+Bottom line
+Your currency system DOES NOT WORK right now.
+Your invoices ARE NOT multi-currency.
+The backend IS NOT saving business country or currency.
+The frontend WAS NEVER the problem.
