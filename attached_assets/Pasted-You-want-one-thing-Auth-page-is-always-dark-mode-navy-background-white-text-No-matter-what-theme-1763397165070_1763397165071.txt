@@ -1,0 +1,65 @@
+You want one thing:
+Auth page is always dark mode: navy background, white text.
+No matter what theme / palette / plugin is doing.
+So we hard-code it. That means:
+Do not leave the auth page dependent on bg-background / text-foreground etc.
+Give it its own wrapper class with explicit colours.
+1. Make sure the bad global override is gone
+In client/src/index.css, make sure this is deleted (not just commented somewhere):
+/* Light mode specific overrides */
+:root input,
+:root textarea,
+:root select {
+  background: white !important;
+  color: hsl(215, 60%, 20%) !important;
+}
+If that’s still there in any form, it will keep randomly fighting with your theme depending on load order.
+2. Create a “locked” dark auth styling
+In client/src/index.css (or whatever main CSS you import in your React entry), add a dedicated class for the auth page shell:
+/* Hard-locked dark theme for auth shell */
+.auth-page {
+  min-height: 100vh;
+  background-color: #020617;  /* navy / very dark blue */
+  color: #f9fafb;             /* near white */
+}
+
+/* Optional: make all text inside default to white-ish */
+.auth-page * {
+  color: inherit;
+}
+
+/* If you want inputs to be consistent too: */
+.auth-page input,
+.auth-page textarea,
+.auth-page select {
+  background-color: #0b1220;  /* slightly lighter navy */
+  color: #f9fafb;
+}
+You can tweak those hexes if you want a different navy / white, but the point is: they’re fixed, not coming from theme JSON or plugins.
+3. Wrap the auth page with this class
+In your React auth page component (whatever file renders the login/register view – e.g. AuthPage, LoginPage, etc.), make sure the outermost container uses .auth-page.
+Example:
+// client/src/whatever/AuthPage.tsx
+
+export function AuthPage() {
+  return (
+    <div className="auth-page flex items-center justify-center">
+      <div className="w-full max-w-md">
+        {/* your existing card / form / etc */}
+      </div>
+    </div>
+  );
+}
+Key points:
+.auth-page must be on the top-level wrapper for that page, not buried inside a card.
+You can still use Tailwind inside (flex, items-center, max-w-md, etc.).
+Because we set color: inherit on .auth-page *, your text will default to white unless you explicitly override it with a Tailwind text-* class.
+If you currently have something like:
+<div className="min-h-screen bg-background text-foreground ...">
+Change that to:
+<div className="auth-page flex items-center justify-center">
+or:
+<div className="auth-page">
+  {/* rest */}
+</div>
+and remove bg-background text-foreground from the outer shell so they can’t fight with your hard-coded colours.
