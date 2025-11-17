@@ -1,0 +1,79 @@
+You’ve already made the two critical backend fixes:
+Registration now saves country + currency.
+Invoice generator now uses businessCurrency instead of hardcoded 'GBP'.
+Now you need to verify that and clean the frontend, not let the agent start redesigning half the system.
+Let’s dissect their plan.
+What in that plan is GOOD
+These parts are solid and you should do them:
+Centralized currency formatter (frontend)
+Yes. Have a single formatCurrency(amount, currency) and use it everywhere.
+Also fine to add currencySymbol(code) if needed.
+Then replace all hardcoded £ / GBP in components with that helper.
+Searching the frontend for hardcoded GBP
+This is mandatory:
+Search for:
+£
+'GBP'
+"GBP"
+Anywhere you see that in UI components, switch to using the formatter + the invoice/user currency.
+That’s exactly what you need on the frontend side.
+What is UNNECESSARY / RISKY right now
+These steps are extra and not “best” for where you are:
+Adding currency to the payment schema (DB change)
+You can do it, but you do not need it for multi-currency invoices to work.
+Your invoices already use businessUser.currency.
+Adding payment.currency means:
+DB migration complexity.
+Updating storage / createPayment logic.
+Another field to keep in sync.
+This is nice-to-have for future reporting, not required for correctness today.
+Updating storage to save currency on payment creation
+Same issue: only worth it if you have a real use-case now.
+Right now it just adds more moving parts with zero immediate benefit.
+New diagnostic endpoint /api/debug/currency-pipeline/{userId}
+Good idea conceptually for debugging, but:
+It’s extra API surface.
+You’ll forget to remove it or guard it.
+You can already see most of what you need via:
+/api/user
+invoices list endpoints
+logs
+For where you are now, this is overengineering.
+The best plan for you right now
+Here’s what you should tell the agent to do / not do:
+✅ DO (keep this):
+Implement a centralized currency formatter:
+File like: client/src/lib/currency.ts with:
+formatCurrency(amount, currency)
+currencySymbol(currency) (if you want)
+Update all currency displays to use it.
+Search the frontend for:
+£
+'GBP'
+"GBP"
+And replace every single one with the formatter using the actual currency from data:
+invoice.currency
+businessUser.currency
+or whatever the API returns.
+✅ DO MANUALLY:
+Verify:
+/api/user → country and currency are present.
+Invoice JSON → currency is correct per business.
+PDF → clearly shows the correct currency.
+❌ DO NOT (for now):
+Do not add currency to the payment schema.
+Do not modify storage to store payment currency.
+Do not add /api/debug/currency-pipeline diagnostics yet.
+Those can come later if/when you actually need payment-level currency for reporting.
+What to reply to the agent
+Use this:
+“Do not modify the database schema or payment storage right now.
+Keep the changes limited to:
+A centralized currency formatter in the frontend.
+Replacing all hardcoded ‘£’ / ‘GBP’ in components with that formatter.
+Don’t add diagnostic routes or new fields to the payments table. I’ll verify the backend behaviour via /api/user and existing invoice endpoints.”
+Then:
+Let it create client/src/lib/currency.ts.
+Let it apply changes to the components.
+You and I then verify behaviour using real flows.
+If you want, paste the new currency.ts and one or two updated components after the agent edits them, and I’ll check they’re actually using the right values.
