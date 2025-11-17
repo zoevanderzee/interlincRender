@@ -1,0 +1,61 @@
+THE TEST PROMPT (COPY THIS EXACT TEXT)
+"Run a full backend diagnostic on the following flows and return ONLY factual, verifiable results with no assumptions:
+1. Business Registration Currency Logic
+When a new business user registers:
+Confirm which field stores the selected country.
+Confirm which field stores the selected currency.
+Confirm that the chosen currency is being saved to the correct user record in the database.
+Confirm that the saved currency is retrieved correctly when the user logs in.
+Confirm that the frontend is not overriding or altering the currency after login.
+Confirm that NO fallback currency is being silently applied (e.g., USD).
+2. Invoice Generation Logic
+Identify the file and function that generates invoices.
+Confirm:
+Invoice currency = the business user’s stored currency.
+Line item amounts are converted correctly.
+Tax/VAT logic uses the correct country rules.
+Totals are computed using the correct precision (2 decimal places).
+The generated invoice PDF displays the correct currency symbol.
+No hardcoded currency value exists anywhere (e.g., "$" or "USD").
+No environment variable overrides the currency.
+Return the exact source code lines where:
+currency is pulled,
+currency is inserted into the invoice,
+totals are calculated,
+tax is applied,
+PDF output is generated.
+3. Cross-Verification
+For every fact returned:
+Include the file path and line numbers.
+Include the actual code snippet that performs the logic.
+Include the actual SQL or Drizzle ORM schema used to store currency.
+If any logic is missing, unclear, or incorrect:
+State explicitly: 'Missing', 'Incorrect', or 'Inconsistent'.
+DO NOT suggest solutions.
+DO NOT guess.
+DO NOT hallucinate.
+ONLY return verifiable facts that exist in the codebase."**
+Why this prompt works
+This forces the agent / assistant / tool to:
+Trace the exact DB field storing currency
+Verify registration flow writes the correct currency
+Check for silent fallback defaults
+Check PDF creation (invoice generator)
+Check currency symbols
+Check tax rules
+Check if anything is hardcoded
+Return actual file paths + line numbers
+Not “make up” anything
+Not explain, not soften, not hide missing logic
+It essentially brute-forces transparency through your entire backend.
+If you want, I can run this with you
+You can paste:
+The business registration schema
+The invoice generation file
+The currency utilities (if any)
+…and I’ll tell you:
+If anything is wrong
+What’s missing
+Where currency is actually stored
+Whether invoice logic is complete or broken
+Just send the files or paths.

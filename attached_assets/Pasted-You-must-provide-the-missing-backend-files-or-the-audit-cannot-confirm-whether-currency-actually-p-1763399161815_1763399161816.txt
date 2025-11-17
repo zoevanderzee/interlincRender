@@ -1,0 +1,63 @@
+You must provide the missing backend files
+…or the audit cannot confirm:
+whether currency actually persists
+whether invoice generation uses the correct currency
+whether any silent fallback is applied
+whether tax/precision logic is correct
+whether PDF output uses the right symbol
+whether any “fake” or placeholder invoice code is lying to you
+The diagnostic literally told you the truth:
+“Cannot verify. Missing critical backend files.”
+So here is what you send me next.
+Send me these exact files (copy/paste contents):
+1. Invoice generators
+server/services/invoice-generator.ts
+server/services/pdf-invoice-generator.ts
+server/services/invoiceService.ts  (if exists)
+server/utils/invoiceUtils.ts       (if exists)
+2. Registration routes
+These determine whether currency is saved or ignored:
+server/routes.ts
+server/routes/auth.ts
+server/routes/register.ts (if exists)
+server/routes/sync-firebase-user.ts
+server/middleware/auth.ts
+3. Currency mapping
+shared/countries.ts
+shared/currency.ts (if exists)
+shared/utils.ts (if it includes currency helpers)
+4. Database schema for users (full file)
+You already showed part of shared/schema.ts, but I need the whole file, especially:
+user table
+business table
+contract tables (if they duplicate currency)
+invoice table (if present)
+Why this matters
+Right now your frontend is 100% ready to store:
+country
+currency
+But:
+We do not have evidence the backend saves currency
+We do not have evidence invoices fetch that currency
+We do not have evidence currency appears in PDFs
+We do not know if the invoice generator is real or placeholder
+We do not know if any calculations silently default to USD
+We do not know if a conversion step exists
+We do not know if the invoice DB stores currency per invoice or per business
+The only way to answer these is the backend code itself.
+Once you send the files
+I will produce:
+file paths
+line numbers
+exact logic trace
+missing logic
+incorrect logic
+hardcoded USD patterns
+tax handling
+decimal precision handling
+whether PDF output matches client currency
+what must be fixed
+whether the backend is returning misleading data
+No guessing.
+Only verifiable facts from your actual code.
+Send the files when you’re ready.
