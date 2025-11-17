@@ -248,12 +248,25 @@
   .auth-page {
     min-height: 100vh;
     background-color: #020617;  /* navy / very dark blue */
-    color: #f9fafb;             /* near white */
+    color: #f9fafb !important;  /* near white */
   }
 
-  /* Make all text inside default to white-ish */
-  .auth-page * {
-    color: inherit;
+  /* Force ALL text to white */
+  .auth-page,
+  .auth-page *,
+  .auth-page h1,
+  .auth-page h2,
+  .auth-page h3,
+  .auth-page h4,
+  .auth-page h5,
+  .auth-page h6,
+  .auth-page p,
+  .auth-page span,
+  .auth-page div,
+  .auth-page label,
+  .auth-page button,
+  .auth-page a {
+    color: #f9fafb !important;
   }
 
   /* Consistent inputs for auth page */
@@ -275,8 +288,16 @@
   /* Ensure placeholder text is visible on auth page */
   .auth-page input::placeholder,
   .auth-page textarea::placeholder {
-    color: #94a3b8;
+    color: #94a3b8 !important;
     opacity: 0.7;
+  }
+
+  /* Force dropdown options to white text */
+  .auth-page [role="option"],
+  .auth-page [data-radix-select-viewport] *,
+  .auth-page [data-radix-select-content] *,
+  .auth-page [data-radix-select-item] * {
+    color: #f9fafb !important;
   }
 
   /* Skeleton Loader Styling */
