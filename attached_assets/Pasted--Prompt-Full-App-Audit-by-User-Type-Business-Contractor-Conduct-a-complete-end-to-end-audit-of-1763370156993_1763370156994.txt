@@ -1,0 +1,70 @@
+✅ Prompt: Full App Audit by User Type (Business & Contractor)
+Conduct a complete end-to-end audit of the app across both user roles — Business and Contractor — to ensure functional, visual, and financial consistency. The app is considered near-final, and this audit is to catch all remaining issues prior to launch.
+🔍 GENERAL (GLOBAL CHECKS)
+UI Consistency
+Confirm consistent theme, font, spacing, and component usage across all views.
+Mobile responsiveness and layout handling for edge cases (e.g., overflow menus, modals, long names).
+Currency Handling
+Ensure businesses can select their currency during onboarding or in settings.
+The selected currency updates all pricing UI throughout the app (dashboards, work requests, modals).
+Confirm fallback/default currency behavior (e.g. if not selected).
+Contractor views respect the business’s currency and do not convert it automatically.
+Country Selection
+Country selection should affect default currency (where appropriate).
+Any location-based UI (like time zones or payment options) reflects the selected country.
+Check for edge cases (e.g., territories, eurozone, etc.).
+🧑‍💼 BUSINESS USER AUDIT
+Onboarding
+Can select country + currency.
+Stripe setup (if applicable) is guided or optional, depending on payment flow.
+Work Request Flow
+Can create a work request with:
+Title, description, deliverables, due dates.
+Contractor selection.
+Fixed price set in business's currency.
+Contractors receive request as "pending", and can accept/decline.
+Submission Review & Payment
+Business can review contractor submission.
+“Approve & Pay” opens Stripe payment modal with locked amount and correct currency.
+Payment success triggers:
+Task marked “Paid”.
+Invoice generated for both business and contractor (PDF or downloadable).
+Receipt email confirmation (if applicable).
+Dashboard / Tracking
+Business dashboard shows all current and past work requests with correct status.
+Filters work.
+Currency displays correctly throughout.
+🧑‍🎨 CONTRACTOR USER AUDIT
+Onboarding
+Can set country.
+Currency is shown but locked to business-selected currency when viewing requests.
+Receiving Work Requests
+Requests arrive with correct currency and amount.
+Can accept or decline.
+Submitting Work
+Can upload files, notes, or deliverables.
+Once submitted, status updates on both sides.
+Payment Visibility
+Once approved and paid:
+Submission shows “Paid”.
+Invoice is visible/downloadable.
+Correct currency is shown in invoice.
+(Optional) Can view payment timeline or history.
+📦 BACKEND + SYSTEM INTEGRITY
+Database Sync
+All status changes are correctly reflected in DB.
+No orphaned work requests or mismatched statuses (e.g., “Paid” without submission).
+Webhook Handling
+Stripe webhook triggers payment status updates accurately and only once.
+No duplicate task updates or double-payout risks.
+Invoice Generation
+Invoices auto-generate per payment.
+Both parties receive customized invoices:
+Business: “Payment to Contractor for Services Rendered”
+Contractor: “Receipt of Payment for Completed Work”
+Currency and legal address/country reflected.
+✅ TEST PLAN
+Create at least 1 full work request per currency (USD, GBP, EUR).
+Run through complete flow from creation to payment and invoice for both roles.
+Run audit with one user per country (UK, US, EU, Canada).
+Confirm all payment flows work in test mode and sandbox.
