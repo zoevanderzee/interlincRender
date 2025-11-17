@@ -1,0 +1,78 @@
+1. Open the actual diff for these files
+You need to inspect the code for each:
+A. shared/invoiceTypes.ts
+Confirm:
+schemaVersion: 'interlinc-invoice-v1'
+supplier + customer objects exist
+totals object includes subtotal, tax, total
+currency is stored at the invoice-level
+documentType distinguishes business vs contractor invoices
+Nothing references UK-specific tax or UK terms
+B. shared/invoiceCompliance.ts
+Confirm:
+Profiles for GB, US, and DE exist
+Top-level fields:
+countryCode
+requiredFields
+notes
+Function: getInvoiceComplianceProfile(countryCode)
+C. server/services/invoice-generator.ts
+Confirm:
+businessCurrency = businessUser.currency || 'GBP'
+complianceProfile = getInvoiceComplianceProfile(businessUser.country)
+There is no hardcoded 'GBP' left anywhere
+It builds two structured invoices:
+businessInvoice: InterlincInvoiceV1
+contractorReceipt: InterlincInvoiceV1
+DB writes:
+currency: businessCurrency
+invoiceData: businessInvoiceData
+and
+invoiceData: contractorInvoiceData
+If any of this is missing, the whole pipeline is not trustworthy.
+2. Run a real-world test immediately
+After pushing and deploying:
+Create a USD business account
+Select country: United States
+Currency should auto-set → USD
+Create one payment
+Contract → milestone → approve → complete
+Check invoices in the DB
+Run:
+select id, currency, invoice_data 
+from invoices 
+order by id desc limit 2;
+Expected:
+Business invoice:
+{
+  schemaVersion: "interlinc-invoice-v1",
+  documentType: "business_invoice",
+  currency: "USD",
+  compliance: { countryCode: "US", ... },
+  ...
+}
+Contractor receipt:
+{
+  schemaVersion: "interlinc-invoice-v1",
+  documentType: "contractor_receipt",
+  currency: "USD",
+  compliance: { countryCode: "US", ... },
+  ...
+}
+If you see GBP anywhere → it’s still broken.
+3. Only after verification: lock V1 as “approved baseline”
+V1 must be:
+Deterministic
+Country-aware
+Currency-correct
+Same schema every time
+No UK-specific assumptions
+Once verified, we lock it and version future changes as V1.1, V2, etc.
+Final Answer
+Yes — if the code was applied as summarized, it gives you a correct, structured V1 invoice system with:
+Currency from business settings
+Country-based compliance profile
+Two correct invoice roles (business/contractor)
+No UK bias
+No schema changes needed
+But you must verify the actual code, not trust the summary.
