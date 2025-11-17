@@ -46,6 +46,9 @@ export class InvoiceGeneratorService {
       throw new Error('Missing business or contractor user data');
     }
 
+    // Use business user's currency or default to GBP
+    const businessCurrency = businessUser.currency || 'GBP';
+
     // Generate unique invoice number
     const invoiceNumber = await this.generateInvoiceNumber(paymentId);
 
@@ -96,7 +99,7 @@ export class InvoiceGeneratorService {
         subtotal: grossAmount,
         platform_fee: platformFee,
         net_to_contractor: netAmount,
-        currency: 'GBP'
+        currency: businessCurrency
       },
       
       payment_details: {
@@ -152,7 +155,7 @@ export class InvoiceGeneratorService {
         gross_amount: grossAmount,
         taxes: 0, // No VAT applied
         total_paid: grossAmount,
-        currency: 'GBP'
+        currency: businessCurrency
       },
       
       payment_details: {
@@ -209,7 +212,7 @@ export class InvoiceGeneratorService {
         gross_amount: grossAmount,
         stripe_fees: platformFee,
         net_received: netAmount,
-        currency: 'GBP'
+        currency: businessCurrency
       },
       
       payment_details: {
@@ -245,7 +248,7 @@ export class InvoiceGeneratorService {
       grossAmount: grossAmount.toFixed(2),
       platformFee: '0.00', // Business doesn't see platform fees
       netAmount: grossAmount.toFixed(2), // Business sees full amount paid
-      currency: 'GBP',
+      currency: businessCurrency,
       
       businessName: businessUser.companyName || businessUser.username,
       businessAddress: businessUser.address || null,
@@ -282,7 +285,7 @@ export class InvoiceGeneratorService {
       grossAmount: grossAmount.toFixed(2),
       platformFee: platformFee.toFixed(2), // Contractor sees the fees deducted
       netAmount: netAmount.toFixed(2), // Contractor sees net amount received
-      currency: 'GBP',
+      currency: businessCurrency,
       
       businessName: businessUser.companyName || businessUser.username,
       businessAddress: businessUser.address || null,

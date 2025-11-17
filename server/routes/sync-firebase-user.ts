@@ -14,7 +14,9 @@ const syncFirebaseUserSchema = z.object({
     username: z.string().optional(),
     company: z.string().optional(),
     position: z.string().optional(),
-    workerType: z.string().optional()
+    workerType: z.string().optional(),
+    country: z.string().optional(),
+    currency: z.string().optional()
   }).optional()
 });
 
@@ -43,6 +45,8 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
           if (registrationData.company) updateData.companyName = registrationData.company;
           if (registrationData.position) updateData.position = registrationData.position;
           if (registrationData.workerType) updateData.workerType = registrationData.workerType;
+          if (registrationData.country) updateData.country = registrationData.country;
+          if (registrationData.currency) updateData.currency = registrationData.currency;
           console.log(`Updating existing user ${existingUser.id} with role: ${registrationData.role}`);
         }
         
@@ -122,6 +126,8 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
         workerType: registrationData.workerType || null,
         companyName: registrationData.company || null,
         position: registrationData.position || null,
+        country: registrationData.country || null,
+        currency: registrationData.currency || null,
         firebaseUid: uid,
         emailVerified: emailVerified,
         subscriptionStatus: 'inactive' as const
