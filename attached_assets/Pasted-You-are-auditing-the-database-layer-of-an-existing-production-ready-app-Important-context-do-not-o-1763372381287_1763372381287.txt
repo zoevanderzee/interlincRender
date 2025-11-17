@@ -1,0 +1,104 @@
+You are auditing the database layer of an existing production-ready app.
+Important context (do not override or ignore this):
+The application is already in use and has successfully processed multiple Stripe payments in production.
+Therefore:
+A database DOES exist.
+The backend CAN read/write data in at least some flows.
+The app uses Stripe only for payments. Any references to Trolley are legacy or unused and should be treated as non-critical for the current audit.
+Your job is to perform a factual, evidence-based audit of the actual database configuration and scalability, NOT to guess based on missing local env vars.
+Rules
+No hallucinations.
+If you don’t see something, say “not found in this environment”, not “does not exist”.
+Use evidence.
+When you claim something is broken or missing, show:
+The exact file/line you inspected, and/or
+The command you ran and its output.
+Focus only on the REAL runtime configuration.
+Use the environment and code that the backend server uses.
+If the Replit environment does not match production, clearly say so instead of assuming production is broken.
+Tasks
+Follow these steps and include your findings for each one.
+1. Identify the database configuration
+Search the codebase for the DB configuration and client:
+Look for:
+DATABASE_URL, DB_URL, or similar env vars.
+ORM/DB libraries (example: Prisma, Sequelize, Knex, TypeORM, raw pg, etc.).
+List:
+The DB provider (e.g. PostgreSQL, MySQL, SQLite, etc.).
+The connection string pattern (redact secrets, but show if it’s postgres://, sqlite://, etc.).
+Explicitly answer:
+“Is this using a proper external database suitable for production (e.g. managed Postgres) or a local/in-memory file DB?”
+Show the exact files and code snippets you used to determine this.
+2. Test an actual database connection
+Using the existing config (don’t invent new URLs):
+If there is an existing DB client or ORM:
+Use it to run a simple query against the actual configured DB:
+Example for Postgres: SELECT NOW();
+If tables exist, run:
+SELECT COUNT(*) against the main tables (e.g. users, projects, payments, or whatever exists) using the app’s DB client or ORM.
+Report:
+Whether the connection succeeded.
+The output of the queries.
+Any errors you got (with full error message).
+If the connection fails, show the exact error, not your interpretation.
+3. Detect migrations and schema management
+Identify the migration system (if any):
+Examples: Prisma migrations, Knex migrations, Sequelize migrations, raw SQL scripts.
+Point to:
+The migration folder(s).
+The command(s) used to run migrations (e.g. in package.json scripts).
+Answer:
+Is there a repeatable migration process to create the schema from scratch?
+Are there pending migrations?
+Show the relevant files and scripts you inspected.
+4. Inspect schema and relations
+List the key tables (or models), such as:
+users / organizations / projects / contracts / milestones / payments (or their equivalents).
+For each of the main tables:
+Show the columns, their types, and the main foreign keys.
+Confirm whether foreign key constraints are enforced in the DB (not just implied in TypeScript).
+You can either:
+Use the ORM schema file (e.g. schema.prisma), OR
+Use DESCRIBE / \d / equivalent DB commands, depending on the stack.
+Summarise the schema in plain language, especially:
+How users, organisations, projects, and payments link together.
+5. Check indexing and performance basics
+For the main tables:
+List existing indexes:
+Especially on:
+users.email
+foreign keys (e.g. organization_id, project_id, etc.)
+any Stripe-related columns (e.g. stripe_customer_id, stripe_payment_intent_id).
+Identify any obvious missing indexes for common access patterns:
+Look at API routes and see what fields they filter by.
+Show:
+The command(s) or schema you used to list indexes.
+Any clear red flags (like frequently queried columns with no index).
+6. Check connection pooling and DB config
+Find where the DB client is created/configured.
+List:
+Max pool size.
+Idle timeout.
+Any connection reuse/pooling logic.
+Answer:
+Is the app using a connection pool, or opening a new connection per request?
+Show the config file and code snippet you used to determine this.
+7. Summarise DB health & scalability
+Finally, provide a concise summary with these sections:
+Current DB Setup (factual)
+DB type & provider (e.g. “Postgres on X” or “SQLite local file”).
+How the app connects.
+Whether you were able to successfully query it from this environment.
+Production Readiness Assessment
+Based on what you actually saw (not guesses), classify:
+Schema management: [Good / Acceptable / Risky] + why.
+Indexing: [Good / Acceptable / Needs work] + examples.
+Connection handling: [Good / Acceptable / Risky] + explanation.
+Concrete, actionable recommendations
+Only include recommendations backed by evidence from the code or DB, for example:
+“Add index on X because route Y filters by it and no index exists.”
+“Introduce migrations because currently schema is only defined manually in SQL file Z.”
+“Configure pooling because each request creates a new client in file A, function B.”
+Do NOT include anything about “database not provisioned” unless you have hard evidence that:
+A connection cannot be established, AND
+The connection string/env vars are clearly misconfigured in this environment.
