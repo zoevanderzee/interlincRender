@@ -292,12 +292,25 @@
     opacity: 0.7;
   }
 
-  /* Force dropdown options to white text */
-  .auth-page [role="option"],
-  .auth-page [data-radix-select-viewport] *,
-  .auth-page [data-radix-select-content] *,
-  .auth-page [data-radix-select-item] * {
+  /* Force dropdown options to white text - these render in portals outside .auth-page */
+  [data-radix-select-viewport],
+  [data-radix-select-content],
+  [data-radix-select-item] {
+    background-color: #0b1220 !important;
+  }
+
+  [data-radix-select-viewport] *,
+  [data-radix-select-content] *,
+  [data-radix-select-item],
+  [data-radix-select-item] * {
     color: #f9fafb !important;
+  }
+
+  /* Hover states for select items */
+  [data-radix-select-item]:hover,
+  [data-radix-select-item][data-highlighted] {
+    background-color: #1a2b4a !important;
+    color: #ffffff !important;
   }
 
   /* Skeleton Loader Styling */
