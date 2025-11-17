@@ -1,0 +1,334 @@
+I want you to implement a clean, versioned V1 invoice generation system in our existing backend, using the current database schema. Follow these instructions EXACTLY and do not change anything I don’t explicitly mention.
+
+GOAL
+- Every completed payment generates TWO invoices:
+  - A BUSINESS invoice (expense for the business).
+  - A CONTRACTOR receipt (income for the contractor).
+- Both use a shared, structured JSON schema: InterlincInvoiceV1.
+- Currency comes from the business user’s currency (businessUser.currency || 'GBP').
+- No database schema changes.
+- No new routes.
+- Only touch shared config + invoice generator.
+
+--------------------------------------------------
+1) CREATE A SHARED INVOICE TYPE
+--------------------------------------------------
+
+Create a new file:
+
+- shared/invoiceTypes.ts
+
+In it, define and export this TypeScript type:
+
+- export type InterlincInvoiceV1 = {
+    schemaVersion: 'interlinc-invoice-v1';
+
+    documentType: 'business_invoice' | 'contractor_receipt';
+    documentLabel: string; // e.g. 'Invoice', 'Payment Receipt', 'VAT Invoice'
+
+    invoiceNumber: string;
+    issueDate: string;                    // ISO string
+    supplyDate?: string | null;           // optional
+    currency: string;                     // ISO 4217: 'GBP', 'USD', 'EUR', ...
+
+    supplier: {
+      legalName: string;
+      tradingName?: string | null;
+      address: string | null;
+      country: string | null;            // ISO 3166-1 alpha-2
+      taxId?: string | null;
+    };
+
+    customer: {
+      legalName: string;
+      address: string | null;
+      country: string | null;
+      taxId?: string | null;
+    };
+
+    lineItems: Array<{
+      description: string;
+      quantity: number;
+      unitPrice: number;
+      lineNet: number;
+      taxRate: number;                   // percent, e.g. 0, 20
+      taxAmount: number;
+      lineGross: number;
+    }>;
+
+    totals: {
+      net: number;
+      tax: number;
+      gross: number;
+    };
+
+    paymentDetails: {
+      method: string;
+      transactionReference?: string | null; // e.g. Stripe PI
+      paidAt: string;                       // ISO
+      status: 'paid' | 'pending' | 'failed';
+    };
+
+    references: {
+      paymentId: number;
+      contractId?: number | null;
+      milestoneId?: number | null;
+      workSummary?: string | null;       // description / workReference
+    };
+
+    compliance: {
+      jurisdictionHint: string | null;   // business country code
+      region: 'UK' | 'US' | 'EU' | 'OTHER';
+      taxLabel: string;                  // 'VAT', 'Sales Tax', 'Tax'
+      notes: string;                     // disclaimer
+      generatedBy: 'Interlinc';
+      generatedAt: string;               // ISO
+    };
+  };
+
+DO NOT import anything here. Just define the type and export it.
+
+--------------------------------------------------
+2) CREATE COUNTRY-BASED COMPLIANCE PROFILES
+--------------------------------------------------
+
+Create a new file:
+
+- shared/invoiceCompliance.ts
+
+In this file:
+
+- Define type InvoiceComplianceProfile:
+
+  export type InvoiceComplianceProfile = {
+    countryCode: string;
+    region: 'UK' | 'US' | 'EU' | 'OTHER';
+    taxLabel: string;                    // 'VAT', 'Sales Tax', 'Tax'
+    documentLabelBusiness: string;       // label for business invoice
+    documentLabelContractor: string;     // label for contractor receipt
+    notes: string;                       // disclaimer text
+  };
+
+- Define a DEFAULT_PROFILE:
+
+  const DEFAULT_PROFILE: InvoiceComplianceProfile = {
+    countryCode: 'XX',
+    region: 'OTHER',
+    taxLabel: 'Tax',
+    documentLabelBusiness: 'Invoice',
+    documentLabelContractor: 'Payment Receipt',
+    notes:
+      'This document is generated for bookkeeping purposes. Interlinc does not submit documents to tax authorities on your behalf.',
+  };
+
+- Define PROFILES for at least GB, US, and DE:
+
+  const PROFILES: Record<string, InvoiceComplianceProfile> = {
+    GB: {
+      countryCode: 'GB',
+      region: 'UK',
+      taxLabel: 'VAT',
+      documentLabelBusiness: 'Invoice',
+      documentLabelContractor: 'Payment Receipt',
+      notes:
+        'This document is prepared for UK bookkeeping. Interlinc does not file VAT returns or submit documents to HMRC.',
+    },
+    US: {
+      countryCode: 'US',
+      region: 'US',
+      taxLabel: 'Sales Tax',
+      documentLabelBusiness: 'Invoice',
+      documentLabelContractor: 'Payment Receipt',
+      notes:
+        'Sales tax treatment depends on state and nexus. Interlinc does not calculate or remit sales tax.',
+    },
+    DE: {
+      countryCode: 'DE',
+      region: 'EU',
+      taxLabel: 'VAT',
+      documentLabelBusiness: 'Rechnung',
+      documentLabelContractor: 'Zahlungsbeleg',
+      notes:
+        'EU VAT rules may apply. This document is for bookkeeping; consult your tax advisor for classification and filing.',
+    },
+  };
+
+- Export a helper:
+
+  export function getInvoiceComplianceProfile(
+    countryCode?: string | null
+  ): InvoiceComplianceProfile {
+    if (!countryCode) return DEFAULT_PROFILE;
+    return PROFILES[countryCode] ?? DEFAULT_PROFILE;
+  }
+
+DO NOT touch any other file in this step.
+
+--------------------------------------------------
+3) UPDATE server/services/invoice-generator.ts
+--------------------------------------------------
+
+Now modify:
+
+- server/services/invoice-generator.ts
+
+GOAL: use InterlincInvoiceV1 for both business and contractor copies, and store those objects in invoiceData.
+
+Steps:
+
+1. IMPORTS
+
+At the top of the file, add:
+
+- import { getInvoiceComplianceProfile } from '@shared/invoiceCompliance';
+- import type { InterlincInvoiceV1 } from '@shared/invoiceTypes';
+
+2. AFTER businessUser / contractorUser CHECK
+
+Inside generateInvoiceForPayment, after:
+
+  if (!businessUser || !contractorUser) {
+    throw new Error('Missing business or contractor user data');
+  }
+
+add:
+
+  const businessCurrency = businessUser.currency || 'GBP';
+  const complianceProfile = getInvoiceComplianceProfile(businessUser.country);
+
+3. REPLACE EXISTING invoiceData / businessInvoiceData / contractorInvoiceData OBJECTS
+
+Currently you build three different objects (invoiceData, businessInvoiceData, contractorInvoiceData) with various shapes and “UK MTD compliant” text.
+
+Replace ALL of that with two InterlincInvoiceV1 objects:
+
+- businessInvoiceData: InterlincInvoiceV1
+- contractorInvoiceData: InterlincInvoiceV1
+
+Structure for businessInvoiceData:
+
+- documentType: 'business_invoice'
+- documentLabel: complianceProfile.documentLabelBusiness
+- invoiceNumber: the generated invoiceNumber
+- issueDate: new Date().toISOString()
+- supplyDate: same as issueDate or null
+- currency: businessCurrency
+
+- supplier: (contractor is the supplier of services)
+  - legalName: contractorUser.username
+  - tradingName: contractorUser.companyName || null
+  - address: contractorUser.address || 'Address on file'
+  - country: contractorUser.country || null
+  - taxId: contractorUser.taxId || null
+
+- customer: (business is the customer)
+  - legalName: businessUser.companyName || businessUser.username
+  - address: businessUser.address || 'Address on file'
+  - country: businessUser.country || null
+  - taxId: businessUser.taxId || null
+
+- lineItems: single line item:
+  - description: description (the same text you already build)
+  - quantity: 1
+  - unitPrice: grossAmount
+  - lineNet: grossAmount
+  - taxRate: 0
+  - taxAmount: 0
+  - lineGross: grossAmount
+
+- totals:
+  - net: grossAmount
+  - tax: 0
+  - gross: grossAmount
+
+- paymentDetails:
+  - method: 'Stripe Connect'
+  - transactionReference: stripePaymentIntentId or stripeTransactionId (pick whichever you already use)
+  - paidAt: payment.completedDate || new Date().toISOString()
+  - status: 'paid'
+
+- references:
+  - paymentId: paymentId
+  - contractId: payment.contractId
+  - milestoneId: payment.milestoneId
+  - workSummary: workReference (the string you already create)
+
+- compliance:
+  - jurisdictionHint: businessUser.country || null
+  - region: complianceProfile.region
+  - taxLabel: complianceProfile.taxLabel
+  - notes: complianceProfile.notes
+  - generatedBy: 'Interlinc'
+  - generatedAt: new Date().toISOString()
+
+Structure for contractorInvoiceData is the same type, but:
+
+- documentType: 'contractor_receipt'
+- documentLabel: complianceProfile.documentLabelContractor
+
+Swap supplier/customer roles:
+
+- supplier: contractorUser (as above) or “Interlinc on behalf of contractor” if you prefer
+- customer: businessUser
+
+The amounts can be:
+
+- lineItems and totals:
+  - net: grossAmount
+  - tax: 0
+  - gross: grossAmount
+
+You can still include netAmount / platformFee in the JSON if you want, but for V1 it’s enough that the document shows what the contractor received in gross terms and that tax=0 is explicit.
+
+4. UPDATE THE DB INSERTS TO USE THESE OBJECTS
+
+In the two db.insert(invoices).values({ ... }) calls:
+
+- For the BUSINESS invoice row:
+  - currency: businessCurrency
+  - invoiceData: businessInvoiceData
+
+- For the CONTRACTOR invoice row:
+  - currency: businessCurrency
+  - invoiceData: contractorInvoiceData
+
+Keep everything else (ids, names, description, workReference, stripe ids, etc.) as-is.
+
+5. REMOVE FAKE COMPLIANCE STRINGS
+
+Remove any fields like:
+
+- standard: 'UK MTD compliant'
+- invoice_type: 'e-invoice'
+- or any hardcoded UK-compliance claims.
+
+Those should be replaced by the new compliance block in InterlincInvoiceV1.
+
+6. DO NOT CHANGE:
+
+- The invoices table schema in shared/schema.ts
+- Any routes
+- Any other files outside:
+  - shared/invoiceTypes.ts
+  - shared/invoiceCompliance.ts
+  - server/services/invoice-generator.ts
+
+--------------------------------------------------
+4) AFTER CHANGES – QUICK SELF-CHECK
+--------------------------------------------------
+
+Before you finish, quickly confirm:
+
+- shared/invoiceTypes.ts defines and exports InterlincInvoiceV1.
+- shared/invoiceCompliance.ts defines getInvoiceComplianceProfile and a few profiles.
+- server/services/invoice-generator.ts:
+  - imports InterlincInvoiceV1 and getInvoiceComplianceProfile.
+  - defines businessCurrency = businessUser.currency || 'GBP'.
+  - defines complianceProfile = getInvoiceComplianceProfile(businessUser.country).
+  - builds businessInvoiceData and contractorInvoiceData as InterlincInvoiceV1.
+  - uses those objects in the two db.insert(invoices).values({ invoiceData: ... }).
+  - has no remaining "UK MTD compliant" or "e-invoice" strings.
+
+Do NOT introduce new dependencies, new tables, or new endpoints.
+
+Only perform exactly the changes above.
