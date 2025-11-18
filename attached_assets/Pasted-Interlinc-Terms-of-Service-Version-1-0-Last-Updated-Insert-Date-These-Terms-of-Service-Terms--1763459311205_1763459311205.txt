@@ -1,0 +1,131 @@
+Interlinc – Terms of Service
+Version 1.0
+Last Updated: [Insert Date]
+These Terms of Service (“Terms”) constitute a legally binding agreement between you (“User”, “you”) and Interlinc Ltd (“Interlinc”, “we”, “our”, “us”), governing your access to and use of the Interlinc platform, website, mobile app, workflows, payment functions, and other services provided (collectively, the “Platform”).
+If you do not agree to these Terms, do not access or use the Platform.
+1. Definitions
+“Contractor” – An independent service provider using Interlinc to offer services to Clients.
+“Client” – A business or individual purchasing services from a Contractor on Interlinc.
+“Project” – Work requested by a Client and provided by a Contractor.
+“Workflow” – The project, milestone, approval, and payment automation tools provided by Interlinc.
+“Stripe Connect” – Stripe’s payment infrastructure used to process payments on the Platform.
+“Marketplace” – Interlinc’s role as a facilitator connecting Clients and Contractors.
+2. Platform Purpose
+Interlinc is a marketplace and workflow automation platform that facilitates:
+Connections between Clients and Contractors
+Project and milestone management
+Payment initiation through Stripe Connect
+Automated invoice and receipt generation
+Interlinc does not provide services sold on the Platform.
+Interlinc is not a party to contracts between Clients and Contractors.
+3. No Employment, No Agency
+Nothing in these Terms creates:
+employer–employee relationship
+joint venture
+partnership
+agency
+franchisor–franchisee relationship
+staffing or recruitment relationship
+Contractors use Interlinc as independent businesses.
+Clients engage Contractors directly, not Interlinc.
+4. Merchant of Record
+Interlinc is not the Merchant of Record (MOR).
+The Contractor is the Merchant of Record for services supplied to Clients.
+Interlinc does not:
+sell Contractor services
+issue VAT/GST invoices in its own name
+handle or store full payment funds
+remit taxes on behalf of Users
+Interlinc uses Stripe Connect destination charges, meaning:
+Clients pay through Stripe
+Contractors receive funds directly
+Interlinc may charge transparent platform fees
+5. Payment Terms
+All payments are processed by Stripe under Stripe’s terms.
+Interlinc does not:
+guarantee payments
+refund payments
+reverse payments
+store or control funds
+act as a money transmitter
+offer escrow (unless explicitly launched later)
+Any disputes regarding payments, refunds, chargebacks, or service quality are between Client and Contractor.
+6. Automated Invoicing
+Interlinc automatically generates:
+Business Invoice – issued by the Contractor to the Client
+Contractor Receipt – issued by Interlinc to the Contractor as proof of payout
+These documents meet globally accepted minimum requirements for accounting records, but Interlinc does not:
+verify accuracy of information provided by Users
+guarantee tax compliance
+determine VAT/GST eligibility
+submit documentation to tax authorities
+Users are solely responsible for meeting their own tax obligations.
+7. User Responsibilities
+7.1 Clients
+Clients agree to:
+independently vet Contractors
+ensure their own compliance and expense reporting
+manage and resolve Project disputes directly with Contractors
+7.2 Contractors
+Contractors agree to:
+deliver services agreed with Clients
+comply with all tax and regulatory obligations
+provide accurate information for invoices and payments
+handle refunds, revisions, or corrections directly with Clients
+8. Intellectual Property
+Interlinc does not own IP created by Contractors.
+Between Client and Contractor:
+IP ownership is determined by their agreement.
+Interlinc is not a party to their IP arrangements.
+Interlinc has no responsibility for IP disputes.
+Users grant Interlinc a non-exclusive license to host, display, and process uploaded materials for the sole purpose of running the Platform.
+9. Prohibited Use
+Users may not use Interlinc to:
+violate any laws
+conduct fraud or misrepresentation
+upload harmful code
+misuse payment systems
+bypass Interlinc workflows
+engage in harassment or abuse
+Interlinc may suspend accounts at its discretion for violations.
+10. Limitation of Liability
+To the fullest extent permitted by law:
+Interlinc is not liable for:
+actions, omissions, or misconduct of Users
+service quality, deliverables, or performance
+refunds, payments, or chargebacks
+IP or confidentiality violations
+disputes between Client and Contractor
+tax reporting or regulatory compliance of Users
+lost profits, lost revenue, or indirect damages
+Interlinc’s total cumulative liability, if any, is limited to:
+the lesser of £100 or the total platform fees paid in the last 12 months.
+11. No Warranty
+Interlinc provides the Platform “as is” without any warranty.
+We do not guarantee:
+uninterrupted uptime
+accuracy of user data
+the outcome of Projects
+the suitability of Contractors or Clients
+payment speed or availability
+Use the Platform at your own risk.
+12. Termination
+Interlinc may:
+suspend accounts
+remove content
+restrict access
+terminate services
+…for any violation of these Terms or at Interlinc’s sole discretion.
+Users may close accounts at any time.
+13. Governing Law
+These Terms are governed by the laws of:
+England & Wales
+Any disputes shall be resolved in the courts of England & Wales.
+14. Amendments
+Interlinc may update these Terms at any time.
+Continued use of the Platform constitutes acceptance of any changes.
+15. Contact
+Interlinc Ltd
+[Insert Registered Address]
+[Insert Contact Email]
+[Insert Company Number]

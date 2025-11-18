@@ -1,0 +1,175 @@
+Below is exactly what you need:
+The full prompt for your Replit AI agent
+– This will generate:
+• the modal
+• the checkbox
+• the UI blocking until accepted
+• the code to store “acceptedTerms: true”
+• the backend validation
+• and integrate it into your existing registration page.
+A complete, legally-strong, Interlinc-specific Terms of Service
+– written to remove your liability
+– aligned with marketplace law
+– aligned with Stripe Connect
+– aligned with your “contractor = merchant of record” setup
+– designed specifically for your platform.
+Everything below is copy-paste ready.
+1. PROMPT FOR REPLIT AGENT (COPY/PASTE EXACTLY)
+I need you to implement a full Terms of Service acceptance flow into my Interlinc app's registration system. The requirements are:
+
+1. On the registration page (client/src/pages/auth.tsx), before a user can press "Register", they must tick a checkbox that says:  
+   “I agree to Interlinc’s Terms of Service”.
+
+2. Next to the checkbox, include a small “View Terms” link.  
+   When clicked, open a modal (Dialog / Sheet component) containing the entire Terms of Service text.  
+   The modal should scroll and include a close button.
+
+3. The “Register” button must remain DISABLED until the Terms checkbox is checked.
+
+4. In registerForm, add a field:
+   acceptedTerms: boolean
+
+5. Send this field to the backend during registration.
+
+6. In server/routes/sync-firebase-user.ts:
+   - Extend the registrationData schema to include acceptedTerms (required)
+   - Save it in the database as users.accepted_terms (create this column if it doesn't exist)
+   - Reject registration with a 400 error if it is missing or false.
+
+7. Styling should match the dark-mode auth page.
+
+8. Create a new file:
+   client/src/components/legal/TermsOfService.tsx
+   – this should simply export the Terms of Service text inside a scrollable container.
+
+9. Populate TermsOfService.tsx with the following Terms of Service text:
+
+----- START OF TERMS OF SERVICE -----
+
+[PASTE THE FULL TERMS OF SERVICE I PROVIDE BELOW]
+
+----- END OF TERMS OF SERVICE -----
+
+10. The modal must support:
+   - scrolling
+   - a “Close” button
+   - title: “Interlinc Terms of Service”
+
+11. Ensure this works cleanly on mobile.
+
+12. Confirm that the backend stores acceptedTerms in the DB, and that user cannot bypass it.
+
+Make all required frontend + backend changes.
+2. INTERLINC TERMS OF SERVICE (COPY THIS INTO THE MODAL)
+Interlinc Terms of Service
+Last updated: [insert date]
+These Terms of Service (“Terms”) govern your use of the Interlinc platform (“Interlinc”, “we”, “our”, “the Platform”). By creating an account, you agree to be bound by these Terms.
+If you do not agree, you must not register or use Interlinc.
+1. Nature of the Platform
+Interlinc is an online marketplace that connects Businesses (“Clients”) with independent contractors (“Contractors”).
+Interlinc:
+does not provide services
+does not employ Contractors
+does not guarantee outcomes
+is not a staffing agency or employment service
+does not act as Merchant of Record for contractor services
+does not hold Client or Contractor funds
+does not provide escrow
+All work is performed directly between Clients and Contractors.
+2. Accounts & Eligibility
+To use Interlinc you must:
+be at least 18
+have the legal capacity to enter contracts
+provide accurate information
+not use the Platform for illegal or prohibited purposes
+Interlinc may suspend or terminate your account at any time for violations, risk, fraud, or abusive behaviour.
+3. Independent Contractor Status
+Contractors using Interlinc are not employees, agents, or representatives of Interlinc.
+Contractors:
+operate as independent businesses
+set their own pricing
+are responsible for their tax filings
+are responsible for compliance with local laws
+own and deliver their work independently
+Clients acknowledge that Contractors — not Interlinc — are solely responsible for the performance and quality of services.
+4. Payments (via Stripe Connect)
+Payments on Interlinc are processed by Stripe, not by Interlinc.
+By using the Platform, you agree to Stripe’s Terms of Service.
+Key facts:
+Contractors receive payments directly via Stripe Connect
+Interlinc does not hold funds
+Interlinc is not the Merchant of Record
+Interlinc may charge platform fees where applicable
+Refunds are handled directly between Client and Contractor
+Stripe controls onboarding, payouts, verification, and compliance
+Interlinc has no responsibility for Stripe actions, delays, rejections, onboarding decisions, or payout schedules.
+5. Invoicing
+Interlinc automatically generates invoices or receipts as records of transactions.
+You acknowledge that:
+Interlinc is not providing tax advice
+Interlinc is not responsible for your tax compliance
+Contractors are responsible for issuing legally required invoices if applicable
+Clients are responsible for their own bookkeeping and reporting obligations
+Interlinc’s invoices are informational and provided “as-is”
+Interlinc does not guarantee country-specific tax compliance or jurisdictional e-invoicing regulations unless explicitly stated.
+6. Disputes Between Clients and Contractors
+Interlinc is not a party to the contract between Client and Contractor.
+Therefore:
+Interlinc is not responsible for disputes
+Interlinc does not mediate disagreements
+Interlinc does not guarantee results
+Interlinc does not provide refunds
+Clients and Contractors must resolve disputes independently.
+7. Prohibited Use
+You may not use Interlinc to:
+violate any law
+distribute harmful code
+harass or abuse users
+engage in fraud or misrepresentation
+solicit illegal work
+avoid payment outside the platform
+misuse data
+Interlinc may suspend or terminate accounts for violations.
+8. Intellectual Property
+Unless otherwise stated:
+Contractors retain ownership of their work
+Clients receive usage rights as agreed between them
+Interlinc claims no ownership over user-generated content
+Users are responsible for ensuring IP agreements between them.
+9. Limitation of Liability
+To the fullest extent permitted by law:
+Interlinc is not liable for:
+contractor performance
+client demands or misuse
+loss of revenue
+loss of data
+inaccurate information
+downtime
+payment delays
+tax or regulatory obligations
+damages of any kind
+disputes between users
+You use Interlinc at your own risk.
+Total liability of Interlinc cannot exceed the total fees paid to Interlinc in the last 12 months (and may be zero).
+10. No Warranty
+Interlinc is provided “AS IS” and “AS AVAILABLE.”
+We make no warranties regarding reliability, uptime, quality, security, or accuracy.
+11. Termination
+Interlinc may terminate access:
+for violations
+if required by law
+if Stripe or a regulator mandates it
+for risk or fraud concerns
+Users may delete their account at any time.
+12. Governing Law
+These Terms are governed by the laws of:
+England & Wales (for UK/EU users)
+Delaware, USA (for all other users)
+13. Updates to Terms
+We may update these Terms at any time.
+Continued use of the Platform constitutes acceptance of updated Terms.
+14. Contact
+Interlinc
+Email: [insert]
+Registered address: [insert]
+By checking the box during registration, you agree to these Terms.
