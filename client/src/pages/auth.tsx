@@ -898,9 +898,9 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="auth-page flex items-center justify-center p-4">
-      {/* Left Panel - Login/Register Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
+    <div className="auth-page flex min-h-screen">
+      {/* Left Panel - Auth Forms */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-6 lg:p-12 relative z-10">
         <div className="w-full max-w-md">
           {/* Logo */}
           <div className="flex justify-center mb-8">
