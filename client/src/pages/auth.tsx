@@ -1215,7 +1215,7 @@ export default function AuthPage() {
                                   type="button"
                                   className="text-blue-600 hover:text-blue-700 underline"
                                 >
-                                  Terms of Service
+                                  Terms of Service *
                                 </button>
                               </DialogTrigger>
                               <DialogContent className="max-w-3xl max-h-[80vh]">
