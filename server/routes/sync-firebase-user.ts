@@ -32,10 +32,10 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
 
       if (existingUser) {
         // Build update data - always update email verification
-        const updateData: any = { 
-          emailVerified: emailVerified 
+        const updateData: any = {
+          emailVerified: emailVerified
         };
-        
+
         // If registration data is provided, update role and profile fields
         if (registrationData) {
           updateData.role = registrationData.role;
@@ -49,7 +49,7 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
           if (registrationData.currency) updateData.currency = registrationData.currency;
           console.log(`Updating existing user ${existingUser.id} with role: ${registrationData.role}`);
         }
-        
+
         const result = await storage.updateUser(existingUser.id, updateData);
         const updatedUser = result || existingUser;
 
@@ -63,7 +63,7 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
           }
         }
 
-        // User found and synced successfully  
+        // User found and synced successfully
         console.log(`User metadata synced for user ID ${updatedUser.id} (${updatedUser.username}) with role: ${updatedUser.role}`);
 
         // Ensure session is properly set with updated user data
@@ -82,8 +82,8 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
           });
         });
 
-        return res.json({ 
-          success: true, 
+        return res.json({
+          success: true,
           message: "User metadata synced",
           userId: updatedUser.id,
           user: updatedUser
@@ -114,7 +114,7 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
       }
 
       console.log(`Creating new user account for email ${email} with Firebase UID ${uid} and role ${registrationData.role}`);
-      
+
       // Create user record for Firebase authentication
       const userData = {
         email: email.toLowerCase(),
@@ -130,12 +130,14 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
         currency: registrationData.currency || null,
         firebaseUid: uid,
         emailVerified: emailVerified,
-        subscriptionStatus: 'inactive' as const
+        subscriptionStatus: 'inactive' as const,
+        acceptedTerms: registrationData.acceptedTerms,
+        acceptedTermsAt: new Date(),
       };
 
       const newUser = await storage.createUser(userData);
       console.log(`New user created successfully: ${newUser.id} (${newUser.email})`);
-      
+
       // Clean up pending registration data after successful user creation
       try {
         await storage.deletePendingRegistrationByFirebaseUid(uid);
@@ -163,16 +165,16 @@ export function registerSyncFirebaseUserRoutes(app: Express) {
         });
       });
 
-      return res.json({ 
-        success: true, 
+      return res.json({
+        success: true,
         message: "User metadata created",
         userId: newUser.id
       });
 
     } catch (error: any) {
       console.error('Sync Firebase user error:', error);
-      return res.status(500).json({ 
-        success: false, 
+      return res.status(500).json({
+        success: false,
         error: 'Failed to sync user metadata',
         details: error.message || 'Unknown error occurred'
       });

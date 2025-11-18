@@ -3,24 +3,24 @@ import { Redirect, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { useMutation } from "@tanstack/react-query";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from "@/components/ui/select";
 import { Loader2, ArrowLeft, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -32,6 +32,25 @@ import Logo from "@assets/CD_icon_light@2x.png";
 import { signUpUser, loginUser } from "@/lib/firebase-auth";
 import { requiresSubscription } from "@/lib/subscription-utils";
 import { SUPPORTED_COUNTRIES, getCurrencyForCountry } from "@shared/countries";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { TermsOfService } from "@/components/legal/TermsOfService";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+
+const registerSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  role: z.enum(["business", "contractor"]),
+  acceptedTerms: z.boolean().refine((val) => val === true, {
+    message: "You must accept the Terms of Service to continue",
+  }),
+});
 
 export default function AuthPage() {
   console.log("AuthPage component rendering");
@@ -67,6 +86,19 @@ export default function AuthPage() {
   });
   const [forgotPasswordError, setForgotPasswordError] = useState("");
   const [forgotPasswordSuccess, setForgotPasswordSuccess] = useState(false);
+
+  const registerForm = useForm<z.infer<typeof registerSchema>>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      username: "",
+      email: "",
+      password: "",
+      firstName: "",
+      lastName: "",
+      role: "business",
+      acceptedTerms: false,
+    },
+  });
 
   // Forgot password mutation
   const forgotPasswordMutation = useMutation({
@@ -124,7 +156,7 @@ export default function AuthPage() {
       setInviteId(parseInt(inviteParam));
       setInviteEmail(inviteEmailParam);
       setActiveTab("register"); // Automatically switch to register tab for invites
-    } 
+    }
     else if (tokenParam && businessIdParam) {
       // Business onboarding link
       console.log(`Processing business invite link: Token=${tokenParam}, BusinessID=${businessIdParam}, WorkerType=${searchParams.get('workerType')}`);
@@ -134,11 +166,8 @@ export default function AuthPage() {
 
       // Handle direct worker type parameter
       if (workerTypeParam) {
-        setRegisterForm(prev => ({
-          ...prev,
-          role: "contractor",
-          workerType: workerTypeParam
-        }));
+        registerForm.setValue("role", "contractor");
+        registerForm.setValue("workerType", workerTypeParam);
       }
 
       setIsWorker(true); // Always set as worker with the simplified format
@@ -174,7 +203,7 @@ export default function AuthPage() {
       if (!businessToken || !businessId) return null;
       setIsInviteLoading(true);
       try {
-        const response = await apiRequest('GET', 
+        const response = await apiRequest('GET',
           `/api/business/verify-token?token=${businessToken}&businessId=${businessId}`
         );
         if (!response.ok) throw new Error('Failed to verify business invite link');
@@ -196,65 +225,36 @@ export default function AuthPage() {
     password: "",
   });
 
-  // Register form state
-  const [registerForm, setRegisterForm] = useState({
-    username: "",
-    password: "",
-    confirmPassword: "",
-    email: inviteEmail || "",
-    firstName: "",
-    lastName: "",
-    role: "business", // Default role for direct signups (only invites should be contractors)
-    workerType: "", // Will be set from invite data
-    company: "",
-    position: "",
-    country: "", // Business country (ISO code)
-    currency: "", // Business currency (ISO code)
-    inviteId: inviteId || undefined,
-    // New fields for business invites
-    businessToken: businessToken || null,
-    businessId: businessId || null,
-  });
-
   // Update register form when invite data is loaded
   useEffect(() => {
     if (inviteEmail) {
-      setRegisterForm(prev => ({
-        ...prev,
-        email: inviteEmail,
-        role: "contractor", // Most invites are for contractors
-        inviteId: inviteId || undefined
-      }));
+      registerForm.setValue("email", inviteEmail);
+      registerForm.setValue("role", "contractor"); // Most invites are for contractors
+      registerForm.setValue("inviteId", inviteId || undefined);
     }
-  }, [inviteEmail, inviteId]);
+  }, [inviteEmail, inviteId, registerForm]);
 
   // Further update form when full invite data is loaded
   useEffect(() => {
     if (inviteData) {
-      setRegisterForm(prev => ({
-        ...prev,
-        email: inviteData.email || prev.email,
-        role: "contractor",
-        // Set the workerType from the invite data (contractor or freelancer)
-        workerType: inviteData.workerType || "contractor",
-        inviteId: inviteData.id
-      }));
+      registerForm.setValue("email", inviteData.email || registerForm.getValues("email"));
+      registerForm.setValue("role", "contractor");
+      // Set the workerType from the invite data (contractor or freelancer)
+      registerForm.setValue("workerType", inviteData.workerType || "contractor");
+      registerForm.setValue("inviteId", inviteData.id);
     }
-  }, [inviteData]);
+  }, [inviteData, registerForm]);
 
   // Update form when business invite data is loaded
   useEffect(() => {
     if (businessInviteData && businessInviteData.valid) {
-      setRegisterForm(prev => ({
-        ...prev,
-        role: "contractor",
-        workerType: businessInviteData.workerType || "contractor",
-        // We store business token in state but pass it during registration
-        businessToken: businessToken,
-        businessId: businessId
-      }));
+      registerForm.setValue("role", "contractor");
+      registerForm.setValue("workerType", businessInviteData.workerType || "contractor");
+      // We store business token in state but pass it during registration
+      registerForm.setValue("businessToken", businessToken);
+      registerForm.setValue("businessId", businessId);
     }
-  }, [businessInviteData, businessToken, businessId]);
+  }, [businessInviteData, businessToken, businessId, registerForm]);
 
   // Helper function to render the appropriate registration description
   const renderRegistrationDescription = () => {
@@ -272,7 +272,7 @@ export default function AuthPage() {
           </div>
         </>
       );
-    } 
+    }
 
     if (inviteId) {
       // Project invitation with ID only, waiting for data
@@ -338,7 +338,7 @@ export default function AuthPage() {
 
   // Form Error States
   const [loginErrors, setLoginErrors] = useState<Record<string, string>>({});
-  const [registerErrors, setRegisterErrors] = useState<Record<string, string>>({});
+  // registerForm already manages its own errors via react-hook-form
 
   // Handle login form input changes
   const handleLoginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -355,27 +355,18 @@ export default function AuthPage() {
     }
   };
 
-  // Handle register form input changes
+  // Handle register form input changes (using react-hook-form)
   const handleRegisterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setRegisterForm({
-      ...registerForm,
-      [e.target.name]: e.target.value,
-    });
+    registerForm.setValue(e.target.name as any, e.target.value);
     // Clear error when field is modified
-    if (registerErrors[e.target.name]) {
-      setRegisterErrors({
-        ...registerErrors,
-        [e.target.name]: "",
-      });
+    if (registerForm.formState.errors[e.target.name as keyof typeof registerSchema]) {
+      registerForm.clearErrors(e.target.name as keyof typeof registerSchema);
     }
   };
 
   // Handle role selection in register form
   const handleRoleChange = (value: string) => {
-    setRegisterForm(prev => ({
-      ...prev,
-      role: value,
-    }));
+    registerForm.setValue("role", value as "business" | "contractor");
   };
 
   // Validate login form
@@ -393,54 +384,6 @@ export default function AuthPage() {
     }
 
     setLoginErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  // Validate register form
-  const validateRegisterForm = () => {
-    const errors: Record<string, string> = {};
-
-    if (!registerForm.username.trim()) {
-      errors.username = "Username is required";
-    }
-
-    if (!registerForm.password) {
-      errors.password = "Password is required";
-    } else if (registerForm.password.length < 6) {
-      errors.password = "Password must be at least 6 characters";
-    }
-
-    if (registerForm.password !== registerForm.confirmPassword) {
-      errors.confirmPassword = "Passwords do not match";
-    }
-
-    if (!registerForm.email.trim()) {
-      errors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S+/.test(registerForm.email)) {
-      errors.email = "Email is invalid";
-    }
-
-    if (!registerForm.firstName.trim()) {
-      errors.firstName = "First name is required";
-    }
-
-    if (!registerForm.lastName.trim()) {
-      errors.lastName = "Last name is required";
-    }
-
-    if (registerForm.role === "business" && !registerForm.company.trim()) {
-      errors.company = "Company name is required for business accounts";
-    }
-
-    if (registerForm.role === "business" && !registerForm.country) {
-      errors.country = "Country is required for business accounts";
-    }
-
-    if (registerForm.role === "business" && !registerForm.currency) {
-      errors.currency = "Currency is required for business accounts";
-    }
-
-    setRegisterErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
@@ -605,7 +548,7 @@ export default function AuthPage() {
         password: ""
       });
       toast({
-        title: "Login Failed", 
+        title: "Login Failed",
         description: error.message || "Please check your credentials and try again.",
         variant: "destructive",
       });
@@ -630,7 +573,9 @@ export default function AuthPage() {
             company: registerData.company,
             position: registerData.position,
             workerType: registerData.workerType,
-            email: registerData.email
+            email: registerData.email,
+            acceptedTerms: registerData.acceptedTerms, // Store terms acceptance
+            termsAcceptedAt: new Date().toISOString(), // Store timestamp
           };
 
           const storeResponse = await fetch('/api/pending-registrations', {
@@ -644,7 +589,8 @@ export default function AuthPage() {
           } else {
             console.log("Stored registration data in database for email verification:", {
               role: registerData.role,
-              email: registerData.email
+              email: registerData.email,
+              acceptedTerms: registerData.acceptedTerms
             });
           }
         } catch (error) {
@@ -676,7 +622,7 @@ export default function AuthPage() {
     } catch (error) {
       console.error('Firebase registration error:', error);
       toast({
-        title: "Unable to Create Account", 
+        title: "Unable to Create Account",
         description: "Please try again or contact support if the problem continues.",
         variant: "destructive",
       });
@@ -684,68 +630,64 @@ export default function AuthPage() {
   };
 
   // Handle register form submission
-  const handleRegister = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleRegister = registerForm.handleSubmit(async (data) => {
+    // Omit confirmPassword as it's not needed for the API
+    const { confirmPassword, ...registerData } = data;
 
-    if (validateRegisterForm()) {
-      // Omit confirmPassword as it's not needed for the API
-      const { confirmPassword, ...registerData } = registerForm;
+    // Handle business invite link registration
+    if (businessToken && businessId) {
+      // Include business token information
+      (registerData as any).token = businessToken;
+      (registerData as any).businessId = businessId;
+      registerData.role = 'contractor'; // Always contractor for business invites
 
-      // Handle business invite link registration
-      if (businessToken && businessId) {
-        // Include business token information
-        (registerData as any).token = businessToken;
-        (registerData as any).businessId = businessId;
-        registerData.role = 'contractor'; // Always contractor for business invites
-
-        // Set worker type from business invite data
-        if (businessInviteData && businessInviteData.workerType) {
-          registerData.workerType = businessInviteData.workerType;
-        } else if (!registerData.workerType) {
-          // Default to contractor if not specified
-          registerData.workerType = 'contractor';
-        }
+      // Set worker type from business invite data
+      if (businessInviteData && businessInviteData.workerType) {
+        registerData.workerType = businessInviteData.workerType;
+      } else if (!registerData.workerType) {
+        // Default to contractor if not specified
+        registerData.workerType = 'contractor';
       }
-      // Handle project-specific invite registration
-      else if (inviteId || inviteEmail) {
-        // If we have an invite ID, make sure it's included in the registration data
-        if (inviteId && !registerData.inviteId) {
-          registerData.inviteId = inviteId;
-        }
-
-        // If this is an invite registration, make sure the email matches the invited email
-        if (inviteEmail && registerData.email !== inviteEmail) {
-          setRegisterErrors({
-            ...registerErrors,
-            email: `You must use the invited email: ${inviteEmail}`
-          });
-          return;
-        }
-
-        registerData.role = 'contractor';
-
-        // Make sure workerType is set properly from invite data
-        if (inviteData && inviteData.workerType) {
-          registerData.workerType = inviteData.workerType;
-        } else if (!registerData.workerType) {
-          // Default to contractor if not specified
-          registerData.workerType = 'contractor';
-        }
+    }
+    // Handle project-specific invite registration
+    else if (inviteId || inviteEmail) {
+      // If we have an invite ID, make sure it's included in the registration data
+      if (inviteId && !registerData.inviteId) {
+        registerData.inviteId = inviteId;
       }
 
-      // If this is a business user direct registration, make sure company name is provided
-      if (registerData.role === 'business' && !registerData.company) {
-        setRegisterErrors({
-          ...registerErrors,
-          company: "Company name is required for business accounts"
+      // If this is an invite registration, make sure the email matches the invited email
+      if (inviteEmail && registerData.email !== inviteEmail) {
+        registerForm.setError("email", {
+          type: "manual",
+          message: `You must use the invited email: ${inviteEmail}`
         });
         return;
       }
 
-      // Register user with Firebase authentication
-      handleFirebaseRegistration(registerData);
+      registerData.role = 'contractor';
+
+      // Make sure workerType is set properly from invite data
+      if (inviteData && inviteData.workerType) {
+        registerData.workerType = inviteData.workerType;
+      } else if (!registerData.workerType) {
+        // Default to contractor if not specified
+        registerData.workerType = 'contractor';
+      }
     }
-  };
+
+    // If this is a business user direct registration, make sure company name is provided
+    if (registerData.role === 'business' && !registerData.company) {
+      registerForm.setError("company", {
+        type: "manual",
+        message: "Company name is required for business accounts"
+      });
+      return;
+    }
+
+    // Register user with Firebase authentication
+    await handleFirebaseRegistration(registerData);
+  });
 
   // Handle forgot password form input change
   const handleForgotPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -836,7 +778,7 @@ export default function AuthPage() {
         {/* Auth Forms Section */}
         <div className="w-full md:w-1/2 flex items-center justify-center p-8">
           <div className="w-full max-w-md">
-            <EmailVerificationForm 
+            <EmailVerificationForm
               email={verificationData.email}
               userId={verificationData.userId}
               verificationToken={verificationData.verificationToken}
@@ -967,13 +909,13 @@ export default function AuthPage() {
 
           <Tabs defaultValue="login" value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid w-full grid-cols-2 mb-8" style={{ background: 'transparent', gap: '1rem', padding: 0 }}>
-              <TabsTrigger 
-                value="login" 
+              <TabsTrigger
+                value="login"
                 className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#6b9aff] data-[state=active]:to-[#7ca5ff] data-[state=active]:text-[#0a1628] data-[state=inactive]:bg-gradient-to-r data-[state=inactive]:from-[#1a2b4a]/60 data-[state=inactive]:to-[#0f1f3a]/60 data-[state=inactive]:text-white/90 data-[state=inactive]:border data-[state=inactive]:border-[#6b9aff]/30 py-3 px-4 rounded-lg font-medium transition-all"
               >
                 Login
               </TabsTrigger>
-              <TabsTrigger 
+              <TabsTrigger
                 value="register"
                 className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#6b9aff] data-[state=active]:to-[#7ca5ff] data-[state=active]:text-[#0a1628] data-[state=inactive]:bg-gradient-to-r data-[state=inactive]:from-[#1a2b4a]/60 data-[state=inactive]:to-[#0f1f3a]/60 data-[state=inactive]:text-white/90 data-[state=inactive]:border data-[state=inactive]:border-[#6b9aff]/30 py-3 px-4 rounded-lg font-medium transition-all"
               >
@@ -1022,8 +964,8 @@ export default function AuthPage() {
                         <p className="text-sm text-zinc-300 bg-zinc-800 px-2 py-1 rounded border border-zinc-600">{loginErrors.password}</p>
                       )}
                       <div className="mt-2 text-right">
-                        <button 
-                          type="button" 
+                        <button
+                          type="button"
                           onClick={() => setShowForgotPassword(true)}
                           className="text-sm text-zinc-400 hover:text-white"
                         >
@@ -1033,8 +975,8 @@ export default function AuthPage() {
                     </div>
                   </CardContent>
                   <CardFooter>
-                    <Button 
-                      type="submit" 
+                    <Button
+                      type="submit"
                       className="w-full bg-gradient-to-r from-[#6b9aff] to-[#7ca5ff] text-[#0a1628] hover:from-[#5a89ee] hover:to-[#6b94ee] font-medium"
                       disabled={loginMutation.isPending}
                     >
@@ -1070,12 +1012,12 @@ export default function AuthPage() {
                           id="firstName"
                           name="firstName"
                           placeholder="John"
-                          value={registerForm.firstName}
+                          value={registerForm.getValues("firstName")}
                           onChange={handleRegisterChange}
                           className="!bg-[#0f1f3a] border-[#6b9aff]/30 text-white placeholder:text-zinc-500 focus:border-[#6b9aff] focus:!bg-[#1a2b4a]"
                         />
-                        {registerErrors.firstName && (
-                          <p className="text-sm text-red-400 mt-1">{registerErrors.firstName}</p>
+                        {registerForm.formState.errors.firstName && (
+                          <p className="text-sm text-red-400 mt-1">{registerForm.formState.errors.firstName.message}</p>
                         )}
                       </div>
                       <div className="space-y-2">
@@ -1084,12 +1026,12 @@ export default function AuthPage() {
                           id="lastName"
                           name="lastName"
                           placeholder="Doe"
-                          value={registerForm.lastName}
+                          value={registerForm.getValues("lastName")}
                           onChange={handleRegisterChange}
                           className="!bg-[#0f1f3a] border-[#6b9aff]/30 text-white placeholder:text-zinc-500 focus:border-[#6b9aff] focus:!bg-[#1a2b4a]"
                         />
-                        {registerErrors.lastName && (
-                          <p className="text-sm text-red-400 mt-1">{registerErrors.lastName}</p>
+                        {registerForm.formState.errors.lastName && (
+                          <p className="text-sm text-red-400 mt-1">{registerForm.formState.errors.lastName.message}</p>
                         )}
                       </div>
                     </div>
@@ -1101,12 +1043,12 @@ export default function AuthPage() {
                         name="email"
                         type="email"
                         placeholder="john.doe@example.com"
-                        value={registerForm.email}
+                        value={registerForm.getValues("email")}
                         onChange={handleRegisterChange}
                         className="!bg-[#0f1f3a] border-[#6b9aff]/30 text-white placeholder:text-zinc-500 focus:border-[#6b9aff] focus:!bg-[#1a2b4a]"
                       />
-                      {registerErrors.email && (
-                        <p className="text-sm text-red-400 mt-1">{registerErrors.email}</p>
+                      {registerForm.formState.errors.email && (
+                        <p className="text-sm text-red-400 mt-1">{registerForm.formState.errors.email.message}</p>
                       )}
                     </div>
 
@@ -1116,12 +1058,12 @@ export default function AuthPage() {
                         id="username"
                         name="username"
                         placeholder="johndoe"
-                        value={registerForm.username}
+                        value={registerForm.getValues("username")}
                         onChange={handleRegisterChange}
                         className="!bg-[#0f1f3a] border-[#6b9aff]/30 text-white placeholder:text-zinc-500 focus:border-[#6b9aff] focus:!bg-[#1a2b4a]"
                       />
-                      {registerErrors.username && (
-                        <p className="text-sm text-red-400 mt-1">{registerErrors.username}</p>
+                      {registerForm.formState.errors.username && (
+                        <p className="text-sm text-red-400 mt-1">{registerForm.formState.errors.username.message}</p>
                       )}
                     </div>
 
@@ -1133,12 +1075,12 @@ export default function AuthPage() {
                           name="password"
                           type="password"
                           placeholder="••••••••"
-                          value={registerForm.password}
+                          value={registerForm.getValues("password")}
                           onChange={handleRegisterChange}
                           className="!bg-[#0f1f3a] border-[#6b9aff]/30 text-white placeholder:text-zinc-500 focus:border-[#6b9aff] focus:!bg-[#1a2b4a]"
                         />
-                        {registerErrors.password && (
-                          <p className="text-sm text-red-400 mt-1">{registerErrors.password}</p>
+                        {registerForm.formState.errors.password && (
+                          <p className="text-sm text-red-400 mt-1">{registerForm.formState.errors.password.message}</p>
                         )}
                       </div>
                       <div className="space-y-2">
@@ -1148,12 +1090,12 @@ export default function AuthPage() {
                           name="confirmPassword"
                           type="password"
                           placeholder="••••••••"
-                          value={registerForm.confirmPassword}
+                          value={registerForm.getValues("confirmPassword")}
                           onChange={handleRegisterChange}
                           className="!bg-[#0f1f3a] border-[#6b9aff]/30 text-white placeholder:text-zinc-500 focus:border-[#6b9aff] focus:!bg-[#1a2b4a]"
                         />
-                        {registerErrors.confirmPassword && (
-                          <p className="text-sm text-red-400 mt-1">{registerErrors.confirmPassword}</p>
+                        {registerForm.formState.errors.confirmPassword && (
+                          <p className="text-sm text-red-400 mt-1">{registerForm.formState.errors.confirmPassword.message}</p>
                         )}
                       </div>
                     </div>
@@ -1163,7 +1105,7 @@ export default function AuthPage() {
                       <select
                         id="role"
                         name="role"
-                        value={registerForm.role}
+                        value={registerForm.getValues("role")}
                         onChange={(e) => handleRoleChange(e.target.value)}
                         className="flex h-10 w-full rounded-md border border-[#6b9aff]/50 bg-gradient-to-br from-[#0f1f3a]/80 to-[#1a2b4a]/80 px-3 py-2 text-sm text-white ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-[#a0c4ff]/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6b9aff] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                       >
@@ -1172,7 +1114,7 @@ export default function AuthPage() {
                       </select>
                     </div>
 
-                    {registerForm.role === "business" && (
+                    {registerForm.getValues("role") === "business" && (
                       <>
                         <div className="space-y-2">
                           <Label htmlFor="company" className="text-white font-semibold">Company Name</Label>
@@ -1180,28 +1122,25 @@ export default function AuthPage() {
                             id="company"
                             name="company"
                             placeholder="Acme Inc."
-                            value={registerForm.company}
+                            value={registerForm.getValues("company")}
                             onChange={handleRegisterChange}
                             className="!bg-[#0f1f3a] border-[#6b9aff]/30 text-white placeholder:text-zinc-500 focus:border-[#6b9aff] focus:!bg-[#1a2b4a]"
                           />
-                          {registerErrors.company && (
-                            <p className="text-sm text-red-400 mt-1">{registerErrors.company}</p>
+                          {registerForm.formState.errors.company && (
+                            <p className="text-sm text-red-400 mt-1">{registerForm.formState.errors.company.message}</p>
                           )}
                         </div>
 
                         <div className="space-y-2">
                           <Label htmlFor="country" className="text-white font-semibold">Country</Label>
                           <Select
-                            value={registerForm.country}
+                            value={registerForm.getValues("country")}
                             onValueChange={(value) => {
-                              setRegisterForm(prev => ({
-                                ...prev,
-                                country: value,
-                                currency: getCurrencyForCountry(value)
-                              }));
+                              registerForm.setValue("country", value);
+                              registerForm.setValue("currency", getCurrencyForCountry(value));
                             }}
                           >
-                            <SelectTrigger 
+                            <SelectTrigger
                               id="country"
                               className="!bg-[#0f1f3a] border-[#6b9aff]/30 text-white focus:border-[#6b9aff] focus:!bg-[#1a2b4a]"
                             >
@@ -1209,8 +1148,8 @@ export default function AuthPage() {
                             </SelectTrigger>
                             <SelectContent className="bg-[#0f1f3a] border-[#6b9aff]/30 text-white max-h-[300px]">
                               {SUPPORTED_COUNTRIES.map((country) => (
-                                <SelectItem 
-                                  key={country.code} 
+                                <SelectItem
+                                  key={country.code}
                                   value={country.code}
                                   className="focus:bg-[#1a2b4a] focus:text-white"
                                 >
@@ -1219,18 +1158,18 @@ export default function AuthPage() {
                               ))}
                             </SelectContent>
                           </Select>
-                          {registerErrors.country && (
-                            <p className="text-sm text-red-400 mt-1">{registerErrors.country}</p>
+                          {registerForm.formState.errors.country && (
+                            <p className="text-sm text-red-400 mt-1">{registerForm.formState.errors.country.message}</p>
                           )}
                         </div>
 
-                        {registerForm.country && (
+                        {registerForm.getValues("country") && (
                           <div className="bg-[#1a2b4a]/50 border border-[#6b9aff]/20 rounded-md p-3">
                             <p className="text-sm text-zinc-300">
-                              Currency: <span className="font-semibold text-white">{registerForm.currency}</span>
+                              Currency: <span className="font-semibold text-white">{registerForm.getValues("currency")}</span>
                             </p>
                             <p className="text-xs text-zinc-400 mt-1">
-                              All payments will be processed in {registerForm.currency}
+                              All payments will be processed in {registerForm.getValues("currency")}
                             </p>
                           </div>
                         )}
@@ -1243,27 +1182,78 @@ export default function AuthPage() {
                         id="position"
                         name="position"
                         placeholder="CEO, Project Manager, etc."
-                        value={registerForm.position}
+                        value={registerForm.getValues("position")}
                         onChange={handleRegisterChange}
                         className="!bg-[#0f1f3a] border-[#6b9aff]/30 text-white placeholder:text-zinc-500 focus:border-[#6b9aff] focus:!bg-[#1a2b4a]"
                       />
+                      {registerForm.formState.errors.position && (
+                        <p className="text-sm text-red-400 mt-1">{registerForm.formState.errors.position.message}</p>
+                      )}
                     </div>
                   </CardContent>
+
                   <CardFooter>
-                    <Button 
-                      type="submit" 
-                      className="w-full bg-gradient-to-r from-[#6b9aff] to-[#7ca5ff] text-[#0a1628] hover:from-[#5a89ee] hover:to-[#6b94ee] font-medium"
-                      disabled={registerMutation.isPending}
-                    >
-                      {registerMutation.isPending ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Creating account...
-                        </>
-                      ) : (
-                        "Create Account"
-                      )}
-                    </Button>
+                    <div className="space-y-4 w-full">
+                      <div className="flex items-start space-x-2">
+                        <Checkbox
+                          id="acceptedTerms"
+                          checked={registerForm.watch("acceptedTerms")}
+                          onCheckedChange={(checked) => {
+                            registerForm.setValue("acceptedTerms", checked as boolean);
+                          }}
+                          className="mt-1"
+                        />
+                        <div className="flex-1">
+                          <label
+                            htmlFor="acceptedTerms"
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                          >
+                            I agree to Interlinc's{" "}
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="text-blue-600 hover:text-blue-700 underline"
+                                >
+                                  Terms of Service
+                                </button>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-3xl max-h-[80vh]">
+                                <DialogHeader>
+                                  <DialogTitle>Interlinc Terms of Service</DialogTitle>
+                                  <DialogDescription>
+                                    Please read our Terms of Service carefully before accepting.
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <ScrollArea className="h-[60vh] pr-4">
+                                  <TermsOfService />
+                                </ScrollArea>
+                              </DialogContent>
+                            </Dialog>
+                          </label>
+                          {registerForm.formState.errors.acceptedTerms && (
+                            <p className="text-sm text-red-500 mt-1">
+                              {registerForm.formState.errors.acceptedTerms.message}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <Button
+                        type="submit"
+                        className="w-full bg-gradient-to-r from-[#6b9aff] to-[#7ca5ff] text-[#0a1628] hover:from-[#5a89ee] hover:to-[#6b94ee] font-medium"
+                        disabled={registerForm.formState.isSubmitting}
+                      >
+                        {registerForm.formState.isSubmitting ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Creating account...
+                          </>
+                        ) : (
+                          "Create Account"
+                        )}
+                      </Button>
+                    </div>
                   </CardFooter>
                 </form>
               </Card>
@@ -1274,8 +1264,8 @@ export default function AuthPage() {
               <Card className="border-[#6b9aff]/20 text-white" style={{ background: 'linear-gradient(135deg, rgba(15, 31, 58, 0.6) 0%, rgba(26, 43, 74, 0.6) 100%)', backdropFilter: 'blur(20px)' }}>
                 <CardHeader>
                   <div className="flex items-center mb-2">
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       onClick={() => setActiveTab("login")}
                       className="p-1 mr-2 rounded-full hover:bg-zinc-800"
                     >
@@ -1295,8 +1285,8 @@ export default function AuthPage() {
                       <p className="text-zinc-400">
                         We've sent a password reset link to your email address. Please check your inbox and follow the instructions.
                       </p>
-                      <Button 
-                        type="button" 
+                      <Button
+                        type="button"
                         onClick={() => setActiveTab("login")}
                         className="mt-4 bg-gradient-to-r from-[#6b9aff] to-[#7ca5ff] text-[#0a1628] hover:from-[#5a89ee] hover:to-[#6b94ee] font-medium"
                       >
@@ -1327,8 +1317,8 @@ export default function AuthPage() {
                       </div>
                     </CardContent>
                     <CardFooter>
-                      <Button 
-                        type="submit" 
+                      <Button
+                        type="submit"
                         className="w-full bg-gradient-to-r from-[#6b9aff] to-[#7ca5ff] text-[#0a1628] hover:from-[#5a89ee] hover:to-[#6b94ee] font-medium"
                         disabled={forgotPasswordMutation.isPending}
                       >
@@ -1412,16 +1402,16 @@ export default function AuthPage() {
             <div className="bg-[#0a1628]/50 rounded-lg p-4 border border-[#6b9aff]/10">
               <div className="text-xs text-[#8cb3ff] mb-3">Revenue growth</div>
               <svg className="w-full h-16" viewBox="0 0 300 60" fill="none">
-                <path 
-                  d="M0,50 Q30,40 60,35 T120,30 T180,25 T240,20 T300,15" 
-                  stroke="#6b9aff" 
-                  strokeWidth="2" 
+                <path
+                  d="M0,50 Q30,40 60,35 T120,30 T180,25 T240,20 T300,15"
+                  stroke="#6b9aff"
+                  strokeWidth="2"
                   fill="none"
                   strokeLinecap="round"
                 />
-                <path 
-                  d="M0,50 Q30,40 60,35 T120,30 T180,25 T240,20 T300,15 L300,60 L0,60 Z" 
-                  fill="url(#gradient)" 
+                <path
+                  d="M0,50 Q30,40 60,35 T120,30 T180,25 T240,20 T300,15 L300,60 L0,60 Z"
+                  fill="url(#gradient)"
                   opacity="0.2"
                 />
                 <defs>
@@ -1434,7 +1424,7 @@ export default function AuthPage() {
             </div>
           </div>
 
-          </div>
+        </div>
       </div>
     </div>
   );
