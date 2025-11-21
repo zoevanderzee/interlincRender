@@ -29,6 +29,36 @@ import connectPg from "connect-pg-simple";
 import * as crypto from "crypto";
 import { mapPaymentStatus } from "./services/payment-status-mapper";
 
+type StripeUpdateOptions = {
+  hasDestinationCharge?: boolean;
+  transferStatus?: string | null;
+};
+
+const determineStripePaymentStatus = (
+  stripePaymentIntentStatus: string,
+  options: StripeUpdateOptions = {},
+  currentStatus?: string | null
+) => {
+  // Preserve completion unless we explicitly have new success data
+  if (currentStatus === "completed") return "completed";
+
+  const normalizedIntentStatus = stripePaymentIntentStatus || "";
+
+  if (options.transferStatus === "succeeded") {
+    return "completed";
+  }
+
+  if (normalizedIntentStatus === "succeeded" && options.hasDestinationCharge) {
+    return "completed";
+  }
+
+  if (normalizedIntentStatus === "payment_failed" || normalizedIntentStatus === "canceled") {
+    return "failed";
+  }
+
+  return "processing";
+};
+
 // Storage interface for CRUD operations
 export interface IStorage {
   // Session management
@@ -155,7 +185,12 @@ export interface IStorage {
   getApprovedMilestonesWithoutPayments(): Promise<Milestone[]>;
   createPayment(payment: InsertPayment): Promise<Payment>;
   updatePayment(id: number, payment: Partial<InsertPayment>): Promise<Payment | undefined>;
-  updatePaymentStripeDetails(id: number, stripePaymentIntentId: string, stripePaymentIntentStatus: string): Promise<Payment | undefined>;
+  updatePaymentStripeDetails(
+    id: number,
+    stripePaymentIntentId: string,
+    stripePaymentIntentStatus: string,
+    options?: { hasDestinationCharge?: boolean; transferStatus?: string | null }
+  ): Promise<Payment | undefined>;
   updatePaymentTransferDetails(id: number, stripeTransferId: string, stripeTransferStatus: string, applicationFee: number): Promise<Payment | undefined>;
 
   // Business Payment Statistics - Real Data Calculations
@@ -1011,21 +1046,30 @@ export class MemStorage implements IStorage {
     return updatedPayment;
   }
 
-  async updatePaymentStripeDetails(id: number, stripePaymentIntentId: string, stripePaymentIntentStatus: string): Promise<Payment | undefined> {
+  async updatePaymentStripeDetails(
+    id: number,
+    stripePaymentIntentId: string,
+    stripePaymentIntentStatus: string,
+    options?: StripeUpdateOptions
+  ): Promise<Payment | undefined> {
     const existingPayment = this.payments.get(id);
     if (!existingPayment) return undefined;
+
+    const status = determineStripePaymentStatus(
+      stripePaymentIntentStatus,
+      options,
+      existingPayment.status
+    );
 
     const updatedPayment = {
       ...existingPayment,
       stripePaymentIntentId,
       stripePaymentIntentStatus,
-      // Update payment status based on Stripe status
-      status: stripePaymentIntentStatus === 'succeeded' ? 'completed' :
-              stripePaymentIntentStatus === 'processing' ? 'processing' :
-              stripePaymentIntentStatus === 'requires_payment_method' ? 'failed' :
-              existingPayment.status,
-      // If payment succeeded, set the completed date
-      completedDate: stripePaymentIntentStatus === 'succeeded' ? new Date() : existingPayment.completedDate
+      stripeTransferStatus: options?.transferStatus ?? existingPayment.stripeTransferStatus,
+      status,
+      completedDate: status === 'completed' && !existingPayment.completedDate
+        ? new Date()
+        : existingPayment.completedDate
     };
 
     this.payments.set(id, updatedPayment);
@@ -1036,11 +1080,21 @@ export class MemStorage implements IStorage {
     const existingPayment = this.payments.get(id);
     if (!existingPayment) return undefined;
 
+    const status = determineStripePaymentStatus(
+      existingPayment.stripePaymentIntentStatus || '',
+      { transferStatus: stripeTransferStatus },
+      existingPayment.status
+    );
+
     const updatedPayment = {
       ...existingPayment,
       stripeTransferId,
       stripeTransferStatus,
-      applicationFee: applicationFee.toString()
+      applicationFee: applicationFee.toString(),
+      status,
+      completedDate: status === 'completed' && !existingPayment.completedDate
+        ? new Date()
+        : existingPayment.completedDate
     };
 
     this.payments.set(id, updatedPayment);
@@ -1517,8 +1571,33 @@ export class MemStorage implements IStorage {
   async getPaymentByMilestoneId(milestoneId: number): Promise<any> { return Promise.resolve(undefined); }
   async getPaymentByTrolleyId(trolleyPaymentId: string): Promise<any> { return Promise.resolve(undefined); }
   async getApprovedMilestonesWithoutPayments(): Promise<any[]> { return Promise.resolve([]); }
-  async updatePaymentStripeDetails(id: number, stripePaymentIntentId: string, stripePaymentIntentStatus: string): Promise<any> { return this.updatePayment(id, { stripePaymentIntentId, stripePaymentIntentStatus }); }
-  async updatePaymentTransferDetails(id: number, stripeTransferId: string, stripeTransferStatus: string, applicationFee: number): Promise<any> { return this.updatePayment(id, { stripeTransferId, stripeTransferStatus, applicationFee: applicationFee.toString() }); }
+  async updatePaymentStripeDetails(
+    id: number,
+    stripePaymentIntentId: string,
+    stripePaymentIntentStatus: string,
+    options?: StripeUpdateOptions
+  ): Promise<any> {
+    const payment = await this.getPayment(id);
+    const status = determineStripePaymentStatus(stripePaymentIntentStatus, options, payment?.status);
+    return this.updatePayment(id, {
+      stripePaymentIntentId,
+      stripePaymentIntentStatus,
+      stripeTransferStatus: options?.transferStatus ?? payment?.stripeTransferStatus ?? null,
+      status,
+      completedDate: status === 'completed' && !payment?.completedDate ? new Date() : payment?.completedDate
+    });
+  }
+  async updatePaymentTransferDetails(id: number, stripeTransferId: string, stripeTransferStatus: string, applicationFee: number): Promise<any> {
+    const payment = await this.getPayment(id);
+    const status = determineStripePaymentStatus(payment?.stripePaymentIntentStatus || '', { transferStatus: stripeTransferStatus }, payment?.status);
+    return this.updatePayment(id, {
+      stripeTransferId,
+      stripeTransferStatus,
+      applicationFee: applicationFee.toString(),
+      status,
+      completedDate: status === 'completed' && !payment?.completedDate ? new Date() : payment?.completedDate
+    });
+  }
   async getBusinessPaymentStats(businessId: number): Promise<any> { return Promise.resolve({ totalSuccessfulPayments: 0, totalPaymentValue: 0, processingValue: 0, currentMonthValue: 0, currentYearValue: 0 }); }
   async getBusinessMonthlyPayments(businessId: number, year: number, month: number): Promise<number> { return Promise.resolve(0); }
   async getBusinessAnnualPayments(businessId: number, year: number): Promise<number> { return Promise.resolve(0); }
@@ -2436,21 +2515,31 @@ export class DatabaseStorage implements IStorage {
     return updatedPayment;
   }
 
-  async updatePaymentStripeDetails(id: number, stripePaymentIntentId: string, stripePaymentIntentStatus: string): Promise<Payment | undefined> {
-    // Update payment status based on Stripe status
-    const status = stripePaymentIntentStatus === 'succeeded' ? 'completed' :
-                  stripePaymentIntentStatus === 'processing' ? 'processing' :
-                  stripePaymentIntentStatus === 'requires_payment_method' ? 'failed' :
-                  'scheduled';
+  async updatePaymentStripeDetails(
+    id: number,
+    stripePaymentIntentId: string,
+    stripePaymentIntentStatus: string,
+    options?: StripeUpdateOptions
+  ): Promise<Payment | undefined> {
+    const existingPayment = await this.getPayment(id);
+    if (!existingPayment) return undefined;
 
-    // If payment succeeded, set the completed date
-    const completedDate = stripePaymentIntentStatus === 'succeeded' ? new Date() : null;
+    const status = determineStripePaymentStatus(
+      stripePaymentIntentStatus,
+      options,
+      existingPayment.status
+    );
+
+    const completedDate = status === 'completed' && !existingPayment.completedDate
+      ? new Date()
+      : existingPayment.completedDate;
 
     const [updatedPayment] = await db
       .update(payments)
       .set({
         stripePaymentIntentId,
         stripePaymentIntentStatus,
+        stripeTransferStatus: options?.transferStatus ?? existingPayment.stripeTransferStatus,
         status,
         completedDate
       })
@@ -2464,12 +2553,27 @@ export class DatabaseStorage implements IStorage {
    * Update payment with Stripe transfer details for contractor payout
    */
   async updatePaymentTransferDetails(id: number, stripeTransferId: string, stripeTransferStatus: string, applicationFee: number): Promise<Payment | undefined> {
+    const existingPayment = await this.getPayment(id);
+    if (!existingPayment) return undefined;
+
+    const status = determineStripePaymentStatus(
+      existingPayment.stripePaymentIntentStatus || '',
+      { transferStatus: stripeTransferStatus },
+      existingPayment.status
+    );
+
+    const completedDate = status === 'completed' && !existingPayment.completedDate
+      ? new Date()
+      : existingPayment.completedDate;
+
     const [updatedPayment] = await db
       .update(payments)
       .set({
         stripeTransferId,
         stripeTransferStatus,
-        applicationFee: applicationFee.toString()
+        applicationFee: applicationFee.toString(),
+        status,
+        completedDate
       })
       .where(eq(payments.id, id))
       .returning();
