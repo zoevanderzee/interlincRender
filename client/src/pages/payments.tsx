@@ -40,7 +40,11 @@ export default function Payments() {
   });
 
   // Fetch dashboard stats for accurate pending payments calculation
-  const { data: dashboardStats } = useQuery<{ totalPendingValue: number }>({
+  const { data: dashboardStats } = useQuery<{
+    totalPendingValue?: number;
+    processingValue?: number;
+    currentMonthValue?: number;
+  }>({
     queryKey: ['/api/dashboard/stats'],
     enabled: !!user && user?.role === 'business'
   });
@@ -62,20 +66,41 @@ export default function Payments() {
     );
   }
 
-  // Calculate payment totals
-  const completedPayments = safePayments.filter((p: Payment) => p.status === 'completed');
-  const pendingPayments = safePayments.filter((p: Payment) => p.status === 'scheduled' || p.status === 'pending');
-  const processingPayments = safePayments.filter((p: Payment) => p.status === 'processing');
+  const getMappedStatus = (payment: Payment) => payment.mappedStatus || payment.status;
 
-  const totalEarned = completedPayments.reduce((sum: number, p: Payment) => sum + parseFloat(p.amount), 0);
+  const paidPayments = safePayments.filter((p: Payment) => getMappedStatus(p) === 'paid');
+  const processingPayments = safePayments.filter((p: Payment) => getMappedStatus(p) === 'processing');
+  const allocatedPayments = safePayments.filter((p: Payment) => {
+    const mapped = getMappedStatus(p);
+    return mapped === 'scheduled' || mapped === 'pending' || mapped === 'allocated';
+  });
+
+  const totalPaid = paidPayments.reduce((sum: number, p: Payment) => sum + parseFloat(p.amount), 0);
 
   // For business users, use dashboard calculation (Projects + Tasks)
   // For contractors, use payments table calculation
   const totalPending = user?.role === 'business' && dashboardStats?.totalPendingValue !== undefined
     ? dashboardStats.totalPendingValue
-    : pendingPayments.reduce((sum: number, p: Payment) => sum + parseFloat(p.amount), 0);
+    : allocatedPayments.reduce((sum: number, p: Payment) => sum + parseFloat(p.amount), 0);
 
-  const totalProcessing = processingPayments.reduce((sum: number, p: Payment) => sum + parseFloat(p.amount), 0);
+  const totalProcessing = dashboardStats?.processingValue ?? processingPayments.reduce((sum: number, p: Payment) => sum + parseFloat(p.amount), 0);
+
+  const monthlyTotal = () => {
+    if (dashboardStats?.currentMonthValue !== undefined) {
+      return dashboardStats.currentMonthValue;
+    }
+
+    const now = new Date();
+    return safePayments.reduce((sum: number, p: Payment) => {
+      const mapped = getMappedStatus(p);
+      if (mapped !== 'paid' && mapped !== 'processing') return sum;
+      const date = p.scheduledDate ? new Date(p.scheduledDate) : null;
+      if (date && date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear()) {
+        return sum + parseFloat(p.amount);
+      }
+      return sum;
+    }, 0);
+  };
 
   // Get contract details for payment context
   const getContractName = (contractId: number | null) => {
@@ -111,8 +136,8 @@ export default function Payments() {
               <CheckCircle className="h-4 w-4 text-green-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">{formatCurrency(totalEarned, user?.currency || 'GBP')}</div>
-              <p className="text-xs text-gray-400">{completedPayments.length} payments completed</p>
+              <div className="text-2xl font-bold text-white">{formatCurrency(totalPaid, user?.currency || 'GBP')}</div>
+              <p className="text-xs text-gray-400">{paidPayments.length} payments completed</p>
             </CardContent>
           </Card>
 
@@ -123,7 +148,7 @@ export default function Payments() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-white">{formatCurrency(totalPending, user?.currency || 'GBP')}</div>
-              <p className="text-xs text-gray-400">{pendingPayments.length} payments scheduled</p>
+              <p className="text-xs text-gray-400">{allocatedPayments.length} payments scheduled</p>
             </CardContent>
           </Card>
 
@@ -174,16 +199,28 @@ export default function Payments() {
                         {formatCurrency(parseFloat(payment.amount), user?.currency || 'GBP')}
                       </TableCell>
                       <TableCell>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          payment.status === 'completed'
+                        {(() => {
+                          const mapped = getMappedStatus(payment);
+                          const badgeClasses = mapped === 'paid'
                             ? 'bg-green-900/30 text-green-400'
-                            : payment.status === 'processing'
+                            : mapped === 'processing'
                             ? 'bg-blue-900/30 text-blue-400'
-                            : 'bg-yellow-900/30 text-yellow-400'
-                        }`}>
-                          {payment.status === 'completed' ? 'Paid' :
-                           payment.status === 'processing' ? 'Processing' : 'Pending'}
-                        </span>
+                            : mapped === 'incomplete'
+                            ? 'bg-red-900/30 text-red-400'
+                            : 'bg-yellow-900/30 text-yellow-400';
+                          const label = mapped === 'paid'
+                            ? 'Paid'
+                            : mapped === 'processing'
+                            ? 'Processing'
+                            : mapped === 'incomplete'
+                            ? 'Incomplete'
+                            : 'Allocated';
+                          return (
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeClasses}`}>
+                              {label}
+                            </span>
+                          );
+                        })()}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -219,18 +256,18 @@ export default function Payments() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="bg-black border-gray-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-400">Total Paid</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-400">Total Spend</CardTitle>
             <CheckCircle className="h-4 w-4 text-green-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{formatCurrency(totalEarned, user?.currency || 'GBP')}</div>
-            <p className="text-xs text-gray-400">{completedPayments.length} payments completed</p>
+            <div className="text-2xl font-bold text-white">{formatCurrency(totalPaid, user?.currency || 'GBP')}</div>
+            <p className="text-xs text-gray-400">Paid to contractors</p>
           </CardContent>
         </Card>
 
         <Card className="bg-black border-gray-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-400">Pending Payments</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-400">Pending Work (Allocated)</CardTitle>
             <Clock className="h-4 w-4 text-yellow-400" />
           </CardHeader>
           <CardContent>
@@ -256,7 +293,7 @@ export default function Payments() {
             <Calendar className="h-4 w-4 text-purple-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{formatCurrency(totalEarned + totalPending + totalProcessing, user?.currency || 'GBP')}</div>
+            <div className="text-2xl font-bold text-white">{formatCurrency(monthlyTotal(), user?.currency || 'GBP')}</div>
             <p className="text-xs text-gray-400">This month's activity</p>
           </CardContent>
         </Card>
@@ -302,25 +339,43 @@ export default function Payments() {
                       {payment.scheduledDate ? new Date(payment.scheduledDate).toLocaleDateString() : 'Not set'}
                     </TableCell>
                     <TableCell>
-                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                        payment.status === 'completed' ? 'bg-green-500/10 text-green-400' :
-                        payment.status === 'processing' ? 'bg-blue-500/10 text-blue-400' :
-                        payment.status === 'scheduled' ? 'bg-yellow-500/10 text-yellow-400' :
-                        'bg-gray-500/10 text-gray-400'
-                      }`}>
-                        {payment.status}
-                      </span>
+                      {(() => {
+                        const mapped = getMappedStatus(payment);
+                        const badgeClasses = mapped === 'paid'
+                          ? 'bg-green-500/10 text-green-400'
+                          : mapped === 'processing'
+                          ? 'bg-blue-500/10 text-blue-400'
+                          : mapped === 'incomplete'
+                          ? 'bg-red-500/10 text-red-400'
+                          : 'bg-yellow-500/10 text-yellow-400';
+                        const label = mapped === 'paid'
+                          ? 'Paid'
+                          : mapped === 'processing'
+                          ? 'Processing'
+                          : mapped === 'incomplete'
+                          ? 'Incomplete'
+                          : 'Allocated';
+                        return (
+                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${badgeClasses}`}>
+                            {label}
+                          </span>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell>
-                      {payment.status === 'pending' || payment.status === 'scheduled' ? (
-                        <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
-                          Process Now
-                        </Button>
-                      ) : (
-                        <Button variant="outline" size="sm" className="border-gray-700 text-gray-400">
-                          View Details
-                        </Button>
-                      )}
+                      {(() => {
+                        const mapped = getMappedStatus(payment);
+                        const isAllocated = mapped !== 'paid' && mapped !== 'processing';
+                        return isAllocated ? (
+                          <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+                            Process Now
+                          </Button>
+                        ) : (
+                          <Button variant="outline" size="sm" className="border-gray-700 text-gray-400">
+                            View Details
+                          </Button>
+                        );
+                      })()}
                     </TableCell>
                   </TableRow>
                 ))}

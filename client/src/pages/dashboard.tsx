@@ -75,11 +75,13 @@ const Dashboard = () => {
     activeContractsCount: 0,
     activeContractors: 0,
     totalPendingValue: 0,
+    processingValue: 0,
     pendingInvitesCount: 0,
     assignedProjects: 0, // Added for the new StatsCard
     totalPaymentValue: 0, // Added for the new StatsCard
     currentMonthValue: 0, // Added for the new StatsCard
-    totalSuccessfulPayments: 0 // Added for the new StatsCard
+    totalSuccessfulPayments: 0, // Added for the new StatsCard
+    remainingBudget: 0
   };
 
   const contractorStats = {
@@ -88,8 +90,6 @@ const Dashboard = () => {
     currentMonthEarnings: parseFloat(integratedData?.currentMonthEarnings || '0'),
     completedPaymentsCount: integratedData?.completedPaymentsCount || 0,
   };
-
-  const activeContracts = integratedData?.contracts || [];
 
   // Format the remaining budget as currency - now uses proper GBP formatting
   const formatBudgetCurrency = (value: string | null): string => {
@@ -104,6 +104,8 @@ const Dashboard = () => {
   const handleAddContractor = () => {
     navigate('/contractors?action=new');
   };
+
+  const getMappedStatus = (payment: Payment) => payment.mappedStatus || payment.status;
 
   if (dashboardError) {
     return (
@@ -193,10 +195,11 @@ const Dashboard = () => {
       )
     );
 
-    const completedPayments = contractorPayments.filter((p: any) => p.status === 'completed');
-    const pendingPayments = contractorPayments.filter((p: any) =>
-      p.status === 'scheduled' || p.status === 'pending'
-    );
+    const completedPayments = contractorPayments.filter((p: any) => getMappedStatus(p) === 'paid');
+    const pendingPayments = contractorPayments.filter((p: any) => {
+      const mapped = getMappedStatus(p);
+      return mapped === 'scheduled' || mapped === 'pending' || mapped === 'allocated';
+    });
 
     const totalEarnings = completedPayments.reduce((sum: number, p: any) =>
       sum + parseFloat(p.amount || '0'), 0
@@ -247,31 +250,35 @@ const Dashboard = () => {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatsCard
           title="Total Spend"
-          value={businessStats.totalPaymentValue}
-          description="All-time payments"
+          value={businessStats.paymentsProcessed}
+          description="Paid to contractors"
           icon={DollarSign}
           currency={user?.currency || 'GBP'}
           isCurrency={true}
         />
         <StatsCard
-          title="This Month"
-          value={businessStats.currentMonthValue}
-          description="Current month spend"
+          title="Pending Work"
+          value={businessStats.totalPendingValue}
+          description="Allocated commitments"
+          icon={FileText}
+          currency={user?.currency || 'GBP'}
+          isCurrency={true}
+        />
+        <StatsCard
+          title="Processing"
+          value={businessStats.processingValue}
+          description="Collecting, awaiting payout"
           icon={TrendingUp}
           currency={user?.currency || 'GBP'}
           isCurrency={true}
         />
         <StatsCard
-          title="Active Contracts"
-          value={activeContracts.length}
-          description="Currently active"
-          icon={FileText}
-        />
-        <StatsCard
-          title="Successful Payments"
-          value={businessStats.totalSuccessfulPayments}
-          description="Completed transactions"
-          icon={CheckCircle}
+          title="Remaining Budget"
+          value={businessStats.remainingBudget}
+          description="Budget left"
+          icon={Coins}
+          currency={user?.currency || 'GBP'}
+          isCurrency={true}
         />
       </div>
 
