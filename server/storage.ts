@@ -181,6 +181,7 @@ export interface IStorage {
   getInvoicesByContractorId(contractorId: number): Promise<any[]>;
   getInvoice(invoiceId: number): Promise<any | null>;
   getInvoiceByPaymentId(paymentId: number): Promise<any | null>;
+  getInvoicesByPaymentId(paymentId: number): Promise<any[]>;
 
   // Documents
   getDocument(id: number): Promise<Document | undefined>;
@@ -4564,6 +4565,12 @@ export class DatabaseStorage implements IStorage {
     const { invoices } = await import('@shared/schema');
     const [invoice] = await db.select().from(invoices).where(eq(invoices.paymentId, paymentId));
     return invoice || null;
+  }
+
+  // Get invoices by payment ID (may return multiple)
+  async getInvoicesByPaymentId(paymentId: number): Promise<any[]> {
+    const { invoices } = await import('@shared/schema');
+    return await db.select().from(invoices).where(eq(invoices.paymentId, paymentId)).orderBy(desc(invoices.createdAt));
   }
 }
 

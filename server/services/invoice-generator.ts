@@ -51,6 +51,10 @@ export class InvoiceGeneratorService {
     const businessCurrency = businessUser.currency || 'GBP';
     const complianceProfile = getInvoiceComplianceProfile(businessUser.country);
 
+    const existingInvoices = await storage.getInvoicesByPaymentId(paymentId);
+    const existingBusinessInvoice = this.findInvoiceByType(existingInvoices, 'business_invoice');
+    const existingContractorInvoice = this.findInvoiceByType(existingInvoices, 'contractor_receipt');
+
     // Generate unique invoice number
     const invoiceNumber = await this.generateInvoiceNumber(paymentId);
 
@@ -187,37 +191,49 @@ export class InvoiceGeneratorService {
       },
     };
 
+    let businessInvoiceId: number | undefined;
+
     // Insert BUSINESS invoice (expense proof)
-    const [businessInvoice] = await db.insert(invoices).values({
-      businessUserId: payment.businessUserId,
-      contractorUserId: payment.contractorUserId,
-      paymentId,
-      invoiceNumber,
-      amount: grossAmount.toString(),
-      currency: businessCurrency,
-      description: `Payment to ${contractorUser.username} for ${description}`,
-      issueDate: new Date(),
-      workReference,
-      stripePaymentIntentId: stripePaymentIntentId || undefined,
-      stripeTransactionId: stripeTransactionId || undefined,
-      invoiceData: businessInvoiceData,
-    }).returning();
+    if (existingBusinessInvoice) {
+      console.log(`ℹ️ Business invoice already exists for payment ${paymentId}; skipping creation.`);
+      businessInvoiceId = existingBusinessInvoice.id;
+    } else {
+      const [businessInvoice] = await db.insert(invoices).values({
+        businessUserId: payment.businessUserId,
+        contractorUserId: payment.contractorUserId,
+        paymentId,
+        invoiceNumber,
+        amount: grossAmount.toString(),
+        currency: businessCurrency,
+        description: `Payment to ${contractorUser.username} for ${description}`,
+        issueDate: new Date(),
+        workReference,
+        stripePaymentIntentId: stripePaymentIntentId || undefined,
+        stripeTransactionId: stripeTransactionId || undefined,
+        invoiceData: businessInvoiceData,
+      }).returning();
+      businessInvoiceId = businessInvoice.id;
+    }
 
     // Insert CONTRACTOR invoice (income proof)
-    const [contractorInvoice] = await db.insert(invoices).values({
-      businessUserId: payment.businessUserId,
-      contractorUserId: payment.contractorUserId,
-      paymentId,
-      invoiceNumber: `${invoiceNumber}-C`, // Add suffix to distinguish contractor copy
-      amount: grossAmount.toString(),
-      currency: businessCurrency,
-      description: `Payment from ${businessUser.companyName || businessUser.username} for ${description}`,
-      issueDate: new Date(),
-      workReference,
-      stripePaymentIntentId: stripePaymentIntentId || undefined,
-      stripeTransactionId: stripeTransactionId || undefined,
-      invoiceData: contractorInvoiceData,
-    }).returning();
+    if (existingContractorInvoice) {
+      console.log(`ℹ️ Contractor invoice already exists for payment ${paymentId}; skipping creation.`);
+    } else {
+      await db.insert(invoices).values({
+        businessUserId: payment.businessUserId,
+        contractorUserId: payment.contractorUserId,
+        paymentId,
+        invoiceNumber: `${invoiceNumber}-C`, // Add suffix to distinguish contractor copy
+        amount: grossAmount.toString(),
+        currency: businessCurrency,
+        description: `Payment from ${businessUser.companyName || businessUser.username} for ${description}`,
+        issueDate: new Date(),
+        workReference,
+        stripePaymentIntentId: stripePaymentIntentId || undefined,
+        stripeTransactionId: stripeTransactionId || undefined,
+        invoiceData: contractorInvoiceData,
+      }).returning();
+    }
 
     console.log(`✅ AUTO-GENERATED DUAL INVOICES for payment ${paymentId}`);
     console.log(`   📄 Business Invoice: ${invoiceNumber} (Expense Proof)`);
@@ -225,7 +241,16 @@ export class InvoiceGeneratorService {
     console.log(`   Business: ${businessUser.username} → Contractor: ${contractorUser.username}`);
     console.log(`   Business Paid: £${grossAmount.toFixed(2)} | Contractor Received: £${netAmount.toFixed(2)}`);
 
-    return businessInvoice.id;
+    return businessInvoiceId!;
+  }
+
+  private findInvoiceByType(
+    invoicesForPayment: any[],
+    documentType: InterlincInvoiceV1['documentType']
+  ): any | undefined {
+    return invoicesForPayment.find(
+      (invoice) => invoice.invoiceData && invoice.invoiceData.documentType === documentType
+    );
   }
 
   /**
