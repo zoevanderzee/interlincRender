@@ -192,14 +192,21 @@ class AutomatedPaymentService {
 
         console.log(`✅ STRIPE PAYMENT_SUCCESS: $${totalAmount} payment processed for milestone ${milestoneId}`);
 
-        // AUTO-GENERATE COMPLIANT E-INVOICES
+        // AUTO-GENERATE COMPLIANT E-INVOICES ONLY AFTER SUCCESSFUL PAYMENT
         try {
-          const { invoiceGenerator } = await import('./invoice-generator');
-          await invoiceGenerator.generateInvoiceForPayment({
-            paymentId: payment.id,
-            stripePaymentIntentId: transferResult.id,
-            stripeTransactionId: transferResult.id
-          });
+          if (transferResult.status === 'succeeded') {
+            const { invoiceGenerator } = await import('./invoice-generator');
+            await invoiceGenerator.generateInvoiceForPayment({
+              paymentId: payment.id,
+              stripePaymentIntentId: transferResult.id,
+              stripeTransactionId: transferResult.id
+            });
+          } else {
+            console.log('[INVOICE_SKIPPED] Payment intent not succeeded yet, deferring invoice generation until success webhook', {
+              paymentId: payment.id,
+              paymentIntentStatus: transferResult.status
+            });
+          }
         } catch (invoiceError) {
           console.error('Invoice generation failed (non-blocking):', invoiceError);
         }
