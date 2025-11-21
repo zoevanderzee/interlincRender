@@ -489,14 +489,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log(`PENDING PAYMENTS CALCULATION: Projects Total Value: £${projectsTotalValue.toFixed(2)}, Total Task Value: £${totalTaskValue.toFixed(2)}, Pending Payments: £${totalPendingValue.toFixed(2)}`);
 
+        const processingValue = paymentStats.processingValue || 0;
+        const paidValue = paymentStats.totalPaymentValue;
+        const budgetUsed = totalPendingValue + processingValue + paidValue;
+        const remainingBudget = user.budgetCap
+          ? parseFloat(user.budgetCap) - budgetUsed
+          : null;
+
         return res.json({
           assignedProjects: projectsWithAcceptedWork,
           activeAssignments: acceptedWorkRequests.length,
           paymentsProcessed: paymentStats.totalPaymentValue,
+          processingValue,
           totalPendingValue: totalPendingValue,
           activeContractors: contractors.length,
-          remainingBudget: user.budgetCap ?
-            (parseFloat(user.budgetCap) - parseFloat(user.budgetUsed || "0")).toString() : null
+          remainingBudget
         });
       }
 
@@ -4259,21 +4266,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return sum;
       }, 0);
 
-      // BULLETPROOF: budgetUsed = total completed payments (same as dashboard)
-      const businessPaymentStats = await storage.getBusinessPaymentStats(userId);
-      const totalPaymentsValue = businessPaymentStats.totalPaymentValue;
+      // Exposure-based budget usage (Allocated + Processing + Paid)
+      const budgetInfo = await storage.getBudget(userId);
+      const budgetCap = budgetInfo?.budgetCap || user.budgetCap || null;
+      const budgetUsedValue = parseFloat(budgetInfo?.budgetUsed || '0');
 
       // Return budget-related information with REAL payment data
       res.json({
-        budgetCap: user.budgetCap || null,
-        budgetUsed: totalPaymentsValue.toFixed(2), // Total completed payments = budgetUsed
+        budgetCap: budgetCap,
+        budgetUsed: budgetUsedValue.toFixed(2),
         budgetPeriod: user.budgetPeriod || 'yearly',
         budgetStartDate: user.budgetStartDate || null,
         budgetEndDate: user.budgetEndDate || null,
         budgetResetEnabled: user.budgetResetEnabled || false,
         totalProjectAllocations: totalProjectAllocations.toFixed(2),
-        remainingBudget: user.budgetCap
-          ? (parseFloat(user.budgetCap.toString()) - totalPaymentsValue).toFixed(2)
+        remainingBudget: budgetCap
+          ? (parseFloat(budgetCap.toString()) - budgetUsedValue).toFixed(2)
           : null
       });
     } catch (error) {
@@ -4349,21 +4357,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({message: "User not found"});
       }
 
-      // Get business payment stats for budgetUsed
-      const businessPaymentStats = await storage.getBusinessPaymentStats(userId);
-      const totalPaymentsValue = businessPaymentStats.totalPaymentValue;
+      // Get exposure-based budget usage
+      const budgetInfo = await storage.getBudget(userId);
+      const budgetCap = budgetInfo?.budgetCap || user.budgetCap || null;
+      const budgetUsedValue = parseFloat(budgetInfo?.budgetUsed || '0');
 
       // Return updated budget information with correct JSON structure
       res.json({
         success: true,
-        budgetCap: user.budgetCap || null,
-        budgetUsed: totalPaymentsValue.toFixed(2),
+        budgetCap: budgetCap,
+        budgetUsed: budgetUsedValue.toFixed(2),
         budgetPeriod: user.budgetPeriod || 'yearly',
         budgetStartDate: user.budgetStartDate || null,
         budgetEndDate: user.budgetEndDate || null,
         budgetResetEnabled: user.budgetResetEnabled || false,
-        remainingBudget: user.budgetCap
-          ? (parseFloat(user.budgetCap.toString()) - totalPaymentsValue).toFixed(2)
+        remainingBudget: budgetCap
+          ? (parseFloat(budgetCap.toString()) - budgetUsedValue).toFixed(2)
           : null
       });
     } catch (error) {
