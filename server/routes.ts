@@ -1000,7 +1000,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     // Handle the event
     switch (event.type) {
-      case 'payment_intent.succeeded':
+      case 'payment_intent.succeeded': {
         const succeededIntent = event.data.object as any;
         console.log(`[WEBHOOK] Destination charge payment succeeded: ${succeededIntent.id}`);
 
@@ -1010,11 +1010,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const contractorAccountId = succeededIntent.transfer_data?.destination;
 
           if (paymentId) {
-            // Mark payment as completed in database
-            await storage.updatePaymentStatus(parseInt(paymentId), 'completed');
+            const paymentRecord = await storage.getPayment(parseInt(paymentId));
+            if (paymentRecord?.stripePaymentIntentStatus === 'succeeded' || paymentRecord?.status === 'completed') {
+              console.log(`[WEBHOOK] PaymentIntent ${succeededIntent.id} already processed for payment ${paymentId}, skipping duplicate handling`);
+              break;
+            }
+
+            await storage.updatePayment(parseInt(paymentId), {
+              stripePaymentIntentId: succeededIntent.id,
+              stripePaymentIntentStatus: succeededIntent.status,
+              status: 'completed',
+              completedDate: paymentRecord?.completedDate || new Date()
+            });
             console.log(`✅ CONTRACTOR PAYMENT SUCCESSFUL: Payment ${paymentId} completed via destination charge to ${contractorAccountId}`);
 
-            // 🎯 AUTO-GENERATE INVOICE
+            // 🎯 AUTO-GENERATE INVOICE (idempotent - generator skips if already exists)
             try {
               await generateInvoiceFromPayment(parseInt(paymentId));
             } catch (invoiceError) {
@@ -1055,25 +1065,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`🔄 AUTOMATIC PAYOUT: Stripe will handle payout to contractor's bank account according to their payout schedule`);
         }
         break;
+      }
 
       case 'payment_intent.payment_failed':
+      case 'payment_intent.canceled':
+      case 'payment_intent.requires_payment_method': {
         const failedIntent = event.data.object as any;
-        const errorMessage = failedIntent.last_payment_error?.message || 'Payment failed';
-        console.log(`Payment failed: ${failedIntent.id}, ${errorMessage}`);
+        const errorMessage = failedIntent.last_payment_error?.message || 'Payment failed or incomplete';
+        console.log(`Payment failed/incomplete: ${failedIntent.id}, ${errorMessage}`);
 
         // Update payment status in database
         try {
           const paymentId = failedIntent.metadata?.paymentId;
           if (paymentId) {
-            await storage.updatePaymentStatus(parseInt(paymentId), 'failed');
-            console.log(`Updated payment ${paymentId} status to failed`);
+            await storage.updatePayment(parseInt(paymentId), {
+              stripePaymentIntentId: failedIntent.id,
+              stripePaymentIntentStatus: failedIntent.status || 'requires_payment_method',
+              status: 'failed'
+            });
+            console.log(`Updated payment ${paymentId} status to failed/incomplete`);
           }
         } catch (error) {
           console.error('Error updating payment status:', error);
         }
         break;
+      }
 
-      case 'payment_intent.processing':
+      case 'payment_intent.processing': {
         const processingIntent = event.data.object as any;
         console.log(`Payment processing: ${processingIntent.id}`);
 
@@ -1081,13 +1099,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           const paymentId = processingIntent.metadata?.paymentId;
           if (paymentId) {
-            await storage.updatePaymentStatus(parseInt(paymentId), 'processing');
+            await storage.updatePayment(parseInt(paymentId), {
+              stripePaymentIntentId: processingIntent.id,
+              stripePaymentIntentStatus: processingIntent.status || 'processing',
+              status: 'processing'
+            });
             console.log(`Updated payment ${paymentId} status to processing`);
           }
         } catch (error) {
           console.error('Error updating payment status:', error);
         }
         break;
+      }
+
+      case 'transfer.paid': {
+        const transfer = event.data.object as any;
+        const paymentId = transfer.metadata?.paymentId ? parseInt(transfer.metadata.paymentId) : undefined;
+
+        if (!paymentId) {
+          console.warn('[WEBHOOK] transfer.paid received without paymentId metadata', transfer.metadata);
+          break;
+        }
+
+        const paymentRecord = await storage.getPayment(paymentId);
+        if (!paymentRecord) {
+          console.warn(`[WEBHOOK] transfer.paid could not find payment ${paymentId}`);
+          break;
+        }
+
+        if (paymentRecord.stripeTransferStatus === 'paid') {
+          console.log(`[WEBHOOK] transfer ${transfer.id} already processed for payment ${paymentId}, skipping duplicate handling`);
+          break;
+        }
+
+        await storage.updatePayment(paymentId, {
+          stripeTransferId: transfer.id,
+          stripeTransferStatus: transfer.status,
+          status: transfer.status === 'paid' ? 'completed' : paymentRecord.status,
+          completedDate: paymentRecord.completedDate || new Date()
+        });
+        console.log(`[WEBHOOK] Recorded transfer ${transfer.id} for payment ${paymentId} with status ${transfer.status}`);
+
+        if (transfer.status === 'paid') {
+          try {
+            await generateInvoiceFromPayment(paymentId);
+          } catch (invoiceError) {
+            console.error('Failed to generate contractor receipt after transfer:', invoiceError);
+          }
+        }
+        break;
+      }
 
       default:
         console.log(`Unhandled event type ${event.type}`);
