@@ -1006,17 +1006,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // DESTINATION CHARGE SUCCESS: Funds went directly to contractor's account
         try {
-          const paymentId = succeededIntent.metadata?.paymentId;
+          const paymentIdRaw = succeededIntent.metadata?.paymentId || succeededIntent.metadata?.payment_id;
+          const paymentId = paymentIdRaw ? parseInt(paymentIdRaw) : null;
           const contractorAccountId = succeededIntent.transfer_data?.destination;
 
           if (paymentId) {
-            // Mark payment as completed in database
-            await storage.updatePaymentStatus(parseInt(paymentId), 'completed');
-            console.log(`✅ CONTRACTOR PAYMENT SUCCESSFUL: Payment ${paymentId} completed via destination charge to ${contractorAccountId}`);
+            const existingPayment = await storage.getPayment(paymentId);
+            const paymentUpdates: any = {
+              stripePaymentIntentId: succeededIntent.id,
+              stripePaymentIntentStatus: 'succeeded',
+              status: 'processing'
+            };
 
-            // 🎯 AUTO-GENERATE INVOICE
+            if (existingPayment?.stripeTransferStatus === 'succeeded') {
+              paymentUpdates.status = 'completed';
+              paymentUpdates.completedDate = existingPayment.completedDate || new Date();
+            }
+
+            await storage.updatePayment(paymentId, paymentUpdates);
+            console.log(`✅ CONTRACTOR PAYMENT INTENT SUCCEEDED: Payment ${paymentId} marked processing (transfer pending)`);
+
+            // 🎯 AUTO-GENERATE BUSINESS INVOICE (idempotent)
             try {
-              await generateInvoiceFromPayment(parseInt(paymentId));
+              await generateInvoiceFromPayment(paymentId, {
+                generateBusinessInvoice: true,
+                generateContractorInvoice: false
+              });
             } catch (invoiceError) {
               console.error('Failed to auto-generate invoice:', invoiceError);
               // Don't fail the webhook if invoice generation fails
@@ -1086,6 +1101,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         } catch (error) {
           console.error('Error updating payment status:', error);
+        }
+        break;
+
+      case 'transfer.succeeded':
+        const transfer = event.data.object as any;
+        const transferPaymentIdRaw = transfer.metadata?.paymentId || transfer.metadata?.payment_id;
+        const transferPaymentId = transferPaymentIdRaw ? parseInt(transferPaymentIdRaw) : null;
+
+        console.log(`Transfer succeeded: ${transfer.id} for payment ${transferPaymentId ?? 'unknown'}`);
+
+        if (transferPaymentId) {
+          try {
+            const existingPayment = await storage.getPayment(transferPaymentId);
+            const paymentUpdate: any = {
+              stripeTransferId: transfer.id,
+              stripeTransferStatus: 'succeeded',
+              status: 'completed',
+              completedDate: existingPayment?.completedDate || new Date()
+            };
+
+            await storage.updatePayment(transferPaymentId, paymentUpdate);
+
+            await generateInvoiceFromPayment(transferPaymentId, {
+              generateBusinessInvoice: false,
+              generateContractorInvoice: true,
+              stripeTransactionId: transfer.balance_transaction || transfer.id
+            });
+
+            console.log(`✅ Transfer recorded and contractor receipt generated for payment ${transferPaymentId}`);
+          } catch (transferError) {
+            console.error('Error processing transfer.succeeded webhook:', transferError);
+          }
+        } else {
+          console.warn('transfer.succeeded webhook missing paymentId metadata');
         }
         break;
 

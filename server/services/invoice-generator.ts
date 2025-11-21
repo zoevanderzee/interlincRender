@@ -7,16 +7,27 @@ import type { InterlincInvoiceV1 } from '@shared/invoiceTypes';
 
 interface InvoiceGenerationParams {
   paymentId: number;
-  stripePaymentIntentId: string;
+  stripePaymentIntentId?: string;
   stripeTransactionId?: string;
+  generateBusinessInvoice?: boolean;
+  generateContractorInvoice?: boolean;
 }
 
 export class InvoiceGeneratorService {
   /**
    * Generate invoice automatically when payment succeeds
    */
-  async generateInvoiceForPayment(params: InvoiceGenerationParams): Promise<number> {
-    const { paymentId, stripePaymentIntentId, stripeTransactionId } = params;
+  async generateInvoiceForPayment(params: InvoiceGenerationParams): Promise<{
+    businessInvoiceId?: number;
+    contractorInvoiceId?: number;
+  }> {
+    const {
+      paymentId,
+      stripePaymentIntentId,
+      stripeTransactionId,
+      generateBusinessInvoice = true,
+      generateContractorInvoice = true,
+    } = params;
 
     // Get payment details
     const payment = await storage.getPayment(paymentId);
@@ -51,8 +62,26 @@ export class InvoiceGeneratorService {
     const businessCurrency = businessUser.currency || 'GBP';
     const complianceProfile = getInvoiceComplianceProfile(businessUser.country);
 
-    // Generate unique invoice number
-    const invoiceNumber = await this.generateInvoiceNumber(paymentId);
+    const existingInvoices = await db
+      .select()
+      .from(invoices)
+      .where(eq(invoices.paymentId, paymentId));
+
+    const hasBusinessInvoice = existingInvoices.some(
+      (invoice) => (invoice.invoiceData as any)?.documentType === 'business_invoice'
+    );
+    const hasContractorInvoice = existingInvoices.some(
+      (invoice) => (invoice.invoiceData as any)?.documentType === 'contractor_receipt'
+    );
+
+    // Determine base invoice number from existing invoices or generate a new one
+    const existingInvoiceNumber = existingInvoices.find((invoice) =>
+      (invoice.invoiceData as any)?.documentType === 'business_invoice'
+    )?.invoiceNumber || existingInvoices.find((invoice) =>
+      (invoice.invoiceData as any)?.documentType === 'contractor_receipt'
+    )?.invoiceNumber?.replace(/-C$/, '');
+
+    const invoiceNumber = existingInvoiceNumber || await this.generateInvoiceNumber(paymentId);
 
     // Calculate amounts
     const grossAmount = parseFloat(payment.amount);
@@ -187,45 +216,60 @@ export class InvoiceGeneratorService {
       },
     };
 
-    // Insert BUSINESS invoice (expense proof)
-    const [businessInvoice] = await db.insert(invoices).values({
-      businessUserId: payment.businessUserId,
-      contractorUserId: payment.contractorUserId,
-      paymentId,
-      invoiceNumber,
-      amount: grossAmount.toString(),
-      currency: businessCurrency,
-      description: `Payment to ${contractorUser.username} for ${description}`,
-      issueDate: new Date(),
-      workReference,
-      stripePaymentIntentId: stripePaymentIntentId || undefined,
-      stripeTransactionId: stripeTransactionId || undefined,
-      invoiceData: businessInvoiceData,
-    }).returning();
+    let businessInvoiceId: number | undefined;
+    let contractorInvoiceId: number | undefined;
 
-    // Insert CONTRACTOR invoice (income proof)
-    const [contractorInvoice] = await db.insert(invoices).values({
-      businessUserId: payment.businessUserId,
-      contractorUserId: payment.contractorUserId,
-      paymentId,
-      invoiceNumber: `${invoiceNumber}-C`, // Add suffix to distinguish contractor copy
-      amount: grossAmount.toString(),
-      currency: businessCurrency,
-      description: `Payment from ${businessUser.companyName || businessUser.username} for ${description}`,
-      issueDate: new Date(),
-      workReference,
-      stripePaymentIntentId: stripePaymentIntentId || undefined,
-      stripeTransactionId: stripeTransactionId || undefined,
-      invoiceData: contractorInvoiceData,
-    }).returning();
+    if (generateBusinessInvoice && !hasBusinessInvoice) {
+      const [businessInvoice] = await db.insert(invoices).values({
+        businessUserId: payment.businessUserId,
+        contractorUserId: payment.contractorUserId,
+        paymentId,
+        invoiceNumber,
+        amount: grossAmount.toString(),
+        currency: businessCurrency,
+        description: `Payment to ${contractorUser.username} for ${description}`,
+        issueDate: new Date(),
+        workReference,
+        stripePaymentIntentId: stripePaymentIntentId || payment.stripePaymentIntentId || undefined,
+        stripeTransactionId: stripeTransactionId || undefined,
+        invoiceData: businessInvoiceData,
+      }).returning();
 
-    console.log(`✅ AUTO-GENERATED DUAL INVOICES for payment ${paymentId}`);
-    console.log(`   📄 Business Invoice: ${invoiceNumber} (Expense Proof)`);
-    console.log(`   📄 Contractor Invoice: ${invoiceNumber}-C (Income Proof)`);
-    console.log(`   Business: ${businessUser.username} → Contractor: ${contractorUser.username}`);
-    console.log(`   Business Paid: £${grossAmount.toFixed(2)} | Contractor Received: £${netAmount.toFixed(2)}`);
+      businessInvoiceId = businessInvoice.id;
+      console.log(`📄 Created business invoice ${invoiceNumber} for payment ${paymentId}`);
+    } else if (hasBusinessInvoice) {
+      console.log(`Invoice already exists for payment ${paymentId}, skipping business invoice creation`);
+    }
 
-    return businessInvoice.id;
+    if (generateContractorInvoice && !hasContractorInvoice) {
+      const [contractorInvoice] = await db.insert(invoices).values({
+        businessUserId: payment.businessUserId,
+        contractorUserId: payment.contractorUserId,
+        paymentId,
+        invoiceNumber: `${invoiceNumber}-C`,
+        amount: grossAmount.toString(),
+        currency: businessCurrency,
+        description: `Payment from ${businessUser.companyName || businessUser.username} for ${description}`,
+        issueDate: new Date(),
+        workReference,
+        stripePaymentIntentId: stripePaymentIntentId || payment.stripePaymentIntentId || undefined,
+        stripeTransactionId: stripeTransactionId || undefined,
+        invoiceData: contractorInvoiceData,
+      }).returning();
+
+      contractorInvoiceId = contractorInvoice.id;
+      console.log(`📄 Created contractor receipt ${invoiceNumber}-C for payment ${paymentId}`);
+    } else if (hasContractorInvoice) {
+      console.log(`Contractor receipt already exists for payment ${paymentId}, skipping creation`);
+    }
+
+    if (businessInvoiceId || contractorInvoiceId) {
+      console.log(`✅ AUTO-GENERATED INVOICES for payment ${paymentId}`);
+      console.log(`   Business: ${businessUser.username} → Contractor: ${contractorUser.username}`);
+      console.log(`   Business Paid: £${grossAmount.toFixed(2)} | Contractor Received: £${netAmount.toFixed(2)}`);
+    }
+
+    return { businessInvoiceId, contractorInvoiceId };
   }
 
   /**
@@ -251,7 +295,11 @@ export const invoiceGenerator = new InvoiceGeneratorService();
 /**
  * Helper function to trigger invoice generation from payment webhooks
  */
-export async function generateInvoiceFromPayment(paymentId: number): Promise<void> {
+export async function generateInvoiceFromPayment(paymentId: number, options?: {
+  generateBusinessInvoice?: boolean;
+  generateContractorInvoice?: boolean;
+  stripeTransactionId?: string;
+}): Promise<void> {
   try {
     const payment = await storage.getPayment(paymentId);
     if (!payment) {
@@ -259,28 +307,28 @@ export async function generateInvoiceFromPayment(paymentId: number): Promise<voi
       return;
     }
 
-    // Only generate if payment is completed and no invoice exists yet
-    if (payment.status !== 'completed') {
-      console.log(`Payment ${paymentId} not completed, skipping invoice generation`);
+    const shouldGenerateBusiness = options?.generateBusinessInvoice ?? true;
+    const shouldGenerateContractor = options?.generateContractorInvoice ?? true;
+
+    const canGenerateBusiness = shouldGenerateBusiness && (
+      payment.stripePaymentIntentStatus === 'succeeded' || payment.status === 'completed'
+    );
+
+    const canGenerateContractor = shouldGenerateContractor && (
+      payment.stripeTransferStatus === 'succeeded' || payment.status === 'completed'
+    );
+
+    if (!canGenerateBusiness && !canGenerateContractor) {
+      console.log(`Payment ${paymentId} not ready for invoice generation. business=${canGenerateBusiness} contractor=${canGenerateContractor}`);
       return;
     }
 
-    // Check if invoice already exists for this payment
-    const existingInvoices = await db
-      .select()
-      .from(invoices)
-      .where(eq(invoices.paymentId, paymentId));
-
-    if (existingInvoices.length > 0) {
-      console.log(`Invoice already exists for payment ${paymentId}, skipping`);
-      return;
-    }
-
-    // Generate invoice
     await invoiceGenerator.generateInvoiceForPayment({
       paymentId,
-      stripePaymentIntentId: payment.stripePaymentIntentId || '',
-      stripeTransactionId: payment.stripeTransactionId || undefined
+      stripePaymentIntentId: payment.stripePaymentIntentId || undefined,
+      stripeTransactionId: options?.stripeTransactionId ?? payment.stripeTransactionId || undefined,
+      generateBusinessInvoice: canGenerateBusiness,
+      generateContractorInvoice: canGenerateContractor
     });
 
     console.log(`✅ Auto-generated invoices for payment ${paymentId}`);
