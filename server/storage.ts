@@ -147,6 +147,8 @@ export interface IStorage {
   getPaymentsByContractId(contractId: number): Promise<Payment[]>;
   getPaymentByMilestoneId(milestoneId: number): Promise<Payment | undefined>;
   getPaymentByTrolleyId(trolleyPaymentId: string): Promise<Payment | undefined>;
+  getPaymentByStripePaymentIntentId(stripePaymentIntentId: string): Promise<Payment | undefined>;
+  getPaymentByStripeTransferId(stripeTransferId: string): Promise<Payment | undefined>;
   getAllPayments(contractId: number | null): Promise<Payment[]>;
   getUpcomingPayments(limit: number): Promise<Payment[]>;
   getCompletedPayments(userId: number): Promise<Payment[]>;
@@ -1514,8 +1516,21 @@ export class MemStorage implements IStorage {
   async createPendingRegistration(registration: any): Promise<any> { return Promise.resolve({} as any); }
   async getPendingRegistrationByFirebaseUid(firebaseUid: string): Promise<any> { return Promise.resolve(undefined); }
   async deletePendingRegistrationByFirebaseUid(firebaseUid: string): Promise<boolean> { return Promise.resolve(true); }
-  async getPaymentByMilestoneId(milestoneId: number): Promise<any> { return Promise.resolve(undefined); }
-  async getPaymentByTrolleyId(trolleyPaymentId: string): Promise<any> { return Promise.resolve(undefined); }
+  async getPaymentByMilestoneId(milestoneId: number): Promise<Payment | undefined> {
+    return Array.from(this.payments.values()).find(payment => payment.milestoneId === milestoneId);
+  }
+
+  async getPaymentByTrolleyId(trolleyPaymentId: string): Promise<Payment | undefined> {
+    return Array.from(this.payments.values()).find(payment => payment.trolleyPaymentId === trolleyPaymentId);
+  }
+
+  async getPaymentByStripePaymentIntentId(stripePaymentIntentId: string): Promise<Payment | undefined> {
+    return Array.from(this.payments.values()).find(payment => payment.stripePaymentIntentId === stripePaymentIntentId);
+  }
+
+  async getPaymentByStripeTransferId(stripeTransferId: string): Promise<Payment | undefined> {
+    return Array.from(this.payments.values()).find(payment => payment.stripeTransferId === stripeTransferId);
+  }
   async getApprovedMilestonesWithoutPayments(): Promise<any[]> { return Promise.resolve([]); }
   async updatePaymentStripeDetails(id: number, stripePaymentIntentId: string, stripePaymentIntentStatus: string): Promise<any> { return this.updatePayment(id, { stripePaymentIntentId, stripePaymentIntentStatus }); }
   async updatePaymentTransferDetails(id: number, stripeTransferId: string, stripeTransferStatus: string, applicationFee: number): Promise<any> { return this.updatePayment(id, { stripeTransferId, stripeTransferStatus, applicationFee: applicationFee.toString() }); }
@@ -2492,6 +2507,22 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(payments)
       .where(eq(payments.trolleyPaymentId, trolleyPaymentId));
+    return payment;
+  }
+
+  async getPaymentByStripePaymentIntentId(stripePaymentIntentId: string): Promise<Payment | undefined> {
+    const [payment] = await db
+      .select()
+      .from(payments)
+      .where(eq(payments.stripePaymentIntentId, stripePaymentIntentId));
+    return payment;
+  }
+
+  async getPaymentByStripeTransferId(stripeTransferId: string): Promise<Payment | undefined> {
+    const [payment] = await db
+      .select()
+      .from(payments)
+      .where(eq(payments.stripeTransferId, stripeTransferId));
     return payment;
   }
 

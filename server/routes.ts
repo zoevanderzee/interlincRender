@@ -32,6 +32,7 @@ import {
   users,
   contracts,
   milestones,
+  type InsertPayment,
   type Payment
 } from "@shared/schema";
 import {
@@ -979,6 +980,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  const resolvePaymentFromIntent = async (intent: any): Promise<Payment | undefined> => {
+    const paymentId = intent.metadata?.paymentId;
+    if (paymentId) {
+      const payment = await storage.getPayment(parseInt(paymentId));
+      if (payment) return payment;
+    }
+
+    const paymentByIntent = intent.id ? await storage.getPaymentByStripePaymentIntentId(intent.id) : undefined;
+    if (paymentByIntent) return paymentByIntent;
+
+    if (intent.latest_transfer) {
+      const paymentByTransfer = await storage.getPaymentByStripeTransferId(intent.latest_transfer);
+      if (paymentByTransfer) return paymentByTransfer;
+    }
+
+    return undefined;
+  };
+
+  const resolvePaymentFromTransfer = async (transfer: any): Promise<Payment | undefined> => {
+    const paymentId = transfer.metadata?.paymentId;
+    if (paymentId) {
+      const payment = await storage.getPayment(parseInt(paymentId));
+      if (payment) return payment;
+    }
+
+    return storage.getPaymentByStripeTransferId(transfer.id);
+  };
+
+  const mapIntentStatusUpdate = ({
+    intentStatus,
+    hasDestination,
+    currentStatus,
+    forceFailure,
+  }: {
+    intentStatus?: string | null;
+    hasDestination: boolean;
+    currentStatus?: string;
+    forceFailure?: boolean;
+  }): { status?: string; completedDate?: Date | null; stripeTransferStatus?: string } => {
+    if (currentStatus === 'completed') {
+      return {};
+    }
+
+    if (forceFailure) {
+      return { status: 'failed', completedDate: null };
+    }
+
+    switch (intentStatus) {
+      case 'succeeded':
+        return {
+          status: hasDestination ? 'completed' : 'processing',
+          completedDate: hasDestination ? new Date() : null,
+          stripeTransferStatus: hasDestination ? 'succeeded' : undefined,
+        };
+      case 'processing':
+        return { status: 'processing', completedDate: null };
+      case 'requires_action':
+      case 'requires_payment_method':
+      default:
+        return { status: 'failed', completedDate: null };
+    }
+  };
+
   // Stripe webhook handler for payment status updates
   app.post(`${apiRouter}/stripe/webhook`, express.raw({type: 'application/json'}), async (req: Request, res: Response) => {
     const sig = req.headers['stripe-signature'];
@@ -1005,30 +1069,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`[WEBHOOK] Destination charge payment succeeded: ${succeededIntent.id}`);
 
         try {
-          const paymentId = succeededIntent.metadata?.paymentId;
-          if (paymentId) {
+          const payment = await resolvePaymentFromIntent(succeededIntent);
+          if (payment) {
             const isDestinationCharge = Boolean(succeededIntent.transfer_data?.destination);
-
-            await storage.updatePayment(parseInt(paymentId), {
-              stripePaymentIntentId: succeededIntent.id,
-              stripePaymentIntentStatus: succeededIntent.status || 'succeeded',
-              status: isDestinationCharge ? 'completed' : 'processing',
-              completedDate: isDestinationCharge ? new Date() : null,
-              stripeTransferStatus: isDestinationCharge ? 'succeeded' : undefined,
+            const statusUpdate = mapIntentStatusUpdate({
+              intentStatus: succeededIntent.status,
+              hasDestination: isDestinationCharge,
+              currentStatus: payment.status,
             });
 
-            if (isDestinationCharge) {
-              await generateBusinessInvoiceForPayment(parseInt(paymentId), succeededIntent.id, succeededIntent.latest_charge);
-              await generateContractorReceiptForPayment(parseInt(paymentId), succeededIntent.id, succeededIntent.latest_charge);
-            } else {
-              await generateBusinessInvoiceForPayment(parseInt(paymentId), succeededIntent.id, succeededIntent.latest_charge);
+            const updatePayload: Partial<InsertPayment> = {
+              stripePaymentIntentId: succeededIntent.id,
+              stripePaymentIntentStatus: succeededIntent.status || 'succeeded',
+            };
+
+            if (statusUpdate.status && (payment.status !== 'completed' || statusUpdate.status === 'completed')) {
+              updatePayload.status = statusUpdate.status;
             }
 
-            // Get contractor user ID for notifications
-            if (succeededIntent.metadata?.contractorId) {
-              const contractorId = parseInt(succeededIntent.metadata.contractorId);
+            if (Object.prototype.hasOwnProperty.call(statusUpdate, 'completedDate') && (payment.status !== 'completed' || statusUpdate.status === 'completed')) {
+              updatePayload.completedDate = statusUpdate.completedDate;
+            }
 
-              // Send success notification to contractor
+            if (statusUpdate.stripeTransferStatus) {
+              updatePayload.stripeTransferStatus = statusUpdate.stripeTransferStatus;
+            }
+
+            const updatedPayment = await storage.updatePayment(payment.id, updatePayload);
+            const resolvedPayment = updatedPayment || payment;
+            const isPaidPath = ['processing', 'completed'].includes(resolvedPayment.status);
+
+            if (isPaidPath) {
+              await generateBusinessInvoiceForPayment(resolvedPayment.id, resolvedPayment.stripePaymentIntentId || succeededIntent.id, succeededIntent.latest_charge);
+            }
+
+            if (isDestinationCharge && resolvedPayment.status === 'completed') {
+              await generateContractorReceiptForPayment(resolvedPayment.id, resolvedPayment.stripePaymentIntentId || succeededIntent.id, succeededIntent.latest_charge);
+            }
+
+            const contractorId = succeededIntent.metadata?.contractorId
+              ? parseInt(succeededIntent.metadata.contractorId)
+              : resolvedPayment.contractorId;
+
+            if (contractorId && isPaidPath) {
               try {
                 await notificationService.createPaymentReceived(
                   contractorId,
@@ -1041,7 +1124,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             }
           } else {
-            console.warn(`[WEBHOOK] payment_intent.succeeded missing paymentId in metadata:`, succeededIntent.metadata);
+            console.warn(`[WEBHOOK] payment_intent.succeeded could not resolve payment for intent ${succeededIntent.id}`);
           }
         } catch (error) {
           console.error('Error processing payment_intent.succeeded:', error);
@@ -1055,10 +1138,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Update payment status in database
         try {
-          const paymentId = failedIntent.metadata?.paymentId;
-          if (paymentId) {
-            await storage.updatePaymentStatus(parseInt(paymentId), 'failed');
-            console.log(`Updated payment ${paymentId} status to failed`);
+          const payment = await resolvePaymentFromIntent(failedIntent);
+          if (payment) {
+            const statusUpdate = mapIntentStatusUpdate({
+              intentStatus: failedIntent.status,
+              hasDestination: Boolean(failedIntent.transfer_data?.destination),
+              currentStatus: payment.status,
+              forceFailure: true,
+            });
+
+            const updatePayload: Partial<InsertPayment> = {
+              stripePaymentIntentId: failedIntent.id,
+              stripePaymentIntentStatus: failedIntent.status || 'payment_failed',
+            };
+
+            if (statusUpdate.status && payment.status !== 'completed') {
+              updatePayload.status = statusUpdate.status;
+            }
+
+            if (Object.prototype.hasOwnProperty.call(statusUpdate, 'completedDate') && payment.status !== 'completed') {
+              updatePayload.completedDate = statusUpdate.completedDate;
+            }
+
+            await storage.updatePayment(payment.id, updatePayload);
+            console.log(`Updated payment ${payment.id} status to failed`);
+          } else {
+            console.warn(`[WEBHOOK] payment_intent.payment_failed could not resolve payment for intent ${failedIntent.id}`);
           }
         } catch (error) {
           console.error('Error updating payment status:', error);
@@ -1071,10 +1176,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Update payment status to processing
         try {
-          const paymentId = processingIntent.metadata?.paymentId;
-          if (paymentId) {
-            await storage.updatePaymentStatus(parseInt(paymentId), 'processing');
-            console.log(`Updated payment ${paymentId} status to processing`);
+          const payment = await resolvePaymentFromIntent(processingIntent);
+          if (payment) {
+            const statusUpdate = mapIntentStatusUpdate({
+              intentStatus: processingIntent.status,
+              hasDestination: Boolean(processingIntent.transfer_data?.destination),
+              currentStatus: payment.status,
+            });
+
+            const updatePayload: Partial<InsertPayment> = {
+              stripePaymentIntentId: processingIntent.id,
+              stripePaymentIntentStatus: processingIntent.status || 'processing',
+            };
+
+            if (statusUpdate.status && payment.status !== 'completed') {
+              updatePayload.status = statusUpdate.status;
+            }
+
+            if (Object.prototype.hasOwnProperty.call(statusUpdate, 'completedDate') && payment.status !== 'completed') {
+              updatePayload.completedDate = statusUpdate.completedDate;
+            }
+
+            await storage.updatePayment(payment.id, updatePayload);
+            console.log(`Updated payment ${payment.id} status to processing`);
+          } else {
+            console.warn(`[WEBHOOK] payment_intent.processing could not resolve payment for intent ${processingIntent.id}`);
           }
         } catch (error) {
           console.error('Error updating payment status:', error);
@@ -1087,18 +1213,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`Transfer event received: ${transferEvent.id} with status ${transferEvent.status}`);
 
         try {
-          const paymentId = transferEvent.metadata?.paymentId;
-          if (paymentId) {
-            await storage.updatePayment(parseInt(paymentId), {
+          const payment = await resolvePaymentFromTransfer(transferEvent);
+          if (payment) {
+            const updatePayload: Partial<InsertPayment> = {
               stripeTransferId: transferEvent.id,
               stripeTransferStatus: transferEvent.status || 'succeeded',
-              status: 'completed',
-              completedDate: new Date(),
-            });
+            };
 
-            await generateContractorReceiptForPayment(parseInt(paymentId), undefined, transferEvent.id);
+            if (payment.status !== 'completed') {
+              updatePayload.status = 'completed';
+              updatePayload.completedDate = new Date();
+            } else if (!payment.completedDate) {
+              updatePayload.completedDate = new Date();
+            }
+
+            const updatedPayment = await storage.updatePayment(payment.id, updatePayload);
+            const resolvedPayment = updatedPayment || payment;
+
+            if (resolvedPayment.status === 'completed') {
+              const existingInvoices = await storage.getInvoicesByPaymentId(resolvedPayment.id);
+              const hasBusinessInvoice = existingInvoices.some(inv => inv.invoiceData?.documentType === 'business_invoice');
+              const hasContractorReceipt = existingInvoices.some(inv => inv.invoiceData?.documentType === 'contractor_receipt');
+
+              if (!hasBusinessInvoice) {
+                await generateBusinessInvoiceForPayment(resolvedPayment.id, resolvedPayment.stripePaymentIntentId, transferEvent.id);
+              }
+
+              if (!hasContractorReceipt) {
+                await generateContractorReceiptForPayment(resolvedPayment.id, resolvedPayment.stripePaymentIntentId, transferEvent.id);
+              }
+            }
           } else {
-            console.warn(`[WEBHOOK] ${event.type} missing paymentId in metadata:`, transferEvent.metadata);
+            console.warn(`[WEBHOOK] ${event.type} could not resolve payment for transfer ${transferEvent.id}`);
           }
         } catch (error) {
           console.error(`Error processing ${event.type}:`, error);
