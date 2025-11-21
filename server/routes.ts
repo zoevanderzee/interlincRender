@@ -4359,22 +4359,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get exposure-based budget usage
       const budgetInfo = await storage.getBudget(userId);
-      const budgetCap = budgetInfo?.budgetCap || user.budgetCap || null;
+      const effectiveBudgetCap = budgetInfo?.budgetCap || user.budgetCap || null;
       const budgetUsedValue = parseFloat(budgetInfo?.budgetUsed || '0');
+
 
       // Return updated budget information with correct JSON structure
       res.json({
         success: true,
-        budgetCap: budgetCap,
+        budgetCap: effectiveBudgetCap,
         budgetUsed: budgetUsedValue.toFixed(2),
         budgetPeriod: user.budgetPeriod || 'yearly',
         budgetStartDate: user.budgetStartDate || null,
         budgetEndDate: user.budgetEndDate || null,
         budgetResetEnabled: user.budgetResetEnabled || false,
-        remainingBudget: budgetCap
-          ? (parseFloat(budgetCap.toString()) - budgetUsedValue).toFixed(2)
+        remainingBudget: effectiveBudgetCap
+          ? (parseFloat(effectiveBudgetCap.toString()) - budgetUsedValue).toFixed(2)
           : null
       });
+      
     } catch (error) {
       console.error("Error updating budget settings:", error);
       res.status(500).json({message: "Error updating budget settings"});
