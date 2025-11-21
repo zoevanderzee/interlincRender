@@ -31,7 +31,8 @@ import {
   insertWorkRequestSubmissionSchema,
   users,
   contracts,
-  milestones
+  milestones,
+  type Payment
 } from "@shared/schema";
 import {
   normalizeDeliverable,
@@ -73,6 +74,7 @@ import {registerContractorAssignmentRoutes} from "./contractor-assignment";
 import {trolleyApi} from "./services/trolley-api";
 import invoiceRoutes from './routes/invoices';
 import { invoiceGenerator, generateInvoiceFromPayment } from './services/invoice-generator';
+import { mapPaymentStatus } from "./services/payment-status-mapper";
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
@@ -2554,7 +2556,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`SECURITY: Fetching payments for user ID ${userId} with role ${userRole}`);
 
-      let payments;
+      let payments: Payment[];
       if (contractId) {
         // SECURITY: Verify user has access to this contract
         const contract = await storage.getContract(contractId);
@@ -2589,7 +2591,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      res.json(payments);
+      const mappedPayments = payments.map((payment: any) => ({
+        ...payment,
+        mappedStatus: mapPaymentStatus(payment),
+      }));
+
+      res.json(mappedPayments);
     } catch (error) {
       console.error("Error fetching payments:", error);
       res.status(500).json({message: "Error fetching payments"});
@@ -2626,7 +2633,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({message: "Access denied: Cannot access other contractor payments"});
       }
 
-      res.json(payment);
+      res.json({
+        ...payment,
+        mappedStatus: mapPaymentStatus(payment),
+      });
     } catch (error) {
       console.error("Error fetching payment:", error);
       res.status(500).json({message: "Error fetching payment"});
