@@ -24,6 +24,20 @@ export class InvoiceGeneratorService {
       throw new Error(`Payment ${paymentId} not found`);
     }
 
+    if (payment.status !== 'completed') {
+      throw new Error(`Payment ${paymentId} is not completed (status: ${payment.status})`);
+    }
+
+    const existingInvoices = await db
+      .select()
+      .from(invoices)
+      .where(eq(invoices.paymentId, paymentId));
+
+    if (existingInvoices.length > 0) {
+      console.log(`Invoice already exists for payment ${paymentId}, skipping generation`);
+      return existingInvoices[0].id;
+    }
+
     // Get contract details
     const contract = payment.contractId ? await storage.getContract(payment.contractId) : null;
 
