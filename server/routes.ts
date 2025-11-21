@@ -2247,11 +2247,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           currency: 'gbp',
           description: `Deliverable payment: ${updatedDeliverable.name}`,
           metadata: {
-            payment_id: payment.id.toString(),
-            milestone_id: deliverableId.toString(),
-            contract_id: contract.id.toString(),
-            payment_type: 'deliverable_approval',
-            initiated_by: 'business_user',
+            paymentId: payment.id.toString(),
+            milestoneId: deliverableId.toString(),
+            contractId: contract.id.toString(),
+            paymentType: 'deliverable_approval',
+            initiatedBy: 'business_user',
             idempotency_key: idempotencyKey
           },
           transferData: {
@@ -5547,20 +5547,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
             currency: 'gbp',
             description: `Work request payment: ${workRequest.title}`,
             metadata: {
-              payment_id: payment.id.toString(),
-              work_request_id: workRequestId.toString(),
-              contractor_id: contractor.id.toString(),
-              business_id: userId.toString()
+              paymentId: payment.id.toString(),
+              workRequestId: workRequestId.toString(),
+              contractorId: contractor.id.toString(),
+              businessId: userId.toString()
             },
-            destination: contractor.stripeConnectAccountId,
-            onBehalfOf: business.stripeConnectAccountId
+            transferData: {
+              destination: contractor.stripeConnectAccountId
+            },
+            businessAccountId: business.stripeConnectAccountId
           });
 
           // Update payment record with PaymentIntent details
-          await storage.updatePayment(payment.id, {
-            stripePaymentIntentId: paymentIntent.id,
-            stripePaymentIntentStatus: paymentIntent.status || 'requires_payment_method'
-          });
+          await storage.updatePaymentStripeDetails(
+            payment.id,
+            paymentIntent.id,
+            paymentIntent.status || 'requires_payment_method'
+          );
 
           console.log(`[WORK_REQUEST_PAYMENT] Payment intent created: ${paymentIntent.id}`);
 
@@ -6670,12 +6673,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           currency: submission.currency || 'gbp',
           description: `Payment for: ${submission.title}`,
           metadata: {
-            payment_id: payment.id.toString(),
-            work_request_id: submission.workRequestId.toString(),
-            submission_id: submissionId.toString(),
-            contractor_id: contractor.id.toString(),
-            business_id: userId.toString(),
-            payment_type: 'work_request_approval'
+            paymentId: payment.id.toString(),
+            workRequestId: submission.workRequestId.toString(),
+            submissionId: submissionId.toString(),
+            contractorId: contractor.id.toString(),
+            businessId: userId.toString(),
+            paymentType: 'work_request_approval'
           },
           transferData: {
             destination: contractor.stripeConnectAccountId

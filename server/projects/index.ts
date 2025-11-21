@@ -720,7 +720,7 @@ export function registerProjectRoutes(app: Express) {
       // IDEMPOTENCY PROTECTION: Check if PaymentIntent already exists for this work request
       // Use workRequestId as the unique idempotency key
       const existingPayments = await storage.getPayments();
-      const existingPayment = existingPayments.find(p => 
+      const existingPayment = existingPayments.find(p =>
         p.workRequestId === workRequestId &&
         p.businessId === currentUserId &&
         p.stripePaymentIntentId
@@ -770,6 +770,37 @@ export function registerProjectRoutes(app: Express) {
 
       console.log(`[CREATE_PAYMENT_INTENT] Creating PaymentIntent for work request ${workRequestId}, amount: ${workRequest.amount}`);
 
+      // Create a preliminary payment record to track this PaymentIntent (for idempotency)
+      // This will be updated when payment completes
+      // CRITICAL: Store workRequestId for deterministic idempotency and linkage
+      let payment = existingPayment;
+
+      if (payment) {
+        payment = await storage.updatePayment(payment.id, {
+          status: 'processing',
+          stripePaymentIntentId: null,
+          stripePaymentIntentStatus: null
+        }) || payment;
+      } else {
+        payment = await storage.createPayment({
+          contractId: null,
+          milestoneId: null,
+          workRequestId: workRequestId, // IDEMPOTENCY KEY
+          businessId: currentUserId,
+          contractorId: workRequest.contractorUserId,
+          amount: workRequest.amount,
+          status: 'processing',
+          scheduledDate: new Date(),
+          completedDate: null,
+          notes: `Payment for work request: ${workRequest.title}`,
+          stripePaymentIntentId: null,
+          stripePaymentIntentStatus: null,
+          paymentProcessor: 'stripe',
+          triggeredBy: 'work_request_payment_intent_created',
+          triggeredAt: new Date()
+        });
+      }
+
       // Create Stripe PaymentIntent with destination charge
       const { createPaymentIntent } = await import('../services/stripe.js');
 
@@ -778,10 +809,11 @@ export function registerProjectRoutes(app: Express) {
         currency: workRequest.currency || 'gbp',
         description: `Payment for: ${workRequest.title}`,
         metadata: {
-          work_request_id: workRequestId.toString(),
-          contractor_id: contractor.id.toString(),
-          business_id: currentUserId.toString(),
-          payment_type: 'work_request_payment'
+          paymentId: payment.id.toString(),
+          workRequestId: workRequestId.toString(),
+          contractorId: contractor.id.toString(),
+          businessId: currentUserId.toString(),
+          paymentType: 'work_request_payment'
         },
         transferData: {
           destination: contractor.stripeConnectAccountId
@@ -791,30 +823,11 @@ export function registerProjectRoutes(app: Express) {
 
       console.log(`[CREATE_PAYMENT_INTENT] PaymentIntent created: ${paymentIntent.id}`);
 
-      // Create a preliminary payment record to track this PaymentIntent (for idempotency)
-      // This will be updated when payment completes
-      // CRITICAL: Store workRequestId for deterministic idempotency and linkage
-      try {
-        await storage.createPayment({
-          contractId: null,
-          milestoneId: null,
-          workRequestId: workRequestId, // IDEMPOTENCY KEY
-          businessId: currentUserId,
-          contractorId: workRequest.contractorUserId,
-          amount: workRequest.amount,
-          status: 'pending',
-          scheduledDate: new Date(),
-          completedDate: null,
-          notes: `Payment for work request: ${workRequest.title}`,
-          stripePaymentIntentId: paymentIntent.id,
-          stripePaymentIntentStatus: 'requires_payment_method',
-          paymentProcessor: 'stripe',
-          triggeredBy: 'work_request_payment_intent_created',
-          triggeredAt: new Date()
-        });
-      } catch (paymentError) {
-        console.warn(`[CREATE_PAYMENT_INTENT] Could not create preliminary payment record`, paymentError);
-      }
+      await storage.updatePaymentStripeDetails(
+        payment.id,
+        paymentIntent.id,
+        paymentIntent.status || 'requires_payment_method'
+      );
 
       res.json({
         ok: true,

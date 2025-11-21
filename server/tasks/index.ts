@@ -384,12 +384,12 @@ export function registerTaskRoutes(app: Express) {
           currency: task.currency.toLowerCase(),
           description: `Task payment: ${task.title}`,
           metadata: {
-            payment_id: payment.id.toString(),
-            task_id: task.id.toString(),
-            task_submission_id: latestSubmission.id.toString(),
-            project_id: task.projectId.toString(),
-            payment_type: 'task_approval',
-            initiated_by: 'business_user'
+            paymentId: payment.id.toString(),
+            taskId: task.id.toString(),
+            taskSubmissionId: latestSubmission.id.toString(),
+            projectId: task.projectId.toString(),
+            paymentType: 'task_approval',
+            initiatedBy: 'business_user'
           },
           transferData: {
             destination: contractor.stripeConnectAccountId

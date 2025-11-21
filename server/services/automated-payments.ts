@@ -110,7 +110,7 @@ class AutomatedPaymentService {
           contractId: milestone.contractId,
           milestoneId: milestoneId,
           amount: netAmount.toFixed(2),
-          status: 'requires_payment_method' as const,
+          status: 'processing' as const,
           processedAt: new Date().toISOString(),
           metadata: {
             approvedBy,

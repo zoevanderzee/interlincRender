@@ -1019,11 +1019,8 @@ export class MemStorage implements IStorage {
       ...existingPayment,
       stripePaymentIntentId,
       stripePaymentIntentStatus,
-      // Update payment status based on Stripe status
-      status: stripePaymentIntentStatus === 'succeeded' ? 'completed' :
-              stripePaymentIntentStatus === 'processing' ? 'processing' :
-              stripePaymentIntentStatus === 'requires_payment_method' ? 'failed' :
-              existingPayment.status,
+      // Keep payment in processing unless Stripe confirms completion
+      status: stripePaymentIntentStatus === 'succeeded' ? 'completed' : 'processing',
       // If payment succeeded, set the completed date
       completedDate: stripePaymentIntentStatus === 'succeeded' ? new Date() : existingPayment.completedDate
     };
@@ -2437,11 +2434,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updatePaymentStripeDetails(id: number, stripePaymentIntentId: string, stripePaymentIntentStatus: string): Promise<Payment | undefined> {
-    // Update payment status based on Stripe status
-    const status = stripePaymentIntentStatus === 'succeeded' ? 'completed' :
-                  stripePaymentIntentStatus === 'processing' ? 'processing' :
-                  stripePaymentIntentStatus === 'requires_payment_method' ? 'failed' :
-                  'scheduled';
+    // Keep payment in processing unless Stripe confirms completion
+    const status = stripePaymentIntentStatus === 'succeeded' ? 'completed' : 'processing';
 
     // If payment succeeded, set the completed date
     const completedDate = stripePaymentIntentStatus === 'succeeded' ? new Date() : null;
