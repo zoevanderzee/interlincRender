@@ -1009,19 +1009,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (paymentId) {
             const isDestinationCharge = Boolean(succeededIntent.transfer_data?.destination);
 
-            await storage.updatePayment(parseInt(paymentId), {
-              stripePaymentIntentId: succeededIntent.id,
-              stripePaymentIntentStatus: succeededIntent.status || 'succeeded',
-              status: isDestinationCharge ? 'completed' : 'processing',
-              completedDate: isDestinationCharge ? new Date() : null,
-              stripeTransferStatus: isDestinationCharge ? 'succeeded' : undefined,
-            });
+            const updatedPayment = await storage.updatePaymentStripeDetails(
+              parseInt(paymentId),
+              succeededIntent.id,
+              succeededIntent.status || 'succeeded',
+              {
+                hasDestinationCharge: isDestinationCharge,
+                transferStatus: succeededIntent.transfer_status || null
+              }
+            );
 
-            if (isDestinationCharge) {
-              await generateBusinessInvoiceForPayment(parseInt(paymentId), succeededIntent.id, succeededIntent.latest_charge);
+            await generateBusinessInvoiceForPayment(parseInt(paymentId), succeededIntent.id, succeededIntent.latest_charge);
+
+            if (updatedPayment?.status === 'completed') {
               await generateContractorReceiptForPayment(parseInt(paymentId), succeededIntent.id, succeededIntent.latest_charge);
-            } else {
-              await generateBusinessInvoiceForPayment(parseInt(paymentId), succeededIntent.id, succeededIntent.latest_charge);
             }
 
             // Get contractor user ID for notifications
@@ -1057,7 +1058,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           const paymentId = failedIntent.metadata?.paymentId;
           if (paymentId) {
-            await storage.updatePaymentStatus(parseInt(paymentId), 'failed');
+            await storage.updatePaymentStripeDetails(
+              parseInt(paymentId),
+              failedIntent.id,
+              failedIntent.status || 'payment_failed'
+            );
             console.log(`Updated payment ${paymentId} status to failed`);
           }
         } catch (error) {
@@ -1073,7 +1078,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           const paymentId = processingIntent.metadata?.paymentId;
           if (paymentId) {
-            await storage.updatePaymentStatus(parseInt(paymentId), 'processing');
+            await storage.updatePaymentStripeDetails(
+              parseInt(paymentId),
+              processingIntent.id,
+              processingIntent.status || 'processing'
+            );
             console.log(`Updated payment ${paymentId} status to processing`);
           }
         } catch (error) {
@@ -1089,12 +1098,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           const paymentId = transferEvent.metadata?.paymentId;
           if (paymentId) {
-            await storage.updatePayment(parseInt(paymentId), {
-              stripeTransferId: transferEvent.id,
-              stripeTransferStatus: transferEvent.status || 'succeeded',
-              status: 'completed',
-              completedDate: new Date(),
-            });
+            await storage.updatePaymentTransferDetails(
+              parseInt(paymentId),
+              transferEvent.id,
+              transferEvent.status || 'succeeded',
+              0
+            );
 
             await generateContractorReceiptForPayment(parseInt(paymentId), undefined, transferEvent.id);
           } else {
@@ -2266,7 +2275,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updatePaymentStripeDetails(
           payment.id,
           paymentIntent.id,
-          paymentIntent.status || 'requires_payment_method'
+          paymentIntent.status || 'requires_payment_method',
+          { hasDestinationCharge: true }
         );
 
         res.json({
@@ -6687,7 +6697,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updatePaymentStripeDetails(
           payment.id,
           paymentIntent.id,
-          paymentIntent.status || 'requires_payment_method'
+          paymentIntent.status || 'requires_payment_method',
+          { hasDestinationCharge: true }
         );
 
         console.log(`[WORK_APPROVAL] Payment intent created: ${paymentIntent.id}`);

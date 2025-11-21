@@ -148,7 +148,12 @@ class AutomatedPaymentService {
         });
 
         // Update payment record with Stripe payment intent details
-        await storage.updatePaymentStripeDetails(payment.id, transferResult.id, transferResult.status);
+        await storage.updatePaymentStripeDetails(
+          payment.id,
+          transferResult.id,
+          transferResult.status,
+          { hasDestinationCharge: true, transferStatus: transferResult.transfer_status || transferResult.status }
+        );
 
         console.log(`✅ V2 destination charge created successfully (NO TRANSFERS):`, {
           paymentId: payment.id,

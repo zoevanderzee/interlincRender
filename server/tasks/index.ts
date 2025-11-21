@@ -401,9 +401,10 @@ export function registerTaskRoutes(app: Express) {
 
         // Update payment record with Stripe details
         await storage.updatePaymentStripeDetails(
-          payment.id, 
-          paymentIntent.id, 
-          paymentIntent.status || 'requires_payment_method'
+          payment.id,
+          paymentIntent.id,
+          paymentIntent.status || 'requires_payment_method',
+          { hasDestinationCharge: true }
         );
 
         // Link payment to submission
