@@ -73,7 +73,7 @@ import {registerTaskRoutes} from "./tasks/index";
 import {registerContractorAssignmentRoutes} from "./contractor-assignment";
 import {trolleyApi} from "./services/trolley-api";
 import invoiceRoutes from './routes/invoices';
-import { invoiceGenerator, generateInvoiceFromPayment } from './services/invoice-generator';
+import { generateBusinessInvoiceForPayment, generateContractorReceiptForPayment } from './services/invoice-generator';
 import { mapPaymentStatus } from "./services/payment-status-mapper";
 
 if (!process.env.STRIPE_SECRET_KEY) {
@@ -1004,22 +1004,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const succeededIntent = event.data.object as any;
         console.log(`[WEBHOOK] Destination charge payment succeeded: ${succeededIntent.id}`);
 
-        // DESTINATION CHARGE SUCCESS: Funds went directly to contractor's account
         try {
           const paymentId = succeededIntent.metadata?.paymentId;
-          const contractorAccountId = succeededIntent.transfer_data?.destination;
-
           if (paymentId) {
-            // Mark payment as completed in database
-            await storage.updatePaymentStatus(parseInt(paymentId), 'completed');
-            console.log(`✅ CONTRACTOR PAYMENT SUCCESSFUL: Payment ${paymentId} completed via destination charge to ${contractorAccountId}`);
+            const isDestinationCharge = Boolean(succeededIntent.transfer_data?.destination);
 
-            // 🎯 AUTO-GENERATE INVOICE
-            try {
-              await generateInvoiceFromPayment(parseInt(paymentId));
-            } catch (invoiceError) {
-              console.error('Failed to auto-generate invoice:', invoiceError);
-              // Don't fail the webhook if invoice generation fails
+            await storage.updatePayment(parseInt(paymentId), {
+              stripePaymentIntentId: succeededIntent.id,
+              stripePaymentIntentStatus: succeededIntent.status || 'succeeded',
+              status: isDestinationCharge ? 'completed' : 'processing',
+              completedDate: isDestinationCharge ? new Date() : null,
+              stripeTransferStatus: isDestinationCharge ? 'succeeded' : undefined,
+            });
+
+            if (isDestinationCharge) {
+              await generateBusinessInvoiceForPayment(parseInt(paymentId), succeededIntent.id, succeededIntent.latest_charge);
+              await generateContractorReceiptForPayment(parseInt(paymentId), succeededIntent.id, succeededIntent.latest_charge);
+            } else {
+              await generateBusinessInvoiceForPayment(parseInt(paymentId), succeededIntent.id, succeededIntent.latest_charge);
             }
 
             // Get contractor user ID for notifications
@@ -1042,17 +1044,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.warn(`[WEBHOOK] payment_intent.succeeded missing paymentId in metadata:`, succeededIntent.metadata);
           }
         } catch (error) {
-          console.error('Error processing destination charge success:', error);
-        }
-
-        // DESTINATION CHARGES: No manual payouts needed - funds already in contractor account
-        if (succeededIntent.transfer_data?.destination) {
-          const contractorAccountId = succeededIntent.transfer_data.destination;
-          console.log(`✅ DESTINATION CHARGE COMPLETE: Funds already deposited to contractor account ${contractorAccountId}`);
-          console.log(`💰 Amount: ${(succeededIntent.amount / 100).toFixed(2)} ${(succeededIntent.currency || 'gbp').toUpperCase()} delivered directly to contractor`);
-
-          // Log that no manual payout is needed with destination charges
-          console.log(`🔄 AUTOMATIC PAYOUT: Stripe will handle payout to contractor's bank account according to their payout schedule`);
+          console.error('Error processing payment_intent.succeeded:', error);
         }
         break;
 
@@ -1086,6 +1078,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         } catch (error) {
           console.error('Error updating payment status:', error);
+        }
+        break;
+
+      case 'transfer.succeeded':
+      case 'transfer.paid':
+        const transferEvent = event.data.object as any;
+        console.log(`Transfer event received: ${transferEvent.id} with status ${transferEvent.status}`);
+
+        try {
+          const paymentId = transferEvent.metadata?.paymentId;
+          if (paymentId) {
+            await storage.updatePayment(parseInt(paymentId), {
+              stripeTransferId: transferEvent.id,
+              stripeTransferStatus: transferEvent.status || 'succeeded',
+              status: 'completed',
+              completedDate: new Date(),
+            });
+
+            await generateContractorReceiptForPayment(parseInt(paymentId), undefined, transferEvent.id);
+          } else {
+            console.warn(`[WEBHOOK] ${event.type} missing paymentId in metadata:`, transferEvent.metadata);
+          }
+        } catch (error) {
+          console.error(`Error processing ${event.type}:`, error);
         }
         break;
 
@@ -5693,6 +5709,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`[WORK_REQUEST_PAYMENT] Stripe payment verified successfully. Amount: ${paymentIntent.amount/100} ${paymentIntent.currency.toUpperCase()}`);
 
+      const isDestinationCharge = Boolean(paymentIntent.transfer_data?.destination);
+
       // Create payment record in database
       const paymentData = {
         contractId: null,
@@ -5701,12 +5719,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         businessId: userId,
         contractorId: workRequest.contractorUserId!,
         amount: workRequest.amount,
-        status: 'completed',
+        status: isDestinationCharge ? 'completed' : 'processing',
         scheduledDate: new Date(),
-        completedDate: new Date(),
+        completedDate: isDestinationCharge ? new Date() : null,
         notes: `Payment for work request: ${workRequest.title}`,
         stripePaymentIntentId: paymentIntentId,
         stripePaymentIntentStatus: paymentIntent.status,
+        stripeTransferStatus: isDestinationCharge ? 'succeeded' : null,
         paymentProcessor: 'stripe',
         triggeredBy: 'work_request_approval',
         triggeredAt: new Date()
@@ -5714,15 +5733,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const payment = await storage.createPayment(paymentData);
       console.log(`[WORK_REQUEST_PAYMENT] Payment record created: ${payment.id}`);
-
-      // Generate invoices for both business and contractor
-      try {
-        const invoiceId = await generateInvoiceFromPayment(payment.id);
-        console.log(`[WORK_REQUEST_PAYMENT] Invoice generated: ${invoiceId}`);
-      } catch (invoiceError) {
-        console.error('[WORK_REQUEST_PAYMENT] Failed to generate invoice:', invoiceError);
-        // Continue even if invoice generation fails - payment has been recorded
-      }
 
       // Update submission status to approved
       await storage.updateWorkRequestSubmission(submissionId, {
@@ -5756,7 +5766,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         relatedType: 'work_request'
       });
 
-      console.log(`[WORK_REQUEST_APPROVED] Submission ${submissionId} approved, payment ${payment.id} recorded, invoice generated`);
+      console.log(`[WORK_REQUEST_APPROVED] Submission ${submissionId} approved, payment ${payment.id} recorded`);
 
       res.json({
         message: "Work approved successfully",

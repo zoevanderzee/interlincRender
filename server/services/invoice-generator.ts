@@ -1,93 +1,49 @@
 import { storage } from '../storage';
 import { db } from '../db';
-import { invoices, payments, contracts, milestones, users } from '@shared/schema';
-import { eq } from 'drizzle-orm';
+import { invoices } from '@shared/schema';
 import { getInvoiceComplianceProfile } from '@shared/invoiceCompliance';
 import type { InterlincInvoiceV1 } from '@shared/invoiceTypes';
-
-interface InvoiceGenerationParams {
-  paymentId: number;
-  stripePaymentIntentId: string;
-  stripeTransactionId?: string;
-}
 
 export class InvoiceGeneratorService {
   /**
    * Generate invoice automatically when payment succeeds
    */
-  async generateInvoiceForPayment(params: InvoiceGenerationParams): Promise<number> {
-    const { paymentId, stripePaymentIntentId, stripeTransactionId } = params;
+  async generateInvoiceForPayment(params: { paymentId: number; stripePaymentIntentId?: string; stripeTransactionId?: string; documentType: 'business_invoice' | 'contractor_receipt'; }): Promise<number> {
+    const { paymentId, stripePaymentIntentId, stripeTransactionId, documentType } = params;
 
-    // Get payment details
-    const payment = await storage.getPayment(paymentId);
-    if (!payment) {
-      throw new Error(`Payment ${paymentId} not found`);
-    }
+    const context = await this.getInvoiceContext(paymentId);
+    const businessCurrency = context.businessUser.currency || 'GBP';
+    const complianceProfile = getInvoiceComplianceProfile(context.businessUser.country);
 
-    // Get contract details
-    const contract = payment.contractId ? await storage.getContract(payment.contractId) : null;
+    const baseInvoiceNumber = await this.resolveBaseInvoiceNumber(paymentId);
+    const invoiceNumber = documentType === 'contractor_receipt' ? `${baseInvoiceNumber}-C` : baseInvoiceNumber;
+    const grossAmount = context.grossAmount;
+    const netAmount = context.netAmount;
+    const workReference = context.workReference;
+    const description = context.description;
 
-    // Get milestone details
-    const milestone = payment.milestoneId ? await storage.getMilestone(payment.milestoneId) : null;
-
-    // Get business user
-    const businessUser = payment.businessId
-      ? await storage.getUser(payment.businessId)
-      : contract
-        ? await storage.getUser(contract.businessId)
-        : null;
-
-    // Get contractor user
-    const contractorUser = payment.contractorId
-      ? await storage.getUser(payment.contractorId)
-      : contract
-        ? await storage.getUser(contract.contractorId)
-        : null;
-
-    if (!businessUser || !contractorUser) {
-      throw new Error('Missing business or contractor user data');
-    }
-
-    const businessCurrency = businessUser.currency || 'GBP';
-    const complianceProfile = getInvoiceComplianceProfile(businessUser.country);
-
-    // Generate unique invoice number
-    const invoiceNumber = await this.generateInvoiceNumber(paymentId);
-
-    // Calculate amounts
-    const grossAmount = parseFloat(payment.amount);
-    const platformFee = payment.platformFeeAmount ? parseFloat(payment.platformFeeAmount.toString()) : 0;
-    const netAmount = payment.netAmount ? parseFloat(payment.netAmount.toString()) : grossAmount;
-
-    // Build work description
-    const description = milestone?.name || contract?.contractName || payment.notes || 'Professional services';
-    const workReference = milestone
-      ? `Milestone: ${milestone.name}`
-      : contract
-        ? `Project: ${contract.contractName}`
-        : 'Direct payment';
-
-    // Build business invoice (business's expense)
-    const businessInvoiceData: InterlincInvoiceV1 = {
+    const invoiceData: InterlincInvoiceV1 = {
       schemaVersion: 'interlinc-invoice-v1',
-      documentType: 'business_invoice',
-      documentLabel: complianceProfile.documentLabelBusiness,
-      invoiceNumber,
+      documentType,
+      documentLabel: documentType === 'business_invoice'
+        ? complianceProfile.documentLabelBusiness
+        : complianceProfile.documentLabelContractor,
+      invoiceNumber: baseInvoiceNumber,
       issueDate: new Date().toISOString(),
       supplyDate: new Date().toISOString(),
       currency: businessCurrency,
       supplier: {
-        legalName: contractorUser.username,
-        tradingName: contractorUser.companyName || null,
-        address: contractorUser.address || 'Address on file',
-        country: contractorUser.country || null,
-        taxId: contractorUser.taxId || null,
+        legalName: context.contractorUser.username,
+        tradingName: context.contractorUser.companyName || null,
+        address: context.contractorUser.address || 'Address on file',
+        country: context.contractorUser.country || null,
+        taxId: context.contractorUser.taxId || null,
       },
       customer: {
-        legalName: businessUser.companyName || businessUser.username,
-        address: businessUser.address || 'Address on file',
-        country: businessUser.country || null,
-        taxId: businessUser.taxId || null,
+        legalName: context.businessUser.companyName || context.businessUser.username,
+        address: context.businessUser.address || 'Address on file',
+        country: context.businessUser.country || null,
+        taxId: context.businessUser.taxId || null,
       },
       lineItems: [
         {
@@ -108,17 +64,17 @@ export class InvoiceGeneratorService {
       paymentDetails: {
         method: 'Stripe Connect',
         transactionReference: stripePaymentIntentId || stripeTransactionId || null,
-        paidAt: payment.completedDate || new Date().toISOString(),
+        paidAt: context.payment.completedDate || new Date().toISOString(),
         status: 'paid',
       },
       references: {
         paymentId: paymentId,
-        contractId: payment.contractId,
-        milestoneId: payment.milestoneId,
+        contractId: context.payment.contractId,
+        milestoneId: context.payment.milestoneId,
         workSummary: workReference,
       },
       compliance: {
-        jurisdictionHint: businessUser.country || null,
+        jurisdictionHint: context.businessUser.country || null,
         region: complianceProfile.region,
         taxLabel: complianceProfile.taxLabel,
         notes: complianceProfile.notes,
@@ -127,105 +83,37 @@ export class InvoiceGeneratorService {
       },
     };
 
-    // Build contractor receipt (contractor's income)
-    const contractorInvoiceData: InterlincInvoiceV1 = {
-      schemaVersion: 'interlinc-invoice-v1',
-      documentType: 'contractor_receipt',
-      documentLabel: complianceProfile.documentLabelContractor,
-      invoiceNumber,
-      issueDate: new Date().toISOString(),
-      supplyDate: new Date().toISOString(),
-      currency: businessCurrency,
-      supplier: {
-        legalName: contractorUser.username,
-        tradingName: contractorUser.companyName || null,
-        address: contractorUser.address || 'Address on file',
-        country: contractorUser.country || null,
-        taxId: contractorUser.taxId || null,
-      },
-      customer: {
-        legalName: businessUser.companyName || businessUser.username,
-        address: businessUser.address || 'Address on file',
-        country: businessUser.country || null,
-        taxId: businessUser.taxId || null,
-      },
-      lineItems: [
-        {
-          description,
-          quantity: 1,
-          unitPrice: grossAmount,
-          lineNet: grossAmount,
-          taxRate: 0,
-          taxAmount: 0,
-          lineGross: grossAmount,
-        },
-      ],
-      totals: {
-        net: grossAmount,
-        tax: 0,
-        gross: grossAmount,
-      },
-      paymentDetails: {
-        method: 'Stripe Connect',
-        transactionReference: stripePaymentIntentId || stripeTransactionId || null,
-        paidAt: payment.completedDate || new Date().toISOString(),
-        status: 'paid',
-      },
-      references: {
-        paymentId: paymentId,
-        contractId: payment.contractId,
-        milestoneId: payment.milestoneId,
-        workSummary: workReference,
-      },
-      compliance: {
-        jurisdictionHint: businessUser.country || null,
-        region: complianceProfile.region,
-        taxLabel: complianceProfile.taxLabel,
-        notes: complianceProfile.notes,
-        generatedBy: 'Interlinc',
-        generatedAt: new Date().toISOString(),
-      },
-    };
-
-    // Insert BUSINESS invoice (expense proof)
-    const [businessInvoice] = await db.insert(invoices).values({
-      businessUserId: payment.businessUserId,
-      contractorUserId: payment.contractorUserId,
+    const [insertedInvoice] = await db.insert(invoices).values({
       paymentId,
+      contractId: context.payment.contractId || null,
+      milestoneId: context.payment.milestoneId || null,
+      businessId: context.payment.businessId,
+      contractorId: context.payment.contractorId!,
       invoiceNumber,
-      amount: grossAmount.toString(),
-      currency: businessCurrency,
-      description: `Payment to ${contractorUser.username} for ${description}`,
       issueDate: new Date(),
+      grossAmount: grossAmount.toString(),
+      platformFee: context.platformFee.toString(),
+      netAmount: netAmount.toString(),
+      currency: businessCurrency,
+      businessName: context.businessUser.companyName || context.businessUser.username,
+      businessAddress: context.businessUser.address || 'Address on file',
+      businessTaxId: context.businessUser.taxId || null,
+      contractorName: context.contractorUser.username,
+      contractorAddress: context.contractorUser.address || 'Address on file',
+      contractorTaxId: context.contractorUser.taxId || null,
+      description: documentType === 'business_invoice'
+        ? `Payment to ${context.contractorUser.username} for ${description}`
+        : `Payment from ${context.businessUser.companyName || context.businessUser.username} for ${description}`,
       workReference,
-      stripePaymentIntentId: stripePaymentIntentId || undefined,
-      stripeTransactionId: stripeTransactionId || undefined,
-      invoiceData: businessInvoiceData,
+      stripePaymentIntentId: stripePaymentIntentId || context.payment.stripePaymentIntentId || undefined,
+      stripeTransactionId: stripeTransactionId || context.payment.stripeTransactionId || undefined,
+      paymentMethod: 'Stripe Connect',
+      status: 'paid',
+      invoiceData,
     }).returning();
 
-    // Insert CONTRACTOR invoice (income proof)
-    const [contractorInvoice] = await db.insert(invoices).values({
-      businessUserId: payment.businessUserId,
-      contractorUserId: payment.contractorUserId,
-      paymentId,
-      invoiceNumber: `${invoiceNumber}-C`, // Add suffix to distinguish contractor copy
-      amount: grossAmount.toString(),
-      currency: businessCurrency,
-      description: `Payment from ${businessUser.companyName || businessUser.username} for ${description}`,
-      issueDate: new Date(),
-      workReference,
-      stripePaymentIntentId: stripePaymentIntentId || undefined,
-      stripeTransactionId: stripeTransactionId || undefined,
-      invoiceData: contractorInvoiceData,
-    }).returning();
-
-    console.log(`✅ AUTO-GENERATED DUAL INVOICES for payment ${paymentId}`);
-    console.log(`   📄 Business Invoice: ${invoiceNumber} (Expense Proof)`);
-    console.log(`   📄 Contractor Invoice: ${invoiceNumber}-C (Income Proof)`);
-    console.log(`   Business: ${businessUser.username} → Contractor: ${contractorUser.username}`);
-    console.log(`   Business Paid: £${grossAmount.toFixed(2)} | Contractor Received: £${netAmount.toFixed(2)}`);
-
-    return businessInvoice.id;
+    console.log(`✅ Generated ${documentType === 'business_invoice' ? 'business invoice' : 'contractor receipt'} ${invoiceNumber} for payment ${paymentId}`);
+    return insertedInvoice.id;
   }
 
   /**
@@ -244,6 +132,70 @@ export class InvoiceGeneratorService {
 
     return `${prefix}-${sequence}`;
   }
+
+  private async resolveBaseInvoiceNumber(paymentId: number): Promise<string> {
+    const existingInvoices = await storage.getInvoicesByPaymentId(paymentId);
+    const businessInvoice = existingInvoices.find(inv => inv.invoiceData?.documentType === 'business_invoice');
+    if (businessInvoice?.invoiceNumber) {
+      return businessInvoice.invoiceNumber.replace(/-C$/, '');
+    }
+
+    const contractorInvoice = existingInvoices.find(inv => inv.invoiceData?.documentType === 'contractor_receipt');
+    if (contractorInvoice?.invoiceNumber) {
+      return contractorInvoice.invoiceNumber.replace(/-C$/, '');
+    }
+
+    return this.generateInvoiceNumber(paymentId);
+  }
+
+  private async getInvoiceContext(paymentId: number) {
+    const payment = await storage.getPayment(paymentId);
+    if (!payment) {
+      throw new Error(`Payment ${paymentId} not found`);
+    }
+
+    const contract = payment.contractId ? await storage.getContract(payment.contractId) : null;
+    const milestone = payment.milestoneId ? await storage.getMilestone(payment.milestoneId) : null;
+    const businessUser = payment.businessId
+      ? await storage.getUser(payment.businessId)
+      : contract
+        ? await storage.getUser(contract.businessId)
+        : null;
+
+    const contractorUser = payment.contractorId
+      ? await storage.getUser(payment.contractorId)
+      : contract
+        ? await storage.getUser(contract.contractorId)
+        : null;
+
+    if (!businessUser || !contractorUser) {
+      throw new Error('Missing business or contractor user data');
+    }
+
+    const grossAmount = parseFloat(payment.amount.toString());
+    const platformFee = payment.applicationFee ? parseFloat(payment.applicationFee.toString()) : 0;
+    const netAmount = grossAmount - platformFee;
+
+    const description = milestone?.name || contract?.contractName || payment.notes || 'Professional services';
+    const workReference = milestone
+      ? `Milestone: ${milestone.name}`
+      : contract
+        ? `Project: ${contract.contractName}`
+        : 'Direct payment';
+
+    return {
+      payment,
+      contract,
+      milestone,
+      businessUser,
+      contractorUser,
+      grossAmount,
+      platformFee,
+      netAmount,
+      description,
+      workReference,
+    };
+  }
 }
 
 export const invoiceGenerator = new InvoiceGeneratorService();
@@ -259,33 +211,69 @@ export async function generateInvoiceFromPayment(paymentId: number): Promise<voi
       return;
     }
 
-    // Only generate if payment is completed and no invoice exists yet
-    if (payment.status !== 'completed') {
-      console.log(`Payment ${paymentId} not completed, skipping invoice generation`);
-      return;
+    const invoicesForPayment = await storage.getInvoicesByPaymentId(paymentId);
+
+    if (invoicesForPayment.some(inv => inv.invoiceData?.documentType === 'business_invoice')) {
+      console.log(`Business invoice already exists for payment ${paymentId}, skipping`);
+    } else if (payment.stripePaymentIntentStatus === 'succeeded' || payment.status === 'completed') {
+      await invoiceGenerator.generateInvoiceForPayment({
+        paymentId,
+        stripePaymentIntentId: payment.stripePaymentIntentId || undefined,
+        stripeTransactionId: payment.stripeTransactionId || undefined,
+        documentType: 'business_invoice',
+      });
     }
 
-    // Check if invoice already exists for this payment
-    const existingInvoices = await db
-      .select()
-      .from(invoices)
-      .where(eq(invoices.paymentId, paymentId));
-
-    if (existingInvoices.length > 0) {
-      console.log(`Invoice already exists for payment ${paymentId}, skipping`);
-      return;
+    if (payment.status === 'completed' && !invoicesForPayment.some(inv => inv.invoiceData?.documentType === 'contractor_receipt')) {
+      await invoiceGenerator.generateInvoiceForPayment({
+        paymentId,
+        stripePaymentIntentId: payment.stripePaymentIntentId || undefined,
+        stripeTransactionId: payment.stripeTransactionId || undefined,
+        documentType: 'contractor_receipt',
+      });
     }
 
-    // Generate invoice
-    await invoiceGenerator.generateInvoiceForPayment({
-      paymentId,
-      stripePaymentIntentId: payment.stripePaymentIntentId || '',
-      stripeTransactionId: payment.stripeTransactionId || undefined
-    });
-
-    console.log(`✅ Auto-generated invoices for payment ${paymentId}`);
+    console.log(`✅ Auto-generated invoices for payment ${paymentId} if missing`);
   } catch (error) {
     console.error(`Failed to generate invoice for payment ${paymentId}:`, error);
     throw error;
   }
+}
+
+export async function generateBusinessInvoiceForPayment(
+  paymentId: number,
+  stripePaymentIntentId?: string,
+  stripeTransactionId?: string
+): Promise<void> {
+  const existingInvoices = await storage.getInvoicesByPaymentId(paymentId);
+  if (existingInvoices.some(inv => inv.invoiceData?.documentType === 'business_invoice')) {
+    console.log(`Business invoice already exists for payment ${paymentId}, skipping generation.`);
+    return;
+  }
+
+  await invoiceGenerator.generateInvoiceForPayment({
+    paymentId,
+    stripePaymentIntentId,
+    stripeTransactionId,
+    documentType: 'business_invoice',
+  });
+}
+
+export async function generateContractorReceiptForPayment(
+  paymentId: number,
+  stripePaymentIntentId?: string,
+  stripeTransactionId?: string
+): Promise<void> {
+  const existingInvoices = await storage.getInvoicesByPaymentId(paymentId);
+  if (existingInvoices.some(inv => inv.invoiceData?.documentType === 'contractor_receipt')) {
+    console.log(`Contractor receipt already exists for payment ${paymentId}, skipping generation.`);
+    return;
+  }
+
+  await invoiceGenerator.generateInvoiceForPayment({
+    paymentId,
+    stripePaymentIntentId,
+    stripeTransactionId,
+    documentType: 'contractor_receipt',
+  });
 }
