@@ -27,6 +27,7 @@ import { db, pool } from "./db";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import * as crypto from "crypto";
+import { mapPaymentStatus } from "./services/payment-status-mapper";
 
 // Storage interface for CRUD operations
 export interface IStorage {
@@ -158,7 +159,7 @@ export interface IStorage {
   updatePaymentTransferDetails(id: number, stripeTransferId: string, stripeTransferStatus: string, applicationFee: number): Promise<Payment | undefined>;
 
   // Business Payment Statistics - Real Data Calculations
-  getBusinessPaymentStats(businessId: number): Promise<{totalSuccessfulPayments: number, totalPaymentValue: number, currentMonthValue: number, currentYearValue: number}>;
+  getBusinessPaymentStats(businessId: number): Promise<{totalSuccessfulPayments: number, totalPaymentValue: number, processingValue: number, currentMonthValue: number, currentYearValue: number}>;
   getBusinessMonthlyPayments(businessId: number, year: number, month: number): Promise<number>;
   getBusinessAnnualPayments(businessId: number, year: number): Promise<number>;
   getBusinessTotalSuccessfulPayments(businessId: number): Promise<number>;
@@ -1517,7 +1518,7 @@ export class MemStorage implements IStorage {
   async getApprovedMilestonesWithoutPayments(): Promise<any[]> { return Promise.resolve([]); }
   async updatePaymentStripeDetails(id: number, stripePaymentIntentId: string, stripePaymentIntentStatus: string): Promise<any> { return this.updatePayment(id, { stripePaymentIntentId, stripePaymentIntentStatus }); }
   async updatePaymentTransferDetails(id: number, stripeTransferId: string, stripeTransferStatus: string, applicationFee: number): Promise<any> { return this.updatePayment(id, { stripeTransferId, stripeTransferStatus, applicationFee: applicationFee.toString() }); }
-  async getBusinessPaymentStats(businessId: number): Promise<any> { return Promise.resolve({ totalSuccessfulPayments: 0, totalPaymentValue: 0, currentMonthValue: 0, currentYearValue: 0 }); }
+  async getBusinessPaymentStats(businessId: number): Promise<any> { return Promise.resolve({ totalSuccessfulPayments: 0, totalPaymentValue: 0, processingValue: 0, currentMonthValue: 0, currentYearValue: 0 }); }
   async getBusinessMonthlyPayments(businessId: number, year: number, month: number): Promise<number> { return Promise.resolve(0); }
   async getBusinessAnnualPayments(businessId: number, year: number): Promise<number> { return Promise.resolve(0); }
   async getBusinessTotalSuccessfulPayments(businessId: number): Promise<number> { return Promise.resolve(0); }
@@ -2521,7 +2522,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Business Payment Statistics - Real Data Calculations FROM PAYMENTS TABLE
-  async getBusinessPaymentStats(businessId: number): Promise<{totalSuccessfulPayments: number, totalPaymentValue: number, currentMonthValue: number, currentYearValue: number}> {
+  async getBusinessPaymentStats(businessId: number): Promise<{totalSuccessfulPayments: number, totalPaymentValue: number, processingValue: number, currentMonthValue: number, currentYearValue: number}> {
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
@@ -2530,16 +2531,22 @@ export class DatabaseStorage implements IStorage {
     const businessPayments = await db
       .select()
       .from(payments)
-      .where(and(
-        eq(payments.businessId, businessId),
-        eq(payments.status, 'completed')
-      ));
+      .where(eq(payments.businessId, businessId));
 
-    const totalSuccessfulPayments = businessPayments.length;
-    const totalPaymentValue = businessPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+    const paymentsWithStatus = businessPayments.map(payment => ({
+      payment,
+      mappedStatus: mapPaymentStatus(payment)
+    }));
 
-    // Calculate current month value
-    const currentMonthValue = businessPayments
+    const paidPayments = paymentsWithStatus.filter(p => p.mappedStatus === 'paid').map(p => p.payment);
+    const processingPayments = paymentsWithStatus.filter(p => p.mappedStatus === 'processing').map(p => p.payment);
+
+    const totalSuccessfulPayments = paidPayments.length;
+    const totalPaymentValue = paidPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+    const processingValue = processingPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+
+    // Calculate current month value (paid only)
+    const currentMonthValue = paidPayments
       .filter(p => {
         const paymentDate = p.completedDate;
         if (!paymentDate) return false;
@@ -2548,8 +2555,8 @@ export class DatabaseStorage implements IStorage {
       })
       .reduce((sum, p) => sum + parseFloat(p.amount), 0);
 
-    // Calculate current year value
-    const currentYearValue = businessPayments
+    // Calculate current year value (paid only)
+    const currentYearValue = paidPayments
       .filter(p => {
         const paymentDate = p.completedDate;
         if (!paymentDate) return false;
@@ -2561,6 +2568,7 @@ export class DatabaseStorage implements IStorage {
     return {
       totalSuccessfulPayments,
       totalPaymentValue,
+      processingValue,
       currentMonthValue,
       currentYearValue
     };
@@ -3324,9 +3332,41 @@ export class DatabaseStorage implements IStorage {
       const user = await this.getUser(userId);
       if (!user) return null;
 
+      // Contractors and other roles keep the stored values to avoid mixing metrics
+      if (user.role !== 'business') {
+        return {
+          budgetCap: user.budgetCap,
+          budgetUsed: user.budgetUsed
+        };
+      }
+
+      // Calculate Allocated (pending commitments)
+      const allProjects = await this.getBusinessProjects(userId);
+      const workRequests = await this.getWorkRequestsByBusinessId(userId);
+
+      const quickTasksProject = allProjects.find(p => p.name === 'Quick Tasks');
+      const quickTasksProjectId = quickTasksProject?.id;
+
+      const projectsTotalValue = allProjects
+        .filter(p => p.status === 'active' && p.id !== quickTasksProjectId)
+        .reduce((sum, p) => sum + parseFloat(p.budget || '0'), 0);
+
+      const totalTaskValue = workRequests
+        .filter(wr => wr.projectId === quickTasksProjectId)
+        .reduce((sum, wr) => sum + parseFloat(wr.amount || '0'), 0);
+
+      const totalPendingValue = projectsTotalValue + totalTaskValue;
+
+      // Calculate Processing and Paid using mapped status
+      const paymentStats = await this.getBusinessPaymentStats(userId);
+      const paidValue = paymentStats.totalPaymentValue;
+      const processingValue = paymentStats.processingValue;
+
+      const budgetUsed = totalPendingValue + processingValue + paidValue;
+
       return {
         budgetCap: user.budgetCap,
-        budgetUsed: user.budgetUsed
+        budgetUsed: budgetUsed.toFixed(2)
       };
     } catch (error) {
       console.error("Error getting budget:", error);
