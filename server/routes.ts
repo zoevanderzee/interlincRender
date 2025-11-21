@@ -4666,30 +4666,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get(`${apiRouter}/payments/dashboard-data`, requireAuth, async (req: Request, res: Response) => {
     try {
       const userId = getUserId(req);
-      const user = await storage.getUser(userId!);
-
-      if (!user?.stripeCustomerId) {
-        return res.json({
-          totalPaid: 0,
-          paymentsCompleted: 0,
-          pendingPayments: 0,
-          pendingAmount: 0,
-          processingPayments: 0,
-          processingAmount: 0,
-          monthlyTotal: 0
-        });
-      }
-
-      // Query Stripe for payments associated with this business customer
       const now = new Date();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-      // Get all Payment Intents for this customer
-      const paymentIntents = await stripe.paymentIntents.list({
-        customer: user.stripeCustomerId,
-        limit: 100,
-        expand: ['data.latest_charge']
-      });
+      const payments = await storage.getPaymentsByBusinessId(userId!);
+      const mappedPayments = payments.map(payment => ({
+        payment,
+        mappedStatus: mapPaymentStatus(payment),
+      }));
 
       let totalPaid = 0;
       let paymentsCompleted = 0;
@@ -4699,28 +4683,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let processingAmount = 0;
       let monthlyTotal = 0;
 
-      paymentIntents.data.forEach(pi => {
-        const amount = pi.amount / 100; // Convert from cents
-        const created = new Date(pi.created * 1000);
+      mappedPayments.forEach(({ payment, mappedStatus }) => {
+        const amount = parseFloat(payment.amount);
 
-        switch (pi.status) {
-          case 'succeeded':
-            totalPaid += amount;
-            paymentsCompleted++;
-            if (created >= monthStart) {
-              monthlyTotal += amount;
-            }
-            break;
-          case 'processing':
-            processingPayments++;
-            processingAmount += amount;
-            break;
-          case 'requires_payment_method':
-          case 'requires_confirmation':
-          case 'requires_action':
-            pendingPayments++;
-            pendingAmount += amount;
-            break;
+        if (mappedStatus === 'paid') {
+          totalPaid += amount;
+          paymentsCompleted++;
+
+          const completionDate = payment.completedDate ? new Date(payment.completedDate) : null;
+          if (completionDate && completionDate >= monthStart) {
+            monthlyTotal += amount;
+          }
+        } else if (mappedStatus === 'processing') {
+          processingPayments++;
+          processingAmount += amount;
+        } else if (mappedStatus === 'incomplete') {
+          pendingPayments++;
+          pendingAmount += amount;
         }
       });
 

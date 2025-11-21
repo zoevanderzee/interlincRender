@@ -159,7 +159,7 @@ export interface IStorage {
   updatePaymentTransferDetails(id: number, stripeTransferId: string, stripeTransferStatus: string, applicationFee: number): Promise<Payment | undefined>;
 
   // Business Payment Statistics - Real Data Calculations
-  getBusinessPaymentStats(businessId: number): Promise<{totalSuccessfulPayments: number, totalPaymentValue: number, processingValue: number, currentMonthValue: number, currentYearValue: number}>;
+  getBusinessPaymentStats(businessId: number): Promise<{totalSuccessfulPayments: number, totalPaymentValue: number, processingValue: number, currentMonthValue: number, currentYearValue: number, paidCount: number, processingCount: number, incompleteCount: number, incompleteValue: number}>;
   getBusinessMonthlyPayments(businessId: number, year: number, month: number): Promise<number>;
   getBusinessAnnualPayments(businessId: number, year: number): Promise<number>;
   getBusinessTotalSuccessfulPayments(businessId: number): Promise<number>;
@@ -1519,7 +1519,7 @@ export class MemStorage implements IStorage {
   async getApprovedMilestonesWithoutPayments(): Promise<any[]> { return Promise.resolve([]); }
   async updatePaymentStripeDetails(id: number, stripePaymentIntentId: string, stripePaymentIntentStatus: string): Promise<any> { return this.updatePayment(id, { stripePaymentIntentId, stripePaymentIntentStatus }); }
   async updatePaymentTransferDetails(id: number, stripeTransferId: string, stripeTransferStatus: string, applicationFee: number): Promise<any> { return this.updatePayment(id, { stripeTransferId, stripeTransferStatus, applicationFee: applicationFee.toString() }); }
-  async getBusinessPaymentStats(businessId: number): Promise<any> { return Promise.resolve({ totalSuccessfulPayments: 0, totalPaymentValue: 0, processingValue: 0, currentMonthValue: 0, currentYearValue: 0 }); }
+  async getBusinessPaymentStats(businessId: number): Promise<any> { return Promise.resolve({ totalSuccessfulPayments: 0, totalPaymentValue: 0, processingValue: 0, currentMonthValue: 0, currentYearValue: 0, paidCount: 0, processingCount: 0, incompleteCount: 0, incompleteValue: 0 }); }
   async getBusinessMonthlyPayments(businessId: number, year: number, month: number): Promise<number> { return Promise.resolve(0); }
   async getBusinessAnnualPayments(businessId: number, year: number): Promise<number> { return Promise.resolve(0); }
   async getBusinessTotalSuccessfulPayments(businessId: number): Promise<number> { return Promise.resolve(0); }
@@ -2524,7 +2524,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Business Payment Statistics - Real Data Calculations FROM PAYMENTS TABLE
-  async getBusinessPaymentStats(businessId: number): Promise<{totalSuccessfulPayments: number, totalPaymentValue: number, processingValue: number, currentMonthValue: number, currentYearValue: number}> {
+  async getBusinessPaymentStats(businessId: number): Promise<{totalSuccessfulPayments: number, totalPaymentValue: number, processingValue: number, currentMonthValue: number, currentYearValue: number, paidCount: number, processingCount: number, incompleteCount: number, incompleteValue: number}> {
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
@@ -2542,10 +2542,12 @@ export class DatabaseStorage implements IStorage {
 
     const paidPayments = paymentsWithStatus.filter(p => p.mappedStatus === 'paid').map(p => p.payment);
     const processingPayments = paymentsWithStatus.filter(p => p.mappedStatus === 'processing').map(p => p.payment);
+    const incompletePayments = paymentsWithStatus.filter(p => p.mappedStatus === 'incomplete').map(p => p.payment);
 
     const totalSuccessfulPayments = paidPayments.length;
     const totalPaymentValue = paidPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
     const processingValue = processingPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+    const incompleteValue = incompletePayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
 
     // Calculate current month value (paid only)
     const currentMonthValue = paidPayments
@@ -2572,7 +2574,11 @@ export class DatabaseStorage implements IStorage {
       totalPaymentValue,
       processingValue,
       currentMonthValue,
-      currentYearValue
+      currentYearValue,
+      paidCount: paidPayments.length,
+      processingCount: processingPayments.length,
+      incompleteCount: incompletePayments.length,
+      incompleteValue
     };
   }
 
