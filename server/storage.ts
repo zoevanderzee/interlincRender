@@ -181,6 +181,7 @@ export interface IStorage {
   getInvoicesByContractorId(contractorId: number): Promise<any[]>;
   getInvoice(invoiceId: number): Promise<any | null>;
   getInvoiceByPaymentId(paymentId: number): Promise<any | null>;
+  getInvoicesByPaymentId(paymentId: number): Promise<any[]>;
 
   // Documents
   getDocument(id: number): Promise<Document | undefined>;
@@ -1528,6 +1529,7 @@ export class MemStorage implements IStorage {
   async getInvoicesByContractorId(contractorId: number): Promise<any[]> { return Promise.resolve([]); }
   async getInvoice(invoiceId: number): Promise<any | null> { return Promise.resolve(null); }
   async getInvoiceByPaymentId(paymentId: number): Promise<any | null> { return Promise.resolve(null); }
+  async getInvoicesByPaymentId(paymentId: number): Promise<any[]> { return Promise.resolve([]); }
   async getUserBankAccounts(userId: number): Promise<any[]> { return Promise.resolve([]); }
   async getUserBankAccount(userId: number, accountId: string): Promise<any> { return Promise.resolve(undefined); }
   async saveUserBankAccount(userId: number, bankAccountData: any): Promise<any> { return Promise.resolve({} as any); }
@@ -4564,6 +4566,15 @@ export class DatabaseStorage implements IStorage {
     const { invoices } = await import('@shared/schema');
     const [invoice] = await db.select().from(invoices).where(eq(invoices.paymentId, paymentId));
     return invoice || null;
+  }
+
+  async getInvoicesByPaymentId(paymentId: number): Promise<any[]> {
+    const { invoices } = await import('@shared/schema');
+    return await db
+      .select()
+      .from(invoices)
+      .where(eq(invoices.paymentId, paymentId))
+      .orderBy(desc(invoices.createdAt));
   }
 }
 
